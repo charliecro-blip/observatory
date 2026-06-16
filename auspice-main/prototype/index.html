@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auspice Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <h1>Auspice</h1>
+        <p>Move with time, instead of forcing yourself through it.</p>
+      </header>
+
+      <nav class="tabs" aria-label="Primary">
+        <button class="tab active" data-tab="today">Today</button>
+        <button class="tab" data-tab="capture">Capture</button>
+        <button class="tab" data-tab="week">Week</button>
+        <button class="tab" data-tab="tasks">Tasks</button>
+        <button class="tab" data-tab="find">Find a Time</button>
+      </nav>
+
+      <main id="content"></main>
+    </div>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

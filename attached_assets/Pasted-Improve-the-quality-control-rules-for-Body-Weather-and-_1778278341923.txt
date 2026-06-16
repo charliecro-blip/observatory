@@ -1,0 +1,65 @@
+Improve the quality-control rules for Body Weather and Oracle medical-astrology language.
+
+Current issue:
+Some generated sentences are grammatically awkward or too vague, for example:
+“With Cancer rising, your body thrives on warm, nourishing foods prepared at home are foundational to your health.”
+
+We need clearer, more specific, more nuanced prose.
+
+Update the AI system prompts and/or post-processing instructions so outputs follow these rules:
+
+1. Grammar and clarity
+- Use complete, grammatically correct sentences.
+- Avoid awkward compound sentences.
+- Avoid phrases like “purpose vitality is active” or “vitality is active” unless clearly explained.
+- If a phrase sounds like a keyword dump, rewrite it into natural language.
+
+2. Specificity
+Avoid generic phrases like:
+- “your vitality is active”
+- “this is a time of transformation”
+- “pay attention to your body”
+- “balance is needed”
+
+Instead, explain:
+- what part of the chart/transit is being referenced
+- what body-weather domain it may correspond with
+- what the user should track
+- what kind of support may be relevant
+
+3. Medical astrology safety
+Do not diagnose.
+Do not prescribe.
+Do not say astrology causes symptoms.
+Use:
+- “may correspond with”
+- “is worth tracking”
+- “can symbolize”
+- “may describe a tendency”
+- “in your logs, this appears alongside…”
+
+4. Body Weather structure
+Every interpretation should separate:
+- Observed check-in data
+- Natal chart context
+- Transit context
+- Practical tracking suggestion
+- Supportive reflection
+
+5. No vague transit statements
+If mentioning a transit, include:
+- the transiting planet
+- the natal point or house involved
+- whether it is mild/moderate/strong
+- why it matters
+- what domain to track
+
+Example:
+Instead of:
+“Neptune square your natal Moon — vitality is active.”
+
+Say:
+“Neptune is currently forming a square to your natal Moon. This is a stronger transit signature for sensitivity, porousness, dreaminess, confusion, or diffuse emotional/body signals. Since the Moon is central to bodily rhythm and regulation, it may be worth tracking sleep, hydration, emotional overwhelm, and sensitivity to food or environment during this period.”
+
+6. Edit for readability
+Outputs should sound like a thoughtful practitioner, not a horoscope generator or clinical report.

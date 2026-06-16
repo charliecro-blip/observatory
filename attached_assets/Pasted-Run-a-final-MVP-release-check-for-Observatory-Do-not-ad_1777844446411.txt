@@ -1,0 +1,67 @@
+Run a final MVP release check for Observatory.
+
+Do not add new features unless needed to fix a critical bug.
+
+Check:
+
+1. Branding
+- App name is Observatory in the visible UI.
+- The old name AstroHealth is not visible in major user-facing places.
+- Tagline is visible somewhere: “A personal observatory for body, sky, and pattern.”
+
+2. Tester profiles
+- First-time visitor sees the tester profile modal.
+- New tester flow generates a unique tester ID.
+- Returning tester flow accepts an existing tester ID.
+- Tester ID is copyable.
+- Switch/reset works.
+- Missing x-tester-id errors are handled gracefully by prompting for tester profile.
+
+3. Natal chart
+- New tester sees no saved natal chart.
+- New tester can save natal chart.
+- Dashboard/Oracle/Body Weather use that tester’s natal chart only.
+
+4. Track/check-in
+- New tester can complete today’s check-in.
+- Updating today’s check-in works.
+- Dashboard updates after check-in.
+- Expanded symptom/context categories are usable on mobile.
+- Search works.
+- Selected tags are visible when categories are collapsed.
+
+5. Body Weather
+- If no check-in exists, Dashboard prompts user to check in.
+- If check-in exists, Body Weather appears.
+- Cached insight does not regenerate on every page load.
+- Regenerate button works.
+- Fallback logic still works or is testable.
+
+6. Oracle
+- Text Oracle works.
+- Oracle uses the current tester’s natal chart and sky context.
+- Oracle does not leak prior tester conversations.
+- AI failure is surfaced visibly.
+
+7. Astrology
+- /api/astro/debug confirms Mars is Aries for May 3, 2026.
+- Dashboard, Body Weather, and Oracle use the corrected planetary positions.
+
+8. Safety/disclaimer
+- A disclaimer is visible in the UI.
+- It says this is reflection/pattern tracking, not diagnosis or treatment.
+- It warns that tester profiles are MVP separation, not secure medical accounts.
+
+9. Mobile
+- Dashboard usable on phone.
+- Track page usable on phone.
+- Oracle usable on phone.
+- Sidebar/navigation usable on phone.
+
+10. Final output
+Return:
+- pass/fail checklist
+- any bugs fixed
+- files changed
+- final share URL
+- 3 known MVP limitations to tell testers

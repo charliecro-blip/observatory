@@ -1,0 +1,223 @@
+Expand the daily check-in symptom and behavior/context tag lists.
+
+Do not change the database structure unless necessary.
+The existing daily_check_ins table already stores symptomTags and behaviorTags as JSON arrays, so this should mostly be frontend constants/config updates.
+
+Goal:
+Make the check-in more useful for tracking constitutional health, nervous system state, digestion, inflammation/heat, phlegm/dampness, blood stasis, and lifestyle factors.
+
+Update symptom tags to include these categories.
+
+Digestive:
+- Constipation
+- Loose stool
+- Bloating
+- Nausea
+- Reflux
+- Low appetite
+- Strong appetite
+- Food cravings
+- Heavy/sluggish after eating
+- Abdominal pain
+- Gas
+- Dry stool
+- Undigested food
+
+Energy / fatigue:
+- Fatigue
+- Wired but tired
+- Heavy body
+- Weakness
+- Afternoon crash
+- Low motivation
+- Restless energy
+- Burnout feeling
+
+Nervous system / mood:
+- Anxiety
+- Irritability
+- Low mood
+- Emotional sensitivity
+- Restlessness
+- Brain fog
+- Racing thoughts
+- Scattered focus
+- Panic feeling
+- Grief
+- Anger
+- Overwhelm
+- Dissociation/numbness
+- Weepiness
+- Social sensitivity
+
+Sleep:
+- Insomnia
+- Trouble falling asleep
+- Waking during night
+- Early waking
+- Vivid dreams
+- Night sweats
+- Unrefreshing sleep
+
+Pain / body:
+- Headache
+- Neck tension
+- Jaw tension
+- Shoulder tension
+- Chest tightness
+- Rib-side pain
+- Low back ache
+- Hip/pelvic tension
+- Joint pain
+- Muscle soreness
+- Body aches
+- Testicular/pelvic discomfort
+- Eye strain
+- Dizziness
+
+Heat / inflammation:
+- Feeling hot
+- Flushing
+- Skin breakout
+- Redness
+- Itching
+- Cyst/pimple flare
+- Sore throat
+- Mouth sores
+- Burning sensation
+- Increased thirst
+
+Cold / deficiency:
+- Feeling cold
+- Cold hands/feet
+- Low libido
+- Low warmth
+- Pale/washed out
+- Need for warmth
+
+Damp/phlegm:
+- Congestion
+- Mucus/phlegm
+- Sinus pressure
+- Swelling/puffiness
+- Heaviness
+- Cloudy mind
+- Damp/sticky feeling
+
+Circulation / blood stasis:
+- Sharp pain
+- Fixed pain
+- Purple/dark marks
+- Visible capillaries
+- Numbness/tingling
+- Stagnant feeling
+- Chest pressure
+
+Urinary / reproductive:
+- Frequent urination
+- Dark urine
+- Low urination
+- Menstrual symptoms
+- PMS
+- Cramps
+- Breast tenderness
+- Libido high
+- Libido low
+
+Breath / heart:
+- Shortness of breath
+- Palpitations
+- Chest tightness
+- Air hunger
+- Heart racing
+
+Keep existing tags if they overlap, but avoid duplicates.
+
+UI:
+Organize symptom tags by collapsible category or grouped sections so the page does not become overwhelming.
+Allow search/filter within symptom tags if easy.
+Selected tags should still show clearly.
+
+Behavior/context tags:
+Expand to include:
+
+Food/substances:
+- Caffeine
+- Alcohol
+- Cannabis
+- Sugar
+- Heavy meal
+- Fried/greasy food
+- Dairy
+- Gluten
+- Spicy food
+- Cold/raw food
+- Late meal
+- Fasting
+- Low protein
+- High protein
+- Ate out
+- Hydrated well
+- Dehydrated
+
+Movement/body care:
+- Exercise
+- Heavy workout
+- Gentle walk
+- Stretching
+- Yoga
+- Somatic movement
+- Martial arts
+- Sauna
+- Hot bath
+- Cold plunge
+- Breathwork
+- Meditation
+- Acupuncture
+- Herbs/supplements
+- Massage/bodywork
+- Sunlight
+- Poor posture
+- Long drive
+
+Life context:
+- Social event
+- Conflict
+- Travel
+- Overwork
+- Client sessions
+- Class/studying
+- Deadline pressure
+- Creative flow
+- Screen overload
+- Poor sleep night before
+- Rest day
+- Alone time
+- Dating/romance
+- Family stress
+- Money stress
+- Grief/emotional processing
+- Crying
+- Sex
+- Big decision
+- Cleaning/organizing
+
+Environment:
+- Heat exposure
+- Cold exposure
+- Weather shift
+- Allergens
+- Mold/damp environment
+- Poor air quality
+- Loud environment
+
+UI:
+Group behavior tags by category.
+Keep the check-in easy to use.
+Do not make the page feel like a huge wall of pills.
+Use collapsible sections or tabs if needed.
+
+After implementation:
+- summarize where the tag lists live
+- confirm old check-ins still render correctly
+- confirm updating today’s check-in still works

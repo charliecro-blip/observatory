@@ -1,0 +1,40 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import supplementsRouter from "./supplements";
+import activitiesRouter from "./activities";
+import logsRouter from "./logs";
+import insightsRouter from "./insights";
+import openaiRouter from "./openai";
+import natalRouter from "./natal";
+import checkInsRouter from "./checkIns";
+import bodyWeatherRouter from "./bodyWeather";
+import astroDebugRouter from "./astroDebug";
+import locationSearchRouter from "./locationSearch";
+import blueprintRouter from "./blueprint";
+import cultivationsRouter from "./cultivations";
+import supportPreferencesRouter from "./supportPreferences";
+import knowledgeRouter from "./knowledge";
+import calendarRouter from "./calendar";
+import auspiceRouter from "./auspice";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(supplementsRouter);
+router.use(activitiesRouter);
+router.use(logsRouter);
+router.use(insightsRouter);
+router.use(openaiRouter);
+router.use(natalRouter);
+router.use(checkInsRouter);
+router.use(bodyWeatherRouter);
+router.use(astroDebugRouter);
+router.use(locationSearchRouter);
+router.use(blueprintRouter);
+router.use(cultivationsRouter);
+router.use(supportPreferencesRouter);
+router.use(knowledgeRouter);
+router.use(calendarRouter);
+router.use(auspiceRouter);
+
+export default router;

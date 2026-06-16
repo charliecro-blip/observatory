@@ -1,0 +1,124 @@
+Proceed with Phase 3: Body Weather AI.
+
+Build this conservatively and do not disrupt existing features.
+
+Goal:
+Generate a structured daily Body Weather insight from:
+- today’s daily_check_in
+- recent daily_check_ins from the last 7–14 days
+- current astrology snapshot / today’s sky
+- natal chart and active transits if available
+
+Do not regenerate the insight every page load.
+Create and store the result in the database.
+
+Database:
+Add a new daily_insights table with:
+- id
+- date
+- checkInId
+- capacityLevel text
+- capacityScore integer nullable
+- bodyWeatherSummary text
+- bestUseTags JSON array
+- watchForTags JSON array
+- supportTags JSON array
+- explanation text
+- generatedContext JSON
+- createdAt
+- updatedAt
+
+Important:
+- One daily insight per date.
+- Link it to the current daily_check_in.
+- Regenerate only when:
+  1. no insight exists for today
+  2. today’s check-in has changed since the insight was generated
+  3. user clicks “Regenerate”
+
+API endpoints:
+- GET /api/body-weather/today
+  - returns today's cached Body Weather insight if it exists and is current
+  - if no current insight exists, generate it, save it, and return it
+  - if no daily check-in exists, return a clear “check-in required” response
+
+- POST /api/body-weather/regenerate
+  - forces regeneration using today’s latest check-in and current astro context
+
+AI output must be valid structured JSON:
+{
+  "capacityLevel": "Low" | "Medium" | "High",
+  "capacityScore": number,
+  "bodyWeatherSummary": string,
+  "bestUseTags": string[],
+  "watchForTags": string[],
+  "supportTags": string[],
+  "explanation": string
+}
+
+Frontend:
+On the Observatory/Dashboard page, add a prominent Body Weather card below the check-in status banner.
+
+If today’s check-in does not exist:
+- show a prompt: “Complete today’s check-in to generate Body Weather.”
+- include a button/link to Track
+
+If today’s check-in exists:
+Show:
+- Capacity Level
+- Capacity Score if available
+- Body Weather Summary
+- Best Use tags
+- Watch For tags
+- Support tags
+- Explanation
+- Regenerate button
+
+Add loading and error states.
+
+Fallback logic:
+If AI is unavailable or returns invalid JSON, generate a deterministic fallback using simple rules:
+
+- If energy <= 4 or sleepQuality <= 4 or stress >= 8, capacityLevel = Low
+- If energy >= 8 and stress <= 5 and sleepQuality >= 6, capacityLevel = High
+- Otherwise capacityLevel = Medium
+
+Fallback watch-for rules:
+- sleepQuality <= 4 → low recovery margin
+- stress >= 7 → nervous-system load
+- digestion <= 4 → digestive sensitivity
+- focus <= 4 → scattered focus
+- symptomTags includes Anxiety, Restlessness, or Brain fog → mental overstimulation
+- symptomTags includes Fatigue, Insomnia, or Low mood → depleted reserves
+- behaviorTags includes Conflict, Overwork, or Travel → carryover stress
+
+Fallback support rules:
+- low sleep → earlier bedtime, reduce stimulation
+- high stress → decompression window, simpler schedule
+- low digestion → simple meals, gentle walk
+- anxiety/restlessness/brain fog → less caffeine, slower transitions
+- fatigue/insomnia/low mood → rest, lower expectations
+- conflict/overwork/travel → boundaries, recovery time
+
+Safety/tone requirements:
+- Do not diagnose.
+- Do not prescribe herbs, supplements, or medications.
+- Do not tell users to stop medication.
+- Do not say astrology causes symptoms.
+- Use phrases like “may correspond with,” “could reflect,” “worth noticing,” and “based on today’s check-in.”
+- Keep the tone calm, practical, non-fatalistic, and grounded.
+
+Prompting:
+The AI should receive structured data, not a vague open-ended request.
+Include:
+- today’s check-in
+- recent check-ins
+- current astrology
+- natal chart/transits if available
+- instruction to return JSON only
+
+After implementation:
+- summarize files changed
+- confirm whether AI fallback works
+- confirm whether cached insights are not regenerated on every page load
+- confirm how regeneration is triggered

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.notion.so)",
+      "WebFetch(domain:app.notion.com)",
+      "Bash(pnpm --filter @workspace/api-server tsc --noEmit)",
+      "Bash(pnpm --filter @workspace/health-tracker tsc --noEmit)",
+      "Bash(npx tsc *)",
+      "Read(//Users/charlescross/.local/share/pnpm/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(/usr/local/bin/node --version)",
+      "mcp__161af24d-5333-4e8c-a773-38d995abb80b__notion-search",
+      "mcp__161af24d-5333-4e8c-a773-38d995abb80b__notion-fetch"
+    ]
+  }
+}

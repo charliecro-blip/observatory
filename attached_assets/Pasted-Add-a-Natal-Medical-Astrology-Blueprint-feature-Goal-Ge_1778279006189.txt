@@ -1,0 +1,112 @@
+Add a Natal Medical Astrology Blueprint feature.
+
+Goal:
+Generate a structured natal medical-astrology report from the current tester’s personalized natal chart.
+
+This is a core future subscription feature.
+
+Do not diagnose.
+Do not prescribe.
+Do not make deterministic medical claims.
+Do not say the chart causes illness.
+
+Create a new page/section:
+Chart Insights or Natal Blueprint
+
+Create a new table:
+natal_blueprints
+Fields:
+- id
+- testerId
+- natalChartId
+- blueprintJson
+- generatedText
+- promptVersion
+- chartUpdatedAt
+- createdAt
+- updatedAt
+
+Behavior:
+- Generate one blueprint per tester chart.
+- Cache it.
+- Regenerate when the natal chart changes or when the user clicks Regenerate.
+- If no natal chart exists, prompt the user to add chart data first.
+
+Blueprint sections:
+1. Constitution Overview
+2. 1st House / Ascendant: Body and Vitality
+3. Moon: Body Rhythm, Fluids, Needs, Regulation
+4. 6th House: Health Patterns, Routine, Imbalance
+5. 2nd House: Diet, Intake, Nourishment, Resources
+6. 8th House: Chronicity, Crisis, Hidden Processes, Elimination
+7. 10th House: Therapies, Interventions, Support Direction
+8. Mars and Saturn: Stress, Heat, Constraint, Depletion Signatures
+9. Venus and Jupiter: Support, Restoration, Nourishment Signatures
+10. Contradictions and Mixed Testimony
+11. What to Track
+12. Supportive Principles
+13. Safety Note
+
+Important:
+Add a specific “Contradictions and Mixed Testimony” section.
+
+This section should handle cases like:
+- the same planet rules both 6th and 10th houses
+- a planet is both supportive and challenging
+- a house ruler has dignity but difficult aspects
+- a benefic rules a difficult house
+- a malefic is well dignified or constructively placed
+- the chart shows both heat and cold, dryness and moisture, activation and depletion
+
+The report should not flatten contradictions.
+It should say things like:
+“Jupiter ruling both the 6th and 10th links illness/routine themes with therapeutic direction. This can suggest that the same principle that destabilizes the system may also become part of the remedy, depending on how it is cultivated.”
+
+Use computed chart data:
+- planets by sign/degree/house
+- ASC/MC
+- house cusps
+- house rulers
+- aspects if available
+- chart ruler
+- 2nd/6th/8th/10th rulers
+- Moon phase if available
+- sect if available
+
+Output style:
+- scholarly but readable
+- specific and nuanced
+- practical but non-prescriptive
+- poetic only where it adds clarity
+- no vague horoscope language
+
+AI output must return structured JSON:
+{
+  "constitutionOverview": string,
+  "ascendantBodyVitality": string,
+  "moonBodyRhythm": string,
+  "sixthHousePatterns": string,
+  "secondHouseIntake": string,
+  "eighthHouseProcesses": string,
+  "tenthHouseTherapies": string,
+  "marsSaturnStress": string,
+  "venusJupiterSupport": string,
+  "contradictionsMixedTestimony": string,
+  "whatToTrack": string[],
+  "supportivePrinciples": string[],
+  "safetyNote": string
+}
+
+Also generate a readable report view from the JSON.
+
+UI:
+- Add navigation link: Blueprint
+- Add button: Generate Blueprint
+- Add button: Regenerate
+- Add button: Copy Report
+- Add loading/error states
+- Add visible disclaimer
+
+Do not add herbs yet.
+Do not add prescriptions.
+Do not add Workbench yet.

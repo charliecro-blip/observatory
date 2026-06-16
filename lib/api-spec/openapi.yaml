@@ -1,0 +1,1798 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: AstroHealth API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: logs
+    description: Health log entries
+  - name: supplements
+    description: Supplement management
+  - name: activities
+    description: Activity management
+  - name: insights
+    description: AI-powered insights and patterns
+  - name: openai
+    description: OpenAI voice and chat endpoints
+  - name: natal
+    description: Natal chart and astrological health insights
+  - name: checkIns
+    description: Daily structured check-ins
+  - name: bodyWeather
+    description: AI-generated daily Body Weather insights
+  - name: cultivations
+    description: Cultivator — goal and practice tracking
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Supplements ──────────────────────────────────────────────────────────────
+  /supplements:
+    get:
+      operationId: listSupplements
+      tags: [supplements]
+      summary: List all supplements
+      responses:
+        "200":
+          description: List of supplements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplement"
+    post:
+      operationId: createSupplement
+      tags: [supplements]
+      summary: Create a supplement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplementBody"
+      responses:
+        "201":
+          description: Created supplement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplement"
+
+  /supplements/{id}:
+    patch:
+      operationId: updateSupplement
+      tags: [supplements]
+      summary: Update a supplement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupplementBody"
+      responses:
+        "200":
+          description: Updated supplement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplement"
+    delete:
+      operationId: deleteSupplement
+      tags: [supplements]
+      summary: Delete a supplement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Activities ───────────────────────────────────────────────────────────────
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List all activities
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Create an activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityBody"
+      responses:
+        "201":
+          description: Created activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+
+  /activities/{id}:
+    patch:
+      operationId: updateActivity
+      tags: [activities]
+      summary: Update an activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateActivityBody"
+      responses:
+        "200":
+          description: Updated activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+    delete:
+      operationId: deleteActivity
+      tags: [activities]
+      summary: Delete an activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Health Logs ──────────────────────────────────────────────────────────────
+  /logs:
+    get:
+      operationId: listLogs
+      tags: [logs]
+      summary: List health log entries
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HealthLog"
+    post:
+      operationId: createLog
+      tags: [logs]
+      summary: Create a health log entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLogBody"
+      responses:
+        "201":
+          description: Created log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLog"
+
+  /logs/{id}:
+    get:
+      operationId: getLog
+      tags: [logs]
+      summary: Get a health log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Health log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLog"
+    patch:
+      operationId: updateLog
+      tags: [logs]
+      summary: Update a health log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLogBody"
+      responses:
+        "200":
+          description: Updated log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLog"
+    delete:
+      operationId: deleteLog
+      tags: [logs]
+      summary: Delete a health log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Insights / aggregates ────────────────────────────────────────────────────
+  /insights/summary:
+    get:
+      operationId: getInsightsSummary
+      tags: [insights]
+      summary: Get a dashboard summary of recent health activity
+      responses:
+        "200":
+          description: Summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsSummary"
+
+  /insights/patterns:
+    get:
+      operationId: getInsightsPatterns
+      tags: [insights]
+      summary: Get detected patterns across health logs and astrological events
+      responses:
+        "200":
+          description: Pattern list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pattern"
+
+  /insights/astro:
+    get:
+      operationId: getAstroContext
+      tags: [insights]
+      summary: Get current astrological context (planetary positions + active transits)
+      responses:
+        "200":
+          description: Astrological context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstroContext"
+
+  # ── OpenAI conversations ─────────────────────────────────────────────────────
+  /openai/conversations:
+    get:
+      operationId: listConversations
+      tags: [openai]
+      summary: List conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: createConversation
+      tags: [openai]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /openai/conversations/{id}:
+    get:
+      operationId: getConversation
+      tags: [openai]
+      summary: Get a conversation with its messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationWithMessages"
+
+  /openai/conversations/{id}/messages:
+    post:
+      operationId: sendMessage
+      tags: [openai]
+      summary: Send a text message (returns SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOpenaiMessageBody"
+      responses:
+        "200":
+          description: SSE stream of response chunks
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /openai/conversations/{id}/voice-messages:
+    post:
+      operationId: sendVoiceMessage
+      tags: [openai]
+      summary: Send a voice message (multipart audio, returns SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SendOpenaiVoiceMessageBody"
+      responses:
+        "200":
+          description: SSE stream of transcript + audio chunks
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  # ── Body Weather ─────────────────────────────────────────────────────────────
+  /body-weather/today:
+    get:
+      operationId: getBodyWeatherToday
+      tags: [bodyWeather]
+      summary: Get today's Body Weather insight (generates if missing or stale)
+      responses:
+        "200":
+          description: Body Weather insight or check-in required notice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BodyWeatherTodayResponse"
+
+  /body-weather/regenerate:
+    post:
+      operationId: regenerateBodyWeather
+      tags: [bodyWeather]
+      summary: Force-regenerate today's Body Weather insight
+      responses:
+        "200":
+          description: Freshly generated Body Weather insight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BodyWeatherTodayResponse"
+
+  # ── Daily Check-Ins ──────────────────────────────────────────────────────────
+  /check-ins/today:
+    get:
+      operationId: getTodayCheckIn
+      tags: [checkIns]
+      summary: Get today's check-in (404 if not completed yet)
+      responses:
+        "200":
+          description: Today's check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyCheckIn"
+        "404":
+          description: No check-in for today
+
+  /check-ins:
+    post:
+      operationId: upsertCheckIn
+      tags: [checkIns]
+      summary: Create or update a daily check-in (upsert by date)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCheckInBody"
+      responses:
+        "200":
+          description: Created or updated check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyCheckIn"
+
+  # ── Natal Chart ──────────────────────────────────────────────────────────────
+  /natal-chart:
+    get:
+      operationId: getNatalChart
+      tags: [natal]
+      summary: Get the saved natal chart with computed positions
+      responses:
+        "200":
+          description: Natal chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NatalChartData"
+        "404":
+          description: No natal chart saved yet
+    post:
+      operationId: upsertNatalChart
+      tags: [natal]
+      summary: Create or update natal chart birth data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertNatalChartBody"
+      responses:
+        "200":
+          description: Created or updated natal chart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NatalChartData"
+
+  /natal-chart/health-insights:
+    get:
+      operationId: getNatalHealthInsights
+      tags: [natal]
+      summary: Get health insights from natal chart (1st, 6th, 10th house analysis)
+      responses:
+        "200":
+          description: Natal health insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NatalHealthInsights"
+        "404":
+          description: No natal chart saved yet
+
+  /natal-chart/transits:
+    get:
+      operationId: getNatalTransits
+      tags: [natal]
+      summary: Get current planetary transits aspecting natal positions
+      responses:
+        "200":
+          description: List of transit aspects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransitAspect"
+        "404":
+          description: No natal chart saved yet
+
+  /natal-chart/blueprint:
+    get:
+      operationId: getNatalBlueprint
+      tags: [natal]
+      summary: Get the cached natal medical astrology blueprint
+      responses:
+        "200":
+          description: Natal blueprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NatalBlueprintResponse"
+        "404":
+          description: No natal chart or no blueprint generated yet
+
+  /natal-chart/blueprint/generate:
+    post:
+      operationId: generateNatalBlueprint
+      tags: [natal]
+      summary: Generate (or force-regenerate) the natal blueprint via AI
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateBlueprintBody"
+      responses:
+        "200":
+          description: Generated natal blueprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NatalBlueprintResponse"
+        "404":
+          description: No natal chart saved yet
+        "500":
+          description: AI generation failed
+
+  # ── Support Preferences ──────────────────────────────────────────────────────
+  /support-preferences:
+    get:
+      operationId: getSupportPreferences
+      tags: [settings]
+      summary: Get the user's support preference categories
+      responses:
+        "200":
+          description: Current preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportPreferences"
+    put:
+      operationId: updateSupportPreferences
+      tags: [settings]
+      summary: Replace the user's support preference categories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupportPreferencesBody"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportPreferences"
+
+  # ── Cultivations ─────────────────────────────────────────────────────────────
+  /cultivations:
+    get:
+      operationId: listCultivations
+      tags: [cultivations]
+      summary: List cultivations with today's check-in embedded
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, paused, completed]
+          required: false
+      responses:
+        "200":
+          description: List of cultivations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CultivationWithTodayCheckIn"
+    post:
+      operationId: createCultivation
+      tags: [cultivations]
+      summary: Create a new cultivation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCultivationBody"
+      responses:
+        "201":
+          description: Created cultivation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cultivation"
+
+  /cultivations/{id}:
+    patch:
+      operationId: updateCultivation
+      tags: [cultivations]
+      summary: Update a cultivation
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCultivationBody"
+      responses:
+        "200":
+          description: Updated cultivation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cultivation"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCultivation
+      tags: [cultivations]
+      summary: Delete a cultivation (and its check-ins)
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /cultivations/{id}/check-ins/today:
+    get:
+      operationId: getCultivationTodayCheckIn
+      tags: [cultivations]
+      summary: Get today's check-in for a cultivation
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      responses:
+        "200":
+          description: Today's check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CultivationCheckIn"
+        "404":
+          description: No check-in for today
+
+  /cultivations/{id}/check-ins:
+    get:
+      operationId: listCultivationCheckIns
+      tags: [cultivations]
+      summary: List check-in history for a cultivation
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 30
+          required: false
+          description: "Number of past days to return (max 90, default 30)"
+      responses:
+        "200":
+          description: List of check-ins ordered by date descending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CultivationCheckIn"
+        "404":
+          description: Cultivation not found
+    post:
+      operationId: upsertCultivationCheckIn
+      tags: [cultivations]
+      summary: Create or update a check-in for a cultivation
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCultivationCheckInBody"
+      responses:
+        "200":
+          description: Upserted check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CultivationCheckIn"
+
+  /cultivations/element-balance:
+    get:
+      operationId: getCultivationElementBalance
+      tags: [cultivations]
+      summary: Elemental balance of active cultivations over a date range
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            enum: [7, 30]
+            default: 7
+          required: false
+          description: "Time window in days (7 or 30)"
+      responses:
+        "200":
+          description: Element tally for active cultivations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementBalance"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    # ── Supplement ──────────────────────────────────────────────────────────────
+    Supplement:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        dosage:
+          type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, active, createdAt]
+
+    CreateSupplementBody:
+      type: object
+      properties:
+        name:
+          type: string
+        dosage:
+          type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+      required: [name]
+
+    UpdateSupplementBody:
+      type: object
+      properties:
+        name:
+          type: string
+        dosage:
+          type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+
+    # ── Activity ────────────────────────────────────────────────────────────────
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, active, createdAt]
+
+    CreateActivityBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+      required: [name]
+
+    UpdateActivityBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        active:
+          type: boolean
+
+    # ── Health Log ──────────────────────────────────────────────────────────────
+    HealthLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        loggedAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [supplement, activity, symptom, mood, note]
+        supplementId:
+          type: ["integer", "null"]
+        activityId:
+          type: ["integer", "null"]
+        supplementName:
+          type: ["string", "null"]
+        activityName:
+          type: ["string", "null"]
+        dosageTaken:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        intensity:
+          type: ["integer", "null"]
+        mood:
+          type: ["integer", "null"]
+        energyLevel:
+          type: ["integer", "null"]
+        symptoms:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        astroSnapshot:
+          type: ["string", "null"]
+        transcribedFrom:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, loggedAt, type, createdAt]
+
+    CreateLogBody:
+      type: object
+      properties:
+        loggedAt:
+          type: ["string", "null"]
+          format: date-time
+        type:
+          type: string
+          enum: [supplement, activity, symptom, mood, note]
+        supplementId:
+          type: ["integer", "null"]
+        activityId:
+          type: ["integer", "null"]
+        supplementName:
+          type: ["string", "null"]
+        activityName:
+          type: ["string", "null"]
+        dosageTaken:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        intensity:
+          type: ["integer", "null"]
+        mood:
+          type: ["integer", "null"]
+        energyLevel:
+          type: ["integer", "null"]
+        symptoms:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        transcribedFrom:
+          type: ["string", "null"]
+      required: [type]
+
+    UpdateLogBody:
+      type: object
+      properties:
+        loggedAt:
+          type: ["string", "null"]
+          format: date-time
+        type:
+          type: string
+          enum: [supplement, activity, symptom, mood, note]
+        supplementId:
+          type: ["integer", "null"]
+        activityId:
+          type: ["integer", "null"]
+        supplementName:
+          type: ["string", "null"]
+        activityName:
+          type: ["string", "null"]
+        dosageTaken:
+          type: ["string", "null"]
+        durationMinutes:
+          type: ["integer", "null"]
+        intensity:
+          type: ["integer", "null"]
+        mood:
+          type: ["integer", "null"]
+        energyLevel:
+          type: ["integer", "null"]
+        symptoms:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    # ── Insights ────────────────────────────────────────────────────────────────
+    InsightsSummary:
+      type: object
+      properties:
+        totalLogsToday:
+          type: integer
+        totalLogsThisWeek:
+          type: integer
+        activeSupplements:
+          type: integer
+        activeActivities:
+          type: integer
+        avgMoodThisWeek:
+          type: ["number", "null"]
+        avgEnergyThisWeek:
+          type: ["number", "null"]
+        topSymptoms:
+          type: array
+          items:
+            type: string
+        currentMoonPhase:
+          type: string
+        dominantPlanet:
+          type: string
+      required: [totalLogsToday, totalLogsThisWeek, activeSupplements, activeActivities, topSymptoms, currentMoonPhase, dominantPlanet]
+
+    Pattern:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        correlation:
+          type: number
+        astroFactor:
+          type: ["string", "null"]
+        dataPoints:
+          type: integer
+      required: [id, label, description, correlation, dataPoints]
+
+    AstroContext:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        moonPhase:
+          type: string
+        moonSign:
+          type: string
+        sunSign:
+          type: string
+        planets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanetPosition"
+        activeTransits:
+          type: array
+          items:
+            type: string
+        healthInfluences:
+          type: array
+          items:
+            type: string
+      required: [timestamp, moonPhase, moonSign, sunSign, planets, activeTransits, healthInfluences]
+
+    PlanetPosition:
+      type: object
+      properties:
+        planet:
+          type: string
+        sign:
+          type: string
+        degree:
+          type: number
+        retrograde:
+          type: boolean
+      required: [planet, sign, degree, retrograde]
+
+    # ── Conversations ───────────────────────────────────────────────────────────
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, createdAt, updatedAt]
+
+    ConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: ["string", "null"]
+          
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+      required: [id, createdAt, updatedAt, messages]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, conversationId, role, content, createdAt]
+
+    CreateConversationBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+
+    SendOpenaiMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required: [content]
+
+    SendOpenaiVoiceMessageBody:
+      type: object
+      properties:
+        audio:
+          type: string
+          format: binary
+      required: [audio]
+
+    # ── Natal Chart ──────────────────────────────────────────────────────────────
+    UpsertNatalChartBody:
+      type: object
+      properties:
+        birthDate:
+          type: string
+          description: Birth date (YYYY-MM-DD)
+        birthTime:
+          type: string
+          description: Birth time in local time (HH:MM)
+          default: "12:00"
+        birthPlace:
+          type: string
+        birthLat:
+          type: number
+        birthLon:
+          type: number
+        utcOffset:
+          type: number
+          description: UTC offset in hours (e.g. -5 for EST, +1 for CET)
+          default: 0
+      required: [birthDate, birthPlace, birthLat, birthLon]
+
+    NatalChartData:
+      type: object
+      properties:
+        id:
+          type: integer
+        birthDate:
+          type: string
+        birthTime:
+          type: string
+        birthPlace:
+          type: string
+        birthLat:
+          type: number
+        birthLon:
+          type: number
+        utcOffset:
+          type: number
+        ascendant:
+          $ref: "#/components/schemas/NatalPoint"
+        midheaven:
+          $ref: "#/components/schemas/NatalPoint"
+        planets:
+          type: array
+          items:
+            $ref: "#/components/schemas/NatalPlanetData"
+        houses:
+          type: array
+          items:
+            $ref: "#/components/schemas/HouseData"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, birthDate, birthTime, birthPlace, birthLat, birthLon, utcOffset, ascendant, midheaven, planets, houses, createdAt]
+
+    NatalPoint:
+      type: object
+      properties:
+        sign:
+          type: string
+        degree:
+          type: number
+        longitude:
+          type: number
+      required: [sign, degree, longitude]
+
+    NatalPlanetData:
+      type: object
+      properties:
+        planet:
+          type: string
+        sign:
+          type: string
+        degree:
+          type: number
+        retrograde:
+          type: boolean
+        longitude:
+          type: number
+        houseNumber:
+          type: integer
+      required: [planet, sign, degree, retrograde, longitude, houseNumber]
+
+    HouseData:
+      type: object
+      properties:
+        number:
+          type: integer
+        sign:
+          type: string
+        cuspDegree:
+          type: number
+        planets:
+          type: array
+          items:
+            type: string
+      required: [number, sign, cuspDegree, planets]
+
+    NatalHealthInsights:
+      type: object
+      properties:
+        ascendant:
+          $ref: "#/components/schemas/HouseInsight"
+        sixthHouse:
+          $ref: "#/components/schemas/HouseInsight"
+        tenthHouse:
+          $ref: "#/components/schemas/HouseInsight"
+        summary:
+          type: string
+      required: [ascendant, sixthHouse, tenthHouse, summary]
+
+    HouseInsight:
+      type: object
+      properties:
+        houseNumber:
+          type: integer
+        sign:
+          type: string
+        ruler:
+          type: string
+        rulerSign:
+          type: string
+        rulerHouse:
+          type: integer
+        planetsInHouse:
+          type: array
+          items:
+            type: string
+        themes:
+          type: array
+          items:
+            type: string
+        currentActivations:
+          type: array
+          items:
+            type: string
+      required: [houseNumber, sign, ruler, rulerSign, rulerHouse, planetsInHouse, themes, currentActivations]
+
+    TransitAspect:
+      type: object
+      properties:
+        transitPlanet:
+          type: string
+        transitSign:
+          type: string
+        natalPlanet:
+          type: string
+        natalSign:
+          type: string
+        natalHouse:
+          type: integer
+        aspect:
+          type: string
+        orb:
+          type: number
+        healthNote:
+          type: string
+        exact:
+          type: boolean
+        score:
+          type: integer
+          description: Composite severity score (planet weight + aspect weight + orb weight + natal sensitivity + house bonus)
+        severity:
+          type: string
+          enum: [mild, moderate, strong, major]
+        likelyDomains:
+          type: array
+          items:
+            type: string
+      required: [transitPlanet, transitSign, natalPlanet, natalSign, natalHouse, aspect, orb, healthNote, exact, score, severity, likelyDomains]
+
+    # ── Natal Blueprint ───────────────────────────────────────────────────────────
+    GenerateBlueprintBody:
+      type: object
+      properties:
+        force:
+          type: boolean
+          description: Force regeneration even if a cached blueprint already exists
+
+    NatalBlueprintContent:
+      type: object
+      properties:
+        constitutionOverview:
+          type: string
+        ascendantBodyVitality:
+          type: string
+        moonBodyRhythm:
+          type: string
+        sixthHousePatterns:
+          type: string
+        secondHouseIntake:
+          type: string
+        eighthHouseProcesses:
+          type: string
+        tenthHouseTherapies:
+          type: string
+        marsSaturnStress:
+          type: string
+        venusJupiterSupport:
+          type: string
+        contradictionsMixedTestimony:
+          type: string
+        whatToTrack:
+          type: array
+          items:
+            type: string
+        supportivePrinciples:
+          type: array
+          items:
+            type: string
+        safetyNote:
+          type: string
+      required:
+        - constitutionOverview
+        - ascendantBodyVitality
+        - moonBodyRhythm
+        - sixthHousePatterns
+        - secondHouseIntake
+        - eighthHouseProcesses
+        - tenthHouseTherapies
+        - marsSaturnStress
+        - venusJupiterSupport
+        - contradictionsMixedTestimony
+        - whatToTrack
+        - supportivePrinciples
+        - safetyNote
+
+    NatalBlueprintResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        testerId:
+          type: string
+        natalChartId:
+          type: integer
+        content:
+          $ref: "#/components/schemas/NatalBlueprintContent"
+        promptVersion:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, testerId, natalChartId, content, promptVersion, createdAt, updatedAt]
+
+    # ── Support Preferences ──────────────────────────────────────────────────────
+    SupportPreferences:
+      type: object
+      properties:
+        testerId:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+      required: [testerId, categories]
+
+    UpdateSupportPreferencesBody:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+      required: [categories]
+
+    # ── Cultivations ─────────────────────────────────────────────────────────────
+    Cultivation:
+      type: object
+      properties:
+        id:
+          type: integer
+        testerId:
+          type: string
+        title:
+          type: string
+        domain:
+          type: string
+        element:
+          type: ["string", "null"]
+          enum: ["fire", "earth", "air", "water", null]
+          description: "Classical element derived from domain, or user override. Null if unassigned."
+        description:
+          type: ["string", "null"]
+        relatedPlanet:
+          type: ["string", "null"]
+        relatedHouse:
+          type: ["integer", "null"]
+        relatedBodyWeatherTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        targetPractice:
+          type: ["string", "null"]
+        frequency:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, completed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, testerId, title, domain, frequency, status, createdAt, updatedAt]
+
+    CultivationCheckIn:
+      type: object
+      properties:
+        id:
+          type: integer
+        testerId:
+          type: string
+        cultivationId:
+          type: integer
+        date:
+          type: string
+        completed:
+          type: boolean
+        effortLevel:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 5
+        note:
+          type: ["string", "null"]
+        practicesCompleted:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: "Named sub-practices completed in this session."
+        durationMinutes:
+          type: ["integer", "null"]
+          description: "Optional total session duration in minutes."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, testerId, cultivationId, date, completed, createdAt, updatedAt]
+
+    CultivationWithTodayCheckIn:
+      allOf:
+        - $ref: "#/components/schemas/Cultivation"
+        - type: object
+          properties:
+            todayCheckIn:
+              oneOf:
+                - $ref: "#/components/schemas/CultivationCheckIn"
+                - type: "null"
+
+    CreateCultivationBody:
+      type: object
+      properties:
+        title:
+          type: string
+        domain:
+          type: string
+        element:
+          type: ["string", "null"]
+          enum: ["fire", "earth", "air", "water", null]
+          description: "Override the auto-derived element. Omit to auto-derive from domain."
+        description:
+          type: ["string", "null"]
+        relatedPlanet:
+          type: ["string", "null"]
+        relatedHouse:
+          type: ["integer", "null"]
+        relatedBodyWeatherTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        targetPractice:
+          type: ["string", "null"]
+        frequency:
+          type: string
+          default: daily
+        status:
+          type: string
+          enum: [active, paused, completed]
+          default: active
+      required: [title, domain]
+
+    UpdateCultivationBody:
+      type: object
+      properties:
+        title:
+          type: string
+        domain:
+          type: string
+        element:
+          type: ["string", "null"]
+          enum: ["fire", "earth", "air", "water", null]
+          description: "Override the element. Pass null to clear. Omit to leave unchanged."
+        description:
+          type: ["string", "null"]
+        relatedPlanet:
+          type: ["string", "null"]
+        relatedHouse:
+          type: ["integer", "null"]
+        relatedBodyWeatherTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        targetPractice:
+          type: ["string", "null"]
+        frequency:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, completed]
+
+    UpsertCultivationCheckInBody:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        effortLevel:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 5
+        note:
+          type: ["string", "null"]
+        date:
+          type: string
+          description: "YYYY-MM-DD. Defaults to today. Past 30 days only; future dates rejected."
+        practicesCompleted:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: "Named sub-practices done this session. Non-empty array implies completed=true unless overridden."
+        durationMinutes:
+          type: ["integer", "null"]
+          description: "Optional total session duration in minutes."
+      required: []
+
+    ElementBalanceEntry:
+      type: object
+      properties:
+        tended:
+          type: integer
+          description: "Number of completed check-ins for this element in the window."
+        total:
+          type: integer
+          description: "Maximum possible tending slots (active cultivations × days)."
+      required: [tended, total]
+
+    ElementBalance:
+      type: object
+      properties:
+        fire:
+          $ref: "#/components/schemas/ElementBalanceEntry"
+        earth:
+          $ref: "#/components/schemas/ElementBalanceEntry"
+        air:
+          $ref: "#/components/schemas/ElementBalanceEntry"
+        water:
+          $ref: "#/components/schemas/ElementBalanceEntry"
+        unassigned:
+          $ref: "#/components/schemas/ElementBalanceEntry"
+      required: [fire, earth, air, water, unassigned]
+
+    # ── Body Weather ─────────────────────────────────────────────────────────────
+    BodyWeatherTodayResponse:
+      type: object
+      properties:
+        checkInRequired:
+          type: boolean
+          description: "True when no check-in exists for today"
+        id:
+          type: ["integer", "null"]
+        date:
+          type: ["string", "null"]
+        capacityLevel:
+          type: ["string", "null"]
+          description: "Low | Medium | High"
+        capacityScore:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        bodyWeatherSummary:
+          type: ["string", "null"]
+        bestUseTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        watchForTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        supportTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        explanation:
+          type: ["string", "null"]
+        createdAt:
+          type: ["string", "null"]
+          format: date-time
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    # ── Daily Check-In ───────────────────────────────────────────────────────────
+    DailyCheckIn:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+        energy:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        mood:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        stress:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        focus:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        digestion:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        sleepQuality:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        pain:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        regulation:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        symptomTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        behaviorTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, date, createdAt, updatedAt]
+
+    UpsertCheckInBody:
+      type: object
+      properties:
+        date:
+          type: string
+          description: "YYYY-MM-DD. Defaults to today if omitted."
+        energy:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        mood:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        stress:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        focus:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        digestion:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        sleepQuality:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        pain:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        regulation:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        symptomTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        behaviorTags:
+          type: ["array", "null"]
+          items:
+            type: string
+        notes:
+          type: ["string", "null"]

@@ -1,0 +1,2 @@
+- [Knowledge base integration](knowledge-integration.md) — 52-file medical astrology corpus lives at knowledge/medical-astrology-v1/; selector in artifacts/api-server/src/lib/knowledge.ts.
+- [Scripts package path quirk](scripts-cwd-quirk.md) — pnpm sets CWD to the package dir when running scripts; use import.meta.url to anchor paths to workspace root.

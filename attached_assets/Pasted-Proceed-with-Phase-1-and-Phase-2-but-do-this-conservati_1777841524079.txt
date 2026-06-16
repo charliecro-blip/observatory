@@ -1,0 +1,102 @@
+Proceed with Phase 1 and Phase 2, but do this conservatively.
+
+Do not remove or rewrite existing working features.
+
+Goal:
+Add a structured daily_check_ins system that supports the future Body Weather feature.
+
+Current app facts:
+- Frontend: React + Vite + TypeScript
+- Backend: Express API
+- Database: PostgreSQL with Drizzle ORM
+- Existing tables include health_logs, supplements, activities, natal_charts, conversations, messages
+- Existing routes include Observatory, Logs, Supplements, Activities, Patterns, Natal Chart, Oracle
+
+Task:
+1. Add a new daily_check_ins table using Drizzle.
+2. Add API endpoints for daily check-ins.
+3. Build a Track tab daily check-in form.
+4. Preserve existing health_logs, supplements, activities, natal chart, patterns, and Oracle functionality.
+
+daily_check_ins table fields:
+- id
+- date
+- energy integer 1-10
+- mood integer 1-10
+- stress integer 1-10
+- focus integer 1-10
+- digestion integer 1-10
+- sleepQuality integer 1-10
+- pain integer 1-10
+- regulation integer 1-10
+- symptomTags text array or JSON array
+- behaviorTags text array or JSON array
+- notes text
+- createdAt
+- updatedAt
+
+Important:
+There should only be one check-in per date.
+Use upsert-by-date behavior.
+
+Track page:
+Add a “Daily Check-In” section with:
+- 8 sliders:
+  - Energy
+  - Mood
+  - Stress
+  - Focus
+  - Digestion
+  - Sleep Quality
+  - Body Pain / Discomfort
+  - Nervous System Regulation
+- Symptom multi-select tags:
+  - Headache
+  - Anxiety
+  - Irritability
+  - Low mood
+  - Insomnia
+  - Constipation
+  - Loose stool
+  - Bloating
+  - Nausea
+  - Chest tightness
+  - Low back ache
+  - Menstrual symptoms
+  - Fatigue
+  - Brain fog
+  - Restlessness
+  - Emotional sensitivity
+- Behavior/context multi-select tags:
+  - Caffeine
+  - Alcohol
+  - Cannabis
+  - Sugar
+  - Heavy meal
+  - Fasting
+  - Exercise
+  - Sauna
+  - Acupuncture
+  - Herbs/supplements
+  - Meditation
+  - Breathwork
+  - Social event
+  - Conflict
+  - Travel
+  - Sex
+  - Crying
+  - Creative flow
+  - Overwork
+- Notes field
+- Save/update button
+- Status message: “Today’s check-in saved” or “No check-in for today yet”
+
+Today/Observatory page:
+Show a small status card:
+- today’s check-in complete / not complete
+- quick button to go to Track page
+
+Do not add Body Weather AI yet.
+Do not add chart calculation changes.
+Do not add the Medical Astrology Workbench yet.
+After implementation, summarize exactly which files were changed and any migration steps needed.

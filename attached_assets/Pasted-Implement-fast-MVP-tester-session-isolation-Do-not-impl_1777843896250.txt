@@ -1,0 +1,93 @@
+Implement fast MVP tester-session isolation.
+
+Do not implement full login/auth yet.
+Do not use passwords.
+Do not add a complex auth provider.
+
+Goal:
+I want to share the MVP with a small group of friends. Each tester needs isolated data so they do not overwrite or see each other’s natal chart, check-ins, Body Weather, Oracle conversations, logs, supplements, or activities.
+
+Use a localStorage-based tester profile.
+
+Frontend flow:
+1. On first visit, show a simple modal or welcome screen:
+   “Welcome to Observatory. Create or enter your tester name to begin.”
+2. User enters a display name.
+3. Generate a stable testerId, for example:
+   obs_[random uuid]
+4. Store both displayName and testerId in localStorage.
+5. Include testerId with every API request as header:
+   x-tester-id: testerId
+6. Add a small “Tester Profile” area in the sidebar or settings:
+   - displayName
+   - testerId shortened
+   - button: Switch / Reset Tester Profile
+7. If the user resets profile, warn:
+   “This will switch to a new tester profile on this device. It will not delete old data, but you may no longer see it unless you reuse the same tester ID.”
+
+Backend:
+1. Add testerId column to all personal data tables:
+   - natal_charts
+   - daily_check_ins
+   - daily_insights
+   - conversations
+   - messages
+   - health_logs
+   - supplements
+   - activities
+
+2. Every API route that reads or writes personal data must require testerId from x-tester-id header.
+
+3. Every query must filter by testerId.
+
+4. No route should fetch a global natal chart using .limit(1) without testerId filtering.
+
+5. Daily check-ins should be unique by testerId + date, not date alone.
+
+6. Daily insights should be unique by testerId + date, not date alone.
+
+7. Body Weather must use:
+   - current tester’s daily check-in
+   - current tester’s natal chart
+   - current tester’s recent check-ins
+   - current tester’s cached daily insight
+
+8. Oracle must use:
+   - current tester’s natal chart
+   - current tester’s conversation history
+   - current tester’s current sky/transits
+
+9. Supplements, activities, health logs, and patterns must only use current tester’s data.
+
+Migration:
+- Existing single-user rows should be assigned to a default testerId:
+  obs_default_charlie
+- On my browser, if no testerId exists yet, default to obs_default_charlie only if that is safer for preserving my current data.
+- New testers should receive newly generated testerIds.
+
+Important:
+This is MVP isolation, not secure production authentication.
+Add a visible note in the Tester Profile area:
+“Tester profiles are for MVP separation only, not secure medical accounts.”
+
+Error handling:
+- If an API request is missing x-tester-id, return a clear 400 error.
+- Frontend should handle this by prompting the user to create/select a tester profile.
+
+After implementation, run a manual verification:
+1. Create Tester A.
+2. Add natal chart/check-in.
+3. Switch to Tester B.
+4. Confirm Tester B cannot see Tester A’s natal chart/check-in.
+5. Add Tester B data.
+6. Switch back to Tester A by re-entering/reusing the tester ID if supported.
+7. Confirm Tester A data is still separate.
+8. Confirm Body Weather and Oracle use the correct tester’s natal chart/check-in.
+9. Confirm existing Charlie data is preserved under obs_default_charlie.
+
+After implementation, summarize:
+- database changes
+- routes updated
+- whether existing data was migrated
+- how to switch/reset tester profile
+- any limitations

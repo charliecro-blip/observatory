@@ -1,0 +1,84 @@
+Add transit weight/severity scoring to the astrology insight engine.
+
+Goal:
+Transits should not all be treated equally. Body Weather, Oracle, and future medical astrology insights should know whether a transit is mild, moderate, strong, or major.
+
+Create a helper that scores active transits using these factors:
+
+1. Transiting planet weight:
+- Moon: 1
+- Mercury: 1
+- Venus: 1
+- Sun: 2
+- Mars: 3
+- Jupiter: 2
+- Saturn: 4
+- Uranus: 4
+- Neptune: 4
+- Pluto: 5
+
+2. Aspect weight:
+- conjunction: 5
+- opposition: 4
+- square: 4
+- trine: 2
+- sextile: 1
+- quincunx if supported: 2
+
+3. Orb weight:
+- exact to 1°: +4
+- 1–2°: +3
+- 2–3°: +2
+- 3–5°: +1
+- wider than 5°: low priority unless slow planet and important natal point
+
+4. Natal point sensitivity:
+- Ascendant: +4
+- Moon: +4
+- chart ruler: +4
+- 6th house ruler: +4
+- Sun: +3
+- Mars: +3
+- Saturn: +3
+- MC: +2
+- Venus/Mercury/Jupiter: +2
+- outer planets: +1 unless tied to chart ruler or angle
+
+5. Medical house relevance:
+If transit involves ruler or planet connected to:
+- 1st house/body/vitality: +3
+- 6th house/illness/routine/imbalance: +4
+- 2nd house/diet/intake/resources: +2
+- 8th house/chronicity/crisis/hidden processes: +3
+- 10th house/therapy/intervention/direction: +2
+
+Return for each transit:
+- transitName
+- transitingPlanet
+- natalPoint
+- aspect
+- orb
+- score
+- severity: mild/moderate/strong/major
+- likelyDomains: e.g. sleep, digestion, stress, inflammation, fatigue, emotional sensitivity, nervous system, pain/tension, appetite, motivation
+- explanation
+
+Use this scoring in:
+- Body Weather prompt context
+- Oracle system prompt
+- Dashboard transit display if present
+
+UI:
+When showing transits, display severity labels:
+- mild
+- moderate
+- strong
+- major
+
+Do not use fear-based language.
+Use “weight,” “emphasis,” or “activation,” not doom language.
+
+After implementation:
+- show example output for current tester
+- confirm Neptune square natal Moon would be classified with meaningful severity if active
+- confirm weak Mercury/Venus transits do not dominate over major slow-planet transits

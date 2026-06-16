@@ -1,0 +1,22 @@
+{
+  "name": "@workspace/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hello": "tsx ./src/hello.ts",
+    "ingest-knowledge": "tsx ./src/ingest-knowledge.ts",
+    "migrate-elements": "tsx ./src/migrate-elements.ts",
+    "migrate-log-date": "tsx ./src/migrate-add-log-date.ts",
+    "seed-timing-rules": "tsx ./src/seed-timing-rules.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}

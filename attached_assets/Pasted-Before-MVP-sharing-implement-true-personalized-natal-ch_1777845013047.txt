@@ -1,0 +1,114 @@
+Before MVP sharing, implement true personalized natal chart calculation per tester.
+
+This is now the highest-priority blocker.
+
+Do not add new features.
+Do not add Workbench, wearables, decumbiture, herbs, or pattern upgrades.
+Do not change the tester profile system unless required for chart isolation.
+
+Current issue:
+The app currently appears to intake natal chart data, but the release check says the birth chart is fixed to one set of coordinates/dev birth data. This is not acceptable for sharing with testers. Each tester’s chart must be calculated from their own birth date, birth time, and birth location.
+
+Goal:
+Each tester should be able to enter their own birth data and receive a chart calculated specifically for that tester.
+
+Required inputs:
+- birth date
+- birth time
+- birth location name
+- latitude
+- longitude
+- UTC offset / timezone
+- house system currently used by the app, if applicable
+
+Use the existing testerId isolation:
+- natal_charts must be scoped by testerId
+- Body Weather must use the current tester’s natal chart
+- Oracle must use the current tester’s natal chart
+- No chart route should use global/default/dev data unless no tester chart exists and the UI clearly says no chart is saved
+
+Implementation requirements:
+
+1. Audit current natal chart flow
+Identify:
+- where natal chart data is saved
+- where chart calculations happen
+- where dev/default birth data is hardcoded
+- whether ASC/MC/house calculations use saved lat/lon or default coordinates
+- whether Oracle/Body Weather receive computed personalized chart data or stale/default data
+
+2. Remove or quarantine hardcoded dev birth data
+Hardcoded dev data may be used only for tests/debug examples.
+It must not be used in production user-facing natal chart, Oracle, Body Weather, or dashboard context.
+
+3. Calculate chart from saved tester birth data
+When a tester saves birth data, compute or store enough chart data so that:
+- planetary positions reflect that birth date/time
+- ASC and MC reflect that date/time/location
+- house cusps reflect that date/time/location
+- chart is different for different testers with different birth data
+- chart updates when the tester changes birth data
+
+4. Timezone handling
+If the app currently uses utcOffset, make sure it is applied correctly.
+Birth time must be converted to UT before planetary/ASC/house calculation.
+If timezone lookup from location is not implemented, keep utcOffset as a manual required field and label it clearly.
+
+5. Location handling
+If geocoding is not implemented, keep latitude and longitude as manual fields.
+Make the UI clear:
+“Enter latitude/longitude for accurate ASC and houses.”
+
+6. Natal chart output
+The Natal Chart page should display:
+- Sun sign + degree
+- Moon sign + degree
+- Mercury sign + degree
+- Venus sign + degree
+- Mars sign + degree
+- Jupiter sign + degree
+- Saturn sign + degree
+- Uranus sign + degree
+- Neptune sign + degree
+- Pluto sign + degree
+- Ascendant sign + degree
+- Midheaven sign + degree
+- house cusps if available
+- planets in houses if available
+
+7. Oracle and Body Weather
+Update the context builders so both use the current tester’s computed natal chart.
+Confirm they no longer receive default/dev chart data.
+
+8. Add a debug/sanity endpoint
+Add or update a debug endpoint so I can verify a tester chart calculation.
+It should return:
+- testerId
+- saved birth data
+- converted UTC datetime
+- lat/lon
+- planetary longitudes/signs
+- ASC/MC
+- house cusps if available
+
+9. Add validation
+If birth date/time/location/utcOffset/lat/lon are missing:
+- do not fake a chart
+- show a clear incomplete chart message
+- allow Body Weather to run using check-in + current sky only
+- allow Oracle to say natal context is unavailable
+
+10. Add test cases
+Add at least two test profiles with different birth data and confirm the charts differ.
+Use one test for Charlie/default existing data and one new tester with a clearly different date/location.
+
+11. After implementation, report:
+- root cause of the default/dev chart issue
+- files changed
+- how timezone is handled
+- whether geocoding is implemented or lat/lon remains manual
+- whether house cusps are calculated per tester
+- whether Oracle uses personalized chart context
+- whether Body Weather uses personalized chart context
+- debug output for obs_default_charlie
+- debug output for one new tester with different birth data

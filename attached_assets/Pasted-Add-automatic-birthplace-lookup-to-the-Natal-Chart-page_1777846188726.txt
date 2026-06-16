@@ -1,0 +1,96 @@
+Add automatic birthplace lookup to the Natal Chart page.
+
+Goal:
+Make chart setup much easier for MVP testers. Users should not have to manually find latitude/longitude if they enter a birthplace.
+
+Use a simple location search/autofill flow.
+
+Preferred implementation:
+Use Geoapify Geocoding or Address Autocomplete API if an API key is available via environment variable.
+
+Environment variable:
+GEOAPIFY_API_KEY
+
+Do not hardcode the API key in frontend code.
+Use a backend route so the key stays server-side.
+
+Backend:
+Add endpoint:
+GET /api/location-search?q=SEARCH_TEXT
+
+Behavior:
+- Requires x-tester-id like other API routes if that is easy, but it does not store personal data.
+- If q is fewer than 3 characters, return empty results.
+- Call Geoapify geocoding/autocomplete API server-side.
+- Return up to 5 results.
+- Each result should include:
+  - displayName / formatted address
+  - city if available
+  - state/region if available
+  - country
+  - latitude
+  - longitude
+  - timezoneName if available
+  - utcOffsetStandard if available
+  - utcOffsetDST if available
+  - raw provider fields if useful for debugging
+
+Frontend:
+On Natal Chart page, replace or supplement manual birthplace fields with:
+- Birthplace search input
+- Search results dropdown/list
+- On select, autofill:
+  - birthPlace
+  - birthLat
+  - birthLon
+  - timezoneName if schema/UI supports it
+  - utcOffset if a good value is available
+
+Important timezone behavior:
+UTC offset depends on the birth date because of daylight saving time.
+
+If Geoapify returns timezone offsets:
+- If birth date is available and you can reliably determine whether DST applied on that date, fill the correct utcOffset.
+- If not, suggest an offset but keep the field editable.
+- Add helper text:
+  “UTC offset may depend on daylight saving time at birth. Please verify if unsure.”
+
+If timezone cannot be reliably auto-filled:
+- autofill only latitude and longitude
+- keep utcOffset manual
+- show helper text explaining the offset examples:
+  - Central Standard Time = -6
+  - Central Daylight Time = -5
+  - Eastern Standard Time = -5
+  - Eastern Daylight Time = -4
+  - British Summer Time = +1
+
+Manual fields:
+Keep latitude, longitude, and UTC offset visible/editable after autofill.
+Do not hide them entirely.
+Advanced users should be able to correct them.
+
+No API key behavior:
+If GEOAPIFY_API_KEY is missing, the app should not break.
+Show:
+“Birthplace lookup is unavailable. Enter latitude/longitude manually.”
+
+UX:
+- Debounce search input by 300–500ms.
+- Show loading state.
+- Show “No results found” if none.
+- Do not search on every keystroke without debounce.
+- Selecting a result should be obvious.
+- Keep the form mobile-friendly.
+
+Caching:
+Optional but useful:
+- Cache recent search results in memory server-side or frontend-side to avoid duplicate calls.
+
+After implementation:
+- summarize files changed
+- confirm API key is server-side only
+- confirm new testers can search/select birthplace
+- confirm manual latitude/longitude still work
+- confirm chart calculation uses selected coordinates
+- confirm no hardcoded Charlie defaults were reintroduced

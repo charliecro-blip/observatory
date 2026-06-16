@@ -1,0 +1,39 @@
+Phase 1 + 2 Complete — Summary
+What was built
+New database table — daily_check_ins
+The table is already live in your database. It has one row per day enforced by a unique constraint on date, with 8 integer score columns (1–10), JSON arrays for symptom/behavior tags, and a notes field. Upsert-by-date is handled server-side.
+
+New API endpoints
+
+GET /api/check-ins/today — returns today's check-in or 404 if none
+POST /api/check-ins — creates or updates today's check-in (upsert by date)
+New Track page (/track)
+
+8 sliders side-by-side (Energy, Mood, Stress, Focus, Digestion, Sleep Quality, Body Pain, Nervous System Regulation) — each shows label, live numeric value, and low/high descriptors
+16 symptom tags — click to toggle, highlighted red when active
+19 behavior/context tags — click to toggle, highlighted primary when active
+Free text notes field
+Status indicator in the header: "No check-in yet today" / "Saved 8:52 PM" with check mark
+Save/Update button that upserts to the database and refreshes state
+Updated Observatory/Dashboard
+
+New status banner between the header and the 3-card row: shows a green checkmark + key scores (Energy, Mood, Stress, Sleep) when complete, or a muted "No check-in yet today" prompt with "Check in now" link when not done
+Updates live when you save a check-in
+Updated navigation
+
+"Track" now appears second in the sidebar (right below Observatory), with a clipboard icon
+Files changed
+File	What changed
+lib/db/src/schema/dailyCheckIns.ts	New — table schema
+lib/db/src/schema/index.ts	Added export
+lib/api-spec/openapi.yaml	Added checkIns tag, 2 paths, 2 schemas
+artifacts/api-server/src/routes/checkIns.ts	New — GET today + POST upsert
+artifacts/api-server/src/routes/index.ts	Registered checkIns router
+artifacts/health-tracker/src/pages/track.tsx	New — full check-in form
+artifacts/health-tracker/src/App.tsx	Added /track route
+artifacts/health-tracker/src/components/layout.tsx	Added Track nav item
+artifacts/health-tracker/src/pages/dashboard.tsx	Added status banner
+Migration steps needed from you
+None. The database table was already pushed (drizzle-kit push) and the server is running. Just use the app.
+
+When you're ready, Phase 3 is the Body Weather AI call — taking today's check-in + astro context and generating a structured daily insight (capacity score, best-use tags, watch-for tags, support suggestions, explanation). Want me to proceed?

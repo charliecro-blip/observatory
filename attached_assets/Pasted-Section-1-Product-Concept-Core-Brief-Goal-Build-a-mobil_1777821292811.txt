@@ -1,0 +1,710 @@
+Section 1: Product Concept / Core Brief
+
+Goal: Build a mobile/web app that functions as an astrology-informed health pattern journal.
+
+Core promise:
+
+Track your body. Understand your patterns. Time your life better.
+
+The app helps users understand relationships between:
+
+sleep
+energy
+mood
+digestion
+symptoms
+stress
+behavior
+calendar load
+astrology/transits
+lunar cycles
+
+The app should not diagnose or prescribe. It should give low-risk lifestyle reflections and pattern-based suggestions.
+
+Primary user question:
+
+“Why might I feel this way today, and what should I do with my energy?”
+
+Section 2: MVP User Flow
+
+Build the app around this daily loop:
+
+User opens app.
+App shows a simple Today dashboard.
+User completes a quick daily check-in.
+App stores the check-in.
+App combines check-in data with astrology data.
+App gives a short daily interpretation.
+User can later review patterns over time.
+
+The first version does not need full wearable integration, calendar integration, or advanced AI. Start with manual tracking + basic astrology + saved history.
+
+Section 3: Main App Navigation
+
+Create five main tabs:
+
+Today
+Track
+Patterns
+Plan
+Library
+
+For the MVP, prioritize Today, Track, and Patterns.
+
+Plan and Library can be simple placeholder sections at first.
+
+Section 4: Today Tab
+
+The Today tab is the main home screen.
+
+It should show:
+
+Today’s Body Weather
+
+A simple summary like:
+
+“Today looks mentally active but physically lower-capacity. Prioritize short focused work, lighter meals, and recovery time.”
+
+Capacity Rating
+
+Show one of:
+
+Low capacity
+Medium capacity
+High capacity
+
+Or use a 1–10 score.
+
+Best Use of the Day
+
+Possible tags:
+
+Rest
+Deep work
+Creative work
+Social connection
+Admin tasks
+Exercise
+Emotional processing
+Planning
+Client work
+Watch For
+
+Possible warnings:
+
+Overstimulation
+Poor sleep
+Digestive sensitivity
+Irritability
+Low focus
+Emotional heaviness
+Inflammation/heat
+Social overload
+Suggested Support
+
+Possible suggestions:
+
+Walk
+Rest
+Eat simply
+Hydrate
+Reduce caffeine
+Journal
+Avoid overcommitting
+Get sunlight
+Gentle movement
+Early bedtime
+Section 5: Track Tab / Daily Check-In
+
+The Track tab should let users log their daily body state quickly.
+
+Required daily fields
+
+Use sliders from 1–10:
+
+Energy
+Mood
+Stress
+Focus
+Digestion
+Sleep quality
+Body pain/discomfort
+Nervous system regulation
+Optional symptom tags
+
+Allow multiple selection:
+
+Headache
+Anxiety
+Irritability
+Low mood
+Insomnia
+Constipation
+Loose stool
+Bloating
+Nausea
+Chest tightness
+Low back ache
+Menstrual symptoms
+Fatigue
+Brain fog
+Restlessness
+Emotional sensitivity
+Behavior tags
+
+Allow multiple selection:
+
+Caffeine
+Alcohol
+Cannabis
+Sugar
+Heavy meal
+Fasting
+Exercise
+Sauna
+Acupuncture
+Herbs/supplements
+Meditation
+Breathwork
+Social event
+Conflict
+Travel
+Sex
+Crying
+Creative flow
+Overwork
+Notes field
+
+Add a free-text field:
+
+“What happened today?”
+
+Also include a voice-note placeholder for future versions.
+
+Section 6: Astrology Data Needed
+
+For MVP, keep astrology simple.
+
+Collect birth data:
+
+Date of birth
+Time of birth
+Place of birth
+
+Store:
+
+Sun sign
+Moon sign
+Rising sign
+Natal chart basics
+Current Moon sign
+Current lunar phase
+Current major transits
+
+For the first version, start with:
+
+Current Moon sign
+Lunar phase
+Moon aspects if possible
+Transiting Sun sign
+Transiting Mercury/Venus/Mars signs
+Basic aspects to natal Sun, Moon, Ascendant, and chart ruler if available
+
+Avoid overbuilding the astrology engine at first.
+
+Section 7: Insight Engine
+
+The app should generate insights from three layers:
+
+1. User-reported data
+
+Example:
+
+“You reported low energy, poor sleep, and high stress today.”
+
+2. Astrology context
+
+Example:
+
+“The Moon is in a more mentally active sign today, which may correspond with increased restlessness or overthinking.”
+
+3. Practical suggestion
+
+Example:
+
+“Choose short focused tasks, reduce stimulation tonight, and avoid making major emotional decisions while tired.”
+
+The insight should be clearly framed as reflection, not diagnosis.
+
+Section 8: “Why Might I Feel This Way?” Feature
+
+This should be the app’s central feature.
+
+Create a button on the Today page:
+
+Why might I feel this way?
+
+When tapped, the app reviews:
+
+today’s check-in
+recent check-ins
+symptom tags
+behavior tags
+current Moon phase/sign
+current transits
+recent stress or sleep changes
+
+Then it generates a response:
+
+Example:
+
+You may be feeling this way because your sleep quality was low, stress is above your usual baseline, and you logged social overload yesterday. Today’s astrology also emphasizes mental activity and nervous-system stimulation. This is probably a better day for simplifying than pushing harder.
+
+Section 9: Patterns Tab
+
+The Patterns tab should show recurring correlations.
+
+For MVP, show simple summaries like:
+
+Average energy this week
+Average mood this week
+Most common symptoms
+Most common behavior tags
+Best days
+Hardest days
+Sleep vs. mood trend
+Stress vs. digestion trend
+
+Later, add astrology correlations:
+
+Moon phase vs. energy
+Moon sign vs. mood
+Mars-heavy days vs. irritability
+Saturn-heavy days vs. fatigue
+Mercury-heavy days vs. anxiety/focus
+
+MVP example:
+
+“You reported lower digestion scores on days when stress was 7/10 or higher.”
+
+Future example:
+
+“You often report lower sleep quality around the Full Moon.”
+
+Section 10: Plan Tab
+
+The Plan tab can be basic at first.
+
+Eventually it should help users choose better timing for:
+
+client sessions
+workouts
+rest days
+creative work
+administrative work
+difficult conversations
+travel
+launches
+social plans
+
+MVP version:
+
+Show simple day-type suggestions:
+
+Good for rest
+Good for communication
+Good for creativity
+Good for physical activity
+Good for planning
+Good for reflection
+
+Later version:
+
+Integrate calendar and suggest scheduling based on user’s patterns.
+
+Section 11: Library Tab
+
+The Library tab should contain educational content.
+
+Initial sections:
+
+What is body weather?
+How astrology is used in this app
+What the Moon means for daily rhythm
+What transits are
+How to track symptoms
+How to interpret patterns
+Safety and medical disclaimer
+
+Future sections:
+
+Medical astrology basics
+Elemental theory
+TCM-inspired pattern language
+Nervous system regulation
+Planetary correspondences
+Moon phase guidance
+Section 12: Data Model
+
+Suggested core tables/collections:
+
+User
+
+Fields:
+
+id
+name
+email
+birthDate
+birthTime
+birthPlace
+sunSign
+moonSign
+risingSign
+createdAt
+DailyCheckIn
+
+Fields:
+
+id
+userId
+date
+energyScore
+moodScore
+stressScore
+focusScore
+digestionScore
+sleepQualityScore
+painScore
+regulationScore
+symptomTags
+behaviorTags
+notes
+createdAt
+AstroWeather
+
+Fields:
+
+id
+date
+moonSign
+moonPhase
+sunSign
+mercurySign
+venusSign
+marsSign
+notableTransits
+createdAt
+DailyInsight
+
+Fields:
+
+id
+userId
+date
+capacityScore
+bodyWeatherSummary
+bestUseTags
+watchForTags
+supportTags
+explanation
+createdAt
+PatternInsight
+
+Fields:
+
+id
+userId
+dateRange
+insightType
+summary
+relatedTags
+confidenceLevel
+createdAt
+Section 13: MVP AI Prompt Structure
+
+Use this kind of prompt for generating daily insights:
+
+You are an astrology-informed wellness reflection assistant.
+
+Do not diagnose, prescribe, or make medical claims.
+
+Use the user’s check-in data, recent patterns, and astrology context to generate a grounded daily reflection.
+
+Return:
+1. Body weather summary
+2. Capacity level
+3. Best use of the day
+4. Watch-for themes
+5. Supportive suggestions
+6. A short explanation of why the user may feel this way
+
+Keep the tone calm, practical, and non-fatalistic.
+
+User data:
+[insert daily check-in]
+
+Recent patterns:
+[insert recent check-ins]
+
+Astrology context:
+[insert Moon sign, lunar phase, current transits]
+Section 14: Safety Rules
+
+The app must include health safety boundaries.
+
+The AI should not:
+
+diagnose illness
+prescribe herbs, supplements, or medications
+tell users to stop medication
+claim astrology causes medical conditions
+give emergency medical advice as a substitute for care
+make deterministic claims
+
+The AI can:
+
+reflect patterns
+suggest low-risk lifestyle supports
+recommend rest, hydration, journaling, movement, sunlight, sleep hygiene
+suggest seeking professional care for serious symptoms
+encourage users to contact a clinician when symptoms are severe, persistent, or concerning
+
+Include a red-flag disclaimer:
+
+This app is for reflection, self-tracking, and personal insight. It does not diagnose, treat, or replace medical care. Seek urgent medical help for severe chest pain, fainting, sudden weakness, severe shortness of breath, suicidal thoughts, or rapidly worsening symptoms.
+
+Section 15: Suggested Replit Build Order
+Phase 1: Static Prototype
+
+Build the interface:
+
+Today page
+Track page
+Patterns page
+Plan page
+Library page
+
+Use placeholder data.
+
+Phase 2: Daily Check-In Storage
+
+Add:
+
+user profile
+daily check-in form
+save check-ins
+display check-in history
+Phase 3: Basic Astrology Weather
+
+Add:
+
+current Moon sign
+lunar phase
+current planetary signs
+simple daily astrology summary
+Phase 4: Daily Insight Generator
+
+Add AI-generated daily summary using:
+
+today’s check-in
+recent check-ins
+astrology context
+Phase 5: Pattern Detection
+
+Add basic correlations:
+
+sleep vs. mood
+stress vs. digestion
+behavior tags vs. symptoms
+Moon phase vs. energy
+Phase 6: Calendar / Wearable Integrations
+
+Later add:
+
+Apple Health
+Google Health Connect
+calendar integration
+wearable data
+voice notes
+exportable reports
+Section 16: Replit Starter Prompt
+
+Here’s the copy/paste prompt I’d give Replit first:
+
+Build a responsive web app called Body Weather.
+
+It is an astrology-informed wellness tracking app.
+
+The app should have five main tabs:
+1. Today
+2. Track
+3. Patterns
+4. Plan
+5. Library
+
+Use a clean, calm, modern design.
+
+Core concept:
+The app helps users track energy, mood, sleep, stress, digestion, symptoms, behaviors, and astrology context so they can understand recurring body patterns over time.
+
+For the first prototype, use local state or simple database storage.
+
+Today page:
+- Show today’s body weather summary
+- Show capacity level: Low, Medium, or High
+- Show best use of the day
+- Show watch-for themes
+- Show supportive suggestions
+- Add a button: “Why might I feel this way?”
+
+Track page:
+- Create a daily check-in form with sliders from 1–10 for:
+  - Energy
+  - Mood
+  - Stress
+  - Focus
+  - Digestion
+  - Sleep quality
+  - Body pain
+  - Nervous system regulation
+- Add selectable symptom tags:
+  - Headache
+  - Anxiety
+  - Irritability
+  - Low mood
+  - Insomnia
+  - Constipation
+  - Bloating
+  - Fatigue
+  - Brain fog
+  - Restlessness
+  - Emotional sensitivity
+- Add selectable behavior tags:
+  - Caffeine
+  - Alcohol
+  - Cannabis
+  - Sugar
+  - Heavy meal
+  - Exercise
+  - Sauna
+  - Acupuncture
+  - Herbs/supplements
+  - Meditation
+  - Breathwork
+  - Social event
+  - Conflict
+  - Travel
+  - Creative flow
+  - Overwork
+- Add a notes field
+- Save the check-in
+- Show recent check-ins below the form
+
+Patterns page:
+- Show weekly averages for energy, mood, stress, digestion, and sleep
+- Show most common symptom tags
+- Show most common behavior tags
+- Show simple pattern insights using placeholder logic
+
+Plan page:
+- Show day-type suggestions:
+  - Good for rest
+  - Good for creative work
+  - Good for admin
+  - Good for social connection
+  - Good for movement
+  - Good for reflection
+
+Library page:
+- Add short educational cards:
+  - What is body weather?
+  - How astrology is used here
+  - What the Moon represents
+  - How to track patterns
+  - Medical disclaimer
+
+Important:
+Do not include medical diagnosis or treatment language.
+Frame all insights as self-reflection and pattern tracking.
+Include a safety disclaimer in the Library page.
+
+Use polished UI cards, soft spacing, rounded corners, and a peaceful but not overly mystical aesthetic.
+Section 17: Second Replit Prompt After Prototype
+
+Once the basic app exists, give Replit this next:
+
+Now add a simple daily insight generator.
+
+When the user saves a daily check-in, generate a body weather summary based on their scores and tags.
+
+Use this logic:
+- If sleep quality is 4 or below, mention low recovery.
+- If stress is 7 or above, mention nervous system load.
+- If digestion is 4 or below, mention digestive sensitivity.
+- If energy is 4 or below, set capacity to Low.
+- If energy is 5–7, set capacity to Medium.
+- If energy is 8 or above and stress is below 6, set capacity to High.
+- If anxiety, restlessness, or brain fog are selected, suggest reducing stimulation.
+- If fatigue or insomnia are selected, suggest rest and earlier bedtime.
+- If conflict or overwork are selected, suggest boundaries and decompression.
+
+Generate:
+1. Capacity level
+2. Body weather summary
+3. Best use of the day
+4. Watch-for themes
+5. Supportive suggestions
+
+Keep all language non-medical, practical, and reflective.
+Section 18: Third Replit Prompt: Astrology Layer
+
+Then give it this:
+
+Add a basic astrology weather section.
+
+For now, create placeholder astrology data for the current day:
+- Moon sign
+- Lunar phase
+- Sun sign
+- Mercury sign
+- Venus sign
+- Mars sign
+- Main astrology theme
+
+Show this on the Today page.
+
+Create simple interpretive logic:
+- Fire Moon signs: energy, activation, momentum, possible irritability
+- Earth Moon signs: grounding, body awareness, practical care
+- Air Moon signs: mental activity, communication, restlessness
+- Water Moon signs: emotional sensitivity, intuition, need for softness
+
+Lunar phases:
+- New Moon: low light, reset, intention
+- First Quarter: action, friction, decision
+- Full Moon: culmination, heightened emotion, visibility
+- Last Quarter: release, integration, correction
+
+Combine astrology weather with the user’s check-in to produce a short astrology-informed reflection.
+
+Avoid deterministic claims.
+Use phrases like:
+- “may correspond with”
+- “could feel like”
+- “you may want to notice”
+- “this is a good day to support”
+Section 19: The Build Philosophy to Keep Replit Focused
+
+Give Replit this instruction repeatedly:
+
+Keep the app simple and usable.
+
+Do not overbuild.
+Do not add complex medical features.
+Do not make the astrology too dense.
+
+The core loop is:
+daily check-in → body weather → insight → pattern review.
+
+That’s the spine. Everything else can come later.
