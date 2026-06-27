@@ -17,7 +17,8 @@ import Blueprint from "@/pages/blueprint";
 import Cultivator from "@/pages/cultivator";
 import CalendarPage from "@/pages/calendar";
 import Settings from "@/pages/settings";
-import AuspicePage from "@/pages/auspice";
+import TidesPage from "@/pages/tides";
+import PlanningPage from "@/pages/planning";
 import { TesterProvider } from "@/contexts/tester-context";
 import { TesterModal } from "@/components/tester-modal";
 
@@ -39,7 +40,8 @@ function Router() {
         <Route path="/cultivator" component={Cultivator} />
         <Route path="/calendar" component={CalendarPage} />
         <Route path="/settings" component={Settings} />
-        <Route path="/auspice" component={AuspicePage} />
+        <Route path="/tides" component={TidesPage} />
+        <Route path="/planning" component={PlanningPage} />
         <Route path="/chat" component={Chat} />
         <Route component={NotFound} />
       </Switch>

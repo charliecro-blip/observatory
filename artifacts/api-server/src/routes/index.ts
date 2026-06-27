@@ -15,7 +15,8 @@ import cultivationsRouter from "./cultivations";
 import supportPreferencesRouter from "./supportPreferences";
 import knowledgeRouter from "./knowledge";
 import calendarRouter from "./calendar";
-import auspiceRouter from "./auspice";
+import tidesRouter from "./tides";
+import planningRouter from "./planning";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,7 @@ router.use(cultivationsRouter);
 router.use(supportPreferencesRouter);
 router.use(knowledgeRouter);
 router.use(calendarRouter);
-router.use(auspiceRouter);
+router.use(tidesRouter);
+router.use(planningRouter);
 
 export default router;

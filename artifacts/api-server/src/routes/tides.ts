@@ -1,8 +1,8 @@
 /**
  * Auspice timing API.
  *
- * GET /api/auspice/now      — Current timing snapshot: element, planetary hour, VOC, quality label
- * GET /api/auspice/windows  — Upcoming timing windows (next 12 hours in 2-hour blocks)
+ * GET /api/tides/now      — Current timing snapshot: element, planetary hour, VOC, quality label
+ * GET /api/tides/windows  — Upcoming timing windows (next 12 hours in 2-hour blocks)
  */
 import { Router, type IRouter } from "express";
 import {
@@ -11,6 +11,10 @@ import {
   getMajorAspects, getLocalAngles, getAngularPlanets,
   getLastMoonAspect, getNextAngularCrossings,
 } from "../lib/astro.js";
+import { db } from "@workspace/db";
+import { natalCharts } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 
 const router: IRouter = Router();
 
@@ -40,13 +44,53 @@ const ELEMENT_QUALITIES: Record<string, { quality: string; invitation: string }>
   spirit: { quality: "liminal",     invitation: "The field is between states. This window is for rest, inner listening, and releasing what does not need force." },
 };
 
-// ── /api/auspice/now ─────────────────────────────────────────────────────────
+// ── /api/tides/now ─────────────────────────────────────────────────────────
 
-router.get("/auspice/now", (req, res) => {
+router.get("/tides/now", async (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const date = new Date();
   const jd   = julianDay(date);
+
+  // Optional personal transits — computed when x-tester-id header is present
+  const testerId = (req.headers["x-tester-id"] as string) ?? null;
+  let personalTransits: Array<{
+    transitPlanet: string;
+    aspect: string;
+    natalPlanet: string;
+    natalSign: string;
+    natalHouse: number;
+    orb: number;
+    exact: boolean;
+    severity: string;
+    summary: string;
+  }> = [];
+
+  if (testerId) {
+    try {
+      const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+      if (stored) {
+        const natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset);
+        const transits = computeTransitAspects(natal);
+        personalTransits = transits
+          .filter((t) => t.severity === "strong" || t.severity === "major" || (t.severity === "moderate" && t.exact))
+          .slice(0, 5)
+          .map((t) => ({
+            transitPlanet: t.transitPlanet,
+            aspect:        t.aspect.toLowerCase(),
+            natalPlanet:   t.natalPlanet,
+            natalSign:     t.natalSign,
+            natalHouse:    t.natalHouse,
+            orb:           t.orb,
+            exact:         t.exact,
+            severity:      t.severity,
+            summary:       `${t.transitPlanet} ${t.aspect.toLowerCase()} your natal ${t.natalPlanet}${t.exact ? " (exact)" : ` (${t.orb}°)`}`,
+          }));
+      }
+    } catch (_) {
+      // Gracefully skip transits if chart unavailable
+    }
+  }
 
   const planets        = getPlanetPositions(jd);
   const { name: moonPhaseName, fraction } = moonPhase(jd);
@@ -94,8 +138,12 @@ router.get("/auspice/now", (req, res) => {
     score >= 2 ? "workable" :
     score >= -1 ? "mixed" : "avoid_if_possible";
 
+  const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+  const dayRuler = DAY_RULERS[date.getDay()];
+
   res.json({
     timestamp: date.toISOString(),
+    dayRuler,
     momentLabel: voc
       ? `Void Moon in ${moonSign}`
       : `${planHour.ruler} Hour — ${elemEmph.element.charAt(0).toUpperCase() + elemEmph.element.slice(1)} (${moonSign})`,
@@ -121,10 +169,11 @@ router.get("/auspice/now", (req, res) => {
     invitation: voc
       ? "The Moon is between signs. This is not the cleanest window for beginning something that needs momentum. It may be better for tending what is already in motion, resting, reviewing, or clearing loose ends."
       : elemQuality.invitation,
+    personalTransits,
   });
 });
 
-// ── /api/auspice/week ────────────────────────────────────────────────────────
+// ── /api/tides/week ────────────────────────────────────────────────────────
 
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -136,7 +185,7 @@ const WEEK_ELEMENT_TONES: Record<string, string> = {
   spirit: "Liminal. The Moon is between signs — a good day for rest, review, and releasing what does not need force.",
 };
 
-router.get("/auspice/week", (req, res) => {
+router.get("/tides/week", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
   const now   = new Date();
@@ -222,9 +271,9 @@ router.get("/auspice/week", (req, res) => {
   res.json({ weekOf: days[0]?.date, days, weekTone, weekElement: weekEl });
 });
 
-// ── /api/auspice/windows ─────────────────────────────────────────────────────
+// ── /api/tides/windows ─────────────────────────────────────────────────────
 
-router.get("/auspice/windows", (req, res) => {
+router.get("/tides/windows", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
   const hours = Math.min(parseInt((req.query.hours as string) ?? "12"), 24);
@@ -239,46 +288,55 @@ router.get("/auspice/windows", (req, res) => {
     quality: string;
   }> = [];
 
-  // Step through 2-hour windows
-  for (let h = 0; h < hours; h += 2) {
-    const windowDate = new Date(now.getTime() + h * 3600000);
-    const jd = julianDay(windowDate);
-    const { voc } = voidOfCourse(jd);
-    const elemEmph  = getDailyElementEmphasis(jd);
-    const planHour  = getPlanetaryHour(windowDate, lat, lon);
-    const planets   = getPlanetPositions(jd);
-    const retrogrades = planets.filter((p) => p.retrograde).length;
+  // Walk actual planetary hour boundaries
+  const seen = new Set<string>();
+  let cursor = new Date(now.getTime());
+  const windowEnd = new Date(now.getTime() + hours * 3600000);
 
-    let score = 5;
-    if (voc) score -= 2;
-    if (retrogrades >= 2) score -= 1;
-    if (elemEmph.element === "fire" || elemEmph.element === "air") score += 1;
+  while (cursor < windowEnd && windows.length < 12) {
+    const planHour = getPlanetaryHour(cursor, lat, lon);
+    const key = planHour.startTime.toISOString();
+    if (!seen.has(key)) {
+      seen.add(key);
+      const mid = new Date((planHour.startTime.getTime() + planHour.endTime.getTime()) / 2);
+      const jd = julianDay(mid);
+      const { voc } = voidOfCourse(jd);
+      const elemEmph = getDailyElementEmphasis(jd);
+      const planets  = getPlanetPositions(jd);
+      const retrogrades = planets.filter((p) => p.retrograde).length;
 
-    const qualityLabel =
-      score >= 8 ? "excellent" :
-      score >= 5 ? "good" :
-      score >= 2 ? "workable" :
-      score >= -1 ? "mixed" : "avoid_if_possible";
+      let score = 5;
+      if (voc) score -= 2;
+      if (retrogrades >= 2) score -= 1;
+      if (elemEmph.element === "fire" || elemEmph.element === "air") score += 1;
 
-    windows.push({
-      startTime: windowDate.toISOString(),
-      endTime:   new Date(windowDate.getTime() + 2 * 3600000).toISOString(),
-      element:   elemEmph.element,
-      voidOfCourse: voc,
-      planetaryHour: planHour.ruler,
-      quality:   qualityLabel,
-    });
+      const qualityLabel =
+        score >= 8 ? "excellent" :
+        score >= 5 ? "good" :
+        score >= 2 ? "workable" :
+        score >= -1 ? "mixed" : "avoid_if_possible";
+
+      windows.push({
+        startTime:    planHour.startTime.toISOString(),
+        endTime:      planHour.endTime.toISOString(),
+        element:      elemEmph.element,
+        voidOfCourse: voc,
+        planetaryHour: planHour.ruler,
+        quality:      qualityLabel,
+      });
+    }
+    cursor = new Date(planHour.endTime.getTime() + 60000);
   }
 
   res.json({ windows });
 });
 
-// ── /api/auspice/practices ───────────────────────────────────────────────────
+// ── /api/tides/practices ───────────────────────────────────────────────────
 // Returns active cultivations sorted and annotated by how well they match
 // the current timing weather.
 
-import { db, cultivations, cultivationCheckIns } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { cultivations, cultivationCheckIns } from "@workspace/db";
+import { and } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 
 // Moon phase name → quadrant
@@ -297,7 +355,7 @@ const MATCH_LABELS: Record<string, string> = {
   protect:   "protect the minimum",
 };
 
-router.get("/auspice/practices", requireTesterId, async (req, res) => {
+router.get("/tides/practices", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
@@ -422,7 +480,7 @@ router.get("/auspice/practices", requireTesterId, async (req, res) => {
   });
 });
 
-// ── /api/auspice/crossings ───────────────────────────────────────────────────
+// ── /api/tides/crossings ───────────────────────────────────────────────────
 
 const CROSSING_INTERPRETATIONS: Record<string, Record<string, string>> = {
   Venus:   { ASC: "grace and ease on the surface — good for connection, presentation, relational work", MC: "favor for visibility, creative expression, public-facing work", DSC: "relational warmth, receptivity, partnership", IC: "beauty and ease in private rhythm, home, or self-care" },
@@ -434,7 +492,7 @@ const CROSSING_INTERPRETATIONS: Record<string, Record<string, string>> = {
   Moon:    { ASC: "emotional sensitivity heightened — receptive and intuitive", MC: "public emotional intelligence; good for care-forward visibility", DSC: "attunement in relationship, emotional resonance", IC: "deep rest, home, self-care, inner work" },
 };
 
-router.get("/auspice/crossings", (req, res) => {
+router.get("/tides/crossings", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
   const hours = Math.min(parseFloat((req.query.hours as string) ?? "24"), 48);

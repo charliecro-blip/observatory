@@ -254,7 +254,7 @@ export function getHealthInfluences(planets: ReturnType<typeof getPlanetPosition
 
 // ── Void-of-course Moon ───────────────────────────────────────────────────────
 
-const VOC_PLANETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
+const VOC_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
 const MAJOR_ASPECTS = [0, 60, 90, 120, 180];
 
 /** Nearest major-aspect separation in degrees between two longitudes. */
@@ -564,6 +564,26 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
     }
   }
 
+  // Also catch very-recent separating aspects missed by 1h steps (orb < 0.5° now, separating)
+  const currentAspects = getMajorAspects(jd);
+  for (const asp of currentAspects) {
+    if (asp.applying) continue;
+    const planet = asp.planet1 === "Moon" ? asp.planet2 : asp.planet1 === "Moon" ? asp.planet2 : null;
+    if (!planet || (asp.planet1 !== "Moon" && asp.planet2 !== "Moon")) continue;
+    const p = asp.planet1 === "Moon" ? asp.planet2 : asp.planet1;
+    if (asp.orb < 0.5 && asp.orb < (best?.orbAtExact ?? 999)) {
+      best = {
+        planet: p,
+        aspect: asp.aspect,
+        nature: asp.nature,
+        orbAtExact: parseFloat(asp.orb.toFixed(2)),
+        hoursAgo: parseFloat((asp.orb / 0.5).toFixed(1)), // approximate
+        benefic: BENEFICS.has(p),
+        malefic: MALEFICS.has(p),
+      };
+    }
+  }
+
   return best;
 }
 
@@ -726,9 +746,11 @@ export function getLocalAngles(jd: number, latDeg: number, lonDeg: number): Loca
   );
 
   // Ascendant: tan(λ_ASC) = −cos(RAMC) / (sin(RAMC)·cos(ε) + tan(φ)·sin(ε))
+  // atan2 can land in the wrong quadrant — ASC must be 0–180° ahead of MC in ecliptic longitude
   const yAsc = -Math.cos(ramcRad);
   const xAsc  = Math.sin(ramcRad) * Math.cos(ε) + Math.tan(φ) * Math.sin(ε);
-  const asc   = normalize360(Math.atan2(yAsc, xAsc) * RAD2DEG);
+  let asc     = normalize360(Math.atan2(yAsc, xAsc) * RAD2DEG);
+  if (normalize360(asc - mc) > 180) asc = normalize360(asc + 180);
 
   return {
     asc,

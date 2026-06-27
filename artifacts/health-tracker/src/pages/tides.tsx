@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Moon, Sparkles, Clock, CalendarDays, ChevronRight, Activity } from "lucide-react";
+import { useTester } from "@/contexts/tester-context";
+import { Loader2, Moon, Sparkles, Clock, CalendarDays, ChevronRight, Activity, Star, FolderOpen, Sprout, Check } from "lucide-react";
 import {
   ELEMENT_ICONS, ELEMENT_BADGE_CLS, ELEMENT_DOT_CLS, ELEMENT_COLOR_CLS,
   ELEMENT_LABELS, ELEMENT_CARD_CLS,
@@ -36,8 +37,9 @@ interface LocalAngles {
   mcSign: string;
 }
 
-interface AuspiceNow {
+interface TidesNow {
   momentLabel: string;
+  dayRuler: string;
   quality: "excellent" | "good" | "workable" | "mixed" | "avoid_if_possible";
   element: { element: ElementKey; source: string; moonSign: string; voidOfCourse: boolean; biodynamicType: string };
   planetaryHour: {
@@ -57,6 +59,7 @@ interface AuspiceNow {
   sunSign: string;
   retrogrades: string[];
   invitation: string;
+  personalTransits: PersonalTransit[];
   moonAspects: PlanetAspect[];
   aspects: PlanetAspect[];
   angularPlanets: AngularPlanet[];
@@ -64,7 +67,7 @@ interface AuspiceNow {
   lastMoonAspect: LastMoonAspect | null;
 }
 
-interface AuspiceWindow {
+interface TidesWindow {
   startTime: string;
   endTime: string;
   element: ElementKey;
@@ -85,6 +88,40 @@ interface AngularCrossing {
   interpretation: string;
 }
 
+interface PersonalTransit {
+  transitPlanet: string;
+  aspect: string;
+  natalPlanet: string;
+  natalSign: string;
+  natalHouse: number;
+  orb: number;
+  exact: boolean;
+  severity: "mild" | "moderate" | "strong" | "major";
+  summary: string;
+}
+
+interface PlanningWindow {
+  id: number;
+  title: string;
+  windowType: string;
+  startTime: string;
+  endTime: string;
+  projectId: number | null;
+}
+
+interface ScoredPractice {
+  id: number;
+  title: string;
+  domain: string;
+  elements: string[] | null;
+  element: string | null;
+  frequency: string;
+  minimumViable: string | null;
+  match: "resonant" | "supported" | "neutral" | "soften" | "protect";
+  recommendation: string;
+  todayCheckIn: { completed: boolean } | null;
+}
+
 interface LastMoonAspect {
   planet: string;
   aspect: string;
@@ -95,7 +132,7 @@ interface LastMoonAspect {
   malefic: boolean;
 }
 
-interface AuspiceWeek {
+interface TidesWeek {
   weekOf: string;
   weekTone: string;
   weekElement: string;
@@ -151,30 +188,67 @@ function moonPhaseGlyph(phaseName: string, fraction: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AuspicePage() {
-  const { data: now, isLoading: nowLoading } = useQuery<AuspiceNow>({
-    queryKey: ["auspice-now"],
-    queryFn: () => fetch("/api/auspice/now").then((r) => r.json()),
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+
+const WINDOW_TYPE_LABELS: Record<string, string> = {
+  deep_work: "Deep Work", planning: "Planning", creative: "Creative",
+  admin: "Admin", social: "Social", relationship: "Relationship",
+  recovery: "Recovery", retreat: "Retreat", launch: "Launch", study: "Study",
+};
+
+export default function TidesPage() {
+  const { profile } = useTester();
+  const testerId = profile?.testerId ?? null;
+  const headers = { "x-tester-id": testerId ?? "" };
+
+  const { data: natal } = useQuery<{ birthLat: number; birthLon: number } | null>({
+    queryKey: ["natal-chart-location", testerId],
+    queryFn: () => fetch("/api/natal-chart", { headers }).then((r) => r.ok ? r.json() : null).catch(() => null),
+    staleTime: Infinity,
+  });
+
+  const lat = natal?.birthLat ?? 40.7;
+  const lon = natal?.birthLon ?? -74.0;
+  const locationParams = `lat=${lat}&lon=${lon}`;
+
+  const { data: now, isLoading: nowLoading } = useQuery<TidesNow>({
+    queryKey: ["tides-now", lat, lon, testerId],
+    queryFn: () => fetch(`/api/tides/now?${locationParams}`, { headers }).then((r) => r.json()),
     refetchInterval: 5 * 60 * 1000,
     staleTime: 4 * 60 * 1000,
   });
 
-  const { data: windows } = useQuery<{ windows: AuspiceWindow[] }>({
-    queryKey: ["auspice-windows"],
-    queryFn: () => fetch("/api/auspice/windows?hours=10").then((r) => r.json()),
+  const { data: todayWindows = [] } = useQuery<PlanningWindow[]>({
+    queryKey: ["planning-windows-tides", testerId, todayStr()],
+    queryFn: () => fetch(`/api/planning/windows?date=${todayStr()}`, { headers }).then((r) => r.ok ? r.json() : []),
+    enabled: !!testerId,
+    staleTime: 60_000,
+  });
+
+  const { data: practicesData } = useQuery<{ practices: ScoredPractice[] }>({
+    queryKey: ["tides-practices", lat, lon, testerId],
+    queryFn: () => fetch(`/api/tides/practices?${locationParams}`, { headers }).then((r) => r.ok ? r.json() : null),
+    enabled: !!testerId,
     refetchInterval: 5 * 60 * 1000,
     staleTime: 4 * 60 * 1000,
   });
 
-  const { data: week } = useQuery<AuspiceWeek>({
-    queryKey: ["auspice-week"],
-    queryFn: () => fetch("/api/auspice/week").then((r) => r.json()),
+  const { data: windows } = useQuery<{ windows: TidesWindow[] }>({
+    queryKey: ["tides-windows", lat, lon],
+    queryFn: () => fetch(`/api/tides/windows?hours=10&${locationParams}`).then((r) => r.json()),
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 4 * 60 * 1000,
+  });
+
+  const { data: week } = useQuery<TidesWeek>({
+    queryKey: ["tides-week"],
+    queryFn: () => fetch("/api/tides/week").then((r) => r.json()),
     staleTime: 30 * 60 * 1000,
   });
 
   const { data: crossingsData } = useQuery<{ crossings: AngularCrossing[] }>({
-    queryKey: ["auspice-crossings"],
-    queryFn: () => fetch("/api/auspice/crossings?hours=12").then((r) => r.json()),
+    queryKey: ["tides-crossings", lat, lon],
+    queryFn: () => fetch(`/api/tides/crossings?hours=12&${locationParams}`).then((r) => r.json()),
     refetchInterval: 10 * 60 * 1000,
     staleTime: 9 * 60 * 1000,
   });
@@ -347,11 +421,158 @@ export default function AuspicePage() {
           {now.element?.biodynamicType && (
             <div className="border-t border-border/10 pt-2.5 flex items-center justify-between gap-3 flex-wrap">
               <span className="text-[10px] text-muted-foreground/35 italic">
-                {now.element.biodynamicType} day
+                {now.element.biodynamicType} day · {now.dayRuler} day
                 {now.localAngles && ` · ${now.localAngles.ascSign} rising · ${now.localAngles.mcSign} at midheaven`}
               </span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Personal transits */}
+      {(now?.personalTransits ?? []).length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Star className="w-3.5 h-3.5 text-muted-foreground/40" />
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Your transits now</h2>
+          </div>
+          <div className="space-y-1.5">
+            {(now?.personalTransits ?? []).map((t, i) => {
+              const isStress = t.aspect === "square" || t.aspect === "opposition";
+              const isFlow   = t.aspect === "trine" || t.aspect === "sextile";
+              return (
+                <div
+                  key={i}
+                  className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${
+                    isStress ? "border-orange-500/15 bg-orange-500/5"
+                    : isFlow  ? "border-emerald-500/15 bg-emerald-500/5"
+                    : "border-border/20 bg-card/20"
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className={`text-xs font-medium ${
+                        isStress ? "text-orange-300/80" : isFlow ? "text-emerald-300/80" : "text-foreground/70"
+                      }`}>
+                        {t.summary}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                        t.severity === "major" ? "border-red-500/30 text-red-300/70 bg-red-500/5"
+                        : t.severity === "strong" ? "border-amber-500/30 text-amber-300/70 bg-amber-500/5"
+                        : "border-border/30 text-muted-foreground/50"
+                      }`}>
+                        {t.severity}
+                      </span>
+                      {t.exact && (
+                        <span className="text-[10px] text-muted-foreground/40 italic">exact</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/50">
+                      House {t.natalHouse} · natal {t.natalPlanet} in {t.natalSign}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Practices timing */}
+      {(practicesData?.practices ?? []).length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sprout className="w-3.5 h-3.5 text-muted-foreground/40" />
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Practices now</h2>
+          </div>
+          <div className="space-y-1.5">
+            {(practicesData?.practices ?? [])
+              .filter((p) => p.match !== "neutral")
+              .slice(0, 6)
+              .map((p) => {
+                const tended = p.todayCheckIn?.completed === true;
+                const matchColors: Record<string, string> = {
+                  resonant:  "border-emerald-500/25 bg-emerald-500/5",
+                  supported: "border-sky-500/20 bg-sky-500/5",
+                  soften:    "border-amber-500/20 bg-amber-500/5",
+                  protect:   "border-red-500/15 bg-red-500/5",
+                };
+                const matchLabel: Record<string, string> = {
+                  resonant:  "resonant",
+                  supported: "supported",
+                  soften:    "soften",
+                  protect:   "protect min",
+                };
+                const matchText: Record<string, string> = {
+                  resonant:  "text-emerald-300/80",
+                  supported: "text-sky-300/80",
+                  soften:    "text-amber-300/80",
+                  protect:   "text-red-300/70",
+                };
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${tended ? "opacity-50" : ""} ${matchColors[p.match] ?? "border-border/20 bg-card/20"}`}
+                  >
+                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
+                      tended ? "bg-chart-2 border-chart-2" : "border-border/40"
+                    }`}>
+                      {tended && <Check className="w-2.5 h-2.5 text-background" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className={`text-xs font-medium ${tended ? "line-through text-muted-foreground/40" : "text-foreground/85"}`}>
+                          {p.title}
+                        </span>
+                        <span className={`text-[10px] font-medium ${matchText[p.match]}`}>
+                          {matchLabel[p.match]}
+                        </span>
+                      </div>
+                      {!tended && (
+                        <p className="text-[11px] text-muted-foreground/50 leading-relaxed">
+                          {p.recommendation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Today's planning windows */}
+      {todayWindows.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-3.5 h-3.5 text-muted-foreground/40" />
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Today's windows</h2>
+          </div>
+          <div className="space-y-1.5">
+            {todayWindows.map((w) => {
+              const now2 = new Date();
+              const isActive = new Date(w.startTime) <= now2 && new Date(w.endTime) >= now2;
+              return (
+                <div
+                  key={w.id}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${
+                    isActive ? "border-sky-500/30 bg-sky-500/10" : "border-border/20 bg-card/20"
+                  }`}
+                >
+                  <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-sky-400" : "text-muted-foreground/30"}`} />
+                  <span className="text-xs text-muted-foreground/60 flex-shrink-0">
+                    {formatTime(w.startTime)}–{formatTime(w.endTime)}
+                  </span>
+                  <span className={`text-xs flex-1 min-w-0 truncate ${isActive ? "text-sky-300" : "text-foreground/70"}`}>
+                    {w.title}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/20 text-muted-foreground/40 flex-shrink-0">
+                    {WINDOW_TYPE_LABELS[w.windowType] ?? w.windowType}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -32,6 +32,7 @@ import {
   CalendarDays,
   BarChart2,
   Compass,
+  Target,
 } from "lucide-react";
 import { useTester } from "@/contexts/tester-context";
 import { shortId } from "@/lib/tester-profile";
@@ -62,7 +63,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Balance", path: "/patterns", icon: BarChart2 },
     { label: "Blueprint", path: "/blueprint", icon: Scroll },
-    { label: "Auspice", path: "/auspice", icon: Compass },
+    { label: "Tides", path: "/tides", icon: Compass },
+    { label: "Planning", path: "/planning", icon: Target },
     { label: "Settings", path: "/settings", icon: SlidersHorizontal },
     { label: "Oracle", path: "/chat", icon: MessageCircle },
   ];
