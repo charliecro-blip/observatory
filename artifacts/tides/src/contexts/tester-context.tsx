@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { setTesterId } from "@workspace/api-client-react";
 import {
   loadProfile,
   saveProfile,
@@ -32,7 +31,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
     const saved = loadProfile();
     if (saved) {
       setProfile(saved);
-      setTesterId(saved.testerId);
+      
       setIsReady(true);
     } else {
       setShowModal(true);
@@ -42,7 +41,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const applyProfile = useCallback((p: TesterProfile) => {
     saveProfile(p);
     setProfile(p);
-    setTesterId(p.testerId);
+    
     setIsReady(true);
     setShowModal(false);
   }, []);
@@ -50,7 +49,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const createAndApply = useCallback((displayName: string): TesterProfile => {
     const p = createProfile(displayName.trim() || "Observer");
     setProfile(p);
-    setTesterId(p.testerId);
+    
     setIsReady(true);
     setShowModal(false);
     return p;
@@ -59,7 +58,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const resetProfile = useCallback(() => {
     clearProfile();
     setProfile(null);
-    setTesterId(null);
+    
     setIsReady(false);
     setShowModal(true);
   }, []);

@@ -17,6 +17,7 @@ import knowledgeRouter from "./knowledge";
 import calendarRouter from "./calendar";
 import tidesRouter from "./tides";
 import planningRouter from "./planning";
+import tasksRouter from "./tasks";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(knowledgeRouter);
 router.use(calendarRouter);
 router.use(tidesRouter);
 router.use(planningRouter);
+router.use(tasksRouter);
 
 export default router;

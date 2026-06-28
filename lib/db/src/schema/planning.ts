@@ -56,7 +56,23 @@ export const planningWindows = pgTable("planning_windows", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  done: text("done").notNull().default("false"), // "true" | "false"
+  dueDate: text("due_date"), // ISO date YYYY-MM-DD, nullable
+  bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
+  goalId: integer("goal_id"),
+  projectId: integer("project_id"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Goal = typeof goals.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
 export type PlanningWindow = typeof planningWindows.$inferSelect;
+export type Task = typeof tasks.$inferSelect;
