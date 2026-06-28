@@ -176,6 +176,7 @@ export default function Calendar({ testerId, now, week }: { testerId:string|null
                     if (h >= bh && h < eh) {
                       return <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`${WINDOW_COLORS["deep_work"]}40`,borderRadius:"0 2px 2px 0"}}/>;
                     }
+                    return null;
                   })()}
 
                   {/* Crossing markers */}

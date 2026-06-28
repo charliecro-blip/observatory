@@ -188,25 +188,32 @@ const WEEK_ELEMENT_TONES: Record<string, string> = {
 router.get("/tides/week", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
+  const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 30);
   const now   = new Date();
 
   // Start from today UTC midnight
   const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
+  const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+
   const days: Array<{
     date: string;
-    dayLabel: string;
+    label: string;
+    dayRuler: string;
     moonSign: string;
     moonPhase: string;
     moonFraction: number;
     element: string;
-    voidPeriods: boolean; // has any VOC window today?
+    biodynamicType: string;
+    voidPeriods: boolean;
     quality: string;
+    qualityScore: number;
     bestFor: string[];
     tone: string;
+    crossings: Array<{ planet: string; angle: string; time: string; type: string }>;
   }> = [];
 
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < numDays; d++) {
     const dayMs   = todayUtc.getTime() + d * 86400000;
     const dayDate = new Date(dayMs);
     const noonJd  = julianDay(new Date(dayMs + 12 * 3600000)); // noon UTC
@@ -223,7 +230,7 @@ router.get("/tides/week", (req, res) => {
     const pmVoc = voidOfCourse(pmJd).voc;
     const hasVoc = amVoc || pmVoc || elemNoon.voidOfCourse;
 
-    // Best-for list from the hour rules of the emphasis element
+    // Best-for list
     const element = elemNoon.element;
     const hourFamily = element === "spirit" ? "moon" :
       element === "fire" ? "mars" :
@@ -231,27 +238,56 @@ router.get("/tides/week", (req, res) => {
       element === "air" ? "mercury" : "moon";
     const bestFor = (PLANETARY_HOUR_RULES[hourFamily.charAt(0).toUpperCase() + hourFamily.slice(1)]?.supports ?? []).slice(0, 4);
 
+    const retrogrades = planetsNoon.filter((p) => p.retrograde).length;
     let score = 5;
     if (hasVoc) score -= 1;
-    const retrogrades = planetsNoon.filter((p) => p.retrograde).length;
     if (retrogrades >= 2) score -= 1;
+    if (element === "fire" || element === "air") score += 1;
 
     const qualityLabel =
       score >= 7 ? "excellent" :
       score >= 5 ? "good" :
       score >= 2 ? "workable" : "mixed";
 
+    // Biodynamic day type from element
+    const bioMap: Record<string, string> = {
+      fire: "fruit", earth: "root", air: "flower", water: "leaf", spirit: "rest",
+    };
+
+    // Angular crossings for this day — significant planets at ASC/MC only
+    const dayStartJd = julianDay(new Date(dayMs));
+    const rawCrossings = getNextAngularCrossings(dayStartJd, lat, lon, 40, 24)
+      .filter(c => {
+        if (c.planet === "Moon") return true;
+        if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
+        if (c.planet === "Sun" && c.angle === "MC") return true;
+        return false;
+      });
+    const crossings = rawCrossings.map((c) => {
+      const ct = new Date(c.crossingTime);
+      return {
+        planet: c.planet,
+        angle:  c.angle,
+        time:   ct.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+        type:   c.benefic ? "benefic" : c.malefic ? "malefic" : "neutral",
+      };
+    });
+
     days.push({
       date:         dayDate.toISOString().split("T")[0],
-      dayLabel:     DAY_LABELS[dayDate.getUTCDay()],
+      label:        DAY_LABELS[dayDate.getUTCDay()],
+      dayRuler:     DAY_RULERS[dayDate.getUTCDay()],
       moonSign:     moonSignNoon,
       moonPhase:    phaseName,
       moonFraction: fraction,
       element,
+      biodynamicType: bioMap[element] ?? "root",
       voidPeriods:  hasVoc,
       quality:      qualityLabel,
+      qualityScore: score,
       bestFor,
       tone: WEEK_ELEMENT_TONES[element] ?? WEEK_ELEMENT_TONES.water,
+      crossings,
     });
   }
 
@@ -508,6 +544,160 @@ router.get("/tides/crossings", (req, res) => {
   }));
 
   res.json({ asOf: date.toISOString(), crossings: annotated });
+});
+
+// ── /api/tides/events ─────────────────────────────────────────────────────
+// Scan forward N days and surface notable sky events: moon phases, ingresses,
+// VOC windows, angular crossings, and high-quality day windows.
+
+router.get("/tides/events", (req, res) => {
+  const lat    = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon    = parseFloat((req.query.lon as string) ?? "-74.0");
+  const numDays = Math.min(parseInt((req.query.days as string) ?? "30"), 60);
+  const now    = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  type SkyEvent = {
+    date: string;
+    time?: string;
+    type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window";
+    title: string;
+    subtitle?: string;
+    icon: string;
+    quality: "favorable" | "caution" | "neutral";
+  };
+
+  const events: SkyEvent[] = [];
+
+  // Crossings: benefic/malefic at ASC/MC, Moon at all angles
+  const startJd = julianDay(now);
+  const significantCrossings = getNextAngularCrossings(startJd, lat, lon, 80, numDays * 24)
+    .filter(c => {
+      if (c.planet === "Moon") return true;
+      if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
+      if (c.planet === "Sun" && c.angle === "MC") return true;
+      return false;
+    });
+  const crossings = significantCrossings;
+  for (const c of crossings) {
+    const crossTime = new Date(c.crossingTime);
+    const dateStr = crossTime.toISOString().split("T")[0];
+    const timeStr = crossTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const isBenefic = c.benefic;
+    const isMalefic = c.malefic;
+    events.push({
+      date: dateStr,
+      time: timeStr,
+      type: "crossing",
+      title: `${c.planet} crosses ${c.angle}`,
+      subtitle: CROSSING_INTERPRETATIONS[c.planet]?.[c.angle],
+      icon: isBenefic ? "✦" : isMalefic ? "⚡" : "◈",
+      quality: isBenefic ? "favorable" : isMalefic ? "caution" : "neutral",
+    });
+  }
+
+  // Scan day-by-day for phase changes, ingresses, VOC, quality windows
+  let prevPhase = "";
+  let prevSign  = "";
+
+  for (let d = 0; d < numDays; d++) {
+    const dayMs   = todayUtc.getTime() + d * 86400000;
+    const dayDate = new Date(dayMs);
+    const dateStr = dayDate.toISOString().split("T")[0];
+    const noonJd  = julianDay(new Date(dayMs + 12 * 3600000));
+
+    const { name: phaseName } = moonPhase(noonJd);
+    const planetsNoon  = getPlanetPositions(noonJd);
+    const moonSignNoon = planetsNoon.find((p) => p.planet === "Moon")!.sign;
+    const elemNoon     = getDailyElementEmphasis(noonJd);
+    const retrogrades  = planetsNoon.filter((p) => p.retrograde).length;
+
+    const amJd  = julianDay(new Date(dayMs + 9  * 3600000));
+    const pmJd  = julianDay(new Date(dayMs + 15 * 3600000));
+    const amVoc = voidOfCourse(amJd).voc;
+    const pmVoc = voidOfCourse(pmJd).voc;
+    const hasVoc = amVoc || pmVoc;
+
+    // Moon phase event when phase name changes
+    if (phaseName !== prevPhase && d > 0) {
+      const isNewMoon  = phaseName.includes("New");
+      const isFullMoon = phaseName.includes("Full");
+      const isQuarter  = phaseName.includes("Quarter");
+      if (isNewMoon || isFullMoon || isQuarter) {
+        events.push({
+          date:    dateStr,
+          type:    "moon_phase",
+          title:   phaseName.replace(/_/g, " "),
+          subtitle: isNewMoon
+            ? "Clean slate energy — good for setting intentions."
+            : isFullMoon
+            ? "Peak illumination — completion and release."
+            : "Turning point — adjust course.",
+          icon:    isNewMoon ? "🌑" : isFullMoon ? "🌕" : "🌓",
+          quality: isFullMoon ? "caution" : "favorable",
+        });
+      }
+    }
+    prevPhase = phaseName;
+
+    // Moon sign ingress
+    if (moonSignNoon !== prevSign && d > 0) {
+      const elemOfSign: Record<string, string> = {
+        Aries:"fire",Leo:"fire",Sagittarius:"fire",
+        Taurus:"earth",Virgo:"earth",Capricorn:"earth",
+        Gemini:"air",Libra:"air",Aquarius:"air",
+        Cancer:"water",Scorpio:"water",Pisces:"water",
+      };
+      const signElem = elemOfSign[moonSignNoon] ?? "water";
+      events.push({
+        date:    dateStr,
+        type:    "ingress",
+        title:   `Moon enters ${moonSignNoon}`,
+        subtitle: WEEK_ELEMENT_TONES[signElem]?.split(".")[0] ?? "",
+        icon:    "☽",
+        quality: "neutral",
+      });
+    }
+    prevSign = moonSignNoon;
+
+    // VOC period — only when it takes up a meaningful chunk of the day
+    if (hasVoc) {
+      events.push({
+        date:    dateStr,
+        type:    "voc",
+        title:   "Moon void of course",
+        subtitle: "Avoid new beginnings. Good for completion, rest, and review.",
+        icon:    "◌",
+        quality: "caution",
+      });
+    }
+
+    // High-quality window
+    let score = 5;
+    if (hasVoc) score -= 1;
+    if (retrogrades >= 2) score -= 1;
+    if (elemNoon.element === "fire" || elemNoon.element === "air") score += 1;
+
+    if (score >= 6 && !hasVoc) {
+      events.push({
+        date:    dateStr,
+        type:    "quality_window",
+        title:   `${elemNoon.element.charAt(0).toUpperCase() + elemNoon.element.slice(1)} day · quality ${score}/7`,
+        subtitle: WEEK_ELEMENT_TONES[elemNoon.element]?.split(".")[0],
+        icon:    "◉",
+        quality: "favorable",
+      });
+    }
+  }
+
+  // Sort by date, then type priority
+  const TYPE_ORDER = { moon_phase: 0, quality_window: 1, crossing: 2, ingress: 3, voc: 4 };
+  events.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);
+  });
+
+  res.json({ asOf: now.toISOString(), events });
 });
 
 export default router;

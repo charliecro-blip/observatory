@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import type { TidesNow, TidesWeek, ScoredPractice, PlanningWindow } from "@/lib/types";
+import type { TidesNow, TidesWeek, ScoredPractice, PlanningWindow, SkyEvent } from "@/lib/types";
 
-function authHeaders(testerId: string | null) {
+function authHeaders(testerId: string | null): Record<string, string> {
   return testerId ? { "x-tester-id": testerId } : {};
 }
 
@@ -16,14 +16,25 @@ export function useTidesNow(testerId: string | null) {
   });
 }
 
-export function useTidesWeek() {
+export function useTidesWeek(days = 7) {
   return useQuery<TidesWeek>({
-    queryKey: ["tides-week"],
+    queryKey: ["tides-week", days],
     queryFn: async () => {
-      const r = await fetch("/api/tides/week");
+      const r = await fetch(`/api/tides/week?days=${days}`);
       return r.json();
     },
     refetchInterval: 300_000,
+  });
+}
+
+export function useSkyEvents(days = 30) {
+  return useQuery<{ events: SkyEvent[] }>({
+    queryKey: ["sky-events", days],
+    queryFn: async () => {
+      const r = await fetch(`/api/tides/events?days=${days}`);
+      return r.json();
+    },
+    refetchInterval: 3_600_000, // hourly — events don't change fast
   });
 }
 

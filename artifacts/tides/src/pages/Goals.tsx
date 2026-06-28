@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface Milestone { id:number; title:string; status:string; targetDate?:string; }
+interface Milestone { id:number; projectId:number; title:string; status:string; targetDate?:string; }
 interface Project { id:number; title:string; goalId?:number; status:string; priority:string; milestones?:Milestone[]; }
 interface Goal { id:number; title:string; description?:string; horizon:string; status:string; }
 

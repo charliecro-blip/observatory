@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows } from "@/hooks/useTides";
 import type { Goal } from "@/lib/types";
@@ -54,13 +54,31 @@ function heroText(now: any): string {
   return map[el]?.[q] ?? map[el]?.["neutral"] ?? "A moment worth inhabiting.";
 }
 
+function journalKey(testerId: string | null, date: string) {
+  return `tides-journal-${testerId ?? "anon"}-${date}`;
+}
+
 export default function Today({ testerId }: { testerId: string | null }) {
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
   const [activeTab, setActiveTab] = useState<"habits" | "tasks" | "goals">("habits");
+  const [journalText, setJournalText] = useState("");
+  const [journalSaved, setJournalSaved] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(journalKey(testerId, today));
+    if (saved) setJournalText(saved);
+  }, [testerId, today]);
+
+  function saveJournal(text: string) {
+    setJournalText(text);
+    localStorage.setItem(journalKey(testerId, today), text);
+    setJournalSaved(true);
+    setTimeout(() => setJournalSaved(false), 1500);
+  }
 
   const { data: now } = useTidesNow(testerId);
-  const { data: week } = useTidesWeek();
+  const { data: week } = useTidesWeek(14);
   const { data: practicesData } = usePractices(testerId);
   const { data: windows } = useTodayWindows(testerId, today);
 
@@ -146,6 +164,24 @@ export default function Today({ testerId }: { testerId: string | null }) {
           </div>
         </div>
 
+        {/* VOC banner */}
+        {now?.voc?.isVOC && (
+          <div style={{
+            background: "#f5f0ea", border: "1px solid #d8d0c0", borderLeft: "3px solid #b0a080",
+            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>◌</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#6a5030" }}>
+                Moon void of course{now.voc.nextIngress ? ` · until ${now.voc.nextIngress}` : ""}
+              </div>
+              <div style={{ fontSize: 10, color: "#9a7050", marginTop: 2 }}>
+                Avoid new beginnings. Good for completion, review, routine, and rest.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Angle crossing alert */}
         {crossingsOn && nextCrossing && (
           <div style={{
@@ -227,19 +263,19 @@ export default function Today({ testerId }: { testerId: string | null }) {
           </div>
         </div>
 
-        {/* Week strip */}
+        {/* Week strip — 14 days */}
         <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Week ahead</div>
-          <div style={{ display: "flex", gap: 5 }}>
-            {(week?.days ?? []).slice(0, 7).map(day => {
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
+          <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+            {(week?.days ?? []).map(day => {
               const isToday = day.date === today;
               const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
               const qc = QUALITY_COLORS[day.quality ?? "neutral"] ?? "#888";
               return (
                 <div key={day.date} style={{
-                  flex: 1, border: `1px solid ${isToday ? "#c0b090" : "#e8e4de"}`,
+                  minWidth: 40, border: `1px solid ${isToday ? "#c0b090" : "#e8e4de"}`,
                   borderRadius: 8, padding: "6px 4px", display: "flex", flexDirection: "column",
-                  alignItems: "center", gap: 3, background: isToday ? "#faf6f0" : "transparent",
+                  alignItems: "center", gap: 3, background: isToday ? "#faf6f0" : "transparent", flexShrink: 0,
                 }}>
                   <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: isToday ? "#b07030" : "#aaa", fontWeight: isToday ? 600 : 400 }}>
                     {day.label?.slice(0, 3)}
@@ -256,6 +292,29 @@ export default function Today({ testerId }: { testerId: string | null }) {
               );
             })}
           </div>
+        </div>
+
+        {/* Journal prompt */}
+        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Today's reflection</div>
+            {journalSaved && <span style={{ fontSize: 9, color: "#60a060" }}>saved ✓</span>}
+          </div>
+          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8, fontStyle: "italic" }}>
+            {heroText(now).replace(/\.$/, "")} — what does this day call for?
+          </div>
+          <textarea
+            value={journalText}
+            onChange={e => setJournalText(e.target.value)}
+            onBlur={e => e.target.value.trim() && saveJournal(e.target.value)}
+            placeholder="A few words about where you're putting your energy today…"
+            rows={3}
+            style={{
+              width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #e0dbd4",
+              fontSize: 12, lineHeight: 1.5, resize: "none", outline: "none",
+              background: "#faf8f5", color: "#333", fontFamily: "inherit",
+            }}
+          />
         </div>
 
         {/* Bottom tabs: Habits / Tasks / Goals */}

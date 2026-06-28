@@ -83,7 +83,7 @@ export default function Settings({ testerId }: { testerId:string|null }) {
         {/* Profile */}
         <div style={{background:"#fff",border:"1px solid #e8e4de",borderRadius:10,padding:"16px"}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Profile</div>
-          <div style={{display:"flex",alignItems:"center",justify:"space-between",gap:12}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <div>
               <div style={{fontSize:13,fontWeight:500}}>{profile?.displayName}</div>
               <div style={{fontSize:10,color:"#aaa",fontFamily:"monospace",marginTop:2}}>{profile?.testerId}</div>

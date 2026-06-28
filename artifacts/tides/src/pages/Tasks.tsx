@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { TidesNow } from "@/lib/types";
+import type { TidesNow, PlanningWindow } from "@/lib/types";
 
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"
@@ -20,7 +20,7 @@ const HOUR_WINDOW: Record<string,string> = {
 
 interface Task {
   id:number; title:string; notes?:string; done:string;
-  dueDate?:string; bestWindowType?:string;
+  dueDate?:string; bestWindowType?:string; planningWindowId?:number;
 }
 
 function authH(tid:string|null) {
@@ -34,6 +34,16 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newWindow, setNewWindow] = useState("");
+  const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
+
+  const { data: upcomingWindows = [] } = useQuery<PlanningWindow[]>({
+    queryKey: ["planning-windows-all", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/planning/windows", { headers: authH(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+  });
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["tasks", testerId, filter],
@@ -54,10 +64,11 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
           title: newTitle.trim(),
           dueDate: filter === "today" ? today : undefined,
           bestWindowType: newWindow || undefined,
+          planningWindowId: newPlanWindow || undefined,
         }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["tasks"]}); setNewTitle(""); setNewWindow(""); setShowAdd(false); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["tasks"]}); setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setShowAdd(false); },
   });
 
   const toggle = useMutation({
@@ -106,15 +117,28 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
               placeholder="Task title…"
               style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid #d8d2ca",fontSize:13,marginBottom:8,outline:"none",background:"#faf8f5"}}
             />
-            <div style={{display:"flex",gap:8}}>
+            <div style={{display:"flex",gap:8,marginBottom:6}}>
               <select value={newWindow} onChange={e => setNewWindow(e.target.value)}
                 style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:11,color:"#555",background:"#faf8f5"}}>
                 <option value="">Best time: any</option>
                 {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
               </select>
+            </div>
+            {upcomingWindows.length > 0 && (
+              <div style={{marginBottom:8}}>
+                <select value={newPlanWindow} onChange={e => setNewPlanWindow(e.target.value ? Number(e.target.value) : "")}
+                  style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:11,color:"#555",background:"#faf8f5"}}>
+                  <option value="">Link to calendar block: none</option>
+                  {upcomingWindows.slice(0,10).map(w => (
+                    <option key={w.id} value={w.id}>{w.title} · {w.startTime.slice(0,16).replace("T"," ")}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
               <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()}
                 style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"#e0dcd6",color:newTitle.trim()?"#fff":"#aaa",cursor:"pointer"}}>
-                Add
+                Add task
               </button>
             </div>
           </div>
@@ -177,6 +201,9 @@ function Row({ task, onToggle, onDelete, highlight, dim }: {task:Task;onToggle:(
         {isDone?"✓":""}
       </button>
       <div style={{flex:1,fontSize:12,color:isDone?"#bbb":"#222",textDecoration:isDone?"line-through":"none"}}>{task.title}</div>
+      {task.planningWindowId && !isDone && (
+        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:"#3a5a80",fontWeight:600,flexShrink:0}}>▦ block</div>
+      )}
       {task.bestWindowType && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}

@@ -49,7 +49,18 @@ export interface WeekDay {
   moonSign: string;
   moonPhase: string;
   biodynamicType: string;
+  voidPeriods?: boolean;
   crossings?: Crossing[];
+}
+
+export interface SkyEvent {
+  date: string;
+  time?: string;
+  type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window";
+  title: string;
+  subtitle?: string;
+  icon: string;
+  quality: "favorable" | "caution" | "neutral";
 }
 
 export interface Crossing {
