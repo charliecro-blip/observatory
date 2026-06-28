@@ -42,11 +42,11 @@ const FILTER_TYPES = [
   { id: "voc", label: "VOC" },
 ];
 
-export default function Sky({ testerId }: { testerId: string | null }) {
+export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
   const [filter, setFilter] = useState("all");
   const [days, setDays] = useState(30);
-  const { data: eventsData, isLoading } = useSkyEvents(days);
-  const { data: week } = useTidesWeek(days);
+  const { data: eventsData, isLoading } = useSkyEvents(days, lat, lon);
+  const { data: week } = useTidesWeek(days, lat, lon);
 
   const allEvents = eventsData?.events ?? [];
   const filtered = filter === "all" ? allEvents : allEvents.filter(e => e.type === filter);

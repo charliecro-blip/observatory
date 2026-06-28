@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {
   loadProfile,
   saveProfile,
+  saveLocation,
   createProfile,
   clearProfile,
   DEFAULT_TESTER_ID,
@@ -13,10 +14,13 @@ interface TesterContextValue {
   profile: TesterProfile | null;
   isReady: boolean;
   showModal: boolean;
+  lat: number;
+  lon: number;
   openModal: () => void;
   closeModal: () => void;
   applyProfile: (profile: TesterProfile) => void;
   createAndApply: (displayName: string) => TesterProfile;
+  updateLocation: (lat: number, lon: number, label: string) => void;
   resetProfile: () => void;
 }
 
@@ -31,11 +35,15 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
     const saved = loadProfile();
     if (saved) {
       setProfile(saved);
-      
       setIsReady(true);
     } else {
       setShowModal(true);
     }
+  }, []);
+
+  const updateLocation = useCallback((lat: number, lon: number, label: string) => {
+    saveLocation(lat, lon, label);
+    setProfile(p => p ? { ...p, lat, lon, locationLabel: label } : p);
   }, []);
 
   const applyProfile = useCallback((p: TesterProfile) => {
@@ -63,16 +71,22 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
     setShowModal(true);
   }, []);
 
+  const lat = profile?.lat ?? 40.7;
+  const lon = profile?.lon ?? -74.0;
+
   return (
     <TesterContext.Provider
       value={{
         profile,
         isReady,
         showModal,
+        lat,
+        lon,
         openModal: () => setShowModal(true),
         closeModal: () => setShowModal(false),
         applyProfile,
         createAndApply,
+        updateLocation,
         resetProfile,
       }}
     >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useTidesNow, useTidesWeek, usePractices, useTodayWindows } from "@/hooks/useTides";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows } from "@/hooks/useTides";
 import type { Goal } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -58,12 +58,15 @@ function journalKey(testerId: string | null, date: string) {
   return `tides-journal-${testerId ?? "anon"}-${date}`;
 }
 
-export default function Today({ testerId }: { testerId: string | null }) {
+export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
+  const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
   const [activeTab, setActiveTab] = useState<"habits" | "tasks" | "goals">("habits");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem(journalKey(testerId, today));
@@ -77,10 +80,11 @@ export default function Today({ testerId }: { testerId: string | null }) {
     setTimeout(() => setJournalSaved(false), 1500);
   }
 
-  const { data: now } = useTidesNow(testerId);
-  const { data: week } = useTidesWeek(14);
-  const { data: practicesData } = usePractices(testerId);
+  const { data: now } = useTidesNow(testerId, lat, lon);
+  const { data: week } = useTidesWeek(14, lat, lon);
+  const { data: practicesData } = usePractices(testerId, lat, lon);
   const { data: windows } = useTodayWindows(testerId, today);
+  const { data: tidesWindowsData } = useTidesWindows(lat, lon);
 
   const { data: goals } = useQuery<Goal[]>({
     queryKey: ["goals", testerId],
@@ -89,6 +93,39 @@ export default function Today({ testerId }: { testerId: string | null }) {
       return r.json();
     },
     enabled: !!testerId,
+  });
+
+  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; }
+  const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
+    queryKey: ["tasks-today", testerId, today],
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks?date=${today}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
+      return r.json();
+    },
+    enabled: !!testerId,
+    refetchInterval: 30_000,
+  });
+
+  const toggleTask = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ done: String(done) }),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const addTask = useMutation({
+    mutationFn: async (title: string) => {
+      await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ title, dueDate: today }),
+      });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
   });
 
   const practices = practicesData?.practices ?? [];
@@ -221,43 +258,120 @@ export default function Today({ testerId }: { testerId: string | null }) {
             {now?.momentLabel} · {now?.biodynamicType}
           </div>
 
-          {/* SVG tide wave */}
-          <svg width="100%" height="88" viewBox="0 0 600 88" style={{ display: "block" }}>
-            <rect width="600" height="88" fill="#f8f6f2" rx="4"/>
-            {/* VOC zone */}
-            {now?.voc?.isVOC && <rect x="480" y="0" width="120" height="88" fill="#f5f0ea" opacity="0.8"/>}
-            {/* Wave fill */}
-            <path d="M0,55 C40,35 80,15 120,20 C160,25 190,50 220,46 C250,42 280,16 310,14 C340,12 365,28 390,33 C415,38 435,50 460,60 C485,70 520,76 560,79 L560,88 L0,88Z" fill={`${elemColor}30`}/>
-            <path d="M0,55 C40,35 80,15 120,20 C160,25 190,50 220,46 C250,42 280,16 310,14 C340,12 365,28 390,33 C415,38 435,50 460,60 C485,70 520,76 560,79" stroke={elemColor} strokeWidth="1.5" fill="none"/>
-            {/* Now marker */}
-            <line x1="305" y1="0" x2="305" y2="88" stroke="#1a2a3a" strokeWidth="1" strokeDasharray="3,2"/>
-            <circle cx="305" cy="14" r="3" fill="#1a2a3a"/>
-            <text x="309" y="11" fontSize="7" fill="#1a2a3a" fontFamily="sans-serif">NOW</text>
-            {/* Angle crossing spike */}
-            {crossingsOn && nextCrossing && (
-              <>
-                <line x1="350" y1="0" x2="350" y2="88" stroke="#e0a040" strokeWidth="1.5"/>
-                <polygon points="350,2 345,10 355,10" fill="#e0a040"/>
-                <text x="354" y="12" fontSize="7" fill="#c08020" fontFamily="sans-serif">{nextCrossing.angle} {nextCrossing.time}</text>
-              </>
-            )}
-            {/* Scheduled windows */}
-            {(windows ?? []).map((w, i) => {
-              const [sh, sm] = w.startTime.split(":").map(Number);
-              const [eh, em] = w.endTime.split(":").map(Number);
-              const startPct = ((sh - 6) * 60 + sm) / (18 * 60);
-              const endPct = ((eh - 6) * 60 + em) / (18 * 60);
-              const x = Math.max(0, startPct * 600);
-              const w2 = Math.max(20, (endPct - startPct) * 600);
-              const color = WINDOW_COLORS[w.type] ?? "#888";
+          {/* Dynamic tide wave from hourly quality windows */}
+          {(() => {
+            const WIDTH = 600, HEIGHT = 88;
+            const DAY_START_H = 6, DAY_END_H = 24; // 6am–midnight
+            const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
+            const hourWindows = tidesWindowsData?.windows ?? [];
+
+            // Build quality score per hour (6am–midnight, 18 steps)
+            const QUALITY_SCORE: Record<string, number> = {
+              excellent: 7, good: 6, workable: 4, mixed: 3, avoid_if_possible: 2,
+            };
+            const points: { x: number; y: number }[] = [];
+            const now_ = new Date();
+            const nowMinutes = now_.getHours() * 60 + now_.getMinutes();
+
+            for (let h = DAY_START_H; h <= DAY_END_H; h++) {
+              const minFromStart = (h - DAY_START_H) * 60;
+              const x = (minFromStart / DAY_SPAN) * WIDTH;
+              // Find window that covers this hour
+              const win = hourWindows.find(w => {
+                const wStart = new Date(w.startTime);
+                const wEnd   = new Date(w.endTime);
+                const wh = wStart.getHours();
+                const eh = wEnd.getHours();
+                return h >= wh && h < eh;
+              });
+              const score = win ? (QUALITY_SCORE[win.quality] ?? 4) : 4;
+              const vocPenalty = win?.voidOfCourse ? 2 : 0;
+              const adj = Math.max(1, score - vocPenalty);
+              const y = HEIGHT - 12 - ((adj / 7) * (HEIGHT - 24));
+              points.push({ x, y });
+            }
+
+            if (points.length < 2) {
+              // Fallback static wave while data loads
               return (
-                <g key={w.id}>
-                  <rect x={x} y={58} width={w2} height={22} rx="3" fill={color} opacity="0.8"/>
-                  <text x={x + w2 / 2} y={72} fontSize="7" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
-                </g>
+                <svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
+                  <rect width={WIDTH} height={HEIGHT} fill="#f8f6f2" rx="4"/>
+                  <path d={`M0,55 C150,35 300,15 ${WIDTH},45 L${WIDTH},${HEIGHT} L0,${HEIGHT}Z`} fill={`${elemColor}30`}/>
+                </svg>
               );
-            })}
-          </svg>
+            }
+
+            // Smooth the points with a cubic bezier path
+            let pathD = `M${points[0].x},${points[0].y}`;
+            for (let i = 1; i < points.length; i++) {
+              const prev = points[i - 1];
+              const curr = points[i];
+              const cpx = (prev.x + curr.x) / 2;
+              pathD += ` C${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
+            }
+            const last = points[points.length - 1];
+            const fillPath = `${pathD} L${last.x},${HEIGHT} L${points[0].x},${HEIGHT}Z`;
+
+            const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
+            // Y at now position (linear interpolation between points)
+            const nowPointIdx = Math.floor((nowMinutes - DAY_START_H * 60) / 60);
+            const nowY = points[Math.min(nowPointIdx, points.length - 1)]?.y ?? HEIGHT / 2;
+
+            // Crossings on the wave
+            const todayCrossings = (todayData?.crossings ?? []).filter(c =>
+              c.planet === "Moon" || ["Venus","Jupiter","Mars","Saturn","Sun"].includes(c.planet)
+            ).slice(0, 5);
+
+            return (
+              <svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={{ display: "block" }}>
+                <rect width={WIDTH} height={HEIGHT} fill="#f8f6f2" rx="4"/>
+                {/* VOC zone background */}
+                {hourWindows.filter(w => w.voidOfCourse).map((w, i) => {
+                  const wStart = new Date(w.startTime);
+                  const wEnd   = new Date(w.endTime);
+                  const x1 = Math.max(0, ((wStart.getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+                  const x2 = Math.min(WIDTH, ((wEnd.getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+                  return <rect key={i} x={x1} y={0} width={x2 - x1} height={HEIGHT} fill="#f0ece4" opacity="0.7"/>;
+                })}
+                {/* Wave fill */}
+                <path d={fillPath} fill={`${elemColor}28`}/>
+                {/* Wave line */}
+                <path d={pathD} stroke={elemColor} strokeWidth="1.5" fill="none"/>
+                {/* Crossing spikes */}
+                {crossingsOn && todayCrossings.map((c, i) => {
+                  const [ch, cm] = c.time.split(":").map(Number);
+                  const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
+                  if (cx_ < 0 || cx_ > WIDTH) return null;
+                  const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
+                  const col = isBenefic ? "#60a060" : "#e0a040";
+                  return (
+                    <g key={i}>
+                      <line x1={cx_} y1={0} x2={cx_} y2={HEIGHT} stroke={col} strokeWidth="1" strokeDasharray="2,2" opacity="0.7"/>
+                      <polygon points={`${cx_},2 ${cx_-4},9 ${cx_+4},9`} fill={col}/>
+                    </g>
+                  );
+                })}
+                {/* Now marker */}
+                <line x1={nowX} y1={0} x2={nowX} y2={HEIGHT} stroke="#1a2a3a" strokeWidth="1" strokeDasharray="3,2"/>
+                <circle cx={nowX} cy={nowY} r="3.5" fill="#1a2a3a"/>
+                <text x={nowX + 5} y={nowY - 4} fontSize="7" fill="#1a2a3a" fontFamily="sans-serif">NOW</text>
+                {/* Scheduled windows bar */}
+                {(windows ?? []).map((w, i) => {
+                  const [sh, sm] = w.startTime.split(":").map(Number);
+                  const [eh, em] = w.endTime.split(":").map(Number);
+                  const x0 = Math.max(0, ((sh * 60 + sm - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+                  const x1 = Math.max(x0 + 20, ((eh * 60 + em - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+                  const color = WINDOW_COLORS[w.type] ?? "#888";
+                  return (
+                    <g key={w.id}>
+                      <rect x={x0} y={HEIGHT - 22} width={x1 - x0} height={18} rx="3" fill={color} opacity="0.85"/>
+                      <text x={(x0 + x1) / 2} y={HEIGHT - 10} fontSize="6.5" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            );
+          })()}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 2 }}>
             {["6am","9am","12pm","3pm","6pm","9pm","12am"].map(t => <span key={t}>{t}</span>)}
           </div>
@@ -360,11 +474,48 @@ export default function Today({ testerId }: { testerId: string | null }) {
             </div>
           )}
 
-          {/* Tasks placeholder */}
+          {/* Tasks — today's list */}
           {activeTab === "tasks" && (
-            <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", padding: "20px 0" }}>
-              Native tasks coming soon.<br/>
-              <span style={{ fontSize: 10 }}>Connect Todoist or Linear in the meantime.</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {todayTasks.filter(t => t.done !== "true").map(t => (
+                <div key={t.id} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                  borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5",
+                }}>
+                  <button onClick={() => toggleTask.mutate({ id: t.id, done: true })} style={{
+                    width: 17, height: 17, borderRadius: 4, border: "1.5px solid #c0bab0",
+                    background: "transparent", flexShrink: 0, cursor: "pointer",
+                  }} />
+                  <div style={{ flex: 1, fontSize: 12, color: "#222" }}>{t.title}</div>
+                  {t.bestWindowType && (
+                    <div style={{ fontSize: 8, padding: "1px 5px", borderRadius: 4, background: "#e8e4de", color: "#777" }}>
+                      {t.bestWindowType.replace("_", " ")}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {showAddTask ? (
+                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                  <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && newTaskTitle.trim()) addTask.mutate(newTaskTitle); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); } }}
+                    placeholder="Task for today…"
+                    style={{ flex: 1, padding: "6px 10px", borderRadius: 7, border: "1px solid #d8d2ca", fontSize: 12, outline: "none", background: "#faf8f5" }}
+                  />
+                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#aaa", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "4px 0" }}>
+                  + Add task for today
+                </button>
+              )}
+              {todayTasks.filter(t => t.done === "true").length > 0 && (
+                <div style={{ fontSize: 9, color: "#bbb", marginTop: 4 }}>
+                  {todayTasks.filter(t => t.done === "true").length} done today ✓
+                </div>
+              )}
+              {todayTasks.length === 0 && !showAddTask && (
+                <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", padding: "16px 0" }}>No tasks for today yet.</div>
+              )}
             </div>
           )}
 

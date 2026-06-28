@@ -83,13 +83,13 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
 }
 
 function Shell() {
-  const { profile, isReady, showModal, createAndApply } = useTester();
+  const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
   const [capture, setCapture] = useState(false);
 
-  const { data: now } = useTidesNow(testerId);
-  const { data: week } = useTidesWeek();
+  const { data: now } = useTidesNow(testerId, lat, lon);
+  const { data: week } = useTidesWeek(14, lat, lon);
 
   if (showModal || !isReady) {
     return (
@@ -154,12 +154,12 @@ function Shell() {
         </div>
       </div>
 
-      {view==="today"    && <Today    testerId={testerId}/>}
-      {view==="habits"   && <Habits   testerId={testerId} now={now}/>}
+      {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon}/>}
+      {view==="habits"   && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
       {view==="tasks"    && <Tasks    testerId={testerId} now={now}/>}
       {view==="goals"    && <Goals    testerId={testerId}/>}
       {view==="calendar" && <Calendar testerId={testerId} now={now} week={week}/>}
-      {view==="sky"      && <Sky      testerId={testerId}/>}
+      {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
       {view==="settings" && <Settings testerId={testerId}/>}
     </div>
   );

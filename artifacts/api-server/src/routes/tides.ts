@@ -111,6 +111,24 @@ router.get("/tides/now", async (req, res) => {
   const hourRules   = PLANETARY_HOUR_RULES[planHour.ruler] ?? PLANETARY_HOUR_RULES.Sun;
   const elemQuality = ELEMENT_QUALITIES[elemEmph.element] ?? ELEMENT_QUALITIES.water;
 
+  const ARCHETYPES: Record<string, string> = {
+    Sun: "The Sovereign", Moon: "The Nurturer", Mercury: "The Messenger",
+    Venus: "The Connector", Mars: "The Warrior", Jupiter: "The Sage", Saturn: "The Builder",
+  };
+
+  function fmtTime(d: Date) {
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+
+  // Compute next 4 planetary hours
+  const upcomingHours: Array<{ planet: string; time: string }> = [];
+  let cursor = new Date(planHour.endTime.getTime() + 60000);
+  while (upcomingHours.length < 4) {
+    const next = getPlanetaryHour(cursor, lat, lon);
+    upcomingHours.push({ planet: next.ruler, time: fmtTime(next.startTime) });
+    cursor = new Date(next.endTime.getTime() + 60000);
+  }
+
   // Enriched scoring: VOC -2, retrogrades -1, benefics angular +1 each, malefics angular -1 each,
   // applying Moon trine/sextile to benefic +1, applying Moon sq/opp malefic -1
   let score = 5;
@@ -141,6 +159,23 @@ router.get("/tides/now", async (req, res) => {
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
   const dayRuler = DAY_RULERS[date.getDay()];
 
+  // Next moon ingress — approximate as next sign change (scan forward hourly)
+  let nextIngress: string | null = null;
+  if (voc) {
+    const currentSign = moonSign;
+    for (let h = 1; h <= 72; h++) {
+      const futureJd = jd + h / 24;
+      const futPlanets = getPlanetPositions(futureJd);
+      const futMoonSign = futPlanets.find((p) => p.planet === "Moon")!.sign;
+      if (futMoonSign !== currentSign) {
+        const ingressDate = new Date(date.getTime() + h * 3600000);
+        nextIngress = ingressDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+        if (h >= 24) nextIngress = ingressDate.toLocaleDateString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+        break;
+      }
+    }
+  }
+
   res.json({
     timestamp: date.toISOString(),
     dayRuler,
@@ -148,18 +183,30 @@ router.get("/tides/now", async (req, res) => {
       ? `Void Moon in ${moonSign}`
       : `${planHour.ruler} Hour — ${elemEmph.element.charAt(0).toUpperCase() + elemEmph.element.slice(1)} (${moonSign})`,
     quality: qualityLabel,
+    qualityScore: score,
     element: elemEmph,
     planetaryHour: {
-      ...planHour,
-      prompt:   hourRules.prompt,
-      supports: voc ? VOC_SUPPORTS : hourRules.supports,
-      cautions: voc ? VOC_CAUTIONS : [],
+      planet:    planHour.ruler,
+      began:     fmtTime(planHour.startTime),
+      ends:      fmtTime(planHour.endTime),
+      quality:   hourRules.prompt,
+      archetype: ARCHETYPES[planHour.ruler],
+      prompt:    hourRules.prompt,
+      supports:  voc ? VOC_SUPPORTS : hourRules.supports,
+      cautions:  voc ? VOC_CAUTIONS : [],
     },
+    upcomingHours,
     voidOfCourse: voc,
+    voc: { isVOC: voc, nextIngress },
     moonPhase: moonPhaseName,
     moonFraction: fraction,
+    moonIllumination: fraction, // alias for Rail component
     moonSign,
     sunSign,
+    biodynamicType: ((): string => {
+      const bioMap: Record<string, string> = { fire: "fruit", earth: "root", air: "flower", water: "leaf", spirit: "rest" };
+      return bioMap[elemEmph.element] ?? "root";
+    })(),
     retrogrades,
     aspects,
     moonAspects,

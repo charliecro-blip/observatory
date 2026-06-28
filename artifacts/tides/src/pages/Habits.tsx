@@ -45,7 +45,7 @@ function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|
 const TIMING_COLORS = { resonant:"#3a6020", supported:"#3a5a80", neutral:"#888", soften:"#8a5020" };
 const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", soften:"#f0e0c0" };
 
-export default function Habits({ testerId, now }: { testerId:string|null; now:TidesNow|undefined }) {
+export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);

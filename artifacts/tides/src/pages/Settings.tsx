@@ -8,12 +8,13 @@ function authH(tid:string|null) {
 
 export default function Settings({ testerId }: { testerId:string|null }) {
   const qc = useQueryClient();
-  const { profile, resetProfile } = useTester();
+  const { profile, resetProfile, updateLocation, lat, lon } = useTester();
   const [saved, setSaved] = useState(false);
   const [natalForm, setNatalForm] = useState({
     birthDate:"", birthTime:"", birthLat:"", birthLon:"", utcOffset:"", birthPlace:""
   });
-  const [locationForm, setLocationForm] = useState({ lat:"40.7", lon:"-74.0", label:"New York" });
+  const [locationForm, setLocationForm] = useState({ lat: String(lat), lon: String(lon), label: profile?.locationLabel ?? "New York" });
+  const [locSaved, setLocSaved] = useState(false);
 
   // Load existing natal chart
   const { data: natal } = useQuery({
@@ -137,7 +138,19 @@ export default function Settings({ testerId }: { testerId:string|null }) {
             <Field label="Latitude">{input(locationForm.lat,v=>setLocationForm(f=>({...f,lat:v})),{type:"number",step:"0.01"})}</Field>
             <Field label="Longitude">{input(locationForm.lon,v=>setLocationForm(f=>({...f,lon:v})),{type:"number",step:"0.01"})}</Field>
           </div>
-          <div style={{fontSize:10,color:"#aaa"}}>Tip: pass <code>?lat={locationForm.lat}&lon={locationForm.lon}</code> in API calls to use this location.</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8}}>
+            <div style={{fontSize:10,color:"#aaa"}}>Used for planetary hours and angle crossings.</div>
+            <button onClick={() => {
+              const la = parseFloat(locationForm.lat), lo = parseFloat(locationForm.lon);
+              if (!isNaN(la) && !isNaN(lo)) {
+                updateLocation(la, lo, locationForm.label);
+                setLocSaved(true);
+                setTimeout(() => setLocSaved(false), 2000);
+              }
+            }} style={{fontSize:11,padding:"5px 14px",borderRadius:7,border:"none",background:"#1a2a3a",color:"#fff",cursor:"pointer"}}>
+              {locSaved ? "Saved ✓" : "Save location"}
+            </button>
+          </div>
         </div>
 
         {/* iCal */}
