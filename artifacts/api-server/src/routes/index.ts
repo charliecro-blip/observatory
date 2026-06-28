@@ -18,6 +18,8 @@ import calendarRouter from "./calendar";
 import tidesRouter from "./tides";
 import planningRouter from "./planning";
 import tasksRouter from "./tasks";
+import habitsRouter from "./habits";
+import icalRouter from "./ical";
 
 const router: IRouter = Router();
 
@@ -40,5 +42,7 @@ router.use(calendarRouter);
 router.use(tidesRouter);
 router.use(planningRouter);
 router.use(tasksRouter);
+router.use(habitsRouter);
+router.use(icalRouter);
 
 export default router;

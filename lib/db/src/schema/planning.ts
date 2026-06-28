@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const WINDOW_TYPES = [
   "deep_work", "planning", "creative", "admin", "social",
@@ -71,8 +71,35 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Habits: recurring practices with streak tracking
+export const habits = pgTable("habits", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  name: text("name").notNull(),
+  description: text("description"),
+  emoji: text("emoji"),
+  // Timing affinity (mirrors cultivator logic)
+  favoredElements: text("favored_elements"), // comma-separated: water,earth
+  favoredPhases: text("favored_phases"),     // comma-separated: waxing,full
+  favoredBiodynamic: text("favored_biodynamic"), // comma-separated: leaf,root
+  bestWindowType: text("best_window_type"),  // deep_work | social | etc.
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Individual habit completions
+export const habitLogs = pgTable("habit_logs", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  habitId: integer("habit_id").notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD
+  completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Goal = typeof goals.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
 export type PlanningWindow = typeof planningWindows.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type Habit = typeof habits.$inferSelect;
+export type HabitLog = typeof habitLogs.$inferSelect;

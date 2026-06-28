@@ -92,6 +92,40 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
         </div>
       </div>
 
+      {/* Moon Aspects */}
+      {now.moonAspects && now.moonAspects.length > 0 && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon aspects</div>
+          {now.moonAspects.slice(0, 5).map((a, i) => {
+            const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
+            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
+            const sym = aspSym[a.aspect] ?? a.aspect;
+            const col = aspColor[a.aspect] ?? "#888";
+            return (
+              <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 0", borderBottom: i < now.moonAspects!.length-1 ? "1px solid #f0ede8" : "none" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
+                  <div style={{ width:5, height:5, borderRadius:"50%", background:col, flexShrink:0 }}/>
+                  <span style={{ color:col, fontWeight:600 }}>{sym}</span>
+                  <span style={{ color:"#555" }}>{other}</span>
+                </div>
+                <div style={{ fontSize:9, color:"#bbb" }}>
+                  {a.orb < 0.5 ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact</span>
+                  : `${a.orb.toFixed(1)}° ${a.applying ? "→" : "←"}`}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Retrogrades */}
+      {now.retrogrades && now.retrogrades.length > 0 && (
+        <div style={{ padding: "6px 14px", borderBottom: "1px solid #d8d3cd" }}>
+          <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+        </div>
+      )}
+
       {/* Planetary Hour */}
       <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
         <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Planetary hour</div>

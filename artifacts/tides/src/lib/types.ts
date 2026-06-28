@@ -1,3 +1,7 @@
+export interface SkyAspect {
+  planet1: string; planet2: string; aspect: string; nature: string; orb: number; applying: boolean;
+}
+
 export interface TidesNow {
   timestamp: string;
   dayRuler: string;
@@ -14,6 +18,9 @@ export interface TidesNow {
   voc?: { isVOC: boolean; lastAspect?: string; nextIngress?: string };
   qualityScore?: number;
   personalTransits?: PersonalTransit[];
+  moonAspects?: SkyAspect[];
+  aspects?: SkyAspect[];
+  retrogrades?: string[];
 }
 
 export interface PersonalTransit {
