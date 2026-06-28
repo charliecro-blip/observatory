@@ -1,4 +1,5 @@
 import React from "react";
+import { Skeleton } from "@/components/Skeleton";
 import type { TidesNow } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -37,9 +38,19 @@ function progressPct(began: string, ends: string) {
 export default function Rail({ now }: { now: TidesNow | undefined }) {
   if (!now) {
     return (
-      <div className="rail">
-        <div style={{ padding: "16px", color: "#aaa", fontSize: "12px" }}>Loading…</div>
-      </div>
+      <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid #d0cbc3", display: "flex", flexDirection: "column", gap: 0 }}>
+        <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid #d0cbc3" }}>
+          <Skeleton width={60} height={16} style={{ marginBottom: 6 }} />
+          <Skeleton width={100} height={10} />
+        </div>
+        {[80, 100, 60, 80].map((h, i) => (
+          <div key={i} style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd", display: "flex", flexDirection: "column", gap: 6 }}>
+            <Skeleton width={50} height={9} />
+            <Skeleton width="90%" height={h === 80 ? 34 : 12} borderRadius={h === 80 ? 17 : 4} />
+            {h > 60 && <Skeleton width="70%" height={10} />}
+          </div>
+        ))}
+      </aside>
     );
   }
 

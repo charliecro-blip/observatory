@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 
@@ -15,6 +15,21 @@ export default function Settings({ testerId }: { testerId:string|null }) {
   });
   const [locationForm, setLocationForm] = useState({ lat: String(lat), lon: String(lon), label: profile?.locationLabel ?? "New York" });
   const [locSaved, setLocSaved] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const [journalOpen, setJournalOpen] = useState(false);
+
+  // Build journal history from localStorage — last 14 days
+  const journalEntries = useMemo(() => {
+    const entries: { date: string; text: string }[] = [];
+    for (let d = 0; d < 14; d++) {
+      const date = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+      const key = `tides-journal-${testerId ?? "anon"}-${date}`;
+      const text = localStorage.getItem(key);
+      if (text?.trim()) entries.push({ date, text });
+    }
+    return entries;
+  }, [testerId, journalOpen]);
 
   // Load existing natal chart
   const { data: natal } = useQuery({
@@ -131,26 +146,74 @@ export default function Settings({ testerId }: { testerId:string|null }) {
 
         {/* Current location */}
         <div style={{background:"#fff",border:"1px solid #e8e4de",borderRadius:10,padding:"16px"}}>
-          <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Current location</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+            <div style={{fontSize:13,fontWeight:600}}>Current location</div>
+            <button
+              onClick={() => {
+                if (!navigator.geolocation) { setGeoError("Geolocation not supported."); return; }
+                setGeoLoading(true); setGeoError("");
+                navigator.geolocation.getCurrentPosition(
+                  pos => {
+                    const la = parseFloat(pos.coords.latitude.toFixed(4));
+                    const lo = parseFloat(pos.coords.longitude.toFixed(4));
+                    setLocationForm(f => ({ ...f, lat: String(la), lon: String(lo) }));
+                    setGeoLoading(false);
+                  },
+                  err => { setGeoError(err.message); setGeoLoading(false); },
+                  { timeout: 8000 }
+                );
+              }}
+              style={{fontSize:10,padding:"4px 10px",borderRadius:6,border:"1px solid #d0cbc3",background:"#f8f5f0",color:"#555",cursor:"pointer"}}
+            >
+              {geoLoading ? "Locating…" : "⊙ Use my location"}
+            </button>
+          </div>
           <div style={{fontSize:11,color:"#aaa",marginBottom:14}}>Used for planetary hours and angle calculations.</div>
+          {geoError && <div style={{fontSize:10,color:"#c05030",marginBottom:8}}>{geoError}</div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
             <Field label="City">{input(locationForm.label,v=>setLocationForm(f=>({...f,label:v})),{placeholder:"New York"})}</Field>
-            <Field label="Latitude">{input(locationForm.lat,v=>setLocationForm(f=>({...f,lat:v})),{type:"number",step:"0.01"})}</Field>
-            <Field label="Longitude">{input(locationForm.lon,v=>setLocationForm(f=>({...f,lon:v})),{type:"number",step:"0.01"})}</Field>
+            <Field label="Latitude">{input(locationForm.lat,v=>setLocationForm(f=>({...f,lat:v})),{type:"number",step:"0.0001"})}</Field>
+            <Field label="Longitude">{input(locationForm.lon,v=>setLocationForm(f=>({...f,lon:v})),{type:"number",step:"0.0001"})}</Field>
           </div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8}}>
-            <div style={{fontSize:10,color:"#aaa"}}>Used for planetary hours and angle crossings.</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8}}>
+            {locSaved && <span style={{fontSize:10,color:"#60a060"}}>Saved ✓ All calculations now use this location.</span>}
             <button onClick={() => {
               const la = parseFloat(locationForm.lat), lo = parseFloat(locationForm.lon);
               if (!isNaN(la) && !isNaN(lo)) {
                 updateLocation(la, lo, locationForm.label);
                 setLocSaved(true);
-                setTimeout(() => setLocSaved(false), 2000);
+                setTimeout(() => setLocSaved(false), 3000);
               }
             }} style={{fontSize:11,padding:"5px 14px",borderRadius:7,border:"none",background:"#1a2a3a",color:"#fff",cursor:"pointer"}}>
-              {locSaved ? "Saved ✓" : "Save location"}
+              Save location
             </button>
           </div>
+        </div>
+
+        {/* Journal history */}
+        <div style={{background:"#fff",border:"1px solid #e8e4de",borderRadius:10,padding:"16px"}}>
+          <button onClick={() => setJournalOpen(v => !v)}
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",cursor:"pointer",padding:0}}>
+            <div style={{fontSize:13,fontWeight:600}}>Journal history</div>
+            <span style={{fontSize:11,color:"#aaa"}}>{journalOpen ? "▲" : "▼"} {journalEntries.length} entries</span>
+          </button>
+          {journalOpen && (
+            <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+              {journalEntries.length === 0 && (
+                <div style={{fontSize:11,color:"#bbb",textAlign:"center",padding:"12px 0"}}>No journal entries in the last 14 days.</div>
+              )}
+              {journalEntries.map(({ date, text }) => {
+                const d = new Date(date + "T12:00:00");
+                const label = d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
+                return (
+                  <div key={date} style={{borderTop:"1px solid #f0ede8",paddingTop:10}}>
+                    <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#bbb",marginBottom:4}}>{label}</div>
+                    <div style={{fontSize:12,color:"#444",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{text}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* iCal */}

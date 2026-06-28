@@ -59,6 +59,7 @@ export function createProfile(displayName: string): TesterProfile {
 export function clearProfile(): void {
   localStorage.removeItem(KEY_ID);
   localStorage.removeItem(KEY_NAME);
+  localStorage.removeItem(KEY_LOC);
 }
 
 /** Short version of a tester ID for display — first 12 chars after "obs_". */

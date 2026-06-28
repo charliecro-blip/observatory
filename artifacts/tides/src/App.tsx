@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import Rail from "@/components/Rail";
 import Today from "@/pages/Today";
@@ -88,7 +90,7 @@ function Shell() {
   const [view, setView] = useState<View>("today");
   const [capture, setCapture] = useState(false);
 
-  const { data: now } = useTidesNow(testerId, lat, lon);
+  const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
 
   if (showModal || !isReady) {
@@ -114,7 +116,9 @@ function Shell() {
   }
 
   return (
-    <div style={{display:"flex",height:"100vh",width:"100%",background:"#f0ede8",overflow:"hidden"}}>
+    <div style={{display:"flex",height:"100vh",width:"100%",background:"#f0ede8",overflow:"hidden",flexDirection:"column"}}>
+      {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
 
       <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid #d0cbc3"}}>
@@ -161,6 +165,7 @@ function Shell() {
       {view==="calendar" && <Calendar testerId={testerId} now={now} week={week}/>}
       {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
       {view==="settings" && <Settings testerId={testerId}/>}
+      </div>
     </div>
   );
 }
@@ -169,7 +174,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TesterProvider>
-        <Shell/>
+        <ErrorBoundary>
+          <Shell/>
+        </ErrorBoundary>
       </TesterProvider>
     </QueryClientProvider>
   );

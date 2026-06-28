@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows } from "@/hooks/useTides";
+import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import type { Goal } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
     setTimeout(() => setJournalSaved(false), 1500);
   }
 
-  const { data: now } = useTidesNow(testerId, lat, lon);
+  const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
   const { data: practicesData } = usePractices(testerId, lat, lon);
   const { data: windows } = useTodayWindows(testerId, today);
@@ -140,6 +141,24 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   // Find next angle crossing from week data
   const todayData = week?.days?.find(d => d.date === today);
   const nextCrossing = todayData?.crossings?.[0];
+
+  if (nowLoading) {
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "10px 20px", borderBottom: "1px solid #d0cbc3", background: "#ece8e2", flexShrink: 0, height: 42 }} />
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <SkeletonCard rows={3} />
+          <SkeletonCard rows={2} />
+          <div style={{ display: "flex", gap: 4 }}>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} width={40} height={72} borderRadius={8} />
+            ))}
+          </div>
+          <SkeletonCard rows={4} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
