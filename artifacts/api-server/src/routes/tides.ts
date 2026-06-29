@@ -320,6 +320,17 @@ router.get("/tides/week", (req, res) => {
       };
     });
 
+    // Moon aspects active at noon
+    const noonAspects = getMajorAspects(noonJd)
+      .filter(a => a.planet1 === "Moon" || a.planet2 === "Moon")
+      .slice(0, 3)
+      .map(a => ({
+        planet: a.planet1 === "Moon" ? a.planet2 : a.planet1,
+        aspect: a.aspect,
+        applying: a.applying,
+        orb: parseFloat(a.orb.toFixed(1)),
+      }));
+
     days.push({
       date:         dayDate.toISOString().split("T")[0],
       label:        DAY_LABELS[dayDate.getUTCDay()],
@@ -335,6 +346,7 @@ router.get("/tides/week", (req, res) => {
       bestFor,
       tone: WEEK_ELEMENT_TONES[element] ?? WEEK_ELEMENT_TONES.water,
       crossings,
+      moonAspects: noonAspects,
     });
   }
 
@@ -643,6 +655,53 @@ router.get("/tides/events", (req, res) => {
     });
   }
 
+  // ── Moon aspects: scan hourly for applying→separating transitions ──
+  {
+    const CLASSICAL = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+    const ASPECT_ICONS: Record<string, string> = {
+      conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍",
+    };
+    const ASPECT_QUALITY: Record<string, "favorable"|"caution"|"neutral"> = {
+      trine:"favorable", sextile:"favorable", conjunction:"neutral", square:"caution", opposition:"caution",
+    };
+    // Track per-pair previous orb to find minimum (exact moment)
+    const prevOrb: Record<string, number> = {};
+
+    for (let h = 0; h <= numDays * 24; h++) {
+      const scanJd = startJd + h / 24;
+      const aspects = getMajorAspects(scanJd);
+
+      for (const asp of aspects) {
+        if (asp.planet1 !== "Moon" && asp.planet2 !== "Moon") continue;
+        const other = asp.planet1 === "Moon" ? asp.planet2 : asp.planet1;
+        if (!CLASSICAL.includes(other)) continue;
+
+        const key = `${other}:${asp.aspect}`;
+        const prev = prevOrb[key];
+
+        // Exact moment: orb was decreasing (applying) and now starts increasing
+        if (prev !== undefined && asp.orb > prev && prev < 1.5) {
+          const exactDate = new Date((startJd + (h - 0.5) / 24 - 2440587.5) * 86400000);
+          const dateStr = exactDate.toISOString().split("T")[0];
+          const timeStr = exactDate.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", hour12:false });
+          const sym = ASPECT_ICONS[asp.aspect] ?? asp.aspect;
+          events.push({
+            date: dateStr,
+            time: timeStr,
+            type: "moon_aspect" as any,
+            title: `Moon ${sym} ${other}`,
+            subtitle: `${asp.nature} — ${asp.orb.toFixed(1)}° orb`,
+            icon: sym,
+            quality: ASPECT_QUALITY[asp.aspect] ?? "neutral",
+          });
+          delete prevOrb[key]; // reset until next aspect window
+        } else {
+          prevOrb[key] = asp.orb;
+        }
+      }
+    }
+  }
+
   // Scan day-by-day for phase changes, ingresses, VOC, quality windows
   let prevPhase = "";
   let prevSign  = "";
@@ -738,7 +797,7 @@ router.get("/tides/events", (req, res) => {
   }
 
   // Sort by date, then type priority
-  const TYPE_ORDER = { moon_phase: 0, quality_window: 1, crossing: 2, ingress: 3, voc: 4 };
+  const TYPE_ORDER: Record<string, number> = { moon_phase:0, quality_window:1, crossing:2, moon_aspect:3, ingress:4, voc:5 };
   events.sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
     return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);

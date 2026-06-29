@@ -56,7 +56,7 @@ export interface WeekDay {
 export interface SkyEvent {
   date: string;
   time?: string;
-  type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window";
+  type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window" | "moon_aspect";
   title: string;
   subtitle?: string;
   icon: string;

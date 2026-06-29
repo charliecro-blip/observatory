@@ -149,12 +149,17 @@ function EventDetailPanel({ event, onClose }: { event: SkyEvent; onClose: () => 
 
 // ── Event row (compact) ───────────────────────────────────────────────────────
 
+const ASPECT_COLORS: Record<string, string> = {
+  "☌":"#f0b060", "□":"#e06060", "△":"#60a060", "⚹":"#6090d0", "☍":"#e06060",
+};
+
 function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: boolean; onSelect: () => void }) {
   const qColor = QUALITY_COLORS[event.quality] ?? "#555";
   const planetEntry = event.type === "crossing"
     ? Object.entries(PLANET_COLORS).find(([p]) => (event.title ?? "").includes(p))
     : null;
-  const accentColor = planetEntry ? planetEntry[1] : (event.quality === "favorable" ? "#3a6020" : event.quality === "caution" ? "#a05020" : "#888");
+  const aspectColor = event.type === "moon_aspect" ? (ASPECT_COLORS[event.icon] ?? "#7080a0") : null;
+  const accentColor = aspectColor ?? (planetEntry ? planetEntry[1] : (event.quality === "favorable" ? "#3a6020" : event.quality === "caution" ? "#a05020" : "#888"));
 
   return (
     <button onClick={onSelect} style={{
@@ -239,9 +244,9 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
     return e.date > today;
   });
 
-  // Lunar stream — ingresses + VOC + moon_phase, sorted by date+time
+  // Lunar stream — ingresses + VOC + moon_phase + moon_aspect, sorted by date+time
   const lunarStream = allEvents
-    .filter(e => ["ingress","voc","moon_phase"].includes(e.type) && e.date >= today)
+    .filter(e => ["ingress","voc","moon_phase","moon_aspect"].includes(e.type) && e.date >= today)
     .sort((a, b) => {
       const da = a.date + (a.time ?? "00:00");
       const db = b.date + (b.time ?? "00:00");

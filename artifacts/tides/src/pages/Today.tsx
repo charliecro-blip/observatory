@@ -324,163 +324,56 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           todayShowWave={todayShowWave}
         />
 
-        {/* Week strip — 14 days */}
-        {todayShow14Day && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
-          <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4 }}>
-            {(week?.days ?? []).map(day => {
-              const isToday = day.date === today;
-              const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
-              const qc = QUALITY_COLORS[day.quality ?? "neutral"] ?? "#888";
-              const MOON_GLYPHS: Record<string, string> = {
-                new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
-                full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
-              };
-              const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
-              const phaseGlyph = MOON_GLYPHS[phaseKey];
-              const crossingCount = (day.crossings ?? []).length;
-              return (
-                <div key={day.date} style={{
-                  minWidth: 46, border: `1px solid ${isToday ? ec : "#e8e4de"}`,
-                  borderTop: `3px solid ${isToday ? ec : ec + "40"}`,
-                  borderRadius: 8, padding: "6px 4px", display: "flex", flexDirection: "column",
-                  alignItems: "center", gap: 3, background: isToday ? `${ec}10` : "transparent", flexShrink: 0,
-                }}>
-                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.5px", color: isToday ? ec : "#aaa", fontWeight: isToday ? 600 : 400 }}>
-                    {day.label?.slice(0, 3)}
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: isToday ? ec : "#444" }}>
-                    {new Date(day.date + "T12:00:00").getDate()}
-                  </div>
-                  {phaseGlyph ? (
-                    <div style={{ fontSize: 11 }}>{phaseGlyph}</div>
-                  ) : (
-                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: qc }} />
-                  )}
-                  <div style={{ fontSize: 7.5, color: ec, textAlign:"center", lineHeight:1.2, fontWeight: 500 }}>
-                    {day.moonSign?.split(" ")[0] ?? ""}
-                  </div>
-                  {crossingCount > 0 && (
-                    <div style={{ fontSize: 7, color: "#c08020", background: "#fff8e8", border: "1px solid #e8d890", borderRadius: 3, padding: "0 3px", fontWeight: 600 }}>
-                      {crossingCount}⚡
-                    </div>
-                  )}
-                  <div style={{ width: "100%", height: 2, borderRadius: 1, background: qc, opacity: 0.6, marginTop: 2 }} />
-                </div>
-              );
-            })}
-          </div>
-        </div>}
+        {/* 14 days ahead */}
+        {todayShow14Day && <FourteenDays week={week} today={today} />}
 
-        {/* Journal prompt */}
-        {todayShowJournal && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Today's reflection</div>
-            {journalSaved && <span style={{ fontSize: 9, color: "#60a060" }}>saved ✓</span>}
-          </div>
-          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8, fontStyle: "italic" }}>
-            {heroText(now).replace(/\.$/, "")} — what does this day call for?
-          </div>
-          <textarea
-            value={journalText}
-            onChange={e => setJournalText(e.target.value)}
-            onBlur={e => e.target.value.trim() && saveJournal(e.target.value)}
-            placeholder="A few words about where you're putting your energy today…"
-            rows={3}
-            style={{
-              width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #e0dbd4",
-              fontSize: 12, lineHeight: 1.5, resize: "none", outline: "none",
-              background: "#faf8f5", color: "#333", fontFamily: "inherit",
-            }}
-          />
-        </div>}
 
-        {/* Waves — unified practices, tasks, goals */}
+        {/* Waves — flat unified list: practices + tasks + goals */}
         <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: "14px 18px 10px", borderBottom: "1px solid #f0ede8", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#1a2a3a" }}>Waves</div>
-            <div style={{ fontSize: 9, color: "#aaa" }}>practices · tasks · goals</div>
+            {todayTasks.filter(t => t.done === "true").length > 0 && (
+              <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
+            )}
           </div>
-
-          {/* Practices */}
-          {practices.length > 0 && (
-            <div style={{ padding: "10px 18px", borderBottom: "1px solid #f0ede8" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 7 }}>Practices</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {resonant.length > 0 && <div style={{ fontSize: 8, color: "#4a7030", fontWeight: 700, letterSpacing: "0.4px" }}>✦ resonant now</div>}
-                {resonant.map(p => <PracticeRow key={p.id} practice={p} />)}
-                {supported.length > 0 && <div style={{ fontSize: 8, color: "#999", letterSpacing: "0.4px", marginTop: 4 }}>supported</div>}
-                {supported.map(p => <PracticeRow key={p.id} practice={p} />)}
-                {soften.length > 0 && <div style={{ fontSize: 8, color: "#b06030", letterSpacing: "0.4px", marginTop: 4 }}>soften or skip</div>}
-                {soften.map(p => <PracticeRow key={p.id} practice={p} dim />)}
-              </div>
-            </div>
-          )}
-
-          {/* Tasks */}
-          <div style={{ padding: "10px 18px", borderBottom: "1px solid #f0ede8" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>Tasks today</div>
-              {todayTasks.filter(t => t.done === "true").length > 0 && (
-                <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
-              )}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {todayTasks.filter(t => t.done !== "true").map(t => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5" }}>
-                  <button onClick={() => toggleTask.mutate({ id: t.id, done: true })} style={{
-                    width: 16, height: 16, borderRadius: 4, border: "1.5px solid #c0bab0",
-                    background: "transparent", flexShrink: 0, cursor: "pointer",
-                  }} />
-                  <div style={{ flex: 1, fontSize: 12, color: "#222" }}>{t.title}</div>
-                  {t.bestWindowType && (
-                    <div style={{ fontSize: 8, padding: "1px 5px", borderRadius: 4, background: "#e8e4de", color: "#777" }}>
-                      {t.bestWindowType.replace("_", " ")}
-                    </div>
-                  )}
-                </div>
-              ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {/* Resonant practices first */}
+            {resonant.map(p => <WaveRow key={`p-${p.id}`} type="practice-resonant" label={p.name} sub={p.reasons?.[0]} />)}
+            {/* Active tasks */}
+            {todayTasks.filter(t => t.done !== "true").map(t => (
+              <WaveRow key={`t-${t.id}`} type="task"
+                label={t.title}
+                sub={t.bestWindowType?.replace("_"," ")}
+                onCheck={() => toggleTask.mutate({ id: t.id, done: true })}
+              />
+            ))}
+            {/* Goals */}
+            {(goals ?? []).slice(0, 4).map(g => (
+              <WaveRow key={`g-${g.id}`} type="goal" label={g.title}
+                sub={g.horizon} />
+            ))}
+            {/* Supported + soften practices below */}
+            {supported.map(p => <WaveRow key={`ps-${p.id}`} type="practice-supported" label={p.name} sub={p.reasons?.[0]} />)}
+            {soften.map(p => <WaveRow key={`pf-${p.id}`} type="practice-soften" label={p.name} />)}
+            {/* Add task */}
+            <div style={{ padding: "8px 18px", borderTop: "1px solid #f0ede8" }}>
               {showAddTask ? (
                 <div style={{ display: "flex", gap: 6 }}>
                   <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && newTaskTitle.trim()) addTask.mutate(newTaskTitle); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); } }}
-                    placeholder="Task for today…"
-                    style={{ flex: 1, padding: "6px 10px", borderRadius: 7, border: "1px solid #d8d2ca", fontSize: 12, outline: "none", background: "#faf8f5" }}
+                    placeholder="Add task for today…"
+                    style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid #d8d2ca", fontSize: 12, outline: "none", background: "#faf8f5" }}
                   />
-                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
+                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)}
+                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
                 </div>
               ) : (
-                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "2px 0" }}>
+                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#ccc", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   + add task
                 </button>
               )}
-              {todayTasks.length === 0 && !showAddTask && (
-                <div style={{ fontSize: 11, color: "#ccc", padding: "4px 0" }}>No tasks yet.</div>
-              )}
             </div>
           </div>
-
-          {/* Goals */}
-          {(goals ?? []).length > 0 && (
-            <div style={{ padding: "10px 18px" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 7 }}>Goals in view</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {(goals ?? []).slice(0, 5).map(g => (
-                  <div key={g.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{
-                      fontSize: 7.5, padding: "2px 6px", borderRadius: 4, fontWeight: 700,
-                      textTransform: "uppercase", flexShrink: 0, marginTop: 2, letterSpacing: "0.3px",
-                      background: g.horizon === "near" ? "#dbeafe" : g.horizon === "mid" ? "#f0e8d8" : "#e8d8f0",
-                      color: g.horizon === "near" ? "#2a5a90" : g.horizon === "mid" ? "#8a5020" : "#602080",
-                    }}>
-                      {g.horizon}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: "#333", lineHeight: 1.3 }}>{g.title}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
       </div>
@@ -493,10 +386,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
 type ChartType = "flow" | "heart" | "create" | "move";
 
 const CHART_TYPES: { id: ChartType; label: string; color: string; desc: string }[] = [
-  { id: "flow",   label: "Flow",       color: "#3a5a80", desc: "General timing quality" },
-  { id: "heart",  label: "Heart",      color: "#c06090", desc: "Love · connection · relationship" },
-  { id: "create", label: "Create",     color: "#6040a0", desc: "Creativity · art · expression" },
-  { id: "move",   label: "Move",       color: "#c04040", desc: "Exercise · action · assertion" },
+  { id: "flow",   label: "Overall",    color: "#3a5a80", desc: "General quality — all factors" },
+  { id: "heart",  label: "Social",     color: "#c06090", desc: "Connection · relationship · love" },
+  { id: "create", label: "Creative",   color: "#6040a0", desc: "Art · expression · making" },
+  { id: "move",   label: "Active",     color: "#c04040", desc: "Movement · exercise · assertion" },
 ];
 
 const CHART_AMPS: Record<ChartType, Record<string, number>> = {
@@ -516,6 +409,14 @@ const PHASE_COLORS: Record<string, string> = {
   "last quarter":"#5a6a7a", "waning crescent":"#3a4a5a",
 };
 
+// Planetary hour quality contribution to wave score (per chart type)
+const HOUR_QUALITY: Record<ChartType, Record<string, number>> = {
+  flow:   { Sun:1.5, Moon:0.8, Mercury:1.0, Venus:1.5, Mars:-0.5, Jupiter:1.5, Saturn:-0.5 },
+  heart:  { Sun:0.5, Moon:1.5, Mercury:0.5, Venus:2.5, Mars:-1.0, Jupiter:1.0, Saturn:-1.5 },
+  create: { Sun:0.8, Moon:2.0, Mercury:1.5, Venus:2.0, Mars:0.3, Jupiter:1.0, Saturn:-0.8 },
+  move:   { Sun:1.5, Moon:0.3, Mercury:0.5, Venus:0.0, Mars:2.5, Jupiter:1.0, Saturn:0.3 },
+};
+
 function buildWavePoints(
   crossings: any[],
   hourWindows: any[],
@@ -528,6 +429,7 @@ function buildWavePoints(
   const STEP = 5; // 5-min resolution for smooth wave
   const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
   const AMPS = CHART_AMPS[chartType];
+  const HQ = HOUR_QUALITY[chartType];
   const pts: { x: number; y: number; score: number; win: any; label: string }[] = [];
 
   for (let minFromStart = 0; minFromStart <= DAY_SPAN; minFromStart += STEP) {
@@ -541,9 +443,16 @@ function buildWavePoints(
       const eh = new Date(w.endTime).getHours();
       return h >= wh && h < eh;
     });
+    // Base quality: hourly window score + planetary hour contribution
     let score = win ? (QUALITY_SCORE_MAP[win.quality] ?? 4) : 4;
     if (win?.voidOfCourse) score -= 1.5;
+    // Planetary hour quality
+    const hourPlanet = win?.planet ?? win?.planetaryHour ?? null;
+    if (hourPlanet && HQ[hourPlanet] !== undefined) {
+      score += HQ[hourPlanet] * 0.6; // blend in at 60% weight
+    }
 
+    // Angular crossing Gaussian bumps
     for (const c of crossings) {
       if (!c.time) continue;
       const [ch, cm] = c.time.split(":").map(Number);
@@ -948,31 +857,121 @@ function TideChart({
   );
 }
 
-function PracticeRow({ practice, dim }: { practice: any; dim?: boolean }) {
-  const timingColors: Record<string, string> = {
-    resonant: "#2a6020", supported: "#3a5a80", soften: "#8a5020", protect: "#8a3020",
-  };
-  const timingBg: Record<string, string> = {
-    resonant: "#d0f0c0", supported: "#d0e0f8", soften: "#f0e0c0", protect: "#f0d0c0",
-  };
-  const color = timingColors[practice.timing] ?? "#888";
-  const bg = timingBg[practice.timing] ?? "#e8e4de";
+// ── WaveRow ────────────────────────────────────────────────────────────────────
+type WaveRowType = "practice-resonant" | "practice-supported" | "practice-soften" | "task" | "goal";
 
+const WAVE_ROW_STYLE: Record<WaveRowType, { border: string; dot: string; textColor: string; dim?: boolean }> = {
+  "practice-resonant":  { border: "#60a060", dot: "#60a060", textColor: "#2a5020" },
+  "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: "#3a5a80" },
+  "practice-soften":    { border: "#d0a060", dot: "#d0a060", textColor: "#8a5020", dim: true },
+  "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222" },
+  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: "#602080" },
+};
+
+function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: string; sub?: string; onCheck?: () => void }) {
+  const s = WAVE_ROW_STYLE[type];
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-      borderRadius: 7, border: `1px solid ${practice.timing === "resonant" ? "#c0d8b0" : "#e8e4de"}`,
-      background: practice.timing === "resonant" ? "#f0f8ec" : "#faf8f5",
-      opacity: dim ? 0.65 : 1,
+      display: "flex", alignItems: "center", gap: 10, padding: "8px 18px",
+      borderBottom: "1px solid #f5f2ee",
+      borderLeft: `3px solid ${s.border}`,
+      opacity: s.dim ? 0.6 : 1,
+      background: type === "practice-resonant" ? "#fafff8" : "transparent",
     }}>
+      {onCheck ? (
+        <button onClick={onCheck} style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${s.border}`, background: "transparent", flexShrink: 0, cursor: "pointer" }} />
+      ) : (
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
+      )}
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: "#222" }}>{practice.name}</div>
-        {practice.reasons?.[0] && (
-          <div style={{ fontSize: 9, color: "#aaa", marginTop: 1 }}>{practice.reasons[0]}</div>
-        )}
+        <div style={{ fontSize: 12, color: s.textColor, fontWeight: type === "practice-resonant" ? 500 : 400 }}>{label}</div>
+        {sub && <div style={{ fontSize: 9, color: "#bbb", marginTop: 1 }}>{sub}</div>}
       </div>
-      <div style={{ fontSize: 8, padding: "2px 6px", borderRadius: 4, background: bg, color, fontWeight: 600, flexShrink: 0 }}>
-        {practice.timing}
+    </div>
+  );
+}
+
+// ── FourteenDays ───────────────────────────────────────────────────────────────
+
+const MOON_GLYPHS: Record<string, string> = {
+  new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
+  full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
+};
+const ASP_SYM: Record<string, string> = { conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍" };
+const ASP_COLOR: Record<string, string> = { trine:"#60a060", sextile:"#6090d0", conjunction:"#f0b060", square:"#e06060", opposition:"#e06060" };
+
+function FourteenDays({ week, today }: { week: any; today: string }) {
+  const days = week?.days ?? [];
+  if (!days.length) return null;
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {days.map((day: any) => {
+          const isToday = day.date === today;
+          const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
+          const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
+          const phaseGlyph = MOON_GLYPHS[phaseKey];
+          const aspects = (day.moonAspects ?? []) as { planet: string; aspect: string; applying: boolean; orb: number }[];
+          const d = new Date(day.date + "T12:00:00");
+
+          return (
+            <div key={day.date} style={{
+              display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 0",
+              borderBottom: "1px solid #f5f2ee",
+              background: isToday ? `${ec}08` : "transparent",
+              borderLeft: isToday ? `3px solid ${ec}` : "3px solid transparent",
+              paddingLeft: 8,
+            }}>
+              {/* Date */}
+              <div style={{ width: 38, flexShrink: 0 }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", color: isToday ? ec : "#bbb", fontWeight: isToday ? 700 : 400 }}>
+                  {day.label?.slice(0,3)}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "#333", lineHeight: 1 }}>
+                  {d.getDate()}
+                </div>
+              </div>
+              {/* Moon info */}
+              <div style={{ width: 80, flexShrink: 0 }}>
+                <div style={{ fontSize: 10, color: ec, fontWeight: 500 }}>{day.moonSign}</div>
+                {phaseGlyph && (
+                  <div style={{ fontSize: 9, color: "#aaa", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>
+                )}
+                {day.voidPeriods && (
+                  <div style={{ fontSize: 8, color: "#9a8050", marginTop: 1 }}>◌ VOC</div>
+                )}
+              </div>
+              {/* Aspects */}
+              <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "3px 8px" }}>
+                {aspects.map((a, i) => {
+                  const sym = ASP_SYM[a.aspect] ?? a.aspect;
+                  const col = ASP_COLOR[a.aspect] ?? "#888";
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 9.5 }}>
+                      <span style={{ color: "#7080a0" }}>☽</span>
+                      <span style={{ color: col, fontWeight: 700 }}>{sym}</span>
+                      <span style={{ color: "#555" }}>{a.planet}</span>
+                      {a.applying && <span style={{ fontSize: 7, color: col }}>→</span>}
+                    </div>
+                  );
+                })}
+                {aspects.length === 0 && (
+                  <div style={{ fontSize: 9, color: "#ddd" }}>quiet</div>
+                )}
+              </div>
+              {/* Crossings */}
+              {(day.crossings ?? []).length > 0 && (
+                <div style={{ flexShrink: 0, fontSize: 8, color: "#c08020" }}>
+                  {(day.crossings as any[]).slice(0,2).map((c: any, i: number) => (
+                    <div key={i}>{c.planet[0]} {c.angle} {c.time}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
