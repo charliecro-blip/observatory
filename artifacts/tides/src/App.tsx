@@ -165,7 +165,7 @@ function Shell() {
       {view==="habits"   && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
       {view==="tasks"    && <Tasks    testerId={testerId} now={now}/>}
       {view==="goals"    && <Goals    testerId={testerId}/>}
-      {view==="calendar" && <Calendar testerId={testerId} now={now} week={week}/>}
+      {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
       {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
       {view==="modules"  && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
       {view==="settings" && <Settings testerId={testerId}/>}
