@@ -68,6 +68,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
+  const [tideView, setTideView] = useState<"day" | "week">("day");
   const [activeTab, setActiveTab] = useState<"habits" | "tasks" | "goals">("habits");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
@@ -145,9 +146,15 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   const elemColor = ELEMENT_COLORS[el] ?? "#888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888";
 
-  // Find next angle crossing from week data
+  // Find next angle crossing from week data — only within 30 minutes
   const todayData = week?.days?.find(d => d.date === today);
-  const nextCrossing = todayData?.crossings?.[0];
+  const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
+  const nextCrossing = (todayData?.crossings ?? []).find(c => {
+    if (!c.time) return false;
+    const [ch, cm] = c.time.split(":").map(Number);
+    const crossMin = ch * 60 + (cm ?? 0);
+    return crossMin >= nowMinutesForCross - 5 && crossMin <= nowMinutesForCross + 30;
+  });
 
   if (nowLoading) {
     return (
@@ -180,12 +187,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Tooltip content={
             <div>
-              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>{el} · {now?.biodynamicType}</div>
-              <div style={{ fontSize: 10, color: "#b0aaa4" }}>Element shapes the day's quality. Biodynamic type reflects the Moon's zodiac position and its influence on vitality and focus.</div>
+              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>{el} element · {now?.quality}</div>
+              <div style={{ fontSize: 10, color: "#b0aaa4" }}>Element shapes the day's quality. Moon in {now?.moonSign} gives a {el} quality to this time.</div>
             </div>
           }>
             <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
-              {el} · {now?.biodynamicType} · {now?.quality}
+              {el} · {now?.quality}
             </div>
           </Tooltip>
           <button
@@ -279,22 +286,23 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>The tide</div>
             <div style={{ display: "flex", background: "#f0ede8", borderRadius: 5, padding: 2, gap: 1 }}>
-              {["Day", "Week"].map(t => (
-                <div key={t} style={{
+              {(["Day", "Week"] as const).map(t => (
+                <div key={t} onClick={() => setTideView(t.toLowerCase() as "day"|"week")} style={{
                   fontSize: 10, padding: "3px 10px", borderRadius: 4,
-                  background: t === "Day" ? "#fff" : "transparent",
-                  color: t === "Day" ? "#333" : "#888", fontWeight: t === "Day" ? 500 : 400, cursor: "pointer",
+                  background: tideView === t.toLowerCase() ? "#fff" : "transparent",
+                  color: tideView === t.toLowerCase() ? "#333" : "#888",
+                  fontWeight: tideView === t.toLowerCase() ? 500 : 400, cursor: "pointer",
                 }}>{t}</div>
               ))}
             </div>
           </div>
           <div style={{ fontSize: 10, color: "#aaa", marginBottom: 10 }}>
-            {now?.momentLabel} · {now?.biodynamicType}
+            {now?.momentLabel}
           </div>
 
           {/* Dynamic tide wave + resonance bands */}
-          {todayShowWave && (() => {
-            const WIDTH = 600, WAVE_H = 96, BAND_H = 11, BAND_GAP = 2, BANDS = 3;
+          {todayShowWave && tideView === "day" && (() => {
+            const WIDTH = 600, WAVE_H = 96, BAND_H = 11, BAND_GAP = 2, BANDS = 2;
             const TOTAL_H = WAVE_H + BANDS * (BAND_H + BAND_GAP) + 4;
             const DAY_START_H = 6, DAY_END_H = 24;
             const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
@@ -359,8 +367,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             const phaseBonus = isWaxing ? 1 : 0;
 
             // Band colors
-            const BIO_COLORS: Record<string, string> = { fruit: "#c06020", flower: "#6080b0", root: "#3a6030", leaf: "#3a5a80" };
-            const bioColor = BIO_COLORS[now?.biodynamicType ?? ""] ?? "#888";
             const PHASE_COLORS: Record<string, string> = {
               "new moon":"#1a2a3a", "waxing crescent":"#4a6080", "first quarter":"#5a7090",
               "waxing gibbous":"#6a8aa0", "full moon":"#8a9aaa", "waning gibbous":"#7a8a9a",
@@ -466,13 +472,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                   })}
                   <text x={2} y={BAND_Y(0) + 8} fontSize="6.5" fill="#aaa" fontFamily="sans-serif">quality</text>
 
-                  {/* Band 2: Biodynamic day (uniform for the day) */}
-                  <rect x={0} y={BAND_Y(1)} width={WIDTH} height={BAND_H} fill={bioColor} opacity={0.35}/>
-                  <text x={2} y={BAND_Y(1) + 8} fontSize="6.5" fill="#888" fontFamily="sans-serif">{now?.biodynamicType}</text>
-
-                  {/* Band 3: Lunar phase */}
-                  <rect x={0} y={BAND_Y(2)} width={WIDTH} height={BAND_H} fill={phaseColor} opacity={0.4}/>
-                  <text x={2} y={BAND_Y(2) + 8} fontSize="6.5" fill="#ccc" fontFamily="sans-serif">{(moonPhaseName ?? "").replace(/_/g," ")}</text>
+                  {/* Band 2: Lunar phase */}
+                  <rect x={0} y={BAND_Y(1)} width={WIDTH} height={BAND_H} fill={phaseColor} opacity={0.4}/>
+                  <text x={2} y={BAND_Y(1) + 8} fontSize="6.5" fill="#ccc" fontFamily="sans-serif">{(moonPhaseName ?? "").replace(/_/g," ")}</text>
 
                   {/* Crossing dots on bands */}
                   {todayCrossings.map((c, i) => {
@@ -527,10 +529,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                     quality
                   </div>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <div style={{ width: 12, height: 5, background: bioColor, borderRadius: 2, opacity: 0.6 }} />
-                    biodynamic
-                  </div>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     <div style={{ width: 12, height: 5, background: phaseColor, borderRadius: 2, opacity: 0.7 }} />
                     lunar phase
                   </div>
@@ -543,9 +541,38 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               </div>
             );
           })()}
-          {todayShowWave && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 1 }}>
+          {todayShowWave && tideView === "day" && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 1 }}>
             {["6am","9am","12pm","3pm","6pm","9pm","12am"].map(t => <span key={t}>{t}</span>)}
           </div>}
+
+          {/* Week view — 7-day quality bars */}
+          {tideView === "week" && (() => {
+            const ELEMENT_COLORS_W: Record<string, string> = { water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#602080" };
+            const days7 = (week?.days ?? []).slice(0, 7);
+            return (
+              <div style={{ display:"flex", gap:4 }}>
+                {days7.map(d => {
+                  const isToday = d.date === today;
+                  const ec = ELEMENT_COLORS_W[d.element ?? "water"] ?? "#888";
+                  const qs = d.qualityScore ?? 4;
+                  const qc = qs >= 5 ? "#3a7040" : qs >= 3 ? "#8a8030" : "#c07030";
+                  return (
+                    <div key={d.date} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 4px", borderRadius:8, border:`1px solid ${isToday ? "#c0b090" : "#e8e4de"}`, background: isToday ? "#faf6f0" : "#faf8f5" }}>
+                      <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.4px", color: isToday ? "#b07030" : "#aaa", fontWeight: isToday ? 600 : 400 }}>{d.label?.slice(0,3)}</div>
+                      <div style={{ fontSize:11, fontWeight: isToday ? 700 : 500, color: isToday ? "#b07030" : "#444" }}>{new Date(d.date+"T12:00:00").getDate()}</div>
+                      <div style={{ fontSize:8, color:ec }}>{d.moonPhase?.replace(/_/g," ").split(" ")[0]}</div>
+                      <div style={{ width:"100%", height:3, borderRadius:2, background:"#e8e4de" }}>
+                        <div style={{ height:"100%", borderRadius:2, width:`${(qs/7)*100}%`, background:qc }}/>
+                      </div>
+                      <div style={{ fontSize:7, color:ec }}>
+                        {d.moonSign?.split(" ")[0] ?? ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Week strip — 14 days */}
@@ -569,7 +596,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                     {new Date(day.date + "T12:00:00").getDate()}
                   </div>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: qc }} />
-                  <div style={{ fontSize: 8, color: ec }}>{day.element}</div>
+                  <div style={{ fontSize: 7.5, color: ec, textAlign:"center", lineHeight:1 }}>
+                    {day.moonSign?.split(" ")[0] ?? (day.element !== "spirit" ? day.element : "transit")}
+                  </div>
                   {(day.crossings ?? []).length > 0 && (
                     <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#e0a040" }} title="Angle crossing" />
                   )}

@@ -1,6 +1,6 @@
 import React from "react";
 import { Skeleton } from "@/components/Skeleton";
-import { HelpBadge } from "@/components/Tooltip";
+import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 
@@ -59,7 +59,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
     );
   }
 
-  const { planetaryHour, upcomingHours, moonSign, moonPhase, moonIllumination, biodynamicType, element } = now;
+  const { planetaryHour, upcomingHours, moonSign, moonPhase, moonIllumination, element } = now;
   const pct = progressPct(planetaryHour.began, planetaryHour.ends);
   const elemColor = ELEMENT_COLORS[element?.element ?? "water"] ?? "#888";
   const pColor = planetColor(planetaryHour.planet);
@@ -91,15 +91,12 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
             }} />
             <div>
               <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
-              <div style={{ color: "#777", marginTop: 1 }}>{Math.round(moonIllumination ?? 0)}% · {moonSign}</div>
+              <div style={{ color: "#777", marginTop: 1 }}>{Math.round((moonIllumination ?? 0) * 100)}% · {moonSign}</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
             <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor }}>
               {element?.element}
-            </span>
-            <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d0e0cc", color: "#3a6030" }}>
-              {biodynamicType}
             </span>
             {now.qualityScore && (
               <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d8e8d0", color: "#3a6030" }}>
@@ -128,8 +125,19 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
                   <span style={{ color:"#555" }}>{other}</span>
                 </div>
                 <div style={{ fontSize:9, color:"#bbb" }}>
-                  {a.orb < 0.5 ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact</span>
-                  : `${a.orb.toFixed(1)}° ${a.applying ? "→" : "←"}`}
+                  {a.orb < 0.5
+                    ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
+                    : a.applying
+                      ? (() => {
+                          const hrsToExact = a.orb / 0.55;
+                          const now_ = new Date();
+                          const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
+                          const hh = exactAt.getHours().toString().padStart(2,"0");
+                          const mm = exactAt.getMinutes().toString().padStart(2,"0");
+                          return <span style={{ color:"#a09080" }}>exact ~{hh}:{mm}</span>;
+                        })()
+                      : <span style={{ color:"#ccc" }}>{a.orb.toFixed(1)}° past</span>
+                  }
                 </div>
               </div>
             );
@@ -142,7 +150,28 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
         <div style={{ padding: "6px 14px", borderBottom: "1px solid #d8d3cd" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
-            <HelpBadge term="retrogrades"/>
+            <Tooltip content={
+              <div>
+                <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>
+                <div style={{ color:"#b0aaa4", fontSize:10.5, lineHeight:1.55 }}>
+                  {now.retrogrades.map(p => {
+                    const notes: Record<string,string> = {
+                      Mercury: "Mercury retrograde affects communication, contracts, travel, and technology. Re-read, revise, and revisit rather than launch.",
+                      Venus: "Venus retrograde affects relationships, finances, and aesthetics. Revisit rather than initiate new connections or purchases.",
+                      Mars: "Mars retrograde affects decisive action and assertion. Redirect energy inward; avoid forcing outcomes.",
+                      Jupiter: "Jupiter retrograde is a time for inner growth and philosophical review — expansion happens internally.",
+                      Saturn: "Saturn retrograde calls for reassessing commitments, structures, and responsibilities.",
+                      Uranus: "Uranus retrograde turns disruption inward — personal breakthroughs and course corrections.",
+                      Neptune: "Neptune retrograde heightens clarity through illusion — a good time to review ideals and creative projects.",
+                      Pluto: "Pluto retrograde intensifies inner transformation. Deep review of power dynamics and hidden patterns.",
+                    };
+                    return <div key={p} style={{ marginBottom:5 }}><strong style={{ color:"#e8e4de" }}>{p}:</strong> {notes[p] ?? `${p} retrograde — revisit and review rather than initiate.`}</div>;
+                  })}
+                </div>
+              </div>
+            } width={280}>
+              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"#d8d2ca", color:"#888", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
+            </Tooltip>
           </div>
         </div>
       )}

@@ -124,13 +124,15 @@ function timeToHourFrac(t: string): number {
 
 // ── DayCell ───────────────────────────────────────────────────────────────────
 
-function DayCell({ dateStr, dayData, isToday, isSelected, isPast, layer, onClick }: {
+function DayCell({ dateStr, dayData, isToday, isSelected, isPast, layer, showSignNames, vocFrac, onClick }: {
   dateStr: string;
   dayData?: WeekDay;
   isToday: boolean;
   isSelected: boolean;
   isPast: boolean;
   layer: LayerLevel;
+  showSignNames: boolean;
+  vocFrac?: { top: number; height: number } | null;
   onClick: () => void;
 }) {
   const dayNum = parseInt(dateStr.split("-")[2]);
@@ -163,12 +165,23 @@ function DayCell({ dateStr, dayData, isToday, isSelected, isPast, layer, onClick
       boxShadow: isSelected ? "0 0 0 1px #1a2a3a" : "none",
     }}>
 
-      {/* VOC diagonal stripe overlay */}
+      {/* VOC diagonal stripe — proportional to time-of-day */}
       {layer >= 1 && voc && (
-        <div style={{
-          position:"absolute", inset:0, borderRadius:6, pointerEvents:"none",
-          background:"repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,0.05) 5px,rgba(0,0,0,0.05) 6px)",
-        }}/>
+        vocFrac ? (
+          <div style={{
+            position:"absolute",
+            left:0, right:0,
+            top:`${vocFrac.top * 100}%`,
+            height:`${vocFrac.height * 100}%`,
+            borderRadius:4, pointerEvents:"none",
+            background:"repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,0.07) 5px,rgba(0,0,0,0.07) 6px)",
+          }}/>
+        ) : (
+          <div style={{
+            position:"absolute", inset:0, borderRadius:6, pointerEvents:"none",
+            background:"repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,0.05) 5px,rgba(0,0,0,0.05) 6px)",
+          }}/>
+        )
       )}
 
       {/* Row 1: date + moon phase emoji */}
@@ -182,20 +195,20 @@ function DayCell({ dateStr, dayData, isToday, isSelected, isPast, layer, onClick
         )}
       </div>
 
-      {/* Row 2: moon sign + element hint (layer 1+) */}
+      {/* Row 2: moon sign (layer 1+, toggle-controlled) */}
       {layer >= 1 && signKey && dayData && (
         <div style={{
           fontSize:8.5, fontWeight:500, lineHeight:1,
           color: ELEMENT_LABEL[elem] ?? "#aaa", letterSpacing:"0.1px",
         }}>
-          {SIGN_SYMBOL[signKey]} {SIGN_ABBR[signKey]}
+          {showSignNames ? `${SIGN_SYMBOL[signKey]} ${SIGN_ABBR[signKey]}` : SIGN_SYMBOL[signKey]}
         </div>
       )}
 
-      {/* Bottom row: bio dot + crossing count + VOC label */}
+      {/* Bottom row: bio dot (Full only) + crossing count + VOC label */}
       {layer >= 1 && dayData && (
         <div style={{ display:"flex", alignItems:"center", gap:3, marginTop:"auto", flexShrink:0 }}>
-          {bio && (
+          {layer >= 2 && bio && (
             <div title={BIO_LABEL[bio]} style={{
               width:6, height:6, borderRadius:"50%", flexShrink:0,
               background: BIO_COLOR[bio] ?? "#bbb",
@@ -631,10 +644,11 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const todayYear  = parseInt(today.slice(0, 4));
   const todayMonth = parseInt(today.slice(5, 7)) - 1;
 
-  const [year,         setYear]         = useState(todayYear);
-  const [month,        setMonth]        = useState(todayMonth);
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [layer,        setLayer]        = useState<LayerLevel>(1);
+  const [year,          setYear]          = useState(todayYear);
+  const [month,         setMonth]         = useState(todayMonth);
+  const [selectedDate,  setSelectedDate]  = useState(today);
+  const [layer,         setLayer]         = useState<LayerLevel>(1);
+  const [showSignNames, setShowSignNames] = useState(false);
 
   const { data: weekData }   = useTidesWeek(90, lat, lon);
   const { data: eventsData } = useSkyEvents(90, lat, lon);
@@ -671,9 +685,23 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
   const LAYERS: { level: LayerLevel; label: string; desc: string }[] = [
     { level:0, label:"Essentials", desc:"Moon phase + quality bar" },
-    { level:1, label:"Standard",   desc:"+ sign, element tint, biodynamic dot" },
-    { level:2, label:"Full",       desc:"+ crossings, VOC label" },
+    { level:1, label:"Standard",   desc:"+ sign, element tint, VOC" },
+    { level:2, label:"Full",       desc:"+ crossings, biodynamic, VOC label" },
   ];
+
+  // Compute VOC proportional fraction for a day cell (top/height as 0-1 of 80px cell)
+  function vocFracForDate(dateStr: string): { top: number; height: number } | null {
+    const events = eventsMap.get(dateStr) ?? [];
+    const vocEv = events.find(e => e.type === "voc" && e.time);
+    if (!vocEv?.time) return null;
+    const DAY_START = 6, DAY_END = 24, SPAN = DAY_END - DAY_START;
+    const vocH = timeToHourFrac(vocEv.time);
+    const nextIngress = events.find(e => e.type === "ingress" && e.time && e.time > vocEv.time!);
+    const endH = nextIngress?.time ? Math.min(DAY_END, timeToHourFrac(nextIngress.time)) : DAY_END;
+    const top    = Math.max(0, (vocH - DAY_START) / SPAN);
+    const height = Math.max(0.05, Math.min(1 - top, (endH - vocH) / SPAN));
+    return { top, height };
+  }
 
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -694,8 +722,18 @@ export default function Calendar({ testerId, now, lat, lon }: {
           Today
         </button>
 
+        {/* Sign names toggle */}
+        <button onClick={() => setShowSignNames(v => !v)} style={{
+          marginLeft:"auto", fontSize:9, padding:"3px 9px", borderRadius:6,
+          border:"1px solid #d0cbc3",
+          background: showSignNames ? "#fff8f0" : "#f0ede8",
+          color: showSignNames ? "#b07020" : "#aaa", cursor:"pointer",
+        }}>
+          {showSignNames ? "Signs: on" : "Signs: off"}
+        </button>
+
         {/* Layer toggle */}
-        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:2, background:"#e0dcd6", borderRadius:8, padding:"3px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:2, background:"#e0dcd6", borderRadius:8, padding:"3px" }}>
           {LAYERS.map(ll => (
             <button key={ll.level} onClick={() => setLayer(ll.level)} title={ll.desc} style={{
               fontSize:10, padding:"3px 11px", borderRadius:6, border:"none", cursor:"pointer",
@@ -717,7 +755,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
           {/* Legend row */}
           <div style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 0 6px", flexShrink:0, flexWrap:"wrap" }}>
-            {layer >= 1 && Object.entries(BIO_COLOR).map(([k, c]) => (
+            {layer >= 2 && Object.entries(BIO_COLOR).map(([k, c]) => (
               <div key={k} style={{ display:"flex", alignItems:"center", gap:3, fontSize:8.5, color:"#aaa" }}>
                 <div style={{ width:6, height:6, borderRadius:"50%", background:c }}/>
                 {BIO_LABEL[k]}
@@ -760,6 +798,8 @@ export default function Calendar({ testerId, now, lat, lon }: {
                   isSelected={dateStr === selectedDate}
                   isPast={dateStr < today}
                   layer={layer}
+                  showSignNames={showSignNames}
+                  vocFrac={vocFracForDate(dateStr)}
                   onClick={() => setSelectedDate(dateStr)}
                 />
               );
