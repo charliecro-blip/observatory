@@ -307,329 +307,22 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         })()}
 
         {/* Tide chart */}
-        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>The tide</div>
-            <div style={{ display: "flex", background: "#f0ede8", borderRadius: 5, padding: 2, gap: 1 }}>
-              {(["Day", "Week"] as const).map(t => (
-                <div key={t} onClick={() => setTideView(t.toLowerCase() as "day"|"week")} style={{
-                  fontSize: 10, padding: "3px 10px", borderRadius: 4,
-                  background: tideView === t.toLowerCase() ? "#fff" : "transparent",
-                  color: tideView === t.toLowerCase() ? "#333" : "#888",
-                  fontWeight: tideView === t.toLowerCase() ? 500 : 400, cursor: "pointer",
-                }}>{t}</div>
-              ))}
-            </div>
-          </div>
-          <div style={{ fontSize: 10, color: "#aaa", marginBottom: 10 }}>
-            {now?.momentLabel}
-          </div>
-
-          {/* Dynamic tide wave + resonance bands */}
-          {todayShowWave && tideView === "day" && (() => {
-            const WIDTH = 600, WAVE_H = 96, BAND_H = 11, BAND_GAP = 2, BANDS = 2;
-            const TOTAL_H = WAVE_H + BANDS * (BAND_H + BAND_GAP) + 4;
-            const DAY_START_H = 6, DAY_END_H = 24;
-            const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
-            const hourWindows = tidesWindowsData?.windows ?? [];
-
-            const QUALITY_SCORE: Record<string, number> = {
-              excellent: 7, good: 6, workable: 4, mixed: 3, avoid_if_possible: 2,
-            };
-
-            const now_ = new Date();
-            const nowMinutes = now_.getHours() * 60 + now_.getMinutes();
-
-            // All crossings for wave spikes
-            const todayCrossings = (todayData?.crossings ?? []);
-
-            // Crossing spike amplitude per planet
-            const SPIKE_AMP: Record<string, number> = {
-              Venus: 2.5, Jupiter: 2.5, Sun: 1.5, Mercury: 1.2, Moon: 1.0, Mars: -1.0, Saturn: -1.5,
-            };
-
-            // Build per-15-min data (higher resolution for smoother wave)
-            const STEP = 15; // minutes
-            const hourData: { x: number; y: number; score: number; win: any; hour: number; label: string }[] = [];
-
-            for (let minFromStart = 0; minFromStart <= DAY_SPAN; minFromStart += STEP) {
-              const totalMin = DAY_START_H * 60 + minFromStart;
-              const h = Math.floor(totalMin / 60);
-              const m = totalMin % 60;
-              const x = (minFromStart / DAY_SPAN) * WIDTH;
-
-              // Base from hourly window quality
-              const win = hourWindows.find(w => {
-                const wh = new Date(w.startTime).getHours();
-                const eh = new Date(w.endTime).getHours();
-                return h >= wh && h < eh;
-              });
-              let score = win ? (QUALITY_SCORE[win.quality] ?? 4) : 4;
-              if (win?.voidOfCourse) score -= 1.5;
-
-              // Add Gaussian bumps from angular crossings
-              for (const c of todayCrossings) {
-                if (!c.time) continue;
-                const [ch, cm] = c.time.split(":").map(Number);
-                const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
-                const delta = minFromStart - crossMin;
-                const amp = SPIKE_AMP[c.planet] ?? 0.5;
-                // Gaussian: wider for benefic (visible longer), sharper for malefic
-                const width = amp > 0 ? 45 : 30;
-                score += amp * Math.exp(-0.5 * (delta / width) ** 2);
-              }
-
-              const clamped = Math.max(0.5, Math.min(7, score));
-              const y = WAVE_H - 10 - ((clamped / 7) * (WAVE_H - 22));
-              const label = `${h}:${m.toString().padStart(2,"0")}`;
-              hourData.push({ x, y, score: clamped, win, hour: h, label });
-            }
-
-            if (hourData.length < 2) {
-              return (
-                <svg width="100%" height={WAVE_H} viewBox={`0 0 ${WIDTH} ${WAVE_H}`}>
-                  <rect width={WIDTH} height={WAVE_H} fill="#f8f6f2" rx="4"/>
-                  <path d={`M0,55 C150,35 300,15 ${WIDTH},45 L${WIDTH},${WAVE_H} L0,${WAVE_H}Z`} fill={`${elemColor}30`}/>
-                </svg>
-              );
-            }
-
-            // Smooth wave path using cardinal spline
-            let pathD = `M${hourData[0].x},${hourData[0].y}`;
-            for (let i = 1; i < hourData.length; i++) {
-              const prev = hourData[i - 1], curr = hourData[i];
-              const cpx = (prev.x + curr.x) / 2;
-              pathD += ` C${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
-            }
-            const last = hourData[hourData.length - 1];
-            const fillPath = `${pathD} L${last.x},${WAVE_H} L${hourData[0].x},${WAVE_H}Z`;
-
-            const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
-            const nowIdx = Math.round((nowMinutes - DAY_START_H * 60) / STEP);
-            const nowY = hourData[Math.min(nowIdx, hourData.length - 1)]?.y ?? WAVE_H / 2;
-
-            // Moon phase info for band
-            const moonPhaseName = now?.moonPhase ?? "";
-            const isWaxing = moonPhaseName.toLowerCase().includes("waxing") || moonPhaseName.toLowerCase().includes("full");
-            const phaseBonus = isWaxing ? 1 : 0;
-
-            // Band colors
-            const PHASE_COLORS: Record<string, string> = {
-              "new moon":"#1a2a3a", "waxing crescent":"#4a6080", "first quarter":"#5a7090",
-              "waxing gibbous":"#6a8aa0", "full moon":"#8a9aaa", "waning gibbous":"#7a8a9a",
-              "last quarter":"#5a6a7a", "waning crescent":"#3a4a5a",
-            };
-            const phaseColor = PHASE_COLORS[moonPhaseName.toLowerCase().replace(/_/g," ")] ?? "#6a8090";
-
-            // Hover data
-            const hoverH = waveHover ? (DAY_START_H + Math.round((waveHover.hourIdx))) : null;
-            const hoverWin = waveHover ? hourData[Math.min(waveHover.hourIdx, hourData.length - 1)] : null;
-            const hoverCrossings = hoverWin ? todayCrossings.filter(c => {
-              if (!c.time) return false;
-              const [ch, cm] = c.time.split(":").map(Number);
-              const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
-              const hoverMin = (hoverWin.hour - DAY_START_H) * 60;
-              return Math.abs(crossMin - hoverMin) < 45;
-            }) : [];
-
-            const BAND_Y = (i: number) => WAVE_H + 4 + i * (BAND_H + BAND_GAP);
-
-            return (
-              <div style={{ position: "relative" }}>
-                <svg
-                  ref={waveRef}
-                  width="100%" height={TOTAL_H}
-                  viewBox={`0 0 ${WIDTH} ${TOTAL_H}`}
-                  style={{ display: "block", cursor: "crosshair" }}
-                  onMouseMove={e => {
-                    const rect = waveRef.current?.getBoundingClientRect();
-                    if (!rect) return;
-                    const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
-                    const minFromStart = (svgX / WIDTH) * DAY_SPAN;
-                    const hourIdx = Math.max(0, Math.min(Math.round(minFromStart / STEP), hourData.length - 1));
-                    setWaveHover({ x: svgX, y: e.clientY - rect.top, hourIdx });
-                  }}
-                  onMouseLeave={() => setWaveHover(null)}
-                >
-                  <rect width={WIDTH} height={TOTAL_H} fill="#f8f6f2" rx="4"/>
-
-                  {/* Resonance glow — where score is high */}
-                  {hourData.slice(0, -1).map((pt, i) => {
-                    const resScore = pt.score + phaseBonus;
-                    if (resScore < 5) return null;
-                    const nextPt = hourData[i + 1];
-                    const colWidth = nextPt.x - pt.x;
-                    const alpha = Math.min(0.18, (resScore - 4) * 0.05);
-                    return <rect key={i} x={pt.x} y={0} width={colWidth} height={WAVE_H} fill={`rgba(210,170,60,${alpha})`}/>;
-                  })}
-
-                  {/* VOC zone background */}
-                  {hourWindows.filter(w => w.voidOfCourse).map((w, i) => {
-                    const x1 = Math.max(0, ((new Date(w.startTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
-                    const x2 = Math.min(WIDTH, ((new Date(w.endTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
-                    return <rect key={i} x={x1} y={0} width={x2 - x1} height={WAVE_H} fill="#f0ece4" opacity="0.55"/>;
-                  })}
-
-                  {/* Wave fill + line */}
-                  <path d={fillPath} fill={`${elemColor}28`}/>
-                  <path d={pathD} stroke={elemColor} strokeWidth="1.5" fill="none"/>
-
-                  {/* Crossing spikes */}
-                  {crossingsOn && todayCrossings.map((c, i) => {
-                    if (!c.time) return null;
-                    const [ch, cm] = c.time.split(":").map(Number);
-                    const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
-                    if (cx_ < 0 || cx_ > WIDTH) return null;
-                    const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
-                    const col = isBenefic ? "#60a060" : "#e0a040";
-                    return (
-                      <g key={i}>
-                        <line x1={cx_} y1={0} x2={cx_} y2={WAVE_H} stroke={col} strokeWidth="1" strokeDasharray="2,2" opacity="0.7"/>
-                        <polygon points={`${cx_},2 ${cx_-4},9 ${cx_+4},9`} fill={col}/>
-                        <text x={cx_ + 3} y={WAVE_H - 3} fontSize="6" fill={col} fontFamily="sans-serif">{c.planet[0]}</text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Now marker */}
-                  <line x1={nowX} y1={0} x2={nowX} y2={WAVE_H} stroke="#1a2a3a" strokeWidth="1" strokeDasharray="3,2"/>
-                  <circle cx={nowX} cy={nowY} r="3.5" fill="#1a2a3a"/>
-                  <text x={nowX + 5} y={nowY - 4} fontSize="7" fill="#1a2a3a" fontFamily="sans-serif">NOW</text>
-
-                  {/* Scheduled windows bar */}
-                  {(windows ?? []).map((w, i) => {
-                    const [sh, sm] = w.startTime.split(":").map(Number);
-                    const [eh, em] = w.endTime.split(":").map(Number);
-                    const x0 = Math.max(0, ((sh * 60 + sm - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
-                    const x1 = Math.max(x0 + 20, ((eh * 60 + em - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
-                    const color = WINDOW_COLORS[w.type] ?? "#888";
-                    return (
-                      <g key={w.id}>
-                        <rect x={x0} y={WAVE_H - 22} width={x1 - x0} height={18} rx="3" fill={color} opacity="0.85"/>
-                        <text x={(x0 + x1) / 2} y={WAVE_H - 10} fontSize="6.5" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
-                      </g>
-                    );
-                  })}
-
-                  {/* ── Resonance bands ── */}
-
-                  {/* Band 1: Quality gradient */}
-                  {hourData.slice(0, -1).map((pt, i) => {
-                    const nextPt = hourData[i + 1];
-                    const colW = nextPt.x - pt.x;
-                    const q = pt.score;
-                    const hue = q >= 5 ? "#60a060" : q >= 3 ? "#d0a040" : "#c06040";
-                    return <rect key={i} x={pt.x} y={BAND_Y(0)} width={colW} height={BAND_H} fill={hue} opacity={0.3 + q * 0.09}/>;
-                  })}
-                  <text x={2} y={BAND_Y(0) + 8} fontSize="6.5" fill="#aaa" fontFamily="sans-serif">quality</text>
-
-                  {/* Band 2: Lunar phase */}
-                  <rect x={0} y={BAND_Y(1)} width={WIDTH} height={BAND_H} fill={phaseColor} opacity={0.4}/>
-                  <text x={2} y={BAND_Y(1) + 8} fontSize="6.5" fill="#ccc" fontFamily="sans-serif">{(moonPhaseName ?? "").replace(/_/g," ")}</text>
-
-                  {/* Crossing dots on bands */}
-                  {todayCrossings.map((c, i) => {
-                    if (!c.time) return null;
-                    const [ch, cm] = c.time.split(":").map(Number);
-                    const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
-                    if (cx_ < 0 || cx_ > WIDTH) return null;
-                    const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
-                    return <circle key={i} cx={cx_} cy={BAND_Y(0) + BAND_H / 2} r={3} fill={isBenefic ? "#60a060" : "#e0a040"} opacity={0.9}/>;
-                  })}
-
-                  {/* Hover line */}
-                  {waveHover && (
-                    <line
-                      x1={waveHover.x} y1={0} x2={waveHover.x} y2={WAVE_H}
-                      stroke="#1a2a3a" strokeWidth="0.75" strokeDasharray="2,3" opacity="0.4"
-                    />
-                  )}
-                </svg>
-
-                {/* Hover tooltip card */}
-                {waveHover && hoverWin && (
-                  <div style={{
-                    position: "absolute",
-                    top: Math.min(waveHover.y - 80, WAVE_H - 90),
-                    left: Math.min(Math.max(waveHover.x * (waveRef.current?.getBoundingClientRect().width ?? 600) / WIDTH - 80, 0), (waveRef.current?.getBoundingClientRect().width ?? 600) - 180),
-                    background: "#1a2a3a", color: "#e8e4de", borderRadius: 8, padding: "8px 11px",
-                    fontSize: 10.5, lineHeight: 1.4, width: 180, pointerEvents: "none",
-                    boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                      {hoverWin.label} · <span style={{ fontWeight: 400, color: hoverWin.score >= 5 ? "#80d080" : hoverWin.score >= 3 ? "#d0c060" : "#e08060" }}>quality {hoverWin.score.toFixed(1)}</span>
-                    </div>
-                    {hoverWin.win && (
-                      <div style={{ color: "#9a9aaa", fontSize: 9.5, marginBottom: hoverCrossings.length > 0 ? 4 : 0 }}>
-                        {hoverWin.win.quality?.replace(/_/g," ")}
-                        {hoverWin.win.voidOfCourse ? " · void of course" : ""}
-                      </div>
-                    )}
-                    {hoverCrossings.map((c, ci) => (
-                      <div key={ci} style={{ marginTop: 3, borderTop: ci === 0 ? "1px solid #2a3a4a" : "none", paddingTop: ci === 0 ? 4 : 0 }}>
-                        <div style={{ color: PLANET_COLORS[c.planet] ?? "#c8b870", fontSize: 10, fontWeight: 600 }}>
-                          {PLANET_ICONS[c.planet] ?? "○"} {c.planet} × {c.angle} · {c.time}
-                        </div>
-                        {PLANET_SIGNIFICATION[c.planet] && (
-                          <div style={{ color: "#8090a0", fontSize: 9, marginTop: 1 }}>{PLANET_SIGNIFICATION[c.planet]}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Band legend row */}
-                <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 8, color: "#bbb", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <div style={{ width: 12, height: 5, background: "linear-gradient(to right, #c06040, #d0a040, #60a060)", borderRadius: 2 }} />
-                    quality
-                  </div>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <div style={{ width: 12, height: 5, background: phaseColor, borderRadius: 2, opacity: 0.7 }} />
-                    lunar phase
-                  </div>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#c8b870" }} />
-                    crossing
-                  </div>
-                  <HelpBadge term="resonance" style={{ marginLeft: "auto" }} />
-                </div>
-              </div>
-            );
-          })()}
-          {todayShowWave && tideView === "day" && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 1 }}>
-            {["6am","9am","12pm","3pm","6pm","9pm","12am"].map(t => <span key={t}>{t}</span>)}
-          </div>}
-
-          {/* Week view — 7-day quality bars */}
-          {tideView === "week" && (() => {
-            const ELEMENT_COLORS_W: Record<string, string> = { water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#602080" };
-            const days7 = (week?.days ?? []).slice(0, 7);
-            return (
-              <div style={{ display:"flex", gap:4 }}>
-                {days7.map(d => {
-                  const isToday = d.date === today;
-                  const ec = ELEMENT_COLORS_W[d.element ?? "water"] ?? "#888";
-                  const qs = d.qualityScore ?? 4;
-                  const qc = qs >= 5 ? "#3a7040" : qs >= 3 ? "#8a8030" : "#c07030";
-                  return (
-                    <div key={d.date} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 4px", borderRadius:8, border:`1px solid ${isToday ? "#c0b090" : "#e8e4de"}`, background: isToday ? "#faf6f0" : "#faf8f5" }}>
-                      <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.4px", color: isToday ? "#b07030" : "#aaa", fontWeight: isToday ? 600 : 400 }}>{d.label?.slice(0,3)}</div>
-                      <div style={{ fontSize:11, fontWeight: isToday ? 700 : 500, color: isToday ? "#b07030" : "#444" }}>{new Date(d.date+"T12:00:00").getDate()}</div>
-                      <div style={{ fontSize:8, color:ec }}>{d.moonPhase?.replace(/_/g," ").split(" ")[0]}</div>
-                      <div style={{ width:"100%", height:3, borderRadius:2, background:"#e8e4de" }}>
-                        <div style={{ height:"100%", borderRadius:2, width:`${(qs/7)*100}%`, background:qc }}/>
-                      </div>
-                      <div style={{ fontSize:7, color:ec }}>
-                        {d.moonSign?.split(" ")[0] ?? ""}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
+        <TideChart
+          elemColor={elemColor}
+          todayData={todayData}
+          tidesWindowsData={tidesWindowsData}
+          windows={windows}
+          now={now}
+          week={week}
+          today={today}
+          tideView={tideView}
+          setTideView={setTideView}
+          crossingsOn={crossingsOn}
+          waveRef={waveRef}
+          waveHover={waveHover}
+          setWaveHover={setWaveHover}
+          todayShowWave={todayShowWave}
+        />
 
         {/* Week strip — 14 days */}
         {todayShow14Day && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
@@ -702,41 +395,39 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           />
         </div>}
 
-        {/* Practices, Tasks, Goals — unified */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Waves — unified practices, tasks, goals */}
+        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ padding: "14px 18px 10px", borderBottom: "1px solid #f0ede8", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1a2a3a" }}>Waves</div>
+            <div style={{ fontSize: 9, color: "#aaa" }}>practices · tasks · goals</div>
+          </div>
 
           {/* Practices */}
           {practices.length > 0 && (
-            <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a", marginBottom: 10 }}>Practices</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {resonant.length > 0 && (
-                  <div style={{ fontSize: 8.5, color: "#4a7030", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 1 }}>✦ Resonant now</div>
-                )}
+            <div style={{ padding: "10px 18px", borderBottom: "1px solid #f0ede8" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 7 }}>Practices</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {resonant.length > 0 && <div style={{ fontSize: 8, color: "#4a7030", fontWeight: 700, letterSpacing: "0.4px" }}>✦ resonant now</div>}
                 {resonant.map(p => <PracticeRow key={p.id} practice={p} />)}
-                {supported.length > 0 && (
-                  <div style={{ fontSize: 8.5, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 6, marginBottom: 1 }}>Supported</div>
-                )}
+                {supported.length > 0 && <div style={{ fontSize: 8, color: "#999", letterSpacing: "0.4px", marginTop: 4 }}>supported</div>}
                 {supported.map(p => <PracticeRow key={p.id} practice={p} />)}
-                {soften.length > 0 && (
-                  <div style={{ fontSize: 8.5, color: "#b06030", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 6, marginBottom: 1 }}>Soften or skip</div>
-                )}
+                {soften.length > 0 && <div style={{ fontSize: 8, color: "#b06030", letterSpacing: "0.4px", marginTop: 4 }}>soften or skip</div>}
                 {soften.map(p => <PracticeRow key={p.id} practice={p} dim />)}
               </div>
             </div>
           )}
 
           {/* Tasks */}
-          <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a" }}>Tasks today</div>
+          <div style={{ padding: "10px 18px", borderBottom: "1px solid #f0ede8" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>Tasks today</div>
               {todayTasks.filter(t => t.done === "true").length > 0 && (
                 <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
               )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {todayTasks.filter(t => t.done !== "true").map(t => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5" }}>
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5" }}>
                   <button onClick={() => toggleTask.mutate({ id: t.id, done: true })} style={{
                     width: 16, height: 16, borderRadius: 4, border: "1.5px solid #c0bab0",
                     background: "transparent", flexShrink: 0, cursor: "pointer",
@@ -759,21 +450,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                   <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
                 </div>
               ) : (
-                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#aaa", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 0" }}>
-                  + Add task
+                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "2px 0" }}>
+                  + add task
                 </button>
               )}
               {todayTasks.length === 0 && !showAddTask && (
-                <div style={{ fontSize: 11, color: "#ccc", padding: "6px 0" }}>No tasks for today yet.</div>
+                <div style={{ fontSize: 11, color: "#ccc", padding: "4px 0" }}>No tasks yet.</div>
               )}
             </div>
           </div>
 
           {/* Goals */}
           {(goals ?? []).length > 0 && (
-            <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a", marginBottom: 10 }}>Goals in view</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ padding: "10px 18px" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 7 }}>Goals in view</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {(goals ?? []).slice(0, 5).map(g => (
                   <div key={g.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <div style={{
@@ -793,6 +484,466 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// ── TideChart ──────────────────────────────────────────────────────────────────
+
+type ChartType = "flow" | "heart" | "create" | "move";
+
+const CHART_TYPES: { id: ChartType; label: string; color: string; desc: string }[] = [
+  { id: "flow",   label: "Flow",       color: "#3a5a80", desc: "General timing quality" },
+  { id: "heart",  label: "Heart",      color: "#c06090", desc: "Love · connection · relationship" },
+  { id: "create", label: "Create",     color: "#6040a0", desc: "Creativity · art · expression" },
+  { id: "move",   label: "Move",       color: "#c04040", desc: "Exercise · action · assertion" },
+];
+
+const CHART_AMPS: Record<ChartType, Record<string, number>> = {
+  flow:   { Venus:2.5, Jupiter:2.5, Sun:1.5, Mercury:1.2, Moon:1.0, Mars:-1.0, Saturn:-1.5 },
+  heart:  { Venus:4.0, Moon:3.0, Jupiter:1.5, Sun:1.0, Mercury:0.5, Mars:-0.5, Saturn:-2.0 },
+  create: { Moon:3.5, Venus:2.5, Mercury:2.0, Jupiter:1.5, Mars:0.5, Saturn:-1.0, Sun:1.0 },
+  move:   { Mars:4.0, Sun:2.5, Jupiter:1.5, Moon:0.5, Saturn:0.5, Venus:0.5, Mercury:0.5 },
+};
+
+const QUALITY_SCORE_MAP: Record<string, number> = {
+  excellent:7, good:6, workable:4, mixed:3, avoid_if_possible:2,
+};
+
+const PHASE_COLORS: Record<string, string> = {
+  "new moon":"#1a2a3a", "waxing crescent":"#4a6080", "first quarter":"#5a7090",
+  "waxing gibbous":"#6a8aa0", "full moon":"#9ab0c0", "waning gibbous":"#7a8a9a",
+  "last quarter":"#5a6a7a", "waning crescent":"#3a4a5a",
+};
+
+function buildWavePoints(
+  crossings: any[],
+  hourWindows: any[],
+  chartType: ChartType,
+  DAY_START_H: number,
+  DAY_END_H: number,
+  WIDTH: number,
+  WAVE_H: number,
+) {
+  const STEP = 5; // 5-min resolution for smooth wave
+  const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
+  const AMPS = CHART_AMPS[chartType];
+  const pts: { x: number; y: number; score: number; win: any; label: string }[] = [];
+
+  for (let minFromStart = 0; minFromStart <= DAY_SPAN; minFromStart += STEP) {
+    const totalMin = DAY_START_H * 60 + minFromStart;
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const x = (minFromStart / DAY_SPAN) * WIDTH;
+
+    const win = hourWindows.find((w: any) => {
+      const wh = new Date(w.startTime).getHours();
+      const eh = new Date(w.endTime).getHours();
+      return h >= wh && h < eh;
+    });
+    let score = win ? (QUALITY_SCORE_MAP[win.quality] ?? 4) : 4;
+    if (win?.voidOfCourse) score -= 1.5;
+
+    for (const c of crossings) {
+      if (!c.time) continue;
+      const [ch, cm] = c.time.split(":").map(Number);
+      const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
+      const delta = minFromStart - crossMin;
+      const amp = AMPS[c.planet] ?? 0;
+      if (amp === 0) continue;
+      const width = Math.abs(amp) > 2 ? 55 : 35;
+      score += amp * Math.exp(-0.5 * (delta / width) ** 2);
+    }
+
+    const clamped = Math.max(0.2, Math.min(7, score));
+    const y = WAVE_H - 10 - (clamped / 7) * (WAVE_H - 20);
+    pts.push({ x, y, score: clamped, win, label: `${h}:${m.toString().padStart(2,"0")}` });
+  }
+  return { pts, STEP, DAY_SPAN };
+}
+
+function smoothPath(pts: { x: number; y: number }[], WAVE_H: number) {
+  if (pts.length < 2) return { pathD: "", fillPath: "" };
+  // Catmull-Rom-style smoothing via bezier control points
+  let pathD = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[Math.max(0, i - 2)];
+    const p1 = pts[i - 1];
+    const p2 = pts[i];
+    const p3 = pts[Math.min(pts.length - 1, i + 1)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    pathD += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  const last = pts[pts.length - 1], first = pts[0];
+  const fillPath = `${pathD} L${last.x},${WAVE_H} L${first.x},${WAVE_H}Z`;
+  return { pathD, fillPath };
+}
+
+function TideChart({
+  elemColor, todayData, tidesWindowsData, windows, now, week, today,
+  tideView, setTideView, crossingsOn, waveRef, waveHover, setWaveHover, todayShowWave,
+}: {
+  elemColor: string; todayData: any; tidesWindowsData: any; windows: any;
+  now: any; week: any; today: string;
+  tideView: "day" | "week"; setTideView: (v: "day"|"week") => void;
+  crossingsOn: boolean; waveRef: React.RefObject<SVGSVGElement | null>;
+  waveHover: { x: number; y: number; hourIdx: number } | null;
+  setWaveHover: (v: { x: number; y: number; hourIdx: number } | null) => void;
+  todayShowWave: boolean;
+}) {
+  const [chartType, setChartType] = useState<ChartType>("flow");
+
+  const todayCrossings = todayData?.crossings ?? [];
+  const hourWindows = tidesWindowsData?.windows ?? [];
+  const now_ = new Date();
+  const nowMinutes = now_.getHours() * 60 + now_.getMinutes();
+
+  const DAY_START_H = 5, DAY_END_H = 24;
+  const WIDTH = 700, WAVE_H = 150, BAND_H = 10, BAND_GAP = 2, BANDS = 2;
+  const TOTAL_H = WAVE_H + BANDS * (BAND_H + BAND_GAP) + 8;
+  const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
+
+  const ct = CHART_TYPES.find(c => c.id === chartType)!;
+  const waveColor = ct.color;
+
+  const moonPhaseName = now?.moonPhase ?? "";
+  const phaseColor = PHASE_COLORS[moonPhaseName.toLowerCase().replace(/_/g," ")] ?? "#6a8090";
+  const isWaxing = moonPhaseName.toLowerCase().includes("waxing") || moonPhaseName.toLowerCase().includes("full");
+  const phaseBonus = isWaxing ? 0.8 : 0;
+
+  const STEP = 5;
+  const BAND_Y = (i: number) => WAVE_H + 6 + i * (BAND_H + BAND_GAP);
+
+  // Hour tick positions along X axis
+  const hourTicks = [];
+  for (let h = DAY_START_H; h <= DAY_END_H; h += 3) {
+    const x = ((h - DAY_START_H) * 60 / DAY_SPAN) * WIDTH;
+    const label = h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h-12}pm`;
+    hourTicks.push({ x, label });
+  }
+
+  const { pts, } = buildWavePoints(todayCrossings, hourWindows, chartType, DAY_START_H, DAY_END_H, WIDTH, WAVE_H);
+  const { pathD, fillPath } = smoothPath(pts, WAVE_H);
+
+  const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
+  const nowIdx = Math.round((nowMinutes - DAY_START_H * 60) / STEP);
+  const nowPt = pts[Math.min(nowIdx, pts.length - 1)];
+  const nowY = nowPt?.y ?? WAVE_H / 2;
+
+  const hoverPt = waveHover ? pts[Math.min(waveHover.hourIdx, pts.length - 1)] : null;
+  const hoverCrossings = hoverPt ? todayCrossings.filter((c: any) => {
+    if (!c.time) return false;
+    const [ch, cm] = c.time.split(":").map(Number);
+    const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
+    const hoverMin = (hoverPt.label.split(":").map(Number)[0] - DAY_START_H) * 60 + (hoverPt.label.split(":").map(Number)[1] ?? 0);
+    return Math.abs(crossMin - hoverMin) < 45;
+  }) : [];
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, overflow: "hidden" }}>
+      {/* Header row */}
+      <div style={{ padding: "12px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a2a3a" }}>The tide</div>
+          <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{now?.momentLabel}</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {/* View toggle */}
+          <div style={{ display: "flex", background: "#f0ede8", borderRadius: 5, padding: 2, gap: 1 }}>
+            {(["Day", "Week"] as const).map(t => (
+              <div key={t} onClick={() => setTideView(t.toLowerCase() as "day"|"week")} style={{
+                fontSize: 10, padding: "2px 9px", borderRadius: 4,
+                background: tideView === t.toLowerCase() ? "#fff" : "transparent",
+                color: tideView === t.toLowerCase() ? "#333" : "#999",
+                fontWeight: tideView === t.toLowerCase() ? 500 : 400, cursor: "pointer",
+              }}>{t}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Chart type tabs */}
+      <div style={{ display: "flex", gap: 0, padding: "10px 18px 0", borderBottom: "1px solid #f0ede8" }}>
+        {CHART_TYPES.map(ct2 => (
+          <button key={ct2.id} onClick={() => setChartType(ct2.id)} style={{
+            fontSize: 10, padding: "5px 12px", border: "none", background: "none", cursor: "pointer",
+            color: chartType === ct2.id ? ct2.color : "#bbb",
+            fontWeight: chartType === ct2.id ? 600 : 400,
+            borderBottom: chartType === ct2.id ? `2px solid ${ct2.color}` : "2px solid transparent",
+            marginBottom: -1,
+          }}>{ct2.label}</button>
+        ))}
+        <div style={{ flex: 1 }} />
+        <div style={{ fontSize: 9, color: "#bbb", alignSelf: "center", paddingBottom: 4 }}>{ct.desc}</div>
+      </div>
+
+      {/* Wave chart — day view */}
+      {tideView === "day" && todayShowWave && (
+        <div style={{ padding: "12px 18px 10px", position: "relative" }}>
+          <svg
+            ref={waveRef}
+            width="100%" height={TOTAL_H}
+            viewBox={`0 0 ${WIDTH} ${TOTAL_H}`}
+            style={{ display: "block", cursor: "crosshair", overflow: "visible" }}
+            onMouseMove={e => {
+              const rect = waveRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+              const minFromStart = (svgX / WIDTH) * DAY_SPAN;
+              const hourIdx = Math.max(0, Math.min(Math.round(minFromStart / STEP), pts.length - 1));
+              setWaveHover({ x: svgX, y: e.clientY - rect.top, hourIdx });
+            }}
+            onMouseLeave={() => setWaveHover(null)}
+          >
+            <rect width={WIDTH} height={TOTAL_H} fill="#f9f7f4" rx="6"/>
+
+            {/* Hour grid lines */}
+            {hourTicks.map(({ x, label }) => (
+              <g key={label}>
+                <line x1={x} y1={0} x2={x} y2={WAVE_H} stroke="#e8e4de" strokeWidth="1"/>
+                <text x={x} y={WAVE_H + 3} fontSize="7.5" fill="#c0bab0" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="hanging">{label}</text>
+              </g>
+            ))}
+
+            {/* Resonance glow */}
+            {pts.slice(0, -1).map((pt, i) => {
+              const resScore = pt.score + phaseBonus;
+              if (resScore < 5.2) return null;
+              const nextPt = pts[i + 1];
+              const alpha = Math.min(0.16, (resScore - 5) * 0.07);
+              return <rect key={i} x={pt.x} y={0} width={nextPt.x - pt.x + 0.5} height={WAVE_H} fill={`rgba(210,170,60,${alpha})`}/>;
+            })}
+
+            {/* VOC background */}
+            {hourWindows.filter((w: any) => w.voidOfCourse).map((w: any, i: number) => {
+              const x1 = Math.max(0, ((new Date(w.startTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+              const x2 = Math.min(WIDTH, ((new Date(w.endTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+              return <rect key={i} x={x1} y={0} width={x2 - x1} height={WAVE_H} fill="#ede9e2" opacity="0.6">
+                <title>Void of Course</title>
+              </rect>;
+            })}
+
+            {/* Wave fill + stroke */}
+            {fillPath && <path d={fillPath} fill={`${waveColor}22`}/>}
+            {pathD && <path d={pathD} stroke={waveColor} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>}
+
+            {/* Crossing markers */}
+            {crossingsOn && todayCrossings.map((c: any, i: number) => {
+              if (!c.time) return null;
+              const [ch, cm] = c.time.split(":").map(Number);
+              const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
+              if (cx_ < -10 || cx_ > WIDTH + 10) return null;
+              const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
+              const AMPS = CHART_AMPS[chartType];
+              const amp = AMPS[c.planet] ?? 0;
+              const isBenefic = amp > 1.5;
+              const isMalefic = amp < 0;
+              return (
+                <g key={i}>
+                  <line x1={cx_} y1={6} x2={cx_} y2={WAVE_H - 2} stroke={pCol} strokeWidth="1" strokeDasharray={isMalefic ? "3,3" : "none"} opacity="0.5"/>
+                  {isBenefic && <polygon points={`${cx_},4 ${cx_-5},12 ${cx_+5},12`} fill={pCol} opacity="0.8"/>}
+                  {isMalefic && <polygon points={`${cx_},12 ${cx_-4},4 ${cx_+4},4`} fill={pCol} opacity="0.6"/>}
+                  <text x={cx_} y={WAVE_H - 4} fontSize="7.5" fill={pCol} fontFamily="sans-serif" textAnchor="middle" opacity="0.9">
+                    {PLANET_ICONS[c.planet] ?? c.planet[0]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Now marker */}
+            {nowX >= 0 && nowX <= WIDTH && <>
+              <line x1={nowX} y1={0} x2={nowX} y2={WAVE_H} stroke="#1a2a3a" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.5"/>
+              <circle cx={nowX} cy={nowY} r="4" fill={waveColor} stroke="#fff" strokeWidth="1.5"/>
+              <rect x={nowX - 14} y={nowY - 17} width={28} height={13} rx="3" fill="#1a2a3a" opacity="0.85"/>
+              <text x={nowX} y={nowY - 8} fontSize="7.5" fill="#fff" fontFamily="sans-serif" textAnchor="middle">now</text>
+            </>}
+
+            {/* Scheduled windows */}
+            {(windows ?? []).map((w: any, i: number) => {
+              const [sh, sm] = w.startTime.split(":").map(Number);
+              const [eh, em] = w.endTime.split(":").map(Number);
+              const x0 = Math.max(0, ((sh * 60 + sm - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+              const x1 = Math.max(x0 + 16, ((eh * 60 + em - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+              const color = WINDOW_COLORS[w.type] ?? "#888";
+              return (
+                <g key={w.id}>
+                  <rect x={x0} y={WAVE_H - 20} width={x1 - x0} height={16} rx="3" fill={color} opacity="0.8"/>
+                  <text x={(x0+x1)/2} y={WAVE_H - 9} fontSize="6" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
+                </g>
+              );
+            })}
+
+            {/* Band 1: quality */}
+            {pts.slice(0, -1).map((pt, i) => {
+              const nextPt = pts[i + 1];
+              const q = pt.score;
+              const hue = q >= 5.5 ? "#50a050" : q >= 4 ? "#c8a030" : "#c06040";
+              return <rect key={i} x={pt.x} y={BAND_Y(0)} width={nextPt.x - pt.x + 0.5} height={BAND_H} fill={hue} opacity={Math.min(0.9, 0.2 + q * 0.1)}/>;
+            })}
+
+            {/* Band 2: lunar phase */}
+            <rect x={0} y={BAND_Y(1)} width={WIDTH} height={BAND_H} fill={phaseColor} opacity={0.35}/>
+            <text x={4} y={BAND_Y(1) + 7.5} fontSize="7" fill="#e0ddd8" fontFamily="sans-serif" dominantBaseline="middle">
+              {(moonPhaseName ?? "").replace(/_/g," ")}
+            </text>
+
+            {/* Crossing dots on quality band */}
+            {todayCrossings.map((c: any, i: number) => {
+              if (!c.time) return null;
+              const [ch, cm] = c.time.split(":").map(Number);
+              const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
+              if (cx_ < 0 || cx_ > WIDTH) return null;
+              return <circle key={i} cx={cx_} cy={BAND_Y(0) + BAND_H/2} r={3.5} fill={PLANET_COLORS[c.planet] ?? "#c8b870"} opacity={0.9}/>;
+            })}
+
+            {/* Hover scrubber line */}
+            {waveHover && (
+              <line x1={waveHover.x} y1={0} x2={waveHover.x} y2={WAVE_H + BANDS*(BAND_H+BAND_GAP)+4}
+                stroke="#1a2a3a" strokeWidth="1" strokeDasharray="2,3" opacity="0.25"/>
+            )}
+          </svg>
+
+          {/* Hover tooltip */}
+          {waveHover && hoverPt && (() => {
+            const svgW = waveRef.current?.getBoundingClientRect().width ?? WIDTH;
+            const scaleX = svgW / WIDTH;
+            const tipLeft = Math.min(Math.max(waveHover.x * scaleX - 90, 0), svgW - 200);
+            const tipTop = Math.min(waveHover.y - 90, WAVE_H * (svgW/WIDTH) - 100);
+            return (
+              <div style={{
+                position:"absolute", top:12+tipTop, left:18+tipLeft,
+                background:"#1a2a3a", color:"#e8e4de", borderRadius:9, padding:"9px 12px",
+                fontSize:10.5, lineHeight:1.45, width:200, pointerEvents:"none",
+                boxShadow:"0 6px 20px rgba(0,0,0,0.25)",
+              }}>
+                <div style={{ fontWeight:600, marginBottom:3, display:"flex", justifyContent:"space-between" }}>
+                  <span>{hoverPt.label}</span>
+                  <span style={{ color:hoverPt.score>=5.5?"#80d080":hoverPt.score>=3.5?"#d0c060":"#e08060", fontWeight:400, fontSize:9.5 }}>
+                    quality {hoverPt.score.toFixed(1)}
+                  </span>
+                </div>
+                {hoverPt.win && (
+                  <div style={{ color:"#8a9aaa", fontSize:9.5, marginBottom:hoverCrossings.length>0?5:0 }}>
+                    {hoverPt.win.quality?.replace(/_/g," ")}
+                    {hoverPt.win.voidOfCourse?" · void of course":""}
+                  </div>
+                )}
+                {hoverCrossings.map((c: any, ci: number) => (
+                  <div key={ci} style={{ marginTop:4, paddingTop: ci===0?4:0, borderTop: ci===0?"1px solid #2a3a4a":"none" }}>
+                    <div style={{ color:PLANET_COLORS[c.planet]??"#c8b870", fontWeight:600, fontSize:10 }}>
+                      {PLANET_ICONS[c.planet]??"○"} {c.planet} × {c.angle} · {c.time}
+                    </div>
+                    <div style={{ color:"#7080a0", fontSize:9, marginTop:1 }}>{PLANET_SIGNIFICATION[c.planet]}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Legend */}
+          <div style={{ display:"flex", gap:12, marginTop:6, fontSize:8, color:"#bbb", alignItems:"center" }}>
+            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+              <div style={{ width:14, height:5, background:"linear-gradient(to right, #c06040, #c8a030, #50a050)", borderRadius:2 }}/>
+              quality band
+            </div>
+            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+              <div style={{ width:12, height:5, background:phaseColor, borderRadius:2, opacity:0.6 }}/>
+              {(moonPhaseName ?? "").replace(/_/g," ").split(" ").slice(0,2).join(" ")}
+            </div>
+            {crossingsOn && <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:waveColor, opacity:0.7 }}/>
+              crossings
+            </div>}
+            <HelpBadge term="resonance" style={{ marginLeft:"auto" }}/>
+          </div>
+        </div>
+      )}
+
+      {/* Week view — 7-day continuous wave */}
+      {tideView === "week" && (() => {
+        const WEEK_W = 700, WEEK_H = 140;
+        const days7 = (week?.days ?? []).slice(0, 7);
+        if (!days7.length) return <div style={{ padding:20, color:"#bbb", fontSize:12 }}>No week data.</div>;
+
+        const DAY_W = WEEK_W / 7;
+        const allWeekPts: { x: number; y: number; score: number; dayIdx: number }[] = [];
+
+        days7.forEach((d: any, di: number) => {
+          const dayCrossings = d.crossings ?? [];
+          const qs = d.qualityScore ?? 4;
+          const baseScore = qs;
+          const xOffset = di * DAY_W;
+
+          // Simple: flat quality with crossing spikes per day
+          for (let h = 0; h <= 18; h++) {
+            const x = xOffset + (h / 18) * DAY_W;
+            let score = baseScore;
+            for (const c of dayCrossings) {
+              if (!c.time) continue;
+              const [ch, cm] = c.time.split(":").map(Number);
+              const crossH = ch + (cm ?? 0) / 60 - 6; // offset from 6am
+              const delta = h - crossH;
+              const amp = (CHART_AMPS[chartType][c.planet] ?? 0);
+              if (amp === 0) continue;
+              score += amp * Math.exp(-0.5 * (delta / 1.5) ** 2);
+            }
+            const clamped = Math.max(0.2, Math.min(7, score));
+            const y = WEEK_H - 16 - (clamped / 7) * (WEEK_H - 30);
+            allWeekPts.push({ x, y, score: clamped, dayIdx: di });
+          }
+        });
+
+        const { pathD: wPathD, fillPath: wFillPath } = smoothPath(allWeekPts, WEEK_H);
+        const weekElem = days7[0]?.element ?? "water";
+        const weekColor = elemColor;
+
+        return (
+          <div style={{ padding:"12px 18px 10px" }}>
+            <svg width="100%" height={WEEK_H + 20} viewBox={`0 0 ${WEEK_W} ${WEEK_H + 20}`} style={{ display:"block", overflow:"visible" }}>
+              <rect width={WEEK_W} height={WEEK_H + 20} fill="#f9f7f4" rx="6"/>
+
+              {/* Day separators and labels */}
+              {days7.map((d: any, di: number) => {
+                const x = di * DAY_W;
+                const isToday = d.date === today;
+                const ec = ELEMENT_COLORS[d.element ?? "water"] ?? "#888";
+                return (
+                  <g key={d.date}>
+                    {di > 0 && <line x1={x} y1={0} x2={x} y2={WEEK_H} stroke="#e0dcd6" strokeWidth="1"/>}
+                    <rect x={x} y={WEEK_H} width={DAY_W} height={20} fill={isToday ? `${ec}30` : "#f0ede8"}/>
+                    <text x={x + DAY_W/2} y={WEEK_H + 13} fontSize="8" fill={isToday ? ec : "#999"} fontWeight={isToday ? "700" : "400"} fontFamily="sans-serif" textAnchor="middle">
+                      {d.label?.slice(0,3)} {new Date(d.date+"T12:00:00").getDate()}
+                    </text>
+                    {/* Crossing dots */}
+                    {(d.crossings ?? []).map((c: any, ci: number) => {
+                      if (!c.time) return null;
+                      const [ch, cm] = c.time.split(":").map(Number);
+                      const cx_ = x + ((ch - 6) / 18) * DAY_W;
+                      const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
+                      return <circle key={ci} cx={cx_} cy={WEEK_H - 4} r={3} fill={pCol} opacity={0.8}/>;
+                    })}
+                  </g>
+                );
+              })}
+
+              {/* Wave */}
+              {wFillPath && <path d={wFillPath} fill={`${weekColor}20`}/>}
+              {wPathD && <path d={wPathD} stroke={weekColor} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>}
+
+              {/* Today marker */}
+              {(() => {
+                const todayIdx = days7.findIndex((d: any) => d.date === today);
+                if (todayIdx < 0) return null;
+                const x = todayIdx * DAY_W + DAY_W / 2;
+                return <line x1={x} y1={0} x2={x} y2={WEEK_H} stroke="#1a2a3a" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.4"/>;
+              })()}
+            </svg>
+          </div>
+        );
+      })()}
     </div>
   );
 }

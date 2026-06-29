@@ -57,13 +57,38 @@ const ARCHETYPE_QUALITY: Record<string, string> = {
   Saturn: "grounding · disciplined",
 };
 
+const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: string }> = {
+  conjunction: { name:"Conjunction ☌", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
+  trine:       { name:"Trine △", nature:"Harmonious", desc:"120° apart — energy flows easily and supportively between these planetary themes. A natural, gifting aspect." },
+  sextile:     { name:"Sextile ⚹", nature:"Supportive", desc:"60° apart — a gentle, helpful connection. Opportunities and ease, though less effortless than a trine." },
+  square:      { name:"Square □", nature:"Tension", desc:"90° apart — friction and challenge between these themes. Productive tension if channeled; frustration if resisted." },
+  opposition:  { name:"Opposition ☍", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
+};
+
+const PLANET_MEANING: Record<string, string> = {
+  Sun:     "Core identity, vitality, authority, creative expression",
+  Moon:    "Emotions, intuition, instinct, the body's wisdom",
+  Mercury: "Mind, communication, movement, craft, perception",
+  Venus:   "Beauty, values, pleasure, relationship, aesthetics",
+  Mars:    "Drive, assertion, courage, desire, physical force",
+  Jupiter: "Expansion, meaning, abundance, generosity, philosophy",
+  Saturn:  "Structure, discipline, time, responsibility, limits",
+  Uranus:  "Liberation, disruption, innovation, awakening",
+  Neptune: "Imagination, dissolution, spirituality, the subtle",
+  Pluto:   "Transformation, power, depth, endings, regeneration",
+};
+
 export default function Rail({ now }: { now: TidesNow | undefined }) {
   const { prefs } = usePreferences();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
+  const [expandedAspect, setExpandedAspect] = useState<number | null>(null);
+  const [expandedNonMoon, setExpandedNonMoon] = useState<number | null>(null);
   const toggleHour = useCallback((key: string) => setExpandedHour(v => v === key ? null : key), []);
+  const toggleAspect = useCallback((i: number) => setExpandedAspect(v => v === i ? null : i), []);
+  const toggleNonMoon = useCallback((i: number) => setExpandedNonMoon(v => v === i ? null : i), []);
   if (!now) {
     return (
       <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid #d0cbc3", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -141,29 +166,45 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
             const sym = aspSym[a.aspect] ?? a.aspect;
             const col = aspColor[a.aspect] ?? "#888";
             const pCol = planetColor(other);
+            const isExpanded = expandedAspect === i;
+            const aspMeaning = ASPECT_MEANINGS[a.aspect];
             return (
-              <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"4px 0", borderBottom: i < now.moonAspects!.length-1 ? "1px solid #e8e4de" : "none" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
-                  <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
-                  <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
-                  <span style={{ color:pCol, fontWeight:600 }}>{PLANET_ICONS[other] ?? other[0]}</span>
-                  <span style={{ color:"#555", fontSize:10 }}>{other}</span>
-                </div>
-                <div style={{ fontSize:9 }}>
-                  {a.orb < 0.5
-                    ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
-                    : a.applying
-                      ? (() => {
-                          const hrsToExact = a.orb / 0.55;
-                          const now_ = new Date();
-                          const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
-                          const hh = exactAt.getHours().toString().padStart(2,"0");
-                          const mm = exactAt.getMinutes().toString().padStart(2,"0");
-                          return <span style={{ color: col, fontWeight:500 }}>→ {hh}:{mm}</span>;
-                        })()
-                      : <span style={{ color:"#ccc" }}>{a.orb.toFixed(1)}° past</span>
-                  }
-                </div>
+              <div key={i} style={{ borderBottom: i < now.moonAspects!.length-1 ? "1px solid #ece8e2" : "none" }}>
+                <button onClick={() => toggleAspect(i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", width:"100%", background:"none", border:"none", cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
+                    <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
+                    <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
+                    <span style={{ color:pCol, fontWeight:600 }}>{PLANET_ICONS[other] ?? other[0]}</span>
+                    <span style={{ color:"#555", fontSize:10 }}>{other}</span>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <div style={{ fontSize:9 }}>
+                      {a.orb < 0.5
+                        ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
+                        : a.applying
+                          ? (() => {
+                              const hrsToExact = a.orb / 0.55;
+                              const now_ = new Date();
+                              const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
+                              const hh = exactAt.getHours().toString().padStart(2,"0");
+                              const mm = exactAt.getMinutes().toString().padStart(2,"0");
+                              return <span style={{ color:col, fontWeight:500 }}>→ {hh}:{mm}</span>;
+                            })()
+                          : <span style={{ color:"#ccc" }}>{a.orb.toFixed(1)}° past</span>
+                      }
+                    </div>
+                    <span style={{ fontSize:7, color:"#ccc" }}>{isExpanded?"▲":"▾"}</span>
+                  </div>
+                </button>
+                {isExpanded && aspMeaning && (
+                  <div style={{ padding:"0 0 7px 14px", fontSize:9, color:"#888", lineHeight:1.5, borderLeft:`2px solid ${col}40` }}>
+                    <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
+                    <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
+                    {PLANET_MEANING[other] && (
+                      <div style={{ color:"#aaa" }}><strong style={{ color:pCol }}>{other}:</strong> {PLANET_MEANING[other]}</div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -281,25 +322,36 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
             return (
-              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:3 }}>
+              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:0 }}>
                 {nonMoon.map((a, i) => {
                   const sym = aspSym[a.aspect] ?? a.aspect;
                   const col = aspColor[a.aspect] ?? "#888";
                   const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
-                  const qualLabel: Record<string,string> = { trine:"harmonious", sextile:"supportive", conjunction:"amplified", square:"friction", opposition:"tension" };
+                  const aspMeaning = ASPECT_MEANINGS[a.aspect];
+                  const isExp = expandedNonMoon === i;
                   return (
-                    <div key={i} style={{ padding:"4px 0", borderBottom: i < nonMoon.length-1 ? "1px solid #e8e4de" : "none" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:10 }}>
+                    <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid #ece8e2" : "none" }}>
+                      <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
                         <span style={{ color:p1c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
                         <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
                         <span style={{ color:p2c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
-                        <span style={{ flex:1, fontSize:9, color:"#777" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color: a.applying ? col : "#ccc", flexShrink:0, fontWeight: a.applying ? 600 : 400 }}>
-                          {a.orb.toFixed(1)}°{a.applying ? " →" : "←"}
+                        <span style={{ flex:1, fontSize:9, color:"#777", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
+                        <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }}>
+                          {a.orb.toFixed(1)}°{a.applying?" →":"←"}
                         </span>
-                      </div>
-                      {qualLabel[a.aspect] && (
-                        <div style={{ fontSize:8, color:"#bbb", paddingLeft:2, marginTop:1 }}>{qualLabel[a.aspect]} · {a.nature ?? (["trine","sextile"].includes(a.aspect) ? "harmonious" : "challenging")}</div>
+                        <span style={{ fontSize:7, color:"#ccc", marginLeft:3 }}>{isExp?"▲":"▾"}</span>
+                      </button>
+                      {isExp && aspMeaning && (
+                        <div style={{ padding:"0 0 7px 14px", fontSize:9, color:"#888", lineHeight:1.5, borderLeft:`2px solid ${col}40` }}>
+                          <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
+                          <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
+                          <div style={{ color:"#aaa" }}>
+                            <strong style={{ color:p1c }}>{a.planet1}:</strong> {PLANET_MEANING[a.planet1] ?? ""}
+                          </div>
+                          <div style={{ color:"#aaa", marginTop:1 }}>
+                            <strong style={{ color:p2c }}>{a.planet2}:</strong> {PLANET_MEANING[a.planet2] ?? ""}
+                          </div>
+                        </div>
                       )}
                     </div>
                   );
