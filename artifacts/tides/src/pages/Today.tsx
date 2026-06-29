@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows } from "@/hooks/useTides";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
+import { usePreferences } from "@/contexts/preferences-context";
 import type { Goal } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -61,6 +62,8 @@ function journalKey(testerId: string | null, date: string) {
 
 export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
   const qc = useQueryClient();
+  const { prefs } = usePreferences();
+  const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
   const [activeTab, setActiveTab] = useState<"habits" | "tasks" | "goals">("habits");
@@ -221,7 +224,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         </div>
 
         {/* VOC banner */}
-        {now?.voc?.isVOC && (
+        {todayShowVOC && now?.voc?.isVOC && (
           <div style={{
             background: "#f5f0ea", border: "1px solid #d8d0c0", borderLeft: "3px solid #b0a080",
             borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
@@ -278,7 +281,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           </div>
 
           {/* Dynamic tide wave from hourly quality windows */}
-          {(() => {
+          {todayShowWave && (() => {
             const WIDTH = 600, HEIGHT = 88;
             const DAY_START_H = 6, DAY_END_H = 24; // 6am–midnight
             const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
@@ -391,13 +394,13 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               </svg>
             );
           })()}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 2 }}>
+          {todayShowWave && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 2 }}>
             {["6am","9am","12pm","3pm","6pm","9pm","12am"].map(t => <span key={t}>{t}</span>)}
-          </div>
+          </div>}
         </div>
 
         {/* Week strip — 14 days */}
-        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+        {todayShow14Day && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
           <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
             {(week?.days ?? []).map(day => {
@@ -425,10 +428,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               );
             })}
           </div>
-        </div>
+        </div>}
 
         {/* Journal prompt */}
-        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+        {todayShowJournal && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>Today's reflection</div>
             {journalSaved && <span style={{ fontSize: 9, color: "#60a060" }}>saved ✓</span>}
@@ -448,7 +451,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               background: "#faf8f5", color: "#333", fontFamily: "inherit",
             }}
           />
-        </div>
+        </div>}
 
         {/* Bottom tabs: Habits / Tasks / Goals */}
         <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>

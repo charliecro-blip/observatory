@@ -20,6 +20,7 @@ import planningRouter from "./planning";
 import tasksRouter from "./tasks";
 import habitsRouter from "./habits";
 import icalRouter from "./ical";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(planningRouter);
 router.use(tasksRouter);
 router.use(habitsRouter);
 router.use(icalRouter);
+router.use(pushRouter);
 
 export default router;

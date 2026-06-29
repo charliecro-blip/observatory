@@ -96,6 +96,15 @@ export const habitLogs = pgTable("habit_logs", {
   completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Goal = typeof goals.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
@@ -103,3 +112,4 @@ export type PlanningWindow = typeof planningWindows.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type Habit = typeof habits.$inferSelect;
 export type HabitLog = typeof habitLogs.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

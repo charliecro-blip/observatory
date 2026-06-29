@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
+import { PreferencesProvider } from "@/contexts/preferences-context";
 import Rail from "@/components/Rail";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
@@ -171,12 +172,21 @@ function Shell() {
 }
 
 export default function App() {
+  // Register service worker once on mount
+  React.useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TesterProvider>
-        <ErrorBoundary>
-          <Shell/>
-        </ErrorBoundary>
+        <PreferencesProvider>
+          <ErrorBoundary>
+            <Shell/>
+          </ErrorBoundary>
+        </PreferencesProvider>
       </TesterProvider>
     </QueryClientProvider>
   );

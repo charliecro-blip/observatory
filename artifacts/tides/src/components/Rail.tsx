@@ -1,5 +1,6 @@
 import React from "react";
 import { Skeleton } from "@/components/Skeleton";
+import { usePreferences } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -36,6 +37,9 @@ function progressPct(began: string, ends: string) {
 }
 
 export default function Rail({ now }: { now: TidesNow | undefined }) {
+  const { prefs } = usePreferences();
+  const { railSections } = prefs.display;
+  const { watchPlanets } = prefs.timing;
   if (!now) {
     return (
       <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid #d0cbc3", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -76,35 +80,37 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       </div>
 
       {/* Moon */}
-      <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-            background: "radial-gradient(circle at 60% 40%, #e8e0d0, #9a9080)",
-          }} />
-          <div>
-            <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
-            <div style={{ color: "#777", marginTop: 1 }}>{Math.round(moonIllumination ?? 0)}% · {moonSign}</div>
+      {railSections.includes("moon") && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+              background: "radial-gradient(circle at 60% 40%, #e8e0d0, #9a9080)",
+            }} />
+            <div>
+              <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
+              <div style={{ color: "#777", marginTop: 1 }}>{Math.round(moonIllumination ?? 0)}% · {moonSign}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+            <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor }}>
+              {element?.element}
+            </span>
+            <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d0e0cc", color: "#3a6030" }}>
+              {biodynamicType}
+            </span>
+            {now.qualityScore && (
+              <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d8e8d0", color: "#3a6030" }}>
+                {now.quality} · {now.qualityScore}
+              </span>
+            )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-          <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor }}>
-            {element?.element}
-          </span>
-          <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d0e0cc", color: "#3a6030" }}>
-            {biodynamicType}
-          </span>
-          {now.qualityScore && (
-            <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: "#d8e8d0", color: "#3a6030" }}>
-              {now.quality} · {now.qualityScore}
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Moon Aspects */}
-      {now.moonAspects && now.moonAspects.length > 0 && (
+      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon aspects</div>
           {now.moonAspects.slice(0, 5).map((a, i) => {
@@ -131,51 +137,53 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       )}
 
       {/* Retrogrades */}
-      {now.retrogrades && now.retrogrades.length > 0 && (
+      {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid #d8d3cd" }}>
           <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
         </div>
       )}
 
       {/* Planetary Hour */}
-      <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Planetary hour</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 14, flexShrink: 0,
-            background: `${pColor}22`, color: pColor,
-          }}>
-            {PLANET_ICONS[planetaryHour.planet] ?? "○"}
-          </div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>{planetaryHour.planet}</div>
-            <div style={{ fontSize: 9, color: "#888" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
-          </div>
-        </div>
-
-        {/* Hour progress bar */}
-        <div style={{ fontSize: 9, color: "#bbb", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-          <span>{planetaryHour.began}</span><span>{planetaryHour.ends}</span>
-        </div>
-        <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
-        </div>
-
-        {/* Upcoming hours */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {(upcomingHours ?? []).slice(0, 4).map((h) => (
-            <div key={h.time} style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#777" }}>
-              <span style={{ color: "#aaa", width: 16 }}>{PLANET_ICONS[h.planet] ?? "○"}</span>
-              <span style={{ flex: 1 }}>{h.planet}</span>
-              <span>{h.time}</span>
+      {railSections.includes("hour") && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Planetary hour</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: 14, flexShrink: 0,
+              background: `${pColor}22`, color: pColor,
+              outline: watchPlanets.includes(planetaryHour.planet) ? `2px solid ${pColor}` : "none",
+            }}>
+              {PLANET_ICONS[planetaryHour.planet] ?? "○"}
             </div>
-          ))}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{planetaryHour.planet}</div>
+              <div style={{ fontSize: 9, color: "#888" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 9, color: "#bbb", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+            <span>{planetaryHour.began}</span><span>{planetaryHour.ends}</span>
+          </div>
+          <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {(upcomingHours ?? []).slice(0, 4).map((h) => (
+              <div key={h.time} style={{ display: "flex", justifyContent: "space-between", fontSize: 10,
+                color: watchPlanets.includes(h.planet) ? "#333" : "#777",
+                fontWeight: watchPlanets.includes(h.planet) ? 600 : 400,
+              }}>
+                <span style={{ color: "#aaa", width: 16 }}>{PLANET_ICONS[h.planet] ?? "○"}</span>
+                <span style={{ flex: 1 }}>{h.planet}</span>
+                <span>{h.time}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Personal transits */}
-      {now.personalTransits && now.personalTransits.length > 0 && (
+      {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Your transits</div>
           {now.personalTransits.slice(0, 3).map((t, i) => (
