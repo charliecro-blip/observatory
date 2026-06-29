@@ -11,6 +11,27 @@ const ELEMENT_COLORS: Record<string, string> = {
   water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
 };
 
+const PLANET_COLORS: Record<string, string> = {
+  Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
+  Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060", Uranus: "#3090a0",
+};
+
+const PLANET_SIGNIFICATION: Record<string, string> = {
+  Moon: "nourishment · care · small tasks · environment",
+  Mars: "action · ignition · assertion · exertion",
+  Saturn: "slowing · focusing · consolidation · rest",
+  Venus: "beauty · pleasure · connection · relationship",
+  Jupiter: "expansion · abundance · generosity · vision",
+  Sun: "visibility · leadership · vitality · clarity",
+  Mercury: "communication · ideas · movement · craft",
+  Uranus: "disruption · surprise · liberation · shake-up",
+};
+
+const PLANET_ICONS: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆",
+};
+
 const QUALITY_COLORS: Record<string, string> = {
   good: "#60a060", supported: "#60a060", challenging: "#c04040", caution: "#d0a040", neutral: "#888",
 };
@@ -260,25 +281,30 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         )}
 
         {/* Angle crossing alert */}
-        {crossingsOn && nextCrossing && (
-          <div style={{
-            background: "#fff8f0", border: "1px solid #f0d8b0", borderLeft: "3px solid #e0a040",
-            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>⚡</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#8a5020" }}>
-                {nextCrossing.planet} crosses {nextCrossing.angle} · {nextCrossing.time}
+        {crossingsOn && nextCrossing && (() => {
+          const pCol = PLANET_COLORS[nextCrossing.planet] ?? "#c08020";
+          const sig = PLANET_SIGNIFICATION[nextCrossing.planet];
+          const isBenefic = ["Venus","Jupiter","Sun"].includes(nextCrossing.planet);
+          return (
+            <div style={{
+              background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
+              borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[nextCrossing.planet] ?? "⚡"}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
+                  {nextCrossing.planet} crosses {nextCrossing.angle} · {nextCrossing.time}
+                </div>
+                {sig && (
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
+                )}
               </div>
-              <div style={{ fontSize: 10, color: "#b07040", marginTop: 2 }}>
-                Peak window for driven, angular action — schedule your highest-leverage work here.
+              <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
+                {isBenefic ? "↑" : "—"} {nextCrossing.angle}
               </div>
             </div>
-            <div style={{ fontSize: 8, background: "#f0e0c0", color: "#a06020", padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-              {nextCrossing.angle}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Tide chart */}
         <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
@@ -525,25 +551,30 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                   <div style={{
                     position: "absolute",
                     top: Math.min(waveHover.y - 80, WAVE_H - 90),
-                    left: Math.min(Math.max(waveHover.x * (waveRef.current?.getBoundingClientRect().width ?? 600) / WIDTH - 70, 0), (waveRef.current?.getBoundingClientRect().width ?? 600) - 160),
+                    left: Math.min(Math.max(waveHover.x * (waveRef.current?.getBoundingClientRect().width ?? 600) / WIDTH - 80, 0), (waveRef.current?.getBoundingClientRect().width ?? 600) - 180),
                     background: "#1a2a3a", color: "#e8e4de", borderRadius: 8, padding: "8px 11px",
-                    fontSize: 10.5, lineHeight: 1.4, width: 160, pointerEvents: "none",
+                    fontSize: 10.5, lineHeight: 1.4, width: 180, pointerEvents: "none",
                     boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
                   }}>
-                    <div style={{ fontWeight: 600, marginBottom: 3 }}>
-                      {DAY_START_H + waveHover.hourIdx}:00 — quality {hoverWin.score}/7
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      {hoverWin.label} · <span style={{ fontWeight: 400, color: hoverWin.score >= 5 ? "#80d080" : hoverWin.score >= 3 ? "#d0c060" : "#e08060" }}>quality {hoverWin.score.toFixed(1)}</span>
                     </div>
                     {hoverWin.win && (
-                      <div style={{ color: "#b0aaa4", fontSize: 10 }}>
+                      <div style={{ color: "#9a9aaa", fontSize: 9.5, marginBottom: hoverCrossings.length > 0 ? 4 : 0 }}>
                         {hoverWin.win.quality?.replace(/_/g," ")}
-                        {hoverWin.win.voidOfCourse ? " · VOC" : ""}
+                        {hoverWin.win.voidOfCourse ? " · void of course" : ""}
                       </div>
                     )}
-                    {hoverCrossings.length > 0 && (
-                      <div style={{ marginTop: 4, color: "#c8b870" }}>
-                        {hoverCrossings.map(c => `${c.planet} ${c.angle ?? ""}`).join(", ")}
+                    {hoverCrossings.map((c, ci) => (
+                      <div key={ci} style={{ marginTop: 3, borderTop: ci === 0 ? "1px solid #2a3a4a" : "none", paddingTop: ci === 0 ? 4 : 0 }}>
+                        <div style={{ color: PLANET_COLORS[c.planet] ?? "#c8b870", fontSize: 10, fontWeight: 600 }}>
+                          {PLANET_ICONS[c.planet] ?? "○"} {c.planet} × {c.angle} · {c.time}
+                        </div>
+                        {PLANET_SIGNIFICATION[c.planet] && (
+                          <div style={{ color: "#8090a0", fontSize: 9, marginTop: 1 }}>{PLANET_SIGNIFICATION[c.planet]}</div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
@@ -603,30 +634,45 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
         {/* Week strip — 14 days */}
         {todayShow14Day && <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
-          <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4 }}>
             {(week?.days ?? []).map(day => {
               const isToday = day.date === today;
               const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
               const qc = QUALITY_COLORS[day.quality ?? "neutral"] ?? "#888";
+              const MOON_GLYPHS: Record<string, string> = {
+                new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
+                full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
+              };
+              const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
+              const phaseGlyph = MOON_GLYPHS[phaseKey];
+              const crossingCount = (day.crossings ?? []).length;
               return (
                 <div key={day.date} style={{
-                  minWidth: 40, border: `1px solid ${isToday ? "#c0b090" : "#e8e4de"}`,
+                  minWidth: 46, border: `1px solid ${isToday ? ec : "#e8e4de"}`,
+                  borderTop: `3px solid ${isToday ? ec : ec + "40"}`,
                   borderRadius: 8, padding: "6px 4px", display: "flex", flexDirection: "column",
-                  alignItems: "center", gap: 3, background: isToday ? "#faf6f0" : "transparent", flexShrink: 0,
+                  alignItems: "center", gap: 3, background: isToday ? `${ec}10` : "transparent", flexShrink: 0,
                 }}>
-                  <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: isToday ? "#b07030" : "#aaa", fontWeight: isToday ? 600 : 400 }}>
+                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.5px", color: isToday ? ec : "#aaa", fontWeight: isToday ? 600 : 400 }}>
                     {day.label?.slice(0, 3)}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isToday ? "#b07030" : "#444" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: isToday ? ec : "#444" }}>
                     {new Date(day.date + "T12:00:00").getDate()}
                   </div>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: qc }} />
-                  <div style={{ fontSize: 7.5, color: ec, textAlign:"center", lineHeight:1 }}>
-                    {day.moonSign?.split(" ")[0] ?? (day.element !== "spirit" ? day.element : "transit")}
-                  </div>
-                  {(day.crossings ?? []).length > 0 && (
-                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#e0a040" }} title="Angle crossing" />
+                  {phaseGlyph ? (
+                    <div style={{ fontSize: 11 }}>{phaseGlyph}</div>
+                  ) : (
+                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: qc }} />
                   )}
+                  <div style={{ fontSize: 7.5, color: ec, textAlign:"center", lineHeight:1.2, fontWeight: 500 }}>
+                    {day.moonSign?.split(" ")[0] ?? ""}
+                  </div>
+                  {crossingCount > 0 && (
+                    <div style={{ fontSize: 7, color: "#c08020", background: "#fff8e8", border: "1px solid #e8d890", borderRadius: 3, padding: "0 3px", fontWeight: 600 }}>
+                      {crossingCount}⚡
+                    </div>
+                  )}
+                  <div style={{ width: "100%", height: 2, borderRadius: 1, background: qc, opacity: 0.6, marginTop: 2 }} />
                 </div>
               );
             })}

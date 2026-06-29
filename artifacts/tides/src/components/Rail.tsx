@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
@@ -37,11 +37,33 @@ function progressPct(began: string, ends: string) {
   return Math.min(100, Math.max(0, ((cur - b) / (e - b)) * 100));
 }
 
+const PLANET_SIGNIFICATION: Record<string, string> = {
+  Sun: "Visibility, leadership, vitality. Good for presenting yourself, making decisions, and creative assertion.",
+  Moon: "Nourishment, care, routine. Tend to home, body, and emotional space.",
+  Mercury: "Communication, ideas, movement. Write, pitch, learn, travel.",
+  Venus: "Beauty, pleasure, connection. Relationship, art, sensory enjoyment.",
+  Mars: "Action, ignition, assertion. Physical work, bold starts, decisive moves.",
+  Jupiter: "Expansion, abundance, generosity. Think big, share widely, grow.",
+  Saturn: "Structure, focus, consolidation. Slow down, commit, build foundations.",
+};
+
+const ARCHETYPE_QUALITY: Record<string, string> = {
+  Sun: "high · visibility",
+  Moon: "reflective · intuitive",
+  Mercury: "sharp · communicative",
+  Venus: "gentle · connective",
+  Mars: "active · assertive",
+  Jupiter: "expansive · optimistic",
+  Saturn: "grounding · disciplined",
+};
+
 export default function Rail({ now }: { now: TidesNow | undefined }) {
   const { prefs } = usePreferences();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
+  const [expandedHour, setExpandedHour] = useState<string | null>(null);
+  const toggleHour = useCallback((key: string) => setExpandedHour(v => v === key ? null : key), []);
   if (!now) {
     return (
       <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid #d0cbc3", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -118,14 +140,16 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const sym = aspSym[a.aspect] ?? a.aspect;
             const col = aspColor[a.aspect] ?? "#888";
+            const pCol = planetColor(other);
             return (
-              <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 0", borderBottom: i < now.moonAspects!.length-1 ? "1px solid #f0ede8" : "none" }}>
+              <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"4px 0", borderBottom: i < now.moonAspects!.length-1 ? "1px solid #e8e4de" : "none" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
-                  <div style={{ width:5, height:5, borderRadius:"50%", background:col, flexShrink:0 }}/>
-                  <span style={{ color:col, fontWeight:600 }}>{sym}</span>
-                  <span style={{ color:"#555" }}>{other}</span>
+                  <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
+                  <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
+                  <span style={{ color:pCol, fontWeight:600 }}>{PLANET_ICONS[other] ?? other[0]}</span>
+                  <span style={{ color:"#555", fontSize:10 }}>{other}</span>
                 </div>
-                <div style={{ fontSize:9, color:"#bbb" }}>
+                <div style={{ fontSize:9 }}>
                   {a.orb < 0.5
                     ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
                     : a.applying
@@ -135,7 +159,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
                           const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
                           const hh = exactAt.getHours().toString().padStart(2,"0");
                           const mm = exactAt.getMinutes().toString().padStart(2,"0");
-                          return <span style={{ color:"#a09080" }}>exact ~{hh}:{mm}</span>;
+                          return <span style={{ color: col, fontWeight:500 }}>→ {hh}:{mm}</span>;
                         })()
                       : <span style={{ color:"#ccc" }}>{a.orb.toFixed(1)}° past</span>
                   }
@@ -201,17 +225,39 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
           <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {(upcomingHours ?? []).slice(0, 4).map((h) => (
-              <div key={h.time} style={{ display: "flex", justifyContent: "space-between", fontSize: 10,
-                color: watchPlanets.includes(h.planet) ? "#333" : "#777",
-                fontWeight: watchPlanets.includes(h.planet) ? 600 : 400,
-              }}>
-                <span style={{ color: "#aaa", width: 16 }}>{PLANET_ICONS[h.planet] ?? "○"}</span>
-                <span style={{ flex: 1 }}>{h.planet}</span>
-                <span>{h.time}</span>
-              </div>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {(upcomingHours ?? []).slice(0, 5).map((h) => {
+              const hCol = planetColor(h.planet);
+              const isWatched = watchPlanets.includes(h.planet);
+              const key = h.time;
+              const isExpanded = expandedHour === key;
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => toggleHour(key)}
+                    style={{
+                      display: "flex", alignItems: "center", width: "100%", gap: 6,
+                      background: isExpanded ? `${hCol}14` : "transparent",
+                      border: "none", borderRadius: 5, padding: "4px 4px", cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: hCol, width: 14, textAlign: "center", flexShrink: 0 }}>
+                      {PLANET_ICONS[h.planet] ?? "○"}
+                    </span>
+                    <span style={{ flex: 1, fontSize: 10, color: isWatched ? "#222" : "#777", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
+                      {h.planet}
+                    </span>
+                    <span style={{ fontSize: 9, color: isWatched ? hCol : "#aaa", fontWeight: isWatched ? 600 : 400 }}>{h.time}</span>
+                    <span style={{ fontSize: 7, color: "#ccc" }}>{isExpanded ? "▲" : "▾"}</span>
+                  </button>
+                  {isExpanded && (
+                    <div style={{ padding: "4px 8px 6px 24px", fontSize: 9, color: "#888", lineHeight: 1.45, borderLeft: `2px solid ${hCol}40`, marginLeft: 11, marginBottom: 2 }}>
+                      {PLANET_SIGNIFICATION[h.planet] ?? `${h.planet} hour.`}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -235,20 +281,26 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
             return (
-              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:4 }}>
+              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:3 }}>
                 {nonMoon.map((a, i) => {
                   const sym = aspSym[a.aspect] ?? a.aspect;
                   const col = aspColor[a.aspect] ?? "#888";
                   const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
+                  const qualLabel: Record<string,string> = { trine:"harmonious", sextile:"supportive", conjunction:"amplified", square:"friction", opposition:"tension" };
                   return (
-                    <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10 }}>
-                      <span style={{ color:p1c, fontWeight:600, flexShrink:0 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
-                      <span style={{ color:col, fontWeight:600, flexShrink:0 }}>{sym}</span>
-                      <span style={{ color:p2c, fontWeight:600, flexShrink:0 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
-                      <span style={{ flex:1, fontSize:8.5, color:"#aaa", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {a.planet1} {a.aspect} {a.planet2}
-                      </span>
-                      <span style={{ fontSize:8, color:"#ccc", flexShrink:0 }}>{a.orb.toFixed(1)}°{a.applying?" →":"←"}</span>
+                    <div key={i} style={{ padding:"4px 0", borderBottom: i < nonMoon.length-1 ? "1px solid #e8e4de" : "none" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:10 }}>
+                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
+                        <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
+                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
+                        <span style={{ flex:1, fontSize:9, color:"#777" }}>{a.planet1} · {a.planet2}</span>
+                        <span style={{ fontSize:8, color: a.applying ? col : "#ccc", flexShrink:0, fontWeight: a.applying ? 600 : 400 }}>
+                          {a.orb.toFixed(1)}°{a.applying ? " →" : "←"}
+                        </span>
+                      </div>
+                      {qualLabel[a.aspect] && (
+                        <div style={{ fontSize:8, color:"#bbb", paddingLeft:2, marginTop:1 }}>{qualLabel[a.aspect]} · {a.nature ?? (["trine","sextile"].includes(a.aspect) ? "harmonious" : "challenging")}</div>
+                      )}
                     </div>
                   );
                 })}
