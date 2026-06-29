@@ -11,12 +11,13 @@ import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
 import Goals from "@/pages/Goals";
 import Sky from "@/pages/Sky";
+import Modules from "@/pages/Modules";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
 const queryClient = new QueryClient();
 
-type View = "today"|"habits"|"tasks"|"goals"|"calendar"|"sky"|"settings";
+type View = "today"|"habits"|"tasks"|"goals"|"calendar"|"sky"|"modules"|"settings";
 
 const NAV: {id:View; label:string; icon:string}[] = [
   {id:"today",    label:"Today",    icon:"◎"},
@@ -25,6 +26,7 @@ const NAV: {id:View; label:string; icon:string}[] = [
   {id:"goals",    label:"Goals",    icon:"◇"},
   {id:"calendar", label:"Calendar", icon:"▦"},
   {id:"sky",      label:"Sky",      icon:"✦"},
+  {id:"modules",  label:"Modules",  icon:"◈"},
 ];
 
 const WINDOW_TYPES = [
@@ -165,6 +167,7 @@ function Shell() {
       {view==="goals"    && <Goals    testerId={testerId}/>}
       {view==="calendar" && <Calendar testerId={testerId} now={now} week={week}/>}
       {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
+      {view==="modules"  && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
       {view==="settings" && <Settings testerId={testerId}/>}
       </div>
     </div>
