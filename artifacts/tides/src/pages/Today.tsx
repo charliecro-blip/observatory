@@ -69,7 +69,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
   const [tideView, setTideView] = useState<"day" | "week">("day");
-  const [activeTab, setActiveTab] = useState<"habits" | "tasks" | "goals">("habits");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
@@ -312,23 +311,52 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               excellent: 7, good: 6, workable: 4, mixed: 3, avoid_if_possible: 2,
             };
 
-            // Build per-hour data (18 hours, 6am–midnight)
-            const hourData: { x: number; y: number; score: number; win: any; hour: number }[] = [];
             const now_ = new Date();
             const nowMinutes = now_.getHours() * 60 + now_.getMinutes();
 
-            for (let h = DAY_START_H; h <= DAY_END_H; h++) {
-              const minFromStart = (h - DAY_START_H) * 60;
+            // All crossings for wave spikes
+            const todayCrossings = (todayData?.crossings ?? []);
+
+            // Crossing spike amplitude per planet
+            const SPIKE_AMP: Record<string, number> = {
+              Venus: 2.5, Jupiter: 2.5, Sun: 1.5, Mercury: 1.2, Moon: 1.0, Mars: -1.0, Saturn: -1.5,
+            };
+
+            // Build per-15-min data (higher resolution for smoother wave)
+            const STEP = 15; // minutes
+            const hourData: { x: number; y: number; score: number; win: any; hour: number; label: string }[] = [];
+
+            for (let minFromStart = 0; minFromStart <= DAY_SPAN; minFromStart += STEP) {
+              const totalMin = DAY_START_H * 60 + minFromStart;
+              const h = Math.floor(totalMin / 60);
+              const m = totalMin % 60;
               const x = (minFromStart / DAY_SPAN) * WIDTH;
+
+              // Base from hourly window quality
               const win = hourWindows.find(w => {
                 const wh = new Date(w.startTime).getHours();
                 const eh = new Date(w.endTime).getHours();
                 return h >= wh && h < eh;
               });
-              const score = win ? (QUALITY_SCORE[win.quality] ?? 4) : 4;
-              const adj = Math.max(1, score - (win?.voidOfCourse ? 2 : 0));
-              const y = WAVE_H - 12 - ((adj / 7) * (WAVE_H - 24));
-              hourData.push({ x, y, score: adj, win, hour: h });
+              let score = win ? (QUALITY_SCORE[win.quality] ?? 4) : 4;
+              if (win?.voidOfCourse) score -= 1.5;
+
+              // Add Gaussian bumps from angular crossings
+              for (const c of todayCrossings) {
+                if (!c.time) continue;
+                const [ch, cm] = c.time.split(":").map(Number);
+                const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
+                const delta = minFromStart - crossMin;
+                const amp = SPIKE_AMP[c.planet] ?? 0.5;
+                // Gaussian: wider for benefic (visible longer), sharper for malefic
+                const width = amp > 0 ? 45 : 30;
+                score += amp * Math.exp(-0.5 * (delta / width) ** 2);
+              }
+
+              const clamped = Math.max(0.5, Math.min(7, score));
+              const y = WAVE_H - 10 - ((clamped / 7) * (WAVE_H - 22));
+              const label = `${h}:${m.toString().padStart(2,"0")}`;
+              hourData.push({ x, y, score: clamped, win, hour: h, label });
             }
 
             if (hourData.length < 2) {
@@ -340,7 +368,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               );
             }
 
-            // Wave path
+            // Smooth wave path using cardinal spline
             let pathD = `M${hourData[0].x},${hourData[0].y}`;
             for (let i = 1; i < hourData.length; i++) {
               const prev = hourData[i - 1], curr = hourData[i];
@@ -351,19 +379,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             const fillPath = `${pathD} L${last.x},${WAVE_H} L${hourData[0].x},${WAVE_H}Z`;
 
             const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
-            const nowIdx = Math.floor((nowMinutes - DAY_START_H * 60) / 60);
+            const nowIdx = Math.round((nowMinutes - DAY_START_H * 60) / STEP);
             const nowY = hourData[Math.min(nowIdx, hourData.length - 1)]?.y ?? WAVE_H / 2;
 
-            // Crossings
-            const todayCrossings = (todayData?.crossings ?? []).filter(c =>
-              c.planet === "Moon" || ["Venus","Jupiter","Mars","Saturn","Sun"].includes(c.planet)
-            ).slice(0, 8);
-
-            // Resonance scoring: high if quality≥5 AND non-VOC AND (favorable bio or good phase)
+            // Moon phase info for band
             const moonPhaseName = now?.moonPhase ?? "";
             const isWaxing = moonPhaseName.toLowerCase().includes("waxing") || moonPhaseName.toLowerCase().includes("full");
-            const bioDayScore: Record<string, number> = { fruit: 2, flower: 2, root: 1, leaf: 0 };
-            const bioScore = bioDayScore[now?.biodynamicType ?? ""] ?? 1;
             const phaseBonus = isWaxing ? 1 : 0;
 
             // Band colors
@@ -377,9 +398,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             // Hover data
             const hoverH = waveHover ? (DAY_START_H + Math.round((waveHover.hourIdx))) : null;
             const hoverWin = waveHover ? hourData[Math.min(waveHover.hourIdx, hourData.length - 1)] : null;
-            const hoverCrossings = waveHover && hoverH !== null ? todayCrossings.filter(c => {
-              const ch = parseInt(c.time?.split(":")?.[0] ?? "99");
-              return Math.abs(ch - hoverH) < 1;
+            const hoverCrossings = hoverWin ? todayCrossings.filter(c => {
+              if (!c.time) return false;
+              const [ch, cm] = c.time.split(":").map(Number);
+              const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
+              const hoverMin = (hoverWin.hour - DAY_START_H) * 60;
+              return Math.abs(crossMin - hoverMin) < 45;
             }) : [];
 
             const BAND_Y = (i: number) => WAVE_H + 4 + i * (BAND_H + BAND_GAP);
@@ -395,8 +419,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                     const rect = waveRef.current?.getBoundingClientRect();
                     if (!rect) return;
                     const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
-                    const hourIdx = Math.round((svgX / WIDTH) * (DAY_END_H - DAY_START_H));
-                    setWaveHover({ x: svgX, y: e.clientY - rect.top, hourIdx: Math.max(0, Math.min(hourIdx, hourData.length - 1)) });
+                    const minFromStart = (svgX / WIDTH) * DAY_SPAN;
+                    const hourIdx = Math.max(0, Math.min(Math.round(minFromStart / STEP), hourData.length - 1));
+                    setWaveHover({ x: svgX, y: e.clientY - rect.top, hourIdx });
                   }}
                   onMouseLeave={() => setWaveHover(null)}
                 >
@@ -404,7 +429,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
 
                   {/* Resonance glow — where score is high */}
                   {hourData.slice(0, -1).map((pt, i) => {
-                    const resScore = pt.score + bioScore + phaseBonus;
+                    const resScore = pt.score + phaseBonus;
                     if (resScore < 5) return null;
                     const nextPt = hourData[i + 1];
                     const colWidth = nextPt.x - pt.x;
@@ -631,59 +656,43 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           />
         </div>}
 
-        {/* Bottom tabs: Habits / Tasks / Goals */}
-        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-          <div style={{ display: "flex", gap: 2, marginBottom: 12, background: "#f0ede8", borderRadius: 6, padding: 2 }}>
-            {(["habits", "tasks", "goals"] as const).map(t => (
-              <button key={t} onClick={() => setActiveTab(t)} style={{
-                flex: 1, padding: "5px 0", borderRadius: 5, fontSize: 11, border: "none", cursor: "pointer",
-                background: activeTab === t ? "#fff" : "transparent",
-                color: activeTab === t ? "#333" : "#888", fontWeight: activeTab === t ? 500 : 400,
-              }}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
+        {/* Practices, Tasks, Goals — unified */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 
-          {/* Habits */}
-          {activeTab === "habits" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {resonant.length > 0 && (
-                <div style={{ fontSize: 9, color: "#3a6020", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 2 }}>
-                  ✦ Resonant now
-                </div>
-              )}
-              {resonant.map(p => <PracticeRow key={p.id} practice={p} />)}
-              {supported.length > 0 && (
-                <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 4, marginBottom: 2 }}>
-                  Supported
-                </div>
-              )}
-              {supported.map(p => <PracticeRow key={p.id} practice={p} />)}
-              {soften.length > 0 && (
-                <div style={{ fontSize: 9, color: "#c06020", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 4, marginBottom: 2 }}>
-                  Soften or skip
-                </div>
-              )}
-              {soften.map(p => <PracticeRow key={p.id} practice={p} dim />)}
-              {practices.length === 0 && (
-                <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", padding: "16px 0" }}>
-                  Add practices in the Cultivator to see timing here.
-                </div>
-              )}
+          {/* Practices */}
+          {practices.length > 0 && (
+            <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a", marginBottom: 10 }}>Practices</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {resonant.length > 0 && (
+                  <div style={{ fontSize: 8.5, color: "#4a7030", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 1 }}>✦ Resonant now</div>
+                )}
+                {resonant.map(p => <PracticeRow key={p.id} practice={p} />)}
+                {supported.length > 0 && (
+                  <div style={{ fontSize: 8.5, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 6, marginBottom: 1 }}>Supported</div>
+                )}
+                {supported.map(p => <PracticeRow key={p.id} practice={p} />)}
+                {soften.length > 0 && (
+                  <div style={{ fontSize: 8.5, color: "#b06030", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 6, marginBottom: 1 }}>Soften or skip</div>
+                )}
+                {soften.map(p => <PracticeRow key={p.id} practice={p} dim />)}
+              </div>
             </div>
           )}
 
-          {/* Tasks — today's list */}
-          {activeTab === "tasks" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {/* Tasks */}
+          <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a" }}>Tasks today</div>
+              {todayTasks.filter(t => t.done === "true").length > 0 && (
+                <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {todayTasks.filter(t => t.done !== "true").map(t => (
-                <div key={t.id} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-                  borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5",
-                }}>
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e4de", background: "#faf8f5" }}>
                   <button onClick={() => toggleTask.mutate({ id: t.id, done: true })} style={{
-                    width: 17, height: 17, borderRadius: 4, border: "1.5px solid #c0bab0",
+                    width: 16, height: 16, borderRadius: 4, border: "1.5px solid #c0bab0",
                     background: "transparent", flexShrink: 0, cursor: "pointer",
                   }} />
                   <div style={{ flex: 1, fontSize: 12, color: "#222" }}>{t.title}</div>
@@ -695,7 +704,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                 </div>
               ))}
               {showAddTask ? (
-                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                <div style={{ display: "flex", gap: 6 }}>
                   <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && newTaskTitle.trim()) addTask.mutate(newTaskTitle); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); } }}
                     placeholder="Task for today…"
@@ -704,45 +713,35 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
                   <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
                 </div>
               ) : (
-                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#aaa", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "4px 0" }}>
-                  + Add task for today
+                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#aaa", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 0" }}>
+                  + Add task
                 </button>
               )}
-              {todayTasks.filter(t => t.done === "true").length > 0 && (
-                <div style={{ fontSize: 9, color: "#bbb", marginTop: 4 }}>
-                  {todayTasks.filter(t => t.done === "true").length} done today ✓
-                </div>
-              )}
               {todayTasks.length === 0 && !showAddTask && (
-                <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", padding: "16px 0" }}>No tasks for today yet.</div>
+                <div style={{ fontSize: 11, color: "#ccc", padding: "6px 0" }}>No tasks for today yet.</div>
               )}
             </div>
-          )}
+          </div>
 
           {/* Goals */}
-          {activeTab === "goals" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {(goals ?? []).map(g => (
-                <div key={g.id} style={{
-                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
-                  borderRadius: 8, border: "1px solid #e8e4de", background: "#faf8f5",
-                }}>
-                  <div style={{
-                    fontSize: 8, padding: "2px 6px", borderRadius: 4, fontWeight: 600,
-                    textTransform: "uppercase", flexShrink: 0, marginTop: 1,
-                    background: g.horizon === "near" ? "#dbeafe" : g.horizon === "mid" ? "#f0e8d8" : "#e8d8f0",
-                    color: g.horizon === "near" ? "#2a5a90" : g.horizon === "mid" ? "#8a5020" : "#602080",
-                  }}>
-                    {g.horizon}
+          {(goals ?? []).length > 0 && (
+            <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a2a3a", marginBottom: 10 }}>Goals in view</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(goals ?? []).slice(0, 5).map(g => (
+                  <div key={g.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <div style={{
+                      fontSize: 7.5, padding: "2px 6px", borderRadius: 4, fontWeight: 700,
+                      textTransform: "uppercase", flexShrink: 0, marginTop: 2, letterSpacing: "0.3px",
+                      background: g.horizon === "near" ? "#dbeafe" : g.horizon === "mid" ? "#f0e8d8" : "#e8d8f0",
+                      color: g.horizon === "near" ? "#2a5a90" : g.horizon === "mid" ? "#8a5020" : "#602080",
+                    }}>
+                      {g.horizon}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#333", lineHeight: 1.3 }}>{g.title}</div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "#333" }}>{g.title}</div>
-                </div>
-              ))}
-              {(goals ?? []).length === 0 && (
-                <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", padding: "16px 0" }}>
-                  No goals yet. Add them in Planning.
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
         </div>

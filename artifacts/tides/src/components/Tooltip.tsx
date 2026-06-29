@@ -9,7 +9,7 @@ interface TooltipProps {
 
 export function Tooltip({ content, children, width = 220, delay = 120 }: TooltipProps) {
   const [visible, setVisible] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [pos, setPos] = useState({ top: 0, left: 0, below: false });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
@@ -17,13 +17,14 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
     timer.current = setTimeout(() => {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      setPos({
-        top: rect.top - 8,
-        left: rect.left + rect.width / 2,
-      });
+      // Clamp left so tooltip stays within viewport (assuming tooltip is ~width px wide)
+      const safeLeft = Math.max(width / 2 + 8, Math.min(window.innerWidth - width / 2 - 8, rect.left + rect.width / 2));
+      // If element is near top, show tooltip below instead
+      const showBelow = rect.top < 140;
+      setPos({ top: showBelow ? rect.bottom + 8 : rect.top - 8, left: safeLeft, below: showBelow });
       setVisible(true);
     }, delay);
-  }, [delay]);
+  }, [delay, width]);
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -40,10 +41,14 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
           position: "fixed",
           top: pos.top,
           left: pos.left,
-          transform: "translate(-50%, -100%)",
+          transform: pos.below ? "translate(-50%, 0)" : "translate(-50%, -100%)",
           zIndex: 9999,
           pointerEvents: "none",
         }}>
+          {/* Arrow (top when showing above, bottom when showing below) */}
+          {pos.below && (
+            <div style={{ width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderBottom:"6px solid #1a2a3a", margin:"0 auto", marginBottom:0 }} />
+          )}
           <div style={{
             background: "#1a2a3a",
             color: "#e8e4de",
@@ -53,18 +58,14 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
             lineHeight: 1.5,
             width,
             boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-            marginBottom: 6,
+            marginBottom: pos.below ? 0 : 6,
+            marginTop: pos.below ? 0 : 0,
           }}>
             {content}
           </div>
-          {/* Arrow */}
-          <div style={{
-            width: 0, height: 0,
-            borderLeft: "6px solid transparent",
-            borderRight: "6px solid transparent",
-            borderTop: "6px solid #1a2a3a",
-            margin: "0 auto",
-          }} />
+          {!pos.below && (
+            <div style={{ width:0, height:0, borderLeft:"6px solid transparent", borderRight:"6px solid transparent", borderTop:"6px solid #1a2a3a", margin:"0 auto" }} />
+          )}
         </div>
       )}
     </>

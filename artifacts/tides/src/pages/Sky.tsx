@@ -274,21 +274,102 @@ function EventCard({ event, selected, onSelect }: { event: SkyEvent; selected: b
   );
 }
 
+// ── Type-grouped section ──────────────────────────────────────────────────────
+
+const SECTION_CONFIG: { type: string; label: string; icon: string; desc: string; accent: string; defaultOpen: boolean }[] = [
+  { type:"crossing",      label:"Angular Crossings", icon:"⚡", desc:"Planet–angle peaks: precise action windows", accent:"#c08020", defaultOpen:true },
+  { type:"moon_phase",    label:"Moon Phases",        icon:"🌕", desc:"Lunar cycle milestones",                   accent:"#7080a0", defaultOpen:true },
+  { type:"ingress",       label:"Moon Ingresses",     icon:"♈", desc:"Moon changes sign (~every 2.5 days)",      accent:"#4a7090", defaultOpen:false },
+  { type:"voc",           label:"Void of Course",     icon:"◌", desc:"Rest and completion windows",              accent:"#9a8050", defaultOpen:false },
+  { type:"quality_window",label:"Quality Windows",    icon:"✦", desc:"High-resonance multi-factor alignment",    accent:"#3a7040", defaultOpen:false },
+];
+
+function SkySection({ typeId, label, icon, desc, accent, events, selectedEvent, onSelect, weekDayMap }: {
+  typeId: string; label: string; icon: string; desc: string; accent: string;
+  events: SkyEvent[]; selectedEvent: SkyEvent | null; onSelect: (e: SkyEvent) => void;
+  weekDayMap: Map<string, any>;
+}) {
+  const cfg = SECTION_CONFIG.find(s => s.type === typeId);
+  const [open, setOpen] = useState(cfg?.defaultOpen ?? false);
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = events.filter(e => e.date >= today);
+
+  // Group upcoming events by date
+  const byDate: Record<string, SkyEvent[]> = {};
+  for (const e of upcoming) (byDate[e.date] ??= []).push(e);
+  const dates = Object.keys(byDate).sort();
+
+  return (
+    <div style={{ border:`1px solid ${accent}30`, borderRadius:10, overflow:"hidden" }}>
+      {/* Section header */}
+      <button onClick={() => setOpen(v => !v)} style={{
+        width:"100%", display:"flex", alignItems:"center", gap:10, padding:"11px 14px",
+        background: open ? `${accent}12` : `${accent}08`, border:"none", cursor:"pointer", textAlign:"left",
+        borderBottom: open ? `1px solid ${accent}20` : "none",
+      }}>
+        <span style={{ fontSize:15, width:20, textAlign:"center", flexShrink:0 }}>{icon}</span>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:11.5, fontWeight:600, color: accent }}>{label}</div>
+          <div style={{ fontSize:9.5, color:"#aaa", marginTop:1 }}>{desc}</div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+          <span style={{ fontSize:9, padding:"2px 7px", borderRadius:8, background:`${accent}18`, color:accent, fontWeight:600 }}>
+            {upcoming.length}
+          </span>
+          <span style={{ fontSize:10, color:"#bbb", transform: open ? "rotate(90deg)" : "none", transition:"transform 0.15s" }}>›</span>
+        </div>
+      </button>
+
+      {/* Event list */}
+      {open && (
+        <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+          {dates.length === 0 && (
+            <div style={{ padding:"12px 14px", fontSize:11, color:"#bbb" }}>No {label.toLowerCase()} in this window.</div>
+          )}
+          {dates.map(date => {
+            const dayData = weekDayMap.get(date);
+            const ec = dayData ? (ELEMENT_COLORS[dayData.element] ?? "#888") : "#888";
+            const isToday = date === today;
+            const dayEvs = byDate[date];
+            return (
+              <div key={date}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 14px 4px", background:"#faf8f5" }}>
+                  <div style={{ fontSize: isToday ? 10 : 9, fontWeight: isToday ? 700 : 600, color: isToday ? "#b07030" : "#888" }}>
+                    {formatDate(date)}
+                  </div>
+                  {dayData && <div style={{ fontSize:8, color:ec }}>{dayData.moonSign}</div>}
+                  <div style={{ flex:1, height:1, background:"#ece8e2" }} />
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:3, padding:"3px 8px 8px" }}>
+                  {dayEvs.map((ev, i) => (
+                    <EventCard key={i} event={ev} selected={selectedEvent === ev}
+                      onSelect={() => onSelect(ev)} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
-  const [filter, setFilter] = useState("all");
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(60);
   const [selectedEvent, setSelectedEvent] = useState<SkyEvent | null>(null);
   const { data: eventsData, isLoading } = useSkyEvents(days, lat, lon);
   const { data: week } = useTidesWeek(days, lat, lon);
 
   const allEvents = eventsData?.events ?? [];
-  const filtered = filter === "all" ? allEvents : allEvents.filter(e => e.type === filter);
-  const grouped = groupByDate(filtered);
-  const dates = Object.keys(grouped).sort();
-
   const weekDayMap = new Map((week?.days ?? []).map(d => [d.date, d]));
+  const today = new Date().toISOString().slice(0, 10);
+
+  function handleSelect(ev: SkyEvent) {
+    setSelectedEvent(prev => prev === ev ? null : ev);
+  }
 
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -296,112 +377,59 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
       <div style={{ padding:"10px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #d0cbc3", background:"#ece8e2", flexShrink:0 }}>
         <div style={{ fontSize:13, fontWeight:600, color:"#1a2a3a" }}>Sky ahead</div>
         <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-          {selectedEvent && (
-            <div style={{ fontSize:10, color:"#aaa", marginRight:4 }}>
-              {selectedEvent.title} →
-            </div>
-          )}
+          {selectedEvent && <div style={{ fontSize:10, color:"#aaa", marginRight:4 }}>{selectedEvent.title} ›</div>}
           <select value={days} onChange={e => setDays(Number(e.target.value))}
             style={{ fontSize:10, padding:"3px 8px", borderRadius:6, border:"1px solid #d0cbc3", background:"#f0ede8", color:"#555" }}>
             <option value={14}>14 days</option>
             <option value={30}>30 days</option>
             <option value={60}>60 days</option>
+            <option value={90}>90 days</option>
           </select>
         </div>
       </div>
 
-      {/* Filter chips */}
-      <div style={{ padding:"8px 20px", display:"flex", gap:4, flexWrap:"wrap", borderBottom:"1px solid #e8e4de", background:"#f4f0ea", flexShrink:0 }}>
-        {FILTER_TYPES.map(f => (
-          <button key={f.id} onClick={() => setFilter(f.id)} style={{
-            fontSize:9, padding:"3px 9px", borderRadius:10, border:"1px solid #d0cbc3", cursor:"pointer",
-            background: filter === f.id ? "#1a2a3a" : "#fff",
-            color: filter === f.id ? "#fff" : "#666", fontWeight: filter === f.id ? 600 : 400,
-          }}>
-            {f.label}
-          </button>
-        ))}
-        <div style={{ marginLeft:"auto", fontSize:10, color:"#aaa", lineHeight:"24px" }}>
-          {filtered.length} events
+      {/* Quality strip */}
+      <div style={{ padding:"8px 20px 10px", borderBottom:"1px solid #e8e4de", background:"#faf8f5", flexShrink:0 }}>
+        <div style={{ fontSize:8, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:5 }}>Quality overview — next {days} days</div>
+        <div style={{ display:"flex", gap:2, overflowX:"auto" }}>
+          {(week?.days ?? []).map(day => {
+            const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
+            const isToday = day.date === today;
+            const q = day.qualityScore ?? 5;
+            const h = Math.max(6, (q / 7) * 26);
+            return (
+              <div key={day.date} title={`${day.label} — ${day.quality} (${day.moonSign})`} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1, minWidth:20, flexShrink:0 }}>
+                <div style={{ fontSize:6.5, color: isToday ? "#b07030" : "#ccc", fontWeight: isToday ? 700 : 400 }}>
+                  {new Date(day.date + "T12:00:00").getDate()}
+                </div>
+                <div style={{ width:12, height:h, borderRadius:2, background:ec, opacity:0.65 + (q / 28) }} />
+                {(day.crossings ?? []).length > 0 && <div style={{ width:3, height:3, borderRadius:"50%", background:"#c08020" }} />}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* 30-day quality strip */}
-      {filter === "all" && (
-        <div style={{ padding:"10px 20px", borderBottom:"1px solid #e8e4de", background:"#faf8f5", flexShrink:0 }}>
-          <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.6px", color:"#aaa", marginBottom:6 }}>Quality at a glance</div>
-          <div style={{ display:"flex", gap:2, overflowX:"auto" }}>
-            {(week?.days ?? []).map(day => {
-              const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
-              const today = new Date().toISOString().slice(0, 10);
-              const isToday = day.date === today;
-              const q = day.qualityScore ?? 5;
-              const h = Math.max(8, (q / 7) * 28);
-              return (
-                <div key={day.date} title={`${day.label} — ${day.quality} (${day.element})`} style={{
-                  display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-                  minWidth:22, flexShrink:0,
-                }}>
-                  <div style={{ fontSize:7, color: isToday ? "#b07030" : "#ccc", fontWeight: isToday ? 700 : 400 }}>
-                    {new Date(day.date + "T12:00:00").getDate()}
-                  </div>
-                  <div style={{ width:14, height:h, borderRadius:3, background:ec, opacity:0.7 + (q / 35) }} />
-                  {(day.crossings ?? []).length > 0 && (
-                    <div style={{ width:4, height:4, borderRadius:"50%", background:"#e0a040" }} />
-                  )}
-                  {day.voidPeriods && (
-                    <div style={{ width:4, height:4, borderRadius:"50%", background:"#bbb" }} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display:"flex", gap:12, marginTop:6, fontSize:8, color:"#bbb" }}>
-            <span>■ element quality</span>
-            <span style={{ color:"#e0a040" }}>● crossing</span>
-            <span>● VOC</span>
-          </div>
-        </div>
-      )}
-
-      {/* Main area with optional detail panel */}
+      {/* Main area */}
       <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative" }}>
-        {/* Event feed */}
-        <div style={{ flex:1, overflowY:"auto", padding:"14px 20px", display:"flex", flexDirection:"column", gap:18 }}>
-          {isLoading && (
-            <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>
-          )}
-          {!isLoading && dates.length === 0 && (
-            <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>No events match this filter.</div>
-          )}
-
-          {dates.map(date => {
-            const dayEvents = grouped[date];
-            const dayData = weekDayMap.get(date);
-            const ec = dayData ? (ELEMENT_COLORS[dayData.element] ?? "#888") : "#888";
-            const isToday = date === new Date().toISOString().slice(0, 10);
+        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+          {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
+          {!isLoading && allEvents.length === 0 && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>No events found.</div>}
+          {!isLoading && SECTION_CONFIG.map(sec => {
+            const typeEvents = allEvents.filter(e => e.type === sec.type);
             return (
-              <div key={date}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                  <div style={{ fontSize: isToday ? 12 : 10, fontWeight: isToday ? 700 : 600, color: isToday ? "#b07030" : "#555" }}>
-                    {formatDate(date)}
-                  </div>
-                  {dayData && (
-                    <div style={{ fontSize:8, color:ec, opacity:0.8 }}>{dayData.moonSign} · {dayData.element}</div>
-                  )}
-                  <div style={{ flex:1, height:1, background:"#e8e4de" }} />
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                  {dayEvents.map((ev, i) => (
-                    <EventCard
-                      key={i}
-                      event={ev}
-                      selected={selectedEvent === ev}
-                      onSelect={() => setSelectedEvent(selectedEvent === ev ? null : ev)}
-                    />
-                  ))}
-                </div>
-              </div>
+              <SkySection
+                key={sec.type}
+                typeId={sec.type}
+                label={sec.label}
+                icon={sec.icon}
+                desc={sec.desc}
+                accent={sec.accent}
+                events={typeEvents}
+                selectedEvent={selectedEvent}
+                onSelect={handleSelect}
+                weekDayMap={weekDayMap}
+              />
             );
           })}
         </div>

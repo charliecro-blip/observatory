@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
@@ -41,6 +41,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
   const { prefs } = usePreferences();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
+  const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   if (!now) {
     return (
       <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid #d0cbc3", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -212,6 +213,48 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Non-moon aspects — expand toggle */}
+      {railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
+        <div style={{ padding: "8px 14px", borderBottom: "1px solid #d8d3cd" }}>
+          <button onClick={() => setShowNonMoonAspects(v => !v)} style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
+            background:"none", border:"none", cursor:"pointer", padding:0,
+          }}>
+            <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"#aaa" }}>
+              Planetary aspects
+            </span>
+            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#faf5e8", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
+              {showNonMoonAspects ? "▲ hide" : `${now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length} ▼`}
+            </span>
+          </button>
+          {showNonMoonAspects && (() => {
+            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
+            const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
+            return (
+              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:4 }}>
+                {nonMoon.map((a, i) => {
+                  const sym = aspSym[a.aspect] ?? a.aspect;
+                  const col = aspColor[a.aspect] ?? "#888";
+                  const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
+                  return (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10 }}>
+                      <span style={{ color:p1c, fontWeight:600, flexShrink:0 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
+                      <span style={{ color:col, fontWeight:600, flexShrink:0 }}>{sym}</span>
+                      <span style={{ color:p2c, fontWeight:600, flexShrink:0 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
+                      <span style={{ flex:1, fontSize:8.5, color:"#aaa", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {a.planet1} {a.aspect} {a.planet2}
+                      </span>
+                      <span style={{ fontSize:8, color:"#ccc", flexShrink:0 }}>{a.orb.toFixed(1)}°{a.applying?" →":"←"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
