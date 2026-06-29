@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows } from "@/hooks/useTides";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences } from "@/contexts/preferences-context";
+import { Tooltip, HelpBadge } from "@/components/Tooltip";
+import { SessionTimer } from "@/components/SessionTimer";
 import type { Goal } from "@/lib/types";
 
 const ELEMENT_COLORS: Record<string, string> = {
@@ -71,6 +73,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   const [journalSaved, setJournalSaved] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [waveHover, setWaveHover] = useState<{ x: number; y: number; hourIdx: number } | null>(null);
+  const waveRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(journalKey(testerId, today));
@@ -174,9 +178,16 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           {new Date().toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40` }}>
-            {el} · {now?.biodynamicType} · {now?.quality}
-          </div>
+          <Tooltip content={
+            <div>
+              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>{el} · {now?.biodynamicType}</div>
+              <div style={{ fontSize: 10, color: "#b0aaa4" }}>Element shapes the day's quality. Biodynamic type reflects the Moon's zodiac position and its influence on vitality and focus.</div>
+            </div>
+          }>
+            <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
+              {el} · {now?.biodynamicType} · {now?.quality}
+            </div>
+          </Tooltip>
           <button
             onClick={() => setCrossingsOn(v => !v)}
             style={{
@@ -188,6 +199,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: crossingsOn ? "#e0a040" : "#ccc", display: "inline-block" }} />
             Crossings {crossingsOn ? "on" : "off"}
           </button>
+          <SessionTimer planetaryHour={now?.planetaryHour} />
         </div>
       </div>
 
@@ -280,121 +292,258 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             {now?.momentLabel} · {now?.biodynamicType}
           </div>
 
-          {/* Dynamic tide wave from hourly quality windows */}
+          {/* Dynamic tide wave + resonance bands */}
           {todayShowWave && (() => {
-            const WIDTH = 600, HEIGHT = 88;
-            const DAY_START_H = 6, DAY_END_H = 24; // 6am–midnight
+            const WIDTH = 600, WAVE_H = 96, BAND_H = 11, BAND_GAP = 2, BANDS = 3;
+            const TOTAL_H = WAVE_H + BANDS * (BAND_H + BAND_GAP) + 4;
+            const DAY_START_H = 6, DAY_END_H = 24;
             const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
             const hourWindows = tidesWindowsData?.windows ?? [];
 
-            // Build quality score per hour (6am–midnight, 18 steps)
             const QUALITY_SCORE: Record<string, number> = {
               excellent: 7, good: 6, workable: 4, mixed: 3, avoid_if_possible: 2,
             };
-            const points: { x: number; y: number }[] = [];
+
+            // Build per-hour data (18 hours, 6am–midnight)
+            const hourData: { x: number; y: number; score: number; win: any; hour: number }[] = [];
             const now_ = new Date();
             const nowMinutes = now_.getHours() * 60 + now_.getMinutes();
 
             for (let h = DAY_START_H; h <= DAY_END_H; h++) {
               const minFromStart = (h - DAY_START_H) * 60;
               const x = (minFromStart / DAY_SPAN) * WIDTH;
-              // Find window that covers this hour
               const win = hourWindows.find(w => {
-                const wStart = new Date(w.startTime);
-                const wEnd   = new Date(w.endTime);
-                const wh = wStart.getHours();
-                const eh = wEnd.getHours();
+                const wh = new Date(w.startTime).getHours();
+                const eh = new Date(w.endTime).getHours();
                 return h >= wh && h < eh;
               });
               const score = win ? (QUALITY_SCORE[win.quality] ?? 4) : 4;
-              const vocPenalty = win?.voidOfCourse ? 2 : 0;
-              const adj = Math.max(1, score - vocPenalty);
-              const y = HEIGHT - 12 - ((adj / 7) * (HEIGHT - 24));
-              points.push({ x, y });
+              const adj = Math.max(1, score - (win?.voidOfCourse ? 2 : 0));
+              const y = WAVE_H - 12 - ((adj / 7) * (WAVE_H - 24));
+              hourData.push({ x, y, score: adj, win, hour: h });
             }
 
-            if (points.length < 2) {
-              // Fallback static wave while data loads
+            if (hourData.length < 2) {
               return (
-                <svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
-                  <rect width={WIDTH} height={HEIGHT} fill="#f8f6f2" rx="4"/>
-                  <path d={`M0,55 C150,35 300,15 ${WIDTH},45 L${WIDTH},${HEIGHT} L0,${HEIGHT}Z`} fill={`${elemColor}30`}/>
+                <svg width="100%" height={WAVE_H} viewBox={`0 0 ${WIDTH} ${WAVE_H}`}>
+                  <rect width={WIDTH} height={WAVE_H} fill="#f8f6f2" rx="4"/>
+                  <path d={`M0,55 C150,35 300,15 ${WIDTH},45 L${WIDTH},${WAVE_H} L0,${WAVE_H}Z`} fill={`${elemColor}30`}/>
                 </svg>
               );
             }
 
-            // Smooth the points with a cubic bezier path
-            let pathD = `M${points[0].x},${points[0].y}`;
-            for (let i = 1; i < points.length; i++) {
-              const prev = points[i - 1];
-              const curr = points[i];
+            // Wave path
+            let pathD = `M${hourData[0].x},${hourData[0].y}`;
+            for (let i = 1; i < hourData.length; i++) {
+              const prev = hourData[i - 1], curr = hourData[i];
               const cpx = (prev.x + curr.x) / 2;
               pathD += ` C${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
             }
-            const last = points[points.length - 1];
-            const fillPath = `${pathD} L${last.x},${HEIGHT} L${points[0].x},${HEIGHT}Z`;
+            const last = hourData[hourData.length - 1];
+            const fillPath = `${pathD} L${last.x},${WAVE_H} L${hourData[0].x},${WAVE_H}Z`;
 
             const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
-            // Y at now position (linear interpolation between points)
-            const nowPointIdx = Math.floor((nowMinutes - DAY_START_H * 60) / 60);
-            const nowY = points[Math.min(nowPointIdx, points.length - 1)]?.y ?? HEIGHT / 2;
+            const nowIdx = Math.floor((nowMinutes - DAY_START_H * 60) / 60);
+            const nowY = hourData[Math.min(nowIdx, hourData.length - 1)]?.y ?? WAVE_H / 2;
 
-            // Crossings on the wave
+            // Crossings
             const todayCrossings = (todayData?.crossings ?? []).filter(c =>
               c.planet === "Moon" || ["Venus","Jupiter","Mars","Saturn","Sun"].includes(c.planet)
-            ).slice(0, 5);
+            ).slice(0, 8);
+
+            // Resonance scoring: high if quality≥5 AND non-VOC AND (favorable bio or good phase)
+            const moonPhaseName = now?.moonPhase ?? "";
+            const isWaxing = moonPhaseName.toLowerCase().includes("waxing") || moonPhaseName.toLowerCase().includes("full");
+            const bioDayScore: Record<string, number> = { fruit: 2, flower: 2, root: 1, leaf: 0 };
+            const bioScore = bioDayScore[now?.biodynamicType ?? ""] ?? 1;
+            const phaseBonus = isWaxing ? 1 : 0;
+
+            // Band colors
+            const BIO_COLORS: Record<string, string> = { fruit: "#c06020", flower: "#6080b0", root: "#3a6030", leaf: "#3a5a80" };
+            const bioColor = BIO_COLORS[now?.biodynamicType ?? ""] ?? "#888";
+            const PHASE_COLORS: Record<string, string> = {
+              "new moon":"#1a2a3a", "waxing crescent":"#4a6080", "first quarter":"#5a7090",
+              "waxing gibbous":"#6a8aa0", "full moon":"#8a9aaa", "waning gibbous":"#7a8a9a",
+              "last quarter":"#5a6a7a", "waning crescent":"#3a4a5a",
+            };
+            const phaseColor = PHASE_COLORS[moonPhaseName.toLowerCase().replace(/_/g," ")] ?? "#6a8090";
+
+            // Hover data
+            const hoverH = waveHover ? (DAY_START_H + Math.round((waveHover.hourIdx))) : null;
+            const hoverWin = waveHover ? hourData[Math.min(waveHover.hourIdx, hourData.length - 1)] : null;
+            const hoverCrossings = waveHover && hoverH !== null ? todayCrossings.filter(c => {
+              const ch = parseInt(c.time?.split(":")?.[0] ?? "99");
+              return Math.abs(ch - hoverH) < 1;
+            }) : [];
+
+            const BAND_Y = (i: number) => WAVE_H + 4 + i * (BAND_H + BAND_GAP);
 
             return (
-              <svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={{ display: "block" }}>
-                <rect width={WIDTH} height={HEIGHT} fill="#f8f6f2" rx="4"/>
-                {/* VOC zone background */}
-                {hourWindows.filter(w => w.voidOfCourse).map((w, i) => {
-                  const wStart = new Date(w.startTime);
-                  const wEnd   = new Date(w.endTime);
-                  const x1 = Math.max(0, ((wStart.getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
-                  const x2 = Math.min(WIDTH, ((wEnd.getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
-                  return <rect key={i} x={x1} y={0} width={x2 - x1} height={HEIGHT} fill="#f0ece4" opacity="0.7"/>;
-                })}
-                {/* Wave fill */}
-                <path d={fillPath} fill={`${elemColor}28`}/>
-                {/* Wave line */}
-                <path d={pathD} stroke={elemColor} strokeWidth="1.5" fill="none"/>
-                {/* Crossing spikes */}
-                {crossingsOn && todayCrossings.map((c, i) => {
-                  const [ch, cm] = c.time.split(":").map(Number);
-                  const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
-                  if (cx_ < 0 || cx_ > WIDTH) return null;
-                  const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
-                  const col = isBenefic ? "#60a060" : "#e0a040";
-                  return (
-                    <g key={i}>
-                      <line x1={cx_} y1={0} x2={cx_} y2={HEIGHT} stroke={col} strokeWidth="1" strokeDasharray="2,2" opacity="0.7"/>
-                      <polygon points={`${cx_},2 ${cx_-4},9 ${cx_+4},9`} fill={col}/>
-                    </g>
-                  );
-                })}
-                {/* Now marker */}
-                <line x1={nowX} y1={0} x2={nowX} y2={HEIGHT} stroke="#1a2a3a" strokeWidth="1" strokeDasharray="3,2"/>
-                <circle cx={nowX} cy={nowY} r="3.5" fill="#1a2a3a"/>
-                <text x={nowX + 5} y={nowY - 4} fontSize="7" fill="#1a2a3a" fontFamily="sans-serif">NOW</text>
-                {/* Scheduled windows bar */}
-                {(windows ?? []).map((w, i) => {
-                  const [sh, sm] = w.startTime.split(":").map(Number);
-                  const [eh, em] = w.endTime.split(":").map(Number);
-                  const x0 = Math.max(0, ((sh * 60 + sm - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
-                  const x1 = Math.max(x0 + 20, ((eh * 60 + em - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
-                  const color = WINDOW_COLORS[w.type] ?? "#888";
-                  return (
-                    <g key={w.id}>
-                      <rect x={x0} y={HEIGHT - 22} width={x1 - x0} height={18} rx="3" fill={color} opacity="0.85"/>
-                      <text x={(x0 + x1) / 2} y={HEIGHT - 10} fontSize="6.5" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
-                    </g>
-                  );
-                })}
-              </svg>
+              <div style={{ position: "relative" }}>
+                <svg
+                  ref={waveRef}
+                  width="100%" height={TOTAL_H}
+                  viewBox={`0 0 ${WIDTH} ${TOTAL_H}`}
+                  style={{ display: "block", cursor: "crosshair" }}
+                  onMouseMove={e => {
+                    const rect = waveRef.current?.getBoundingClientRect();
+                    if (!rect) return;
+                    const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+                    const hourIdx = Math.round((svgX / WIDTH) * (DAY_END_H - DAY_START_H));
+                    setWaveHover({ x: svgX, y: e.clientY - rect.top, hourIdx: Math.max(0, Math.min(hourIdx, hourData.length - 1)) });
+                  }}
+                  onMouseLeave={() => setWaveHover(null)}
+                >
+                  <rect width={WIDTH} height={TOTAL_H} fill="#f8f6f2" rx="4"/>
+
+                  {/* Resonance glow — where score is high */}
+                  {hourData.slice(0, -1).map((pt, i) => {
+                    const resScore = pt.score + bioScore + phaseBonus;
+                    if (resScore < 5) return null;
+                    const nextPt = hourData[i + 1];
+                    const colWidth = nextPt.x - pt.x;
+                    const alpha = Math.min(0.18, (resScore - 4) * 0.05);
+                    return <rect key={i} x={pt.x} y={0} width={colWidth} height={WAVE_H} fill={`rgba(210,170,60,${alpha})`}/>;
+                  })}
+
+                  {/* VOC zone background */}
+                  {hourWindows.filter(w => w.voidOfCourse).map((w, i) => {
+                    const x1 = Math.max(0, ((new Date(w.startTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+                    const x2 = Math.min(WIDTH, ((new Date(w.endTime).getHours() - DAY_START_H) * 60 / DAY_SPAN) * WIDTH);
+                    return <rect key={i} x={x1} y={0} width={x2 - x1} height={WAVE_H} fill="#f0ece4" opacity="0.55"/>;
+                  })}
+
+                  {/* Wave fill + line */}
+                  <path d={fillPath} fill={`${elemColor}28`}/>
+                  <path d={pathD} stroke={elemColor} strokeWidth="1.5" fill="none"/>
+
+                  {/* Crossing spikes */}
+                  {crossingsOn && todayCrossings.map((c, i) => {
+                    if (!c.time) return null;
+                    const [ch, cm] = c.time.split(":").map(Number);
+                    const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
+                    if (cx_ < 0 || cx_ > WIDTH) return null;
+                    const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
+                    const col = isBenefic ? "#60a060" : "#e0a040";
+                    return (
+                      <g key={i}>
+                        <line x1={cx_} y1={0} x2={cx_} y2={WAVE_H} stroke={col} strokeWidth="1" strokeDasharray="2,2" opacity="0.7"/>
+                        <polygon points={`${cx_},2 ${cx_-4},9 ${cx_+4},9`} fill={col}/>
+                        <text x={cx_ + 3} y={WAVE_H - 3} fontSize="6" fill={col} fontFamily="sans-serif">{c.planet[0]}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Now marker */}
+                  <line x1={nowX} y1={0} x2={nowX} y2={WAVE_H} stroke="#1a2a3a" strokeWidth="1" strokeDasharray="3,2"/>
+                  <circle cx={nowX} cy={nowY} r="3.5" fill="#1a2a3a"/>
+                  <text x={nowX + 5} y={nowY - 4} fontSize="7" fill="#1a2a3a" fontFamily="sans-serif">NOW</text>
+
+                  {/* Scheduled windows bar */}
+                  {(windows ?? []).map((w, i) => {
+                    const [sh, sm] = w.startTime.split(":").map(Number);
+                    const [eh, em] = w.endTime.split(":").map(Number);
+                    const x0 = Math.max(0, ((sh * 60 + sm - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+                    const x1 = Math.max(x0 + 20, ((eh * 60 + em - DAY_START_H * 60) / DAY_SPAN) * WIDTH);
+                    const color = WINDOW_COLORS[w.type] ?? "#888";
+                    return (
+                      <g key={w.id}>
+                        <rect x={x0} y={WAVE_H - 22} width={x1 - x0} height={18} rx="3" fill={color} opacity="0.85"/>
+                        <text x={(x0 + x1) / 2} y={WAVE_H - 10} fontSize="6.5" fill="#fff" fontFamily="sans-serif" textAnchor="middle">{w.title}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* ── Resonance bands ── */}
+
+                  {/* Band 1: Quality gradient */}
+                  {hourData.slice(0, -1).map((pt, i) => {
+                    const nextPt = hourData[i + 1];
+                    const colW = nextPt.x - pt.x;
+                    const q = pt.score;
+                    const hue = q >= 5 ? "#60a060" : q >= 3 ? "#d0a040" : "#c06040";
+                    return <rect key={i} x={pt.x} y={BAND_Y(0)} width={colW} height={BAND_H} fill={hue} opacity={0.3 + q * 0.09}/>;
+                  })}
+                  <text x={2} y={BAND_Y(0) + 8} fontSize="6.5" fill="#aaa" fontFamily="sans-serif">quality</text>
+
+                  {/* Band 2: Biodynamic day (uniform for the day) */}
+                  <rect x={0} y={BAND_Y(1)} width={WIDTH} height={BAND_H} fill={bioColor} opacity={0.35}/>
+                  <text x={2} y={BAND_Y(1) + 8} fontSize="6.5" fill="#888" fontFamily="sans-serif">{now?.biodynamicType}</text>
+
+                  {/* Band 3: Lunar phase */}
+                  <rect x={0} y={BAND_Y(2)} width={WIDTH} height={BAND_H} fill={phaseColor} opacity={0.4}/>
+                  <text x={2} y={BAND_Y(2) + 8} fontSize="6.5" fill="#ccc" fontFamily="sans-serif">{(moonPhaseName ?? "").replace(/_/g," ")}</text>
+
+                  {/* Crossing dots on bands */}
+                  {todayCrossings.map((c, i) => {
+                    if (!c.time) return null;
+                    const [ch, cm] = c.time.split(":").map(Number);
+                    const cx_ = ((ch * 60 + cm - DAY_START_H * 60) / DAY_SPAN) * WIDTH;
+                    if (cx_ < 0 || cx_ > WIDTH) return null;
+                    const isBenefic = ["Venus", "Jupiter"].includes(c.planet);
+                    return <circle key={i} cx={cx_} cy={BAND_Y(0) + BAND_H / 2} r={3} fill={isBenefic ? "#60a060" : "#e0a040"} opacity={0.9}/>;
+                  })}
+
+                  {/* Hover line */}
+                  {waveHover && (
+                    <line
+                      x1={waveHover.x} y1={0} x2={waveHover.x} y2={WAVE_H}
+                      stroke="#1a2a3a" strokeWidth="0.75" strokeDasharray="2,3" opacity="0.4"
+                    />
+                  )}
+                </svg>
+
+                {/* Hover tooltip card */}
+                {waveHover && hoverWin && (
+                  <div style={{
+                    position: "absolute",
+                    top: Math.min(waveHover.y - 80, WAVE_H - 90),
+                    left: Math.min(Math.max(waveHover.x * (waveRef.current?.getBoundingClientRect().width ?? 600) / WIDTH - 70, 0), (waveRef.current?.getBoundingClientRect().width ?? 600) - 160),
+                    background: "#1a2a3a", color: "#e8e4de", borderRadius: 8, padding: "8px 11px",
+                    fontSize: 10.5, lineHeight: 1.4, width: 160, pointerEvents: "none",
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: 3 }}>
+                      {DAY_START_H + waveHover.hourIdx}:00 — quality {hoverWin.score}/7
+                    </div>
+                    {hoverWin.win && (
+                      <div style={{ color: "#b0aaa4", fontSize: 10 }}>
+                        {hoverWin.win.quality?.replace(/_/g," ")}
+                        {hoverWin.win.voidOfCourse ? " · VOC" : ""}
+                      </div>
+                    )}
+                    {hoverCrossings.length > 0 && (
+                      <div style={{ marginTop: 4, color: "#c8b870" }}>
+                        {hoverCrossings.map(c => `${c.planet} ${c.angle ?? ""}`).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Band legend row */}
+                <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 8, color: "#bbb", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <div style={{ width: 12, height: 5, background: "linear-gradient(to right, #c06040, #d0a040, #60a060)", borderRadius: 2 }} />
+                    quality
+                  </div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <div style={{ width: 12, height: 5, background: bioColor, borderRadius: 2, opacity: 0.6 }} />
+                    biodynamic
+                  </div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <div style={{ width: 12, height: 5, background: phaseColor, borderRadius: 2, opacity: 0.7 }} />
+                    lunar phase
+                  </div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#c8b870" }} />
+                    crossing
+                  </div>
+                  <HelpBadge term="resonance" style={{ marginLeft: "auto" }} />
+                </div>
+              </div>
             );
           })()}
-          {todayShowWave && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 2 }}>
+          {todayShowWave && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#ccc", marginTop: 1 }}>
             {["6am","9am","12pm","3pm","6pm","9pm","12am"].map(t => <span key={t}>{t}</span>)}
           </div>}
         </div>

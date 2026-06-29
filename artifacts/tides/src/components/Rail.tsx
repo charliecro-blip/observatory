@@ -1,5 +1,6 @@
 import React from "react";
 import { Skeleton } from "@/components/Skeleton";
+import { HelpBadge } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 
@@ -82,7 +83,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       {/* Moon */}
       {railSections.includes("moon") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
               width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
@@ -112,7 +113,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       {/* Moon Aspects */}
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Moon aspects</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon aspects<HelpBadge term="moonAspects"/></div>
           {now.moonAspects.slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
             const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
@@ -139,14 +140,17 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       {/* Retrogrades */}
       {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid #d8d3cd" }}>
-          <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+            <HelpBadge term="retrogrades"/>
+          </div>
         </div>
       )}
 
       {/* Planetary Hour */}
       {railSections.includes("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Planetary hour</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Planetary hour<HelpBadge term="planetaryHour"/></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
@@ -185,7 +189,7 @@ export default function Rail({ now }: { now: TidesNow | undefined }) {
       {/* Personal transits */}
       {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #d8d3cd" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Your transits</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></div>
           {now.personalTransits.slice(0, 3).map((t, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555" }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
