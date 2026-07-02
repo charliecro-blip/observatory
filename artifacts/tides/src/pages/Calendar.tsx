@@ -64,6 +64,9 @@ const PLANET_COLORS: Record<string, string> = {
 const PLANET_ICONS: Record<string, string> = {
   Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",
 };
+const ASPECT_SYM: Record<string, string> = {
+  conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹",
+};
 const PLANET_QUALITY: Record<string, string> = {
   Sun:"Clarity, leadership, vitality",
   Moon:"Intuition, emotion, receptivity",
@@ -514,6 +517,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, to
           const qs = dayData?.qualityScore ?? 0;
           const voc = vocRangeForDate(dateStr, eventsMap);
           const bio = dayData?.biodynamicType ?? "";
+          const moonAspects = dayData?.moonAspects ?? [];
           const dayRuler = dayData?.dayRuler ?? "";
           const allHours = planetaryHoursMap.get(dateStr) ?? [];
           const nowHour = allHours.find(ph => now >= ph.startTime && now < ph.endTime);
@@ -559,6 +563,18 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, to
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:2 }}>
                     {voc && <span style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
+                    {/* planetary aspects active this day */}
+                    {moonAspects.length>0 && (
+                      <span style={{ display:"flex",gap:3,alignItems:"center" }}>
+                        {moonAspects.slice(0, isDay?3:2).map((a,ai)=>(
+                          <span key={ai}
+                            title={`Moon ${a.aspect} ${a.planet} — ${a.orb}° orb, ${a.applying?"applying":"separating"}`}
+                            style={{ fontSize:8.5,color:PLANET_COLORS[a.planet]??"#888",fontWeight:600,whiteSpace:"nowrap" }}>
+                            {ASPECT_SYM[a.aspect]??"·"}{PLANET_ICONS[a.planet]??a.planet[0]}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                     {/* quality bar — no number */}
                     {qs>0 && <div style={{ flex:1,height:3,borderRadius:2,background:"#e0dbd6",marginLeft:2 }}><div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/></div>}
                   </div>

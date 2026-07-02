@@ -96,6 +96,7 @@ export interface WeekDay {
   biodynamicType: string;
   voidPeriods?: boolean;
   crossings?: Crossing[];
+  moonAspects?: { planet: string; aspect: string; applying: boolean; orb: number }[];
 }
 
 export interface SkyEvent {
