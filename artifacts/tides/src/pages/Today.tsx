@@ -777,8 +777,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Standing conditions */}
         {now && <ConditionsStrip now={now} today={today} />}
 
-        {/* Feedback — how did today feel? */}
-        {now && <TideFeedback now={now} today={today} testerId={testerId} />}
+        {/* TideFeedback ("How did today feel?" check-in / reflection loop) removed
+            from the home page for now — placement not yet decided, and it's not
+            meant to be a headline feature. Component still defined below. */}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
