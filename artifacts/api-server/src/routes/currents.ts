@@ -8,7 +8,7 @@
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
+import { computeNatalChart, computeTransitAspects, computePlanetarySensitivity, HEAVY_PLANETS } from "../lib/natal.js";
 import { computeProfection, computeTransitsByHouse } from "../lib/currents.js";
 import { HOUSE_SYSTEMS, type HouseSystem } from "../lib/houses.js";
 
@@ -34,12 +34,15 @@ router.get("/currents", async (req, res) => {
     const cusps = natal.houses.map((h) => h.cuspDegree);
     const transitsByHouse = computeTransitsByHouse(now, cusps);
 
+    const transitAspects = computeTransitAspects(natal);
+    const SLOW_PLANETS = new Set<string>(HEAVY_PLANETS);
+    const HARD_ASPECTS = new Set(["Conjunction", "Square", "Opposition"]);
+
     // Major transits — significant aspects the slow (chapter-defining) planets are
     // currently making to natal points. transitsByHouse only shows which house a
     // slow planet occupies; this surfaces the actual aspects, which is what
     // classically counts as a "major transit" (a Saturn square, a Pluto conjunction).
-    const SLOW_PLANETS = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
-    const majorTransits = computeTransitAspects(natal)
+    const majorTransits = transitAspects
       .filter((t) => SLOW_PLANETS.has(t.transitPlanet) && (t.severity === "strong" || t.severity === "major"))
       .sort((a, b) => (a.exact === b.exact ? a.orb - b.orb : a.exact ? -1 : 1))
       .slice(0, 8)
@@ -55,6 +58,35 @@ router.get("/currents", async (req, res) => {
         likelyDomains: t.likelyDomains,
       }));
 
+    // Planetary sensitivity — a personal diagnosis of which heavy planets tend to
+    // land hardest for THIS chart (natal hard-aspects + angularity), computed once
+    // from the chart already on file. "Caution Periods" premium feature.
+    const sensitivity = computePlanetarySensitivity(natal);
+    const topSensitivityPlanets = new Set(
+      sensitivity.filter((s) => s.score >= 3).slice(0, 2).map((s) => s.planet),
+    );
+
+    // Caution windows — currently-active hard aspects from a heavy planet to a
+    // natal point, i.e. the actual "caution" moments (not just any major transit —
+    // trines/sextiles from these same planets are supportive, not cautionary).
+    // Flagged when the transiting planet matches the chart's own top sensitivity
+    // planets, since that's when a caution window is most likely to actually bite.
+    const cautionWindows = transitAspects
+      .filter((t) => SLOW_PLANETS.has(t.transitPlanet) && HARD_ASPECTS.has(t.aspect) && t.severity !== "mild")
+      .sort((a, b) => (a.exact === b.exact ? a.orb - b.orb : a.exact ? -1 : 1))
+      .slice(0, 8)
+      .map((t) => ({
+        transitPlanet: t.transitPlanet,
+        aspect: t.aspect,
+        natalPlanet: t.natalPlanet,
+        natalSign: t.natalSign,
+        natalHouse: t.natalHouse,
+        orb: t.orb,
+        exact: t.exact,
+        severity: t.severity,
+        matchesSensitivity: topSensitivityPlanets.has(t.transitPlanet as any),
+      }));
+
     return res.json({
       hasChart: true,
       houseSystem,
@@ -62,6 +94,8 @@ router.get("/currents", async (req, res) => {
       profection,
       transitsByHouse,
       majorTransits,
+      sensitivity,
+      cautionWindows,
     });
   } catch (err) {
     return res.status(500).json({ error: "failed to compute currents", detail: String(err) });

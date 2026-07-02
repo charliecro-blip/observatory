@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
+import { usePremium } from "@/contexts/premium-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
@@ -627,6 +628,22 @@ function CycleSection({ testerId }: { testerId: string | null }) {
 
 // ---- Export section ----
 
+// ---- Premium preview toggle ----
+// No billing exists yet. This toggle lets you flip between the unlocked view
+// (what premium content looks like) and the locked view (the paywall/teaser
+// UX new users without premium would see) — remove once real entitlements exist.
+
+function PremiumPreviewSection() {
+  const { unlocked, setUnlocked } = usePremium();
+  return (
+    <SectionCard title="Premium preview (dev)" sub="No billing exists yet — use this to preview both sides of the paywall.">
+      <Row label="Premium unlocked" sub={unlocked ? "Showing Currents & Caution Periods as a paying user would see them." : "Showing the locked/teaser view a free user would see."}>
+        <Toggle on={unlocked} onChange={setUnlocked} />
+      </Row>
+    </SectionCard>
+  );
+}
+
 // ---- Chronotype section ----
 
 function ChronotypeSection() {
@@ -1212,6 +1229,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             </button>
           </div>
         </SectionCard>
+
+        {/* Premium preview toggle (dev-only, no billing yet) */}
+        <PremiumPreviewSection />
 
         {/* Chronotype / rhythm */}
         <ChronotypeSection />

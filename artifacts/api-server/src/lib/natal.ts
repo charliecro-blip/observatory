@@ -478,6 +478,93 @@ export function computeTransitAspects(natal: ComputedNatalChart): TransitAspect[
     .slice(0, 20);
 }
 
+// ── Planetary Sensitivity ("Caution Periods" diagnosis) ───────────────────────
+// Which of the five "heavy" outer/social planets tends to land hardest for THIS
+// chart, based on natal hard-aspects to personal points and angularity — not a
+// generic transit reading, but a personal diagnosis computed once from the
+// chart already on file.
+
+export const HEAVY_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+export type HeavyPlanet = (typeof HEAVY_PLANETS)[number];
+
+const PERSONAL_POINTS = ["Sun", "Moon", "Mercury", "Venus", "Mars"] as const;
+
+const HARD_ASPECTS = new Set(["Conjunction", "Square", "Opposition"]);
+
+const ASPECT_HIT_WEIGHT: Record<string, number> = { Conjunction: 3, Opposition: 2.5, Square: 2 };
+const ASPECT_MAX_ORB: Record<string, number> = { Conjunction: 8, Opposition: 8, Square: 7 };
+
+export const HEAVY_PLANET_ARCHETYPE: Record<HeavyPlanet, { label: string; feel: string }> = {
+  Uranus:  { label: "Disruptive",     feel: "sudden shifts, things breaking from routine, feeling knocked off course" },
+  Neptune: { label: "Hazy / diffuse", feel: "fog, low motivation, sleepiness, things feeling unclear or hard to pin down" },
+  Saturn:  { label: "Heavy",          feel: "weight, restriction, anxiety, a sense of being tested or held back" },
+  Pluto:   { label: "Intense",        feel: "high stakes, power struggles, things feeling scarier or more consequential than usual" },
+  Jupiter: { label: "Excess",         feel: "overdoing it — overcommitting, overspending, overindulging" },
+};
+
+export interface PlanetarySensitivityHit {
+  personalPoint: string;   // e.g. "Moon" or "Ascendant"
+  aspect: string;
+  orb: number;
+}
+
+export interface PlanetarySensitivity {
+  planet: HeavyPlanet;
+  score: number;
+  hits: PlanetarySensitivityHit[];
+  angular: boolean;   // natal placement is near one of the four chart angles
+}
+
+/**
+ * Scores each heavy planet's natal "chargedness" for this specific chart:
+ * hard aspects (conjunction/square/opposition) to the Sun/Moon/Mercury/Venus/
+ * Mars/Ascendant, weighted by aspect type and orb tightness, plus a flat bonus
+ * if the planet itself sits near one of the four angles (ASC/MC/DSC/IC) —
+ * angular placements are classically felt as more publicly/personally live.
+ */
+export function computePlanetarySensitivity(natal: ComputedNatalChart): PlanetarySensitivity[] {
+  const ascLon = natal.ascendant.longitude;
+  const mcLon = natal.midheaven.longitude;
+  const dscLon = normalize360(ascLon + 180);
+  const icLon = normalize360(mcLon + 180);
+  const angles = [ascLon, mcLon, dscLon, icLon];
+  const ANGLE_ORB = 8;
+
+  const results: PlanetarySensitivity[] = [];
+
+  for (const heavy of HEAVY_PLANETS) {
+    const heavyPlanet = natal.planets.find((p) => p.planet === heavy);
+    if (!heavyPlanet) continue;
+
+    const hits: PlanetarySensitivityHit[] = [];
+    let score = 0;
+
+    for (const point of PERSONAL_POINTS) {
+      const natalPoint = natal.planets.find((p) => p.planet === point);
+      if (!natalPoint) continue;
+      const asp = findAspect(heavyPlanet.longitude, natalPoint.longitude);
+      if (!asp || !HARD_ASPECTS.has(asp.name)) continue;
+      const orbFactor = 1 - asp.orb / (ASPECT_MAX_ORB[asp.name] ?? 8);
+      score += (ASPECT_HIT_WEIGHT[asp.name] ?? 1) * Math.max(0.15, orbFactor);
+      hits.push({ personalPoint: point, aspect: asp.name, orb: asp.orb });
+    }
+
+    const ascAsp = findAspect(heavyPlanet.longitude, ascLon);
+    if (ascAsp && HARD_ASPECTS.has(ascAsp.name)) {
+      const orbFactor = 1 - ascAsp.orb / (ASPECT_MAX_ORB[ascAsp.name] ?? 8);
+      score += (ASPECT_HIT_WEIGHT[ascAsp.name] ?? 1) * Math.max(0.15, orbFactor);
+      hits.push({ personalPoint: "Ascendant", aspect: ascAsp.name, orb: ascAsp.orb });
+    }
+
+    const angular = angles.some((a) => angularDiff(heavyPlanet.longitude, a) <= ANGLE_ORB);
+    if (angular) score += 2;
+
+    results.push({ planet: heavy as HeavyPlanet, score: parseFloat(score.toFixed(2)), hits, angular });
+  }
+
+  return results.sort((a, b) => b.score - a.score);
+}
+
 // ── Health insights ────────────────────────────────────────────────────────────
 
 const SIXTH_HOUSE_THEMES: Record<string, string[]> = {

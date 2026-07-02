@@ -11,6 +11,7 @@ import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/co
 import { TideCardModal } from "@/components/TideCard";
 import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow } from "@/lib/chronotype";
+import { PremiumExploreModal } from "@/components/PremiumGate";
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
@@ -417,6 +418,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     );
   }
   const [showTideCard, setShowTideCard] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [dismissedPremiumBanner, setDismissedPremiumBanner] = useState(() => localStorage.getItem("obs_seen_premium_banner") === "1");
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
@@ -655,6 +658,25 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
       {showTideCard && now && <TideCardModal now={now} week={week} northStars={northStars ?? []} testerId={testerId} onClose={() => setShowTideCard(false)} />}
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* Deeper-currents discovery banner — dismissible, shown once until closed.
+            Not part of onboarding (kept lean); this is the low-key invitation to
+            explore premium features once someone's had a moment with the core loop. */}
+        {!dismissedPremiumBanner && (
+          <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
+            <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
+              There's more beneath the surface — long-cycle transits and personal caution windows.
+            </div>
+            <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+              Explore
+            </button>
+            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} style={{ fontSize: 13, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+              ✕
+            </button>
+          </div>
+        )}
+        {showPremiumModal && <PremiumExploreModal onClose={() => setShowPremiumModal(false)} />}
 
         {/* Hero card — tide-forward */}
         {(() => {

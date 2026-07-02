@@ -7,6 +7,7 @@ import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
+import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail from "@/components/Rail";
 import { SessionTimer } from "@/components/SessionTimer";
@@ -734,9 +735,11 @@ export default function App() {
       <ThemeProvider>
         <TesterProvider>
           <PreferencesProvider>
-            <ErrorBoundary>
-              <Shell/>
-            </ErrorBoundary>
+            <PremiumProvider>
+              <ErrorBoundary>
+                <Shell/>
+              </ErrorBoundary>
+            </PremiumProvider>
           </PreferencesProvider>
         </TesterProvider>
       </ThemeProvider>
