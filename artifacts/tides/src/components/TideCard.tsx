@@ -126,7 +126,142 @@ export function TideCard({ now }: { now: any }) {
   );
 }
 
-export function TideCardModal({ now, onClose }: { now: any; onClose: () => void }) {
+// ── Weekly report card ───────────────────────────────────────────────────────
+
+function feltFor(testerId: string | null, date: string): { felt?: string; character?: string } | null {
+  try { return JSON.parse(localStorage.getItem(`obs_felt_${testerId ?? "anon"}_${date}`) ?? "null"); } catch { return null; }
+}
+
+export function WeeklyCard({ week, northStars, testerId }: { week: any; northStars: any[]; testerId: string | null }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const days: any[] = (week?.days ?? []).slice(0, 7);
+  if (!days.length) return <div style={{ fontSize: 12, color: "#999", padding: 30 }}>Loading the week…</div>;
+
+  const BAR_X0 = 56, BAR_W = 52, BAR_GAP = 8, BAR_BASE = 380, BAR_MAX = 150;
+
+  // Felt-rating retrospective for the shown week
+  const feltCounts: Record<string, { aligned: number; total: number }> = {};
+  let ratedDays = 0;
+  for (const d of days) {
+    const r = feltFor(testerId, d.date);
+    if (r?.felt) {
+      ratedDays++;
+      const c = r.character ?? d.tide?.character ?? "deep";
+      feltCounts[c] = feltCounts[c] ?? { aligned: 0, total: 0 };
+      feltCounts[c].total++;
+      if (r.felt === "aligned") feltCounts[c].aligned++;
+    }
+  }
+  const bestChar = Object.entries(feltCounts).sort((a, b) => (b[1].aligned / b[1].total) - (a[1].aligned / a[1].total))[0]?.[0] ?? null;
+
+  const sessionsDone = (northStars ?? []).reduce((n, s) => n + (s.completedCount ?? 0), 0);
+  const starCount = (northStars ?? []).length;
+
+  const weekStart = new Date(days[0].date + "T12:00:00");
+  const weekEnd = new Date(days[days.length - 1].date + "T12:00:00");
+  const rangeLabel = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+
+  function download() {
+    const el = svgRef.current;
+    if (!el) return;
+    const xml = new XMLSerializer().serializeToString(el);
+    const svg64 = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 520 * 2; canvas.height = 680 * 2;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `tides-week-${days[0].date}.png`;
+      a.click();
+    };
+    img.src = svg64;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      <svg ref={svgRef} viewBox="0 0 520 680" width={520 * 0.62} height={680 * 0.62}
+        xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 18, boxShadow: "0 10px 40px rgba(0,0,0,0.3)" }}>
+        <defs>
+          <radialGradient id="wbg" cx="50%" cy="30%" r="85%">
+            <stop offset="0%" stopColor="#213345" /><stop offset="100%" stopColor="#141f2b" />
+          </radialGradient>
+        </defs>
+        <rect width="520" height="680" rx="18" fill="url(#wbg)" />
+
+        <text x="40" y="52" fill="#c0b090" fontSize="14" fontWeight="700" letterSpacing="4" fontFamily="Georgia, serif">TIDES</text>
+        <text x="480" y="52" textAnchor="end" fill="#8a97a4" fontSize="13" fontFamily="Georgia, serif">{rangeLabel}</text>
+
+        <text x="260" y="110" textAnchor="middle" fill="#e8e2d6" fontSize="26" fontWeight="700" fontFamily="Georgia, serif">The week's tides</text>
+
+        {/* 7 day bars, colored by character */}
+        {days.map((d, i) => {
+          const char = (d.tide?.character ?? "deep") as TideCharacter;
+          const accent = CHAR_ACCENT[char] ?? "#5b8fb9";
+          const e = d.tide?.energy ?? 0.5;
+          const h = 24 + e * BAR_MAX;
+          const x0 = BAR_X0 + i * (BAR_W + BAR_GAP);
+          const dow = new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+          const r = feltFor(testerId, d.date);
+          return (
+            <g key={d.date}>
+              <rect x={x0} y={BAR_BASE - h} width={BAR_W} height={h} rx="7" fill={accent} opacity="0.75" />
+              {r?.felt && (
+                <circle cx={x0 + BAR_W / 2} cy={BAR_BASE - h - 14} r="4"
+                  fill={r.felt === "aligned" ? "#7fc98f" : r.felt === "mixed" ? "#d9b96a" : "#c98a7f"} />
+              )}
+              <text x={x0 + BAR_W / 2} y={BAR_BASE + 20} textAnchor="middle" fill="#8a97a4" fontSize="11" fontFamily="Georgia, serif">{dow}</text>
+            </g>
+          );
+        })}
+        <line x1="40" y1={BAR_BASE} x2="480" y2={BAR_BASE} stroke="#2c3d4e" strokeWidth="1" />
+
+        {/* Legend */}
+        <g fontFamily="Georgia, serif" fontSize="11">
+          {(["deep","surge","building","clear"] as TideCharacter[]).map((c, i) => (
+            <g key={c} transform={`translate(${60 + i * 105}, 436)`}>
+              <rect width="10" height="10" rx="3" fill={CHAR_ACCENT[c]} opacity="0.75" />
+              <text x="16" y="9" fill="#8a97a4">{c.charAt(0).toUpperCase() + c.slice(1)}</text>
+            </g>
+          ))}
+        </g>
+
+        {/* Summary lines */}
+        <text x="260" y="500" textAnchor="middle" fill="#cdd4dc" fontSize="15" fontFamily="Georgia, serif">
+          {starCount > 0 ? `${sessionsDone} North Star session${sessionsDone === 1 ? "" : "s"} this week` : "Set a North Star to track the week's work"}
+        </text>
+        {bestChar && ratedDays >= 2 && (
+          <text x="260" y="530" textAnchor="middle" fill={CHAR_ACCENT[bestChar as TideCharacter] ?? "#cdd4dc"} fontSize="14" fontStyle="italic" fontFamily="Georgia, serif">
+            Most aligned on {bestChar.charAt(0).toUpperCase() + bestChar.slice(1)} tides
+          </text>
+        )}
+        {ratedDays > 0 && (
+          <text x="260" y="558" textAnchor="middle" fill="#6a7682" fontSize="12" fontFamily="Georgia, serif">
+            {ratedDays} of {days.length} days logged
+          </text>
+        )}
+
+        <text x="260" y="646" textAnchor="middle" fill="#6a7682" fontSize="12" letterSpacing="1.5" fontFamily="Georgia, serif">
+          your rhythm, read weekly
+        </text>
+      </svg>
+
+      <button onClick={download} style={{
+        fontSize: 12, padding: "8px 18px", borderRadius: 9, border: "none",
+        background: "#1a2a3a", color: "#f0ede8", cursor: "pointer", fontWeight: 600,
+      }}>↓ Download image</button>
+    </div>
+  );
+}
+
+export function TideCardModal({ now, week, northStars, testerId, onClose }: {
+  now: any; week?: any; northStars?: any[]; testerId?: string | null; onClose: () => void;
+}) {
+  const [mode, setMode] = React.useState<"daily" | "weekly">("daily");
   return (
     <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{
       position: "fixed", inset: 0, background: "rgba(15,20,30,0.6)", zIndex: 1100,
@@ -134,8 +269,17 @@ export function TideCardModal({ now, onClose }: { now: any; onClose: () => void 
     }}>
       <div style={{ background: "var(--color-card-2)", borderRadius: 16, padding: "20px", position: "relative", maxHeight: "92vh", overflowY: "auto" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "#aaa", cursor: "pointer", zIndex: 1 }}>×</button>
-        <div style={{ fontSize: 11, color: "#999", textAlign: "center", marginBottom: 12 }}>Share today's tide</div>
-        <TideCard now={now} />
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 12 }}>
+          {(["daily", "weekly"] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              fontSize: 11, padding: "4px 14px", borderRadius: 14, cursor: "pointer",
+              border: mode === m ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
+              background: mode === m ? "#1a2a3a" : "transparent",
+              color: mode === m ? "#f0ede8" : "var(--color-muted)", fontWeight: mode === m ? 600 : 400,
+            }}>{m === "daily" ? "Today" : "This week"}</button>
+          ))}
+        </div>
+        {mode === "daily" ? <TideCard now={now} /> : <WeeklyCard week={week} northStars={northStars ?? []} testerId={testerId ?? null} />}
       </div>
     </div>
   );

@@ -624,7 +624,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
         />
       )}
 
-      {showTideCard && now && <TideCardModal now={now} onClose={() => setShowTideCard(false)} />}
+      {showTideCard && now && <TideCardModal now={now} week={week} northStars={northStars ?? []} testerId={testerId} onClose={() => setShowTideCard(false)} />}
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -1444,13 +1444,13 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
 // ── ModulePulse ────────────────────────────────────────────────────────────────
 
 const MODULE_META: Record<string, { label: string; icon: string; view: string }> = {
-  health:        { label: "Health",        icon: "◎", view: "modules" },
-  creative:      { label: "Creative",      icon: "✦", view: "modules" },
-  spiritual:     { label: "Spiritual",     icon: "☽", view: "modules" },
-  home:          { label: "Home",          icon: "⌂", view: "modules" },
-  financial:     { label: "Financial",     icon: "◇", view: "modules" },
-  relationships: { label: "Relationships", icon: "◈", view: "modules" },
-  content:       { label: "Content",       icon: "◻", view: "modules" },
+  health:        { label: "Health",        icon: "◎", view: "work" },
+  creative:      { label: "Creative",      icon: "✦", view: "work" },
+  spiritual:     { label: "Spiritual",     icon: "☽", view: "work" },
+  home:          { label: "Home",          icon: "⌂", view: "work" },
+  financial:     { label: "Financial",     icon: "◇", view: "work" },
+  relationships: { label: "Relationships", icon: "◈", view: "work" },
+  content:       { label: "Content",       icon: "◻", view: "work" },
 };
 
 function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) => void }) {
@@ -1480,7 +1480,7 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
           const meta = MODULE_META[id];
           const strength = score >= 1 ? "Strong" : score >= 0.6 ? "Good" : "Mild";
           return (
-            <button key={id} onClick={() => onNavigate?.("modules")} style={{
+            <button key={id} onClick={() => onNavigate?.("work")} style={{
               flex: 1, background: ELEMENT_BG[el], border: `1px solid ${elColor}25`,
               borderRadius: 10, padding: "10px 12px", cursor: "pointer",
               textAlign: "left", display: "flex", flexDirection: "column", gap: 4,

@@ -458,3 +458,25 @@ is what "propagate tide language" means in practice).
 3. Is "Life" the right home/name for Work, or keep Work separate?
 4. Does Sky-as-depth-layer work, or should depth live inside each timescale instead
    of a dedicated tab?
+
+---
+
+## 16. The vocabulary treaty (RATIFIED 2026-07-01)
+
+Three vocabularies coexist in the app. This is not a bug to fix but a structure to
+state plainly — each belongs to a different timescale and a different question:
+
+| Vocabulary | Question it answers | Timescale | Where it lives |
+|---|---|---|---|
+| **Elements** (fire/earth/air/water) | *What domains make up a life?* | Identity — slow, chosen | North Stars (one chief focus per element), practice libraries, elemental balance |
+| **Planets** (Sun…Saturn+) | *Who is speaking right now?* | Events — fast, given | Hours, days, aspects, crossings, Currents chapters |
+| **Tide** (Deep/Surge/Building/Clear × High/Ebb) | *What kind of moment is this?* | Weather — the summary | The hero, the chart, the share card |
+
+The rule: **elements are yours, planets are the sky's, the tide is the meeting.**
+Copy should never use two vocabularies to say one thing. When a surface must bridge
+(e.g. a Surge day serving a fire North Star), the tide describes the moment and the
+element describes the purpose — "a Surge tide is a gift to your Fire star."
+
+This treaty is also the "mythic heart": the elements and planets each get a full
+content page (essence, myth, domains, practices, activities — see `lib/mythos.ts`),
+and the advisor routes "help me plan X" requests into this structure.

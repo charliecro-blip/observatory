@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ELEMENT_MYTHOS, sortIntentToElement } from "@/lib/mythos";
 
 interface Milestone { id:number; projectId:number; title:string; status:string; targetDate?:string; }
 interface Project { id:number; title:string; goalId?:number; status:string; priority:string; milestones?:Milestone[]; }
@@ -163,18 +164,31 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:600,color: "var(--color-foreground)"}}>{goal.title}</div>
                   {goal.description&&<div style={{fontSize:11,color:"#888",marginTop:2}}>{goal.description}</div>}
-                  {goal.isNorthStar && (
-                    <div style={{display:"flex",gap:4,marginTop:6}}>
-                      {Object.entries(ELEMENT_INFO).map(([key,info]) => (
-                        <button key={key} onClick={()=>setElement.mutate({id:goal.id,element:key})} style={{
-                          fontSize:9,padding:"2px 8px",borderRadius:10,cursor:"pointer",
-                          border:goal.element===key?`1px solid ${info.color}`:"1px solid #e0dad0",
-                          background:goal.element===key?`${info.color}18`:"var(--color-card-2)",
-                          color:goal.element===key?info.color:"#999",fontWeight:goal.element===key?600:400,
-                        }}>{info.label}</button>
-                      ))}
-                    </div>
-                  )}
+                  {goal.isNorthStar && (() => {
+                    const suggested = !goal.element ? sortIntentToElement(`${goal.title} ${goal.description ?? ""}`) : null;
+                    const mythos = goal.element ? ELEMENT_MYTHOS[goal.element] : null;
+                    return (
+                      <>
+                        <div style={{display:"flex",gap:4,marginTop:6,alignItems:"center"}}>
+                          {Object.entries(ELEMENT_INFO).map(([key,info]) => (
+                            <button key={key} onClick={()=>setElement.mutate({id:goal.id,element:key})} style={{
+                              fontSize:9,padding:"2px 8px",borderRadius:10,cursor:"pointer",
+                              border:goal.element===key?`1px solid ${info.color}`:suggested===key?`1px dashed ${info.color}`:"1px solid #e0dad0",
+                              background:goal.element===key?`${info.color}18`:"var(--color-card-2)",
+                              color:goal.element===key?info.color:suggested===key?info.color:"#999",
+                              fontWeight:goal.element===key?600:400,
+                            }}>{info.label}{suggested===key?" ?":""}</button>
+                          ))}
+                          {suggested && <span style={{fontSize:8.5,color:"var(--color-muted)"}}>suggested from the title</span>}
+                        </div>
+                        {mythos && (
+                          <div style={{fontSize:10,color:ELEMENT_INFO[goal.element!]?.color,marginTop:5,fontStyle:"italic",lineHeight:1.45}}>
+                            {mythos.essence}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={()=>setShowProjectForm(showProjectForm===goal.id?null:goal.id)} style={{fontSize:10,color:"#6090c0",background:"none",border:"none",cursor:"pointer"}}>+ project</button>

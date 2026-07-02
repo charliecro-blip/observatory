@@ -5,6 +5,7 @@ import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail from "@/components/Rail";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
@@ -18,15 +19,16 @@ import Currents from "@/pages/Currents";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "habits" | "tasks" | "goals" | "projects";
+type WorkTab = "habits" | "tasks" | "goals" | "projects" | "practices";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("tasks");
   const TABS: {id:WorkTab; label:string}[] = [
-    {id:"tasks",    label:"Tasks"},
-    {id:"habits",   label:"Habits"},
-    {id:"goals",    label:"Goals"},
-    {id:"projects", label:"Projects"},
+    {id:"tasks",     label:"Tasks"},
+    {id:"habits",    label:"Habits"},
+    {id:"goals",     label:"Goals"},
+    {id:"projects",  label:"Projects"},
+    {id:"practices", label:"Practices"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -43,10 +45,11 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         ))}
       </div>
       <div style={{flex:1, overflow:"hidden", display:"flex", flexDirection:"column"}}>
-        {tab==="tasks"    && <Tasks    testerId={testerId} now={now}/>}
-        {tab==="habits"   && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {tab==="goals"    && <Goals    testerId={testerId}/>}
-        {tab==="projects" && <Projects testerId={testerId}/>}
+        {tab==="tasks"     && <Tasks    testerId={testerId} now={now}/>}
+        {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {tab==="goals"     && <Goals    testerId={testerId}/>}
+        {tab==="projects"  && <Projects testerId={testerId}/>}
+        {tab==="practices" && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
       </div>
     </div>
   );
@@ -54,18 +57,17 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"sky"|"currents"|"work"|"modules"|"settings";
+type View = "today"|"calendar"|"sky"|"currents"|"work"|"settings";
 
 // Primary tabs — the time-zoom spine: move right to look further ahead.
 // Now → Ahead → Horizon are the timescale ladder; Sky is the depth layer;
-// Life is your own content. (Modules pending a decision on dissolving it.)
+// Life is your own content (Modules dissolved into Life → Practices).
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Now",      zoom:true},
   {id:"calendar", label:"Ahead",    zoom:true},
   {id:"currents", label:"Horizon",  zoom:true},
   {id:"sky",      label:"Sky"},
   {id:"work",     label:"Life"},
-  {id:"modules",  label:"Modules"},
 ];
 
 const WINDOW_TYPES = [
@@ -472,6 +474,10 @@ function Shell() {
   }, [chartLoading, existingChart, isReady, showModal]);
 
   const [sawIntro, setSawIntro] = useState(() => !!localStorage.getItem("obs_saw_intro"));
+  // Hooks must run on every render — keep these above the onboarding early-returns,
+  // or the hook count changes when a user crosses from onboarding into the app.
+  const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   if (showModal || !isReady) {
     if (!sawIntro) {
@@ -490,19 +496,20 @@ function Shell() {
     );
   }
 
-  const { theme, toggleTheme } = useTheme();
+  // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", currents:"✧", sky:"☽", work:"☰" };
 
   return (
     <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
 
-      {/* ── Top tab bar ── */}
+      {/* ── Top bar ── */}
       <div style={{
         display:"flex", alignItems:"center", background:"var(--color-rail)",
-        borderBottom:"1px solid var(--color-border)", flexShrink:0, padding:"0 16px",
+        borderBottom:"1px solid var(--color-border)", flexShrink:0, padding: isMobile ? "0 10px" : "0 16px",
       }}>
-        {TOP_TABS.map((t, i) => {
+        {!isMobile && TOP_TABS.map((t, i) => {
           // Divider after the last zoom tab (Now/Ahead/Horizon) to separate the
           // time-ladder from the depth (Sky) and content (Life) tabs.
           const prev = TOP_TABS[i - 1];
@@ -520,8 +527,13 @@ function Shell() {
             </React.Fragment>
           );
         })}
+        {isMobile && (
+          <span style={{ fontSize:13, fontWeight:700, color:"var(--color-primary)", padding:"10px 6px", letterSpacing:"-0.3px" }}>
+            {TOP_TABS.find(t => t.id === view)?.label ?? "Settings"}
+          </span>
+        )}
         <div style={{flex:1}}/>
-        <span style={{fontSize:11,color:"var(--color-muted)",marginRight:12}}>{profile?.displayName}</span>
+        {!isMobile && <span style={{fontSize:11,color:"var(--color-muted)",marginRight:12}}>{profile?.displayName}</span>}
         <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
           fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
           background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
@@ -536,15 +548,17 @@ function Shell() {
           background: view==="settings" ? "var(--color-border)" : "transparent",
           color: view==="settings" ? "var(--color-foreground)" : "var(--color-muted)", cursor:"pointer", marginBottom:-1,
           borderBottom: view==="settings" ? "2px solid var(--color-primary)" : "2px solid transparent",
-        }}>⚙ Settings</button>
+        }}>{isMobile ? "⚙" : "⚙ Settings"}</button>
       </div>
 
       {/* ── Content row ── */}
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-        {/* Left sidebar: Rail only */}
-        <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid var(--color-border)",width:210,minWidth:210,flexShrink:0,background:"var(--color-rail)"}}>
-          <Rail now={now} testerId={testerId} lat={lat} lon={lon} />
-        </div>
+        {/* Left sidebar: Rail (desktop only — the hero carries moon/hour on phones) */}
+        {!isMobile && (
+          <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid var(--color-border)",width:210,minWidth:210,flexShrink:0,background:"var(--color-rail)"}}>
+            <Rail now={now} testerId={testerId} lat={lat} lon={lon} />
+          </div>
+        )}
 
         {/* Main content */}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)}/>}
@@ -552,9 +566,28 @@ function Shell() {
         {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="currents" && <Currents testerId={testerId}/>}
-        {view==="modules"  && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
+
+      {/* ── Bottom nav (phone) ── */}
+      {isMobile && (
+        <div style={{
+          display:"flex", flexShrink:0, background:"var(--color-rail)",
+          borderTop:"1px solid var(--color-border)",
+          paddingBottom:"env(safe-area-inset-bottom)",
+        }}>
+          {TOP_TABS.map(t => (
+            <button key={t.id} onClick={() => setView(t.id)} style={{
+              flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
+              display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+              color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
+            }}>
+              <span style={{ fontSize:16, lineHeight:1 }}>{TAB_GLYPHS[t.id] ?? "·"}</span>
+              <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
