@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { rateLimit } from "express-rate-limit";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -55,5 +56,14 @@ app.use("/api/advise", aiLimiter);
 app.use("/api/daemon-memory", aiLimiter);
 app.use("/api", generalLimiter);
 app.use("/api", router);
+
+// Serve Tides frontend as static files
+const publicDir = path.resolve(__dirname, "../../tides/public");
+app.use(express.static(publicDir));
+
+// SPA routing: serve index.html for non-API routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
 
 export default app;
