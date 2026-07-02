@@ -563,12 +563,14 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, to
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:2 }}>
                     {voc && <span style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
-                    {/* planetary aspects active this day */}
+                    {/* Moon's planetary aspects active this day — ☽ prefix makes clear these
+                        are all Moon-to-planet aspects (e.g. ☽ ⚹♄ = Moon sextile Saturn) */}
                     {moonAspects.length>0 && (
-                      <span style={{ display:"flex",gap:3,alignItems:"center" }}>
+                      <span title={moonAspects.map(a=>`Moon ${a.aspect} ${a.planet} — ${a.orb}° orb, ${a.applying?"applying":"separating"}`).join(" · ")}
+                        style={{ display:"flex",gap:3,alignItems:"center" }}>
+                        <span style={{ fontSize:8.5,color:"#7080a0" }}>☽</span>
                         {moonAspects.slice(0, isDay?3:2).map((a,ai)=>(
                           <span key={ai}
-                            title={`Moon ${a.aspect} ${a.planet} — ${a.orb}° orb, ${a.applying?"applying":"separating"}`}
                             style={{ fontSize:8.5,color:PLANET_COLORS[a.planet]??"#888",fontWeight:600,whiteSpace:"nowrap" }}>
                             {ASPECT_SYM[a.aspect]??"·"}{PLANET_ICONS[a.planet]??a.planet[0]}
                           </span>

@@ -4,9 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
+import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import { SessionTimer } from "@/components/SessionTimer";
-import type { Goal, SkyEvent } from "@/lib/types";
+import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { TideCardModal } from "@/components/TideCard";
 import { smoothPathD } from "@/lib/smoothPath";
@@ -392,9 +393,26 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
 export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }: { testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
+  const { updateLocation } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(false);
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) { setLocationError(true); return; }
+    setLocating(true);
+    setLocationError(false);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateLocation(pos.coords.latitude, pos.coords.longitude, "Current location");
+        setLocating(false);
+      },
+      () => { setLocating(false); setLocationError(true); },
+      { timeout: 10_000 },
+    );
+  }
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [showTideCard, setShowTideCard] = useState(false);
   const [tideView, setTideView] = useState<"day" | "week">("day");
@@ -534,15 +552,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
   const elemColor = ELEMENT_COLORS[el as Element] ?? "#888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888";
 
-  // Find next angle crossing from week data — only within 30 minutes
+  // Find the nearest angle crossing from week data — recent past or near future.
+  // Widened from the original -5/+30 window: that was tight enough that a crossing
+  // (e.g. Jupiter/Pluto at an angle) would vanish from the alert just 5 minutes after
+  // happening, reading as "the widget disappeared" even though nothing was broken.
   const todayData = week?.days?.find(d => d.date === today);
   const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
-  const nextCrossing = (todayData?.crossings ?? []).find(c => {
-    if (!c.time) return false;
-    const [ch, cm] = c.time.split(":").map(Number);
-    const crossMin = ch * 60 + (cm ?? 0);
-    return crossMin >= nowMinutesForCross - 5 && crossMin <= nowMinutesForCross + 30;
-  });
+  const nextCrossing = (todayData?.crossings ?? [])
+    .map(c => {
+      if (!c.time) return null;
+      const [ch, cm] = c.time.split(":").map(Number);
+      const crossMin = ch * 60 + (cm ?? 0);
+      return { c, diff: crossMin - nowMinutesForCross };
+    })
+    .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -60 && x.diff <= 60)
+    .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))[0];
 
   if (nowLoading) {
     return (
@@ -584,9 +608,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
             </div>
           </Tooltip>
           {isDefaultLocation(lat, lon) ? (
-            <span style={{ fontSize: 9, color: "#c07020", background: "#fff8ee", border: "1px solid #e0c080", borderRadius: 6, padding: "3px 9px" }}>
-              ⚠ Set location in Settings for local crossings
-            </span>
+            <button
+              onClick={useCurrentLocation}
+              disabled={locating}
+              title="Use your current location, or set one manually in Settings"
+              style={{
+                fontSize: 9, color: "#c07020", background: "#fff8ee", border: "1px solid #e0c080",
+                borderRadius: 6, padding: "3px 9px", cursor: locating ? "default" : "pointer",
+              }}
+            >
+              {locating ? "Locating…" : locationError ? "⚠ Couldn't get location — set it in Settings" : "⚠ Set location for local crossings"}
+            </button>
           ) : (
             <button
               onClick={() => setCrossingsOn(v => !v)}
@@ -822,25 +854,30 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
 
         {/* Angle crossing alert */}
         {crossingsOn && nextCrossing && (() => {
-          const pCol = PLANET_COLORS[nextCrossing.planet] ?? "#c08020";
-          const sig = PLANET_SIGNIFICATION[nextCrossing.planet];
-          const isBenefic = ["Venus","Jupiter","Sun"].includes(nextCrossing.planet);
+          const cr = nextCrossing.c;
+          const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
+          const sig = PLANET_SIGNIFICATION[cr.planet];
+          const isBenefic = ["Venus","Jupiter","Sun"].includes(cr.planet);
+          const diff = nextCrossing.diff;
+          const whenLabel = Math.abs(diff) < 2 ? "now"
+            : diff < 0 ? `${Math.round(-diff)} min ago`
+            : `in ${Math.round(diff)} min`;
           return (
             <div style={{
               background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
               borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
             }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[nextCrossing.planet] ?? "⚡"}</span>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
-                  {nextCrossing.planet} crosses {nextCrossing.angle} · {nextCrossing.time}
+                  {cr.planet} crosses {cr.angle} · {cr.time} ({whenLabel})
                 </div>
                 {sig && (
                   <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
                 )}
               </div>
               <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                {isBenefic ? "↑" : "—"} {nextCrossing.angle}
+                {isBenefic ? "↑" : "—"} {cr.angle}
               </div>
             </div>
           );

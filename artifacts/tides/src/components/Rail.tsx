@@ -263,14 +263,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
       display: "flex", flexDirection: "column", overflowY: "auto", fontSize: 12,
       flex: 1, minHeight: 0,
     }}>
-      {/* Header */}
+      {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
         <div style={{ fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
           Tides
-        </div>
-        <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </div>
       </div>
 

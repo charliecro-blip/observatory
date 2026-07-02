@@ -441,21 +441,23 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
 function QualityStrip({ week, days }: { week: any; days: number }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
-    <div style={{ padding:"8px 20px 10px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
-      <div style={{ fontSize:8, textTransform:"uppercase", letterSpacing:"0.6px", color:"#ccc", marginBottom:5 }}>Quality — next {days} days</div>
-      <div style={{ display:"flex", gap:1.5, overflowX:"auto" }}>
+    <div style={{ padding:"12px 20px 14px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
+      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:8 }}>Quality — next {days} days</div>
+      <div style={{ display:"flex", gap:2.5, overflowX:"auto" }}>
         {(week?.days ?? []).map((day: any) => {
           const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
           const isToday = day.date === today;
           const q = day.qualityScore ?? 5;
-          const barH = Math.max(5, (q / 7) * 24);
+          const barH = Math.max(8, (q / 7) * 44);
           return (
             <div key={day.date} title={`${day.label} — ${day.quality} · ${day.moonSign}`}
-              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1.5, minWidth:18, flexShrink:0 }}>
-              <div style={{ fontSize:6, color:isToday?"#b07030":"#ccc", fontWeight:isToday?700:400 }}>
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2.5, minWidth:24, flexShrink:0 }}>
+              <div style={{ fontSize:8, color:isToday?"#b07030":"#999", fontWeight:isToday?700:400 }}>
                 {new Date(day.date+"T12:00:00").getDate()}
               </div>
-              <div style={{ width:10, height:barH, borderRadius:2, background:ec, opacity:0.6+(q/28) }}/>
+              <div style={{ width:16, height:44, display:"flex", alignItems:"flex-end" }}>
+                <div style={{ width:16, height:barH, borderRadius:3, background:ec, opacity:0.6+(q/28) }}/>
+              </div>
             </div>
           );
         })}
@@ -562,12 +564,12 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
                         return p ? PLANET_ICONS[p] : "⚡";
                       })()}
                     </div>
-                    <div style={{ flex:1 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:12, fontWeight:500, color:pCol }}>{ev.title}</div>
                       {ev.subtitle && <div style={{ fontSize:9.5, color:"#aaa", marginTop:1 }}>{ev.subtitle}</div>}
                     </div>
                     <div style={{ fontSize:11, fontWeight:600, color:pCol, flexShrink:0 }}>{ev.time}</div>
-                    <button onClick={() => handleSelect(ev)} style={{ fontSize:9, color:"#bbb", background:"none", border:"none", cursor:"pointer", padding:"2px 6px" }}>›</button>
+                    <button onClick={() => handleSelect(ev)} style={{ fontSize:9, color:"#bbb", background:"none", border:"none", cursor:"pointer", padding:"2px 6px", flexShrink:0 }}>›</button>
                   </div>
                 );
               })}
@@ -723,11 +725,11 @@ function Section({ label, icon, accent, desc, defaultOpen, children }: {
         borderBottom: open ? `1px solid ${accent}18` : "none",
       }}>
         <span style={{ fontSize:15, width:20, textAlign:"center", flexShrink:0 }}>{icon}</span>
-        <div style={{ flex:1 }}>
+        <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:11.5, fontWeight:600, color:accent }}>{label}</div>
-          <div style={{ fontSize:9.5, color:"#aaa", marginTop:1 }}>{desc}</div>
+          <div style={{ fontSize:9.5, color:"#aaa", marginTop:1, whiteSpace:"normal" }}>{desc}</div>
         </div>
-        <span style={{ fontSize:10, color:"#ccc", transform:open?"rotate(90deg)":"none", transition:"transform 0.15s" }}>›</span>
+        <span style={{ fontSize:10, color:"#ccc", transform:open?"rotate(90deg)":"none", transition:"transform 0.15s", flexShrink:0 }}>›</span>
       </button>
       {open && <div style={{ display:"flex", flexDirection:"column" }}>{children}</div>}
     </div>
