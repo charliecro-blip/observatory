@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail from "@/components/Rail";
+import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
@@ -23,11 +24,12 @@ import Currents from "@/pages/Currents";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "habits" | "tasks" | "goals" | "projects" | "practices";
+type WorkTab = "overview" | "habits" | "tasks" | "goals" | "projects" | "practices";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
-  const [tab, setTab] = useState<WorkTab>("tasks");
+  const [tab, setTab] = useState<WorkTab>("overview");
   const TABS: {id:WorkTab; label:string}[] = [
+    {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
     {id:"goals",     label:"Goals"},
@@ -49,6 +51,7 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         ))}
       </div>
       <div style={{flex:1, overflow:"hidden", display:"flex", flexDirection:"column"}}>
+        {tab==="overview"  && <GuidingStarsHub testerId={testerId} onNavigate={setTab}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="goals"     && <Goals    testerId={testerId}/>}
