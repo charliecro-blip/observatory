@@ -8,7 +8,7 @@
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { computeNatalChart } from "../lib/natal.js";
+import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { computeProfection, computeTransitsByHouse } from "../lib/currents.js";
 import { HOUSE_SYSTEMS, type HouseSystem } from "../lib/houses.js";
 
@@ -34,12 +34,34 @@ router.get("/currents", async (req, res) => {
     const cusps = natal.houses.map((h) => h.cuspDegree);
     const transitsByHouse = computeTransitsByHouse(now, cusps);
 
+    // Major transits — significant aspects the slow (chapter-defining) planets are
+    // currently making to natal points. transitsByHouse only shows which house a
+    // slow planet occupies; this surfaces the actual aspects, which is what
+    // classically counts as a "major transit" (a Saturn square, a Pluto conjunction).
+    const SLOW_PLANETS = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
+    const majorTransits = computeTransitAspects(natal)
+      .filter((t) => SLOW_PLANETS.has(t.transitPlanet) && (t.severity === "strong" || t.severity === "major"))
+      .sort((a, b) => (a.exact === b.exact ? a.orb - b.orb : a.exact ? -1 : 1))
+      .slice(0, 8)
+      .map((t) => ({
+        transitPlanet: t.transitPlanet,
+        aspect: t.aspect,
+        natalPlanet: t.natalPlanet,
+        natalSign: t.natalSign,
+        natalHouse: t.natalHouse,
+        orb: t.orb,
+        exact: t.exact,
+        severity: t.severity,
+        likelyDomains: t.likelyDomains,
+      }));
+
     return res.json({
       hasChart: true,
       houseSystem,
       ascendant: natal.ascendant,
       profection,
       transitsByHouse,
+      majorTransits,
     });
   } catch (err) {
     return res.status(500).json({ error: "failed to compute currents", detail: String(err) });

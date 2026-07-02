@@ -7,6 +7,14 @@ const PLANET_GLYPH: Record<string, string> = {
   Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
 };
 
+const ASPECT_SYM: Record<string, string> = {
+  conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹",
+};
+
+const SEVERITY_COLOR: Record<string, string> = {
+  major: "#a04040", strong: "#c07020", moderate: "#7080a0", mild: "#999",
+};
+
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso + "T12:00:00");
@@ -41,6 +49,7 @@ export default function Currents({ testerId }: { testerId: string | null }) {
 
   const prof = data.profection;
   const transits: any[] = data.transitsByHouse ?? [];
+  const majorTransits: any[] = data.majorTransits ?? [];
   const profHouse = HOUSE_MEANINGS[prof?.house];
 
   return (
@@ -115,6 +124,42 @@ export default function Currents({ testerId }: { testerId: string | null }) {
             })}
           </div>
         </div>
+
+        {/* Major transits — the actual aspects the slow planets are making to natal
+            points right now, not just which house they're passing through. */}
+        {majorTransits.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+              Major transits · aspects to your chart
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {majorTransits.map((t, i) => {
+                const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
+                return (
+                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
+                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[t.aspect] ?? "·"}</span>
+                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+                        {t.transitPlanet} {t.aspect} your natal {t.natalPlanet}
+                        {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
+                      </div>
+                      {t.likelyDomains?.length > 0 && (
+                        <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
+                      {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Chapter timeline — when the next boundary lands */}
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px" }}>
