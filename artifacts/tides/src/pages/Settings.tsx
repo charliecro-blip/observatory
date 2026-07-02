@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePreferences } from "@/contexts/preferences-context";
@@ -21,7 +21,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
       }}
     >
       <div style={{
-        width: 16, height: 16, borderRadius: "50%", background: "#fff",
+        width: 16, height: 16, borderRadius: "50%", background: "var(--color-card)",
         position: "absolute", top: 3, left: on ? 19 : 3, transition: "left 0.15s",
       }} />
     </button>
@@ -42,7 +42,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
 
 function SectionCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #e8e4de", borderRadius: 10, padding: "16px" }}>
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "16px" }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: sub ? 2 : 10 }}>{title}</div>
       {sub && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 12 }}>{sub}</div>}
       {children}
@@ -51,14 +51,14 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
 }
 
 function Divider() {
-  return <div style={{ borderTop: "1px solid #f0ede8", margin: "2px 0" }} />;
+  return <div style={{ borderTop: "1px solid var(--color-border)", margin: "2px 0" }} />;
 }
 
 // ---- Notification section ----
 
 const ALL_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
 
-function NotificationSection() {
+function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
   const { prefs, updateNotifications } = usePreferences();
   const n = prefs.notifications;
   const [permState, setPermState] = useState<NotificationPermission>("default");
@@ -94,8 +94,8 @@ function NotificationSection() {
       const testerId = localStorage.getItem("obs_tester_id");
       await fetch("/api/push/subscribe", {
         method: "POST",
-        headers: authH(testerId),
-        body: JSON.stringify(sub.toJSON()),
+        headers: { ...authH(testerId), "Content-Type": "application/json" },
+        body: JSON.stringify({ ...sub.toJSON(), lat, lon }),
       });
 
       updateNotifications({ enabled: true });
@@ -133,6 +133,15 @@ function NotificationSection() {
       </Row>
       {subscribing && <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>Setting up…</div>}
       {subMsg && <div style={{ fontSize: 10, color: subMsg.includes("✓") ? "#60a060" : "#c05030", marginBottom: 6 }}>{subMsg}</div>}
+      {n.enabled && (
+        <button onClick={async () => {
+          const tid = localStorage.getItem("obs_tester_id");
+          const r = await fetch("/api/push/test", { method: "POST", headers: { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" } });
+          setSubMsg(r.ok ? "Test sent — check your notifications ✓" : "Test failed — check subscription.");
+        }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "#f5f0ec", color: "#555", cursor: "pointer", marginBottom: 6 }}>
+          Send test notification
+        </button>
+      )}
 
       {n.enabled && (
         <>
@@ -146,7 +155,7 @@ function NotificationSection() {
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase" }}>From</span>
                 <select value={n.quietStart} onChange={e => updateNotifications({ quietStart: Number(e.target.value) })}
-                  style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #d8d2ca", fontSize: 11, background: "#faf8f5" }}>
+                  style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>{i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`}</option>
                   ))}
@@ -156,7 +165,7 @@ function NotificationSection() {
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase" }}>Until</span>
                 <select value={n.quietEnd} onChange={e => updateNotifications({ quietEnd: Number(e.target.value) })}
-                  style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #d8d2ca", fontSize: 11, background: "#faf8f5" }}>
+                  style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>{i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`}</option>
                   ))}
@@ -296,6 +305,21 @@ function DisplaySection() {
       ))}
 
       <div style={{ height: 16 }} />
+      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Time display</div>
+      <Row label="Time format" sub="How times appear across the app.">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["12h", "24h"] as const).map(fmt => (
+            <button key={fmt} onClick={() => updateDisplay({ timeFormat: fmt })} style={{
+              fontSize: 11, padding: "3px 12px", borderRadius: 5, border: "none", cursor: "pointer",
+              background: d.timeFormat === fmt ? "#fff" : "transparent",
+              color: d.timeFormat === fmt ? "#1a2a3a" : "#999",
+              fontWeight: d.timeFormat === fmt ? 600 : 400,
+            }}>{fmt}</button>
+          ))}
+        </div>
+      </Row>
+
+      <div style={{ height: 16 }} />
       <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>
       <Row label="VOC banner" sub="Show void-of-course warning at top.">
         <Toggle on={d.todayShowVOC} onChange={v => updateDisplay({ todayShowVOC: v })} />
@@ -355,7 +379,7 @@ function TimingSection() {
 
       <div style={{ fontSize: 10, color: "#aaa", marginBottom: 6 }}>Default window type for new tasks:</div>
       <select value={t.defaultWindowType} onChange={e => updateTiming({ defaultWindowType: e.target.value })}
-        style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #d8d2ca", fontSize: 12, background: "#faf8f5", width: "100%" }}>
+        style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", width: "100%" }}>
         <option value="">Any</option>
         {WINDOW_TYPES.map(wt => <option key={wt} value={wt}>{WINDOW_LABELS[wt]}</option>)}
       </select>
@@ -363,7 +387,528 @@ function TimingSection() {
   );
 }
 
+// ---- Location search autocomplete ----
+
+interface LocResult {
+  displayName: string; city: string | null; state: string | null; country: string | null;
+  lat: number; lon: number; timezoneName: string | null;
+  utcOffsetStandard: number | null; utcOffsetDST: number | null;
+  abbreviationSTD: string | null; abbreviationDST: string | null;
+}
+
+function LocationSearchInput({
+  value, onChange, onSelect, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSelect: (r: LocResult) => void;
+  placeholder?: string;
+}) {
+  const [results, setResults] = useState<LocResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  function updateDropPos() {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+      background: "var(--color-card)",
+      border: "1px solid var(--color-border)",
+      borderRadius: 8,
+      boxShadow: "0 4px 16px rgba(0,0,0,0.14)",
+      overflow: "hidden",
+    });
+  }
+
+  function handleChange(v: string) {
+    onChange(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (v.length < 3) { setResults([]); setOpen(false); return; }
+    updateDropPos();
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`/api/location-search?q=${encodeURIComponent(v)}`);
+        const data = await r.json();
+        if (Array.isArray(data)) { setResults(data); setOpen(data.length > 0); updateDropPos(); }
+      } catch { /* ignore */ }
+      setLoading(false);
+    }, 280);
+  }
+
+  function pick(r: LocResult) {
+    onChange(r.city ?? r.displayName);
+    onSelect(r);
+    setOpen(false);
+    setResults([]);
+  }
+
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
+        <input ref={inputRef} value={value} onChange={e => handleChange(e.target.value)}
+          placeholder={placeholder ?? "Search city…"}
+          onFocus={() => { if (results.length > 0) { updateDropPos(); setOpen(true); } }}
+          style={{ width: "100%", padding: "7px 28px 7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" }}
+        />
+        {loading && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#aaa" }}>…</span>}
+      </div>
+      {open && results.length > 0 && (
+        <div style={dropStyle}>
+          {results.map((r, i) => (
+            <button key={i} onMouseDown={() => pick(r)} style={{
+              display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
+              border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "#333",
+              borderBottom: i < results.length - 1 ? "1px solid var(--color-border)" : "none",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#f5f2ed")}
+              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+            >
+              <div style={{ fontWeight: 500 }}>{r.city ?? r.displayName}</div>
+              <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{r.displayName}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Form helpers (module-level to avoid remount-on-render bug) ----
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function SettingsInput({ value, onChange, ...rest }: { value: string; onChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange">) {
+  return (
+    <input value={value} onChange={e => onChange(e.target.value)} {...rest}
+      style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", ...(rest.style ?? {}) }} />
+  );
+}
+
+// ---- Cycle phases ----
+
+const CYCLE_PHASES = [
+  { name: "Menstrual", days: [1, 5],  color: "#c04050", desc: "Rest · release · introspection · low energy" },
+  { name: "Follicular", days: [6, 13], color: "#d08020", desc: "Rising energy · creativity · learning · planning" },
+  { name: "Ovulatory", days: [14, 17], color: "#50a050", desc: "Peak energy · communication · visibility · connection" },
+  { name: "Luteal",    days: [18, 28], color: "#6050a0", desc: "Focus · detail work · nesting · introspection" },
+];
+
+function getCyclePhase(cycleStartDate: string, cycleLength: number, lutealLength: number): {
+  phase: string; dayOfCycle: number; daysLeft: number; color: string; desc: string;
+} | null {
+  const start = new Date(cycleStartDate + "T12:00:00");
+  const today = new Date();
+  const diff = Math.floor((today.getTime() - start.getTime()) / 86400000);
+  if (diff < 0) return null;
+  const dayOfCycle = (diff % cycleLength) + 1;
+  const follEnd = cycleLength - lutealLength;
+
+  let phase = CYCLE_PHASES[3];
+  if (dayOfCycle <= 5) phase = CYCLE_PHASES[0];
+  else if (dayOfCycle <= follEnd - 4) phase = CYCLE_PHASES[1];
+  else if (dayOfCycle <= follEnd) phase = CYCLE_PHASES[2];
+
+  const phaseEnd = dayOfCycle <= 5 ? 5 : dayOfCycle <= follEnd - 4 ? follEnd - 4 : dayOfCycle <= follEnd ? follEnd : cycleLength;
+  return { phase: phase.name, dayOfCycle, daysLeft: phaseEnd - dayOfCycle, color: phase.color, desc: phase.desc };
+}
+
+function CycleSection({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState({ cycleStartDate: "", cycleLength: "28", lutealLength: "14" });
+
+  const { data: cycle } = useQuery<{ cycleStartDate: string; cycleLength: number; lutealLength: number } | null>({
+    queryKey: ["cycle", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/cycle", { headers: authH(testerId) });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!testerId,
+  });
+
+  useEffect(() => {
+    if (cycle) setForm({ cycleStartDate: cycle.cycleStartDate, cycleLength: String(cycle.cycleLength), lutealLength: String(cycle.lutealLength) });
+  }, [cycle]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const method = cycle ? "PATCH" : "POST";
+      await fetch("/api/cycle", {
+        method, headers: authH(testerId),
+        body: JSON.stringify({ cycleStartDate: form.cycleStartDate, cycleLength: parseInt(form.cycleLength), lutealLength: parseInt(form.lutealLength) }),
+      });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cycle"] }); setSaved(true); setTimeout(() => setSaved(false), 2000); },
+  });
+
+  const del = useMutation({
+    mutationFn: async () => { await fetch("/api/cycle", { method: "DELETE", headers: authH(testerId) }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cycle"] }); setForm({ cycleStartDate: "", cycleLength: "28", lutealLength: "14" }); },
+  });
+
+  const currentPhase = cycle ? getCyclePhase(cycle.cycleStartDate, cycle.cycleLength, cycle.lutealLength) : null;
+
+  return (
+    <SectionCard title="Cycle tracking" sub="Optional. Integrates menstrual cycle phases into timing and advisor context.">
+      {currentPhase && (
+        <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: `${currentPhase.color}12`, border: `1px solid ${currentPhase.color}40` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: currentPhase.color }}>{currentPhase.phase} phase · day {currentPhase.dayOfCycle}</div>
+          <div style={{ fontSize: 10, color: "#777", marginTop: 3 }}>{currentPhase.desc}</div>
+          {currentPhase.daysLeft > 0 && <div style={{ fontSize: 9, color: "#bbb", marginTop: 3 }}>{currentPhase.daysLeft} day{currentPhase.daysLeft !== 1 ? "s" : ""} remaining in phase</div>}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <Field label="Last period start (day 1)">
+          <SettingsInput value={form.cycleStartDate} onChange={v => setForm(f => ({ ...f, cycleStartDate: v }))} type="date" />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Cycle length (days)">
+            <SettingsInput value={form.cycleLength} onChange={v => setForm(f => ({ ...f, cycleLength: v }))} type="number" min="21" max="40" />
+          </Field>
+          <Field label="Luteal phase (days)">
+            <SettingsInput value={form.lutealLength} onChange={v => setForm(f => ({ ...f, lutealLength: v }))} type="number" min="10" max="18" />
+          </Field>
+        </div>
+
+        {/* Phase overview */}
+        <div style={{ display: "flex", gap: 0, borderRadius: 6, overflow: "hidden", height: 8 }}>
+          {CYCLE_PHASES.map(p => (
+            <div key={p.name} style={{ flex: p.days[1] - p.days[0] + 1, background: p.color, opacity: 0.7 }} title={`${p.name}: days ${p.days[0]}–${p.days[1]}`} />
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {CYCLE_PHASES.map(p => (
+            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: "#888" }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: p.color }} />{p.name}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => save.mutate()} disabled={!form.cycleStartDate} style={{
+            padding: "7px 16px", borderRadius: 7, border: "none", fontSize: 11,
+            background: form.cycleStartDate ? "#1a2a3a" : "#e0dcd6", color: form.cycleStartDate ? "#fff" : "#aaa", cursor: "pointer",
+          }}>{saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
+          {cycle && <button onClick={() => del.mutate()} style={{ fontSize: 10, color: "#c06060", background: "none", border: "none", cursor: "pointer" }}>Remove</button>}
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+// ---- Export section ----
+
+// ---- Natal chart section ----
+
+function NatalChartSection({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [locationResults, setLocationResults] = useState<any[]>([]);
+  const [locationSearch, setLocationSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: chart, isLoading } = useQuery<any>({
+    queryKey: ["natal-chart", testerId],
+    queryFn: async () => {
+      if (!testerId) return null;
+      const r = await fetch("/api/natal-chart", { headers: { "x-tester-id": testerId } });
+      if (r.status === 404) return null;
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: Infinity,
+  });
+
+  const [form, setForm] = useState({ birthDate: "", birthTime: "", birthPlace: "", birthLat: null as number | null, birthLon: null as number | null, utcOffset: -new Date().getTimezoneOffset() / 60 });
+
+  useEffect(() => {
+    if (chart) {
+      setForm({ birthDate: chart.birthDate ?? "", birthTime: chart.birthTime ?? "", birthPlace: chart.birthPlace ?? "", birthLat: chart.birthLat ?? null, birthLon: chart.birthLon ?? null, utcOffset: chart.utcOffset ?? 0 });
+      setLocationSearch(chart.birthPlace ?? "");
+    }
+  }, [chart]);
+
+  async function searchLocation(q: string) {
+    if (q.length < 2) { setLocationResults([]); return; }
+    try {
+      const r = await fetch(`/api/location-search?q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      setLocationResults(Array.isArray(data) ? data : (data.results ?? []));
+    } catch { setLocationResults([]); }
+  }
+
+  function handleLocationInput(v: string) {
+    setLocationSearch(v);
+    setForm(f => ({ ...f, birthPlace: v, birthLat: null, birthLon: null }));
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => searchLocation(v), 400);
+  }
+
+  function pickLocation(r: any) {
+    const place = r.displayName ?? r.formatted ?? r.name ?? locationSearch;
+    setLocationSearch(place);
+    setLocationResults([]);
+    const offset = r.utcOffsetStandard != null ? Math.round(r.utcOffsetStandard)
+      : r.lon != null ? Math.round(r.lon / 15) : form.utcOffset;
+    setForm(f => ({ ...f, birthPlace: place, birthLat: r.lat, birthLon: r.lon, utcOffset: offset }));
+  }
+
+  async function save() {
+    if (!testerId || !form.birthDate || form.birthLat == null) return;
+    setSaving(true);
+    try {
+      await fetch("/api/natal-chart", {
+        method: "POST",
+        headers: authH(testerId),
+        body: JSON.stringify({ birthDate: form.birthDate, birthTime: form.birthTime || "12:00", birthPlace: form.birthPlace, birthLat: form.birthLat, birthLon: form.birthLon, utcOffset: form.utcOffset }),
+      });
+      qc.invalidateQueries({ queryKey: ["natal-chart"] });
+      setSaved(true); setEditing(false);
+      setTimeout(() => setSaved(false), 3000);
+    } finally { setSaving(false); }
+  }
+
+  const hasChart = !!chart;
+  const inputStyle: React.CSSProperties = { width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" };
+
+  return (
+    <SectionCard title="Birth chart" sub="Used for personal transits — which planetary cycles are active in your chart right now.">
+      {isLoading ? (
+        <div style={{ fontSize: 11, color: "#bbb", padding: "4px 0" }}>Loading…</div>
+      ) : hasChart && !editing ? (
+        <div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{chart.birthDate} {chart.birthTime && `at ${chart.birthTime}`}</div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{chart.birthPlace}</div>
+              {chart.ascendant && (
+                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+                  ↑ {chart.ascendant.sign} rising · ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign}
+                </div>
+              )}
+            </div>
+            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer" }}>
+              Edit
+            </button>
+          </div>
+          {saved && <div style={{ fontSize: 10, color: "#3a6030" }}>✓ Saved</div>}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {!hasChart && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>No birth chart saved yet. Add your birth data to unlock personal transits.</div>}
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Date of birth</div>
+            <input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} style={inputStyle} />
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Time of birth <span style={{ opacity: 0.6 }}>(optional — needed for Ascendant)</span></div>
+            <input type="time" value={form.birthTime} onChange={e => setForm(f => ({ ...f, birthTime: e.target.value }))} style={inputStyle} />
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Place of birth</div>
+            <input value={locationSearch} onChange={e => handleLocationInput(e.target.value)} placeholder="City, country…" style={inputStyle} />
+            {locationResults.length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, marginTop: 2, maxHeight: 180, overflowY: "auto" }}>
+                {locationResults.map((r, i) => (
+                  <button key={i} type="button" onClick={() => pickLocation(r)}
+                    style={{ display: "block", width: "100%", padding: "8px 12px", textAlign: "left", border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "#333", borderBottom: "1px solid var(--color-border)" }}>
+                    {r.displayName ?? r.formatted ?? r.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {form.birthLat != null && <div style={{ fontSize: 10, color: "#3a6030", marginTop: 3 }}>✓ Location set</div>}
+          </div>
+
+          {form.birthLat != null && (
+            <div>
+              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>UTC offset at birth</div>
+              <select value={form.utcOffset} onChange={e => setForm(f => ({ ...f, utcOffset: Number(e.target.value) }))}
+                style={{ ...inputStyle, width: "auto" }}>
+                {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
+                  <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            {editing && (
+              <button onClick={() => { setEditing(false); setLocationSearch(chart?.birthPlace ?? ""); setLocationResults([]); }}
+                style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#888", cursor: "pointer" }}>
+                Cancel
+              </button>
+            )}
+            <button onClick={save} disabled={!form.birthDate || form.birthLat == null || saving}
+              style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", cursor: (!form.birthDate || form.birthLat == null) ? "default" : "pointer",
+                background: (!form.birthDate || form.birthLat == null) ? "#e0dcd6" : "#1a2a3a",
+                color: (!form.birthDate || form.birthLat == null) ? "#aaa" : "#fff" }}>
+              {saving ? "Saving…" : "Save birth chart"}
+            </button>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function ExportSection({ testerId }: { testerId: string | null }) {
+  function downloadIcal() {
+    const tid = testerId ?? localStorage.getItem("obs_tester_id");
+    const url = `/api/export/ical?testerId=${encodeURIComponent(tid ?? "")}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tides-events.ics";
+    a.click();
+  }
+
+  return (
+    <SectionCard title="Export" sub="Download your tasks and planning windows. Planetary hours and astrological events are not included.">
+      <Row label="Tasks + planning windows" sub="Calendar-compatible .ics file">
+        <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer" }}>
+          ↓ Download .ics
+        </button>
+      </Row>
+    </SectionCard>
+  );
+}
+
+// ---- Google Calendar section ----
+
+function GoogleCalSection({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  const popupRef = React.useRef<Window | null>(null);
+
+  const { data: status, isLoading } = useQuery<{ connected: boolean; email?: string; configured?: boolean }>({
+    queryKey: ["gcal-status", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/integrations/google-cal/status", { headers: authH(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 30_000,
+  });
+
+  const disconnect = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/integrations/google-cal/disconnect", { method: "DELETE", headers: authH(testerId) });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gcal-status"] });
+      qc.invalidateQueries({ queryKey: ["gcal-events"] });
+    },
+  });
+
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === "google-cal-connected") {
+        qc.invalidateQueries({ queryKey: ["gcal-status"] });
+        qc.invalidateQueries({ queryKey: ["gcal-events"] });
+      }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [qc]);
+
+  function connect() {
+    if (!testerId) return;
+    const url = `/api/integrations/google-cal/auth?testerId=${encodeURIComponent(testerId)}`;
+    popupRef.current = window.open(url, "gcal-connect", "width=500,height=600,left=200,top=100");
+  }
+
+  return (
+    <SectionCard title="Integrations">
+      <Row label="Google Calendar" sub="Show your events alongside tidal timing in the Calendar view.">
+        {isLoading ? (
+          <span style={{ fontSize: 10, color: "#bbb" }}>…</span>
+        ) : status?.configured === false ? (
+          <span style={{ fontSize: 10, color: "#ccc", padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 6 }}>Not configured</span>
+        ) : status?.connected ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "#408040", padding: "3px 10px", border: "1px solid #b0d0b0", borderRadius: 6, background: "#f0faf0" }}>
+              📅 {status.email ?? "Connected"}
+            </span>
+            <button onClick={() => disconnect.mutate()} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: "1px solid #e0ccc0", background: "#fff8f5", color: "#c06040", cursor: "pointer" }}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <button onClick={connect} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+            <span>📅</span> Connect
+          </button>
+        )}
+      </Row>
+    </SectionCard>
+  );
+}
+
 // ---- Main Settings page ----
+
+const HOUSE_SYSTEMS: { id: string; label: string; note: string }[] = [
+  { id: "whole-sign",    label: "Whole Sign",    note: "Traditional. Each sign = one house. Used for profections and the Currents view." },
+  { id: "equal",         label: "Equal",         note: "30° houses measured from the Ascendant degree." },
+  { id: "placidus",      label: "Placidus",      note: "Most common modern system. Time-based, unequal houses." },
+  { id: "porphyry",      label: "Porphyry",      note: "Simple quadrant system; trisects each quadrant equally." },
+  { id: "regiomontanus", label: "Regiomontanus", note: "Space-based quadrant system, favored in medical astrology." },
+];
+
+function HouseSystemSection() {
+  const [system, setSystem] = useState(() => localStorage.getItem("obs_house_system") ?? "whole-sign");
+  function pick(id: string) {
+    setSystem(id);
+    localStorage.setItem("obs_house_system", id);
+  }
+  return (
+    <SectionCard title="House system" sub="How the chart is divided into houses. Affects the Currents view and personal house placements.">
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {HOUSE_SYSTEMS.map((h) => (
+          <button key={h.id} onClick={() => pick(h.id)} style={{
+            textAlign: "left", padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+            border: system === h.id ? "1.5px solid #3a4a68" : "1px solid #e0dad0",
+            background: system === h.id ? "#f2f4f8" : "var(--color-card-2)",
+          }}>
+            <div style={{ fontSize: 12.5, fontWeight: system === h.id ? 600 : 500, color: "var(--color-primary)" }}>
+              {h.label}{system === h.id && <span style={{ color: "#3a4a68", fontSize: 10, marginLeft: 6 }}>✓ selected</span>}
+            </div>
+            <div style={{ fontSize: 10.5, color: "#999", marginTop: 2, lineHeight: 1.4 }}>{h.note}</div>
+          </button>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
 
 export default function Settings({ testerId }: { testerId: string | null }) {
   const qc = useQueryClient();
@@ -430,30 +975,17 @@ export default function Settings({ testerId }: { testerId: string | null }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["natal-chart"] }); setSaved(true); setTimeout(() => setSaved(false), 2000); },
   });
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>{label}</label>
-      {children}
-    </div>
-  );
-
-  const input = (val: string, onChange: (v: string) => void, rest = {} as any) => (
-    <input value={val} onChange={e => onChange(e.target.value)} {...rest}
-      style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #d8d2ca", fontSize: 13, background: "#faf8f5", outline: "none", ...(rest.style ?? {}) }} />
-  );
-
-  const icalUrl = testerId ? `/api/tides/calendar.ics?tid=${testerId}` : null;
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "10px 20px", borderBottom: "1px solid #d0cbc3", background: "#ece8e2", flexShrink: 0 }}>
+      <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--color-border)", background: "var(--color-rail)", flexShrink: 0 }}>
         <div style={{ fontSize: 12, color: "#888" }}>Settings</div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
 
         {/* Notifications */}
-        <NotificationSection />
+        <NotificationSection lat={lat} lon={lon} />
 
         {/* Display */}
         <DisplaySection />
@@ -468,7 +1000,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
               <div style={{ fontSize: 13, fontWeight: 500 }}>{profile?.displayName}</div>
               <div style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginTop: 2 }}>{profile?.testerId}</div>
             </div>
-            <button onClick={resetProfile} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid #d0cbc3", background: "#fff", color: "#888", cursor: "pointer" }}>
+            <button onClick={resetProfile} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>
               Switch profile
             </button>
           </div>
@@ -477,12 +1009,25 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         {/* Natal chart */}
         <SectionCard title="Natal chart" sub="Used for personal transit overlays in the Today view.">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-            <Field label="Birth date">{input(natalForm.birthDate, v => setNatalForm(f => ({ ...f, birthDate: v })), { type: "date" })}</Field>
-            <Field label="Birth time">{input(natalForm.birthTime, v => setNatalForm(f => ({ ...f, birthTime: v })), { type: "time" })}</Field>
-            <Field label="Place">{input(natalForm.birthPlace, v => setNatalForm(f => ({ ...f, birthPlace: v })), { placeholder: "City, Country" })}</Field>
-            <Field label="UTC offset">{input(natalForm.utcOffset, v => setNatalForm(f => ({ ...f, utcOffset: v })), { placeholder: "-5", type: "number", step: "0.5" })}</Field>
-            <Field label="Latitude">{input(natalForm.birthLat, v => setNatalForm(f => ({ ...f, birthLat: v })), { placeholder: "40.7", type: "number", step: "0.01" })}</Field>
-            <Field label="Longitude">{input(natalForm.birthLon, v => setNatalForm(f => ({ ...f, birthLon: v })), { placeholder: "-74.0", type: "number", step: "0.01" })}</Field>
+            <Field label="Birth date"><SettingsInput value={natalForm.birthDate} onChange={v => setNatalForm(f => ({ ...f, birthDate: v }))} type="date" /></Field>
+            <Field label="Birth time"><SettingsInput value={natalForm.birthTime} onChange={v => setNatalForm(f => ({ ...f, birthTime: v }))} type="time" /></Field>
+            <Field label="Place">
+              <LocationSearchInput
+                value={natalForm.birthPlace}
+                onChange={v => setNatalForm(f => ({ ...f, birthPlace: v }))}
+                onSelect={r => setNatalForm(f => ({
+                  ...f,
+                  birthPlace: r.city ?? r.displayName,
+                  birthLat: String(r.lat.toFixed(4)),
+                  birthLon: String(r.lon.toFixed(4)),
+                  utcOffset: r.utcOffsetStandard != null ? String(r.utcOffsetStandard) : f.utcOffset,
+                }))}
+                placeholder="Search city…"
+              />
+            </Field>
+            <Field label="UTC offset"><SettingsInput value={natalForm.utcOffset} onChange={v => setNatalForm(f => ({ ...f, utcOffset: v }))} placeholder="-5" /></Field>
+            <Field label="Latitude"><SettingsInput value={natalForm.birthLat} onChange={v => setNatalForm(f => ({ ...f, birthLat: v }))} placeholder="40.7" /></Field>
+            <Field label="Longitude"><SettingsInput value={natalForm.birthLon} onChange={v => setNatalForm(f => ({ ...f, birthLon: v }))} placeholder="-74.0" /></Field>
           </div>
           <button onClick={() => saveNatal.mutate()} disabled={!natalForm.birthDate} style={{
             padding: "8px 20px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer",
@@ -494,32 +1039,41 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Location */}
         <SectionCard title="Current location" sub="Used for planetary hours and angle calculations.">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button
-              onClick={() => {
-                if (!navigator.geolocation) { setGeoError("Geolocation not supported."); return; }
-                setGeoLoading(true); setGeoError("");
-                navigator.geolocation.getCurrentPosition(
-                  pos => {
-                    const la = parseFloat(pos.coords.latitude.toFixed(4));
-                    const lo = parseFloat(pos.coords.longitude.toFixed(4));
-                    setLocationForm(f => ({ ...f, lat: String(la), lon: String(lo) }));
-                    setGeoLoading(false);
-                  },
-                  err => { setGeoError(err.message); setGeoLoading(false); },
-                  { timeout: 8000 }
-                );
-              }}
-              style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid #d0cbc3", background: "#f8f5f0", color: "#555", cursor: "pointer" }}
-            >
-              {geoLoading ? "Locating…" : "⊙ Use my location"}
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if (!navigator.geolocation) { setGeoError("Geolocation not supported."); return; }
+              setGeoLoading(true); setGeoError("");
+              navigator.geolocation.getCurrentPosition(
+                pos => {
+                  const la = parseFloat(pos.coords.latitude.toFixed(4));
+                  const lo = parseFloat(pos.coords.longitude.toFixed(4));
+                  setLocationForm(f => ({ ...f, lat: String(la), lon: String(lo) }));
+                  setGeoLoading(false);
+                },
+                err => { setGeoError(err.message); setGeoLoading(false); },
+                { timeout: 8000 }
+              );
+            }}
+            style={{
+              width: "100%", marginBottom: 14, padding: "10px 0", borderRadius: 8,
+              border: "1.5px solid #1a2a3a", background: "#1a2a3a", color: "#f0ede8",
+              fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}
+          >
+            {geoLoading ? "Locating…" : "⊙ Use my current location"}
+          </button>
           {geoError && <div style={{ fontSize: 10, color: "#c05030", marginBottom: 8 }}>{geoError}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-            <Field label="City">{input(locationForm.label, v => setLocationForm(f => ({ ...f, label: v })), { placeholder: "New York" })}</Field>
-            <Field label="Latitude">{input(locationForm.lat, v => setLocationForm(f => ({ ...f, lat: v })), { type: "number", step: "0.0001" })}</Field>
-            <Field label="Longitude">{input(locationForm.lon, v => setLocationForm(f => ({ ...f, lon: v })), { type: "number", step: "0.0001" })}</Field>
+            <Field label="City">
+              <LocationSearchInput
+                value={locationForm.label}
+                onChange={v => setLocationForm(f => ({ ...f, label: v }))}
+                onSelect={r => setLocationForm({ label: r.city ?? r.displayName, lat: String(r.lat.toFixed(4)), lon: String(r.lon.toFixed(4)) })}
+                placeholder="Search city…"
+              />
+            </Field>
+            <Field label="Latitude"><SettingsInput value={locationForm.lat} onChange={v => setLocationForm(f => ({ ...f, lat: v }))} placeholder="40.7" /></Field>
+            <Field label="Longitude"><SettingsInput value={locationForm.lon} onChange={v => setLocationForm(f => ({ ...f, lon: v }))} placeholder="-74.0" /></Field>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
             {locSaved && <span style={{ fontSize: 10, color: "#60a060" }}>Saved ✓ All calculations now use this location.</span>}
@@ -536,6 +1090,21 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           </div>
         </SectionCard>
 
+        {/* Birth chart */}
+        <NatalChartSection testerId={testerId} />
+
+        {/* House system */}
+        <HouseSystemSection />
+
+        {/* Cycle tracking */}
+        <CycleSection testerId={testerId} />
+
+        {/* Integrations */}
+        <GoogleCalSection testerId={testerId} />
+
+        {/* Export */}
+        <ExportSection testerId={testerId} />
+
         {/* Journal history */}
         <SectionCard title="Journal history">
           <button onClick={() => setJournalOpen(v => !v)}
@@ -551,7 +1120,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
                 const d = new Date(date + "T12:00:00");
                 const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                 return (
-                  <div key={date} style={{ borderTop: "1px solid #f0ede8", paddingTop: 10 }}>
+                  <div key={date} style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
                     <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#bbb", marginBottom: 4 }}>{label}</div>
                     <div style={{ fontSize: 12, color: "#444", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{text}</div>
                   </div>
@@ -561,22 +1130,6 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           )}
         </SectionCard>
 
-        {/* iCal */}
-        {icalUrl && (
-          <SectionCard title="Calendar export" sub="Subscribe to your planning windows in Apple Calendar or Google Calendar.">
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ flex: 1, fontSize: 10, fontFamily: "monospace", background: "#f5f2ee", padding: "7px 10px", borderRadius: 6, color: "#555", wordBreak: "break-all" }}>
-                {window.location.origin}{icalUrl}
-              </div>
-              <button onClick={() => navigator.clipboard.writeText(window.location.origin + icalUrl)} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "1px solid #d0cbc3", background: "#fff", color: "#555", cursor: "pointer", flexShrink: 0 }}>
-                Copy
-              </button>
-            </div>
-            <a href={icalUrl} download="tides.ics" style={{ display: "inline-block", marginTop: 8, fontSize: 10, color: "#6090c0" }}>
-              ↓ Download .ics file
-            </a>
-          </SectionCard>
-        )}
 
       </div>
     </div>

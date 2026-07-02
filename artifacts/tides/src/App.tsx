@@ -1,32 +1,71 @@
-import React, { useState, useRef, useEffect } from "react";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { PreferencesProvider } from "@/contexts/preferences-context";
+import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import Rail from "@/components/Rail";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
 import Goals from "@/pages/Goals";
+import Projects from "@/pages/Projects";
 import Sky from "@/pages/Sky";
 import Modules from "@/pages/Modules";
+import Currents from "@/pages/Currents";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
+type WorkTab = "habits" | "tasks" | "goals" | "projects";
+
+function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
+  const [tab, setTab] = useState<WorkTab>("tasks");
+  const TABS: {id:WorkTab; label:string}[] = [
+    {id:"tasks",    label:"Tasks"},
+    {id:"habits",   label:"Habits"},
+    {id:"goals",    label:"Goals"},
+    {id:"projects", label:"Projects"},
+  ];
+  return (
+    <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
+      {/* Sub-tab bar */}
+      <div style={{display:"flex", borderBottom:"1px solid var(--color-border)", background: "var(--color-rail)", flexShrink:0, padding:"0 20px"}}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding:"10px 18px", border:"none", background:"none", cursor:"pointer",
+            fontSize:12, fontWeight: tab===t.id ? 600 : 400,
+            color: tab===t.id ? "#1a2a3a" : "#888",
+            borderBottom: tab===t.id ? "2px solid #1a2a3a" : "2px solid transparent",
+            marginBottom:-1,
+          }}>{t.label}</button>
+        ))}
+      </div>
+      <div style={{flex:1, overflow:"hidden", display:"flex", flexDirection:"column"}}>
+        {tab==="tasks"    && <Tasks    testerId={testerId} now={now}/>}
+        {tab==="habits"   && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {tab==="goals"    && <Goals    testerId={testerId}/>}
+        {tab==="projects" && <Projects testerId={testerId}/>}
+      </div>
+    </div>
+  );
+}
+
 const queryClient = new QueryClient();
 
-type View = "today"|"habits"|"tasks"|"goals"|"calendar"|"sky"|"modules"|"settings";
+type View = "today"|"calendar"|"sky"|"currents"|"work"|"modules"|"settings";
 
-const NAV: {id:View; label:string; icon:string}[] = [
-  {id:"today",    label:"Today",    icon:"◎"},
-  {id:"habits",   label:"Habits",   icon:"⟳"},
-  {id:"tasks",    label:"Tasks",    icon:"✓"},
-  {id:"goals",    label:"Goals",    icon:"◇"},
-  {id:"calendar", label:"Calendar", icon:"▦"},
-  {id:"sky",      label:"Sky",      icon:"✦"},
-  {id:"modules",  label:"Modules",  icon:"◈"},
+// Primary tabs — the time-zoom spine: move right to look further ahead.
+// Now → Ahead → Horizon are the timescale ladder; Sky is the depth layer;
+// Life is your own content. (Modules pending a decision on dissolving it.)
+const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
+  {id:"today",    label:"Now",      zoom:true},
+  {id:"calendar", label:"Ahead",    zoom:true},
+  {id:"currents", label:"Horizon",  zoom:true},
+  {id:"sky",      label:"Sky"},
+  {id:"work",     label:"Life"},
+  {id:"modules",  label:"Modules"},
 ];
 
 const WINDOW_TYPES = [
@@ -62,18 +101,18 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
       display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: "#fff", borderRadius: 14, padding: "20px 22px", width: 420,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid #e0dbd4",
+        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 420,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
         <div style={{ fontSize: 12, color: "#aaa", marginBottom: 10 }}>Quick capture</div>
         <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
           placeholder="What needs to get done?"
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #d8d2ca", fontSize: 14, outline: "none", background: "#faf8f5", marginBottom: 10 }}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 14, outline: "none", background: "var(--color-card-2)", marginBottom: 10 }}
         />
         <div style={{ display: "flex", gap: 8 }}>
           <select value={windowType} onChange={e => setWindowType(e.target.value)}
-            style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #d8d2ca", fontSize: 11, color: "#555", background: "#faf8f5" }}>
+            style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "#555", background: "var(--color-card-2)" }}>
             <option value="">Best time: any</option>
             {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
@@ -87,6 +126,322 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
   );
 }
 
+// ── Intro slides ─────────────────────────────────────────────────────────────
+
+const INTRO_SLIDES: {
+  glyph: string; glyphColor: string; title: string; body: string;
+  cards?: { label: string; sub: string; color: string; bg: string; note: string }[];
+}[] = [
+  {
+    glyph: "◐",
+    glyphColor: "#2a5a80",
+    title: "A weather report for time.",
+    body: "Tides reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
+  },
+  {
+    glyph: "◵ ◶ ◷ ◴",
+    glyphColor: "#4a7040",
+    title: "Every day has a character.",
+    body: "Four kinds of energy, set by where the Moon is. You'll come to feel which one you're in.",
+    cards: [
+      { label: "Deep",     sub: "water", color: "#2a5a80", bg: "#eaf0f8", note: "feel · rest · create · listen" },
+      { label: "Surge",    sub: "fire",  color: "#b84020", bg: "#fff0ec", note: "act · lead · initiate · move" },
+      { label: "Building", sub: "earth", color: "#4a7040", bg: "#f0f5ee", note: "build · finish · organize · tend" },
+      { label: "Clear",    sub: "air",   color: "#5040a0", bg: "#f0eef8", note: "think · write · connect · talk" },
+    ],
+  },
+  {
+    glyph: "◠ ◡",
+    glyphColor: "#c08020",
+    title: "High tide, low tide.",
+    body: "Beyond its character, each moment has a level — how charged it is, and which way it's moving. High and rising: lean in. Low or ebbing: rest, and don't force it.",
+  },
+  {
+    glyph: "✦",
+    glyphColor: "#7040a0",
+    title: "Then make it yours.",
+    body: "Add your birth details and the tide becomes personal — your own timing, your year ahead, and the long cycles moving through your life right now.",
+  },
+];
+
+function IntroSlides({ onDone }: { onDone: () => void }) {
+  const [slide, setSlide] = useState(0);
+  const s = INTRO_SLIDES[slide];
+  const isLast = slide === INTRO_SLIDES.length - 1;
+
+  return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 20px" }}>
+      <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:18, padding:"36px 32px 28px", maxWidth:380, width:"100%", display:"flex", flexDirection:"column", gap:0 }}>
+        {/* Glyph */}
+        <div style={{ fontSize:36, color:s.glyphColor, marginBottom:16, textAlign:"center", letterSpacing:4 }}>{s.glyph}</div>
+
+        {/* Title */}
+        <div style={{ fontSize:20, fontWeight:700, color: "var(--color-primary)", marginBottom:10, textAlign:"center", lineHeight:1.3, letterSpacing:"-0.3px" }}>{s.title}</div>
+
+        {/* Body */}
+        <div style={{ fontSize:13, color:"#666", lineHeight:1.7, textAlign:"center", marginBottom: s.cards ? 20 : 32 }}>{s.body}</div>
+
+        {/* Character cards (the four tides) */}
+        {s.cards && (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:28 }}>
+            {s.cards.map(c => (
+              <div key={c.label} style={{ background:c.bg, border:`1px solid ${c.color}30`, borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ display:"flex", alignItems:"baseline", gap:5, marginBottom:3 }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{c.label}</span>
+                  <span style={{ fontSize:9, color:`${c.color}99` }}>{c.sub}</span>
+                </div>
+                <div style={{ fontSize:9.5, color:"#888", lineHeight:1.4 }}>{c.note}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {/* Dots */}
+          <div style={{ display:"flex", gap:5, flex:1 }}>
+            {INTRO_SLIDES.map((_, i) => (
+              <div key={i} style={{ width: i === slide ? 16 : 6, height:6, borderRadius:3, background: i === slide ? "#1a2a3a" : "#d0cbc3", transition:"width 0.2s" }} />
+            ))}
+          </div>
+          <button onClick={() => isLast ? onDone() : setSlide(s => s + 1)}
+            style={{ padding:"9px 22px", borderRadius:10, border:"none", background:"#1a2a3a", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+            {isLast ? "Get started" : "Next →"}
+          </button>
+        </div>
+
+        {isLast && (
+          <button onClick={onDone} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center" }}>
+            Skip intro
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+
+type OnboardStep = "name" | "birth" | "done";
+
+function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
+  onComplete: (name: string) => void;
+  existingTesterId?: string | null;
+  skipNameStep?: boolean;
+}) {
+  const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
+  const [name, setName] = useState("");
+  // For new users, we create a testerId on name submit. For existing users, use their real one.
+  const [createdTesterId, setCreatedTesterId] = useState<string | null>(existingTesterId ?? null);
+
+  // Birth form state
+  const [birthDate, setBirthDate] = useState("");
+  const [birthTime, setBirthTime] = useState("");
+  const [birthPlace, setBirthPlace] = useState("");
+  const [birthLat, setBirthLat] = useState<number | null>(null);
+  const [birthLon, setBirthLon] = useState<number | null>(null);
+  const [utcOffset, setUtcOffset] = useState<number>(-new Date().getTimezoneOffset() / 60);
+  const [locationResults, setLocationResults] = useState<any[]>([]);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleNameSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = name.trim() || "Observer";
+    // Generate a temporary testerId to POST natal chart against
+    const tid = `obs_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
+    setCreatedTesterId(tid);
+    // Store in localStorage so TesterProvider picks it up
+    localStorage.setItem("obs_tester_id", tid);
+    localStorage.setItem("obs_display_name", n);
+    setStep("birth");
+  }
+
+  async function searchLocation(q: string) {
+    if (q.length < 2) { setLocationResults([]); return; }
+    setSearching(true);
+    try {
+      const r = await fetch(`/api/location-search?q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      // Backend returns a bare array of LocationResult
+      setLocationResults(Array.isArray(data) ? data : (data.results ?? []));
+    } catch {
+      setLocationResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function handleLocationInput(v: string) {
+    setLocationSearch(v);
+    setBirthPlace(v);
+    setBirthLat(null); setBirthLon(null);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => searchLocation(v), 400);
+  }
+
+  function pickLocation(r: any) {
+    const label = r.displayName ?? r.formatted ?? r.name ?? locationSearch;
+    setBirthPlace(label);
+    setBirthLat(r.lat);
+    setBirthLon(r.lon);
+    setLocationSearch(label);
+    setLocationResults([]);
+    // Prefer the geocoder's real timezone offset; fall back to a lon-based estimate.
+    if (r.utcOffsetStandard != null) setUtcOffset(Math.round(r.utcOffsetStandard));
+    else if (r.lon != null) setUtcOffset(Math.round(r.lon / 15));
+  }
+
+  async function saveBirthData() {
+    if (!createdTesterId || !birthDate || birthLat == null || birthLon == null) return;
+    setSaving(true);
+    try {
+      await fetch("/api/natal-chart", {
+        method: "POST",
+        headers: { "x-tester-id": createdTesterId, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthDate,
+          birthTime: birthTime || "12:00",
+          birthPlace,
+          birthLat,
+          birthLon,
+          utcOffset,
+        }),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBirthSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (birthDate && birthLat != null) await saveBirthData();
+    onComplete(name.trim() || "Observer");
+  }
+
+  function handleSkip() {
+    onComplete(name.trim() || "Observer");
+  }
+
+  const cardStyle: React.CSSProperties = {
+    background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16,
+    padding: "36px 36px 32px", maxWidth: 380, width: "100%",
+  };
+
+  if (step === "name") return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px" }}>
+      <div style={cardStyle}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ fontSize:28, fontWeight:700, letterSpacing:"-0.5px", color: "var(--color-primary)", marginBottom:6 }}>Tides</div>
+          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Your personal timing companion — lunar cycles, planetary hours, and daily rhythm.</div>
+        </div>
+        <form onSubmit={handleNameSubmit}>
+          <div style={{ fontSize:11, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Your name</div>
+          <input
+            value={name} onChange={e => setName(e.target.value)}
+            placeholder="What should we call you?" autoFocus
+            style={{ width:"100%", padding:"10px 13px", borderRadius:9, border:"1px solid var(--color-border)", fontSize:14, marginBottom:16, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+          />
+          <button type="submit" style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer", letterSpacing:"0.1px" }}>
+            Continue →
+          </button>
+        </form>
+        <div style={{ fontSize:10, color:"#ccc", textAlign:"center", marginTop:16, lineHeight:1.5 }}>
+          No account needed. Your data stays on this device.
+        </div>
+      </div>
+    </div>
+  );
+
+  if (step === "birth") return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
+      <div style={cardStyle}>
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your birth chart</div>
+          <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
+            Tides uses your birth data to compute personal transits — showing which planetary cycles are active in <em>your</em> chart right now. This stays private on your device.
+          </div>
+        </div>
+
+        <form onSubmit={handleBirthSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {/* Birth date */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Date of birth</div>
+            <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            />
+          </div>
+
+          {/* Birth time */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+              Time of birth <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional — needed for Ascendant)</span>
+            </div>
+            <input type="time" value={birthTime} onChange={e => setBirthTime(e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            />
+          </div>
+
+          {/* Birth place */}
+          <div style={{ position:"relative" }}>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Place of birth</div>
+            <input
+              value={locationSearch} onChange={e => handleLocationInput(e.target.value)}
+              placeholder="City, country…"
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            />
+            {locationResults.length > 0 && (
+              <div style={{ position:"absolute", top:"100%", left:0, right:0, background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:8, boxShadow:"0 4px 16px rgba(0,0,0,0.1)", zIndex:100, marginTop:2, maxHeight:180, overflowY:"auto" }}>
+                {locationResults.map((r, i) => (
+                  <button key={i} type="button" onClick={() => pickLocation(r)}
+                    style={{ display:"block", width:"100%", padding:"9px 13px", textAlign:"left", border:"none", background:"none", cursor:"pointer", fontSize:12, color:"#333", borderBottom:"1px solid var(--color-border)" }}>
+                    {r.displayName ?? r.formatted ?? r.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {birthLat != null && (
+              <div style={{ fontSize:10, color:"#3a6030", marginTop:4 }}>✓ Location set · UTC{utcOffset >= 0 ? "+" : ""}{utcOffset}</div>
+            )}
+          </div>
+
+          {/* UTC offset fine-tune */}
+          {birthLat != null && (
+            <div>
+              <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>UTC offset at birth</div>
+              <select value={utcOffset} onChange={e => setUtcOffset(Number(e.target.value))}
+                style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)" }}>
+                {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
+                  <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ display:"flex", gap:10, marginTop:4 }}>
+            <button type="button" onClick={handleSkip}
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"#888", fontSize:12, cursor:"pointer", fontWeight:500 }}>
+              Skip for now
+            </button>
+            <button type="submit" disabled={!birthDate || birthLat == null || saving}
+              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:13, fontWeight:600,
+                background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#1a2a3a",
+                color: (!birthDate || birthLat == null) ? "#aaa" : "#fff" }}>
+              {saving ? "Saving…" : "Enter Tides"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// ── Shell ─────────────────────────────────────────────────────────────────────
+
 function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
@@ -96,79 +451,109 @@ function Shell() {
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
 
+  // Check if existing user has natal chart — show birth step if not
+  const [showBirthPrompt, setShowBirthPrompt] = useState(false);
+  const { data: existingChart, isLoading: chartLoading } = useQuery({
+    queryKey: ["natal-chart", testerId],
+    queryFn: async () => {
+      if (!testerId) return null;
+      const r = await fetch("/api/natal-chart", { headers: { "x-tester-id": testerId } });
+      if (r.status === 404) return null;
+      return r.json();
+    },
+    enabled: !!testerId && isReady && !showModal,
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    if (!chartLoading && existingChart === null && isReady && !showModal) {
+      setShowBirthPrompt(true);
+    }
+  }, [chartLoading, existingChart, isReady, showModal]);
+
+  const [sawIntro, setSawIntro] = useState(() => !!localStorage.getItem("obs_saw_intro"));
+
   if (showModal || !isReady) {
+    if (!sawIntro) {
+      return <IntroSlides onDone={() => { localStorage.setItem("obs_saw_intro","1"); setSawIntro(true); }} />;
+    }
+    return <OnboardingModal onComplete={name => createAndApply(name)} />;
+  }
+
+  if (showBirthPrompt && !chartLoading) {
     return (
-      <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f0ede8"}}>
-        <div style={{background:"#fff",border:"1px solid #d0cbc3",borderRadius:14,padding:"32px 36px",maxWidth:340,width:"100%",textAlign:"center"}}>
-          <div style={{fontSize:24,fontWeight:600,marginBottom:4,letterSpacing:"-0.3px"}}>Tides</div>
-          <div style={{fontSize:13,color:"#888",marginBottom:24}}>Your timing companion. Enter a name to begin.</div>
-          <form onSubmit={e => {
-            e.preventDefault();
-            const name = (e.currentTarget.elements.namedItem("name") as HTMLInputElement).value;
-            createAndApply(name||"Observer");
-          }}>
-            <input name="name" placeholder="Your name" autoFocus
-              style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #d0cbc3",fontSize:13,marginBottom:10,outline:"none",background:"#faf8f5"}}/>
-            <button type="submit" style={{width:"100%",padding:"9px 0",borderRadius:8,background:"#1a2a3a",color:"#fff",fontSize:13,fontWeight:500,border:"none",cursor:"pointer"}}>
-              Enter Tides
-            </button>
-          </form>
-        </div>
-      </div>
+      <OnboardingModal
+        existingTesterId={testerId}
+        skipNameStep={true}
+        onComplete={() => setShowBirthPrompt(false)}
+      />
     );
   }
 
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div style={{display:"flex",height:"100vh",width:"100%",background:"#f0ede8",overflow:"hidden",flexDirection:"column"}}>
+    <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
-      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
 
-      <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid #d0cbc3"}}>
-        <Rail now={now} />
-        <div style={{background:"#e8e4de",padding:"8px 10px",display:"flex",flexDirection:"column",gap:2,flex:1}}>
-          {NAV.map(n => (
-            <button key={n.id} onClick={()=>setView(n.id)} style={{
-              display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:6,
-              border:"none",cursor:"pointer",textAlign:"left",width:"100%",
-              background:view===n.id?"#d8d2ca":"transparent",
-              color:view===n.id?"#1a1a1a":"#666",fontWeight:view===n.id?500:400,fontSize:12,
-            }}>
-              <span style={{fontSize:13,width:16,textAlign:"center"}}>{n.icon}</span>
-              {n.label}
-            </button>
-          ))}
-          <div style={{flex:1}}/>
-          {/* Quick capture */}
-          <button onClick={() => setCapture(true)} style={{
-            display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:6,
-            border:"1px solid #c0bab0",cursor:"pointer",textAlign:"left",width:"100%",
-            background:"#fff",color:"#555",fontSize:11,marginBottom:4,
-          }}>
-            <span style={{fontSize:13,width:16,textAlign:"center"}}>+</span>
-            Quick task
-          </button>
-          <button onClick={()=>setView("settings")} style={{
-            display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:6,
-            border:"none",cursor:"pointer",textAlign:"left",width:"100%",
-            background:view==="settings"?"#d8d2ca":"transparent",
-            color:view==="settings"?"#1a1a1a":"#aaa",fontSize:11,
-          }}>
-            <span style={{fontSize:12,width:16,textAlign:"center"}}>⚙</span>
-            Settings
-          </button>
-          <div style={{fontSize:10,color:"#bbb",paddingLeft:12,paddingBottom:4}}>{profile?.displayName}</div>
-        </div>
+      {/* ── Top tab bar ── */}
+      <div style={{
+        display:"flex", alignItems:"center", background:"var(--color-rail)",
+        borderBottom:"1px solid var(--color-border)", flexShrink:0, padding:"0 16px",
+      }}>
+        {TOP_TABS.map((t, i) => {
+          // Divider after the last zoom tab (Now/Ahead/Horizon) to separate the
+          // time-ladder from the depth (Sky) and content (Life) tabs.
+          const prev = TOP_TABS[i - 1];
+          const showDivider = prev?.zoom && !t.zoom;
+          return (
+            <React.Fragment key={t.id}>
+              {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
+              <button onClick={() => setView(t.id)} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+                padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
+                fontSize:12, fontWeight: view===t.id ? 600 : 400,
+                color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
+                borderBottom: view===t.id ? "2px solid var(--color-primary)" : "2px solid transparent",
+                marginBottom:-1,
+              }}>{t.label}</button>
+            </React.Fragment>
+          );
+        })}
+        <div style={{flex:1}}/>
+        <span style={{fontSize:11,color:"var(--color-muted)",marginRight:12}}>{profile?.displayName}</span>
+        <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
+          fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
+          background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
+        }}>{theme === "light" ? "☾" : "☀"}</button>
+        <button onClick={() => setCapture(true)} style={{
+          fontSize:10, padding:"4px 11px", borderRadius:6, border:"1px solid var(--color-border)",
+          background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
+        }}>+ task</button>
+        <button onClick={() => setView("settings")} style={{
+          display:"flex", alignItems:"center", gap:4,
+          fontSize:11, padding:"5px 12px", borderRadius:6, border:"none",
+          background: view==="settings" ? "var(--color-border)" : "transparent",
+          color: view==="settings" ? "var(--color-foreground)" : "var(--color-muted)", cursor:"pointer", marginBottom:-1,
+          borderBottom: view==="settings" ? "2px solid var(--color-primary)" : "2px solid transparent",
+        }}>⚙ Settings</button>
       </div>
 
-      {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon}/>}
-      {view==="habits"   && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
-      {view==="tasks"    && <Tasks    testerId={testerId} now={now}/>}
-      {view==="goals"    && <Goals    testerId={testerId}/>}
-      {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
-      {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
-      {view==="modules"  && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
-      {view==="settings" && <Settings testerId={testerId}/>}
+      {/* ── Content row ── */}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        {/* Left sidebar: Rail only */}
+        <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid var(--color-border)",width:210,minWidth:210,flexShrink:0,background:"var(--color-rail)"}}>
+          <Rail now={now} testerId={testerId} lat={lat} lon={lon} />
+        </div>
+
+        {/* Main content */}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)}/>}
+        {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="currents" && <Currents testerId={testerId}/>}
+        {view==="modules"  && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="settings" && <Settings testerId={testerId}/>}
       </div>
     </div>
   );
@@ -184,13 +569,15 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TesterProvider>
-        <PreferencesProvider>
-          <ErrorBoundary>
-            <Shell/>
-          </ErrorBoundary>
-        </PreferencesProvider>
-      </TesterProvider>
+      <ThemeProvider>
+        <TesterProvider>
+          <PreferencesProvider>
+            <ErrorBoundary>
+              <Shell/>
+            </ErrorBoundary>
+          </PreferencesProvider>
+        </TesterProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

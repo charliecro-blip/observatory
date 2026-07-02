@@ -9,6 +9,30 @@ function loc(lat: number, lon: number) {
   return `lat=${lat}&lon=${lon}`;
 }
 
+export function useNorthStars(testerId: string | null) {
+  return useQuery<any[]>({
+    queryKey: ["north-stars", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/planning/north-stars", { headers: authHeaders(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 30_000,
+  });
+}
+
+export function useCurrents(testerId: string | null, houseSystem: string) {
+  return useQuery<any>({
+    queryKey: ["currents", testerId, houseSystem],
+    queryFn: async () => {
+      const r = await fetch(`/api/currents?houseSystem=${encodeURIComponent(houseSystem)}`, { headers: authHeaders(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 3600_000,
+  });
+}
+
 export function useTidesNow(testerId: string | null, lat = 40.7, lon = -74.0) {
   return useQuery<TidesNow>({
     queryKey: ["tides-now", testerId, lat, lon],
@@ -62,6 +86,48 @@ export function useTodayWindows(testerId: string | null, date: string) {
     },
     enabled: !!testerId,
     refetchInterval: 120_000,
+  });
+}
+
+export interface GCalEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  color: string | null;
+  htmlLink: string;
+  location?: string;
+  description?: string;
+  organizer?: string;
+  calendarName?: string;
+}
+
+export function useGCalStatus(testerId: string | null) {
+  return useQuery<{ connected: boolean; email?: string; configured?: boolean }>({
+    queryKey: ["gcal-status", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/integrations/google-cal/status", { headers: authHeaders(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 30_000,
+  });
+}
+
+export function useGCalEvents(testerId: string | null, start: string, end: string, enabled: boolean) {
+  return useQuery<{ events: GCalEvent[] }>({
+    queryKey: ["gcal-events", testerId, start, end],
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/integrations/google-cal/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+        { headers: authHeaders(testerId) }
+      );
+      return r.json();
+    },
+    enabled: !!testerId && enabled,
+    staleTime: 300_000,
+    refetchInterval: 600_000,
   });
 }
 

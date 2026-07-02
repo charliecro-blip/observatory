@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows } from "@/hooks/useTides";
+import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
-import { usePreferences } from "@/contexts/preferences-context";
+import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import { SessionTimer } from "@/components/SessionTimer";
-import type { Goal } from "@/lib/types";
-
-const ELEMENT_COLORS: Record<string, string> = {
-  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
-};
+import type { Goal, SkyEvent } from "@/lib/types";
+import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
+import { TideCardModal } from "@/components/TideCard";
+import { smoothPathD } from "@/lib/smoothPath";
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
@@ -83,12 +83,320 @@ function journalKey(testerId: string | null, date: string) {
   return `tides-journal-${testerId ?? "anon"}-${date}`;
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
+function isDefaultLocation(lat: number, lon: number) {
+  return Math.abs(lat - 40.7) < 0.01 && Math.abs(lon - (-74.0)) < 0.01;
+}
+
+// ── Pin button ────────────────────────────────────────────────────────────────
+
+function PinButton({ onPin }: { onPin: () => void }) {
+  const [pinned, setPinned] = useState(false);
+  return (
+    <button
+      onClick={() => { onPin(); setPinned(true); setTimeout(() => setPinned(false), 2000); }}
+      title="Save this insight"
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
+        fontSize: 13, color: pinned ? "#c08020" : "#ccc", flexShrink: 0,
+        transition: "color 0.2s",
+      }}
+    >
+      {pinned ? "★" : "☆"}
+    </button>
+  );
+}
+
+// ── Moment Advisor ────────────────────────────────────────────────────────────
+
+// mode "send" fires immediately; mode "fill" drops a natural starter into the
+// input for you to complete, so the message reads as your own words (no
+// awkward "ask me what it is" instructions sent on your behalf).
+const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[] = [
+  { label: "What should I do right now?", mode: "send", value: "Given the sky right now and my tasks and goals, what's the best thing I could do with this moment?" },
+  { label: "What should I work on?", mode: "send", value: "Looking at my tasks and goals and the current sky, what should I focus on right now?" },
+  { label: "What movement fits now?", mode: "send", value: "What kind of movement or workout best matches this moment?" },
+  { label: "Is now a good time to…", mode: "fill", value: "Is now a good time to " },
+  { label: "When should I…", mode: "fill", value: "When today or this week should I " },
+  { label: "When should I launch…", mode: "fill", value: "When would be the best timing to launch " },
+];
+
+interface AdvisorMessage { role: "user" | "assistant"; content: string; }
+
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask }: {
+  testerId: string | null;
+  lat: number;
+  lon: number;
+  onClose: () => void;
+  gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
+  weekSummary: string;
+  onAddTask: (title: string) => void;
+}) {
+  const [history, setHistory] = useState<AdvisorMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [streamBuffer, setStreamBuffer] = useState("");
+  const [showPins, setShowPins] = useState(false);
+  const [memSaved, setMemSaved] = useState<number | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const pinsKey = `tides-advisor-pins-${testerId ?? "anon"}`;
+  const pins: { content: string; ts: string }[] = JSON.parse(localStorage.getItem(pinsKey) ?? "[]");
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [history, streamBuffer]);
+
+  async function send(message: string) {
+    if (!message.trim() || streaming) return;
+    const userMsg: AdvisorMessage = { role: "user", content: message.trim() };
+    setHistory(h => [...h, userMsg]);
+    setInput("");
+    setStreaming(true);
+    setStreamBuffer("");
+
+    try {
+      const res = await fetch("/api/advise", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(testerId ? { "x-tester-id": testerId } : {}),
+        },
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary }),
+      });
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let buf = "";
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.delta) {
+              accumulated += parsed.delta;
+              setStreamBuffer(accumulated);
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+
+      if (accumulated) {
+        setHistory(h => [...h, { role: "assistant", content: accumulated }]);
+      }
+    } catch {
+      setHistory(h => [...h, { role: "assistant", content: "Something went wrong. Try again." }]);
+    } finally {
+      setStreaming(false);
+      setStreamBuffer("");
+    }
+  }
+
+  const allMessages: AdvisorMessage[] = streaming && streamBuffer
+    ? [...history, { role: "assistant", content: streamBuffer }]
+    : history;
+
+  function pinMessage(content: string) {
+    const key = `tides-advisor-pins-${testerId ?? "anon"}`;
+    const existing: { content: string; ts: string }[] = JSON.parse(localStorage.getItem(key) ?? "[]");
+    existing.unshift({ content, ts: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(existing.slice(0, 20)));
+  }
+
+  async function saveToMemory(content: string, idx: number) {
+    if (!testerId) return;
+    try {
+      await fetch("/api/daemon-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+        body: JSON.stringify({ content: content.slice(0, 300) }),
+      });
+      setMemSaved(idx);
+      setTimeout(() => setMemSaved(null), 2000);
+    } catch { /* silent */ }
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(15,20,30,0.55)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: "var(--color-card-2)", borderRadius: 16, width: 520, maxWidth: "calc(100vw - 40px)",
+        maxHeight: "80vh", display: "flex", flexDirection: "column",
+        boxShadow: "0 12px 48px rgba(0,0,0,0.22)", border: "1px solid #ddd8d0",
+      }}>
+        {/* Header */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "16px 20px 14px", borderBottom: "1px solid var(--color-border)", flexShrink: 0,
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>Moment Advisor</div>
+            <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What does this moment support?</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {history.length > 0 && !showPins && (
+              <button onClick={() => { setHistory([]); setStreamBuffer(""); setInput(""); }} style={{
+                fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
+                background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
+              }}>← New question</button>
+            )}
+            {pins.length > 0 && (
+              <button onClick={() => setShowPins(v => !v)} style={{
+                fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
+                background: showPins ? "#1a2a3a" : "#fff", color: showPins ? "var(--color-background)" : "#4a5a6a",
+                cursor: "pointer",
+              }}>★ Saved ({pins.length})</button>
+            )}
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#aaa", lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+
+        {/* Saved pins panel */}
+        {showPins && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {pins.length === 0 && <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", marginTop: 16 }}>No saved insights yet.</div>}
+            {pins.map((p, i) => (
+              <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ fontSize: 13, color: "var(--color-primary)", lineHeight: 1.5 }}>{p.content}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                  <span style={{ fontSize: 9, color: "#bbb" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
+                    fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
+                    background: "#f5f0ec", color: "#4a5a6a", cursor: "pointer",
+                  }}>→ task</button>
+                </div>
+              </div>
+            ))}
+            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "#bbb", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}>← Back to conversation</button>
+          </div>
+        )}
+
+        {!showPins && <>
+
+        {/* Quick intentions (only before first message) */}
+        {history.length === 0 && (
+          <div style={{ padding: "14px 20px 8px", flexShrink: 0 }}>
+            <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Quick start</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {QUICK_INTENTIONS.map(q => (
+                <button key={q.label} onClick={() => {
+                  if (q.mode === "send") send(q.value);
+                  else { setInput(q.value); inputRef.current?.focus(); }
+                }} style={{
+                  fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "1px solid var(--color-border)",
+                  background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
+                  transition: "background 0.1s",
+                }}>{q.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Message thread */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {allMessages.length === 0 && (
+            <div style={{ color: "#bbb", fontSize: 12, textAlign: "center", marginTop: 20 }}>
+              Pick an intention above or ask anything below.
+            </div>
+          )}
+          {allMessages.map((m, i) => (
+            <div key={i} style={{
+              display: "flex",
+              justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+              alignItems: "flex-end", gap: 4,
+            }}>
+              <div style={{
+                maxWidth: "82%", padding: "10px 14px", borderRadius: 12,
+                fontSize: 13, lineHeight: 1.5,
+                background: m.role === "user" ? "#1a2a3a" : "#fff",
+                color: m.role === "user" ? "var(--color-background)" : "#1a2a3a",
+                border: m.role === "assistant" ? "1px solid var(--color-border)" : "none",
+                borderBottomRightRadius: m.role === "user" ? 4 : 12,
+                borderBottomLeftRadius: m.role === "assistant" ? 4 : 12,
+              } as React.CSSProperties}>
+                {m.content}
+                {streaming && i === allMessages.length - 1 && m.role === "assistant" && (
+                  <span style={{ display: "inline-block", width: 6, height: 13, background: "#bbb", marginLeft: 3, verticalAlign: "text-bottom", animation: "blink 1s step-end infinite" }} />
+                )}
+              </div>
+              {m.role === "assistant" && !streaming && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 }}>
+                  <PinButton onPin={() => pinMessage(m.content)} />
+                  <button
+                    onClick={() => onAddTask(m.content.slice(0, 80))}
+                    title="Add as task"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#ccc", padding: "1px 3px" }}
+                  >→</button>
+                  <button
+                    onClick={() => saveToMemory(m.content, i)}
+                    title="Save to daemon memory (persists across sessions)"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: memSaved === i ? "#9060c0" : "#ddd", padding: "1px 3px" }}
+                  >{memSaved === i ? "✦" : "◆"}</button>
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <div style={{ padding: "12px 16px 16px", borderTop: "1px solid var(--color-border)", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+              placeholder="Ask anything about this moment…"
+              rows={2}
+              style={{
+                flex: 1, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--color-border)",
+                fontSize: 13, outline: "none", background: "var(--color-card)", resize: "none",
+                fontFamily: "inherit", lineHeight: 1.4, color: "var(--color-primary)",
+              }}
+            />
+            <button
+              onClick={() => send(input)}
+              disabled={!input.trim() || streaming}
+              style={{
+                padding: "9px 16px", borderRadius: 10, border: "none",
+                background: input.trim() && !streaming ? "#1a2a3a" : "#e0dcd6",
+                color: input.trim() && !streaming ? "#fff" : "#aaa",
+                fontSize: 12, fontWeight: 500, cursor: input.trim() && !streaming ? "pointer" : "default",
+                flexShrink: 0,
+              }}
+            >
+              {streaming ? "…" : "Send"}
+            </button>
+          </div>
+          <div style={{ fontSize: 9, color: "#ccc", marginTop: 5 }}>Enter to send · Shift+Enter for new line</div>
+        </div>
+
+        </>}
+      </div>
+    </div>
+  );
+}
+
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }: { testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
+  const [showAdvisor, setShowAdvisor] = useState(false);
+  const [showTideCard, setShowTideCard] = useState(false);
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
@@ -111,9 +419,56 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
 
   const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
+  const { data: skyEventsData } = useSkyEvents(3, lat, lon);
   const { data: practicesData } = usePractices(testerId, lat, lon);
   const { data: windows } = useTodayWindows(testerId, today);
   const { data: tidesWindowsData } = useTidesWindows(lat, lon);
+
+  const { data: gcalStatus } = useQuery<{ connected: boolean }>({
+    queryKey: ["gcal-status", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/integrations/google-cal/status", { headers: testerId ? { "x-tester-id": testerId } : {} });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 60_000,
+  });
+
+  const todayStart = `${today}T00:00:00`;
+  const todayEnd = `${today}T23:59:59`;
+  const { data: gcalData } = useQuery<{ events: { title: string; start: string; end: string; allDay: boolean; color: string | null; htmlLink: string }[] }>({
+    queryKey: ["gcal-events-today", testerId, today],
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/integrations/google-cal/events?start=${encodeURIComponent(todayStart)}&end=${encodeURIComponent(todayEnd)}`,
+        { headers: testerId ? { "x-tester-id": testerId } : {} }
+      );
+      return r.json();
+    },
+    enabled: !!testerId && !!gcalStatus?.connected,
+    staleTime: 300_000,
+  });
+
+  const { data: cycle } = useQuery<{ cycleStartDate: string; cycleLength: number; lutealLength: number } | null>({
+    queryKey: ["cycle", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/cycle", { headers: testerId ? { "x-tester-id": testerId } : {} });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 3600_000,
+  });
+
+  const { data: habits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/habits", { headers: testerId ? { "x-tester-id": testerId } : {} });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 120_000,
+  });
 
   const { data: goals } = useQuery<Goal[]>({
     queryKey: ["goals", testerId],
@@ -123,6 +478,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
     },
     enabled: !!testerId,
   });
+
+  const { data: northStars } = useNorthStars(testerId);
 
   interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
@@ -157,13 +514,24 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
   });
 
+  const gcalEvents = (gcalData?.events ?? []).map(e => ({ title: e.title, start: e.start, end: e.end, allDay: e.allDay }));
+
+  // Build a concise week quality summary for the advisor system prompt
+  const weekSummary = (week?.days ?? []).slice(0, 7).map((d: any) => {
+    const date = new Date(d.date + "T12:00:00");
+    const dayName = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const qs = d.quality ?? "";
+    const ms = d.moonSign ?? "";
+    return `${dayName}: ${ms}${qs ? ` · ${qs.replace(/_/g," ")}` : ""}`;
+  }).join("; ");
+
   const practices = practicesData?.practices ?? [];
   const resonant = practices.filter(p => p.timing === "resonant");
   const supported = practices.filter(p => p.timing === "supported");
   const soften = practices.filter(p => p.timing === "soften" || p.timing === "protect");
 
   const el = now?.element?.element ?? "water";
-  const elemColor = ELEMENT_COLORS[el] ?? "#888";
+  const elemColor = ELEMENT_COLORS[el as Element] ?? "#888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888";
 
   // Find next angle crossing from week data — only within 30 minutes
@@ -179,7 +547,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
   if (nowLoading) {
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ padding: "10px 20px", borderBottom: "1px solid #d0cbc3", background: "#ece8e2", flexShrink: 0, height: 42 }} />
+        <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--color-border)", background: "var(--color-rail)", flexShrink: 0, height: 42 }} />
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           <SkeletonCard rows={3} />
           <SkeletonCard rows={2} />
@@ -199,7 +567,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
       {/* Topbar */}
       <div style={{
         padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderBottom: "1px solid #d0cbc3", background: "#ece8e2", flexShrink: 0,
+        borderBottom: "1px solid var(--color-border)", background: "var(--color-rail)", flexShrink: 0,
       }}>
         <div style={{ fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {new Date().toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -215,57 +583,176 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               {el} · {now?.quality}
             </div>
           </Tooltip>
-          <button
-            onClick={() => setCrossingsOn(v => !v)}
-            style={{
-              fontSize: 9, padding: "3px 8px", borderRadius: 8, border: "1px solid #d0cbc3",
-              background: crossingsOn ? "#fff8f0" : "#f0ede8", color: crossingsOn ? "#b07020" : "#aaa",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-            }}
-          >
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: crossingsOn ? "#e0a040" : "#ccc", display: "inline-block" }} />
-            Crossings {crossingsOn ? "on" : "off"}
-          </button>
+          {isDefaultLocation(lat, lon) ? (
+            <span style={{ fontSize: 9, color: "#c07020", background: "#fff8ee", border: "1px solid #e0c080", borderRadius: 6, padding: "3px 9px" }}>
+              ⚠ Set location in Settings for local crossings
+            </span>
+          ) : (
+            <button
+              onClick={() => setCrossingsOn(v => !v)}
+              style={{
+                fontSize: 9, padding: "3px 8px", borderRadius: 8, border: "1px solid var(--color-border)",
+                background: crossingsOn ? "#fff8f0" : "var(--color-background)", color: crossingsOn ? "#b07020" : "#aaa",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: crossingsOn ? "#e0a040" : "#ccc", display: "inline-block" }} />
+              Crossings {crossingsOn ? "on" : "off"}
+            </button>
+          )}
           <SessionTimer planetaryHour={now?.planetaryHour} />
+          <button onClick={() => setShowAdvisor(true)} style={{
+            fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
+            background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500,
+          }}>✦ Advise</button>
         </div>
       </div>
 
+      {showAdvisor && (
+        <MomentAdvisor
+          testerId={testerId}
+          lat={lat}
+          lon={lon}
+          onClose={() => setShowAdvisor(false)}
+          gcalEvents={gcalEvents}
+          weekSummary={weekSummary}
+          onAddTask={title => {
+            setNewTaskTitle(title);
+            setShowAddTask(true);
+            setShowAdvisor(false);
+          }}
+        />
+      )}
+
+      {showTideCard && now && <TideCardModal now={now} onClose={() => setShowTideCard(false)} />}
+
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-        {/* Hero card */}
-        <div style={{
-          background: `linear-gradient(135deg, ${elemColor}18, ${elemColor}08)`,
-          border: `1px solid ${elemColor}30`, borderRadius: 12, padding: "18px 22px", position: "relative",
-        }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: elemColor, marginBottom: 8 }}>
-            Right now · {now?.planetaryHour?.planet} hour · {el} day
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 400, lineHeight: 1.35, color: "#1a2a3a", fontFamily: "Georgia, serif", maxWidth: 380 }}>
-            {heroText(now)}
-          </div>
-          {/* Moon glyph */}
-          <div style={{
-            position: "absolute", right: 20, top: 18, width: 64, height: 64, borderRadius: "50%",
-            background: "radial-gradient(circle at 60% 40%, #e8e0d0, #9a9080)", opacity: 0.65,
-          }} />
-          <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-            {[
-              { dot: elemColor, text: `${now?.moonSign} · ${el}` },
-              { dot: qColor, text: `${now?.quality} · ${now?.qualityScore ?? ""}` },
-              now?.voc?.isVOC ? { dot: "#aaa", text: "Moon VOC" } : null,
-            ].filter(Boolean).map((m: any, i) => (
-              <div key={i} style={{ fontSize: 9, color: "#6090a0", display: "flex", alignItems: "center", gap: 3 }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: m.dot }} />
-                {m.text}
+        {/* Hero card — tide-forward */}
+        {(() => {
+          const tide = now?.tide;
+          const character = (tide?.character ?? "deep") as TideCharacter;
+          const elKey = CHARACTER_ELEMENT[character] ?? "water";
+          const elColor = ELEMENT_COLORS[elKey] ?? elemColor;
+          const elBg    = ELEMENT_BG[elKey] ?? "#f0f0f0";
+          const levelLabel = tide?.levelLabel ?? "Steady";
+          // Quiet day: little is happening (low aspect activation, no swells ahead).
+          // Report it honestly instead of manufacturing a reading.
+          const activation = now?.dayArc?.heightFactors?.activation ?? 1;
+          const aspectsAhead = (now?.dayArc?.events ?? []).filter((e: any) => e.kind === "aspect" && !e.past).length;
+          const isQuiet = activation < 0.25 && aspectsAhead === 0 && (tide?.band ?? "mid") !== "high";
+          const guidanceText = isQuiet ? QUIET_DAY_GUIDANCE[character]
+            : tide ? tideGuidance(character, tide.level) : heroText(now);
+          const confNote = isQuiet ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
+
+          // Tide curve marker position: Low(0) → Rising(0.25) → High(0.5) → Ebb(0.75) → Low(1)
+          const curvePos = tide?.level === "low" ? 0.06
+            : tide?.level === "rising" ? 0.28
+            : tide?.level === "high" ? 0.5
+            : tide?.level === "ebb" ? 0.72
+            : 0.5; // "tide" mid sits at center
+          const energyPct = Math.round((tide?.energy ?? 0.5) * 100);
+
+          return (
+            <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+              {/* Tide banner */}
+              <div style={{ background: `linear-gradient(135deg, ${elColor}, ${elColor}cc)`, padding: "24px 28px 20px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 8 }}>
+                      {levelLabel}
+                    </div>
+                    <div style={{ fontSize: 44, fontWeight: 700, color: "#fff", letterSpacing: "-1px", lineHeight: 1 }}>
+                      {tide?.headline ?? "Tide"}
+                    </div>
+                    <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", marginTop: 10, maxWidth: 340, lineHeight: 1.4 }}>
+                      {CHARACTER_ESSENCE[character]}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+                    <button onClick={() => setShowTideCard(true)} title="Share today's tide" style={{
+                      fontSize: 11.5, padding: "5px 14px", borderRadius: 20, cursor: "pointer",
+                      border: "1px solid rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 500,
+                    }}>↗ Share</button>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", textAlign: "right", lineHeight: 1.7 }}>
+                      {now?.moonSign ?? ""}<br/>{now?.planetaryHour?.planet} hour<br/>{now?.moonPhase ?? ""}
+                    </div>
+                  </div>
+                </div>
+                {/* Tide curve */}
+                <div style={{ marginTop: 20, position: "relative", height: 30 }}>
+                  <svg viewBox="0 0 300 22" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
+                    <path d="M0,20 C40,20 55,4 75,4 C110,4 105,20 150,20 C195,20 190,4 225,4 C245,4 260,20 300,20"
+                      fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                    <circle cx={curvePos * 300} cy={curvePos < 0.5 ? (curvePos < 0.2 ? 20 : 4) : (curvePos > 0.6 ? 12 : 4)} r="4.5" fill="#fff" />
+                  </svg>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 3, letterSpacing: "0.6px" }}>
+                    <span>LOW</span><span>RISING</span><span>HIGH</span><span>EBB</span><span>LOW</span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Guidance + meta */}
+              <div style={{ background: elBg, padding: "16px 24px" }}>
+                <div style={{ fontSize: 14.5, color: "#2a2a2a", lineHeight: 1.6, marginBottom: confNote ? 7 : 12 }}>
+                  {guidanceText}
+                </div>
+                {confNote && (
+                  <div style={{ fontSize: 11, color: "#907040", fontStyle: "italic", marginBottom: 12 }}>{confNote}</div>
+                )}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
+                    Energy {energyPct}%
+                  </div>
+                  <div style={{ fontSize: 9.5, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
+                    {tide?.trend ?? "steady"}
+                  </div>
+                  <div style={{ fontSize: 9.5, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
+                    {tide?.confidence ?? "medium"} confidence
+                  </div>
+                  {now?.voc?.isVOC && (
+                    <div style={{ fontSize: 9.5, color: "#b0a060", display: "flex", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#b0a060" }} />
+                      Moon VOC
+                    </div>
+                  )}
+                </div>
+
+                {/* Personal modifier line — the moat, shown when a hard transit is active */}
+                {tide?.personal && (now?.personalTransits?.length ?? 0) > 0 && (
+                  <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
+                    <span style={{ fontSize: 10.5, color: "#8a4040" }}>
+                      World tide is {levelLabel.toLowerCase()}, but yours is choppy — {now!.personalTransits![0].summary}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* North Stars — chief aims for the week */}
+        {(northStars?.length ?? 0) > 0 && (
+          <NorthStarsCard stars={northStars!} testerId={testerId} onNavigate={onNavigate} />
+        )}
+
+        {/* The tide — one coherent chart for the whole day */}
+        {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
+
+        {/* Standing conditions */}
+        {now && <ConditionsStrip now={now} today={today} />}
+
+        {/* Feedback — how did today feel? */}
+        {now && <TideFeedback now={now} today={today} testerId={testerId} />}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
           <div style={{
-            background: "#f5f0ea", border: "1px solid #d8d0c0", borderLeft: "3px solid #b0a080",
+            background: "var(--color-card-2)", border: "1px solid #d8d0c0", borderLeft: "3px solid #b0a080",
             borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
           }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>◌</span>
@@ -276,6 +763,59 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
               <div style={{ fontSize: 10, color: "#9a7050", marginTop: 2 }}>
                 Avoid new beginnings. Good for completion, review, routine, and rest.
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cycle phase banner */}
+        {cycle?.cycleStartDate && (() => {
+          const start = new Date(cycle.cycleStartDate + "T12:00:00");
+          const today_ = new Date();
+          const diff = Math.floor((today_.getTime() - start.getTime()) / 86400000);
+          if (diff < 0) return null;
+          const dayOfCycle = (diff % cycle.cycleLength) + 1;
+          const follEnd = cycle.cycleLength - cycle.lutealLength;
+          const phases = [
+            { name: "Menstrual", max: 5,        color: "#c04050", desc: "Rest · release · introspection" },
+            { name: "Follicular", max: follEnd-4, color: "#d08020", desc: "Rising energy · creativity · planning" },
+            { name: "Ovulatory",  max: follEnd,   color: "#50a050", desc: "Peak energy · visibility · connection" },
+            { name: "Luteal",     max: cycle.cycleLength, color: "#6050a0", desc: "Focus · nesting · detail work" },
+          ];
+          const phase = phases.find(p => dayOfCycle <= p.max) ?? phases[3];
+          return (
+            <div style={{
+              background: `${phase.color}10`, border: `1px solid ${phase.color}30`, borderLeft: `3px solid ${phase.color}`,
+              borderRadius: 8, padding: "9px 14px", display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: phase.color }}>{phase.name} · day {dayOfCycle} of cycle</div>
+                <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{phase.desc}</div>
+              </div>
+              <div style={{ fontSize: 8, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
+            </div>
+          );
+        })()}
+
+        {/* Rhythm-risk banner */}
+        {now?.rhythmRisk && (
+          <div style={{
+            background: "#fff8f0", border: "1px solid #e0b080", borderLeft: "3px solid #c05020",
+            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10,
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#803020" }}>Rhythm-risk window · move gently</div>
+              {(now.rhythmRiskFactors ?? []).length > 0 && (
+                <div style={{ fontSize: 10, color: "#a05030", marginTop: 2 }}>
+                  {(now.rhythmRiskFactors ?? []).join(" · ")}
+                </div>
+              )}
+              {habits.filter((h: any) => h.minimumViable).length > 0 && (
+                <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
+                  <span style={{ fontWeight: 600, color: "#6a4020" }}>Minimum viable: </span>
+                  {habits.filter((h: any) => h.minimumViable).map((h: any) => `${h.name}: ${h.minimumViable}`).join(" · ")}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -306,32 +846,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           );
         })()}
 
-        {/* Tide chart */}
-        <TideChart
-          elemColor={elemColor}
-          todayData={todayData}
-          tidesWindowsData={tidesWindowsData}
-          windows={windows}
-          now={now}
-          week={week}
-          today={today}
-          tideView={tideView}
-          setTideView={setTideView}
-          crossingsOn={crossingsOn}
-          waveRef={waveRef}
-          waveHover={waveHover}
-          setWaveHover={setWaveHover}
-          todayShowWave={todayShowWave}
-        />
-
-        {/* 14 days ahead */}
-        {todayShow14Day && <FourteenDays week={week} today={today} />}
-
-
         {/* Waves — flat unified list: practices + tasks + goals */}
-        <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
           <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1a2a3a" }}>Waves</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Waves</div>
             {todayTasks.filter(t => t.done === "true").length > 0 && (
               <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
             )}
@@ -356,13 +874,13 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
             {supported.map(p => <WaveRow key={`ps-${p.id}`} type="practice-supported" label={p.name} sub={p.reasons?.[0]} />)}
             {soften.map(p => <WaveRow key={`pf-${p.id}`} type="practice-soften" label={p.name} />)}
             {/* Add task */}
-            <div style={{ padding: "8px 18px", borderTop: "1px solid #f0ede8" }}>
+            <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
               {showAddTask ? (
                 <div style={{ display: "flex", gap: 6 }}>
                   <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && newTaskTitle.trim()) addTask.mutate(newTaskTitle); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); } }}
                     placeholder="Add task for today…"
-                    style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid #d8d2ca", fontSize: 12, outline: "none", background: "#faf8f5" }}
+                    style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)" }}
                   />
                   <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)}
                     style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
@@ -376,32 +894,889 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0 }: { testerId:
           </div>
         </div>
 
+        {/* Elemental balance */}
+        {habits.length > 0 && <ElementalBalance habits={habits} tasks={todayTasks} />}
+
+        {/* Planetary pulse */}
+        {now && <PlanetaryPulse now={now} />}
+
+        {/* Module recommendations */}
+        {now && <ModulePulse now={now} onNavigate={onNavigate} />}
+
       </div>
+    </div>
+  );
+}
+
+// ── DayArcStrip — the shape of today ─────────────────────────────────────────────
+
+const ASPECT_GLYPH_ARC: Record<string, string> = {
+  conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍",
+};
+
+function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; lat: number; lon: number }) {
+  const W = 700, H = 150, PAD_T = 14, PAD_B = 22;
+  const [lens, setLens] = useState("overall");
+  const lenses: { key: string; label: string }[] = arc.lenses ?? [{ key: "overall", label: "Overall" }];
+
+  const { data: bestTimes } = useQuery<any>({
+    queryKey: ["best-times", lens, lat, lon],
+    queryFn: async () => {
+      const r = await fetch(`/api/tides/best-times?lens=${lens}&lat=${lat}&lon=${lon}&days=7`);
+      return r.json();
+    },
+    enabled: lens !== "overall",
+    staleTime: 300_000,
+  });
+  const curve: any[] = (arc.curves?.[lens] ?? arc.curve) ?? [];
+  const dayStartMs = new Date(arc.dayStart).getTime();
+  const hourOf = (iso: string) => (new Date(iso).getTime() - dayStartMs) / 3600000;
+  const x = (h: number) => (h / 24) * W;
+  const y = (e: number) => H - PAD_B - e * (H - PAD_T - PAD_B);
+  const nowH = (Date.now() - dayStartMs) / 3600000;
+
+  if (curve.length < 2) return null;
+
+  // Interpolate energy at an arbitrary hour (for placing events on the curve)
+  const energyAt = (h: number) => {
+    const i = Math.max(0, Math.min(curve.length - 2, Math.floor((h / 24) * (curve.length - 1))));
+    const a = curve[i], b = curve[i + 1];
+    const span = b.hour - a.hour || 1;
+    const f = Math.max(0, Math.min(1, (h - a.hour) / span));
+    return a.e + (b.e - a.e) * f;
+  };
+
+  const curvePoints = curve.map((p) => ({ x: x(p.hour), y: y(p.e) }));
+  const lineD = smoothPathD(curvePoints);
+  const areaD = `${lineD} L${curvePoints[curvePoints.length - 1].x.toFixed(1)},${H - PAD_B} L${curvePoints[0].x.toFixed(1)},${H - PAD_B} Z`;
+
+  // Character gradient — hard stops at each ingress so the fill changes color at the shift
+  const ingresses = curve.length
+    ? (arc.segments ?? []).slice(1).map((s: any) => hourOf(s.start))
+    : [];
+  const segByHour = (h: number) => {
+    const seg = (arc.segments ?? []).find((s: any) => h >= hourOf(s.start) && h < hourOf(s.end));
+    return seg ?? (arc.segments ?? [])[0];
+  };
+  const gradStops: { off: number; color: string }[] = [];
+  const bounds = [0, ...ingresses, 24];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const mid = (bounds[i] + bounds[i + 1]) / 2;
+    const seg = segByHour(mid);
+    const el = CHARACTER_ELEMENT[(seg?.character ?? "water") as TideCharacter] ?? "water";
+    const color = ELEMENT_COLORS[el] ?? "#889";
+    gradStops.push({ off: bounds[i] / 24, color });
+    gradStops.push({ off: bounds[i + 1] / 24, color });
+  }
+
+  const events: any[] = (arc.events ?? []).filter((e: any) => e.kind === "aspect" || e.kind === "ingress");
+  const nowSeg = segByHour(nowH);
+  const nowChar = CHARACTER_ELEMENT[(nowSeg?.character ?? "water") as TideCharacter] ?? "water";
+  const nowColor = ELEMENT_COLORS[nowChar] ?? "#889";
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 14px 8px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>The tide today</div>
+        <div style={{ fontSize: 9, color: "#aaa" }}>energy through the day · color = character</div>
+      </div>
+
+      {/* Lens selector — the same tide, weighted for different kinds of energy */}
+      {lenses.length > 1 && (
+        <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+          {lenses.map((L) => (
+            <button key={L.key} onClick={() => setLens(L.key)} style={{
+              fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer",
+              border: lens === L.key ? "1px solid #1a2a3a" : "1px solid #e0dad0",
+              background: lens === L.key ? "#1a2a3a" : "var(--color-card-2)",
+              color: lens === L.key ? "var(--color-background)" : "#8a8278",
+              fontWeight: lens === L.key ? 600 : 400,
+            }}>{L.label}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Best-time-for-X — the top windows this week for the selected lens */}
+      {lens !== "overall" && bestTimes?.windows?.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "#6a6258" }}>
+          <span style={{ color: "#999" }}>Best this week for {bestTimes.windows[0].label}:</span>
+          {bestTimes.windows.slice(0, 3).map((w: any, i: number) => (
+            <span key={i} style={{ fontWeight: 500, color: "#3a3a3a" }}>
+              {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
+              {i < 2 && bestTimes.windows.length > i + 1 ? " ·" : ""}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+        <defs>
+          <linearGradient id="tideGrad" x1="0" y1="0" x2="1" y2="0">
+            {gradStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.color} />)}
+          </linearGradient>
+        </defs>
+
+        {/* VOC becalmed bands */}
+        {(arc.vocWindows ?? []).map((v: any, i: number) => {
+          const x0 = x(hourOf(v.start)), x1 = x(hourOf(v.end));
+          return (
+            <g key={`voc${i}`}>
+              <rect x={x0} y={PAD_T} width={x1 - x0} height={H - PAD_T - PAD_B}
+                fill="rgba(150,130,0,0.06)" />
+              <text x={(x0 + x1) / 2} y={PAD_T + 9} textAnchor="middle" fontSize="8" fill="#a89660" fontStyle="italic">void</text>
+            </g>
+          );
+        })}
+
+        {/* Area + line */}
+        <path d={areaD} fill="url(#tideGrad)" opacity="0.22" />
+        <path d={lineD} fill="none" stroke="url(#tideGrad)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* Event markers on the curve */}
+        {events.map((e: any, i: number) => {
+          const h = hourOf(e.time);
+          if (h < 0 || h > 24) return null;
+          const ex = x(h), ey = y(energyAt(h));
+          const isIngress = e.kind === "ingress";
+          const col = isIngress ? "#4a7040" : e.aspect === "square" || e.aspect === "opposition" ? "#a86060" : "#5a7aa0";
+          return (
+            <g key={i} opacity={e.past ? 0.4 : 1}>
+              <line x1={ex} y1={ey} x2={ex} y2={H - PAD_B} stroke={col} strokeWidth="0.75" strokeDasharray="2,2" opacity="0.4" />
+              <circle cx={ex} cy={ey} r={isIngress ? 4 : 3.5} fill={isIngress ? col : "#fff"} stroke={col} strokeWidth="1.5" />
+              <text x={ex} y={ey - 7} textAnchor="middle" fontSize="9" fill={col} fontWeight="600">
+                {isIngress ? "⇒" : (ASPECT_GLYPH_ARC[e.aspect] ?? "·")}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Now marker */}
+        {nowH >= 0 && nowH <= 24 && (
+          <g>
+            <line x1={x(nowH)} y1={PAD_T} x2={x(nowH)} y2={H - PAD_B} stroke={nowColor} strokeWidth="1.5" />
+            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="5" fill={nowColor} stroke="#fff" strokeWidth="2" />
+          </g>
+        )}
+
+        {/* Hour ticks */}
+        {[0, 6, 12, 18, 24].map((h) => (
+          <text key={h} x={Math.min(W - 8, Math.max(8, x(h)))} y={H - 6} textAnchor="middle" fontSize="8" fill="#c4bcae">
+            {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
+          </text>
+        ))}
+      </svg>
+
+      {/* Compact upcoming-events legend (only what's ahead) */}
+      {(() => {
+        const upcoming = events.filter((e: any) => !e.past).slice(0, 4);
+        if (!upcoming.length) return null;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4, paddingTop: 8, borderTop: "1px solid #f2efe9" }}>
+            {upcoming.map((e: any, i: number) => (
+              <div key={i} style={{ fontSize: 10, color: "#6a6a6a", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: "#aaa" }}>{e.clock}</span>
+                <span>{e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH_ARC[e.aspect] ?? "·")}</span>
+                <span>{e.label}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ── NorthStarsCard — chief aims for the week ────────────────────────────────────
+
+const NS_ELEMENT_INFO: Record<string, { color: string; label: string }> = {
+  fire: { color: "#c04830", label: "Fire" }, earth: { color: "#4a7040", label: "Earth" },
+  air: { color: "#7040a0", label: "Air" }, water: { color: "#3a5a80", label: "Water" },
+};
+
+function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerId: string | null; onNavigate?: (v: string) => void }) {
+  const qc = useQueryClient();
+  const logSession = useMutation({
+    mutationFn: async (goalId: number) => {
+      const now = new Date().toISOString();
+      await fetch("/api/planning/windows", {
+        method: "POST", headers: { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) },
+        body: JSON.stringify({ title: "Logged session", goalId, adHoc: true, startTime: now, endTime: now }),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["north-stars"] }),
+  });
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>★ North Stars</div>
+        <button onClick={() => onNavigate?.("work")} style={{ fontSize: 9.5, color: "#aaa", background: "none", border: "none", cursor: "pointer" }}>manage →</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {stars.map((g: any) => {
+          const info = NS_ELEMENT_INFO[g.element ?? ""] ?? { color: "#8a8278", label: "" };
+          const target = Math.max(g.scheduledCount, 2); // aim for at least 2-3 sessions/week
+          const pct = Math.min(100, Math.round((g.completedCount / target) * 100));
+          return (
+            <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: info.color, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
+                  {info.label && <span style={{ fontSize: 8.5, color: info.color }}>{info.label}</span>}
+                </div>
+                <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: info.color, borderRadius: 2, opacity: 0.75 }} />
+                </div>
+              </div>
+              <span style={{ fontSize: 9.5, color: "#999", flexShrink: 0 }}>{g.completedCount}/{target} this wk</span>
+              <button onClick={() => logSession.mutate(g.id)} title="Log a session for this goal" style={{
+                fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
+                background: "var(--color-card-2)", color: "#6a6258", cursor: "pointer", flexShrink: 0,
+              }}>+ log</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── ConditionsStrip ──────────────────────────────────────────────────────────────
+
+function ConditionsStrip({ now, today }: { now: any; today: string }) {
+  const retros: string[] = now?.retrogrades ?? [];
+  const ecl = activeEclipse(today, 5);
+  // Standing non-lunar aspects: tight orb, not involving the Moon (those are transient)
+  const standing = (now?.aspects ?? [])
+    .filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 4)
+    .slice(0, 3);
+
+  const hasAny = retros.length > 0 || ecl || standing.length > 0;
+  if (!hasAny) return null;
+
+  return (
+    <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
+        Standing conditions
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {ecl && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>{ecl.eclipse.kind === "solar" ? "☀" : "🌑"}</span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
+              <b style={{ color: "#8a6a30" }}>
+                {ecl.daysAway === 0 ? "Today" : ecl.daysAway > 0 ? `In ${ecl.daysAway}d` : `${-ecl.daysAway}d ago`}
+                {" · "}{ecl.eclipse.type} {ecl.eclipse.kind} eclipse
+              </b>
+              <div style={{ color: "var(--color-muted)" }}>{ecl.eclipse.note}</div>
+            </div>
+          </div>
+        )}
+        {retros.map((p) => (
+          <div key={p} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0, color: "#a06040" }}>{PLANET_GLYPH[p] ?? p[0]}℞</span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
+              {RETRO_NOTES[p] ?? `${p} retrograde.`}
+            </div>
+          </div>
+        ))}
+        {standing.map((a: any, i: number) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0, color: a.nature === "challenging" ? "#a05050" : "#5080a0" }}>
+              {PLANET_GLYPH[a.planet1]}{ASPECT_GLYPH[a.aspect] ?? a.aspect}{PLANET_GLYPH[a.planet2]}
+            </span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
+              {a.planet1} {a.aspect} {a.planet2} — a background {a.nature ?? ""} current, in effect for days.
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── TideFeedback (the reflect-don't-predict loop) ───────────────────────────────
+
+const FELT_OPTIONS: { key: string; label: string; icon: string; color: string }[] = [
+  { key: "aligned", label: "Aligned", icon: "◎", color: "#4a8060" },
+  { key: "mixed",   label: "Mixed",   icon: "◐", color: "#a08040" },
+  { key: "off",     label: "Off",     icon: "○", color: "#9a6060" },
+];
+
+function feltKey(testerId: string | null, date: string) { return `obs_felt_${testerId ?? "anon"}_${date}`; }
+
+function TideFeedback({ now, today, testerId }: { now: any; today: string; testerId: string | null }) {
+  const [rating, setRating] = useState<string | null>(() => {
+    try { const r = JSON.parse(localStorage.getItem(feltKey(testerId, today)) ?? "null"); return r?.felt ?? null; } catch { return null; }
+  });
+
+  // Retrospective: scan the last 30 days of felt logs, tally by tide character
+  const retro = useMemo(() => {
+    const byChar: Record<string, { aligned: number; total: number }> = {};
+    for (let d = 0; d < 30; d++) {
+      const day = new Date(new Date(today).getTime() - d * 86400000).toISOString().slice(0, 10);
+      try {
+        const r = JSON.parse(localStorage.getItem(feltKey(testerId, day)) ?? "null");
+        if (r?.felt && r?.character) {
+          byChar[r.character] = byChar[r.character] ?? { aligned: 0, total: 0 };
+          byChar[r.character].total += 1;
+          if (r.felt === "aligned") byChar[r.character].aligned += 1;
+        }
+      } catch { /* skip */ }
+    }
+    const ranked = Object.entries(byChar)
+      .filter(([, v]) => v.total >= 2)
+      .map(([c, v]) => ({ character: c, rate: v.aligned / v.total, total: v.total }))
+      .sort((a, b) => b.rate - a.rate);
+    return ranked;
+  }, [today, testerId, rating]);
+
+  function pick(felt: string) {
+    setRating(felt);
+    localStorage.setItem(feltKey(testerId, today), JSON.stringify({
+      felt, character: now?.tide?.character ?? null, level: now?.tide?.level ?? null, date: today,
+    }));
+  }
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>How did today feel?</span>
+        {rating && <span style={{ fontSize: 9, color: "var(--color-muted)" }}>logged ✓ — tap to change</span>}
+      </div>
+      <div style={{ display: "flex", gap: 7 }}>
+        {FELT_OPTIONS.map((o) => (
+          <button key={o.key} onClick={() => pick(o.key)} style={{
+            flex: 1, padding: "8px 6px", borderRadius: 8, cursor: "pointer",
+            border: rating === o.key ? `1.5px solid ${o.color}` : "1px solid var(--color-border)",
+            background: rating === o.key ? `${o.color}12` : "var(--color-card-2)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+          }}>
+            <span style={{ fontSize: 15, color: o.color }}>{o.icon}</span>
+            <span style={{ fontSize: 9.5, color: rating === o.key ? o.color : "var(--color-muted)", fontWeight: rating === o.key ? 600 : 400 }}>{o.label}</span>
+          </button>
+        ))}
+      </div>
+      {retro.length > 0 && (
+        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
+            Your pattern (last 30 days)
+          </div>
+          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+            Your most aligned days have been{" "}
+            <b style={{ color: "#4a8060" }}>
+              {retro[0].character.charAt(0).toUpperCase() + retro[0].character.slice(1)} Tides
+            </b>{" "}
+            ({Math.round(retro[0].rate * 100)}% aligned, {retro[0].total} logged).
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── DayTimeline ────────────────────────────────────────────────────────────────
+
+const CHALDEAN_TL = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
+const WEEKDAY_RULERS_TL = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
+
+const PLANET_COLORS_TL: Record<string,string> = {
+  Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#c06090",
+  Mars:"#c04040", Jupiter:"#6040a0", Saturn:"#807060",
+};
+
+const ASPECT_ICON: Record<string,string> = {
+  conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍",
+};
+
+const EVENT_COLORS: Record<string,string> = {
+  moon_phase:"#7080a0", ingress:"#4a7040", voc:"#b0a030", crossing:"#6040a0", moon_aspect:"#3a7080", quality_window:"#40a060",
+};
+
+function tlApproxSunriseSunset(dateStr: string, lat: number, lon: number): {sunrise: Date; sunset: Date} | null {
+  const base = new Date(dateStr + "T12:00:00");
+  const jd = base.getTime() / 86400000 + 2440587.5;
+  const n = jd - 2451545.0;
+  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
+  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
+               (Math.cos(lat * Math.PI / 180) * cosDec);
+  if (Math.abs(cosH) > 1) return null;
+  const H = Math.acos(cosH) * 180 / Math.PI;
+  const B = (360 / 365) * (n - 81) * Math.PI / 180;
+  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+  const lstNoon = 12 - lon / 15 - EqT / 60;
+  const sunriseH = lstNoon - H / 15;
+  const sunsetH  = lstNoon + H / 15;
+  const midnight = new Date(dateStr + "T00:00:00");
+  return {
+    sunrise: new Date(midnight.getTime() + sunriseH * 3600000),
+    sunset:  new Date(midnight.getTime() + sunsetH  * 3600000),
+  };
+}
+
+function tlComputePlanetaryHours(dateStr: string, lat: number, lon: number) {
+  const ss = tlApproxSunriseSunset(dateStr, lat, lon);
+  const ss1 = tlApproxSunriseSunset(
+    new Date(new Date(dateStr).getTime() + 86400000).toISOString().slice(0,10), lat, lon
+  );
+  if (!ss || !ss1) return [];
+  const { sunrise, sunset } = ss;
+  const { sunrise: nextSunrise } = ss1;
+  const dayRuler = WEEKDAY_RULERS_TL[sunrise.getDay()];
+  const dayIdx = CHALDEAN_TL.indexOf(dayRuler);
+  const dayLen = sunset.getTime() - sunrise.getTime();
+  const dayH = dayLen / 12;
+  const nightLen = nextSunrise.getTime() - sunset.getTime();
+  const nightH = nightLen / 12;
+  const hours: {ruler:string; start:Date; end:Date; isDay:boolean}[] = [];
+  for (let i = 0; i < 12; i++) {
+    hours.push({ ruler: CHALDEAN_TL[(dayIdx + i) % 7], start: new Date(sunrise.getTime() + i * dayH), end: new Date(sunrise.getTime() + (i+1) * dayH), isDay: true });
+  }
+  for (let i = 0; i < 12; i++) {
+    hours.push({ ruler: CHALDEAN_TL[(dayIdx + 12 + i) % 7], start: new Date(sunset.getTime() + i * nightH), end: new Date(sunset.getTime() + (i+1) * nightH), isDay: false });
+  }
+  return hours;
+}
+
+function DayTimeline({ today, now, lat, lon, skyEvents }: {
+  today: string; now: any; lat: number; lon: number; skyEvents: SkyEvent[];
+}) {
+  const fmtTime = useTimeFormat();
+  const HOUR_START = 5, HOUR_END = 23;
+  const ROW_H = 52;
+
+  const planetHours = useMemo(() => tlComputePlanetaryHours(today, lat, lon), [today, lat, lon]);
+  const nowDate = new Date();
+  const nowFrac = (nowDate.getHours() + nowDate.getMinutes() / 60 - HOUR_START) / (HOUR_END - HOUR_START);
+
+  const todayEvents = useMemo(() =>
+    skyEvents.filter(e => e.date === today && e.time),
+    [skyEvents, today]
+  );
+
+  function hourFrac(h: number) { return (h - HOUR_START) / (HOUR_END - HOUR_START); }
+
+  // Map events to fractional position
+  const eventPositions = useMemo(() =>
+    todayEvents.map(e => {
+      const [hh, mm] = (e.time ?? "00:00").split(":").map(Number);
+      const frac = hourFrac(hh + mm / 60);
+      return { e, frac };
+    }).filter(x => x.frac >= 0 && x.frac <= 1),
+    [todayEvents]
+  );
+
+  const totalH = (HOUR_END - HOUR_START) * ROW_H;
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Today's Hours</div>
+        <div style={{ fontSize: 9, color: "#aaa" }}>Planetary hours + sky events</div>
+      </div>
+      <div style={{ position: "relative", height: Math.min(totalH, 560), overflowY: "auto" }}>
+        {/* Hour rows */}
+        {Array.from({length: HOUR_END - HOUR_START}, (_, i) => {
+          const h = HOUR_START + i;
+          const isNow = nowDate.getHours() === h;
+          // find planetary hour for midpoint of this clock hour
+          const midMs = new Date(today + `T${String(h).padStart(2,"0")}:30:00`).getTime();
+          const ph = planetHours.find(p => p.start.getTime() <= midMs && p.end.getTime() > midMs);
+          const pColor = ph ? (PLANET_COLORS_TL[ph.ruler] ?? "#888") : "#ccc";
+          return (
+            <div key={h} style={{
+              height: ROW_H, display: "flex", alignItems: "stretch",
+              borderBottom: "1px solid var(--color-border)",
+              background: isNow ? "#fffbf0" : ph?.isDay === false ? "#f5f3f7" : "#fff",
+            }}>
+              {/* Time label */}
+              <div style={{ width: 42, flexShrink: 0, display: "flex", alignItems: "flex-start", paddingTop: 6, paddingLeft: 12, fontSize: 9, color: isNow ? "#b07820" : "#bbb", fontWeight: isNow ? 700 : 400 }}>
+                {h === 12 ? "12p" : h > 12 ? `${h-12}p` : `${h}a`}
+              </div>
+              {/* Planet hour bar */}
+              <div style={{ width: 54, flexShrink: 0, display: "flex", alignItems: "center", paddingLeft: 4, borderLeft: `3px solid ${pColor}30`, background: `${pColor}08` }}>
+                {ph && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <div style={{ fontSize: 9, color: pColor, fontWeight: 600 }}>{ph.ruler}</div>
+                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉" : "☽"}</div>
+                  </div>
+                )}
+              </div>
+              {/* Event slot */}
+              <div style={{ flex: 1, position: "relative", paddingLeft: 8, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+                {eventPositions
+                  .filter(({ frac }) => {
+                    const evH = HOUR_START + frac * (HOUR_END - HOUR_START);
+                    return Math.floor(evH) === h;
+                  })
+                  .map(({ e }, idx) => (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: EVENT_COLORS[e.type] ?? "#aaa", flexShrink: 0 }} />
+                      <div style={{ fontSize: 9.5, color: EVENT_COLORS[e.type] ?? "#666", fontWeight: 500 }}>{e.icon} {e.title}</div>
+                      {e.time && <div style={{ fontSize: 8, color: "#bbb", marginLeft: "auto", paddingRight: 12 }}>
+                        {fmtTime(new Date(`${today}T${e.time}`))}
+                      </div>}
+                    </div>
+                  ))
+                }
+                {/* Now indicator line */}
+                {isNow && (
+                  <div style={{
+                    position: "absolute", left: 0, right: 0,
+                    top: `${(nowDate.getMinutes() / 60) * 100}%`,
+                    height: 2, background: "#b07820", opacity: 0.6, pointerEvents: "none",
+                  }} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── ModulePulse ────────────────────────────────────────────────────────────────
+
+const MODULE_META: Record<string, { label: string; icon: string; view: string }> = {
+  health:        { label: "Health",        icon: "◎", view: "modules" },
+  creative:      { label: "Creative",      icon: "✦", view: "modules" },
+  spiritual:     { label: "Spiritual",     icon: "☽", view: "modules" },
+  home:          { label: "Home",          icon: "⌂", view: "modules" },
+  financial:     { label: "Financial",     icon: "◇", view: "modules" },
+  relationships: { label: "Relationships", icon: "◈", view: "modules" },
+  content:       { label: "Content",       icon: "◻", view: "modules" },
+};
+
+function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) => void }) {
+  const moonSign = now?.moonSign ?? "";
+  const hourPlanet = now?.planetaryHour?.planet ?? "";
+
+  const el: Element = (SIGN_ELEMENTS[moonSign] ?? "water") as Element;
+  const emphasizedPlanets = [hourPlanet, "Moon"].filter(Boolean);
+
+  const ranked = Object.keys(MODULE_META)
+    .map(id => ({ id, score: moduleResonance(id, el, emphasizedPlanets) }))
+    .filter(m => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  if (ranked.length === 0) return null;
+
+  const elColor = ELEMENT_COLORS[el] ?? "#2a5a80";
+
+  return (
+    <div style={{ margin: "12px 0" }}>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9a9090", marginBottom: 8 }}>
+        Resonant now · {el} emphasis
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {ranked.map(({ id, score }) => {
+          const meta = MODULE_META[id];
+          const strength = score >= 1 ? "Strong" : score >= 0.6 ? "Good" : "Mild";
+          return (
+            <button key={id} onClick={() => onNavigate?.("modules")} style={{
+              flex: 1, background: ELEMENT_BG[el], border: `1px solid ${elColor}25`,
+              borderRadius: 10, padding: "10px 12px", cursor: "pointer",
+              textAlign: "left", display: "flex", flexDirection: "column", gap: 4,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, color: elColor }}>{meta.icon}</span>
+                <span style={{ fontSize: 8, color: elColor, background: `${elColor}15`, padding: "1px 5px", borderRadius: 8 }}>
+                  {strength}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-primary)" }}>{meta.label}</div>
+              <div style={{ height: 3, borderRadius: 2, background: `${elColor}20`, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${score * 100}%`, background: elColor, borderRadius: 2 }} />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── PlanetaryPulse ─────────────────────────────────────────────────────────────
+
+const PLANET_THEMES: Record<string, { themes: string; icon: string; color: string }> = {
+  Sun:     { icon:"☉", color:"#c08020", themes:"visibility · authority · vitality · identity" },
+  Moon:    { icon:"☽", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
+  Mercury: { icon:"☿", color:"#608060", themes:"communication · writing · analysis · ideas" },
+  Venus:   { icon:"♀", color:"#c06090", themes:"connection · beauty · pleasure · values" },
+  Mars:    { icon:"♂", color:"#c04040", themes:"drive · action · courage · physical energy" },
+  Jupiter: { icon:"♃", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
+  Saturn:  { icon:"♄", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
+  Uranus:  { icon:"♅", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
+  Neptune: { icon:"♆", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
+  Pluto:   { icon:"♇", color:"#703060", themes:"transformation · depth · power · shadow" },
+};
+
+const ASPECT_STRENGTH: Record<string, number> = {
+  conjunction: 1.0, trine: 0.85, sextile: 0.7, opposition: 0.75, square: 0.75,
+};
+const ASPECT_NATURE: Record<string, { label: string; note: string }> = {
+  conjunction: { label:"☌ conj",  note:"Fusion — both archetypes merge and amplify each other" },
+  trine:       { label:"△ trine", note:"Flow — energy moves easily between these themes" },
+  sextile:     { label:"⚹ sext",  note:"Opening — an invitation to blend these archetypes" },
+  opposition:  { label:"☍ opp",   note:"Tension — integration of opposing principles is the work" },
+  square:      { label:"□ sq",    note:"Friction — productive pressure to act or resolve" },
+};
+
+// Convert hours-from-now into a readable "when it perfects" label.
+function fmtExactWhen(hours: number): string {
+  const when = new Date(Date.now() + hours * 3600000);
+  if (hours < 48) {
+    const t = when.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const day = hours < 12 && when.getDate() === new Date().getDate() ? "today"
+      : when.toLocaleDateString("en-US", { weekday: "short" });
+    return `${day} ${t}`;
+  }
+  if (hours < 24 * 45) return when.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return when.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function PlanetaryPulse({ now }: { now: any }) {
+  const moonAspects: any[] = now?.moonAspects ?? [];
+  const aspects: any[] = now?.aspects ?? [];
+
+  // Collect all active aspects, scoring by applying + aspect type
+  const allAspects = [...moonAspects, ...aspects.filter(a => a.planet1 === "Sun" || a.planet2 === "Sun")];
+  if (allAspects.length === 0) return null;
+
+  // Build planet emphasis map
+  const emphMap: Record<string, { score: number; aspects: { aspectName: string; partner: string; applying: boolean; hoursToExact: number | null }[] }> = {};
+
+  for (const a of allAspects) {
+    const aspName = (a.aspect ?? "").toLowerCase();
+    const strength = ASPECT_STRENGTH[aspName] ?? 0.5;
+    const applyBonus = a.applying ? 0.2 : 0;
+    const score = strength + applyBonus;
+
+    for (const planet of [a.planet1, a.planet2]) {
+      if (!planet || planet === "Moon") continue; // Moon is the lens, not the emphasis
+      if (!emphMap[planet]) emphMap[planet] = { score: 0, aspects: [] };
+      emphMap[planet].score = Math.max(emphMap[planet].score, score);
+      emphMap[planet].aspects.push({ aspectName: aspName, partner: a.planet1 === planet ? a.planet2 : a.planet1, applying: a.applying, hoursToExact: a.hoursToExact ?? null });
+    }
+  }
+
+  const emphasized = Object.entries(emphMap)
+    .filter(([, v]) => v.score > 0.5)
+    .sort(([, a], [, b]) => b.score - a.score)
+    .slice(0, 4);
+
+  if (emphasized.length === 0) return null;
+
+  return (
+    <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:12, padding:"14px 18px", flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+        <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Planetary pulse</div>
+        <div style={{ fontSize:9, color:"#bbb" }}>active sky emphasis</div>
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {emphasized.map(([planet, data]) => {
+          const info = PLANET_THEMES[planet];
+          if (!info) return null;
+          const asp = data.aspects[0];
+          const aspInfo = ASPECT_NATURE[asp?.aspectName ?? ""] ?? null;
+          const intensityW = Math.min(100, Math.round(data.score * 80));
+          return (
+            <div key={planet} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:`${info.color}18`, color:info.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>
+                {info.icon}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:11, fontWeight:600, color: "var(--color-primary)" }}>{planet}</span>
+                  {asp && (
+                    <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${info.color}18`, color:info.color, fontWeight:500 }}>
+                      {aspInfo?.label ?? asp.aspectName} {asp.partner}
+                      {asp.applying && <span style={{ marginLeft:4, opacity:0.7 }}>↗</span>}
+                    </span>
+                  )}
+                  {asp?.applying && asp.hoursToExact != null && (
+                    <span style={{ fontSize:8.5, color:"#b07030" }}>exact {fmtExactWhen(asp.hoursToExact)}</span>
+                  )}
+                </div>
+                <div style={{ fontSize:10, color:"#888", lineHeight:1.4, marginBottom:4 }}>{info.themes}</div>
+                <div style={{ height:3, background: "var(--color-background)", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ width:`${intensityW}%`, height:"100%", background:info.color, borderRadius:2, opacity:0.7 }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize:8.5, color:"#ccc", marginTop:10 }}>
+        Moon and Sun aspects active now · applying = ↗ building
+      </div>
+    </div>
+  );
+}
+
+// ── ElementalBalance ───────────────────────────────────────────────────────────
+
+const WINDOW_TO_ELEMENT: Record<string, string> = {
+  deep_work: "earth", study: "earth", planning: "earth", admin: "earth",
+  creative: "fire", launch: "fire",
+  social: "air", relationship: "air",
+  recovery: "water", retreat: "water", rest: "water",
+};
+
+const ELEM_INFO: Record<string, { color: string; label: string; glyph: string }> = {
+  fire:   { color: "#c04830", label: "Fire",   glyph: "🔥" },
+  earth:  { color: "#4a7040", label: "Earth",  glyph: "🌱" },
+  air:    { color: "#7040a0", label: "Air",     glyph: "💨" },
+  water:  { color: "#3a5a80", label: "Water",  glyph: "💧" },
+  spirit: { color: "#a08060", label: "Spirit", glyph: "✦"  },
+};
+
+function ElementalBalance({ habits, tasks }: { habits: any[]; tasks: { bestWindowType?: string }[] }) {
+  const counts: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0, spirit: 0 };
+
+  for (const h of habits) {
+    const els = (h.favoredElements ?? "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    for (const el of els) {
+      if (el in counts) counts[el]++;
+    }
+  }
+  for (const t of tasks) {
+    const el = WINDOW_TO_ELEMENT[t.bestWindowType ?? ""] ?? "spirit";
+    counts[el]++;
+  }
+
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
+
+  const elems = Object.entries(counts).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
+  const max = Math.max(...elems.map(([, v]) => v));
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Elemental balance</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {elems.map(([el, count]) => {
+          const info = ELEM_INFO[el];
+          const pct = (count / (max || 1)) * 100;
+          const thin = pct < 30;
+          return (
+            <div key={el} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 52, fontSize: 10, color: info.color, fontWeight: 500, flexShrink: 0 }}>
+                {info.glyph} {info.label}
+              </div>
+              <div style={{ flex: 1, height: 7, background: "var(--color-background)", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: info.color, borderRadius: 4, opacity: thin ? 0.4 : 0.8, transition: "width 0.4s ease" }} />
+              </div>
+              <div style={{ width: 16, fontSize: 9, color: thin ? "#bbb" : info.color, textAlign: "right", flexShrink: 0 }}>{count}</div>
+              {thin && <span style={{ fontSize: 8, color: "#bbb" }}>thin</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 8, color: "#ccc", marginTop: 8 }}>Based on active habits · pending tasks</div>
     </div>
   );
 }
 
 // ── TideChart ──────────────────────────────────────────────────────────────────
 
-type ChartType = "flow" | "heart" | "create" | "move";
+type ChartType = "flow" | "heart" | "create" | "move" | "focus" | "study" | "rest" | "launch";
 
 const CHART_TYPES: { id: ChartType; label: string; color: string; desc: string }[] = [
-  { id: "flow",   label: "Overall",    color: "#3a5a80", desc: "General quality — all factors" },
-  { id: "heart",  label: "Social",     color: "#c06090", desc: "Connection · relationship · love" },
-  { id: "create", label: "Creative",   color: "#6040a0", desc: "Art · expression · making" },
-  { id: "move",   label: "Active",     color: "#c04040", desc: "Movement · exercise · assertion" },
+  { id: "flow",   label: "Overall",  color: "#3a5a80", desc: "General quality — all factors" },
+  { id: "focus",  label: "Focus",    color: "#4a6a50", desc: "Deep work · concentration · flow state" },
+  { id: "move",   label: "Active",   color: "#c04040", desc: "Movement · exercise · assertion" },
+  { id: "create", label: "Creative", color: "#6040a0", desc: "Art · expression · making" },
+  { id: "heart",  label: "Social",   color: "#c06090", desc: "Connection · relationship · love" },
+  { id: "study",  label: "Study",    color: "#405080", desc: "Learning · reading · research" },
+  { id: "rest",   label: "Rest",     color: "#607060", desc: "Recovery · sleep · stillness" },
+  { id: "launch", label: "Launch",   color: "#b05020", desc: "Starting · publishing · putting things out" },
 ];
 
 const CHART_AMPS: Record<ChartType, Record<string, number>> = {
   flow:   { Venus:2.5, Jupiter:2.5, Sun:1.5, Mercury:1.2, Moon:1.0, Mars:-1.0, Saturn:-1.5 },
-  heart:  { Venus:4.0, Moon:3.0, Jupiter:1.5, Sun:1.0, Mercury:0.5, Mars:-0.5, Saturn:-2.0 },
-  create: { Moon:3.5, Venus:2.5, Mercury:2.0, Jupiter:1.5, Mars:0.5, Saturn:-1.0, Sun:1.0 },
+  focus:  { Saturn:3.0, Mercury:2.5, Sun:1.5, Jupiter:1.0, Moon:-0.5, Venus:-0.5, Mars:-1.0 },
   move:   { Mars:4.0, Sun:2.5, Jupiter:1.5, Moon:0.5, Saturn:0.5, Venus:0.5, Mercury:0.5 },
+  create: { Moon:3.5, Venus:2.5, Mercury:2.0, Jupiter:1.5, Mars:0.5, Saturn:-1.0, Sun:1.0 },
+  heart:  { Venus:4.0, Moon:3.0, Jupiter:1.5, Sun:1.0, Mercury:0.5, Mars:-0.5, Saturn:-2.0 },
+  study:  { Mercury:4.0, Saturn:2.0, Jupiter:2.0, Sun:0.5, Moon:0.5, Venus:-0.5, Mars:-1.5 },
+  rest:   { Moon:3.5, Saturn:2.0, Neptune:1.5, Venus:1.0, Jupiter:-0.5, Sun:-1.0, Mars:-3.0 },
+  launch: { Jupiter:4.0, Sun:3.0, Mars:2.5, Venus:1.5, Mercury:1.0, Saturn:-2.0, Moon:-1.0 },
 };
 
 const QUALITY_SCORE_MAP: Record<string, number> = {
   excellent:7, good:6, workable:4, mixed:3, avoid_if_possible:2,
 };
+
+// ── Planetary hour computation (for weekly wave) ───────────────────────────────
+
+const CHALDEAN_W = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"] as const;
+const WEEKDAY_RULERS_W: Record<number,string> = {0:"Sun",1:"Moon",2:"Mars",3:"Mercury",4:"Jupiter",5:"Venus",6:"Saturn"};
+
+function sunriseSunsetApprox(dateStr: string, lat: number, lon: number) {
+  const base = new Date(dateStr + "T12:00:00");
+  const jd = base.getTime() / 86400000 + 2440587.5;
+  const n = jd - 2451545.0;
+  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
+  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
+               (Math.cos(lat * Math.PI / 180) * cosDec);
+  if (Math.abs(cosH) > 1) return null;
+  const H = Math.acos(cosH) * 180 / Math.PI;
+  const B = (360 / 365) * (n - 81) * Math.PI / 180;
+  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+  const lstNoon = 12 - lon / 15 - EqT / 60;
+  const midnight = new Date(dateStr + "T00:00:00");
+  return {
+    sunrise: new Date(midnight.getTime() + (lstNoon - H / 15) * 3600000),
+    sunset:  new Date(midnight.getTime() + (lstNoon + H / 15) * 3600000),
+  };
+}
+
+// Returns array of { planet, startH, endH } for a given day
+function dayPlanetaryHoursSimple(dateStr: string, lat: number, lon: number): { planet: string; startH: number; endH: number }[] {
+  const ss = sunriseSunsetApprox(dateStr, lat, lon);
+  if (!ss) return [];
+  const { sunrise, sunset } = ss;
+  const midnight = new Date(dateStr + "T00:00:00");
+  const srH = (sunrise.getTime() - midnight.getTime()) / 3600000;
+  const ssH = (sunset.getTime() - midnight.getTime()) / 3600000;
+  const dayLen = ssH - srH;
+  const nightLen = 24 - ssH + srH; // approximate
+  const dayHourLen = dayLen / 12;
+  const nightHourLen = nightLen / 12;
+  const dayNum = sunrise.getDay();
+  const rulerIdx = CHALDEAN_W.indexOf(WEEKDAY_RULERS_W[dayNum] as any);
+
+  const hours: { planet: string; startH: number; endH: number }[] = [];
+  // day hours
+  for (let i = 0; i < 12; i++) {
+    hours.push({
+      planet: CHALDEAN_W[(rulerIdx + i) % 7],
+      startH: srH + i * dayHourLen,
+      endH: srH + (i + 1) * dayHourLen,
+    });
+  }
+  // night hours
+  for (let i = 0; i < 12; i++) {
+    hours.push({
+      planet: CHALDEAN_W[(rulerIdx + 12 + i) % 7],
+      startH: ssH + i * nightHourLen,
+      endH: ssH + (i + 1) * nightHourLen,
+    });
+  }
+  return hours;
+}
 
 const PHASE_COLORS: Record<string, string> = {
   "new moon":"#1a2a3a", "waxing crescent":"#4a6080", "first quarter":"#5a7090",
@@ -409,12 +1784,17 @@ const PHASE_COLORS: Record<string, string> = {
   "last quarter":"#5a6a7a", "waning crescent":"#3a4a5a",
 };
 
-// Planetary hour quality contribution to wave score (per chart type)
+// Planetary hour quality contribution — these are relative weights, not absolute scores.
+// They create spikes and dips within the normalized wave range.
 const HOUR_QUALITY: Record<ChartType, Record<string, number>> = {
-  flow:   { Sun:1.5, Moon:0.8, Mercury:1.0, Venus:1.5, Mars:-0.5, Jupiter:1.5, Saturn:-0.5 },
-  heart:  { Sun:0.5, Moon:1.5, Mercury:0.5, Venus:2.5, Mars:-1.0, Jupiter:1.0, Saturn:-1.5 },
-  create: { Sun:0.8, Moon:2.0, Mercury:1.5, Venus:2.0, Mars:0.3, Jupiter:1.0, Saturn:-0.8 },
-  move:   { Sun:1.5, Moon:0.3, Mercury:0.5, Venus:0.0, Mars:2.5, Jupiter:1.0, Saturn:0.3 },
+  flow:   { Sun:1.2, Moon:0.5, Mercury:0.8, Venus:1.2, Mars:-0.8, Jupiter:1.2, Saturn:-0.6 },
+  focus:  { Saturn:2.0, Mercury:1.8, Sun:1.0, Jupiter:0.6, Moon:-0.6, Venus:-0.8, Mars:-1.2 },
+  move:   { Sun:1.4, Moon:0.2, Mercury:0.3, Venus:-0.2, Mars:2.4, Jupiter:0.9, Saturn:0.2 },
+  create: { Sun:0.6, Moon:1.6, Mercury:1.3, Venus:1.6, Mars:0.2, Jupiter:0.8, Saturn:-0.8 },
+  heart:  { Sun:0.4, Moon:1.2, Mercury:0.4, Venus:2.2, Mars:-1.5, Jupiter:0.9, Saturn:-1.5 },
+  study:  { Mercury:2.2, Saturn:1.4, Jupiter:1.4, Sun:0.4, Moon:0.2, Venus:-0.4, Mars:-1.8 },
+  rest:   { Moon:2.0, Saturn:1.2, Venus:0.6, Jupiter:-0.4, Sun:-0.8, Mercury:-0.8, Mars:-2.2 },
+  launch: { Jupiter:2.5, Sun:2.0, Mars:1.6, Venus:1.0, Mercury:0.8, Saturn:-1.6, Moon:-0.8 },
 };
 
 function buildWavePoints(
@@ -425,12 +1805,14 @@ function buildWavePoints(
   DAY_END_H: number,
   WIDTH: number,
   WAVE_H: number,
+  moonAspects?: any[],
+  planetaryAspects?: any[],
 ) {
-  const STEP = 5; // 5-min resolution for smooth wave
+  const STEP = 5; // 5-min resolution
   const DAY_SPAN = (DAY_END_H - DAY_START_H) * 60;
   const AMPS = CHART_AMPS[chartType];
   const HQ = HOUR_QUALITY[chartType];
-  const pts: { x: number; y: number; score: number; win: any; label: string }[] = [];
+  const raw: { x: number; rawScore: number; win: any; label: string }[] = [];
 
   for (let minFromStart = 0; minFromStart <= DAY_SPAN; minFromStart += STEP) {
     const totalMin = DAY_START_H * 60 + minFromStart;
@@ -443,13 +1825,14 @@ function buildWavePoints(
       const eh = new Date(w.endTime).getHours();
       return h >= wh && h < eh;
     });
-    // Base quality: hourly window score + planetary hour contribution
-    let score = win ? (QUALITY_SCORE_MAP[win.quality] ?? 4) : 4;
-    if (win?.voidOfCourse) score -= 1.5;
-    // Planetary hour quality
+    // Base: use a compressed quality range so planet-hour variation shows clearly
+    let score = win ? (QUALITY_SCORE_MAP[win.quality] ?? 3) * 0.55 : 2;
+    if (win?.voidOfCourse) score -= 0.6;
+
+    // Planetary hour — primary source of within-day variation
     const hourPlanet = win?.planet ?? win?.planetaryHour ?? null;
     if (hourPlanet && HQ[hourPlanet] !== undefined) {
-      score += HQ[hourPlanet] * 0.6; // blend in at 60% weight
+      score += HQ[hourPlanet];
     }
 
     // Angular crossing Gaussian bumps
@@ -458,16 +1841,52 @@ function buildWavePoints(
       const [ch, cm] = c.time.split(":").map(Number);
       const crossMin = (ch - DAY_START_H) * 60 + (cm ?? 0);
       const delta = minFromStart - crossMin;
-      const amp = AMPS[c.planet] ?? 0;
+      const amp = (AMPS[c.planet] ?? 0) * 0.5;
       if (amp === 0) continue;
-      const width = Math.abs(amp) > 2 ? 55 : 35;
-      score += amp * Math.exp(-0.5 * (delta / width) ** 2);
+      score += amp * Math.exp(-0.5 * (delta / 45) ** 2);
     }
 
-    const clamped = Math.max(0.2, Math.min(7, score));
-    const y = WAVE_H - 10 - (clamped / 7) * (WAVE_H - 20);
-    pts.push({ x, y, score: clamped, win, label: `${h}:${m.toString().padStart(2,"0")}` });
+    // Moon aspect bumps (day-level, centered near noon)
+    if (moonAspects) {
+      const ASPECT_BUMP: Record<string, number> = { trine:0.4, sextile:0.25, conjunction:0.15, square:-0.25, opposition:-0.3 };
+      const noonMin = (12 - DAY_START_H) * 60;
+      for (const a of moonAspects) {
+        const bumpAmp = ASPECT_BUMP[a.aspect] ?? 0;
+        if (bumpAmp === 0) continue;
+        score += bumpAmp * Math.exp(-0.5 * (Math.abs(minFromStart - noonMin) / 200) ** 2);
+      }
+    }
+
+    // Non-lunar planetary aspects — steady background tilt across the day
+    if (planetaryAspects) {
+      const PASP_BUMP: Record<string, number> = { trine:0.2, sextile:0.12, conjunction:0.1, square:-0.15, opposition:-0.18 };
+      for (const a of planetaryAspects) {
+        const baseAmp = PASP_BUMP[a.aspect] ?? 0;
+        if (baseAmp === 0) continue;
+        const dayFraction = minFromStart / ((DAY_END_H - DAY_START_H) * 60);
+        score += baseAmp * (0.5 + 0.5 * (a.applying ? dayFraction : 1 - dayFraction));
+      }
+    }
+
+    raw.push({ x, rawScore: score, win, label: `${h}:${m.toString().padStart(2,"0")}` });
   }
+
+  // Normalize so the wave always fills the full visual range
+  const scores = raw.map(r => r.rawScore);
+  const minS = Math.min(...scores);
+  const maxS = Math.max(...scores);
+  const range = maxS - minS;
+  // Normalize to 0.5–6.5 range (keep some headroom), or use raw if nearly flat
+  const normalize = (s: number) => range > 0.3
+    ? 0.5 + ((s - minS) / range) * 6.0
+    : 3.5; // flat line in the middle when no variation
+
+  const pts = raw.map(r => {
+    const score = normalize(r.rawScore);
+    const y = WAVE_H - 10 - (score / 7) * (WAVE_H - 20);
+    return { x: r.x, y, score, win: r.win, label: r.label };
+  });
+
   return { pts, STEP, DAY_SPAN };
 }
 
@@ -491,9 +1910,22 @@ function smoothPath(pts: { x: number; y: number }[], WAVE_H: number) {
   return { pathD, fillPath };
 }
 
+// Maps wave type to bestWindowType values from tasks
+const WAVE_TO_WINDOW: Record<ChartType, string[]> = {
+  flow:   ["deep_work","creative","planning","study","social","admin","launch","recovery","retreat","relationship"],
+  focus:  ["deep_work","study","planning"],
+  move:   ["recovery"],
+  create: ["creative"],
+  heart:  ["social","relationship"],
+  study:  ["study","deep_work"],
+  rest:   ["recovery","retreat"],
+  launch: ["launch"],
+};
+
 function TideChart({
   elemColor, todayData, tidesWindowsData, windows, now, week, today,
-  tideView, setTideView, crossingsOn, waveRef, waveHover, setWaveHover, todayShowWave,
+  tideView, setTideView, crossingsOn, waveRef, waveHover, setWaveHover, todayShowWave, lat, lon,
+  tasks, allGoals,
 }: {
   elemColor: string; todayData: any; tidesWindowsData: any; windows: any;
   now: any; week: any; today: string;
@@ -501,9 +1933,12 @@ function TideChart({
   crossingsOn: boolean; waveRef: React.RefObject<SVGSVGElement | null>;
   waveHover: { x: number; y: number; hourIdx: number } | null;
   setWaveHover: (v: { x: number; y: number; hourIdx: number } | null) => void;
-  todayShowWave: boolean;
+  todayShowWave: boolean; lat: number; lon: number;
+  tasks: { id: number; title: string; done: string; bestWindowType?: string }[];
+  allGoals: Goal[];
 }) {
   const [chartType, setChartType] = useState<ChartType>("flow");
+  const fmtTime = useTimeFormat();
 
   const todayCrossings = todayData?.crossings ?? [];
   const hourWindows = tidesWindowsData?.windows ?? [];
@@ -530,11 +1965,14 @@ function TideChart({
   const hourTicks = [];
   for (let h = DAY_START_H; h <= DAY_END_H; h += 3) {
     const x = ((h - DAY_START_H) * 60 / DAY_SPAN) * WIDTH;
-    const label = h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h-12}pm`;
+    const d = new Date(); d.setHours(h, 0, 0, 0);
+    const label = fmtTime(d);
     hourTicks.push({ x, label });
   }
 
-  const { pts, } = buildWavePoints(todayCrossings, hourWindows, chartType, DAY_START_H, DAY_END_H, WIDTH, WAVE_H);
+  const todayMoonAspects = todayData?.moonAspects ?? [];
+  const nonLunarAspects = (now?.aspects ?? []).filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon");
+  const { pts, } = buildWavePoints(todayCrossings, hourWindows, chartType, DAY_START_H, DAY_END_H, WIDTH, WAVE_H, todayMoonAspects, nonLunarAspects);
   const { pathD, fillPath } = smoothPath(pts, WAVE_H);
 
   const nowX = Math.min(WIDTH, Math.max(0, ((nowMinutes - DAY_START_H * 60) / DAY_SPAN) * WIDTH));
@@ -552,16 +1990,16 @@ function TideChart({
   }) : [];
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
       {/* Header row */}
       <div style={{ padding: "12px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a2a3a" }}>The tide</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>The tide</div>
           <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{now?.momentLabel}</div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {/* View toggle */}
-          <div style={{ display: "flex", background: "#f0ede8", borderRadius: 5, padding: 2, gap: 1 }}>
+          <div style={{ display: "flex", background: "var(--color-background)", borderRadius: 5, padding: 2, gap: 1 }}>
             {(["Day", "Week"] as const).map(t => (
               <div key={t} onClick={() => setTideView(t.toLowerCase() as "day"|"week")} style={{
                 fontSize: 10, padding: "2px 9px", borderRadius: 4,
@@ -575,7 +2013,7 @@ function TideChart({
       </div>
 
       {/* Chart type tabs */}
-      <div style={{ display: "flex", gap: 0, padding: "10px 18px 0", borderBottom: "1px solid #f0ede8" }}>
+      <div style={{ display: "flex", gap: 0, padding: "10px 18px 0", borderBottom: "1px solid var(--color-border)" }}>
         {CHART_TYPES.map(ct2 => (
           <button key={ct2.id} onClick={() => setChartType(ct2.id)} style={{
             fontSize: 10, padding: "5px 12px", border: "none", background: "none", cursor: "pointer",
@@ -588,6 +2026,30 @@ function TideChart({
         <div style={{ flex: 1 }} />
         <div style={{ fontSize: 9, color: "#bbb", alignSelf: "center", paddingBottom: 4 }}>{ct.desc}</div>
       </div>
+
+      {/* Wave → task bridge: surface matching open tasks */}
+      {(() => {
+        const matchWindows = WAVE_TO_WINDOW[chartType] ?? [];
+        const pending = tasks.filter(t => t.done !== "true");
+        const matching = chartType === "flow"
+          ? pending.slice(0, 3)  // overall: just top tasks
+          : pending.filter(t => t.bestWindowType && matchWindows.includes(t.bestWindowType)).slice(0, 3);
+        if (!matching.length) return null;
+        return (
+          <div style={{ padding: "8px 18px", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", borderBottom: "1px solid var(--color-border)", background: `${ct.color}08` }}>
+            <span style={{ fontSize: 8.5, color: ct.color, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600, flexShrink: 0 }}>
+              {chartType === "flow" ? "Today" : `${ct.label} tasks`}
+            </span>
+            {matching.map(t => (
+              <span key={t.id} style={{
+                fontSize: 10, padding: "2px 9px", borderRadius: 10,
+                background: "var(--color-card)", border: `1px solid ${ct.color}40`,
+                color: "#333", flexShrink: 0,
+              }}>{t.title}</span>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Wave chart — day view */}
       {tideView === "day" && todayShowWave && (
@@ -609,11 +2071,11 @@ function TideChart({
           >
             <rect width={WIDTH} height={TOTAL_H} fill="#f9f7f4" rx="6"/>
 
-            {/* Hour grid lines */}
+            {/* Hour grid lines — labels at top to avoid overlap with bands */}
             {hourTicks.map(({ x, label }) => (
               <g key={label}>
-                <line x1={x} y1={0} x2={x} y2={WAVE_H} stroke="#e8e4de" strokeWidth="1"/>
-                <text x={x} y={WAVE_H + 3} fontSize="7.5" fill="#c0bab0" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="hanging">{label}</text>
+                <line x1={x} y1={18} x2={x} y2={WAVE_H} stroke="#ddd9d2" strokeWidth="1" strokeDasharray="2,3"/>
+                <text x={x} y={11} fontSize="8" fill="#9aabba" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="middle">{label}</text>
               </g>
             ))}
 
@@ -729,7 +2191,7 @@ function TideChart({
                 boxShadow:"0 6px 20px rgba(0,0,0,0.25)",
               }}>
                 <div style={{ fontWeight:600, marginBottom:3, display:"flex", justifyContent:"space-between" }}>
-                  <span>{hoverPt.label}</span>
+                  <span>{(() => { const [h,m] = hoverPt.label.split(":").map(Number); const d = new Date(); d.setHours(h,m,0,0); return fmtTime(d); })()}</span>
                   <span style={{ color:hoverPt.score>=5.5?"#80d080":hoverPt.score>=3.5?"#d0c060":"#e08060", fontWeight:400, fontSize:9.5 }}>
                     quality {hoverPt.score.toFixed(1)}
                   </span>
@@ -771,85 +2233,121 @@ function TideChart({
         </div>
       )}
 
-      {/* Week view — 7-day continuous wave */}
+      {/* Week view — wave + day columns */}
       {tideView === "week" && (() => {
-        const WEEK_W = 700, WEEK_H = 140;
         const days7 = (week?.days ?? []).slice(0, 7);
         if (!days7.length) return <div style={{ padding:20, color:"#bbb", fontSize:12 }}>No week data.</div>;
 
+        const WEEK_W = 700, WAVE_H2 = 100;
         const DAY_W = WEEK_W / 7;
-        const allWeekPts: { x: number; y: number; score: number; dayIdx: number }[] = [];
+        const ASPECT_GLYPHS: Record<string, string> = { conjunction:"☌", opposition:"☍", trine:"△", square:"□", sextile:"⚹" };
+        const MOON_PHASE_GLYPHS: Record<string, string> = {
+          new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
+          full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
+        };
 
+        // Build a smooth 7-day wave: per-day quality + crossing spikes + planetary hour spikes
+        const WK_HQ = HOUR_QUALITY[chartType];
+        const rawWkPts: { x: number; rawScore: number }[] = [];
         days7.forEach((d: any, di: number) => {
+          // Macro shape follows the day's real tide energy (moon-phase driven — it
+          // genuinely rises and falls across the week). Planetary hours are texture.
+          const dayEnergy = d.tide?.energy ?? ((d.qualityScore ?? 4) / 7);
+          const qs = dayEnergy * 4.5;
           const dayCrossings = d.crossings ?? [];
-          const qs = d.qualityScore ?? 4;
-          const baseScore = qs;
-          const xOffset = di * DAY_W;
-
-          // Simple: flat quality with crossing spikes per day
-          for (let h = 0; h <= 18; h++) {
-            const x = xOffset + (h / 18) * DAY_W;
-            let score = baseScore;
+          const planetHours = dayPlanetaryHoursSimple(d.date, lat ?? 40.7, lon ?? -74.0);
+          const STEPS = 48;
+          for (let step = 0; step <= STEPS; step++) {
+            const h = step * (24 / STEPS);
+            const x = di * DAY_W + (step / STEPS) * DAY_W;
+            let score = qs;
+            const ph = planetHours.find(p => h >= p.startH && h < p.endH);
+            if (ph && WK_HQ[ph.planet] !== undefined) score += WK_HQ[ph.planet] * 0.32;
             for (const c of dayCrossings) {
               if (!c.time) continue;
               const [ch, cm] = c.time.split(":").map(Number);
-              const crossH = ch + (cm ?? 0) / 60 - 6; // offset from 6am
-              const delta = h - crossH;
-              const amp = (CHART_AMPS[chartType][c.planet] ?? 0);
+              const crossH = ch + (cm ?? 0) / 60;
+              const amp = (CHART_AMPS[chartType][c.planet] ?? 0) * 0.5;
               if (amp === 0) continue;
-              score += amp * Math.exp(-0.5 * (delta / 1.5) ** 2);
+              score += amp * Math.exp(-0.5 * ((h - crossH) / 1.5) ** 2);
             }
-            const clamped = Math.max(0.2, Math.min(7, score));
-            const y = WEEK_H - 16 - (clamped / 7) * (WEEK_H - 30);
-            allWeekPts.push({ x, y, score: clamped, dayIdx: di });
+            const moonAspects: any[] = d.moonAspects ?? [];
+            const ABUMP: Record<string,number> = { trine:0.3, sextile:0.2, conjunction:0.1, square:-0.2, opposition:-0.25 };
+            for (const a of moonAspects) {
+              const bump = ABUMP[a.aspect] ?? 0;
+              if (bump === 0) continue;
+              score += bump * Math.exp(-0.5 * ((h - 12) / 5) ** 2);
+            }
+            rawWkPts.push({ x, rawScore: score });
           }
         });
-
-        const { pathD: wPathD, fillPath: wFillPath } = smoothPath(allWeekPts, WEEK_H);
-        const weekElem = days7[0]?.element ?? "water";
-        const weekColor = elemColor;
+        // Normalize weekly wave to full visual range
+        const wkScores = rawWkPts.map(p => p.rawScore);
+        const wkMin = Math.min(...wkScores), wkMax = Math.max(...wkScores);
+        const wkRange = wkMax - wkMin;
+        const allWkPts = rawWkPts.map(p => {
+          const score = wkRange > 0.3 ? 0.5 + ((p.rawScore - wkMin) / wkRange) * 6.0 : 3.5;
+          return { x: p.x, y: WAVE_H2 - 10 - (score / 7) * (WAVE_H2 - 20), score };
+        });
+        const { pathD: wkPathD, fillPath: wkFillPath } = smoothPath(allWkPts, WAVE_H2);
+        const todayDi = days7.findIndex((d: any) => d.date === today);
 
         return (
-          <div style={{ padding:"12px 18px 10px" }}>
-            <svg width="100%" height={WEEK_H + 20} viewBox={`0 0 ${WEEK_W} ${WEEK_H + 20}`} style={{ display:"block", overflow:"visible" }}>
-              <rect width={WEEK_W} height={WEEK_H + 20} fill="#f9f7f4" rx="6"/>
+          <div style={{ padding:"10px 18px 14px" }}>
+            {/* 7-day wave */}
+            <svg width="100%" height={WAVE_H2 + 4} viewBox={`0 0 ${WEEK_W} ${WAVE_H2 + 4}`} style={{ display:"block", overflow:"visible", marginBottom:6 }}>
+              <rect width={WEEK_W} height={WAVE_H2} fill="#f9f7f4" rx="6"/>
+              {/* Day separators */}
+              {days7.map((_: any, di: number) => di > 0 && (
+                <line key={di} x1={di*DAY_W} y1={0} x2={di*DAY_W} y2={WAVE_H2} stroke="#e0dcd6" strokeWidth="1"/>
+              ))}
+              {/* Wave */}
+              {wkFillPath && <path d={wkFillPath} fill={`${waveColor}20`}/>}
+              {wkPathD && <path d={wkPathD} stroke={waveColor} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>}
+              {/* Today marker */}
+              {todayDi >= 0 && <line x1={todayDi*DAY_W + DAY_W/2} y1={0} x2={todayDi*DAY_W + DAY_W/2} y2={WAVE_H2} stroke="#1a2a3a" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.4"/>}
+              {/* Crossing dots on wave */}
+              {days7.map((d: any, di: number) => (d.crossings ?? []).map((c: any, ci: number) => {
+                if (!c.time) return null;
+                const [ch, cm] = c.time.split(":").map(Number);
+                const cx_ = di * DAY_W + ((ch + (cm??0)/60) / 24) * DAY_W;
+                const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
+                return <circle key={`${di}-${ci}`} cx={cx_} cy={WAVE_H2 - 6} r={2.5} fill={pCol} opacity={0.8}/>;
+              }))}
+            </svg>
 
-              {/* Day separators and labels */}
-              {days7.map((d: any, di: number) => {
-                const x = di * DAY_W;
+            {/* Day columns below wave */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:3 }}>
+              {days7.map((d: any) => {
                 const isToday = d.date === today;
-                const ec = ELEMENT_COLORS[d.element ?? "water"] ?? "#888";
+                const ec = ELEMENT_COLORS[(d.element ?? "water") as Element] ?? "#888";
+                const qs = d.qualityScore ?? 4;
+                const barColor = qs >= 5.5 ? "#50a050" : qs >= 3.5 ? "#c8a030" : "#c06040";
+                const moonAspects: any[] = d.moonAspects ?? [];
+                const phaseGlyph = MOON_PHASE_GLYPHS[(d.moonPhase ?? "").replace(/ /g,"_").toLowerCase()] ?? "";
+                const dateLabel = new Date(d.date + "T12:00:00").getDate();
+                const dayLabel = d.label?.slice(0, 3) ?? "";
+
                 return (
-                  <g key={d.date}>
-                    {di > 0 && <line x1={x} y1={0} x2={x} y2={WEEK_H} stroke="#e0dcd6" strokeWidth="1"/>}
-                    <rect x={x} y={WEEK_H} width={DAY_W} height={20} fill={isToday ? `${ec}30` : "#f0ede8"}/>
-                    <text x={x + DAY_W/2} y={WEEK_H + 13} fontSize="8" fill={isToday ? ec : "#999"} fontWeight={isToday ? "700" : "400"} fontFamily="sans-serif" textAnchor="middle">
-                      {d.label?.slice(0,3)} {new Date(d.date+"T12:00:00").getDate()}
-                    </text>
-                    {/* Crossing dots */}
-                    {(d.crossings ?? []).map((c: any, ci: number) => {
-                      if (!c.time) return null;
-                      const [ch, cm] = c.time.split(":").map(Number);
-                      const cx_ = x + ((ch - 6) / 18) * DAY_W;
-                      const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
-                      return <circle key={ci} cx={cx_} cy={WEEK_H - 4} r={3} fill={pCol} opacity={0.8}/>;
-                    })}
-                  </g>
+                  <div key={d.date} style={{
+                    background: isToday ? `${ec}12` : "var(--color-card-2)",
+                    border: isToday ? `1.5px solid ${ec}40` : "1px solid #ede9e4",
+                    borderRadius: 6, padding:"5px 4px", display:"flex", flexDirection:"column", gap:3, alignItems:"center",
+                  }}>
+                    <div style={{ fontSize:7.5, color: isToday ? ec : "#aaa", fontWeight: isToday ? 700 : 400, textTransform:"uppercase" }}>{dayLabel}</div>
+                    <div style={{ fontSize:13, fontWeight: isToday ? 700 : 500, color: isToday ? ec : "#3a4a5a", lineHeight:1 }}>{dateLabel}</div>
+                    <div style={{ width:6, height:6, borderRadius:"50%", background:barColor, opacity:0.85 }}/>
+                    <div style={{ fontSize:8, color:"#6a7a8a" }}>{phaseGlyph} {d.moonSign?.slice(0,3)}</div>
+                    {moonAspects.slice(0,1).map((a: any, ai: number) => (
+                      <div key={ai} style={{ fontSize:7, color: PLANET_COLORS[a.planet] ?? "#888" }}>
+                        ☽{ASPECT_GLYPHS[a.aspect] ?? "·"}{PLANET_ICONS[a.planet] ?? a.planet?.[0]}
+                      </div>
+                    ))}
+                    {d.voidPeriods && <div style={{ fontSize:6.5, color:"#bbb" }}>voc</div>}
+                  </div>
                 );
               })}
-
-              {/* Wave */}
-              {wFillPath && <path d={wFillPath} fill={`${weekColor}20`}/>}
-              {wPathD && <path d={wPathD} stroke={weekColor} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>}
-
-              {/* Today marker */}
-              {(() => {
-                const todayIdx = days7.findIndex((d: any) => d.date === today);
-                if (todayIdx < 0) return null;
-                const x = todayIdx * DAY_W + DAY_W / 2;
-                return <line x1={x} y1={0} x2={x} y2={WEEK_H} stroke="#1a2a3a" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.4"/>;
-              })()}
-            </svg>
+            </div>
           </div>
         );
       })()}
@@ -900,73 +2398,155 @@ const MOON_GLYPHS: Record<string, string> = {
 const ASP_SYM: Record<string, string> = { conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍" };
 const ASP_COLOR: Record<string, string> = { trine:"#60a060", sextile:"#6090d0", conjunction:"#f0b060", square:"#e06060", opposition:"#e06060" };
 
+const ASP_MEANING_SHORT: Record<string, string> = {
+  trine: "ease + flow", sextile: "opportunity", conjunction: "fusion + intensity",
+  square: "friction + growth", opposition: "tension + awareness",
+};
+
+function buildDayVibe(day: any): string {
+  const parts: string[] = [];
+  const el = day.element ?? "water";
+  const sign = day.moonSign ?? "";
+  const phase = (day.moonPhase ?? "").replace(/_/g," ");
+  const voc = !!day.voidPeriods;
+  const aspects: any[] = day.moonAspects ?? [];
+  const q = day.quality ?? "neutral";
+
+  // Element + sign tone
+  const elTone: Record<string,string> = { fire:"vital and initiating", earth:"grounded and practical", air:"communicative and social", water:"reflective and feeling" };
+  if (sign) parts.push(`Moon in ${sign} — ${elTone[el] ?? el}`);
+  if (phase) parts.push(phase);
+  if (voc) parts.push("void of course period");
+
+  // Dominant aspect — week data uses { planet, aspect }, now data uses { planet1, planet2, aspect }
+  const mainAsp = aspects[0];
+  if (mainAsp) {
+    const other = mainAsp.planet
+      ?? (mainAsp.planet1 === "Moon" ? mainAsp.planet2 : mainAsp.planet1);
+    const aspShort: Record<string,string> = { trine:"flowing with", sextile:"opportunity via", conjunction:"merged with", square:"friction with", opposition:"tension across" };
+    if (other) parts.push(`${aspShort[mainAsp.aspect] ?? mainAsp.aspect} ${other}`);
+  }
+
+  // Quality note
+  const qNote: Record<string,string> = { excellent:"excellent overall", good:"generally favorable", workable:"workable with care", mixed:"mixed currents", avoid_if_possible:"challenging — move gently" };
+  if (qNote[q]) parts.push(qNote[q]);
+
+  return parts.join(" · ");
+}
+const ELEMENT_TONE: Record<string, string> = {
+  fire: "initiative · energy · expression", earth: "grounding · building · tending",
+  air: "connection · clarity · exchange", water: "feeling · reflection · depth", spirit: "liminal · rest · release",
+};
+
 function FourteenDays({ week, today }: { week: any; today: string }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const days = week?.days ?? [];
   if (!days.length) return null;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #d8d2ca", borderRadius: 12, padding: "14px 18px" }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>14 days ahead</div>
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, display:"flex", alignItems:"center", gap:6 }}>
+        14 days ahead
+        <HelpBadge term="moonAspects"/>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
         {days.map((day: any) => {
           const isToday = day.date === today;
-          const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
+          const ec = ELEMENT_COLORS[(day.element ?? "water") as Element] ?? "#888";
           const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
           const phaseGlyph = MOON_GLYPHS[phaseKey];
           const aspects = (day.moonAspects ?? []) as { planet: string; aspect: string; applying: boolean; orb: number }[];
           const d = new Date(day.date + "T12:00:00");
+          const isOpen = expanded === day.date;
+          const qs = day.qualityScore ?? 4;
+          const qColor = qs >= 5.5 ? "#50a050" : qs >= 3.5 ? "#c8a030" : "#c06040";
 
           return (
-            <div key={day.date} style={{
-              display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 0",
-              borderBottom: "1px solid #f5f2ee",
-              background: isToday ? `${ec}08` : "transparent",
-              borderLeft: isToday ? `3px solid ${ec}` : "3px solid transparent",
-              paddingLeft: 8,
-            }}>
-              {/* Date */}
-              <div style={{ width: 38, flexShrink: 0 }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", color: isToday ? ec : "#bbb", fontWeight: isToday ? 700 : 400 }}>
-                  {day.label?.slice(0,3)}
+            <div key={day.date} style={{ borderBottom: "1px solid #f5f2ee" }}>
+              {/* Main row — clickable */}
+              <button onClick={() => setExpanded(isOpen ? null : day.date)} style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "9px 0 9px 8px", width:"100%",
+                background: isToday ? `${ec}08` : "transparent",
+                borderLeft: isToday ? `3px solid ${ec}` : "3px solid transparent",
+                border: "none", cursor: "pointer", textAlign:"left",
+              }}>
+                {/* Date */}
+                <div style={{ width: 36, flexShrink: 0 }}>
+                  <div style={{ fontSize: 8, textTransform: "uppercase", color: isToday ? ec : "#bbb", fontWeight: isToday ? 700 : 400 }}>{day.label?.slice(0,3)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "#333", lineHeight: 1 }}>{d.getDate()}</div>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "#333", lineHeight: 1 }}>
-                  {d.getDate()}
+                {/* Quality dot */}
+                <div style={{ width:6, height:6, borderRadius:"50%", background:qColor, flexShrink:0 }}/>
+                {/* Moon info */}
+                <div style={{ width: 76, flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, color: ec, fontWeight: 500 }}>{day.moonSign}</div>
+                  {phaseGlyph && <div style={{ fontSize: 8.5, color: "#aaa", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>}
+                  {day.voidPeriods && <div style={{ fontSize: 7.5, color: "#9a8050", marginTop: 1 }}>◌ VOC</div>}
                 </div>
-              </div>
-              {/* Moon info */}
-              <div style={{ width: 80, flexShrink: 0 }}>
-                <div style={{ fontSize: 10, color: ec, fontWeight: 500 }}>{day.moonSign}</div>
-                {phaseGlyph && (
-                  <div style={{ fontSize: 9, color: "#aaa", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>
-                )}
-                {day.voidPeriods && (
-                  <div style={{ fontSize: 8, color: "#9a8050", marginTop: 1 }}>◌ VOC</div>
-                )}
-              </div>
-              {/* Aspects */}
-              <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "3px 8px" }}>
-                {aspects.map((a, i) => {
-                  const sym = ASP_SYM[a.aspect] ?? a.aspect;
-                  const col = ASP_COLOR[a.aspect] ?? "#888";
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 9.5 }}>
-                      <span style={{ color: "#7080a0" }}>☽</span>
-                      <span style={{ color: col, fontWeight: 700 }}>{sym}</span>
-                      <span style={{ color: "#555" }}>{a.planet}</span>
-                      {a.applying && <span style={{ fontSize: 7, color: col }}>→</span>}
-                    </div>
-                  );
-                })}
-                {aspects.length === 0 && (
-                  <div style={{ fontSize: 9, color: "#ddd" }}>quiet</div>
-                )}
-              </div>
-              {/* Crossings */}
-              {(day.crossings ?? []).length > 0 && (
-                <div style={{ flexShrink: 0, fontSize: 8, color: "#c08020" }}>
-                  {(day.crossings as any[]).slice(0,2).map((c: any, i: number) => (
-                    <div key={i}>{c.planet[0]} {c.angle} {c.time}</div>
+                {/* Vibe line */}
+                <div style={{ flex: 1, fontSize: 9, color: "#888", textAlign: "left", lineHeight: 1.4, paddingRight: 4 }}>
+                  {buildDayVibe(day)}
+                </div>
+                {/* Aspects — small, compact */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 6px", flexShrink: 0 }}>
+                  {aspects.slice(0,3).map((a, i) => {
+                    const sym = ASP_SYM[a.aspect] ?? a.aspect;
+                    const col = ASP_COLOR[a.aspect] ?? "#888";
+                    return (
+                      <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:1, fontSize:9.5 }}>
+                        <span style={{ color:"#7080a0" }}>☽</span>
+                        <span style={{ color:col, fontWeight:700 }}>{sym}</span>
+                        <span style={{ color:"#666" }}>{a.planet?.slice(0,3)}</span>
+                      </span>
+                    );
+                  })}
+                  {aspects.length === 0 && <span style={{ fontSize:9, color:"#ddd" }}>quiet</span>}
+                </div>
+                {/* Crossings */}
+                <div style={{ flexShrink:0, fontSize:7.5, color:"#c08020", textAlign:"right" }}>
+                  {(day.crossings as any[] ?? []).slice(0,2).map((c: any, i: number) => (
+                    <div key={i}>{PLANET_ICONS[c.planet] ?? c.planet[0]} {c.angle} {c.time?.slice(0,5)}</div>
                   ))}
+                </div>
+                <span style={{ fontSize:8, color:"#ccc", flexShrink:0 }}>{isOpen ? "▲" : "▾"}</span>
+              </button>
+
+              {/* Expanded detail */}
+              {isOpen && (
+                <div style={{ padding:"8px 8px 12px 18px", background:`${ec}06`, borderLeft:`2px solid ${ec}30` }}>
+                  <div style={{ fontSize:9, color:ec, fontWeight:600, marginBottom:4 }}>
+                    {day.element ? `${day.element} day` : ""} · {day.quality?.replace(/_/g," ")} · score {qs.toFixed(1)}
+                  </div>
+                  {ELEMENT_TONE[day.element] && (
+                    <div style={{ fontSize:9, color:"#888", marginBottom:5 }}>{ELEMENT_TONE[day.element]}</div>
+                  )}
+                  {day.tone && <div style={{ fontSize:9, color:"#777", fontStyle:"italic", marginBottom:5 }}>"{day.tone}"</div>}
+                  {aspects.length > 0 && (
+                    <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                      {aspects.map((a, i) => {
+                        const col = ASP_COLOR[a.aspect] ?? "#888";
+                        return (
+                          <div key={i} style={{ fontSize:9, color:"#666" }}>
+                            <span style={{ color:col, fontWeight:600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
+                            {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
+                            <span style={{ color:"#bbb" }}> · {a.applying ? "applying" : `${a.orb.toFixed(1)}° past`}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(day.crossings ?? []).length > 0 && (
+                    <div style={{ marginTop:5, display:"flex", flexWrap:"wrap", gap:"3px 10px" }}>
+                      {(day.crossings as any[]).map((c: any, i: number) => {
+                        const pCol = PLANET_COLORS[c.planet] ?? "#888";
+                        return (
+                          <span key={i} style={{ fontSize:8.5, color:pCol }}>
+                            {PLANET_ICONS[c.planet] ?? c.planet[0]} {c.planet} × {c.angle} · {c.time?.slice(0,5)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

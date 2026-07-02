@@ -49,7 +49,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"" });
+  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["habits", testerId],
@@ -70,10 +70,11 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           favoredElements: form.favoredElements.join(",") || undefined,
           favoredBiodynamic: form.favoredBiodynamic.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
+          minimumViable: form.minimumViable.trim() || undefined,
         }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false); setForm({name:"",emoji:"",favoredElements:[],favoredBiodynamic:[],bestWindowType:""}); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false); setForm({name:"",emoji:"",favoredElements:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""}); },
   });
 
   const toggleLog = useMutation({
@@ -110,11 +111,11 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #d0cbc3",background:"#ece8e2",flexShrink:0}}>
+      <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
         <div style={{fontSize:12,color:"#888"}}>
           {now ? `${now.element?.element} · ${now.biodynamicType} · ${now.moonPhase?.replace(/_/g," ")}` : "Loading…"}
         </div>
-        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid #d0cbc3",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
+        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
           + New habit
         </button>
       </div>
@@ -123,14 +124,14 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
         {/* Add form */}
         {showAdd && (
-          <div style={{background:"#fff",border:"1px solid #d0cbc3",borderRadius:10,padding:"16px"}}>
+          <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"16px"}}>
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               <input value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} placeholder="🌿" maxLength={2}
-                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid #d8d2ca",fontSize:18,textAlign:"center",background:"#faf8f5",outline:"none"}}/>
+                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",outline:"none"}}/>
               <input autoFocus value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
                 onKeyDown={e=>e.key==="Enter"&&form.name.trim()&&addHabit.mutate()}
                 placeholder="Habit name…"
-                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #d8d2ca",fontSize:13,background:"#faf8f5",outline:"none"}}/>
+                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)",outline:"none"}}/>
             </div>
 
             <div style={{marginBottom:8}}>
@@ -161,12 +162,17 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
               </div>
             </div>
 
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
               <select value={form.bestWindowType} onChange={e=>setForm(f=>({...f,bestWindowType:e.target.value}))}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:11,background:"#faf8f5",color:"#555"}}>
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"#555"}}>
                 <option value="">Best time of day: any</option>
                 {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
               </select>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input value={form.minimumViable} onChange={e=>setForm(f=>({...f,minimumViable:e.target.value}))}
+                placeholder="Minimum viable (e.g. 5 min walk)…"
+                style={{flex:1,padding:"6px 9px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",outline:"none",color:"#555"}}/>
               <button onClick={()=>form.name.trim()&&addHabit.mutate()} disabled={!form.name.trim()}
                 style={{padding:"6px 16px",borderRadius:7,border:"none",fontSize:11,background:form.name.trim()?"#1a2a3a":"#e0dcd6",color:form.name.trim()?"#fff":"#aaa",cursor:"pointer"}}>
                 Add
@@ -180,7 +186,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           const tc = TIMING_COLORS[h.timing];
           const tb = TIMING_BG[h.timing];
           return (
-            <div key={h.id} style={{background:"#fff",border:`1px solid ${h.timing==="resonant"?"#c0d8b0":"#e8e4de"}`,borderRadius:10,padding:"12px 14px"}}>
+            <div key={h.id} style={{background: "var(--color-card)",border:`1px solid ${h.timing==="resonant"?"#c0d8b0":"#e8e4de"}`,borderRadius:10,padding:"12px 14px"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                 {/* Check button */}
                 <button onClick={()=>toggleLog.mutate({id:h.id,done:h.doneToday})} style={{

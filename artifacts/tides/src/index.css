@@ -8,6 +8,7 @@
   --color-rail: #e8e4de;
   --color-border: #d0cbc3;
   --color-card: #ffffff;
+  --color-card-2: #faf8f5;
   --color-foreground: #1a1a1a;
   --color-muted: #888888;
   --color-primary: #1a2a3a;
@@ -22,5 +23,21 @@
   --color-quality-challenge: #c04040;
 }
 
+/* Dark theme — overrides the same variable names, so anything already using
+   var(--color-*) flips automatically. Toggled via [data-theme="dark"] on <html>.
+   Note: most page content still uses hardcoded hex (#fff cards etc.) and won't
+   flip yet — this covers the app chrome (shell/rail/topbar) tonight; a full
+   page-by-page conversion to these variables is a follow-up pass. */
+:root[data-theme="dark"] {
+  --color-background: #14181f;
+  --color-rail: #1a1f28;
+  --color-border: #2a3038;
+  --color-card: #1e2430;
+  --color-card-2: #262d3a;
+  --color-foreground: #e8e6e0;
+  --color-muted: #8890a0;
+  --color-primary: #dce4f0;
+}
+
 * { box-sizing: border-box; }
-body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); }
+body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); transition: background 0.2s, color 0.2s; }

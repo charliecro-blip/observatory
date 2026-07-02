@@ -1,38 +1,37 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTidesWeek, useSkyEvents } from "@/hooks/useTides";
+import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, type GCalEvent } from "@/hooks/useTides";
+import { useTimeFormat } from "@/contexts/preferences-context";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
+
+const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
+function hasRealLocation(lat: number, lon: number): boolean {
+  return !(Math.abs(lat - DEFAULT_LAT) < 0.01 && Math.abs(lon - DEFAULT_LON) < 0.01);
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MOON_EMOJI: Record<string, string> = {
-  "New Moon":"🌑","Waxing Crescent":"🌒","First Quarter":"🌓",
-  "Waxing Gibbous":"🌔","Full Moon":"🌕","Waning Gibbous":"🌖",
-  "Last Quarter":"🌗","Waning Crescent":"🌘","Balsamic Moon":"🌑",
+  "New Moon":"🌑","Waxing Crescent":"🌒","First Quarter":"🌓","Waxing Gibbous":"🌔",
+  "Full Moon":"🌕","Waning Gibbous":"🌖","Last Quarter":"🌗","Waning Crescent":"🌘","Balsamic Moon":"🌑",
 };
 const MOON_MEANING: Record<string, string> = {
-  "New Moon":       "Seed-planting. Set intentions; avoid external launches.",
+  "New Moon":"Seed-planting. Set intentions; avoid external launches.",
   "Waxing Crescent":"First steps. Begin what the new moon seeded.",
-  "First Quarter":  "Push through resistance. Make the decision.",
-  "Waxing Gibbous": "Refine and intensify. Nearly at peak.",
-  "Full Moon":      "Peak visibility and emotion. Share, celebrate, complete.",
-  "Waning Gibbous": "Gratitude. Share what you've learned.",
-  "Last Quarter":   "Edit and release. Remove what no longer serves.",
+  "First Quarter":"Push through resistance. Make the decision.",
+  "Waxing Gibbous":"Refine and intensify. Nearly at peak.",
+  "Full Moon":"Peak visibility and emotion. Share, celebrate, complete.",
+  "Waning Gibbous":"Gratitude. Share what you've learned.",
+  "Last Quarter":"Edit and release. Remove what no longer serves.",
   "Waning Crescent":"Rest. Let the field lie fallow.",
-  "Balsamic Moon":  "Surrender. Deepest inner work before the new cycle.",
+  "Balsamic Moon":"Surrender. Deepest inner work before the new cycle.",
 };
-
 const SIGN_SYMBOL: Record<string, string> = {
   Aries:"♈",Taurus:"♉",Gemini:"♊",Cancer:"♋",Leo:"♌",Virgo:"♍",
   Libra:"♎",Scorpio:"♏",Sagittarius:"♐",Capricorn:"♑",Aquarius:"♒",Pisces:"♓",
 };
-const SIGN_ABBR: Record<string, string> = {
-  Aries:"Ari",Taurus:"Tau",Gemini:"Gem",Cancer:"Can",Leo:"Leo",Virgo:"Vir",
-  Libra:"Lib",Scorpio:"Sco",Sagittarius:"Sag",Capricorn:"Cap",Aquarius:"Aqu",Pisces:"Pis",
-};
-
 const ELEMENT_TINT: Record<string, string> = {
-  water:"#ebf1f7", fire:"#f9f0e8", earth:"#edf3e8", air:"#f1edf8",
+  water:"#ebf1f7",fire:"#f9f0e8",earth:"#edf3e8",air:"#f1edf8",
 };
 const ELEMENT_ACCENT: Record<string, string> = {
   water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#602080",
@@ -46,7 +45,6 @@ const ELEMENT_NOTE: Record<string, string> = {
   earth:"Grounding, patience, and practical focus.",
   air:"Conceptual, communicative, and eclectic energy.",
 };
-
 const BIO_COLOR: Record<string, string> = {
   fruit:"#c07030",root:"#806050",flower:"#b05070",leaf:"#408070",
 };
@@ -59,7 +57,6 @@ const BIO_NOTE: Record<string, string> = {
   flower:"Sensitivity — self-care, aesthetic work, gentle movement.",
   leaf:"Cleansing — hydration, rest, light fasting, lymphatic support.",
 };
-
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
   Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
@@ -67,23 +64,123 @@ const PLANET_COLORS: Record<string, string> = {
 const PLANET_ICONS: Record<string, string> = {
   Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",
 };
-
+const PLANET_QUALITY: Record<string, string> = {
+  Sun:"Clarity, leadership, vitality",
+  Moon:"Intuition, emotion, receptivity",
+  Mercury:"Communication, learning, analysis",
+  Venus:"Beauty, connection, ease",
+  Mars:"Drive, courage, action",
+  Jupiter:"Expansion, wisdom, abundance",
+  Saturn:"Structure, discipline, mastery",
+};
 const WINDOW_TYPES = ["deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"];
 const WINDOW_LABELS: Record<string,string> = {
   deep_work:"Deep work",creative:"Creative",planning:"Planning",admin:"Admin",
   social:"Social",relationship:"Relationship",recovery:"Recovery",study:"Study",launch:"Launch",retreat:"Retreat",
 };
 const WINDOW_COLORS: Record<string,string> = {
-  deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#888",
+  deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#808090",
   social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:"#c04040",retreat:"#6080a0",
 };
-
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const CHALDEAN: string[] = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
+const WEEKDAY_RULERS: string[] = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
 
+type CalView = "month" | "week" | "day";
 type LayerLevel = 0 | 1 | 2;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+interface PlanetHour {
+  ruler: string;
+  startTime: Date;
+  endTime: Date;
+  isDayHour: boolean;
+  hourNumber: number;
+}
+
+// ── Astro Helpers ─────────────────────────────────────────────────────────────
+
+function approxSunriseSunset(dateStr: string, lat: number, lon: number): { sunrise: Date; sunset: Date } | null {
+  const base = new Date(dateStr + "T12:00:00");
+  const jd = base.getTime() / 86400000 + 2440587.5;
+  const n = jd - 2451545.0;
+  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
+  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
+               (Math.cos(lat * Math.PI / 180) * cosDec);
+  if (Math.abs(cosH) > 1) return null;
+  const H = Math.acos(cosH) * 180 / Math.PI;
+  const B = (360 / 365) * (n - 81) * Math.PI / 180;
+  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+  const lstNoon = 12 - lon / 15 - EqT / 60;
+  const sunriseH = lstNoon - H / 15;
+  const sunsetH  = lstNoon + H / 15;
+  const midnight = new Date(dateStr + "T00:00:00");
+  return {
+    sunrise: new Date(midnight.getTime() + sunriseH * 3600000),
+    sunset:  new Date(midnight.getTime() + sunsetH  * 3600000),
+  };
+}
+
+function computeAllPlanetaryHours(dateStr: string, lat: number, lon: number): PlanetHour[] {
+  const ss   = approxSunriseSunset(dateStr, lat, lon);
+  const ss1  = approxSunriseSunset(addDays(dateStr, 1), lat, lon);
+  const ssP  = approxSunriseSunset(addDays(dateStr, -1), lat, lon);
+  if (!ss || !ss1 || !ssP) return [];
+  const { sunrise, sunset } = ss;
+  const { sunrise: nextSunrise } = ss1;
+  const { sunset: prevSunset } = ssP;
+
+  const dayRuler = WEEKDAY_RULERS[sunrise.getDay()];
+  const dayRulerIdx = CHALDEAN.indexOf(dayRuler);
+  const prevDayRuler = WEEKDAY_RULERS[prevSunset.getDay()];
+  const prevRulerIdx = CHALDEAN.indexOf(prevDayRuler);
+
+  const dayLen   = sunset.getTime() - sunrise.getTime();
+  const dayH     = dayLen / 12;
+  const nightLen = nextSunrise.getTime() - sunset.getTime();
+  const nightH   = nightLen / 12;
+
+  // Night hours before sunrise (last night = prevDay ruler offset 12)
+  const preHours: PlanetHour[] = [];
+  const preDur = sunrise.getTime() - prevSunset.getTime();
+  const preH   = preDur / 12;
+  for (let i = 0; i < 12; i++) {
+    const s = prevSunset.getTime() + i * preH;
+    const e = prevSunset.getTime() + (i + 1) * preH;
+    if (e > sunrise.getTime()) break;
+    if (new Date(e).toISOString().slice(0,10) !== dateStr) continue;
+    preHours.push({
+      ruler: CHALDEAN[(prevRulerIdx + 12 + i) % 7],
+      startTime: new Date(s), endTime: new Date(e),
+      isDayHour: false, hourNumber: 12 + i + 1,
+    });
+  }
+
+  const hours: PlanetHour[] = [...preHours];
+  for (let i = 0; i < 12; i++) {
+    hours.push({
+      ruler: CHALDEAN[(dayRulerIdx + i) % 7],
+      startTime: new Date(sunrise.getTime() + i * dayH),
+      endTime:   new Date(sunrise.getTime() + (i + 1) * dayH),
+      isDayHour: true, hourNumber: i + 1,
+    });
+  }
+  for (let i = 0; i < 12; i++) {
+    hours.push({
+      ruler: CHALDEAN[(dayRulerIdx + 12 + i) % 7],
+      startTime: new Date(sunset.getTime() + i * nightH),
+      endTime:   new Date(sunset.getTime() + (i + 1) * nightH),
+      isDayHour: false, hourNumber: i + 1,
+    });
+  }
+  return hours;
+}
+
+// ── General Helpers ───────────────────────────────────────────────────────────
 
 function qColor(score: number): string {
   if (score >= 6) return "#3a7040";
@@ -91,22 +188,8 @@ function qColor(score: number): string {
   if (score >= 2) return "#c07030";
   return "#a04030";
 }
-function qLabel(score: number): string {
-  if (score >= 7) return "Exceptional";
-  if (score >= 6) return "Excellent";
-  if (score >= 5) return "Good";
-  if (score >= 4) return "Supported";
-  if (score >= 3) return "Moderate";
-  if (score >= 2) return "Challenging";
-  return "Difficult";
-}
 function parseSign(moonSign: string): string | null {
   return Object.keys(SIGN_SYMBOL).find(s => moonSign.includes(s)) ?? null;
-}
-function crossingNature(planet: string): "benefic" | "malefic" | "neutral" {
-  if (["Venus","Jupiter"].includes(planet)) return "benefic";
-  if (["Mars","Saturn"].includes(planet)) return "malefic";
-  return "neutral";
 }
 function buildMonthGrid(year: number, month: number): Array<string | null> {
   const firstDow = new Date(year, month, 1).getDay();
@@ -117,516 +200,769 @@ function buildMonthGrid(year: number, month: number): Array<string | null> {
   }
   return grid;
 }
-function timeToHourFrac(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h + (m ?? 0) / 60;
-}
-
-// ── DayCell ───────────────────────────────────────────────────────────────────
-
-function DayCell({ dateStr, dayData, isToday, isSelected, isPast, layer, showSignNames, vocFrac, onClick }: {
-  dateStr: string;
-  dayData?: WeekDay;
-  isToday: boolean;
-  isSelected: boolean;
-  isPast: boolean;
-  layer: LayerLevel;
-  showSignNames: boolean;
-  vocFrac?: { top: number; height: number } | null;
-  onClick: () => void;
-}) {
-  const dayNum = parseInt(dateStr.split("-")[2]);
-  const elem     = dayData?.element ?? "";
-  const phase    = dayData?.moonPhase ?? "";
-  const bio      = dayData?.biodynamicType ?? "";
-  const qs       = dayData?.qualityScore ?? 0;
-  const voc      = dayData?.voidPeriods ?? false;
-  const crossings = dayData?.crossings ?? [];
-  const moonSign = dayData?.moonSign ?? "";
-  const signKey  = parseSign(moonSign);
-
-  const bg = layer >= 1 && dayData && !isPast
-    ? (ELEMENT_TINT[elem] ?? "#faf8f5")
-    : "#faf8f5";
-  const border = isSelected
-    ? "2px solid #1a2a3a"
-    : isToday
-    ? `2px solid #c09040`
-    : "2px solid transparent";
-
-  return (
-    <button onClick={onClick} style={{
-      height:80, borderRadius:8, border, background:bg, cursor:"pointer",
-      padding:"5px 6px 4px", position:"relative",
-      display:"flex", flexDirection:"column", gap:1,
-      textAlign:"left", overflow:"hidden",
-      opacity: isPast && !isToday ? 0.48 : 1,
-      transition:"border-color 0.1s, opacity 0.1s",
-      boxShadow: isSelected ? "0 0 0 1px #1a2a3a" : "none",
-    }}>
-
-      {/* VOC diagonal stripe — proportional to time-of-day */}
-      {layer >= 1 && voc && (
-        vocFrac ? (
-          <div style={{
-            position:"absolute",
-            left:0, right:0,
-            top:`${vocFrac.top * 100}%`,
-            height:`${vocFrac.height * 100}%`,
-            borderRadius:4, pointerEvents:"none",
-            background:"repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,0.07) 5px,rgba(0,0,0,0.07) 6px)",
-          }}/>
-        ) : (
-          <div style={{
-            position:"absolute", inset:0, borderRadius:6, pointerEvents:"none",
-            background:"repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(0,0,0,0.05) 5px,rgba(0,0,0,0.05) 6px)",
-          }}/>
-        )
-      )}
-
-      {/* Row 1: date + moon phase emoji */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-        <span style={{
-          fontSize:13, lineHeight:1, fontWeight: isToday ? 700 : 500,
-          color: isToday ? "#b07820" : isSelected ? "#1a2a3a" : "#444",
-        }}>{dayNum}</span>
-        {dayData && phase && (
-          <span style={{ fontSize:11, lineHeight:1 }}>{MOON_EMOJI[phase] ?? ""}</span>
-        )}
-      </div>
-
-      {/* Row 2: moon sign (layer 1+, toggle-controlled) */}
-      {layer >= 1 && signKey && dayData && (
-        <div style={{
-          fontSize:8.5, fontWeight:500, lineHeight:1,
-          color: ELEMENT_LABEL[elem] ?? "#aaa", letterSpacing:"0.1px",
-        }}>
-          {showSignNames ? `${SIGN_SYMBOL[signKey]} ${SIGN_ABBR[signKey]}` : SIGN_SYMBOL[signKey]}
-        </div>
-      )}
-
-      {/* Bottom row: bio dot (Full only) + crossing count + VOC label */}
-      {layer >= 1 && dayData && (
-        <div style={{ display:"flex", alignItems:"center", gap:3, marginTop:"auto", flexShrink:0 }}>
-          {layer >= 2 && bio && (
-            <div title={BIO_LABEL[bio]} style={{
-              width:6, height:6, borderRadius:"50%", flexShrink:0,
-              background: BIO_COLOR[bio] ?? "#bbb",
-            }}/>
-          )}
-          {layer >= 2 && crossings.length > 0 && (
-            <span style={{
-              fontSize:7, fontWeight:600, color:"#b07820",
-              background:"#fffbf0", padding:"0 3px 1px", borderRadius:3,
-              border:"1px solid #e8d890", lineHeight:1.4,
-            }}>
-              {crossings.length}⚡
-            </span>
-          )}
-          {layer >= 2 && voc && (
-            <span style={{ fontSize:7, fontWeight:600, color:"#9a9060", letterSpacing:"0.2px" }}>VOC</span>
-          )}
-        </div>
-      )}
-
-      {/* Quality bar — always visible at bottom */}
-      {dayData && qs > 0 && (
-        <div style={{
-          position:"absolute", bottom:0, left:0, right:0, height:2.5,
-          background:"#e0dbd2", borderRadius:"0 0 6px 6px",
-        }}>
-          <div style={{
-            height:"100%", borderRadius:"0 0 6px 6px",
-            width:`${(qs / 7) * 100}%`,
-            background: qColor(qs),
-          }}/>
-        </div>
-      )}
-    </button>
-  );
-}
-
-// ── CrossingTimeline SVG ──────────────────────────────────────────────────────
-
-function CrossingTimeline({ crossings, vocEvents, ingressForDay, isToday }: {
-  crossings: WeekDay["crossings"];
-  vocEvents: SkyEvent[];
-  ingressForDay: SkyEvent[];
-  isToday: boolean;
-}) {
-  const W = 236;
-  const H = 38;
-  const HOUR_START = 5;
-  const HOUR_END = 23;
-  const SPAN = HOUR_END - HOUR_START;
-
-  function xOf(timeStr: string): number {
-    const h = timeToHourFrac(timeStr);
-    return Math.max(0, Math.min(W, ((h - HOUR_START) / SPAN) * W));
+function getWeekDates(dateStr: string): string[] {
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay();
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const nd = new Date(d);
+    nd.setDate(d.getDate() - dow + i);
+    dates.push(nd.toISOString().slice(0, 10));
   }
-
-  // VOC shading: from voc.time → next ingress time (same day) or end of timeline
-  const vocBands = vocEvents.filter(v => v.time).map(voc => {
-    const startX = xOf(voc.time!);
-    const nextIngress = ingressForDay.find(e => e.time && e.time > voc.time!);
-    const endX = nextIngress?.time ? Math.min(W, xOf(nextIngress.time)) : W;
-    return { startX, endX };
-  });
-
-  // Current time marker
-  const now = new Date();
-  const nowH = now.getHours() + now.getMinutes() / 60;
-  const nowX = isToday && nowH >= HOUR_START && nowH <= HOUR_END
-    ? ((nowH - HOUR_START) / SPAN) * W
-    : null;
-
-  const hourTicks = [6, 9, 12, 15, 18, 21];
-  const sortedCrossings = [...(crossings ?? [])].sort((a, b) => a.time.localeCompare(b.time));
-
-  return (
-    <div>
-      <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:6 }}>
-        Day timeline
-      </div>
-      <svg width={W} height={H + 18} style={{ overflow:"visible", display:"block" }}>
-        {/* Hour tick lines */}
-        {hourTicks.map(h => {
-          const x = ((h - HOUR_START) / SPAN) * W;
-          const label = h === 12 ? "12p" : h > 12 ? `${h-12}p` : `${h}a`;
-          return (
-            <g key={h}>
-              <line x1={x} y1={0} x2={x} y2={H} stroke="#ece8e2" strokeWidth={1}/>
-              <text x={x} y={H + 12} textAnchor="middle" fontSize={7} fill="#c8c4bc">{label}</text>
-            </g>
-          );
-        })}
-
-        {/* Main track */}
-        <rect x={0} y={H/2 - 1.5} width={W} height={3} fill="#e0dbd2" rx={1.5}/>
-
-        {/* VOC shading */}
-        {vocBands.map((b, i) => (
-          <rect key={i} x={b.startX} y={2} width={Math.max(0, b.endX - b.startX)} height={H - 4}
-            fill="#f5f3e0" opacity={0.8} rx={2}/>
-        ))}
-
-        {/* Crossings */}
-        {sortedCrossings.filter(c => c.time).map((c, i) => {
-          const x = xOf(c.time);
-          const col = PLANET_COLORS[c.planet] ?? "#888";
-          const icon = PLANET_ICONS[c.planet] ?? c.planet[0];
-          return (
-            <g key={i}>
-              <line x1={x} y1={4} x2={x} y2={H - 4} stroke={col} strokeWidth={1.5} opacity={0.8}/>
-              <circle cx={x} cy={H / 2} r={4} fill={col}/>
-              <text x={x} y={H/2 + 3.5} textAnchor="middle" fontSize={6} fill="#fff" fontWeight="bold">
-                {icon}
-              </text>
-              <text x={x} y={-4} textAnchor="middle" fontSize={6.5} fill={col}>
-                {c.angle}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Now line */}
-        {nowX !== null && (
-          <g>
-            <line x1={nowX} y1={0} x2={nowX} y2={H} stroke="#1a2a3a" strokeWidth={1.5} strokeDasharray="2,2"/>
-            <circle cx={nowX} cy={H / 2} r={4.5} fill="#1a2a3a"/>
-          </g>
-        )}
-      </svg>
-    </div>
-  );
+  return dates;
+}
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m ?? 0);
+}
+function minutesToTime(m: number): string {
+  const h = Math.floor(m / 60), mn = m % 60;
+  return `${h.toString().padStart(2,"0")}:${mn.toString().padStart(2,"0")}`;
+}
+function fmtHour(h: number): string {
+  if (h === 0) return "12a";
+  if (h < 12) return `${h}a`;
+  if (h === 12) return "12p";
+  return `${h - 12}p`;
+}
+// fmtTime is injected via useTimeFormat() hook per-component
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function vocRangeForDate(dateStr: string, eventsMap: Map<string, SkyEvent[]>): { startMin: number; endMin: number } | null {
+  const events = eventsMap.get(dateStr) ?? [];
+  const vocEv = events.find(e => e.type === "voc" && e.time);
+  if (!vocEv?.time) return null;
+  const startMin = timeToMinutes(vocEv.time);
+  const nextIngress = events.find(e => e.type === "ingress" && e.time && timeToMinutes(e.time) > startMin);
+  const endMin = nextIngress?.time ? timeToMinutes(nextIngress.time) : 24 * 60;
+  return { startMin, endMin };
 }
 
-// ── DayDetailPanel ────────────────────────────────────────────────────────────
+// ── EventModal ────────────────────────────────────────────────────────────────
 
-function DayDetailPanel({ dateStr, dayData, eventsForDay, testerId, now }: {
-  dateStr: string;
-  dayData?: WeekDay;
-  eventsForDay: SkyEvent[];
-  testerId: string | null;
-  now?: TidesNow;
+function EventModal({ dateStr, startHour, testerId, onClose }: {
+  dateStr: string; startHour?: number; testerId: string | null; onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ title:"", type:"deep_work", startTime:"09:00", endTime:"11:00" });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const isToday = dateStr === today;
-  const dateObj = new Date(dateStr + "T12:00:00");
-  const dayLabel = dateObj.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
-
-  const { data: windows = [] } = useQuery<PlanningWindow[]>({
-    queryKey: ["windows", testerId, dateStr],
-    queryFn: async () => {
-      const r = await fetch(`/api/planning/windows?date=${dateStr}`, {
-        headers: { ...(testerId ? {"x-tester-id":testerId} : {}), "Content-Type":"application/json" },
-      });
-      return r.json();
-    },
-    enabled: !!testerId,
+  const [form, setForm] = useState({
+    title: "",
+    type: "deep_work",
+    startTime: minutesToTime((startHour ?? 9) * 60),
+    endTime: minutesToTime(((startHour ?? 9) + 1) * 60),
+    notes: "",
   });
-
-  const addWindow = useMutation({
+  const save = useMutation({
     mutationFn: async () => {
       const start = new Date(`${dateStr}T${form.startTime}:00`);
       const end   = new Date(`${dateStr}T${form.endTime}:00`);
       await fetch("/api/planning/windows", {
         method:"POST",
         headers: { ...(testerId ? {"x-tester-id":testerId} : {}), "Content-Type":"application/json" },
-        body: JSON.stringify({ title: form.title || WINDOW_LABELS[form.type], windowType: form.type, startTime: start.toISOString(), endTime: end.toISOString() }),
+        body: JSON.stringify({
+          title: form.title || WINDOW_LABELS[form.type],
+          windowType: form.type,
+          startTime: start.toISOString(),
+          endTime:   end.toISOString(),
+          notes: form.notes || undefined,
+        }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["windows"]}); setShowAdd(false); setForm({ title:"", type:"deep_work", startTime:"09:00", endTime:"11:00" }); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["windows"]}); onClose(); },
   });
-
-  const removeWindow = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`/api/planning/windows/${id}`, {
-        method:"DELETE",
-        headers: testerId ? {"x-tester-id":testerId} : {},
-      });
-    },
-    onSuccess: () => qc.invalidateQueries({queryKey:["windows"]}),
-  });
-
-  const elem       = dayData?.element ?? "";
-  const phase      = dayData?.moonPhase ?? "";
-  const bio        = dayData?.biodynamicType ?? "";
-  const qs         = dayData?.qualityScore ?? 0;
-  const voc        = dayData?.voidPeriods ?? false;
-  const crossings  = dayData?.crossings ?? [];
-  const moonSign   = dayData?.moonSign ?? "";
-  const dayRuler   = dayData?.dayRuler ?? "";
-  const signKey    = parseSign(moonSign);
-
-  const vocEvents     = eventsForDay.filter(e => e.type === "voc");
-  const ingressEvents = eventsForDay.filter(e => e.type === "ingress");
-
   return (
-    <div style={{
-      width:286, minWidth:286, borderLeft:"1px solid #d0cbc3",
-      background:"#faf8f5", display:"flex", flexDirection:"column",
-      flexShrink:0, overflowY:"auto",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding:"14px 16px 12px", flexShrink:0,
-        borderBottom:"1px solid #e8e4de",
-        background: elem && dayData ? ELEMENT_TINT[elem] ?? "#f5f2ee" : "#f5f2ee",
-      }}>
-        <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>
-          {isToday ? "Today" : "Selected day"}
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100 }}
+      onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
+        <div style={{ fontSize:14,fontWeight:600,color: "var(--color-primary)",marginBottom:14 }}>
+          New event · {new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
         </div>
-        <div style={{ fontSize:15, fontWeight:700, color:"#1a2a3a", lineHeight:1.25, marginBottom:4 }}>
-          {dayLabel}
+        <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+          <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+            onKeyDown={e=>{if(e.key==="Enter"&&form.title.trim())save.mutate();if(e.key==="Escape")onClose();}}
+            placeholder={WINDOW_LABELS[form.type]}
+            style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:13,outline:"none",background: "var(--color-card-2)" }}/>
+          <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",color:"#444" }}>
+            {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
+          </select>
+          <div style={{ display:"flex",gap:8 }}>
+            <label style={{ flex:1,fontSize:11,color:"#888" }}>Start
+              <input type="time" value={form.startTime} onChange={e=>setForm(f=>({...f,startTime:e.target.value}))}
+                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
+            </label>
+            <label style={{ flex:1,fontSize:11,color:"#888" }}>End
+              <input type="time" value={form.endTime} onChange={e=>setForm(f=>({...f,endTime:e.target.value}))}
+                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
+            </label>
+          </div>
+          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
+            placeholder="Notes (optional)" rows={2}
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",resize:"vertical",outline:"none" }}/>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          {dayRuler && (
-            <span style={{ fontSize:10, color: PLANET_COLORS[dayRuler] ?? "#888" }}>
-              {PLANET_ICONS[dayRuler]} Day of {dayRuler}
-            </span>
-          )}
-          {isToday && now?.planetaryHour && (
-            <span style={{ fontSize:10, color: PLANET_COLORS[now.planetaryHour.planet] ?? "#888" }}>
-              · {PLANET_ICONS[now.planetaryHour.planet]} {now.planetaryHour.planet} hour
-            </span>
-          )}
+        <div style={{ display:"flex",gap:8,marginTop:14 }}>
+          <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"#888",fontSize:12,cursor:"pointer" }}>Cancel</button>
+          <button onClick={()=>save.mutate()} disabled={save.isPending}
+            style={{ flex:2,padding:"9px 0",borderRadius:8,border:"none",background:"#1a2a3a",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
+            {save.isPending?"Saving…":"Save"}
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div style={{ flex:1, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10, overflowY:"auto" }}>
+// ── EventBlock ────────────────────────────────────────────────────────────────
 
-        {!dayData && (
-          <div style={{ fontSize:11, color:"#bbb", textAlign:"center", padding:"28px 0", lineHeight:1.7 }}>
-            No timing data for this date.<br/>
-            <span style={{ fontSize:10 }}>Available for today and future dates.</span>
-          </div>
-        )}
+function EventBlock({ win, topPct, heightPct, onDelete }: {
+  win: PlanningWindow; topPct: number; heightPct: number; onDelete: () => void;
+}) {
+  const fmtTime = useTimeFormat();
+  const col = WINDOW_COLORS[win.type as string] ?? "#888";
+  const start = new Date(win.startTime), end = new Date(win.endTime);
+  const shortTime = `${fmtTime(start)} – ${fmtTime(end)}`;
+  return (
+    <div style={{
+      position:"absolute",left:2,right:2,
+      top:`${topPct*100}%`,height:`${Math.max(heightPct*100,2.5)}%`,
+      background:`${col}dd`,borderRadius:5,padding:"3px 6px",overflow:"hidden",
+      borderLeft:`3px solid ${col}`,cursor:"pointer",zIndex:10,
+      boxShadow:"0 1px 4px rgba(0,0,0,0.12)",
+    }}>
+      <div style={{ fontSize:9.5,fontWeight:600,color:"#fff",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+        {win.title}
+      </div>
+      {heightPct>0.04 && <div style={{ fontSize:8,color:"rgba(255,255,255,0.75)",marginTop:1 }}>{shortTime}</div>}
+      <button onClick={e=>{e.stopPropagation();onDelete();}} style={{ position:"absolute",top:2,right:3,background:"none",border:"none",color:"rgba(255,255,255,0.6)",fontSize:9,cursor:"pointer",lineHeight:1,padding:0 }}>✕</button>
+    </div>
+  );
+}
 
-        {dayData && (
-          <>
-            {/* Moon */}
-            <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:7 }}>
-                <span style={{ fontSize:22, lineHeight:1, flexShrink:0 }}>{MOON_EMOJI[phase] ?? "●"}</span>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:"#1a2a3a", lineHeight:1.2 }}>{phase}</div>
-                  {signKey && (
-                    <div style={{ fontSize:10, color: ELEMENT_LABEL[elem] ?? "#aaa", marginTop:1 }}>
-                      {SIGN_SYMBOL[signKey]} {moonSign}
+// ── GCal Event Block ──────────────────────────────────────────────────────────
+
+function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; heightPct: number }) {
+  const fmtTime = useTimeFormat();
+  const col = ev.color ?? "#4285f4";
+  const start = new Date(ev.start);
+  const end   = new Date(ev.end);
+  const shortTime = ev.allDay ? "all day" : `${fmtTime(start)} – ${fmtTime(end)}`;
+  return (
+    <div style={{
+      position:"absolute", left:"50%", right:2,
+      top:`${topPct*100}%`, height:`${Math.max(heightPct*100, 2)}%`,
+      background:`${col}bb`, borderRadius:4, padding:"2px 5px", overflow:"hidden",
+      borderLeft:`2px solid ${col}`, zIndex:9,
+      boxShadow:"0 1px 3px rgba(0,0,0,0.1)",
+    }}>
+      <div style={{ fontSize:8.5, fontWeight:600, color:"#fff", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+        {ev.title}
+      </div>
+      {heightPct > 0.03 && <div style={{ fontSize:7.5, color:"rgba(255,255,255,0.8)", marginTop:1 }}>{shortTime}</div>}
+      <div style={{ position:"absolute", top:1, right:2, fontSize:6.5, color:"rgba(255,255,255,0.7)", fontWeight:700 }}>G</div>
+    </div>
+  );
+}
+
+// ── Google Calendar connect button / status ───────────────────────────────────
+
+function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<typeof useQueryClient> }) {
+  const { data: status } = useGCalStatus(testerId);
+  const popupRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === "google-cal-connected") {
+        qc.invalidateQueries({ queryKey: ["gcal-status"] });
+        qc.invalidateQueries({ queryKey: ["gcal-events"] });
+      }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [qc]);
+
+  const disconnect = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/integrations/google-cal/disconnect", {
+        method: "DELETE",
+        headers: testerId ? { "x-tester-id": testerId } : {},
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gcal-status"] });
+      qc.invalidateQueries({ queryKey: ["gcal-events"] });
+    },
+  });
+
+  function connect() {
+    if (!testerId) return;
+    const url = `/api/integrations/google-cal/auth?testerId=${encodeURIComponent(testerId)}`;
+    popupRef.current = window.open(url, "gcal-connect", "width=500,height=600,left=200,top=100");
+  }
+
+  if (status?.configured === false) {
+    return (
+      <div title="Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env to enable" style={{
+        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
+        background:"#f8f8f8", color:"#ccc", cursor:"not-allowed",
+        display:"flex", alignItems:"center", gap:4,
+      }}>
+        <span style={{ fontSize:10 }}>📅</span> Google Cal
+      </div>
+    );
+  }
+
+  if (status?.connected) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+        <div style={{
+          fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid #b0d0b0",
+          background:"#f0faf0", color:"#408040",
+          display:"flex", alignItems:"center", gap:4,
+        }}>
+          <span style={{ fontSize:10 }}>📅</span>
+          <span>{status.email ?? "Google Cal"}</span>
+        </div>
+        <button onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" style={{
+          fontSize:9, padding:"2px 6px", borderRadius:5, border:"1px solid #e0ccc0",
+          background:"#fff8f5", color:"#c06040", cursor:"pointer",
+        }}>✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={connect} style={{
+      fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
+      background: "var(--color-card)", color:"#555", cursor:"pointer",
+      display:"flex", alignItems:"center", gap:4,
+    }}>
+      <span style={{ fontSize:10 }}>📅</span> Connect Google Cal
+    </button>
+  );
+}
+
+// ── TimeGrid (week + day) ─────────────────────────────────────────────────────
+
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
+  dates: string[];
+  dataMap: Map<string, WeekDay>;
+  windowsMap: Map<string, PlanningWindow[]>;
+  eventsMap: Map<string, SkyEvent[]>;
+  gcalMap: Map<string, GCalEvent[]>;
+  testerId: string | null;
+  today: string;
+  lat: number; lon: number;
+  isDay: boolean;
+  onAddEvent: (date: string, hour: number) => void;
+  onDeleteWindow: (id: number) => void;
+}) {
+  const fmtTime = useTimeFormat();
+  const HOUR_START = 5, HOUR_END = 23, HOURS = HOUR_END - HOUR_START;
+  const ROW_H = isDay ? 60 : 48;
+  const LABEL_W = isDay ? 52 : 44;
+  // Day: wide labeled planetary hour band left of grid; week: full-width subtle tint
+  const PLANET_BAR_W = isDay ? 68 : 0;
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const realLocation = hasRealLocation(lat, lon);
+
+  const planetaryHoursMap = useMemo(() => {
+    const m = new Map<string, PlanetHour[]>();
+    for (const d of dates) m.set(d, computeAllPlanetaryHours(d, lat, lon));
+    return m;
+  }, [dates, lat, lon]);
+
+  // Planetary hours legend height (day view only, fixed below grid)
+  const LEGEND_H = isDay ? 108 : 0;
+
+  return (
+    <div style={{ display:"flex",flex:1,overflow:"hidden" }}>
+      {/* Hour labels column — scrolls in sync with time body via shared overflow parent */}
+      <div style={{ width:LABEL_W,flexShrink:0,display:"flex",flexDirection:"column",background: "var(--color-card-2)",borderRight:"1px solid var(--color-border)" }}>
+        {/* spacer for header */}
+        <div style={{ flexShrink:0, height: isDay ? (48 + 32) : (44 + 32) }}/>
+        {/* time labels scroll area */}
+        <div style={{ flex:1, overflowY:"hidden", position:"relative" }}>
+          {Array.from({length:HOURS+1},(_,i)=>(
+            <div key={i} style={{ height:ROW_H,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:8,paddingTop:2 }}>
+              <span style={{ fontSize:9,color:"#bbb",fontWeight:500 }}>{fmtHour(HOUR_START+i)}</span>
+            </div>
+          ))}
+        </div>
+        {isDay && <div style={{ height:LEGEND_H,flexShrink:0 }}/>}
+      </div>
+
+      {/* Columns */}
+      <div style={{ flex:1,display:"flex",overflowX:isDay?"hidden":"auto",overflowY:"hidden" }}>
+        {dates.map(dateStr => {
+          const dayData = dataMap.get(dateStr);
+          const isToday = dateStr===today;
+          const ec = ELEMENT_ACCENT[dayData?.element ?? ""] ?? "#888";
+          const et = ELEMENT_TINT[dayData?.element ?? ""] ?? "#fff";
+          const wins = windowsMap.get(dateStr) ?? [];
+          const crossings = realLocation ? ((dayData?.crossings ?? []) as any[]) : [];
+          const isPast = dateStr < today;
+          const d = new Date(dateStr+"T12:00:00");
+          const dayLabel = d.toLocaleDateString("en-US",{weekday:"short"});
+          const dayNum = d.getDate();
+          const elem = dayData?.element ?? "";
+          const moonSign = dayData?.moonSign ?? "";
+          const signKey = parseSign(moonSign);
+          const phase = dayData?.moonPhase ?? "";
+          const qs = dayData?.qualityScore ?? 0;
+          const voc = vocRangeForDate(dateStr, eventsMap);
+          const bio = dayData?.biodynamicType ?? "";
+          const dayRuler = dayData?.dayRuler ?? "";
+          const allHours = planetaryHoursMap.get(dateStr) ?? [];
+          const nowHour = allHours.find(ph => now >= ph.startTime && now < ph.endTime);
+
+          const HEADER_H = isDay ? 48 : 44;
+          const ASTRO_STRIP_H = 32;
+
+          return (
+            <div key={dateStr} style={{ flex:1,minWidth:isDay?0:110,borderRight:"1px solid var(--color-border)",flexShrink:isDay?1:0,display:"flex",flexDirection:"column",overflow:"hidden" }}>
+              {/* Column header — sticky */}
+              <div style={{
+                flexShrink:0, borderBottom:"1px solid var(--color-border)",
+                background:isToday?`${ec}18`:"var(--color-card-2)",
+                position:"sticky", top:0, zIndex:20,
+              }}>
+                {/* Day + date */}
+                <div style={{ height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
+                  <div style={{ fontSize:isDay?10:9,color:isToday?ec:"#bbb",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
+                  <div style={{
+                    fontSize:isDay?18:15,fontWeight:700,color:isToday?"#fff":"#444",lineHeight:1,
+                    width:isDay?28:22,height:isDay?28:22,borderRadius:"50%",
+                    background:isToday?ec:"transparent",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                  }}>{dayNum}</div>
+                  {isDay && dayRuler && (
+                    <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"#aaa" }}>{PLANET_ICONS[dayRuler]} {dayRuler}</div>
+                  )}
+                </div>
+
+                {/* Astro strip */}
+                <div style={{
+                  height:ASTRO_STRIP_H,borderTop:"1px solid var(--color-border)",
+                  background:elem?et:"var(--color-card-2)",
+                  padding:"3px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2,
+                }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:4 }}>
+                    {phase && <span style={{ fontSize:9 }}>{MOON_EMOJI[phase]??""}</span>}
+                    {signKey && <span style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"#888",fontWeight:500 }}>{SIGN_SYMBOL[signKey]} {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
+                    {/* week: show current planetary hour planet */}
+                    {!isDay && isToday && nowHour && (
+                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"#888" }}>{PLANET_ICONS[nowHour.ruler]}</span>
+                    )}
+                  </div>
+                  <div style={{ display:"flex",alignItems:"center",gap:2 }}>
+                    {voc && <span style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
+                    {/* quality bar — no number */}
+                    {qs>0 && <div style={{ flex:1,height:3,borderRadius:2,background:"#e0dbd6",marginLeft:2 }}><div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/></div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Day view: planetary hours legend ABOVE scroll area */}
+              {isDay && (
+                <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"#f8f5f0",padding:"6px 8px",overflowY:"auto" }}>
+                  <div style={{ fontSize:7.5,color:"#bbb",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
+                  <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
+                    {allHours.map((ph,i)=>{
+                      const col = PLANET_COLORS[ph.ruler]??"#888";
+                      const isNow = now>=ph.startTime && now<ph.endTime;
+                      if (!ph.isDayHour && !isNow) return null; // week: only show day hours + current night hour
+                      return (
+                        <div key={i} title={PLANET_QUALITY[ph.ruler]} style={{
+                          display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,
+                          border:`1px solid ${isNow ? col : col+"40"}`,
+                          background:isNow?`${col}28`:`${col}10`,
+                          opacity:ph.isDayHour||(isNow)?1:0.5,
+                          fontWeight:isNow?700:400,
+                        }}>
+                          <span style={{ fontSize:8,color:col }}>{PLANET_ICONS[ph.ruler]}</span>
+                          <span style={{ fontSize:7.5,color:col }}>{fmtTime(ph.startTime)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Time body — scrolls internally */}
+              <div style={{ flex:1,overflowY:"auto",position:"relative",background:isPast?"var(--color-card-2)":"#fff" }}>
+                <div style={{ position:"relative",height:HOURS*ROW_H,minHeight:"100%" }}>
+
+                  {/* Planetary hours — week: full-width tint; day: left bar */}
+                  {allHours.map((ph,phi) => {
+                    const startMs = ph.startTime.getTime();
+                    const endMs   = ph.endTime.getTime();
+                    const midnight = new Date(dateStr+"T00:00:00").getTime();
+                    const startH = (startMs - midnight) / 3600000;
+                    const endH   = (endMs   - midnight) / 3600000;
+                    const topPx  = Math.max(0, (startH - HOUR_START) / HOURS * HOURS * ROW_H);
+                    const botPx  = Math.min(HOURS*ROW_H, (endH - HOUR_START) / HOURS * HOURS * ROW_H);
+                    if (botPx<=0||topPx>=HOURS*ROW_H) return null;
+                    const col = PLANET_COLORS[ph.ruler] ?? "#888";
+                    if (isDay) {
+                      // Left labeled bar
+                      return (
+                        <div key={phi} style={{
+                          position:"absolute",top:topPx,height:Math.max(1,botPx-topPx),
+                          left:0,width:PLANET_BAR_W,
+                          background:`${col}${ph.isDayHour?"26":"14"}`,
+                          borderTop:`1px solid ${col}28`,zIndex:1,overflow:"hidden",
+                        }}>
+                          {(botPx-topPx)>=15 && (
+                            <div style={{ padding:"1px 4px",fontSize:7.5,color:col,fontWeight:600,lineHeight:1.3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis" }}>
+                              {PLANET_ICONS[ph.ruler]} {ph.ruler}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      // Week: full-width background tint, very subtle
+                      return (
+                        <div key={phi} style={{
+                          position:"absolute",top:topPx,height:Math.max(1,botPx-topPx),
+                          left:0,right:0,
+                          background:`${col}${ph.isDayHour?"22":"14"}`,
+                          borderTop:`1px solid ${col}35`,zIndex:1,pointerEvents:"none",
+                        }}/>
+                      );
+                    }
+                  })}
+
+                  {/* Hour grid lines + click zones */}
+                  {Array.from({length:HOURS},(_,i)=>(
+                    <div key={i} onClick={()=>!isPast&&onAddEvent(dateStr,HOUR_START+i)} style={{
+                      position:"absolute",left:PLANET_BAR_W,right:0,top:i*ROW_H,height:ROW_H,
+                      borderBottom:"1px solid var(--color-border)",cursor:isPast?"default":"pointer",zIndex:2,
+                    }}
+                      onMouseEnter={e=>{if(!isPast)(e.currentTarget as HTMLElement).style.background="#f5f5fc";}}
+                      onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background="";}}
+                    >
+                      <div style={{ position:"absolute",left:0,right:0,top:"50%",borderTop:"1px dashed #f0ede8" }}/>
+                    </div>
+                  ))}
+
+                  {/* VOC overlay */}
+                  {voc && (()=>{
+                    const topPx = Math.max(0,(voc.startMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
+                    const botPx = Math.min(HOURS*ROW_H,(voc.endMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
+                    if (botPx<=topPx) return null;
+                    return (
+                      <div style={{
+                        position:"absolute",left:PLANET_BAR_W,right:0,top:topPx,height:botPx-topPx,
+                        zIndex:3,pointerEvents:"none",
+                        background:"repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(200,180,0,0.07) 8px,rgba(200,180,0,0.07) 9px)",
+                        borderLeft:"2px solid #d0b04060",
+                      }}>
+                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"#a08020",fontWeight:600 }}>◌ VOC</div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Aspect crossing lines — only with real location */}
+                  {crossings.map((c:any,ci:number) => {
+                    if (!c.time) return null;
+                    const mins = timeToMinutes(c.time);
+                    const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
+                    if (topPx<0||topPx>HOURS*ROW_H) return null;
+                    const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
+                    return (
+                      <div key={ci} style={{
+                        position:"absolute",left:PLANET_BAR_W,right:0,
+                        top:topPx-18,height:36,zIndex:4,pointerEvents:"none",
+                        background:`linear-gradient(to bottom,transparent 0%,${pCol}35 40%,${pCol}55 50%,${pCol}35 60%,transparent 100%)`,
+                      }}>
+                        <div style={{ position:"absolute",bottom:1,right:3,fontSize:7.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>
+                          {PLANET_ICONS[c.planet]??c.planet[0]} {c.angle}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* GCal events */}
+                  {(gcalMap.get(dateStr) ?? []).filter(ev => !ev.allDay).map(ev => {
+                    const s = new Date(ev.start), e = new Date(ev.end);
+                    const sMin = s.getHours()*60+s.getMinutes();
+                    const eMin = e.getHours()*60+e.getMinutes();
+                    const topPct = Math.max(0,(sMin/60-HOUR_START)/HOURS);
+                    const hPct   = Math.max(0,(eMin-sMin)/60/HOURS);
+                    return <GCalBlock key={ev.id} ev={ev} topPct={topPct} heightPct={hPct}/>;
+                  })}
+
+                  {/* Planning window events */}
+                  {wins.map(w=>{
+                    const wS = new Date(w.startTime), wE = new Date(w.endTime);
+                    const sMin = wS.getHours()*60+wS.getMinutes();
+                    const eMin = wE.getHours()*60+wE.getMinutes();
+                    const topPct = Math.max(0,(sMin/60-HOUR_START)/HOURS);
+                    const hPct   = Math.max(0,(eMin-sMin)/60/HOURS);
+                    return <EventBlock key={w.id} win={w} topPct={topPct} heightPct={hPct} onDelete={()=>onDeleteWindow(w.id)}/>;
+                  })}
+
+                  {/* Now line */}
+                  {isToday && nowH>=HOUR_START && nowH<=HOUR_END && (
+                    <div style={{
+                      position:"absolute",left:0,right:0,
+                      top:((nowH-HOUR_START)/HOURS)*HOURS*ROW_H,
+                      height:2,background:"#e04040",zIndex:15,
+                      boxShadow:"0 0 4px rgba(224,64,64,0.5)",
+                    }}>
+                      <div style={{ position:"absolute",left:PLANET_BAR_W>0?PLANET_BAR_W-4:0,top:-4,width:8,height:8,borderRadius:"50%",background:"#e04040" }}/>
                     </div>
                   )}
                 </div>
               </div>
-              <div style={{ fontSize:10.5, color:"#666", lineHeight:1.65 }}>
-                {MOON_MEANING[phase] ?? ""}
-              </div>
-              {voc && (
-                <div style={{ marginTop:8, padding:"6px 9px", borderRadius:6, background:"#faf5e0", border:"1px solid #e0d090", fontSize:10, color:"#8a7830" }}>
-                  ◌ Void of course periods today — avoid new starts.
-                </div>
-              )}
             </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-            {/* Quality + Element */}
-            <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                <div>
-                  <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.5px", color:"#bbb", marginBottom:5 }}>Quality</div>
-                  <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:3 }}>
-                    <div style={{ flex:1, height:4, borderRadius:2, background:"#e8e4de" }}>
-                      <div style={{ height:"100%", borderRadius:2, width:`${(qs/7)*100}%`, background:qColor(qs) }}/>
-                    </div>
-                    <span style={{ fontSize:10, fontWeight:700, color:qColor(qs), flexShrink:0 }}>{qs}/7</span>
-                  </div>
-                  <div style={{ fontSize:10, color:qColor(qs), fontWeight:500 }}>{qLabel(qs)}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.5px", color:"#bbb", marginBottom:5 }}>Element</div>
-                  <div style={{ fontSize:12, fontWeight:600, color: ELEMENT_LABEL[elem] ?? "#888", textTransform:"capitalize", marginBottom:2 }}>{elem}</div>
-                  <div style={{ fontSize:9.5, color:"#aaa", lineHeight:1.4 }}>{ELEMENT_NOTE[elem]}</div>
-                </div>
+// ── MonthCell (bigger, richer) ────────────────────────────────────────────────
+
+function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignNames, vocFrac, wins, gcalEvents, skyEvents, onClick }: {
+  dateStr: string; dayData?: WeekDay; isToday: boolean; isSelected: boolean; isPast: boolean;
+  showSignNames: boolean; vocFrac?: {top:number; height:number} | null;
+  wins: PlanningWindow[]; gcalEvents: GCalEvent[]; skyEvents: SkyEvent[]; onClick: () => void;
+}) {
+  const fmtTime = useTimeFormat();
+  const dayNum = parseInt(dateStr.split("-")[2]);
+  const elem = dayData?.element ?? "";
+  const phase = dayData?.moonPhase ?? "";
+  const qs = dayData?.qualityScore ?? 0;
+  const voc = dayData?.voidPeriods ?? false;
+  const crossings = (dayData?.crossings ?? []) as any[];
+  const moonSign = dayData?.moonSign ?? "";
+  const signKey = parseSign(moonSign);
+  const bio = dayData?.biodynamicType ?? "";
+  const dayRuler = dayData?.dayRuler ?? "";
+  const bg = dayData && !isPast ? (ELEMENT_TINT[elem] ?? "var(--color-card-2)") : "var(--color-card-2)";
+  const border = isSelected ? "2px solid #1a2a3a" : isToday ? "2px solid #c09040" : "2px solid transparent";
+  const ec = ELEMENT_ACCENT[elem] ?? "#888";
+  const rulerCol = PLANET_COLORS[dayRuler] ?? "#999";
+
+  return (
+    <button onClick={onClick} style={{
+      height:128,borderRadius:8,border,background:bg,cursor:"pointer",
+      padding:"6px 7px 4px",position:"relative",display:"flex",flexDirection:"column",gap:0,
+      textAlign:"left",overflow:"hidden",opacity:isPast&&!isToday?0.48:1,
+      boxShadow:isSelected?"0 2px 8px rgba(0,0,0,0.12)":"none",
+    }}>
+      {/* VOC hatch */}
+      {voc && vocFrac && (
+        <div style={{
+          position:"absolute",left:0,right:0,top:`${vocFrac.top*100}%`,height:`${vocFrac.height*100}%`,
+          borderRadius:4,pointerEvents:"none",
+          background:"repeating-linear-gradient(135deg,transparent,transparent 5px,rgba(180,150,0,0.1) 5px,rgba(180,150,0,0.1) 6px)",
+        }}/>
+      )}
+
+      {/* Row 1: date + moon emoji + phase short */}
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2 }}>
+        <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
+          <span style={{ fontSize:16,lineHeight:1,fontWeight:isToday?700:500,color:isToday?"#b07820":"#333" }}>{dayNum}</span>
+          {isToday && <span style={{ fontSize:8,color:"#b07820",fontWeight:600,lineHeight:1.2 }}>TODAY</span>}
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:4 }}>
+          {dayRuler && (
+            <span title={`${dayRuler}'s day`} style={{
+              fontSize:9, color:rulerCol, background:`${rulerCol}18`, borderRadius:8,
+              padding:"1px 5px", fontWeight:600, lineHeight:1.4,
+            }}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span>
+          )}
+          {phase && <span style={{ fontSize:12 }}>{MOON_EMOJI[phase]??""}</span>}
+          {qs>0 && <div style={{ width:16,height:4,borderRadius:2,background:"#e0dbd6",alignSelf:"center" }}><div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/></div>}
+        </div>
+      </div>
+
+      {/* Row 2: moon sign + element */}
+      {dayData && signKey && showSignNames && (
+        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"#aaa",marginBottom:1 }}>
+          {SIGN_SYMBOL[signKey]} {moonSign.split(" ").slice(0,2).join(" ")}
+        </div>
+      )}
+      {dayData && !showSignNames && elem && (
+        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"#aaa",marginBottom:1 }}>
+          {elem.charAt(0).toUpperCase()+elem.slice(1)}
+        </div>
+      )}
+
+      {/* Row 3: badges row — VOC + crossings (biodynamic hidden by default) */}
+      {dayData && (
+        <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2,flexWrap:"wrap" }}>
+          {voc && <span style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#f8e840",color:"#705010",lineHeight:"14px",fontWeight:600 }}>VOC</span>}
+          {crossings.length>0 && (
+            <span style={{ fontSize:8.5,color:PLANET_COLORS[crossings[0]?.planet]??"#aaa",fontWeight:500 }}>
+              {crossings.slice(0,2).map((c:any)=>`${PLANET_ICONS[c.planet]??c.planet[0]}${c.time?.slice(0,5)??""}`.trim()).join(" ")}
+              {crossings.length>2&&` +${crossings.length-2}`}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Sky event dots */}
+      {skyEvents.length > 0 && (
+        <div style={{ display:"flex",gap:2,flexWrap:"wrap",marginBottom:2 }}>
+          {skyEvents.slice(0,5).map((ev,i) => {
+            const col = ev.type==="moon_aspect" ? "#7080a0" : ev.type==="crossing" ? "#6040a0" : ev.type==="ingress" ? "#4a7040" : ev.type==="moon_phase" ? "#c08020" : "#888";
+            return (
+              <div key={i} title={`${ev.icon} ${ev.title}${ev.time ? " · "+ev.time : ""}`} style={{
+                fontSize:10, color:col, lineHeight:1,
+              }}>{ev.icon}</div>
+            );
+          })}
+          {skyEvents.length > 5 && <div style={{ fontSize:8.5,color:"#bbb" }}>+{skyEvents.length-5}</div>}
+        </div>
+      )}
+
+      {/* Event chips */}
+      <div style={{ flex:1,overflow:"hidden",display:"flex",flexDirection:"column",gap:1 }}>
+        {gcalEvents.slice(0,2).map(ev=>{
+          const col = ev.color ?? "#4285f4";
+          return (
+            <div key={ev.id} style={{ fontSize:7,borderLeft:`2px solid ${col}`,paddingLeft:3,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:2,alignItems:"center" }}>
+              <span style={{ color:col,fontWeight:700,fontSize:6.5 }}>G</span>
+              {ev.allDay ? "" : <span style={{ color:"#aaa" }}>{fmtTime(new Date(ev.start))}</span>}
+              <span style={{ overflow:"hidden",textOverflow:"ellipsis" }}>{ev.title}</span>
+            </div>
+          );
+        })}
+        {wins.slice(0,3).map(w=>{
+          const col = WINDOW_COLORS[w.type as string]??"#888";
+          const s = new Date(w.startTime);
+          return (
+            <div key={w.id} style={{ fontSize:7,background:col,color:"#fff",borderRadius:2,padding:"0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:3,alignItems:"center" }}>
+              <span style={{ opacity:0.8 }}>{fmtTime(s)}</span>
+              <span style={{ overflow:"hidden",textOverflow:"ellipsis" }}>{w.title}</span>
+            </div>
+          );
+        })}
+        {(wins.length + gcalEvents.length)>5 && <div style={{ fontSize:7,color:"#aaa" }}>+{wins.length+gcalEvents.length-5} more</div>}
+      </div>
+
+      {/* Quality bar */}
+      {dayData && qs>0 && (
+        <div style={{ position:"absolute",bottom:0,left:0,right:0,height:3,background:"#e0dbd2",borderRadius:"0 0 6px 6px" }}>
+          <div style={{ height:"100%",borderRadius:"0 0 6px 6px",width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── DayDetailPanel ────────────────────────────────────────────────────────────
+
+function DayDetailPanel({ dateStr, dayData, testerId, now, onAddEvent }: {
+  dateStr: string; dayData?: WeekDay; testerId: string | null; now?: TidesNow; onAddEvent: () => void;
+}) {
+  const fmtTime = useTimeFormat();
+  const qc = useQueryClient();
+  const isToday = dateStr===new Date().toISOString().slice(0,10);
+  const dateObj = new Date(dateStr+"T12:00:00");
+  const dayLabel = dateObj.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const elem = dayData?.element??"", phase = dayData?.moonPhase??"", qs = dayData?.qualityScore??0;
+  const voc = dayData?.voidPeriods??false, crossings = (dayData?.crossings??[]) as any[];
+  const moonSign = dayData?.moonSign??"", signKey = parseSign(moonSign);
+  const bio = dayData?.biodynamicType??"", dayRuler = dayData?.dayRuler??"";
+
+  const { data: wins=[] } = useQuery<PlanningWindow[]>({
+    queryKey:["windows",testerId,dateStr],
+    queryFn: async()=>{
+      const r = await fetch(`/api/planning/windows?date=${dateStr}`,{headers:{...(testerId?{"x-tester-id":testerId}:{}),"Content-Type":"application/json"}});
+      return r.json();
+    },
+    enabled:!!testerId,
+  });
+  const del = useMutation({
+    mutationFn: async(id:number)=>{await fetch(`/api/planning/windows/${id}`,{method:"DELETE",headers:testerId?{"x-tester-id":testerId}:{}});},
+    onSuccess:()=>qc.invalidateQueries({queryKey:["windows"]}),
+  });
+
+  return (
+    <div style={{ width:260,minWidth:260,borderLeft:"1px solid var(--color-border)",background: "var(--color-card-2)",display:"flex",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
+      <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
+        <div style={{ fontSize:9,color:"#aaa",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
+        <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
+        {dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"#888",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
+        <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
+      </div>
+      <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
+        {!dayData && <div style={{ fontSize:11,color:"#bbb",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
+        {dayData && (<>
+          <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+            <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4 }}>
+              <span style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
+              <div>
+                <div style={{ fontSize:10.5,fontWeight:600,color: "var(--color-primary)" }}>{phase}</div>
+                {signKey && <div style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"#aaa" }}>{SIGN_SYMBOL[signKey]} {moonSign}</div>}
               </div>
             </div>
-
-            {/* Biodynamic */}
-            {bio && (
-              <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:6 }}>
-                  <div style={{ width:10, height:10, borderRadius:"50%", background: BIO_COLOR[bio] ?? "#bbb", flexShrink:0 }}/>
-                  <div style={{ fontSize:12, fontWeight:600, color:"#333" }}>{BIO_LABEL[bio]} day</div>
-                </div>
-                <div style={{ fontSize:10.5, color:"#666", lineHeight:1.6 }}>{BIO_NOTE[bio]}</div>
+            <div style={{ fontSize:9.5,color:"#666",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
+            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#faf5e0",border:"1px solid #e0d090",fontSize:9,color:"#8a7830" }}>◌ Void of course — avoid new starts</div>}
+          </div>
+          <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+            <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"#bbb",marginBottom:5 }}>Quality</div>
+            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:3 }}>
+              <div style={{ flex:1,height:4,borderRadius:2,background:"#e8e4de" }}>
+                <div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
               </div>
-            )}
-
-            {/* Crossings */}
-            {crossings.length > 0 && (
-              <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-                <div style={{ fontSize:11, fontWeight:600, color:"#333", marginBottom:9 }}>
-                  Angle crossings
-                  <span style={{ fontWeight:400, color:"#bbb", fontSize:10, marginLeft:5 }}>{crossings.length} today</span>
-                </div>
-                {crossings.map((c, i) => {
-                  const col = PLANET_COLORS[c.planet] ?? "#888";
-                  const nature = crossingNature(c.planet);
-                  const natureIcon = nature === "benefic" ? "♡" : nature === "malefic" ? "△" : "○";
-                  return (
-                    <div key={i} style={{
-                      display:"flex", alignItems:"center", gap:9,
-                      paddingBottom: i < crossings.length-1 ? 8 : 0,
-                      marginBottom: i < crossings.length-1 ? 8 : 0,
-                      borderBottom: i < crossings.length-1 ? "1px solid #f0ede8" : "none",
-                    }}>
-                      <div style={{
-                        width:26, height:26, borderRadius:"50%", flexShrink:0,
-                        background:`${col}20`, color:col, fontSize:13,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                      }}>
-                        {PLANET_ICONS[c.planet] ?? c.planet[0]}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:11, fontWeight:500, color:"#333" }}>
-                          {c.planet} at {c.angle}
-                        </div>
-                        <div style={{ fontSize:9, color:"#aaa" }}>{c.time}</div>
-                      </div>
-                      <span style={{
-                        fontSize:9, color:col, background:`${col}12`,
-                        border:`1px solid ${col}30`, padding:"1px 5px", borderRadius:4,
-                        flexShrink:0,
-                      }}>
-                        {natureIcon}
-                      </span>
-                    </div>
-                  );
-                })}
+            </div>
+            <div style={{ fontSize:9.5,color:ELEMENT_LABEL[elem]??"#888",textTransform:"capitalize" }}>{elem} · {dayData.quality?.replace(/_/g," ")}</div>
+          </div>
+          {bio && (
+            <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:3 }}>
+                <div style={{ width:7,height:7,borderRadius:"50%",background:BIO_COLOR[bio]??"#bbb" }}/>
+                <div style={{ fontSize:10.5,fontWeight:600,color:"#333" }}>{BIO_LABEL[bio]} day</div>
               </div>
-            )}
-
-            {/* Timeline */}
-            {(crossings.length > 0 || voc) && (
-              <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-                <CrossingTimeline
-                  crossings={crossings}
-                  vocEvents={vocEvents}
-                  ingressForDay={ingressEvents}
-                  isToday={isToday}
-                />
-              </div>
-            )}
-
-            {/* Planning windows */}
-            <div style={{ background:"#fff", borderRadius:9, padding:"12px 13px", border:"1px solid #e8e4de" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                <div style={{ fontSize:11, fontWeight:600, color:"#333" }}>Planning windows</div>
-                <button onClick={() => setShowAdd(v => !v)} style={{
-                  fontSize:9, padding:"2px 8px", borderRadius:6, border:"1px solid #d0cbc3",
-                  background: showAdd ? "#1a2a3a" : "#fff", color: showAdd ? "#fff" : "#666", cursor:"pointer",
-                }}>
-                  + Add
-                </button>
-              </div>
-
-              {showAdd && (
-                <div style={{ marginBottom:10, display:"flex", flexDirection:"column", gap:6, paddingBottom:10, borderBottom:"1px solid #f0ede8" }}>
-                  <input
-                    value={form.title}
-                    onChange={e => setForm(f => ({...f, title:e.target.value}))}
-                    placeholder={WINDOW_LABELS[form.type]}
-                    style={{ padding:"5px 8px", borderRadius:5, border:"1px solid #d8d2ca", fontSize:11, outline:"none", background:"#faf8f5" }}
-                  />
-                  <select value={form.type} onChange={e => setForm(f => ({...f, type:e.target.value}))}
-                    style={{ padding:"5px 8px", borderRadius:5, border:"1px solid #d8d2ca", fontSize:11, background:"#faf8f5" }}>
-                    {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
-                  </select>
-                  <div style={{ display:"flex", gap:6 }}>
-                    <input type="time" value={form.startTime} onChange={e => setForm(f => ({...f, startTime:e.target.value}))}
-                      style={{ flex:1, padding:"5px 6px", borderRadius:5, border:"1px solid #d8d2ca", fontSize:11, background:"#faf8f5" }}/>
-                    <input type="time" value={form.endTime} onChange={e => setForm(f => ({...f, endTime:e.target.value}))}
-                      style={{ flex:1, padding:"5px 6px", borderRadius:5, border:"1px solid #d8d2ca", fontSize:11, background:"#faf8f5" }}/>
-                  </div>
-                  <button onClick={() => addWindow.mutate()} style={{
-                    padding:"6px 0", borderRadius:6, border:"none",
-                    background:"#1a2a3a", color:"#fff", fontSize:11, fontWeight:500, cursor:"pointer",
-                  }}>
-                    Save window
-                  </button>
-                </div>
-              )}
-
-              {windows.length === 0 && !showAdd && (
-                <div style={{ fontSize:10, color:"#bbb", textAlign:"center", padding:"6px 0" }}>No windows planned</div>
-              )}
-              {(windows as PlanningWindow[]).map(w => {
-                const col = WINDOW_COLORS[w.type as string] ?? WINDOW_COLORS[(w as any).windowType] ?? "#888";
-                const start = new Date(w.startTime);
-                const end   = new Date(w.endTime);
+              <div style={{ fontSize:9.5,color:"#666",lineHeight:1.5 }}>{BIO_NOTE[bio]}</div>
+            </div>
+          )}
+          {crossings.length>0 && (
+            <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:6 }}>Crossings</div>
+              {crossings.map((c:any,i:number)=>{
+                const col = PLANET_COLORS[c.planet]??"#888";
                 return (
-                  <div key={w.id} style={{
-                    display:"flex", alignItems:"center", gap:7, marginBottom:5,
-                    padding:"6px 8px", borderRadius:6, background:`${col}0e`, border:`1px solid ${col}28`,
-                  }}>
-                    <div style={{ width:3, height:28, borderRadius:2, background:col, flexShrink:0 }}/>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:10.5, fontWeight:500, color:"#333", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{w.title}</div>
-                      <div style={{ fontSize:9, color:"#aaa" }}>
-                        {start.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})} – {end.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
-                      </div>
+                  <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
+                    <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{PLANET_ICONS[c.planet]??c.planet[0]}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:10,fontWeight:500,color:"#333" }}>{c.planet} × {c.angle}</div>
+                      <div style={{ fontSize:8,color:"#aaa" }}>{c.time}</div>
                     </div>
-                    <button onClick={() => removeWindow.mutate(w.id)} style={{
-                      fontSize:11, background:"none", border:"none", color:"#ccc", cursor:"pointer",
-                    }}>✕</button>
                   </div>
                 );
               })}
             </div>
-          </>
-        )}
+          )}
+          {(wins as PlanningWindow[]).length>0 && (
+            <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:6 }}>Events</div>
+              {(wins as PlanningWindow[]).map(w=>{
+                const col = WINDOW_COLORS[w.type as string]??"#888";
+                const s = new Date(w.startTime), e = new Date(w.endTime);
+                return (
+                  <div key={w.id} style={{ display:"flex",alignItems:"center",gap:5,marginBottom:4,padding:"4px 6px",borderRadius:5,background:`${col}10`,border:`1px solid ${col}25` }}>
+                    <div style={{ width:3,height:22,borderRadius:2,background:col,flexShrink:0 }}/>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:10,fontWeight:500,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{w.title}</div>
+                      <div style={{ fontSize:8,color:"#aaa" }}>{fmtTime(s)} – {fmtTime(e)}</div>
+                    </div>
+                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:10 }}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>)}
       </div>
     </div>
   );
@@ -635,197 +971,207 @@ function DayDetailPanel({ dateStr, dayData, eventsForDay, testerId, now }: {
 // ── Main Calendar ─────────────────────────────────────────────────────────────
 
 export default function Calendar({ testerId, now, lat, lon }: {
-  testerId: string | null;
-  now: TidesNow | undefined;
-  lat: number;
-  lon: number;
+  testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const todayYear  = parseInt(today.slice(0, 4));
-  const todayMonth = parseInt(today.slice(5, 7)) - 1;
+  const today = new Date().toISOString().slice(0,10);
+  const todayYear  = parseInt(today.slice(0,4));
+  const todayMonth = parseInt(today.slice(5,7))-1;
 
-  const [year,          setYear]          = useState(todayYear);
-  const [month,         setMonth]         = useState(todayMonth);
-  const [selectedDate,  setSelectedDate]  = useState(today);
-  const [layer,         setLayer]         = useState<LayerLevel>(1);
-  const [showSignNames, setShowSignNames] = useState(false);
+  const [calView, setCalView]           = useState<CalView>("month");
+  const [year, setYear]                 = useState(todayYear);
+  const [month, setMonth]               = useState(todayMonth);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [showSignNames, setShowSignNames] = useState(true);
+  const [showDetail, setShowDetail]     = useState(true);
+  const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
+  const qc = useQueryClient();
 
   const { data: weekData }   = useTidesWeek(90, lat, lon);
   const { data: eventsData } = useSkyEvents(90, lat, lon);
 
-  const dataMap = useMemo(() => {
-    const map = new Map<string, WeekDay>();
-    for (const d of weekData?.days ?? []) map.set(d.date, d);
-    return map;
-  }, [weekData]);
+  const { data: gcalStatus } = useGCalStatus(testerId);
+  const gcalStart = useMemo(() => new Date(today).toISOString(), [today]);
+  const gcalEnd   = useMemo(() => new Date(Date.now() + 90*86400000).toISOString(), []);
+  const { data: gcalData }   = useGCalEvents(testerId, gcalStart, gcalEnd, !!gcalStatus?.connected);
 
-  const eventsMap = useMemo(() => {
-    const map = new Map<string, SkyEvent[]>();
-    for (const e of eventsData?.events ?? []) {
-      const arr = map.get(e.date) ?? [];
+  const { data: allWindows=[] } = useQuery<PlanningWindow[]>({
+    queryKey:["windows-all",testerId],
+    queryFn: async()=>{
+      const r = await fetch("/api/planning/windows?all=1",{headers:testerId?{"x-tester-id":testerId}:{}});
+      return r.json();
+    },
+    enabled:!!testerId,
+  });
+
+  const delWindow = useMutation({
+    mutationFn: async(id:number)=>{await fetch(`/api/planning/windows/${id}`,{method:"DELETE",headers:testerId?{"x-tester-id":testerId}:{}});},
+    onSuccess:()=>qc.invalidateQueries({queryKey:["windows-all"]}),
+  });
+
+  const dataMap = useMemo(()=>{
+    const m = new Map<string,WeekDay>();
+    for (const d of weekData?.days??[]) m.set(d.date,d);
+    return m;
+  },[weekData]);
+
+  const eventsMap = useMemo(()=>{
+    const m = new Map<string,SkyEvent[]>();
+    for (const e of eventsData?.events??[]) {
+      const arr = m.get(e.date)??[];
       arr.push(e);
-      map.set(e.date, arr);
+      m.set(e.date,arr);
     }
-    return map;
-  }, [eventsData]);
+    return m;
+  },[eventsData]);
 
-  const grid = useMemo(() => buildMonthGrid(year, month), [year, month]);
+  const gcalMap = useMemo(() => {
+    const m = new Map<string, GCalEvent[]>();
+    for (const ev of gcalData?.events ?? []) {
+      const d = new Date(ev.start).toISOString().slice(0, 10);
+      const arr = m.get(d) ?? [];
+      arr.push(ev);
+      m.set(d, arr);
+    }
+    return m;
+  }, [gcalData]);
 
-  function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
+  const windowsMap = useMemo(()=>{
+    const m = new Map<string,PlanningWindow[]>();
+    for (const w of allWindows) {
+      const d = new Date(w.startTime).toISOString().slice(0,10);
+      const arr = m.get(d)??[];
+      arr.push(w);
+      m.set(d,arr);
+    }
+    return m;
+  },[allWindows]);
+
+  const grid = useMemo(()=>buildMonthGrid(year,month),[year,month]);
+
+  function prevPeriod() {
+    if (calView==="month") { if(month===0){setYear(y=>y-1);setMonth(11);}else setMonth(m=>m-1); }
+    else if (calView==="week") setSelectedDate(d=>addDays(d,-7));
+    else setSelectedDate(d=>addDays(d,-1));
   }
-  function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
+  function nextPeriod() {
+    if (calView==="month") { if(month===11){setYear(y=>y+1);setMonth(0);}else setMonth(m=>m+1); }
+    else if (calView==="week") setSelectedDate(d=>addDays(d,7));
+    else setSelectedDate(d=>addDays(d,1));
   }
-  function goToday() {
-    setYear(todayYear); setMonth(todayMonth); setSelectedDate(today);
+  function goToday() { setYear(todayYear);setMonth(todayMonth);setSelectedDate(today); }
+
+  function periodLabel() {
+    if (calView==="month") return `${MONTH_NAMES[month]} ${year}`;
+    if (calView==="week") {
+      const dates = getWeekDates(selectedDate);
+      const f = new Date(dates[0]+"T12:00:00"), l = new Date(dates[6]+"T12:00:00");
+      return `${f.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${l.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
+    }
+    return new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
   }
 
-  const LAYERS: { level: LayerLevel; label: string; desc: string }[] = [
-    { level:0, label:"Essentials", desc:"Moon phase + quality bar" },
-    { level:1, label:"Standard",   desc:"+ sign, element tint, VOC" },
-    { level:2, label:"Full",       desc:"+ crossings, biodynamic, VOC label" },
-  ];
-
-  // Compute VOC proportional fraction for a day cell (top/height as 0-1 of 80px cell)
-  function vocFracForDate(dateStr: string): { top: number; height: number } | null {
-    const events = eventsMap.get(dateStr) ?? [];
-    const vocEv = events.find(e => e.type === "voc" && e.time);
-    if (!vocEv?.time) return null;
-    const DAY_START = 6, DAY_END = 24, SPAN = DAY_END - DAY_START;
-    const vocH = timeToHourFrac(vocEv.time);
-    const nextIngress = events.find(e => e.type === "ingress" && e.time && e.time > vocEv.time!);
-    const endH = nextIngress?.time ? Math.min(DAY_END, timeToHourFrac(nextIngress.time)) : DAY_END;
-    const top    = Math.max(0, (vocH - DAY_START) / SPAN);
-    const height = Math.max(0.05, Math.min(1 - top, (endH - vocH) / SPAN));
-    return { top, height };
+  function vocFracForDate(dateStr: string): {top:number;height:number}|null {
+    const voc = vocRangeForDate(dateStr,eventsMap);
+    if (!voc) return null;
+    const DAY_START=6, DAY_END=24, SPAN=DAY_END-DAY_START;
+    const vocH = voc.startMin/60, endH = Math.min(DAY_END,voc.endMin/60);
+    const top    = Math.max(0,(vocH-DAY_START)/SPAN);
+    const height = Math.max(0.05,Math.min(1-top,(endH-vocH)/SPAN));
+    return {top,height};
   }
+
+  const weekDates = calView!=="month"?(calView==="week"?getWeekDates(selectedDate):[selectedDate]):[];
 
   return (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+    <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
-      <div style={{
-        padding:"9px 18px", borderBottom:"1px solid #d0cbc3", background:"#ece8e2",
-        flexShrink:0, display:"flex", alignItems:"center", gap:10, flexWrap:"wrap",
-      }}>
-        {/* Month nav */}
-        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-          <button onClick={prevMonth} style={{ fontSize:14, padding:"1px 8px", borderRadius:5, border:"1px solid #d0cbc3", background:"#fff", color:"#555", cursor:"pointer", lineHeight:1.4 }}>‹</button>
-          <div style={{ fontSize:13, fontWeight:600, color:"#1a2a3a", minWidth:140, textAlign:"center" }}>
-            {MONTH_NAMES[month]} {year}
-          </div>
-          <button onClick={nextMonth} style={{ fontSize:14, padding:"1px 8px", borderRadius:5, border:"1px solid #d0cbc3", background:"#fff", color:"#555", cursor:"pointer", lineHeight:1.4 }}>›</button>
-        </div>
-        <button onClick={goToday} style={{ fontSize:10, padding:"3px 9px", borderRadius:6, border:"1px solid #d0cbc3", background:"#fff", color:"#666", cursor:"pointer" }}>
-          Today
-        </button>
+      <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
+        <button onClick={prevPeriod} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>‹</button>
+        <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
+        <button onClick={nextPeriod} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        <button onClick={goToday} style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
 
-        {/* Sign names toggle */}
-        <button onClick={() => setShowSignNames(v => !v)} style={{
-          marginLeft:"auto", fontSize:9, padding:"3px 9px", borderRadius:6,
-          border:"1px solid #d0cbc3",
-          background: showSignNames ? "#fff8f0" : "#f0ede8",
-          color: showSignNames ? "#b07020" : "#aaa", cursor:"pointer",
-        }}>
-          {showSignNames ? "Signs: on" : "Signs: off"}
-        </button>
-
-        {/* Layer toggle */}
-        <div style={{ display:"flex", alignItems:"center", gap:2, background:"#e0dcd6", borderRadius:8, padding:"3px" }}>
-          {LAYERS.map(ll => (
-            <button key={ll.level} onClick={() => setLayer(ll.level)} title={ll.desc} style={{
-              fontSize:10, padding:"3px 11px", borderRadius:6, border:"none", cursor:"pointer",
-              background: layer === ll.level ? "#fff" : "transparent",
-              color: layer === ll.level ? "#1a2a3a" : "#999",
-              fontWeight: layer === ll.level ? 600 : 400,
-              boxShadow: layer === ll.level ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-              transition:"background 0.1s",
-            }}>
-              {ll.label}
-            </button>
+        <div style={{ display:"flex",background:"#e0dcd6",borderRadius:7,padding:3,gap:1 }}>
+          {(["month","week","day"] as CalView[]).map(v=>(
+            <button key={v} onClick={()=>setCalView(v)} style={{
+              fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
+              background:calView===v?"#fff":"transparent",color:calView===v?"#1a2a3a":"#999",
+              fontWeight:calView===v?600:400,textTransform:"capitalize",
+            }}>{v}</button>
           ))}
         </div>
+
+        <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#fff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
+
+        {calView==="month" && (
+          <>
+            <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"#aaa",cursor:"pointer" }}>Signs</button>
+            <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"#888",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
+          </>
+        )}
+
+        <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
 
-      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
-        {/* Month grid */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", overflowY:"auto", padding:"0 14px 14px", minWidth:0 }}>
-
-          {/* Legend row */}
-          <div style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 0 6px", flexShrink:0, flexWrap:"wrap" }}>
-            {layer >= 2 && Object.entries(BIO_COLOR).map(([k, c]) => (
-              <div key={k} style={{ display:"flex", alignItems:"center", gap:3, fontSize:8.5, color:"#aaa" }}>
-                <div style={{ width:6, height:6, borderRadius:"50%", background:c }}/>
-                {BIO_LABEL[k]}
+      <div style={{ flex:1,display:"flex",overflow:"hidden" }}>
+        {/* Month view */}
+        {calView==="month" && (
+          <>
+            <div style={{ flex:1,display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 10px 10px",minWidth:0 }}>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:8,flexShrink:0 }}>
+                {DOW_SHORT.map((d,i)=>{
+                  const ruler = WEEKDAY_RULERS[i];
+                  return (
+                    <div key={d} title={`${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"#c8c4bc",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
+                      {d} <span style={{ color:PLANET_COLORS[ruler]??"#c8c4bc",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-            {layer >= 1 && (
-              <div style={{ display:"flex", alignItems:"center", gap:3, fontSize:8.5, color:"#aaa" }}>
-                <div style={{ width:16, height:6, borderRadius:2, background:"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,0.14) 3px,rgba(0,0,0,0.14) 4px)", border:"1px solid #e0dbd4" }}/>
-                VOC
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,flex:1 }}>
+                {grid.map((dateStr,i)=>{
+                  if (!dateStr) return <div key={`pad-${i}`}/>;
+                  return (
+                    <MonthCell
+                      key={dateStr} dateStr={dateStr} dayData={dataMap.get(dateStr)}
+                      isToday={dateStr===today} isSelected={dateStr===selectedDate}
+                      isPast={dateStr<today} showSignNames={showSignNames}
+                      vocFrac={vocFracForDate(dateStr)}
+                      wins={windowsMap.get(dateStr)??[]}
+                      gcalEvents={gcalMap.get(dateStr)??[]}
+                      skyEvents={eventsMap.get(dateStr)??[]}
+                      onClick={()=>setSelectedDate(dateStr)}
+                    />
+                  );
+                })}
               </div>
-            )}
-            {layer >= 2 && (
-              <div style={{ fontSize:8.5, color:"#aaa" }}>⚡ crossings</div>
-            )}
-            <div style={{ display:"flex", alignItems:"center", gap:3, fontSize:8.5, color:"#aaa" }}>
-              <div style={{ width:24, height:3, borderRadius:2, background:"linear-gradient(to right, #a04030, #8a8030, #3a7040)" }}/>
-              quality
             </div>
-          </div>
+            {showDetail && (
+              <DayDetailPanel
+                dateStr={selectedDate} dayData={dataMap.get(selectedDate)}
+                testerId={testerId} now={now}
+                onAddEvent={()=>setAddModal({date:selectedDate})}
+              />
+            )}
+          </>
+        )}
 
-          {/* Day of week headers */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:3, marginBottom:3, flexShrink:0 }}>
-            {DOW.map(d => (
-              <div key={d} style={{ textAlign:"center", fontSize:9, fontWeight:600, color:"#c8c4bc", textTransform:"uppercase", letterSpacing:"0.4px", padding:"3px 0" }}>
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Cell grid */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:3 }}>
-            {grid.map((dateStr, i) => {
-              if (!dateStr) return <div key={`pad-${i}`}/>;
-              return (
-                <DayCell
-                  key={dateStr}
-                  dateStr={dateStr}
-                  dayData={dataMap.get(dateStr)}
-                  isToday={dateStr === today}
-                  isSelected={dateStr === selectedDate}
-                  isPast={dateStr < today}
-                  layer={layer}
-                  showSignNames={showSignNames}
-                  vocFrac={vocFracForDate(dateStr)}
-                  onClick={() => setSelectedDate(dateStr)}
-                />
-              );
-            })}
-          </div>
-
-          {/* Phase legend (always) */}
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8, padding:"10px 0 0" }}>
-            {Object.entries(MOON_EMOJI).slice(0, 8).map(([phase, emoji]) => (
-              <div key={phase} style={{ display:"flex", alignItems:"center", gap:3, fontSize:8.5, color:"#aaa" }}>
-                <span style={{ fontSize:10 }}>{emoji}</span>
-                <span>{phase.replace(" Moon","").replace("Waxing ","⬆ ").replace("Waning ","⬇ ")}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Day detail panel */}
-        <DayDetailPanel
-          dateStr={selectedDate}
-          dayData={dataMap.get(selectedDate)}
-          eventsForDay={eventsMap.get(selectedDate) ?? []}
-          testerId={testerId}
-          now={now}
-        />
+        {/* Week / Day view */}
+        {calView!=="month" && (
+          <TimeGrid
+            dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
+            gcalMap={gcalMap}
+            testerId={testerId} today={today} lat={lat} lon={lon}
+            isDay={calView==="day"}
+            onAddEvent={(date,hour)=>setAddModal({date,hour})}
+            onDeleteWindow={id=>delWindow.mutate(id)}
+          />
+        )}
       </div>
+
+      {addModal && (
+        <EventModal dateStr={addModal.date} startHour={addModal.hour} testerId={testerId} onClose={()=>setAddModal(null)}/>
+      )}
     </div>
   );
 }

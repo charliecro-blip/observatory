@@ -64,3 +64,16 @@ export function usePreferences() {
   if (!ctx) throw new Error("usePreferences outside PreferencesProvider");
   return ctx;
 }
+
+export function useTimeFormat() {
+  const { prefs } = usePreferences();
+  const is24 = prefs.display.timeFormat === "24h";
+  return function fmtT(d: Date | string): string {
+    const dt = typeof d === "string" ? new Date(d) : d;
+    if (is24) return dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    const h = dt.getHours(), m = dt.getMinutes();
+    const suffix = h >= 12 ? "pm" : "am";
+    const hour = h % 12 || 12;
+    return m === 0 ? `${hour}${suffix}` : `${hour}:${String(m).padStart(2, "0")}${suffix}`;
+  };
+}

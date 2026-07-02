@@ -3,12 +3,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Milestone { id:number; projectId:number; title:string; status:string; targetDate?:string; }
 interface Project { id:number; title:string; goalId?:number; status:string; priority:string; milestones?:Milestone[]; }
-interface Goal { id:number; title:string; description?:string; horizon:string; status:string; }
+interface Goal { id:number; title:string; description?:string; horizon:string; status:string; isNorthStar?:boolean; element?:string|null; }
 
 const HORIZON_COLORS: Record<string,{bg:string;color:string}> = {
   near: {bg:"#dbeafe",color:"#2a5a90"},
   mid:  {bg:"#f0e8d8",color:"#8a5020"},
   long: {bg:"#e8d8f0",color:"#602080"},
+};
+
+const ELEMENT_INFO: Record<string,{color:string;label:string}> = {
+  fire:  {color:"#c04830", label:"Fire"},
+  earth: {color:"#4a7040", label:"Earth"},
+  air:   {color:"#7040a0", label:"Air"},
+  water: {color:"#3a5a80", label:"Water"},
 };
 
 function authH(tid:string|null) {
@@ -79,25 +86,49 @@ export default function Goals({ testerId }: { testerId:string|null }) {
     onSuccess: () => qc.invalidateQueries({queryKey:["goals"]}),
   });
 
+  const [nsError, setNsError] = useState<string|null>(null);
+  const toggleNorthStar = useMutation({
+    mutationFn: async ({id,on}:{id:number;on:boolean}) => {
+      const r = await fetch(`/api/planning/goals/${id}/north-star`, {method:"POST",headers:authH(testerId),body:JSON.stringify({on})});
+      if (!r.ok) { const e = await r.json(); throw new Error(e.message ?? "Failed"); }
+    },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["goals"]}); qc.invalidateQueries({queryKey:["north-stars"]}); setNsError(null); },
+    onError: (e:any) => setNsError(e.message),
+  });
+
+  const setElement = useMutation({
+    mutationFn: async ({id,element}:{id:number;element:string}) => {
+      await fetch(`/api/planning/goals/${id}`, {method:"PATCH",headers:authH(testerId),body:JSON.stringify({element})});
+    },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["goals"]}); qc.invalidateQueries({queryKey:["north-stars"]}); },
+  });
+
   const MS_COLORS: Record<string,string> = { pending:"#d0cbc3", in_progress:"#c8b89a", completed:"#80b870" };
 
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #d0cbc3",background:"#ece8e2",flexShrink:0}}>
+      <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
         <div style={{fontSize:12,color:"#888"}}>Goals · Projects · Milestones</div>
-        <button onClick={()=>setShowGoalForm(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid #d0cbc3",background:showGoalForm?"#1a2a3a":"#fff",color:showGoalForm?"#fff":"#555",cursor:"pointer"}}>
+        <button onClick={()=>setShowGoalForm(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showGoalForm?"#1a2a3a":"#fff",color:showGoalForm?"#fff":"#555",cursor:"pointer"}}>
           + New goal
         </button>
       </div>
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:14}}>
 
+        {nsError && (
+          <div style={{background:"#fdf0ec",border:"1px solid #e8c0b0",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#a04030",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            {nsError}
+            <button onClick={()=>setNsError(null)} style={{background:"none",border:"none",color:"#a04030",cursor:"pointer",fontSize:14}}>×</button>
+          </div>
+        )}
+
         {showGoalForm && (
-          <div style={{background:"#fff",border:"1px solid #d0cbc3",borderRadius:10,padding:"16px",display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"16px",display:"flex",flexDirection:"column",gap:8}}>
             <input autoFocus value={goalForm.title} onChange={e=>setGoalForm(f=>({...f,title:e.target.value}))} placeholder="Goal title…"
-              style={{padding:"7px 10px",borderRadius:7,border:"1px solid #d8d2ca",fontSize:13,background:"#faf8f5",outline:"none"}}/>
+              style={{padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)",outline:"none"}}/>
             <input value={goalForm.description} onChange={e=>setGoalForm(f=>({...f,description:e.target.value}))} placeholder="Description (optional)"
-              style={{padding:"7px 10px",borderRadius:7,border:"1px solid #d8d2ca",fontSize:12,background:"#faf8f5",outline:"none"}}/>
+              style={{padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",outline:"none"}}/>
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
               {(["near","mid","long"] as const).map(h => (
                 <button key={h} onClick={()=>setGoalForm(f=>({...f,horizon:h}))} style={{
@@ -119,13 +150,31 @@ export default function Goals({ testerId }: { testerId:string|null }) {
           const hc = HORIZON_COLORS[goal.horizon] ?? HORIZON_COLORS.long;
           const goalProjects = projects.filter(p=>p.goalId===goal.id&&p.status==="active");
           return (
-            <div key={goal.id} style={{background:"#fff",border:"1px solid #e8e4de",borderRadius:10,overflow:"hidden"}}>
+            <div key={goal.id} style={{background: "var(--color-card)",border:goal.isNorthStar?"1px solid #d0a840":"1px solid var(--color-border)",borderRadius:10,overflow:"hidden",boxShadow:goal.isNorthStar?"0 0 0 1px #f0e0b020":"none"}}>
               {/* Goal header */}
-              <div style={{padding:"12px 14px",display:"flex",alignItems:"flex-start",gap:10,borderBottom:goalProjects.length?"1px solid #f0ede8":"none"}}>
+              <div style={{padding:"12px 14px",display:"flex",alignItems:"flex-start",gap:10,borderBottom:goalProjects.length?"1px solid var(--color-border)":"none"}}>
+                <button
+                  onClick={()=>toggleNorthStar.mutate({id:goal.id,on:!goal.isNorthStar})}
+                  title={goal.isNorthStar?"Retire as North Star":"Make this a North Star (max 3)"}
+                  style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,marginTop:1,color:goal.isNorthStar?"#d0a020":"#ddd",flexShrink:0}}>
+                  {goal.isNorthStar?"★":"☆"}
+                </button>
                 <div style={{fontSize:8,padding:"3px 7px",borderRadius:4,fontWeight:700,textTransform:"uppercase",flexShrink:0,marginTop:2,...hc}}>{goal.horizon}</div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:600,color:"#1a1a1a"}}>{goal.title}</div>
+                  <div style={{fontSize:14,fontWeight:600,color: "var(--color-foreground)"}}>{goal.title}</div>
                   {goal.description&&<div style={{fontSize:11,color:"#888",marginTop:2}}>{goal.description}</div>}
+                  {goal.isNorthStar && (
+                    <div style={{display:"flex",gap:4,marginTop:6}}>
+                      {Object.entries(ELEMENT_INFO).map(([key,info]) => (
+                        <button key={key} onClick={()=>setElement.mutate({id:goal.id,element:key})} style={{
+                          fontSize:9,padding:"2px 8px",borderRadius:10,cursor:"pointer",
+                          border:goal.element===key?`1px solid ${info.color}`:"1px solid #e0dad0",
+                          background:goal.element===key?`${info.color}18`:"var(--color-card-2)",
+                          color:goal.element===key?info.color:"#999",fontWeight:goal.element===key?600:400,
+                        }}>{info.label}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={()=>setShowProjectForm(showProjectForm===goal.id?null:goal.id)} style={{fontSize:10,color:"#6090c0",background:"none",border:"none",cursor:"pointer"}}>+ project</button>
@@ -135,11 +184,11 @@ export default function Goals({ testerId }: { testerId:string|null }) {
 
               {/* Add project form */}
               {showProjectForm===goal.id && (
-                <div style={{padding:"10px 14px",background:"#f8f6f2",borderBottom:"1px solid #f0ede8",display:"flex",gap:6}}>
+                <div style={{padding:"10px 14px",background: "var(--color-card-2)",borderBottom:"1px solid var(--color-border)",display:"flex",gap:6}}>
                   <input autoFocus value={projectForm.title} onChange={e=>setProjectForm(f=>({...f,title:e.target.value}))}
                     onKeyDown={e=>e.key==="Enter"&&projectForm.title.trim()&&addProject.mutate(goal.id)}
                     placeholder="Project name…"
-                    style={{flex:1,padding:"5px 8px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:12,background:"#fff",outline:"none"}}/>
+                    style={{flex:1,padding:"5px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card)",outline:"none"}}/>
                   <button onClick={()=>projectForm.title.trim()&&addProject.mutate(goal.id)}
                     style={{padding:"5px 12px",borderRadius:6,border:"none",fontSize:11,background:"#1a2a3a",color:"#fff",cursor:"pointer"}}>Add</button>
                 </div>
@@ -151,7 +200,7 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                 const done = pMilestones.filter(m=>m.status==="completed").length;
                 const pct = pMilestones.length ? Math.round((done/pMilestones.length)*100) : 0;
                 return (
-                  <div key={project.id} style={{padding:"10px 14px 10px 24px",borderBottom:"1px solid #f0ede8"}}>
+                  <div key={project.id} style={{padding:"10px 14px 10px 24px",borderBottom:"1px solid var(--color-border)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                       <div style={{fontSize:12,fontWeight:500,color:"#333",flex:1}}>{project.title}</div>
                       {pMilestones.length>0 && (
@@ -173,9 +222,9 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                         <input autoFocus value={milestoneForm.title} onChange={e=>setMilestoneForm(f=>({...f,title:e.target.value}))}
                           onKeyDown={e=>e.key==="Enter"&&milestoneForm.title.trim()&&addMilestone.mutate(project.id)}
                           placeholder="Milestone…"
-                          style={{flex:1,padding:"4px 8px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:11,background:"#fff",outline:"none"}}/>
+                          style={{flex:1,padding:"4px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card)",outline:"none"}}/>
                         <input type="date" value={milestoneForm.targetDate} onChange={e=>setMilestoneForm(f=>({...f,targetDate:e.target.value}))}
-                          style={{padding:"4px 6px",borderRadius:6,border:"1px solid #d8d2ca",fontSize:11,background:"#fff"}}/>
+                          style={{padding:"4px 6px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card)"}}/>
                         <button onClick={()=>milestoneForm.title.trim()&&addMilestone.mutate(project.id)}
                           style={{padding:"4px 10px",borderRadius:6,border:"none",fontSize:10,background:"#1a2a3a",color:"#fff",cursor:"pointer"}}>Add</button>
                       </div>
@@ -204,7 +253,7 @@ export default function Goals({ testerId }: { testerId:string|null }) {
 
         {/* Paused goals */}
         {goals.filter(g=>g.status!=="active").length>0 && (
-          <div style={{paddingTop:8,borderTop:"1px solid #e8e4de"}}>
+          <div style={{paddingTop:8,borderTop:"1px solid var(--color-border)"}}>
             <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#ccc",marginBottom:8}}>Paused</div>
             {goals.filter(g=>g.status!=="active").map(g=>(
               <div key={g.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,opacity:0.5}}>

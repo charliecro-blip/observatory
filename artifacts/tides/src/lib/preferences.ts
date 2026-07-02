@@ -22,6 +22,7 @@ export interface DisplayPrefs {
   todayShow14Day: boolean;
   todayShowJournal: boolean;
   compactRail: boolean;
+  timeFormat: "12h" | "24h";
 }
 
 export interface TimingPrefs {
@@ -58,6 +59,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     todayShow14Day: true,
     todayShowJournal: true,
     compactRail: false,
+    timeFormat: "12h",
   },
   timing: {
     watchPlanets: [],

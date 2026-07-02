@@ -22,7 +22,7 @@ export function Skeleton({ width = "100%", height = 14, borderRadius = 6, style 
 export function SkeletonCard({ rows = 3, height = 80 }: { rows?: number; height?: number }) {
   return (
     <div style={{
-      background: "#fff", border: "1px solid #e8e4de", borderRadius: 10,
+      background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10,
       padding: "14px 18px", display: "flex", flexDirection: "column", gap: 8,
     }}>
       {Array.from({ length: rows }).map((_, i) => (

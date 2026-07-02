@@ -17,7 +17,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return (
       <div style={{
         flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#f0ede8", flexDirection: "column", gap: 12, padding: 40,
+        background: "var(--color-background)", flexDirection: "column", gap: 12, padding: 40,
       }}>
         <div style={{ fontSize: 28, opacity: 0.4 }}>◌</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: "#555" }}>Something went wrong</div>
@@ -26,7 +26,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         </div>
         <button
           onClick={() => this.setState({ hasError: false, message: "" })}
-          style={{ marginTop: 8, fontSize: 11, padding: "6px 16px", borderRadius: 7, border: "1px solid #d0cbc3", background: "#fff", cursor: "pointer" }}
+          style={{ marginTop: 8, fontSize: 11, padding: "6px 16px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", cursor: "pointer" }}
         >
           Try again
         </button>
