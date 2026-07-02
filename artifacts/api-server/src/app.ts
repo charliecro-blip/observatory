@@ -62,7 +62,7 @@ const publicDir = path.resolve(__dirname, "../../tides/public");
 app.use(express.static(publicDir));
 
 // SPA routing: serve index.html for non-API routes
-app.get("*", (req, res) => {
+app.get("/{*splat}", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
