@@ -40,12 +40,12 @@ PORT=3000
 ## 3. Frontend — Vercel
 
 1. Go to [vercel.com](https://vercel.com) → New project → import this repo
-2. Set **Root Directory** to `artifacts/tides`
+2. Leave **Root Directory** at the repo root (vercel.json handles the rest)
 3. Build command: `pnpm --filter @workspace/tides run build`
 4. Output directory: `dist/public`
 5. Add one environment variable:
    - `VITE_API_URL` = your Railway URL (e.g. `https://tides-api.up.railway.app`)
-6. Open `artifacts/tides/vercel.json` and replace `YOUR_RAILWAY_URL` with your actual Railway URL
+6. Open `vercel.json (repo root)` and replace `YOUR_RAILWAY_URL` with your actual Railway URL
 7. Deploy
 
 ---
