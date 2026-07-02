@@ -45,10 +45,17 @@ export function saveLocation(lat: number, lon: number, label: string): void {
   localStorage.setItem(KEY_LOC, JSON.stringify({ lat, lon, locationLabel: label }));
 }
 
-/** Create a brand-new profile with a fresh UUID. */
+/**
+ * Create a profile for a new user. Reuses a tester ID already stashed in
+ * localStorage if present — the onboarding name step generates a temp ID and
+ * saves it here so it can POST natal-chart data before the profile officially
+ * exists. Generating a fresh ID here instead would orphan that birth data
+ * under the old ID, and the app would re-prompt for birth info right after
+ * onboarding completes (the "asks for my info twice" bug).
+ */
 export function createProfile(displayName: string): TesterProfile {
   const profile: TesterProfile = {
-    testerId: generateTesterId(),
+    testerId: localStorage.getItem(KEY_ID) || generateTesterId(),
     displayName: displayName.trim(),
   };
   saveProfile(profile);

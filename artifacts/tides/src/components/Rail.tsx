@@ -236,7 +236,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
   const toggleNonMoon = useCallback((i: number) => setExpandedNonMoon(v => v === i ? null : i), []);
   if (!now) {
     return (
-      <aside style={{ width: 210, minWidth: 210, background: "#e8e4de", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 0 }}>
+      <aside style={{ width: 210, minWidth: 210, background: "var(--color-rail)", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
           <Skeleton width={60} height={16} style={{ marginBottom: 6 }} />
           <Skeleton width={100} height={10} />
@@ -259,7 +259,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
 
   return (
     <aside style={{
-      width: 210, minWidth: 210, background: "#e8e4de",
+      width: 210, minWidth: 210, background: "var(--color-rail)",
       display: "flex", flexDirection: "column", overflowY: "auto", fontSize: 12,
       flex: 1, minHeight: 0,
     }}>
