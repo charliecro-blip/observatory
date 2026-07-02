@@ -13,7 +13,7 @@
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"
   },
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": "22.x"
   }
