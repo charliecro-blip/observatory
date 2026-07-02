@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
-  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? req.ip ?? "anon",
+  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
   message: { error: "Too many AI requests — please wait a while before trying again." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -45,7 +45,7 @@ const aiLimiter = rateLimit({
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
-  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? req.ip ?? "anon",
+  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
   message: { error: "Too many requests — slow down a little." },
   standardHeaders: true,
   legacyHeaders: false,
