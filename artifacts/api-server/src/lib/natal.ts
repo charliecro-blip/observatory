@@ -479,13 +479,14 @@ export function computeTransitAspects(natal: ComputedNatalChart): TransitAspect[
 }
 
 // ── Planetary Sensitivity ("Caution Periods" diagnosis) ───────────────────────
-// Which of the five "heavy" outer/social planets tends to land hardest for THIS
-// chart, based on natal hard-aspects to personal points and angularity — not a
-// generic transit reading, but a personal diagnosis computed once from the
-// chart already on file.
+// Any planet can be a personal trigger, not just the classic "heavy" outer
+// ones — so this scores all ten. The score is a background HINT (surfaced to
+// pre-suggest likely answers in the frontend questionnaire); the actual
+// diagnosis is self-reported by the user, since the same transit can land
+// completely differently for two people with the same aspect on paper.
 
-export const HEAVY_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
-export type HeavyPlanet = (typeof HEAVY_PLANETS)[number];
+export const ALL_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+export type CautionPlanet = (typeof ALL_PLANETS)[number];
 
 const PERSONAL_POINTS = ["Sun", "Moon", "Mercury", "Venus", "Mars"] as const;
 
@@ -494,7 +495,12 @@ const HARD_ASPECTS = new Set(["Conjunction", "Square", "Opposition"]);
 const ASPECT_HIT_WEIGHT: Record<string, number> = { Conjunction: 3, Opposition: 2.5, Square: 2 };
 const ASPECT_MAX_ORB: Record<string, number> = { Conjunction: 8, Opposition: 8, Square: 7 };
 
-export const HEAVY_PLANET_ARCHETYPE: Record<HeavyPlanet, { label: string; feel: string }> = {
+export const PLANET_ARCHETYPE: Record<CautionPlanet, { label: string; feel: string }> = {
+  Sun:     { label: "Ego friction",   feel: "clashes with authority (including your own pride), burnout from overexertion, vitality dips" },
+  Moon:    { label: "Emotional",      feel: "moodiness, emotional overwhelm, feeling reactive or easily thrown" },
+  Mercury: { label: "Mental",         feel: "miscommunication, mental fog or scatter, decision paralysis, information overload" },
+  Venus:   { label: "Relational",     feel: "relationship friction, overspending, aesthetic or values clashes, feeling under-appreciated" },
+  Mars:    { label: "Combustible",    feel: "irritability, conflict, impulsiveness, accidents, frustration boiling over" },
   Uranus:  { label: "Disruptive",     feel: "sudden shifts, things breaking from routine, feeling knocked off course" },
   Neptune: { label: "Hazy / diffuse", feel: "fog, low motivation, sleepiness, things feeling unclear or hard to pin down" },
   Saturn:  { label: "Heavy",          feel: "weight, restriction, anxiety, a sense of being tested or held back" },
@@ -509,18 +515,19 @@ export interface PlanetarySensitivityHit {
 }
 
 export interface PlanetarySensitivity {
-  planet: HeavyPlanet;
+  planet: CautionPlanet;
   score: number;
   hits: PlanetarySensitivityHit[];
   angular: boolean;   // natal placement is near one of the four chart angles
 }
 
 /**
- * Scores each heavy planet's natal "chargedness" for this specific chart:
- * hard aspects (conjunction/square/opposition) to the Sun/Moon/Mercury/Venus/
- * Mars/Ascendant, weighted by aspect type and orb tightness, plus a flat bonus
- * if the planet itself sits near one of the four angles (ASC/MC/DSC/IC) —
- * angular placements are classically felt as more publicly/personally live.
+ * Scores every planet's natal "chargedness" for this specific chart: hard
+ * aspects (conjunction/square/opposition) to the other personal points +
+ * Ascendant, weighted by aspect type and orb tightness, plus a flat bonus if
+ * the planet itself sits near one of the four angles (ASC/MC/DSC/IC).
+ * This is a HINT, not the diagnosis — the frontend questionnaire uses it to
+ * pre-suggest likely answers, but the user picks their own sensitivities.
  */
 export function computePlanetarySensitivity(natal: ComputedNatalChart): PlanetarySensitivity[] {
   const ascLon = natal.ascendant.longitude;
@@ -532,34 +539,35 @@ export function computePlanetarySensitivity(natal: ComputedNatalChart): Planetar
 
   const results: PlanetarySensitivity[] = [];
 
-  for (const heavy of HEAVY_PLANETS) {
-    const heavyPlanet = natal.planets.find((p) => p.planet === heavy);
-    if (!heavyPlanet) continue;
+  for (const target of ALL_PLANETS) {
+    const targetPlanet = natal.planets.find((p) => p.planet === target);
+    if (!targetPlanet) continue;
 
     const hits: PlanetarySensitivityHit[] = [];
     let score = 0;
 
     for (const point of PERSONAL_POINTS) {
+      if (point === target) continue; // don't aspect a planet against itself
       const natalPoint = natal.planets.find((p) => p.planet === point);
       if (!natalPoint) continue;
-      const asp = findAspect(heavyPlanet.longitude, natalPoint.longitude);
+      const asp = findAspect(targetPlanet.longitude, natalPoint.longitude);
       if (!asp || !HARD_ASPECTS.has(asp.name)) continue;
       const orbFactor = 1 - asp.orb / (ASPECT_MAX_ORB[asp.name] ?? 8);
       score += (ASPECT_HIT_WEIGHT[asp.name] ?? 1) * Math.max(0.15, orbFactor);
       hits.push({ personalPoint: point, aspect: asp.name, orb: asp.orb });
     }
 
-    const ascAsp = findAspect(heavyPlanet.longitude, ascLon);
+    const ascAsp = findAspect(targetPlanet.longitude, ascLon);
     if (ascAsp && HARD_ASPECTS.has(ascAsp.name)) {
       const orbFactor = 1 - ascAsp.orb / (ASPECT_MAX_ORB[ascAsp.name] ?? 8);
       score += (ASPECT_HIT_WEIGHT[ascAsp.name] ?? 1) * Math.max(0.15, orbFactor);
       hits.push({ personalPoint: "Ascendant", aspect: ascAsp.name, orb: ascAsp.orb });
     }
 
-    const angular = angles.some((a) => angularDiff(heavyPlanet.longitude, a) <= ANGLE_ORB);
+    const angular = angles.some((a) => angularDiff(targetPlanet.longitude, a) <= ANGLE_ORB);
     if (angular) score += 2;
 
-    results.push({ planet: heavy as HeavyPlanet, score: parseFloat(score.toFixed(2)), hits, angular });
+    results.push({ planet: target as CautionPlanet, score: parseFloat(score.toFixed(2)), hits, angular });
   }
 
   return results.sort((a, b) => b.score - a.score);

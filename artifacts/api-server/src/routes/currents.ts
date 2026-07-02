@@ -8,7 +8,7 @@
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { computeNatalChart, computeTransitAspects, computePlanetarySensitivity, HEAVY_PLANETS } from "../lib/natal.js";
+import { computeNatalChart, computeTransitAspects, computePlanetarySensitivity } from "../lib/natal.js";
 import { computeProfection, computeTransitsByHouse } from "../lib/currents.js";
 import { HOUSE_SYSTEMS, type HouseSystem } from "../lib/houses.js";
 
@@ -35,7 +35,7 @@ router.get("/currents", async (req, res) => {
     const transitsByHouse = computeTransitsByHouse(now, cusps);
 
     const transitAspects = computeTransitAspects(natal);
-    const SLOW_PLANETS = new Set<string>(HEAVY_PLANETS);
+    const SLOW_PLANETS = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
     const HARD_ASPECTS = new Set(["Conjunction", "Square", "Opposition"]);
 
     // Major transits — significant aspects the slow (chapter-defining) planets are
@@ -58,23 +58,21 @@ router.get("/currents", async (req, res) => {
         likelyDomains: t.likelyDomains,
       }));
 
-    // Planetary sensitivity — a personal diagnosis of which heavy planets tend to
-    // land hardest for THIS chart (natal hard-aspects + angularity), computed once
-    // from the chart already on file. "Caution Periods" premium feature.
+    // Planetary sensitivity — a natal-chart HINT (not the diagnosis) covering all
+    // ten planets, since any planet can be a personal trigger. The frontend uses
+    // this to pre-suggest likely answers in a questionnaire; the actual "which
+    // planets are hard for you" call is self-reported by the user and stored
+    // client-side, not decided here.
     const sensitivity = computePlanetarySensitivity(natal);
-    const topSensitivityPlanets = new Set(
-      sensitivity.filter((s) => s.score >= 3).slice(0, 2).map((s) => s.planet),
-    );
 
-    // Caution windows — currently-active hard aspects from a heavy planet to a
-    // natal point, i.e. the actual "caution" moments (not just any major transit —
-    // trines/sextiles from these same planets are supportive, not cautionary).
-    // Flagged when the transiting planet matches the chart's own top sensitivity
-    // planets, since that's when a caution window is most likely to actually bite.
+    // Caution windows — currently-active hard aspects from ANY planet to a natal
+    // point (not trines/sextiles, which are supportive not cautionary). Covers
+    // all ten planets; the frontend flags which ones match the user's own
+    // self-reported sensitivities.
     const cautionWindows = transitAspects
-      .filter((t) => SLOW_PLANETS.has(t.transitPlanet) && HARD_ASPECTS.has(t.aspect) && t.severity !== "mild")
+      .filter((t) => HARD_ASPECTS.has(t.aspect) && t.severity !== "mild")
       .sort((a, b) => (a.exact === b.exact ? a.orb - b.orb : a.exact ? -1 : 1))
-      .slice(0, 8)
+      .slice(0, 12)
       .map((t) => ({
         transitPlanet: t.transitPlanet,
         aspect: t.aspect,
@@ -84,7 +82,6 @@ router.get("/currents", async (req, res) => {
         orb: t.orb,
         exact: t.exact,
         severity: t.severity,
-        matchesSensitivity: topSensitivityPlanets.has(t.transitPlanet as any),
       }));
 
     return res.json({

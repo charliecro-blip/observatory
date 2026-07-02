@@ -4,12 +4,14 @@ import {
   saveProfile,
   saveLocation,
   saveChronotype,
+  saveCautionPlanets,
   createProfile,
   clearProfile,
   DEFAULT_TESTER_ID,
   DEFAULT_TESTER_NAME,
   type TesterProfile,
   type Chronotype,
+  type CautionPlanet,
 } from "@/lib/tester-profile";
 
 interface TesterContextValue {
@@ -24,6 +26,7 @@ interface TesterContextValue {
   createAndApply: (displayName: string) => TesterProfile;
   updateLocation: (lat: number, lon: number, label: string) => void;
   updateChronotype: (chronotype: Chronotype) => void;
+  updateCautionPlanets: (planets: CautionPlanet[]) => void;
   resetProfile: () => void;
 }
 
@@ -52,6 +55,11 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const updateChronotype = useCallback((chronotype: Chronotype) => {
     saveChronotype(chronotype);
     setProfile(p => p ? { ...p, chronotype } : p);
+  }, []);
+
+  const updateCautionPlanets = useCallback((cautionPlanets: CautionPlanet[]) => {
+    saveCautionPlanets(cautionPlanets);
+    setProfile(p => p ? { ...p, cautionPlanets } : p);
   }, []);
 
   const applyProfile = useCallback((p: TesterProfile) => {
@@ -96,6 +104,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         createAndApply,
         updateLocation,
         updateChronotype,
+        updateCautionPlanets,
         resetProfile,
       }}
     >

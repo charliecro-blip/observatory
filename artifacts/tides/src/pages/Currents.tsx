@@ -1,18 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useCurrents } from "@/hooks/useTides";
 import { HOUSE_MEANINGS, PLANET_MODES, PROFECTION_GUIDANCE, composePlacement } from "@/lib/currents-content";
 import { PremiumGate } from "@/components/PremiumGate";
-
-// Mirrors HEAVY_PLANET_ARCHETYPE in artifacts/api-server/src/lib/natal.ts — kept
-// as a small local display map rather than sharing a type across the API
-// boundary for one lookup table.
-const HEAVY_PLANET_ARCHETYPE: Record<string, { label: string; feel: string }> = {
-  Uranus:  { label: "Disruptive",     feel: "sudden shifts, things breaking from routine, feeling knocked off course" },
-  Neptune: { label: "Hazy / diffuse", feel: "fog, low motivation, sleepiness, things feeling unclear or hard to pin down" },
-  Saturn:  { label: "Heavy",          feel: "weight, restriction, anxiety, a sense of being tested or held back" },
-  Pluto:   { label: "Intense",        feel: "high stakes, power struggles, things feeling scarier or more consequential than usual" },
-  Jupiter: { label: "Excess",         feel: "overdoing it — overcommitting, overspending, overindulging" },
-};
+import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
+import { useTester } from "@/contexts/tester-context";
+import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 
 const PLANET_GLYPH: Record<string, string> = {
   Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
@@ -48,6 +40,9 @@ export default function Currents({ testerId }: { testerId: string | null }) {
 function CurrentsContent({ testerId }: { testerId: string | null }) {
   const houseSystem = houseSystemPref();
   const { data, isLoading } = useCurrents(testerId, houseSystem);
+  const { profile } = useTester();
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const cautionPlanets = profile?.cautionPlanets;
 
   if (isLoading) {
     return <div style={{ padding: 40, color: "#999", fontSize: 13 }}>Reading the long currents…</div>;
@@ -73,7 +68,6 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
   const sensitivity: any[] = data.sensitivity ?? [];
   const cautionWindows: any[] = data.cautionWindows ?? [];
   const profHouse = HOUSE_MEANINGS[prof?.house];
-  const topSensitivityMax = sensitivity[0]?.score || 1;
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px" }}>
@@ -112,46 +106,49 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           </div>
         )}
 
-        {/* Caution Periods — planetary sensitivity diagnosis. Which heavy planets
-            tend to land hardest for this chart, computed from natal hard-aspects
-            + angularity, not a generic reading. */}
-        {sensitivity.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 4 }}>
+        {/* Caution Periods — self-reported planetary sensitivity, not a silent
+            natal-chart verdict. Any planet can be a personal trigger; the chart
+            only pre-suggests likely answers in the questionnaire. */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
               Caution periods · your sensitivity
             </div>
-            <div style={{ fontSize: 11, color: "#999", marginBottom: 10, lineHeight: 1.5 }}>
-              Which planetary archetypes tend to hit you hardest, based on your chart — not a generic transit reading.
-            </div>
+            {cautionPlanets && cautionPlanets.length > 0 && (
+              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 9.5, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                Edit
+              </button>
+            )}
+          </div>
+          {cautionPlanets && cautionPlanets.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {sensitivity.map((s) => {
-                const arch = HEAVY_PLANET_ARCHETYPE[s.planet];
-                const pct = Math.max(4, Math.round((s.score / (topSensitivityMax || 1)) * 100));
-                const isPrimary = s.score >= 3 && sensitivity.indexOf(s) < 2;
+              {cautionPlanets.map((p) => {
+                const arch = CAUTION_PLANET_ARCHETYPE[p];
                 return (
-                  <div key={s.planet} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: s.hits?.length ? 5 : 0 }}>
-                      <span style={{ fontSize: 14 }}>{PLANET_GLYPH[s.planet]}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{s.planet}</span>
-                      <span style={{ fontSize: 10, color: "#999" }}>· {arch?.label}</span>
-                      {isPrimary && <span style={{ fontSize: 8, background: "#a0404018", color: "#a04040", padding: "1px 6px", borderRadius: 4, fontWeight: 600, marginLeft: "auto" }}>PRIMARY</span>}
+                  <div key={p} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 16 }}>{PLANET_GLYPH[p]}</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{p} <span style={{ color: "#999", fontWeight: 400 }}>· {arch?.label}</span></div>
+                      <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch?.feel}</div>
                     </div>
-                    <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, overflow: "hidden", marginBottom: 5 }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: "#a04040", opacity: 0.6, borderRadius: 2 }} />
-                    </div>
-                    {s.hits?.length > 0 ? (
-                      <div style={{ fontSize: 10, color: "#888", lineHeight: 1.5 }}>
-                        {s.hits.map((h: any, i: number) => `${h.aspect} your natal ${h.personalPoint} (${h.orb}°)`).join(" · ")}
-                        {s.angular && " · angular"}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 10, color: "#bbb" }}>No tight natal aspects — {arch?.feel}</div>
-                    )}
                   </div>
                 );
               })}
             </div>
-          </div>
+          ) : (
+            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+                Which planetary archetypes tend to hit you hardest? Any planet can be a personal trigger — this is self-reported, not computed for you.
+              </div>
+              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 11.5, padding: "7px 16px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
+                Take the questionnaire
+              </button>
+            </div>
+          )}
+        </div>
+
+        {showQuestionnaire && (
+          <CautionQuestionnaireModal sensitivity={sensitivity} onClose={() => setShowQuestionnaire(false)} />
         )}
 
         {/* Active chapters — outer planets by house */}
@@ -229,22 +226,29 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
 
         {/* Caution windows — currently-active HARD aspects from a heavy planet to
             a natal point (not trines/sextiles, which are supportive not cautionary).
-            Flagged when it matches the chart's own top sensitivity planets. */}
-        {cautionWindows.length > 0 && (
+            Flagged when it matches the planets the user self-reported above —
+            computed client-side, since the self-report lives in the tester
+            profile, not on the server. */}
+        {cautionWindows.length > 0 && (() => {
+          const withMatch = cautionWindows.map((t) => ({ t, matches: !!cautionPlanets?.includes(t.transitPlanet) }));
+          const ranked = cautionPlanets && cautionPlanets.length > 0
+            ? [...withMatch.filter((x) => x.matches), ...withMatch.filter((x) => !x.matches)]
+            : withMatch;
+          return (
           <div>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
               Caution windows · active now
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {cautionWindows.map((t, i) => {
+              {ranked.map(({ t, matches }, i) => {
                 const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
                 const aspLower = (t.aspect ?? "").toLowerCase();
-                const arch = HEAVY_PLANET_ARCHETYPE[t.transitPlanet];
+                const arch = CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE];
                 return (
                   <div key={i} style={{
-                    background: t.matchesSensitivity ? "#a0404008" : "var(--color-card)",
-                    border: t.matchesSensitivity ? "1px solid #a0404040" : "1px solid var(--color-border)",
-                    borderLeft: t.matchesSensitivity ? "3px solid #a04040" : "1px solid var(--color-border)",
+                    background: matches ? "#a0404008" : "var(--color-card)",
+                    border: matches ? "1px solid #a0404040" : "1px solid var(--color-border)",
+                    borderLeft: matches ? "3px solid #a04040" : "1px solid var(--color-border)",
                     borderRadius: 10, padding: "10px 14px",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -264,7 +268,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                         <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600 }}>
                           {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
                         </div>
-                        {t.matchesSensitivity && (
+                        {matches && (
                           <div style={{ fontSize: 8, color: "#a04040", fontWeight: 600 }}>your caution planet</div>
                         )}
                       </div>
@@ -274,7 +278,8 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
               })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Chapter timeline — when the next boundary lands */}
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px" }}>
