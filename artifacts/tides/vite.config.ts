@@ -12,6 +12,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
+  publicDir: false,
   build: {
     outDir: path.resolve(import.meta.dirname, "public"),
     emptyOutDir: true,
