@@ -8,6 +8,10 @@ export const WINDOW_TYPES = [
 export const GOAL_HORIZONS = ["near", "mid", "long"] as const;
 export const PROJECT_PRIORITIES = ["low", "medium", "high"] as const;
 
+// Elements a North Star goal can be tagged with — one chief focus per element
+// encourages spreading the 1-3 active North Stars across different life domains.
+export const GOAL_ELEMENTS = ["fire", "earth", "air", "water"] as const;
+
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
@@ -15,6 +19,9 @@ export const goals = pgTable("goals", {
   description: text("description"),
   horizon: text("horizon"), // near | mid | long
   status: text("status").notNull().default("active"), // active | paused | completed | archived
+  isNorthStar: boolean("is_north_star").notNull().default(false), // chief aim — max 3 active at once
+  element: text("element"), // fire | earth | air | water — the domain this goal lives in
+  northStarSince: timestamp("north_star_since", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -43,14 +50,21 @@ export const milestones = pgTable("milestones", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// A planning window doubles as a "session" when linked to a goal: scheduled ahead
+// of time (goalId + startTime/endTime set by the user), or logged ad-hoc after the
+// fact (adHoc: true, completedAt set at creation) — the game-system-lite of North
+// Stars without a separate table.
 export const planningWindows = pgTable("planning_windows", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
   projectId: integer("project_id"), // nullable FK to projects
+  goalId: integer("goal_id"), // nullable FK to goals — set when this is a North Star session
   title: text("title").notNull(),
   windowType: text("window_type").notNull().default("deep_work"),
   startTime: timestamp("start_time", { withTimezone: true }).notNull(),
   endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }), // null = scheduled, not yet done
+  adHoc: boolean("ad_hoc").notNull().default(false), // logged outside the schedule
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -83,6 +97,7 @@ export const habits = pgTable("habits", {
   favoredPhases: text("favored_phases"),     // comma-separated: waxing,full
   favoredBiodynamic: text("favored_biodynamic"), // comma-separated: leaf,root
   bestWindowType: text("best_window_type"),  // deep_work | social | etc.
+  minimumViable: text("minimum_viable"),     // smallest version on a hard day
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -102,6 +117,27 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   endpoint: text("endpoint").notNull(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
+  lat: text("lat"),
+  lon: text("lon"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Menstrual cycle tracking
+export const cycleTracking = pgTable("cycle_tracking", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  cycleStartDate: text("cycle_start_date").notNull(), // YYYY-MM-DD of most recent cycle day 1
+  cycleLength: integer("cycle_length").notNull().default(28),
+  lutealLength: integer("luteal_length").notNull().default(14),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export type CycleTracking = typeof cycleTracking.$inferSelect;
+
+export const daemonMemory = pgTable("daemon_memory", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  content: text("content").notNull(),
+  source: text("source").notNull().default("advisor"), // advisor | journal | reflection
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -113,3 +149,4 @@ export type Task = typeof tasks.$inferSelect;
 export type Habit = typeof habits.$inferSelect;
 export type HabitLog = typeof habitLogs.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type DaemonMemory = typeof daemonMemory.$inferSelect;

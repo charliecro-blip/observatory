@@ -15,6 +15,8 @@ import { db } from "@workspace/db";
 import { natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
+import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide.js";
+import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 
 const router: IRouter = Router();
 
@@ -100,7 +102,10 @@ router.get("/tides/now", async (req, res) => {
   const elemEmph       = getDailyElementEmphasis(jd);
   const planHour       = getPlanetaryHour(date, lat, lon);
   const retrogrades    = planets.filter((p) => p.retrograde).map((p) => p.planet);
-  const aspects        = getMajorAspects(jd);
+  const INNER_PLANETS = new Set(["Sun", "Moon", "Mercury", "Venus", "Mars"]);
+  const allAspects     = getMajorAspects(jd);
+  // Filter out outer-planet-only pairs — they stay in orb for months and feel stale
+  const aspects        = allAspects.filter(a => INNER_PLANETS.has(a.planet1) || INNER_PLANETS.has(a.planet2));
   const localAngles    = getLocalAngles(jd, lat, lon);
   const angularPlanets = getAngularPlanets(jd, lat, lon);
   const lastMoonAspect = getLastMoonAspect(jd);
@@ -156,6 +161,22 @@ router.get("/tides/now", async (req, res) => {
     score >= 2 ? "workable" :
     score >= -1 ? "mixed" : "avoid_if_possible";
 
+  // ── Tide state (Character / Energy / Trend / Coherence axes) ────────────────
+  const personalHardTransit = personalTransits.some(
+    (t) => (t.aspect === "square" || t.aspect === "opposition") &&
+           (t.severity === "strong" || t.severity === "major"),
+  );
+  const tide = computeTide({
+    moonSign,
+    illumination: fraction,
+    phaseName: moonPhaseName,
+    voc,
+    moonAspects: moonAspects.map((a): TideAspectLite => ({ nature: a.nature, applying: a.applying, orb: a.orb })),
+    angularCount: angularPlanets.length,
+    hourElement: PLANET_TO_ELEMENT[planHour.ruler] ?? "air",
+    personalHardTransit,
+  });
+
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
   const dayRuler = DAY_RULERS[date.getDay()];
 
@@ -175,6 +196,19 @@ router.get("/tides/now", async (req, res) => {
       }
     }
   }
+
+  // Rhythm risk: VOC + low quality + hard Moon-to-disruptive-natal-planet aspects
+  const DISRUPTIVE_NATAL = new Set(["Saturn", "Uranus", "Pluto", "Mars"]);
+  const natalDisruption = personalTransits.filter(t =>
+    t.transitPlanet === "Moon" &&
+    (t.aspect === "square" || t.aspect === "opposition") &&
+    DISRUPTIVE_NATAL.has(t.natalPlanet)
+  );
+  const rhythmRiskFactors: string[] = [];
+  if (voc) rhythmRiskFactors.push("Moon void of course");
+  if (score <= 1) rhythmRiskFactors.push("low overall quality");
+  if (natalDisruption.length > 0) rhythmRiskFactors.push(`Moon ${natalDisruption[0].aspect} natal ${natalDisruption[0].natalPlanet}`);
+  const rhythmRisk = rhythmRiskFactors.length >= 2;
 
   res.json({
     timestamp: date.toISOString(),
@@ -217,6 +251,10 @@ router.get("/tides/now", async (req, res) => {
       ? "The Moon is between signs. This is not the cleanest window for beginning something that needs momentum. It may be better for tending what is already in motion, resting, reviewing, or clearing loose ends."
       : elemQuality.invitation,
     personalTransits,
+    rhythmRisk,
+    rhythmRiskFactors,
+    tide,
+    dayArc: computeDayArc(date, lat, lon),
   });
 });
 
@@ -258,6 +296,8 @@ router.get("/tides/week", (req, res) => {
     bestFor: string[];
     tone: string;
     crossings: Array<{ planet: string; angle: string; time: string; type: string }>;
+    moonAspects: Array<{ planet: string; aspect: string; applying: boolean; orb: number }>;
+    tide: ReturnType<typeof computeTide>;
   }> = [];
 
   for (let d = 0; d < numDays; d++) {
@@ -301,6 +341,19 @@ router.get("/tides/week", (req, res) => {
       fire: "fruit", earth: "root", air: "flower", water: "leaf", spirit: "rest",
     };
 
+    // Moon aspects at noon (used for tide trend/coherence)
+    const noonMoonAspects = getMajorAspects(noonJd).filter(a => a.planet1 === "Moon" || a.planet2 === "Moon");
+    const noonHour = getPlanetaryHour(new Date(dayMs + 12 * 3600000), lat, lon);
+    const dayTide = computeTide({
+      moonSign: moonSignNoon,
+      illumination: fraction,
+      phaseName: phaseName,
+      voc: hasVoc,
+      moonAspects: noonMoonAspects.map((a): TideAspectLite => ({ nature: a.nature, applying: a.applying, orb: a.orb })),
+      angularCount: 0,
+      hourElement: PLANET_TO_ELEMENT[noonHour.ruler] ?? "air",
+    });
+
     // Angular crossings for this day — significant planets at ASC/MC only
     const dayStartJd = julianDay(new Date(dayMs));
     const rawCrossings = getNextAngularCrossings(dayStartJd, lat, lon, 40, 24)
@@ -312,10 +365,12 @@ router.get("/tides/week", (req, res) => {
       });
     const crossings = rawCrossings.map((c) => {
       const ct = new Date(c.crossingTime);
+      const hh = String(ct.getUTCHours()).padStart(2, "0");
+      const mm = String(ct.getUTCMinutes()).padStart(2, "0");
       return {
         planet: c.planet,
         angle:  c.angle,
-        time:   ct.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+        time:   `${hh}:${mm}`,
         type:   c.benefic ? "benefic" : c.malefic ? "malefic" : "neutral",
       };
     });
@@ -347,6 +402,7 @@ router.get("/tides/week", (req, res) => {
       tone: WEEK_ELEMENT_TONES[element] ?? WEEK_ELEMENT_TONES.water,
       crossings,
       moonAspects: noonAspects,
+      tide: dayTide,
     });
   }
 
@@ -364,6 +420,48 @@ router.get("/tides/week", (req, res) => {
   }[weekEl] ?? "";
 
   res.json({ weekOf: days[0]?.date, days, weekTone, weekElement: weekEl });
+});
+
+// ── /api/tides/best-times ───────────────────────────────────────────────────
+// "When should I work out / study / rest this week?" — scans a lens curve across
+// the next N days and returns the highest-energy windows for that lens.
+
+const BEST_TIMES_LABEL: Record<string, string> = {
+  overall: "a resonant window", focus: "focused, heads-down work", body: "movement or a workout",
+  connect: "conversation and connection", rest: "rest and recovery",
+};
+
+router.get("/tides/best-times", (req, res) => {
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const lens = (req.query.lens as string) ?? "overall";
+  const days = Math.min(14, Math.max(1, parseInt((req.query.days as string) ?? "7", 10)));
+  const topPerDay = Math.max(1, Math.min(3, parseInt((req.query.perDay as string) ?? "1", 10)));
+
+  const today = new Date();
+  const results: Array<{ date: string; startClock: string; endClock: string; peakE: number; label: string }> = [];
+
+  for (let d = 0; d < days; d++) {
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+    const arc = computeDayArc(day, lat, lon);
+    const curve = arc.curves[lens] ?? arc.curve;
+    const peaks = findPeakWindows(curve, topPerDay, 3);
+    const dayStart = new Date(arc.dayStart).getTime();
+    for (const p of peaks) {
+      const start = new Date(dayStart + p.startHour * 3600000);
+      const end = new Date(dayStart + p.endHour * 3600000);
+      results.push({
+        date: day.toISOString().slice(0, 10),
+        startClock: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        endClock: end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        peakE: parseFloat(p.peakE.toFixed(3)),
+        label: BEST_TIMES_LABEL[lens] ?? "a good window",
+      });
+    }
+  }
+
+  results.sort((a, b) => b.peakE - a.peakE);
+  res.json({ lens, days, windows: results.slice(0, 8) });
 });
 
 // ── /api/tides/windows ─────────────────────────────────────────────────────

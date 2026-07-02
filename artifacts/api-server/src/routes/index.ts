@@ -21,6 +21,12 @@ import tasksRouter from "./tasks";
 import habitsRouter from "./habits";
 import icalRouter from "./ical";
 import pushRouter from "./push";
+import googleCalRouter from "./googleCal";
+import adviseRouter from "./advise";
+import daemonMemoryRouter from "./daemonMemory";
+import cycleRouter from "./cycle";
+import exportIcalRouter from "./exportIcal";
+import currentsRouter from "./currents";
 
 const router: IRouter = Router();
 
@@ -46,5 +52,11 @@ router.use(tasksRouter);
 router.use(habitsRouter);
 router.use(icalRouter);
 router.use(pushRouter);
+router.use(googleCalRouter);
+router.use(adviseRouter);
+router.use(daemonMemoryRouter);
+router.use(cycleRouter);
+router.use(exportIcalRouter);
+router.use(currentsRouter);
 
 export default router;

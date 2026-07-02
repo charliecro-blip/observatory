@@ -4,6 +4,7 @@
  */
 
 import { julianDay, getPlanetPositions, sunLongitude, moonLongitude } from "./astro.js";
+import { computeCusps, assignHouse, type HouseSystem } from "./houses.js";
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -64,9 +65,11 @@ function computeRAMC(jd: number, lonDeg: number): number {
 }
 
 function computeMC(ramc: number, eps: number): number {
+  // Robust form: sin/cos of RAMC (not tan) preserves the quadrant.
+  // The tan() form silently returns MC±180° for RAMC in (90°, 270°).
   const ramcRad = ramc * DEG2RAD;
   const epsRad = eps * DEG2RAD;
-  const mc = Math.atan2(Math.tan(ramcRad), Math.cos(epsRad)) * RAD2DEG;
+  const mc = Math.atan2(Math.sin(ramcRad), Math.cos(ramcRad) * Math.cos(epsRad)) * RAD2DEG;
   return normalize360(mc);
 }
 
@@ -79,93 +82,6 @@ function computeASC(ramc: number, eps: number, lat: number): number {
   // atan2(-cos, denom) gives the Descendant; add 180° to obtain the true Ascendant.
   const asc = Math.atan2(numerator, denominator) * RAD2DEG + 180;
   return normalize360(asc);
-}
-
-// ── Regiomontanus house cusps ─────────────────────────────────────────────────
-
-/**
- * Compute the 12 Regiomontanus house cusp longitudes.
- * Returns an array indexed 0–11 where index 0 = cusp of house 1 (ASC), index 9 = cusp of house 10 (MC).
- *
- * Regiomontanus divides the celestial equator into 12 equal 30° arcs anchored at
- * the RAMC, then projects each node onto the ecliptic via great circles through
- * the north/south points of the horizon.
- *
- * Intermediate cusp formula (Regiomontanus):
- *   tan(λ) = sin(θ) / (cos(θ)·cos(ε) − tan(φ)·sin(ε))
- * where θ = RAMC + offset (equatorial position), ε = obliquity, φ = latitude.
- */
-function computeRegiomontanusHouseCusps(ramc: number, eps: number, lat: number): number[] {
-  const latRad = lat * DEG2RAD;
-  const epsRad = eps * DEG2RAD;
-
-  function regioCusp(theta: number): number {
-    const tRad = normalize360(theta) * DEG2RAD;
-    const num = Math.sin(tRad);
-    const den = Math.cos(tRad) * Math.cos(epsRad) - Math.tan(latRad) * Math.sin(epsRad);
-    return normalize360(Math.atan2(num, den) * RAD2DEG);
-  }
-
-  const mc  = computeMC(ramc, eps);
-  const asc = computeASC(ramc, eps, lat);
-  const ic  = normalize360(mc + 180);
-  const dsc = normalize360(asc + 180);
-
-  const cusp11 = regioCusp(ramc + 30);
-  const cusp12 = regioCusp(ramc + 60);
-  // house 1 = ASC (computed directly)
-  const cusp2  = regioCusp(ramc + 120);
-  const cusp3  = regioCusp(ramc + 150);
-
-  // Opposite cusps for lower hemisphere
-  const cusp5  = normalize360(cusp11 + 180);
-  const cusp6  = normalize360(cusp12 + 180);
-  const cusp8  = normalize360(cusp2  + 180);
-  const cusp9  = normalize360(cusp3  + 180);
-
-  return [
-    asc,    // house 1
-    cusp2,  // house 2
-    cusp3,  // house 3
-    ic,     // house 4
-    cusp5,  // house 5
-    cusp6,  // house 6
-    dsc,    // house 7
-    cusp8,  // house 8
-    cusp9,  // house 9
-    mc,     // house 10
-    cusp11, // house 11
-    cusp12, // house 12
-  ];
-}
-
-/**
- * Determine which Regiomontanus house (1–12) a planet at `longitude` falls in.
- *
- * Regiomontanus cusps are NOT in zodiacal order by house number, so we must
- * sort them zodiacally first, find which zodiacal slot the planet falls in,
- * and return the original house number for that slot.
- */
-function findHouseRegiomontanus(longitude: number, cusps: number[]): number {
-  const lon = normalize360(longitude);
-
-  // Sort {houseNumber, cusp} pairs by cusp zodiacal longitude
-  const sorted = cusps
-    .map((cusp, idx) => ({ house: idx + 1, cusp }))
-    .sort((a, b) => a.cusp - b.cusp);
-
-  for (let i = 0; i < 12; i++) {
-    const start = sorted[i].cusp;
-    const end   = sorted[(i + 1) % 12].cusp;
-
-    if (end > start) {
-      if (lon >= start && lon < end) return sorted[i].house;
-    } else {
-      // Slot spans the 0°/360° boundary
-      if (lon >= start || lon < end) return sorted[i].house;
-    }
-  }
-  return 1;
 }
 
 // ── Natal chart computation ────────────────────────────────────────────────────
@@ -199,6 +115,7 @@ export function computeNatalChart(
   birthLat: number,
   birthLon: number,
   utcOffset: number,
+  houseSystem: HouseSystem = "regiomontanus",
 ): ComputedNatalChart {
   // Build UTC datetime
   // UTC offset only shifts the hour; minutes remain the same.
@@ -217,8 +134,8 @@ export function computeNatalChart(
   const ascSign = longitudeToSign(ascLon);
   const mcSign = longitudeToSign(mcLon);
 
-  // Regiomontanus house cusps
-  const cuspLongitudes = computeRegiomontanusHouseCusps(ramc, eps, birthLat);
+  // House cusps for the requested system
+  const cuspLongitudes = computeCusps(houseSystem, { ascLon, mcLon, ramc, eps, lat: birthLat });
 
   const houses: HouseData[] = cuspLongitudes.map((cuspLon, h) => ({
     number: h + 1,
@@ -231,7 +148,7 @@ export function computeNatalChart(
   const rawPlanets = getPlanetPositions(jd);
   const natalPlanets: NatalPlanet[] = rawPlanets.map((p) => {
     const lonFull = (SIGNS.indexOf(p.sign) * 30) + p.degree;
-    const houseNumber = findHouseRegiomontanus(lonFull, cuspLongitudes);
+    const houseNumber = assignHouse(lonFull, cuspLongitudes);
     return {
       planet: p.planet,
       sign: p.sign,

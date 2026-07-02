@@ -254,8 +254,19 @@ export function getHealthInfluences(planets: ReturnType<typeof getPlanetPosition
 
 // ── Void-of-course Moon ───────────────────────────────────────────────────────
 
-const VOC_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
+const VOC_PLANETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
 const MAJOR_ASPECTS = [0, 60, 90, 120, 180];
+
+/** Signed 0..180 separation between two ecliptic longitudes. */
+function sep180(a: number, b: number): number {
+  const d = Math.abs(normalize360(a - b));
+  return d > 180 ? 360 - d : d;
+}
+
+/** Geocentric longitude for any classical body, including the Sun. */
+function bodyLongitude(name: string, jd: number): number {
+  return name === "Sun" ? normalize360(sunLongitude(jd)) : geocentricLongitude(name, jd);
+}
 
 /** Nearest major-aspect separation in degrees between two longitudes. */
 function nearestAspectDiff(a: number, b: number): number {
@@ -271,27 +282,34 @@ function nearestAspectDiff(a: number, b: number): number {
  * before it exits its current sign.  Steps forward in 2-hour increments.
  */
 export function voidOfCourse(jd: number): { voc: boolean } {
-  const moonLon  = normalize360(moonLongitude(jd));
-  const degLeft  = 30 - (moonLon % 30);           // degrees until sign change
-  const daysLeft = degLeft / 13.2;                 // Moon moves ~13.2°/day
-  const STEP     = 2 / 24;                         // 2-hour steps
-  const ORB      = 8;                              // degrees of orb
+  // Traditional rule: the Moon is void if it perfects NO further major aspect to a
+  // classical planet before it leaves its current sign. The key is *perfection*
+  // (the separation passes exactly through an aspect angle) BEFORE the ingress —
+  // an aspect that only completes after the sign change does not count.
+  const moonLon0 = normalize360(moonLongitude(jd));
+  const sign0    = Math.floor(moonLon0 / 30);
+  const degLeft  = 30 - (moonLon0 % 30);
+  const daysLeft = degLeft / 13.0;                 // Moon ~13°/day
+  const STEP     = 0.25 / 24;                       // 15-minute steps
+
+  // Seed previous separations
+  const prevSep: Record<string, number> = {};
+  for (const name of VOC_PLANETS) prevSep[name] = sep180(moonLon0, bodyLongitude(name, jd));
 
   for (let dt = STEP; dt <= daysLeft + STEP; dt += STEP) {
-    const checkJd  = jd + dt;
-    const checkMoon = normalize360(moonLongitude(checkJd));
-    const prevMoon  = normalize360(moonLongitude(checkJd - STEP));
-
-    // If Moon changed sign, stop
-    if (Math.floor(checkMoon / 30) !== Math.floor(prevMoon / 30)) break;
+    const cj    = jd + dt;
+    const mLon  = normalize360(moonLongitude(cj));
+    if (Math.floor(mLon / 30) !== sign0) break;    // reached ingress — stop
 
     for (const name of VOC_PLANETS) {
-      const pLon = geocentricLongitude(name, checkJd);
-      const pPrev = geocentricLongitude(name, checkJd - STEP);
-      const currDiff = nearestAspectDiff(checkMoon, pLon);
-      const prevDiff = nearestAspectDiff(prevMoon, pPrev);
-      // Applying: gap is shrinking AND within orb
-      if (currDiff < prevDiff && currDiff < ORB) return { voc: false };
+      const sepNow = sep180(mLon, bodyLongitude(name, cj));
+      for (const A of MAJOR_ASPECTS) {
+        // Perfection = (sep - A) changes sign between steps, i.e. crosses the aspect exactly.
+        if ((prevSep[name] - A) * (sepNow - A) <= 0 && Math.abs(prevSep[name] - sepNow) < 3) {
+          return { voc: false };
+        }
+      }
+      prevSep[name] = sepNow;
     }
   }
   return { voc: true };
@@ -443,6 +461,7 @@ export interface PlanetAspect {
   exactAngle: number;
   orb: number;      // degrees from exact
   applying: boolean;
+  hoursToExact: number | null;  // real time-to-perfection from this pair's actual closing speed
 }
 
 /**
@@ -474,6 +493,14 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
           const angleN = rawN > 180 ? 360 - rawN : rawN;
           const sepN   = Math.abs(angleN - def.angle);
 
+          // Real closing speed for THIS pair, from actual ephemeris motion over 1 hour.
+          // ratePerHour > 0 means the orb is shrinking (applying).
+          const ratePerHour = sep - sepN;
+          const applying = sepN < sep;
+          const hoursToExact = applying && ratePerHour > 1e-6
+            ? parseFloat((sep / ratePerHour).toFixed(1))
+            : null;
+
           aspects.push({
             planet1:    p1.planet,
             planet2:    p2.planet,
@@ -481,7 +508,8 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
             nature:     def.nature,
             exactAngle: def.angle,
             orb:        parseFloat(sep.toFixed(2)),
-            applying:   sepN < sep,
+            applying,
+            hoursToExact,
           });
           break; // one aspect per planet pair
         }
@@ -525,7 +553,7 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
     const orbs: number[] = [];
     for (let h = 0; h <= LOOKBACK; h++) {
       const t = startJd + h / 24;
-      orbs.push(nearestAspectDiff(moonLongitude(t), geocentricLongitude(name, t)));
+      orbs.push(nearestAspectDiff(moonLongitude(t), bodyLongitude(name, t)));
     }
 
     // Find local minima (perfection moments) — most recent wins
@@ -535,7 +563,7 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
           bestStepIndex = h;
           const t  = startJd + h / 24;
           const mLon = moonLongitude(t);
-          const pLon = geocentricLongitude(name, t);
+          const pLon = bodyLongitude(name, t);
           const raw  = normalize360(mLon - pLon);
           const ang  = raw > 180 ? 360 - raw : raw;
 

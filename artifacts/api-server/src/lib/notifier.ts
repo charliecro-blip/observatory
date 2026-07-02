@@ -24,10 +24,14 @@ async function tick() {
 
   const now = new Date();
   const jd = julianDay(now);
-  const lat = 40.7, lon = -74.0; // will be per-user once auth lands
 
-  // --- Planetary hour shift ---
+  // --- Planetary hour shift (per subscriber lat/lon) ---
   try {
+    // Use first subscriber's location (or NYC fallback) for the hour calculation;
+    // hour shifts are time-of-day based so nearby users share the same tick
+    const firstSub = subs[0];
+    const lat = firstSub?.lat ? parseFloat(firstSub.lat) : 40.7;
+    const lon = firstSub?.lon ? parseFloat(firstSub.lon) : -74.0;
     const ph = getPlanetaryHour(now, lat, lon);
     const secFromStart = (now.getTime() - ph.startTime.getTime()) / 1000;
     if (secFromStart < 90) {

@@ -24,7 +24,7 @@ router.post("/api/push/subscribe", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
 
-  const { endpoint, keys } = req.body ?? {};
+  const { endpoint, keys, lat, lon } = req.body ?? {};
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     res.status(400).json({ error: "Invalid subscription object" }); return;
   }
@@ -36,6 +36,8 @@ router.post("/api/push/subscribe", async (req, res) => {
     endpoint,
     p256dh: keys.p256dh,
     auth: keys.auth,
+    lat: lat != null ? String(lat) : null,
+    lon: lon != null ? String(lon) : null,
   });
 
   res.json({ ok: true });
@@ -47,6 +49,23 @@ router.post("/api/push/unsubscribe", async (req, res) => {
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
   await db.delete(pushSubscriptions).where(eq(pushSubscriptions.testerId, testerId));
   res.json({ ok: true });
+});
+
+// POST /api/push/test — send a test notification to this tester
+router.post("/api/push/test", async (req, res) => {
+  const testerId = req.headers["x-tester-id"] as string;
+  if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
+  if (!vapidPublic || !vapidPrivate) { res.status(503).json({ error: "Push not configured" }); return; }
+  try {
+    await sendPushToTester(testerId, {
+      title: "✦ Tides test notification",
+      body: "Push notifications are working. You'll get alerts for planetary hour shifts, VOC, and moon phases.",
+      tag: "test",
+    });
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Internal helper — exported for the notifier

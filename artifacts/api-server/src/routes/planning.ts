@@ -18,13 +18,14 @@ router.get("/planning/goals", requireTesterId, async (req, res) => {
 
 router.post("/planning/goals", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, description, horizon, status } = req.body;
+  const { title, description, horizon, status, element } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
   const [inserted] = await db.insert(goals).values({
     testerId, title: title.trim(),
     description: description ?? null,
     horizon: horizon ?? null,
     status: status ?? "active",
+    element: element ?? null,
   }).returning();
   res.status(201).json(inserted);
 });
@@ -34,13 +35,35 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
-  const { title, description, horizon, status } = req.body;
+  const { title, description, horizon, status, element } = req.body;
   const updates: Partial<typeof goals.$inferSelect> & { updatedAt: Date } = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
   if (horizon !== undefined) updates.horizon = horizon;
   if (status !== undefined) updates.status = status;
+  if (element !== undefined) updates.element = element;
   const [updated] = await db.update(goals).set(updates).where(eq(goals.id, id)).returning();
+  res.json(updated);
+});
+
+// Toggle North Star status. Enforces a max of 3 active North Stars — the whole
+// point is forced focus, not a second goals list.
+router.post("/planning/goals/:id/north-star", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const id = parseInt(req.params.id as string, 10);
+  const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
+  if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
+  const { on } = req.body as { on: boolean };
+  if (on) {
+    const current = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.isNorthStar, true)));
+    if (current.length >= 3 && !existing.isNorthStar) {
+      res.status(400).json({ error: "max_north_stars", message: "Only 3 North Stars at a time — retire one first." });
+      return;
+    }
+  }
+  const [updated] = await db.update(goals)
+    .set({ isNorthStar: !!on, northStarSince: on ? new Date() : null, updatedAt: new Date() })
+    .where(eq(goals.id, id)).returning();
   res.json(updated);
 });
 
@@ -155,11 +178,44 @@ router.delete("/planning/milestones/:id", requireTesterId, async (req, res) => {
   res.status(204).send();
 });
 
+// ── North Stars ───────────────────────────────────────────────────────────────
+
+// Active North Stars with this week's sessions (scheduled + completed + ad-hoc),
+// in one call — this is what the Now/Ahead surfaces render directly.
+router.get("/planning/north-stars", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const stars = await db.select().from(goals)
+    .where(and(eq(goals.testerId, testerId), eq(goals.isNorthStar, true), eq(goals.status, "active")))
+    .orderBy(desc(goals.northStarSince));
+
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+
+  const result = [];
+  for (const g of stars) {
+    const sessions = await db.select().from(planningWindows).where(and(
+      eq(planningWindows.testerId, testerId),
+      eq(planningWindows.goalId, g.id),
+      gte(planningWindows.startTime, weekStart),
+      lte(planningWindows.startTime, weekEnd),
+    )).orderBy(planningWindows.startTime);
+    result.push({
+      ...g,
+      sessionsThisWeek: sessions,
+      scheduledCount: sessions.filter(s => !s.adHoc).length,
+      completedCount: sessions.filter(s => !!s.completedAt).length,
+    });
+  }
+  res.json(result);
+});
+
 // ── Planning Windows ──────────────────────────────────────────────────────────
 
 router.get("/planning/windows", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const date = req.query.date as string | undefined; // YYYY-MM-DD filter for a specific day
+  const goalId = req.query.goalId ? parseInt(req.query.goalId as string, 10) : undefined;
   const conditions = [eq(planningWindows.testerId, testerId)];
   if (date) {
     const dayStart = new Date(date + "T00:00:00.000Z");
@@ -167,13 +223,14 @@ router.get("/planning/windows", requireTesterId, async (req, res) => {
     conditions.push(gte(planningWindows.startTime, dayStart));
     conditions.push(lte(planningWindows.startTime, dayEnd));
   }
+  if (goalId) conditions.push(eq(planningWindows.goalId, goalId));
   const rows = await db.select().from(planningWindows).where(and(...conditions)).orderBy(planningWindows.startTime);
   res.json(rows);
 });
 
 router.post("/planning/windows", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, windowType, startTime, endTime, projectId, notes } = req.body;
+  const { title, windowType, startTime, endTime, projectId, goalId, notes, adHoc } = req.body;
   if (!title?.trim() || !startTime || !endTime) {
     res.status(400).json({ error: "title, startTime, and endTime are required" }); return;
   }
@@ -183,7 +240,10 @@ router.post("/planning/windows", requireTesterId, async (req, res) => {
     startTime: new Date(startTime),
     endTime: new Date(endTime),
     projectId: projectId ?? null,
+    goalId: goalId ?? null,
     notes: notes ?? null,
+    adHoc: !!adHoc,
+    completedAt: adHoc ? new Date() : null, // ad-hoc sessions are logged as already done
   }).returning();
   res.status(201).json(inserted);
 });
@@ -193,15 +253,29 @@ router.patch("/planning/windows/:id", requireTesterId, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const existing = (await db.select().from(planningWindows).where(and(eq(planningWindows.id, id), eq(planningWindows.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Window not found" }); return; }
-  const { title, windowType, startTime, endTime, projectId, notes } = req.body;
+  const { title, windowType, startTime, endTime, projectId, goalId, notes } = req.body;
   const updates: Partial<typeof planningWindows.$inferSelect> & { updatedAt: Date } = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title;
   if (windowType !== undefined) updates.windowType = windowType;
   if (startTime !== undefined) updates.startTime = new Date(startTime);
   if (endTime !== undefined) updates.endTime = new Date(endTime);
   if (projectId !== undefined) updates.projectId = projectId;
+  if (goalId !== undefined) updates.goalId = goalId;
   if (notes !== undefined) updates.notes = notes;
   const [updated] = await db.update(planningWindows).set(updates).where(eq(planningWindows.id, id)).returning();
+  res.json(updated);
+});
+
+// Mark a scheduled session complete (or un-complete it).
+router.post("/planning/windows/:id/complete", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const id = parseInt(req.params.id as string, 10);
+  const existing = (await db.select().from(planningWindows).where(and(eq(planningWindows.id, id), eq(planningWindows.testerId, testerId))).limit(1))[0] ?? null;
+  if (!existing) { res.status(404).json({ error: "Window not found" }); return; }
+  const done = req.body?.done !== false;
+  const [updated] = await db.update(planningWindows)
+    .set({ completedAt: done ? new Date() : null, updatedAt: new Date() })
+    .where(eq(planningWindows.id, id)).returning();
   res.json(updated);
 });
 

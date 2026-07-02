@@ -1,0 +1,341 @@
+/**
+ * Day-arc — the shape of a single day, not a snapshot.
+ *
+ * Scans the local day and produces:
+ *   - character segments split at Moon ingresses (Building → Clear at 2:30pm)
+ *   - VOC windows (from the last aspect perfected in a sign to the ingress out of it)
+ *   - timed Moon-aspect perfections (Moon trine Mars ~5:45pm)
+ *
+ * This is what lets the app say "steady/earthy + void this morning, then airy with
+ * afternoon trines" instead of collapsing the day into one reading.
+ */
+
+import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour } from "./astro.js";
+import { SIGN_TO_ELEMENT } from "./tide.js";
+
+const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const ELEMENT_CHAR: Record<string,string> = { fire:"surge", earth:"building", air:"clear", water:"deep" };
+const CHAR_LABEL: Record<string,string> = { surge:"Surge", building:"Building", clear:"Clear", deep:"Deep" };
+const ASPECTS: { angle: number; name: string }[] = [
+  { angle: 0, name: "conjunction" }, { angle: 60, name: "sextile" },
+  { angle: 90, name: "square" }, { angle: 120, name: "trine" }, { angle: 180, name: "opposition" },
+];
+const ASPECT_PLANETS = ["Sun","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"];
+
+const DEG2RAD = Math.PI / 180, RAD2DEG = 180 / Math.PI;
+function norm360(d: number) { return ((d % 360) + 360) % 360; }
+function sep180(a: number, b: number) { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; }
+
+// Greenwich mean sidereal time (degrees).
+function gmst(jd: number): number {
+  const T = (jd - 2451545.0) / 36525;
+  return norm360(280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * T * T);
+}
+
+const OBLIQ = 23.439291 * DEG2RAD;
+
+// Altitude (degrees) above the horizon of a body at ecliptic longitude `lonDeg`.
+function altitudeOf(lonDeg: number, jd: number, lat: number, lon: number): number {
+  const lambda = lonDeg * DEG2RAD;
+  const ra = Math.atan2(Math.sin(lambda) * Math.cos(OBLIQ), Math.cos(lambda)) * RAD2DEG;
+  const dec = Math.asin(Math.sin(OBLIQ) * Math.sin(lambda));
+  const ha = norm360(gmst(jd) + lon - ra) * DEG2RAD;
+  const latR = lat * DEG2RAD;
+  return Math.asin(Math.sin(latR) * Math.sin(dec) + Math.cos(latR) * Math.cos(dec) * Math.cos(ha)) * RAD2DEG;
+}
+function moonAltitude(jd: number, lat: number, lon: number) { return altitudeOf(moonLongitude(jd), jd, lat, lon); }
+function sunAltitude(jd: number, lat: number, lon: number) { return altitudeOf(sunLongitude(jd), jd, lat, lon); }
+function signOf(lon: number) { return SIGNS[Math.floor(norm360(lon) / 30) % 12]; }
+function charOf(sign: string) { const el = SIGN_TO_ELEMENT[sign] ?? "water"; return ELEMENT_CHAR[el] ?? "deep"; }
+
+function bodyLon(name: string, jd: number): number {
+  if (name === "Sun") return norm360(sunLongitude(jd));
+  const p = getPlanetPositions(jd).find(x => x.planet === name);
+  return p ? SIGNS.indexOf(p.sign) * 30 + p.degree : 0;
+}
+
+export interface DayArcEvent {
+  time: string;      // ISO
+  clock: string;     // "5:45 PM"
+  kind: "ingress" | "aspect";
+  label: string;
+  planet?: string;
+  aspect?: string;
+  past?: boolean;
+}
+
+export interface DayArcSegment {
+  start: string; end: string;
+  sign: string; character: string; characterLabel: string;
+  voc: boolean;
+}
+
+export interface DayArcCurvePoint {
+  t: string;       // ISO
+  hour: number;    // 0..24 local hour
+  e: number;       // energy 0..1
+  character: string;
+}
+
+export interface DayArc {
+  dayStart: string; dayEnd: string;
+  segments: DayArcSegment[];
+  events: DayArcEvent[];
+  vocWindows: { start: string; end: string }[];
+  curve: DayArcCurvePoint[];
+  curves: Record<string, DayArcCurvePoint[]>;
+  lenses: { key: string; label: string }[];
+  height: number;
+  heightFactors: { phase: number; activation: number; season: number; standing: number };
+}
+
+function clock(d: Date) { return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
+
+// Find the best (highest-energy) windows in a single day's lens curve — the
+// "when should I work out / study / rest today" query. Greedy peak-pick with a
+// minimum gap so we don't return five overlapping slices of the same swell.
+export interface PeakWindow { startHour: number; endHour: number; peakHour: number; peakE: number }
+export function findPeakWindows(curve: DayArcCurvePoint[], topN = 2, minGapHours = 3): PeakWindow[] {
+  const sorted = [...curve].sort((a, b) => b.e - a.e);
+  const picked: PeakWindow[] = [];
+  for (const p of sorted) {
+    if (picked.length >= topN) break;
+    if (picked.some(w => Math.abs(w.peakHour - p.hour) < minGapHours)) continue;
+    const threshold = p.e * 0.85;
+    let start = p.hour, end = p.hour;
+    for (const q of curve) {
+      if (q.e >= threshold && Math.abs(q.hour - p.hour) < minGapHours) {
+        start = Math.min(start, q.hour);
+        end = Math.max(end, q.hour);
+      }
+    }
+    picked.push({ startHour: start, endHour: end, peakHour: p.hour, peakE: p.e });
+  }
+  return picked.sort((a, b) => a.startHour - b.startHour);
+}
+
+export function computeDayArc(now: Date, _lat: number, _lon: number): DayArc {
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
+  const STEP_MS = 10 * 60000; // 10-minute resolution
+
+  // Precompute all VOC/aspect planet longitudes are cheap enough per step.
+  const ingresses: { t: Date; sign: string }[] = [];
+  const perfections: { t: Date; planet: string; aspect: string }[] = [];
+
+  let prevJd = julianDay(dayStart);
+  let prevMoon = norm360(moonLongitude(prevJd));
+  let prevSign = signOf(prevMoon);
+  const prevSep: Record<string, number> = {};
+  for (const p of ASPECT_PLANETS) prevSep[p] = sep180(prevMoon, bodyLon(p, prevJd));
+
+  for (let t = dayStart.getTime() + STEP_MS; t <= dayEnd.getTime(); t += STEP_MS) {
+    const d = new Date(t);
+    const jd = julianDay(d);
+    const mLon = norm360(moonLongitude(jd));
+    const sign = signOf(mLon);
+    if (sign !== prevSign) ingresses.push({ t: d, sign });
+    for (const p of ASPECT_PLANETS) {
+      const s = sep180(mLon, bodyLon(p, jd));
+      for (const A of ASPECTS) {
+        if ((prevSep[p] - A.angle) * (s - A.angle) <= 0 && Math.abs(prevSep[p] - s) < 4) {
+          perfections.push({ t: d, planet: p, aspect: A.name });
+          break;
+        }
+      }
+      prevSep[p] = s;
+    }
+    prevSign = sign; prevMoon = mLon; prevJd = jd;
+  }
+
+  // Build character segments split at ingresses
+  const boundaries: Date[] = [dayStart, ...ingresses.map(i => i.t), dayEnd];
+  const segments: DayArcSegment[] = [];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const s = boundaries[i], e = boundaries[i + 1];
+    const mid = new Date((s.getTime() + e.getTime()) / 2);
+    const sign = signOf(norm360(moonLongitude(julianDay(mid))));
+    const character = charOf(sign);
+    // VOC within this segment: from the last perfection inside it to the segment end (ingress).
+    const inSeg = perfections.filter(p => p.t >= s && p.t < e);
+    const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
+    // The whole tail from lastPerf → e (next ingress) is void, but only meaningful
+    // when the segment ends at a real ingress (not the day boundary).
+    const endsAtIngress = i < boundaries.length - 2;
+    segments.push({
+      start: s.toISOString(), end: e.toISOString(),
+      sign, character, characterLabel: CHAR_LABEL[character] ?? character,
+      voc: endsAtIngress && lastPerf.getTime() < e.getTime(),
+    });
+  }
+
+  // VOC windows (only where a segment ends at an ingress)
+  const vocWindows: { start: string; end: string }[] = [];
+  for (let i = 0; i < boundaries.length - 2; i++) {
+    const s = boundaries[i], e = boundaries[i + 1];
+    const inSeg = perfections.filter(p => p.t >= s && p.t < e);
+    const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
+    if (lastPerf.getTime() < e.getTime()) vocWindows.push({ start: lastPerf.toISOString(), end: e.toISOString() });
+  }
+
+  const events: DayArcEvent[] = [
+    ...ingresses.map(i => ({
+      time: i.t.toISOString(), clock: clock(i.t), kind: "ingress" as const,
+      label: `Moon enters ${i.sign}`, past: i.t < now,
+    })),
+    ...perfections.map(p => ({
+      time: p.t.toISOString(), clock: clock(p.t), kind: "aspect" as const,
+      label: `Moon ${p.aspect} ${p.planet}`, planet: p.planet, aspect: p.aspect, past: p.t < now,
+    })),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+
+  // ── HEIGHT: where the whole day's tide floats (one value for the day) ────────
+  // phase (moon/sun light) + cumulative aspect activation + season/daylight
+  // (hemisphere-aware) + standing non-lunar aspects.
+  const midJd = julianDay(new Date((dayStart.getTime() + dayEnd.getTime()) / 2));
+  const sunMid = sunLongitude(midJd), moonMid = moonLongitude(midJd);
+  const illum = (1 - Math.cos(norm360(moonMid - sunMid) * DEG2RAD)) / 2;   // 0..1
+
+  // Cumulative activation: how many planets the Moon is lighting up (10° orb).
+  let cluster = 0;
+  for (const p of ASPECT_PLANETS) {
+    const s = sep180(moonMid, bodyLon(p, midJd));
+    const near = Math.min(...[0, 60, 90, 120, 180].map(A => Math.abs(s - A)));
+    if (near <= 10) cluster += 1 - near / 10;
+  }
+  const clusterH = Math.min(1, cluster / 4);
+
+  // Season / daylight fraction at this latitude — flips in the S. hemisphere for free.
+  const decl = Math.asin(Math.sin(OBLIQ) * Math.sin(sunMid * DEG2RAD));
+  const cosH = Math.max(-1, Math.min(1, -Math.tan(_lat * DEG2RAD) * Math.tan(decl)));
+  const daylightFrac = Math.acos(cosH) / Math.PI;                          // 0..1
+
+  // Standing non-lunar aspects (classical planets, tight) — smallest weight.
+  let standing = 0;
+  for (let i = 0; i < ASPECT_PLANETS.length; i++) {
+    for (let j = i + 1; j < ASPECT_PLANETS.length; j++) {
+      const s = sep180(bodyLon(ASPECT_PLANETS[i], midJd), bodyLon(ASPECT_PLANETS[j], midJd));
+      const near = Math.min(...[0, 60, 90, 120, 180].map(A => Math.abs(s - A)));
+      if (near <= 3) standing += 1 - near / 3;
+    }
+  }
+  const standingH = Math.min(1, standing / 5);
+
+  const height = 0.30 + 0.55 * (0.42 * illum + 0.28 * clusterH + 0.20 * daylightFrac + 0.10 * standingH);
+
+  // ── SHAPE: subtle diurnal wobble + aspect crests + VOC becalming + hour whisper
+  const CURVE_STEP_MS = 15 * 60000;
+  const NATURE_AMP: Record<string, number> = {
+    trine: 0.22, sextile: 0.16, conjunction: 0.18, square: 0.2, opposition: 0.22,
+  };
+  const HOUR_ADJ: Record<string, number> = {   // planetary hours — a whisper only
+    Moon: -0.02, Saturn: -0.03, Sun: 0.025, Mars: 0.03, Jupiter: 0.03, Venus: 0.01, Mercury: 0,
+  };
+  const SIGMA_H = 0.9;
+  const W_MOON_ALT = 0.12, W_SUN_ALT = 0.05;    // subtle; sun barely-there per design
+  const HOUR_BLEND_MIN = 20;                     // cross-fade window around each hour boundary
+
+  // Smoothed hour-whisper: cross-fades between the current and next/previous hour's
+  // adjustment near a boundary (cosine ease) instead of jumping instantly — this is
+  // what removes the staircase steps from the curve.
+  function smoothedHourAdj(t: number): number {
+    const ph = getPlanetaryHour(new Date(t), _lat, _lon);
+    const cur = HOUR_ADJ[ph.ruler] ?? 0;
+    const msIntoHour = t - ph.startTime.getTime();
+    const msToEnd = ph.endTime.getTime() - t;
+    const blendMs = HOUR_BLEND_MIN * 60000;
+    if (msIntoHour < blendMs) {
+      const prevPh = getPlanetaryHour(new Date(ph.startTime.getTime() - 60000), _lat, _lon);
+      const prev = HOUR_ADJ[prevPh.ruler] ?? 0;
+      const f = 0.5 - 0.5 * Math.cos((msIntoHour / blendMs) * Math.PI); // 0→1 ease
+      return prev + (cur - prev) * f;
+    }
+    if (msToEnd < blendMs) {
+      const nextPh = getPlanetaryHour(new Date(ph.endTime.getTime() + 60000), _lat, _lon);
+      const next = HOUR_ADJ[nextPh.ruler] ?? 0;
+      const f = 0.5 - 0.5 * Math.cos(((blendMs - msToEnd) / blendMs) * Math.PI); // 0→1 ease
+      return cur + (next - cur) * f;
+    }
+    return cur;
+  }
+
+  const steps: { t: number; hour: number; mAlt: number; sAlt: number }[] = [];
+  for (let t = dayStart.getTime(); t <= dayEnd.getTime(); t += CURVE_STEP_MS) {
+    const jd = julianDay(new Date(t));
+    steps.push({ t, hour: (t - dayStart.getTime()) / 3600000, mAlt: moonAltitude(jd, _lat, _lon), sAlt: sunAltitude(jd, _lat, _lon) });
+  }
+  const nrm = (v: number, arr: number[]) => { const lo = Math.min(...arr), hi = Math.max(...arr); return (v - lo) / (hi - lo || 1); };
+  const mAlts = steps.map(s => s.mAlt), sAlts = steps.map(s => s.sAlt);
+  const vocMs = vocWindows.map(v => [Date.parse(v.start), Date.parse(v.end)] as [number, number]);
+  const VOC_BLEND_MS = 20 * 60000;
+  function vocFactorAt(t: number, windows: [number, number][]): number {
+    for (const [a, b] of windows) {
+      if (t >= a && t < b) {
+        const inFromStart = t - a, inFromEnd = b - t;
+        const edge = Math.min(inFromStart, inFromEnd, VOC_BLEND_MS);
+        return edge >= VOC_BLEND_MS ? 0 : 0.5 + 0.5 * Math.cos((edge / VOC_BLEND_MS) * Math.PI); // 1 at edge, 0 deep inside
+      }
+      if (t < a && a - t < VOC_BLEND_MS) return 0.5 - 0.5 * Math.cos(((a - t) / VOC_BLEND_MS) * Math.PI);
+      if (t >= b && t - b < VOC_BLEND_MS) return 0.5 - 0.5 * Math.cos(((t - b) / VOC_BLEND_MS) * Math.PI);
+    }
+    return 1;
+  }
+  const perfMs = perfections.map(p => ({ t: p.t.getTime(), planet: p.planet, amp: NATURE_AMP[p.aspect] ?? 0.18 }));
+
+  // Base component per step (altitude wobble + smoothed hour whisper) — shared by all lenses.
+  const baseComp = steps.map(s =>
+    (nrm(s.mAlt, mAlts) - 0.5) * W_MOON_ALT +
+    (nrm(s.sAlt, sAlts) - 0.5) * W_SUN_ALT +
+    smoothedHourAdj(s.t));
+  const signChar = steps.map(s => charOf(signOf(norm360(moonLongitude(julianDay(new Date(s.t)))))));
+
+  // Lenses — the same tide, but SIGNED per-planet weights so lenses that pull in
+  // opposite directions (Body vs Rest, Focus vs Connect) genuinely invert at the
+  // same aspect crest rather than both just rising by different amounts.
+  const LENSES: { key: string; label: string; w: Record<string, number> }[] = [
+    { key: "overall",  label: "Overall",  w: {} },
+    { key: "focus",    label: "Focus",    w: { Mercury: 2.0, Saturn: 1.6, Sun: 1.0, Jupiter: 0.7, Moon: 0.1, Venus: -0.4, Mars: -0.6 } },
+    { key: "body",     label: "Body",     w: { Mars: 2.2, Sun: 1.4, Jupiter: 1.0, Moon: 0.1, Mercury: -0.3, Venus: -0.2, Saturn: -0.5 } },
+    { key: "connect",  label: "Connect",  w: { Venus: 2.2, Moon: 1.4, Mercury: 1.2, Jupiter: 0.9, Sun: 0.4, Mars: -0.6, Saturn: -0.8 } },
+    { key: "rest",     label: "Rest",     w: { Moon: 2.0, Neptune: 1.6, Venus: 0.8, Saturn: 0.4, Sun: -0.5, Mercury: -0.6, Mars: -1.2 } },
+  ];
+
+  function buildCurve(weights: Record<string, number>, isOverall: boolean): DayArcCurvePoint[] {
+    return steps.map((s, i) => {
+      let crests = 0;
+      for (const pf of perfMs) {
+        // Specialized lenses ignore planets they have no opinion on (weight 0) —
+        // only overall includes everything, so each lens's signal stays sharp.
+        const w = weights[pf.planet] ?? (isOverall ? 1 : 0);
+        if (w === 0) continue;
+        crests += pf.amp * w * Math.exp(-0.5 * ((s.t - pf.t) / 3600000 / SIGMA_H) ** 2);
+      }
+      let e = height + baseComp[i] + crests;
+      // VOC becalms the shape — eased in/out over a blend window (not an instant
+      // multiply) so the curve doesn't step at the void's edges. vocF: 1 = fully
+      // outside the void, 0 = deep inside it.
+      const vocF = vocFactorAt(s.t, vocMs);
+      e = height + (e - height) * (0.35 + 0.65 * vocF);
+      e = Math.max(0, Math.min(1, e));
+      return { t: new Date(s.t).toISOString(), hour: parseFloat(s.hour.toFixed(2)), e: parseFloat(e.toFixed(3)), character: signChar[i] };
+    });
+  }
+
+  const curves: Record<string, DayArcCurvePoint[]> = {};
+  for (const L of LENSES) curves[L.key] = buildCurve(L.w, L.key === "overall");
+
+  return {
+    dayStart: dayStart.toISOString(), dayEnd: dayEnd.toISOString(),
+    segments, events, vocWindows,
+    curve: curves.overall,
+    curves,
+    lenses: LENSES.map(L => ({ key: L.key, label: L.label })),
+    height: parseFloat(height.toFixed(3)),
+    heightFactors: {
+      phase: parseFloat(illum.toFixed(2)),
+      activation: parseFloat(clusterH.toFixed(2)),
+      season: parseFloat(daylightFrac.toFixed(2)),
+      standing: parseFloat(standingH.toFixed(2)),
+    },
+  };
+}

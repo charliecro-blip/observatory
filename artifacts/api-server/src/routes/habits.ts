@@ -50,9 +50,9 @@ router.get("/habits", async (req, res) => {
 // POST /habits
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, minimumViable } = req.body;
   if (!name) return res.status(400).json({ error: "name required" });
-  const [row] = await db.insert(habits).values({ testerId, name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType }).returning();
+  const [row] = await db.insert(habits).values({ testerId, name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, minimumViable }).returning();
   res.status(201).json(row);
 });
 
@@ -60,8 +60,8 @@ router.post("/habits", async (req, res) => {
 router.patch("/habits/:id", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, status } = req.body;
-  const [row] = await db.update(habits).set({ name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, status }).where(and(eq(habits.id, id), eq(habits.testerId, testerId))).returning();
+  const { name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, minimumViable, status } = req.body;
+  const [row] = await db.update(habits).set({ name, description, emoji, favoredElements, favoredPhases, favoredBiodynamic, bestWindowType, minimumViable, status }).where(and(eq(habits.id, id), eq(habits.testerId, testerId))).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);
 });
