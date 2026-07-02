@@ -4,7 +4,7 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://YOUR_RAILWAY_URL/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://workspaceapi-server-production-69e7.up.railway.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
