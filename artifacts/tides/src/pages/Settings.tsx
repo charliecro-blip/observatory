@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
+import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
+import type { ChronotypeProfile } from "@/lib/tester-profile";
 
 function authH(tid: string | null) {
   return { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" };
@@ -625,6 +627,127 @@ function CycleSection({ testerId }: { testerId: string | null }) {
 
 // ---- Export section ----
 
+// ---- Chronotype section ----
+
+function ChronotypeSection() {
+  const { profile, updateChronotype } = useTester();
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const existing = profile?.chronotype;
+  const [chronoProfile, setChronoProfile] = useState<ChronotypeProfile | null>(existing?.profile ?? null);
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [weekdayStart, setWeekdayStart] = useState(existing?.freeWindows?.mon?.start ?? "18:00");
+  const [weekdayEnd, setWeekdayEnd] = useState(existing?.freeWindows?.mon?.end ?? "22:00");
+  const [weekendStart, setWeekendStart] = useState(existing?.freeWindows?.sat?.start ?? "09:00");
+  const [weekendEnd, setWeekendEnd] = useState(existing?.freeWindows?.sat?.end ?? "21:00");
+
+  useEffect(() => {
+    if (existing) {
+      setChronoProfile(existing.profile);
+      setDescription(existing.description ?? "");
+      setWeekdayStart(existing.freeWindows?.mon?.start ?? "18:00");
+      setWeekdayEnd(existing.freeWindows?.mon?.end ?? "22:00");
+      setWeekendStart(existing.freeWindows?.sat?.start ?? "09:00");
+      setWeekendEnd(existing.freeWindows?.sat?.end ?? "21:00");
+    }
+  }, [existing]);
+
+  function save() {
+    if (!chronoProfile) return;
+    const weekdayWin = { start: weekdayStart, end: weekdayEnd, flexibility: "flex" as const };
+    const weekendWin = { start: weekendStart, end: weekendEnd, flexibility: "flex" as const };
+    updateChronotype({
+      profile: chronoProfile,
+      description: description.trim() || undefined,
+      freeWindows: { mon: weekdayWin, tue: weekdayWin, wed: weekdayWin, thu: weekdayWin, fri: weekdayWin, sat: weekendWin, sun: weekendWin },
+      updatedAt: new Date().toISOString(),
+    });
+    setSaved(true); setEditing(false);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  const inputStyle: React.CSSProperties = { flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" };
+
+  return (
+    <SectionCard title="Your rhythm" sub="When you're usually free and how you naturally run — used to suggest timing that fits your life, not just the sky.">
+      {existing && !editing ? (
+        <div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>
+                {CHRONOTYPE_OPTIONS.find(o => o.key === existing.profile)?.label ?? existing.profile}
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                Weekdays {existing.freeWindows?.mon?.start}–{existing.freeWindows?.mon?.end} · Weekends {existing.freeWindows?.sat?.start}–{existing.freeWindows?.sat?.end}
+              </div>
+              {existing.description && <div style={{ fontSize: 10, color: "#aaa", marginTop: 4, fontStyle: "italic" }}>"{existing.description}"</div>}
+            </div>
+            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer" }}>
+              Edit
+            </button>
+          </div>
+          {saved && <div style={{ fontSize: 10, color: "#3a6030" }}>✓ Saved</div>}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {!existing && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>Not set yet — add your rhythm to unlock chronotype-aware timing suggestions.</div>}
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Morning or night person?</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {CHRONOTYPE_OPTIONS.map(o => (
+                <button key={o.key} type="button" onClick={() => setChronoProfile(o.key)}
+                  style={{
+                    padding: "7px 9px", borderRadius: 7, textAlign: "left", cursor: "pointer",
+                    border: chronoProfile === o.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+                    background: chronoProfile === o.key ? "#1a2a3a10" : "var(--color-card-2)",
+                  }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: chronoProfile === o.key ? "#1a2a3a" : "#333" }}>{o.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually free — weekdays</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="time" value={weekdayStart} onChange={e => setWeekdayStart(e.target.value)} style={inputStyle} />
+              <span style={{ color: "#bbb", fontSize: 10 }}>to</span>
+              <input type="time" value={weekdayEnd} onChange={e => setWeekdayEnd(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually free — weekends</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="time" value={weekendStart} onChange={e => setWeekendStart(e.target.value)} style={inputStyle} />
+              <span style={{ color: "#bbb", fontSize: 10 }}>to</span>
+              <input type="time" value={weekendEnd} onChange={e => setWeekendEnd(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>In your own words <span style={{ opacity: 0.6 }}>(optional)</span></div>
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. dead by 10pm, useless before coffee…" style={{ ...inputStyle, width: "100%" }} />
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            {existing && (
+              <button onClick={() => setEditing(false)} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#888", cursor: "pointer" }}>
+                Cancel
+              </button>
+            )}
+            <button onClick={save} disabled={!chronoProfile} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", background: chronoProfile ? "#1a2a3a" : "#e0dcd6", color: chronoProfile ? "#fff" : "#aaa", cursor: chronoProfile ? "pointer" : "default" }}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 // ---- Natal chart section ----
 
 function NatalChartSection({ testerId }: { testerId: string | null }) {
@@ -1089,6 +1212,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             </button>
           </div>
         </SectionCard>
+
+        {/* Chronotype / rhythm */}
+        <ChronotypeSection />
 
         {/* Birth chart */}
         <NatalChartSection testerId={testerId} />

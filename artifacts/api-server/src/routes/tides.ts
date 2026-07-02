@@ -20,6 +20,17 @@ import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 
 const router: IRouter = Router();
 
+// Format a UTC instant as a 12h wall-clock string in the viewer's timezone.
+// tzOffsetMin follows Date.getTimezoneOffset (minutes to add to local to reach UTC).
+function clockLocal(d: Date, tzOffsetMin: number): string {
+  const s = new Date(d.getTime() - tzOffsetMin * 60000);
+  let h = s.getUTCHours();
+  const m = s.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
 // ── Seed rule data (inlined from auspice-seed-rules-v1.json) ─────────────────
 
 const PLANETARY_HOUR_RULES: Record<string, {
@@ -444,23 +455,33 @@ router.get("/tides/best-times", (req, res) => {
   const lens = (req.query.lens as string) ?? "overall";
   const days = Math.min(14, Math.max(1, parseInt((req.query.days as string) ?? "7", 10)));
   const topPerDay = Math.max(1, Math.min(3, parseInt((req.query.perDay as string) ?? "1", 10)));
+  // Viewer's tz offset (Date.getTimezoneOffset convention). Without this the day
+  // range and each day's "date" label were computed on the server's calendar day
+  // (UTC on Railway), which could disagree with the viewer's actual day — the
+  // same class of bug fixed for /tides/now's day-arc.
+  const tzOffsetMin = Number.isFinite(parseInt((req.query.tz as string) ?? "", 10))
+    ? parseInt((req.query.tz as string), 10)
+    : 0;
 
-  const today = new Date();
-  const results: Array<{ date: string; startClock: string; endClock: string; peakE: number; label: string }> = [];
+  const nowInstant = new Date();
+  const results: Array<{ date: string; startClock: string; endClock: string; startAt: string; endAt: string; peakE: number; label: string }> = [];
 
   for (let d = 0; d < days; d++) {
-    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
-    const arc = computeDayArc(day, lat, lon);
+    const arc = computeDayArc(new Date(nowInstant.getTime() + d * 86400000), lat, lon, tzOffsetMin);
     const curve = arc.curves[lens] ?? arc.curve;
     const peaks = findPeakWindows(curve, topPerDay, 3);
-    const dayStart = new Date(arc.dayStart).getTime();
+    const dayStartMs = new Date(arc.dayStart).getTime();
+    // Recover the viewer-local calendar date from the (UTC) dayStart instant.
+    const localDate = new Date(dayStartMs - tzOffsetMin * 60000).toISOString().slice(0, 10);
     for (const p of peaks) {
-      const start = new Date(dayStart + p.startHour * 3600000);
-      const end = new Date(dayStart + p.endHour * 3600000);
+      const start = new Date(dayStartMs + p.startHour * 3600000);
+      const end = new Date(dayStartMs + p.endHour * 3600000);
       results.push({
-        date: day.toISOString().slice(0, 10),
-        startClock: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        endClock: end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        date: localDate,
+        startClock: clockLocal(start, tzOffsetMin),
+        endClock: clockLocal(end, tzOffsetMin),
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
         peakE: parseFloat(p.peakE.toFixed(3)),
         label: BEST_TIMES_LABEL[lens] ?? "a good window",
       });

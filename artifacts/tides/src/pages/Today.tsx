@@ -10,6 +10,7 @@ import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { TideCardModal } from "@/components/TideCard";
 import { smoothPathD } from "@/lib/smoothPath";
+import { isWithinFreeWindow } from "@/lib/chronotype";
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
@@ -952,6 +953,7 @@ const ASPECT_GLYPH_ARC: Record<string, string> = {
 };
 
 function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; lat: number; lon: number }) {
+  const { profile } = useTester();
   const W = 700, H = 150, PAD_T = 14, PAD_B = 22;
   const [lens, setLens] = useState("overall");
   const lenses: { key: string; label: string }[] = arc.lenses ?? [{ key: "overall", label: "Overall" }];
@@ -959,7 +961,7 @@ function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; lat: num
   const { data: bestTimes } = useQuery<any>({
     queryKey: ["best-times", lens, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/best-times?lens=${lens}&lat=${lat}&lon=${lon}&days=7`);
+      const r = await fetch(`/api/tides/best-times?lens=${lens}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
       return r.json();
     },
     enabled: lens !== "overall",
@@ -1033,18 +1035,36 @@ function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; lat: num
         </div>
       )}
 
-      {/* Best-time-for-X — the top windows this week for the selected lens */}
-      {lens !== "overall" && bestTimes?.windows?.length > 0 && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "#6a6258" }}>
-          <span style={{ color: "#999" }}>Best this week for {bestTimes.windows[0].label}:</span>
-          {bestTimes.windows.slice(0, 3).map((w: any, i: number) => (
-            <span key={i} style={{ fontWeight: 500, color: "#3a3a3a" }}>
-              {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
-              {i < 2 && bestTimes.windows.length > i + 1 ? " ·" : ""}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Best-time-for-X — the top windows this week for the selected lens.
+          When a chronotype is set, windows that overlap the user's free time are
+          surfaced first — a sky-good window during a workday meeting is technically
+          "best" but not actually usable. */}
+      {lens !== "overall" && bestTimes?.windows?.length > 0 && (() => {
+        const chronotype = profile?.chronotype;
+        const allWindows: any[] = bestTimes.windows;
+        const ranked = chronotype
+          ? [
+              ...allWindows.filter(w => isWithinFreeWindow(w, chronotype)),
+              ...allWindows.filter(w => !isWithinFreeWindow(w, chronotype)),
+            ]
+          : allWindows;
+        const shown = ranked.slice(0, 3);
+        return (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "#6a6258" }}>
+            <span style={{ color: "#999" }}>Best this week for {bestTimes.windows[0].label}:</span>
+            {shown.map((w: any, i: number) => {
+              const fits = chronotype ? isWithinFreeWindow(w, chronotype) : null;
+              return (
+                <span key={i} style={{ fontWeight: 500, color: "#3a3a3a" }}>
+                  {fits && <span title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
+                  {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
+                  {i < 2 && shown.length > i + 1 ? " ·" : ""}
+                </span>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
         <defs>

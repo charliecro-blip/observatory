@@ -1,10 +1,40 @@
 const KEY_ID = "obs_tester_id";
 const KEY_NAME = "obs_display_name";
 const KEY_LOC = "obs_location";
+const KEY_CHRONOTYPE = "obs_chronotype";
 
 /** The default profile for the original single-user data. */
 export const DEFAULT_TESTER_ID = "obs_default_charlie";
 export const DEFAULT_TESTER_NAME = "Charlie";
+
+export type ChronotypeProfile = "early_bird" | "night_owl" | "steady" | "napper";
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type WindowFlexibility = "rigid" | "flex" | "very_flex";
+
+export interface FreeWindow {
+  start: string;   // "HH:MM", 24h
+  end: string;     // "HH:MM", 24h
+  flexibility: WindowFlexibility;
+}
+
+export interface Chronotype {
+  profile: ChronotypeProfile;
+  description?: string;               // user's own words from onboarding
+  freeWindows: Record<Weekday, FreeWindow>;
+  updatedAt: string;                  // ISO
+}
+
+export const CHRONOTYPE_OPTIONS: { key: ChronotypeProfile; label: string; desc: string }[] = [
+  { key: "early_bird", label: "Early bird", desc: "Sharpest in the morning" },
+  { key: "night_owl", label: "Night owl", desc: "Comes alive at night" },
+  { key: "steady", label: "Steady", desc: "Fairly even through the day" },
+  { key: "napper", label: "Napper", desc: "Works in bursts, needs rest between" },
+];
+
+export const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+export const WEEKDAY_LABELS: Record<Weekday, string> = {
+  mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
+};
 
 export interface TesterProfile {
   testerId: string;
@@ -12,6 +42,7 @@ export interface TesterProfile {
   lat?: number;
   lon?: number;
   locationLabel?: string;
+  chronotype?: Chronotype;
 }
 
 function generateTesterId(): string {
@@ -26,7 +57,9 @@ export function loadProfile(): TesterProfile | null {
   if (testerId && displayName) {
     const locRaw = localStorage.getItem(KEY_LOC);
     const loc = locRaw ? JSON.parse(locRaw) : {};
-    return { testerId, displayName, ...loc };
+    const chronoRaw = localStorage.getItem(KEY_CHRONOTYPE);
+    const chronotype = chronoRaw ? JSON.parse(chronoRaw) : undefined;
+    return { testerId, displayName, ...loc, ...(chronotype ? { chronotype } : {}) };
   }
   return null;
 }
@@ -38,11 +71,19 @@ export function saveProfile(profile: TesterProfile): void {
   if (profile.lat != null && profile.lon != null) {
     localStorage.setItem(KEY_LOC, JSON.stringify({ lat: profile.lat, lon: profile.lon, locationLabel: profile.locationLabel }));
   }
+  if (profile.chronotype) {
+    localStorage.setItem(KEY_CHRONOTYPE, JSON.stringify(profile.chronotype));
+  }
 }
 
 /** Save location separately (e.g. from Settings page). */
 export function saveLocation(lat: number, lon: number, label: string): void {
   localStorage.setItem(KEY_LOC, JSON.stringify({ lat, lon, locationLabel: label }));
+}
+
+/** Save chronotype separately (from onboarding or Settings). */
+export function saveChronotype(chronotype: Chronotype): void {
+  localStorage.setItem(KEY_CHRONOTYPE, JSON.stringify(chronotype));
 }
 
 /**
@@ -67,6 +108,7 @@ export function clearProfile(): void {
   localStorage.removeItem(KEY_ID);
   localStorage.removeItem(KEY_NAME);
   localStorage.removeItem(KEY_LOC);
+  localStorage.removeItem(KEY_CHRONOTYPE);
 }
 
 /** Short version of a tester ID for display — first 12 chars after "obs_". */

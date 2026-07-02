@@ -3,11 +3,13 @@ import {
   loadProfile,
   saveProfile,
   saveLocation,
+  saveChronotype,
   createProfile,
   clearProfile,
   DEFAULT_TESTER_ID,
   DEFAULT_TESTER_NAME,
   type TesterProfile,
+  type Chronotype,
 } from "@/lib/tester-profile";
 
 interface TesterContextValue {
@@ -21,6 +23,7 @@ interface TesterContextValue {
   applyProfile: (profile: TesterProfile) => void;
   createAndApply: (displayName: string) => TesterProfile;
   updateLocation: (lat: number, lon: number, label: string) => void;
+  updateChronotype: (chronotype: Chronotype) => void;
   resetProfile: () => void;
 }
 
@@ -44,6 +47,11 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const updateLocation = useCallback((lat: number, lon: number, label: string) => {
     saveLocation(lat, lon, label);
     setProfile(p => p ? { ...p, lat, lon, locationLabel: label } : p);
+  }, []);
+
+  const updateChronotype = useCallback((chronotype: Chronotype) => {
+    saveChronotype(chronotype);
+    setProfile(p => p ? { ...p, chronotype } : p);
   }, []);
 
   const applyProfile = useCallback((p: TesterProfile) => {
@@ -87,6 +95,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         applyProfile,
         createAndApply,
         updateLocation,
+        updateChronotype,
         resetProfile,
       }}
     >

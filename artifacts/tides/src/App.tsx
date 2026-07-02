@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tan
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
+import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
+import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -225,13 +227,14 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 
-type OnboardStep = "name" | "birth" | "done";
+type OnboardStep = "name" | "birth" | "chronotype" | "done";
 
 function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   onComplete: (name: string) => void;
   existingTesterId?: string | null;
   skipNameStep?: boolean;
 }) {
+  const { updateChronotype } = useTester();
   const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
   const [name, setName] = useState("");
   // For new users, we create a testerId on name submit. For existing users, use their real one.
@@ -249,6 +252,39 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Chronotype form state — a lightweight v1: one weekday window + one weekend
+  // window (applied across their respective days), rather than a full 7-day
+  // editor. Per-day fine-tuning can be added to Settings later.
+  const [chronoProfile, setChronoProfile] = useState<ChronotypeProfile | null>(null);
+  const [chronoDescription, setChronoDescription] = useState("");
+  const [weekdayStart, setWeekdayStart] = useState("18:00");
+  const [weekdayEnd, setWeekdayEnd] = useState("22:00");
+  const [weekendStart, setWeekendStart] = useState("09:00");
+  const [weekendEnd, setWeekendEnd] = useState("21:00");
+
+  function buildFreeWindows(): Record<Weekday, FreeWindow> {
+    const weekdayWin: FreeWindow = { start: weekdayStart, end: weekdayEnd, flexibility: "flex" };
+    const weekendWin: FreeWindow = { start: weekendStart, end: weekendEnd, flexibility: "flex" };
+    return { mon: weekdayWin, tue: weekdayWin, wed: weekdayWin, thu: weekdayWin, fri: weekdayWin, sat: weekendWin, sun: weekendWin };
+  }
+
+  function handleChronotypeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onComplete(name.trim() || "Observer");
+    if (chronoProfile) {
+      updateChronotype({
+        profile: chronoProfile,
+        description: chronoDescription.trim() || undefined,
+        freeWindows: buildFreeWindows(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  function handleChronotypeSkip() {
+    onComplete(name.trim() || "Observer");
+  }
 
   function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -321,11 +357,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   async function handleBirthSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (birthDate && birthLat != null) await saveBirthData();
-    onComplete(name.trim() || "Observer");
+    setStep("chronotype");
   }
 
   function handleSkip() {
-    onComplete(name.trim() || "Observer");
+    setStep("chronotype");
   }
 
   const cardStyle: React.CSSProperties = {
@@ -432,7 +468,84 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
               style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:13, fontWeight:600,
                 background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#1a2a3a",
                 color: (!birthDate || birthLat == null) ? "#aaa" : "#fff" }}>
-              {saving ? "Saving…" : "Enter Tides"}
+              {saving ? "Saving…" : "Continue →"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  if (step === "chronotype") return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
+      <div style={cardStyle}>
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your rhythm</div>
+          <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
+            When you're usually free and how you naturally run helps Tides suggest timing that actually fits your life, not just the sky.
+          </div>
+        </div>
+
+        <form onSubmit={handleChronotypeSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {/* Chronotype profile */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Morning or night person?</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {CHRONOTYPE_OPTIONS.map(o => (
+                <button key={o.key} type="button" onClick={() => setChronoProfile(o.key)}
+                  style={{
+                    padding:"9px 10px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                    border: chronoProfile === o.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+                    background: chronoProfile === o.key ? "#1a2a3a10" : "var(--color-card-2)",
+                  }}>
+                  <div style={{ fontSize:12, fontWeight:600, color: chronoProfile === o.key ? "#1a2a3a" : "var(--color-foreground)" }}>{o.label}</div>
+                  <div style={{ fontSize:9.5, color:"#999", marginTop:1 }}>{o.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Free windows — weekday + weekend, lightweight v1 */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually free — weekdays</div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <input type="time" value={weekdayStart} onChange={e => setWeekdayStart(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+              <span style={{ color:"#bbb", fontSize:11 }}>to</span>
+              <input type="time" value={weekdayEnd} onChange={e => setWeekdayEnd(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually free — weekends</div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <input type="time" value={weekendStart} onChange={e => setWeekendStart(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+              <span style={{ color:"#bbb", fontSize:11 }}>to</span>
+              <input type="time" value={weekendEnd} onChange={e => setWeekendEnd(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+            </div>
+          </div>
+
+          {/* Optional free-text */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+              In your own words <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional)</span>
+            </div>
+            <input value={chronoDescription} onChange={e => setChronoDescription(e.target.value)}
+              placeholder="e.g. dead by 10pm, useless before coffee…"
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            />
+          </div>
+
+          <div style={{ display:"flex", gap:10, marginTop:4 }}>
+            <button type="button" onClick={handleChronotypeSkip}
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"#888", fontSize:12, cursor:"pointer", fontWeight:500 }}>
+              Skip for now
+            </button>
+            <button type="submit"
+              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#fff" }}>
+              Enter Tides
             </button>
           </div>
         </form>
