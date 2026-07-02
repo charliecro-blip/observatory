@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm --filter @workspace/tides run build",
-  "outputDirectory": "artifacts/tides/dist",
+  "outputDirectory": "artifacts/tides/public",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
