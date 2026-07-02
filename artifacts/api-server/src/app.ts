@@ -39,6 +39,9 @@ const aiLimiter = rateLimit({
   message: { error: "Too many AI requests — please wait a while before trying again." },
   standardHeaders: true,
   legacyHeaders: false,
+  // esbuild renames the ipKeyGenerator import when bundling, which breaks
+  // express-rate-limit's toString()-based static check for its usage.
+  validate: false,
 });
 
 // General API: 300 requests per 15 min per tester
@@ -49,6 +52,7 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests — slow down a little." },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
 });
 
 app.use("/api/openai", aiLimiter);
