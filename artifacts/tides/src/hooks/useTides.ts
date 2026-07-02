@@ -44,15 +44,41 @@ export function useTidesNow(testerId: string | null, lat = 40.7, lon = -74.0) {
   });
 }
 
+// Localize a UTC "HH:MM" fallback via the `at` instant, in the viewer's timezone.
+function localizeClock(at: string | undefined, fallback: string): string {
+  if (!at) return fallback;
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0) {
   return useQuery<TidesWeek>({
     queryKey: ["tides-week", days, lat, lon],
     queryFn: async () => {
       const r = await fetch(`/api/tides/week?days=${days}&${loc(lat, lon)}`);
-      return r.json();
+      const data: TidesWeek = await r.json();
+      for (const day of data.days ?? []) {
+        if (day.crossings) {
+          day.crossings = day.crossings.map(c => ({ ...c, time: localizeClock(c.at, c.time) }));
+        }
+      }
+      return data;
     },
     refetchInterval: 300_000,
   });
+}
+
+// Server sends timed events with an `at` ISO-UTC instant. Localize date/time to the
+// viewer's own timezone here, so every downstream consumer's string-based date/time
+// logic stays correct regardless of the server's timezone (UTC on Railway).
+function localizeSkyEvent(e: SkyEvent): SkyEvent {
+  if (!e.at) return e;
+  const d = new Date(e.at);
+  if (Number.isNaN(d.getTime())) return e;
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return { ...e, date, time };
 }
 
 export function useSkyEvents(days = 30, lat = 40.7, lon = -74.0) {
@@ -60,7 +86,8 @@ export function useSkyEvents(days = 30, lat = 40.7, lon = -74.0) {
     queryKey: ["sky-events", days, lat, lon],
     queryFn: async () => {
       const r = await fetch(`/api/tides/events?days=${days}&${loc(lat, lon)}`);
-      return r.json();
+      const data: { events: SkyEvent[] } = await r.json();
+      return { events: (data.events ?? []).map(localizeSkyEvent) };
     },
     refetchInterval: 3_600_000,
   });

@@ -12,6 +12,10 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
+  // Static source assets (favicon, manifest, sw.js, …) live in ./static and are
+  // COPIED into the build output. This must be separate from outDir, otherwise
+  // emptyOutDir wipes them on every build (they used to sit in ./public).
+  publicDir: path.resolve(import.meta.dirname, "static"),
   build: {
     outDir: path.resolve(import.meta.dirname, "public"),
     emptyOutDir: true,

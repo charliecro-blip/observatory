@@ -5,6 +5,9 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+
+# Tides frontend build output (Vite emits here; static sources live in artifacts/tides/static)
+artifacts/tides/public
 .expo
 .expo-shared
 

@@ -101,6 +101,7 @@ export interface WeekDay {
 export interface SkyEvent {
   date: string;
   time?: string;
+  at?: string;        // ISO UTC instant for timed events; date/time are localized from this in the client
   type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window" | "moon_aspect";
   title: string;
   subtitle?: string;
@@ -112,6 +113,7 @@ export interface Crossing {
   planet: string;
   angle: string;
   time: string;
+  at?: string;        // ISO UTC instant; time is localized from this in the client
   type: string;
 }
 

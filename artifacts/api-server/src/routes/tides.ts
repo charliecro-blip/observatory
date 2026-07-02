@@ -295,7 +295,7 @@ router.get("/tides/week", (req, res) => {
     qualityScore: number;
     bestFor: string[];
     tone: string;
-    crossings: Array<{ planet: string; angle: string; time: string; type: string }>;
+    crossings: Array<{ planet: string; angle: string; time: string; at?: string; type: string }>;
     moonAspects: Array<{ planet: string; aspect: string; applying: boolean; orb: number }>;
     tide: ReturnType<typeof computeTide>;
   }> = [];
@@ -365,12 +365,14 @@ router.get("/tides/week", (req, res) => {
       });
     const crossings = rawCrossings.map((c) => {
       const ct = new Date(c.crossingTime);
+      // time is a UTC fallback; client re-derives it from `at` in its own timezone.
       const hh = String(ct.getUTCHours()).padStart(2, "0");
       const mm = String(ct.getUTCMinutes()).padStart(2, "0");
       return {
         planet: c.planet,
         angle:  c.angle,
         time:   `${hh}:${mm}`,
+        at:     ct.toISOString(),
         type:   c.benefic ? "benefic" : c.malefic ? "malefic" : "neutral",
       };
     });
@@ -717,6 +719,7 @@ router.get("/tides/events", (req, res) => {
   type SkyEvent = {
     date: string;
     time?: string;
+    at?: string;        // ISO UTC instant for timed events — client formats to its own timezone
     type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window";
     title: string;
     subtitle?: string;
@@ -738,13 +741,15 @@ router.get("/tides/events", (req, res) => {
   const crossings = significantCrossings;
   for (const c of crossings) {
     const crossTime = new Date(c.crossingTime);
+    // date/time are UTC fallbacks; the client re-derives both from `at` in its own tz.
     const dateStr = crossTime.toISOString().split("T")[0];
-    const timeStr = crossTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const timeStr = crossTime.toISOString().slice(11, 16);
     const isBenefic = c.benefic;
     const isMalefic = c.malefic;
     events.push({
       date: dateStr,
       time: timeStr,
+      at: crossTime.toISOString(),
       type: "crossing",
       title: `${c.planet} crosses ${c.angle}`,
       subtitle: CROSSING_INTERPRETATIONS[c.planet]?.[c.angle],
@@ -781,11 +786,12 @@ router.get("/tides/events", (req, res) => {
         if (prev !== undefined && asp.orb > prev && prev < 1.5) {
           const exactDate = new Date((startJd + (h - 0.5) / 24 - 2440587.5) * 86400000);
           const dateStr = exactDate.toISOString().split("T")[0];
-          const timeStr = exactDate.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", hour12:false });
+          const timeStr = exactDate.toISOString().slice(11, 16);
           const sym = ASPECT_ICONS[asp.aspect] ?? asp.aspect;
           events.push({
             date: dateStr,
             time: timeStr,
+            at: exactDate.toISOString(),
             type: "moon_aspect" as any,
             title: `Moon ${sym} ${other}`,
             subtitle: `${asp.nature} — ${asp.orb.toFixed(1)}° orb`,

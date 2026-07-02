@@ -82,8 +82,11 @@ const PLANET_MEANING: Record<string, string> = {
 // Approximate sunrise/sunset for the Rail (mirrors Today.tsx logic)
 function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
   const today = new Date().toISOString().slice(0, 10);
-  const midnight = new Date(today + "T00:00:00");
-  const base = new Date(today + "T12:00:00");
+  // lstNoon below is expressed in UTC hours, so the base these offsets are added
+  // to must also be UTC midnight — otherwise sun times are shifted by the local
+  // timezone offset (e.g. solar noon rendering as ~5pm instead of ~1pm).
+  const midnight = new Date(today + "T00:00:00Z");
+  const base = new Date(today + "T12:00:00Z");
   const jd = base.getTime() / 86400000 + 2440587.5;
   const n = jd - 2451545.0;
   const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
@@ -331,7 +334,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
                         ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
                         : a.applying
                           ? (() => {
-                              const hrsToExact = a.orb / 0.55;
+                              // Use the backend's real per-pair closing speed so this
+                              // matches the Planetary Pulse exact time for the same aspect.
+                              // Fall back to the Moon's average speed only if unavailable.
+                              const hrsToExact = a.hoursToExact ?? a.orb / 0.55;
                               const now_ = new Date();
                               const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
                               const hh = exactAt.getHours().toString().padStart(2,"0");
