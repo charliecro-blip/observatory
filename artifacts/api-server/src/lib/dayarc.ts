@@ -89,7 +89,16 @@ export interface DayArc {
   heightFactors: { phase: number; activation: number; season: number; standing: number };
 }
 
-function clock(d: Date) { return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
+// Format an absolute instant as a wall-clock time in the viewer's timezone.
+// tzOffsetMin follows Date.getTimezoneOffset (minutes to add to local to reach UTC).
+function clock(d: Date, tzOffsetMin: number) {
+  const s = new Date(d.getTime() - tzOffsetMin * 60000);
+  let h = s.getUTCHours();
+  const m = s.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
+}
 
 // Find the best (highest-energy) windows in a single day's lens curve — the
 // "when should I work out / study / rest today" query. Greedy peak-pick with a
@@ -114,8 +123,14 @@ export function findPeakWindows(curve: DayArcCurvePoint[], topN = 2, minGapHours
   return picked.sort((a, b) => a.startHour - b.startHour);
 }
 
-export function computeDayArc(now: Date, _lat: number, _lon: number): DayArc {
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0): DayArc {
+  // Anchor the day to the viewer's local midnight (not the server's, which is UTC on
+  // Railway). Shift the instant into viewer-local wall time, read its Y/M/D, then map
+  // that local midnight back to a UTC instant.
+  const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
+  const dayStart = new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 0, 0, 0) + tzOffsetMin * 60000,
+  );
   const dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
   const STEP_MS = 10 * 60000; // 10-minute resolution
 
@@ -180,11 +195,11 @@ export function computeDayArc(now: Date, _lat: number, _lon: number): DayArc {
 
   const events: DayArcEvent[] = [
     ...ingresses.map(i => ({
-      time: i.t.toISOString(), clock: clock(i.t), kind: "ingress" as const,
+      time: i.t.toISOString(), clock: clock(i.t, tzOffsetMin), kind: "ingress" as const,
       label: `Moon enters ${i.sign}`, past: i.t < now,
     })),
     ...perfections.map(p => ({
-      time: p.t.toISOString(), clock: clock(p.t), kind: "aspect" as const,
+      time: p.t.toISOString(), clock: clock(p.t, tzOffsetMin), kind: "aspect" as const,
       label: `Moon ${p.aspect} ${p.planet}`, planet: p.planet, aspect: p.aspect, past: p.t < now,
     })),
   ].sort((a, b) => a.time.localeCompare(b.time));

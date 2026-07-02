@@ -1092,7 +1092,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <button onClick={goToday} style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"#e0dcd6",borderRadius:7,padding:3,gap:1 }}>
-          {(["month","week","day"] as CalView[]).map(v=>(
+          {(["day","week","month"] as CalView[]).map(v=>(
             <button key={v} onClick={()=>setCalView(v)} style={{
               fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
               background:calView===v?"#fff":"transparent",color:calView===v?"#1a2a3a":"#999",

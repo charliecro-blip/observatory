@@ -9,6 +9,13 @@ function loc(lat: number, lon: number) {
   return `lat=${lat}&lon=${lon}`;
 }
 
+// Browser timezone offset in minutes (Date.getTimezoneOffset convention: minutes to
+// ADD to local time to reach UTC — e.g. +300 for US Central). Sent to endpoints that
+// compute a whole local-day window server-side, so they use the viewer's day, not UTC.
+function tzParam() {
+  return `tz=${new Date().getTimezoneOffset()}`;
+}
+
 export function useNorthStars(testerId: string | null) {
   return useQuery<any[]>({
     queryKey: ["north-stars", testerId],
@@ -37,7 +44,7 @@ export function useTidesNow(testerId: string | null, lat = 40.7, lon = -74.0) {
   return useQuery<TidesNow>({
     queryKey: ["tides-now", testerId, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/now?${loc(lat, lon)}`, { headers: authHeaders(testerId) });
+      const r = await fetch(`/api/tides/now?${loc(lat, lon)}&${tzParam()}`, { headers: authHeaders(testerId) });
       return r.json();
     },
     refetchInterval: 60_000,

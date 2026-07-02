@@ -51,6 +51,11 @@ const ELEMENT_QUALITIES: Record<string, { quality: string; invitation: string }>
 router.get("/tides/now", async (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  // Viewer's tz offset in minutes (Date.getTimezoneOffset convention). Used to build
+  // the day-arc around the viewer's local midnight rather than the server's (UTC).
+  const tzOffset = Number.isFinite(parseInt((req.query.tz as string) ?? "", 10))
+    ? parseInt((req.query.tz as string), 10)
+    : 0;
   const date = new Date();
   const jd   = julianDay(date);
 
@@ -254,7 +259,7 @@ router.get("/tides/now", async (req, res) => {
     rhythmRisk,
     rhythmRiskFactors,
     tide,
-    dayArc: computeDayArc(date, lat, lon),
+    dayArc: computeDayArc(date, lat, lon, tzOffset),
   });
 });
 
