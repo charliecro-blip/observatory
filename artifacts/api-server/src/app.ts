@@ -63,7 +63,12 @@ app.use(express.static(publicDir));
 
 // SPA routing: serve index.html for non-API routes
 app.get("/{*splat}", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
+  res.sendFile(path.join(publicDir, "index.html"), (err) => {
+    if (err) {
+      logger.error({ err }, "Failed to serve index.html");
+      res.status(404).send("Not found");
+    }
+  });
 });
 
 export default app;
