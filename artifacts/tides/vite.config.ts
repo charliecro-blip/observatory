@@ -13,7 +13,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "../../.output"),
+    outDir: path.resolve(import.meta.dirname, "../../tides-dist"),
     emptyOutDir: true,
   },
   server: {
