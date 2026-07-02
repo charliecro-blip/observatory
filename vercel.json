@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm --filter @workspace/tides run build",
-  "outputDirectory": "artifacts/tides/public",
+  "outputDirectory": ".vercel/output/static",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
