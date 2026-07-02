@@ -461,7 +461,8 @@ export interface PlanetAspect {
   exactAngle: number;
   orb: number;      // degrees from exact
   applying: boolean;
-  hoursToExact: number | null;  // real time-to-perfection from this pair's actual closing speed
+  hoursToExact: number | null;     // real time-to-perfection, applying aspects only
+  hoursSinceExact: number | null;  // real time-since-perfection, separating aspects only
 }
 
 /**
@@ -500,6 +501,13 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
           const hoursToExact = applying && ratePerHour > 1e-6
             ? parseFloat((sep / ratePerHour).toFixed(1))
             : null;
+          // Mirror of hoursToExact for separating aspects — how long ago this pair
+          // was exact, from the same (negated) closing-speed approximation. Without
+          // this, separating aspects showed no time at all in Planetary Pulse, which
+          // read as "some aspects have timing and some don't."
+          const hoursSinceExact = !applying && ratePerHour < -1e-6
+            ? parseFloat((sep / -ratePerHour).toFixed(1))
+            : null;
 
           aspects.push({
             planet1:    p1.planet,
@@ -510,6 +518,7 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
             orb:        parseFloat(sep.toFixed(2)),
             applying,
             hoursToExact,
+            hoursSinceExact,
           });
           break; // one aspect per planet pair
         }

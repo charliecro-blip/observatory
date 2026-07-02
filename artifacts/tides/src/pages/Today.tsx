@@ -6,7 +6,6 @@ import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
-import { SessionTimer } from "@/components/SessionTimer";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { TideCardModal } from "@/components/TideCard";
@@ -390,7 +389,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }: { testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void }) {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor }: {
+  testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
+  showAdvisor: boolean; setShowAdvisor: (v: boolean) => void;
+}) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
   const { updateLocation } = useTester();
@@ -413,7 +415,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
       { timeout: 10_000 },
     );
   }
-  const [showAdvisor, setShowAdvisor] = useState(false);
   const [showTideCard, setShowTideCard] = useState(false);
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
@@ -552,21 +553,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
   const elemColor = ELEMENT_COLORS[el as Element] ?? "#888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888";
 
-  // Find the nearest angle crossing from week data — recent past or near future.
-  // Widened from the original -5/+30 window: that was tight enough that a crossing
-  // (e.g. Jupiter/Pluto at an angle) would vanish from the alert just 5 minutes after
-  // happening, reading as "the widget disappeared" even though nothing was broken.
+  // Find ALL angle crossings active right now (recent past or near future), not just
+  // the single nearest one — showing only one meant a second simultaneous crossing
+  // (e.g. Jupiter AND Pluto both at an angle) was silently concealed behind it.
   const todayData = week?.days?.find(d => d.date === today);
   const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
-  const nextCrossing = (todayData?.crossings ?? [])
+  const activeCrossings = (todayData?.crossings ?? [])
     .map(c => {
       if (!c.time) return null;
       const [ch, cm] = c.time.split(":").map(Number);
       const crossMin = ch * 60 + (cm ?? 0);
       return { c, diff: crossMin - nowMinutesForCross };
     })
-    .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -60 && x.diff <= 60)
-    .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))[0];
+    .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -15 && x.diff <= 15)
+    .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
 
   if (nowLoading) {
     return (
@@ -632,11 +632,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
               Crossings {crossingsOn ? "on" : "off"}
             </button>
           )}
-          <SessionTimer planetaryHour={now?.planetaryHour} />
-          <button onClick={() => setShowAdvisor(true)} style={{
-            fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
-            background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500,
-          }}>✦ Advise</button>
         </div>
       </div>
 
@@ -775,6 +770,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
         {/* The tide — one coherent chart for the whole day */}
         {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
+        {/* Module recommendations — "what fits right now" moved up near the tide
+            chart, since it was previously the very last thing on the page. */}
+        {now && <ModulePulse now={now} onNavigate={onNavigate} />}
+
         {/* Standing conditions */}
         {now && <ConditionsStrip now={now} today={today} />}
 
@@ -852,36 +851,39 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
           </div>
         )}
 
-        {/* Angle crossing alert */}
-        {crossingsOn && nextCrossing && (() => {
-          const cr = nextCrossing.c;
-          const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
-          const sig = PLANET_SIGNIFICATION[cr.planet];
-          const isBenefic = ["Venus","Jupiter","Sun"].includes(cr.planet);
-          const diff = nextCrossing.diff;
-          const whenLabel = Math.abs(diff) < 2 ? "now"
-            : diff < 0 ? `${Math.round(-diff)} min ago`
-            : `in ${Math.round(diff)} min`;
-          return (
-            <div style={{
-              background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
-              borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
-                  {cr.planet} crosses {cr.angle} · {cr.time} ({whenLabel})
+        {/* Angle crossing alerts — one per active crossing, so simultaneous crossings
+            (e.g. Jupiter and Pluto both at an angle) don't hide each other. */}
+        {crossingsOn && activeCrossings.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {activeCrossings.map(({ c: cr, diff }, i) => {
+              const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
+              const sig = PLANET_SIGNIFICATION[cr.planet];
+              const isBenefic = ["Venus","Jupiter","Sun"].includes(cr.planet);
+              const whenLabel = Math.abs(diff) < 2 ? "now"
+                : diff < 0 ? `${Math.round(-diff)} min ago`
+                : `in ${Math.round(diff)} min`;
+              return (
+                <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
+                  background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
+                  borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+                }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
+                      {cr.planet} crosses {cr.angle} · {cr.time} ({whenLabel})
+                    </div>
+                    {sig && (
+                      <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
+                    {isBenefic ? "↑" : "—"} {cr.angle}
+                  </div>
                 </div>
-                {sig && (
-                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
-                )}
-              </div>
-              <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                {isBenefic ? "↑" : "—"} {cr.angle}
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        )}
 
         {/* Waves — flat unified list: practices + tasks + goals */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
@@ -936,9 +938,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate }:
 
         {/* Planetary pulse */}
         {now && <PlanetaryPulse now={now} />}
-
-        {/* Module recommendations */}
-        {now && <ModulePulse now={now} onNavigate={onNavigate} />}
 
       </div>
     </div>
@@ -1579,6 +1578,15 @@ function fmtExactWhen(hours: number): string {
   return when.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
+// Convert hours-since-perfection into a readable "how long ago" label, for
+// separating aspects (the mirror case of fmtExactWhen).
+function fmtSinceExact(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m ago`;
+  if (hours < 48) return `${Math.round(hours)}h ago`;
+  const days = Math.round(hours / 24);
+  return days < 45 ? `${days}d ago` : `${Math.round(days / 30)}mo ago`;
+}
+
 function PlanetaryPulse({ now }: { now: any }) {
   const moonAspects: any[] = now?.moonAspects ?? [];
   const aspects: any[] = now?.aspects ?? [];
@@ -1588,7 +1596,7 @@ function PlanetaryPulse({ now }: { now: any }) {
   if (allAspects.length === 0) return null;
 
   // Build planet emphasis map
-  const emphMap: Record<string, { score: number; aspects: { aspectName: string; partner: string; applying: boolean; hoursToExact: number | null }[] }> = {};
+  const emphMap: Record<string, { score: number; aspects: { aspectName: string; partner: string; applying: boolean; hoursToExact: number | null; hoursSinceExact: number | null }[] }> = {};
 
   for (const a of allAspects) {
     const aspName = (a.aspect ?? "").toLowerCase();
@@ -1600,7 +1608,10 @@ function PlanetaryPulse({ now }: { now: any }) {
       if (!planet || planet === "Moon") continue; // Moon is the lens, not the emphasis
       if (!emphMap[planet]) emphMap[planet] = { score: 0, aspects: [] };
       emphMap[planet].score = Math.max(emphMap[planet].score, score);
-      emphMap[planet].aspects.push({ aspectName: aspName, partner: a.planet1 === planet ? a.planet2 : a.planet1, applying: a.applying, hoursToExact: a.hoursToExact ?? null });
+      emphMap[planet].aspects.push({
+        aspectName: aspName, partner: a.planet1 === planet ? a.planet2 : a.planet1, applying: a.applying,
+        hoursToExact: a.hoursToExact ?? null, hoursSinceExact: a.hoursSinceExact ?? null,
+      });
     }
   }
 
@@ -1640,6 +1651,9 @@ function PlanetaryPulse({ now }: { now: any }) {
                   )}
                   {asp?.applying && asp.hoursToExact != null && (
                     <span style={{ fontSize:8.5, color:"#b07030" }}>exact {fmtExactWhen(asp.hoursToExact)}</span>
+                  )}
+                  {asp && !asp.applying && asp.hoursSinceExact != null && (
+                    <span style={{ fontSize:8.5, color:"#999" }}>peaked {fmtSinceExact(asp.hoursSinceExact)}</span>
                   )}
                 </div>
                 <div style={{ fontSize:10, color:"#888", lineHeight:1.4, marginBottom:4 }}>{info.themes}</div>

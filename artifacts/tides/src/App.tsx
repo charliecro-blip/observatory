@@ -7,6 +7,7 @@ import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail from "@/components/Rail";
+import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
@@ -449,6 +450,11 @@ function Shell() {
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
   const [capture, setCapture] = useState(false);
+  // Session timer + Advise trigger live in the global top bar so they're always
+  // reachable, not just from the Today page. The advisor modal itself still
+  // renders inside Today (it needs Today's gcalEvents/weekSummary context), so
+  // opening it from elsewhere jumps to Today first.
+  const [showAdvisor, setShowAdvisor] = useState(false);
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -534,6 +540,16 @@ function Shell() {
         )}
         <div style={{flex:1}}/>
         {!isMobile && <span style={{fontSize:11,color:"var(--color-muted)",marginRight:12}}>{profile?.displayName}</span>}
+        {now?.planetaryHour && (
+          <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
+        )}
+        <button
+          onClick={() => { setView("today"); setShowAdvisor(true); }}
+          style={{
+            fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
+            background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
+          }}
+        >✦ Advise</button>
         <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
           fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
           background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
@@ -561,7 +577,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor}/>}
         {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}

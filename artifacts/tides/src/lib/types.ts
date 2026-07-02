@@ -1,6 +1,7 @@
 export interface SkyAspect {
   planet1: string; planet2: string; aspect: string; nature: string; orb: number; applying: boolean;
   hoursToExact?: number | null;
+  hoursSinceExact?: number | null;
 }
 
 export type TideCharacter = "deep" | "surge" | "building" | "clear";
