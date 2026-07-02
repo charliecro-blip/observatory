@@ -58,7 +58,7 @@ app.use("/api", generalLimiter);
 app.use("/api", router);
 
 // Serve Tides frontend as static files
-const publicDir = path.resolve(__dirname, "../../../artifacts/tides/public");
+const publicDir = path.join(process.cwd(), "artifacts/tides/public");
 app.use(express.static(publicDir));
 
 // SPA routing: serve index.html for non-API routes
