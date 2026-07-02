@@ -32,7 +32,7 @@ GOOGLE_CLIENT_SECRET
 PORT=3000
 ```
 
-5. Deploy. Wait for health check at `/api/health` to pass (green).
+5. Deploy. Wait for health check at `/api/healthz` to pass (green).
 6. Copy your Railway public URL (e.g. `https://tides-api.up.railway.app`)
 
 ---
@@ -73,7 +73,7 @@ npx web-push generate-vapid-keys
 ## 6. Verify
 
 - Open your Vercel URL → onboarding modal should appear
-- Check `/api/health` on Railway → should return `{ "status": "ok" }`
+- Check `/api/healthz` on Railway → should return `{ "status": "ok" }`
 - Set a location in Settings → confirm location search works
 - Open Sky view → confirm events load
 
