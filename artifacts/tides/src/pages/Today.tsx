@@ -243,7 +243,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           padding: "16px 20px 14px", borderBottom: "1px solid var(--color-border)", flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>Moment Advisor</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>🧭 Compass</div>
             <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What does this moment support?</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

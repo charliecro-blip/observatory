@@ -459,6 +459,28 @@ is what "propagate tide language" means in practice).
 4. Does Sky-as-depth-layer work, or should depth live inside each timescale instead
    of a dedicated tab?
 
+### §15a. Naming RATIFIED (2026-07-02) — the navigator's kit
+Question 3 above is now decided, and the whole nav was renamed as one system:
+every tab is an instrument a navigator would own. The one-sentence journey:
+*feel the water you're in (Now), read what's coming (Ahead), know the deep
+water underneath (Currents), look anything up in the Almanac, and steer from
+the Helm — with a Compass whenever you need a bearing.*
+
+| Label (was) | Label (now) | Instrument logic |
+|---|---|---|
+| Now | **Now** | the water you're in |
+| Ahead | **Ahead** | the water in front — your calendar (days→weeks) |
+| Horizon | **Currents** | the slow water beneath (months→years) |
+| Sky | **Almanac** | the reference book of sky events |
+| Life | **Helm** | where you steer (Guiding Stars → Goals → Projects → Tasks → Habits, in altitude order) |
+| Advise | **Compass** 🧭 | a bearing on demand |
+
+Rationale: Ahead/Horizon competed for the same "later" slot — renaming the long
+layer by *what it is* (Currents) rather than by distance dissolved the pair.
+Internal ids/routes unchanged (today/calendar/currents/sky/work) — labels only.
+Optional flourishes noted but NOT applied: Session→"Watch" (a sailor's watch),
+caution windows→"squalls"/"shoals" (clarity wins until the metaphor is established).
+
 ---
 
 ## 16. The vocabulary treaty (RATIFIED 2026-07-01)

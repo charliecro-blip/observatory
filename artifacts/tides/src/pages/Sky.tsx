@@ -519,7 +519,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       {/* Topbar */}
       <div style={{ padding:"10px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid var(--color-border)", background: "var(--color-rail)", flexShrink:0 }}>
-        <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Sky ahead</div>
+        <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Almanac</div>
         <div style={{ display:"flex", gap:6, alignItems:"center" }}>
           <select value={days} onChange={e => setDays(Number(e.target.value))}
             style={{ fontSize:10, padding:"3px 8px", borderRadius:6, border:"1px solid var(--color-border)", background: "var(--color-background)", color:"#555" }}>

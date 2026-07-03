@@ -27,12 +27,14 @@ type WorkTab = "overview" | "habits" | "tasks" | "goals" | "projects";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
+  // Altitude order — why (stars/goals) → structure (projects) → doing (tasks)
+  // → rhythm (habits) — so the nav itself teaches the hierarchy.
   const TABS: {id:WorkTab; label:string}[] = [
     {id:"overview",  label:"Guiding Stars"},
-    {id:"tasks",     label:"Tasks"},
-    {id:"habits",    label:"Habits"},
     {id:"goals",     label:"Goals"},
     {id:"projects",  label:"Projects"},
+    {id:"tasks",     label:"Tasks"},
+    {id:"habits",    label:"Habits"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -63,16 +65,18 @@ const queryClient = new QueryClient();
 
 type View = "today"|"calendar"|"sky"|"currents"|"work"|"settings";
 
-// Primary tabs — the time-zoom spine: move right to look further ahead.
-// Now → Ahead → Horizon are the timescale ladder; Sky is the depth layer;
-// Life is your own content (Goals -> optional Projects -> Tasks, plus Habits
-// as a separate recurring axis; no standalone Practices tab).
+// Primary tabs — the navigator's kit (naming ratified with the user): Now is
+// the water you're in, Ahead the water in front (your calendar), Currents the
+// slow water beneath (chapters, year+), Almanac the reference book of sky
+// events, and Helm where you steer (Goals -> optional Projects -> Tasks, plus
+// Habits as a separate recurring axis). Compass (the advisor) gives a bearing
+// on demand from the global bar. Internal ids unchanged — labels only.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Now",      zoom:true},
   {id:"calendar", label:"Ahead",    zoom:true},
-  {id:"currents", label:"Horizon",  zoom:true},
-  {id:"sky",      label:"Sky"},
-  {id:"work",     label:"Life"},
+  {id:"currents", label:"Currents", zoom:true},
+  {id:"sky",      label:"Almanac"},
+  {id:"work",     label:"Helm"},
 ];
 
 const WINDOW_TYPES = [
@@ -631,7 +635,7 @@ function Shell() {
         borderBottom:"1px solid var(--color-border)", flexShrink:0, padding: isMobile ? "0 10px" : "0 16px",
       }}>
         {!isMobile && TOP_TABS.map((t, i) => {
-          // Divider after the last zoom tab (Now/Ahead/Horizon) to separate the
+          // Divider after the last zoom tab (Now/Ahead/Currents) to separate the
           // time-ladder from the depth (Sky) and content (Life) tabs.
           const prev = TOP_TABS[i - 1];
           const showDivider = prev?.zoom && !t.zoom;
@@ -664,7 +668,7 @@ function Shell() {
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
-        >✦ Advise</button>
+        >🧭 Compass</button>
         <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
           fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
           background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
