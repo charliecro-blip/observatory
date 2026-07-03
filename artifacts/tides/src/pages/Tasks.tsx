@@ -45,7 +45,6 @@ function authH(tid:string|null) {
 export default function Tasks({ testerId, now }: { testerId:string|null; now:TidesNow|undefined }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
-  const [filter, setFilter] = useState<"today"|"all">("today");
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newWindow, setNewWindow] = useState("");
@@ -65,7 +64,7 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
   // scanning like getNextAngularCrossings does for Sky), so this only means
   // something when the task is actually due today.
   const activeCautionMatches = premiumUnlocked && cautionPlanets && cautionPlanets.length > 0
-    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.transitPlanet))
+    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.cautionPlanet))
     : [];
 
   const { data: upcomingWindows = [] } = useQuery<PlanningWindow[]>({
@@ -98,11 +97,13 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
   const goalsById = Object.fromEntries(goalsList.map(g => [g.id, g]));
   const projectsById = Object.fromEntries(projectsList.map(p => [p.id, p]));
 
+  // Always fetch ALL tasks — this is one page grouped by timeframe, so nothing
+  // ever lives on a hidden "All" tab. A task with no due date (e.g. one spun
+  // off a Guiding Star) lands in "Someday", always visible, never lost.
   const { data: tasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks", testerId, filter],
+    queryKey: ["tasks", testerId],
     queryFn: async () => {
-      const url = filter === "today" ? `/api/tasks?date=${today}` : "/api/tasks";
-      const r = await fetch(url, { headers: authH(testerId) });
+      const r = await fetch("/api/tasks", { headers: authH(testerId) });
       return r.json();
     },
     enabled: !!testerId,
@@ -126,7 +127,7 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["tasks"]});
       setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setNewGoalId(""); setNewProjectId("");
-      setNewDueDate(filter === "today" ? today : "");
+      setNewDueDate(today);
       setShowAdd(false);
     },
   });
@@ -148,22 +149,23 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
   const bestNow = now?.planetaryHour?.planet ? HOUR_WINDOW[now.planetaryHour.planet] : null;
   const active = tasks.filter(t => t.done !== "true");
   const done = tasks.filter(t => t.done === "true");
-  const nowTasks = active.filter(t => !t.bestWindowType || t.bestWindowType === bestNow);
-  const laterByType = active
-    .filter(t => t.bestWindowType && t.bestWindowType !== bestNow)
-    .reduce((acc,t) => { const k = t.bestWindowType!; (acc[k] ??= []).push(t); return acc; }, {} as Record<string,Task[]>);
+
+  // Timeframe buckets — one page, every active task lands in exactly one, and
+  // "Someday" (no due date) is always shown so nothing can hide.
+  const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const buckets: { key: string; label: string; accent?: string; tasks: Task[] }[] = [
+    { key: "overdue",  label: "Overdue",     accent: "#a04040", tasks: active.filter(t => t.dueDate && t.dueDate < today) },
+    { key: "today",    label: "Today",       accent: "#3a6020", tasks: active.filter(t => t.dueDate === today) },
+    { key: "week",     label: "This week",   tasks: active.filter(t => t.dueDate && t.dueDate > today && t.dueDate <= weekEnd) },
+    { key: "later",    label: "Scheduled later", tasks: active.filter(t => t.dueDate && t.dueDate > weekEnd) },
+    { key: "someday",  label: "Someday",     tasks: active.filter(t => !t.dueDate) },
+  ];
 
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
-        <div style={{display:"flex",gap:2,background:"#e0dcd6",borderRadius:6,padding:2}}>
-          {(["today","all"] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{padding:"4px 12px",borderRadius:4,fontSize:11,border:"none",cursor:"pointer",background:filter===f?"#fff":"transparent",color:filter===f?"#333":"#888",fontWeight:filter===f?500:400}}>
-              {f === "today" ? "Today" : "All"}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => { if (!showAdd) setNewDueDate(filter === "today" ? today : ""); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
+        <div style={{fontSize:12,color:"#888"}}>Tasks · everything, by when</div>
+        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
           + New task
         </button>
       </div>
@@ -175,7 +177,7 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
             {newDueDate === today && activeCautionMatches.length > 0 && (
               <div style={{fontSize:10.5,color:"#a04040",background:"#a0404008",border:"1px solid #a0404030",borderRadius:7,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>
                 Heads up — {activeCautionMatches.map((t:any,i:number) => (
-                  <span key={i}>{i>0 && ", "}{PLANET_GLYPH[t.transitPlanet]} {t.transitPlanet} ({CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
+                  <span key={i}>{i>0 && ", "}{PLANET_GLYPH[t.triggerPlanet]} {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
                 ))} is active today — one of your caution windows.
               </div>
             )}
@@ -232,26 +234,21 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
           </div>
         )}
 
-        {/* Now */}
-        {nowTasks.length > 0 && (
-          <Sect label={`Now · ${bestNow ? WINDOW_LABELS[bestNow] : "any"} · ${now?.planetaryHour?.planet ?? ""} hour`} accent="#3a6020">
-            {nowTasks.map(t => <Row key={t.id} task={t} goal={t.goalId ? goalsById[t.goalId] : undefined} project={t.projectId ? projectsById[t.projectId] : undefined} today={today} onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})} onDelete={() => remove.mutate(t.id)} highlight />)}
-          </Sect>
-        )}
-
-        {/* Later grouped by window */}
-        {Object.entries(laterByType).map(([wt, wtTasks]) => (
-          <Sect key={wt} label={WINDOW_LABELS[wt] ?? wt} color={WINDOW_COLORS[wt]}>
-            {wtTasks.map(t => <Row key={t.id} task={t} goal={t.goalId ? goalsById[t.goalId] : undefined} project={t.projectId ? projectsById[t.projectId] : undefined} today={today} onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})} onDelete={() => remove.mutate(t.id)} />)}
+        {/* Timeframe buckets — one page, nothing hidden */}
+        {buckets.filter(b => b.tasks.length > 0).map(b => (
+          <Sect key={b.key} label={`${b.label} · ${b.tasks.length}`} accent={b.accent}>
+            {b.tasks.map(t => (
+              <Row key={t.id} task={t}
+                goal={t.goalId ? goalsById[t.goalId] : undefined}
+                project={t.projectId ? projectsById[t.projectId] : undefined}
+                today={today}
+                onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})}
+                onDelete={() => remove.mutate(t.id)}
+                highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
+              />
+            ))}
           </Sect>
         ))}
-
-        {/* Anytime tasks (no window type) when not in nowTasks */}
-        {active.filter(t => !t.bestWindowType && bestNow && t.done !== "true").length > 0 && (
-          <Sect label="Anytime">
-            {active.filter(t => !t.bestWindowType).map(t => <Row key={t.id} task={t} goal={t.goalId ? goalsById[t.goalId] : undefined} project={t.projectId ? projectsById[t.projectId] : undefined} today={today} onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})} onDelete={() => remove.mutate(t.id)} />)}
-          </Sect>
-        )}
 
         {active.length === 0 && !showAdd && (
           <div style={{textAlign:"center",padding:"48px 0",color:"#bbb",fontSize:13}}>

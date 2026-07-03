@@ -82,13 +82,14 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
   const { data: currentsData } = useCurrents(testerId, houseSystemPref());
   const cautionPlanets = profile?.cautionPlanets;
   const activeCautionMatches = premiumUnlocked && cautionPlanets && cautionPlanets.length > 0
-    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.transitPlanet))
+    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.cautionPlanet))
     : [];
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "" });
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showSeasons, setShowSeasons] = useState(false);
 
   const list: any[] = stars ?? [];
   // useNorthStars only returns active goals server-side today — fetch all so
@@ -238,10 +239,10 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
               {activeCautionMatches.map((t: any, i: number) => (
                 <span key={i}>
                   {i > 0 && " · "}
-                  {PLANET_GLYPH[t.transitPlanet]} {t.transitPlanet} ({CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
+                  {PLANET_GLYPH[t.triggerPlanet]} {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
                 </span>
               ))}
-              {" — move big commitments carefully this stretch."}
+              {" — the theme you flagged is live for a little while. Move big commitments gently, then it passes."}
             </div>
           </div>
         )}
@@ -272,63 +273,6 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
 
         {showForm && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
-
-            {/* Supported by this season — moved here from the old Goals page.
-                One tap pre-fills the anchor + element + horizon so a Guiding
-                Star can ride a real astrological season instead of an
-                invented deadline. */}
-            {premiumUnlocked && currentsData?.hasChart && (() => {
-              const prof = currentsData.profection;
-              const chapters: any[] = currentsData.transitsByHouse ?? [];
-              const riding = (kind: string, house: number, planet?: string) =>
-                list.some(g => g.anchorKind === kind && g.anchorHouse === house && (kind !== "chapter" || g.anchorPlanet === planet));
-              const start = (a: PendingAnchor) => {
-                setPendingAnchor(a);
-                setForm(f => ({ ...f, horizon: horizonFromUntil(a.until), element: a.element }));
-              };
-              const Row = ({ a, sub, isRiding }: { a: PendingAnchor; sub: string; isRiding: boolean }) => {
-                const ec = ELEMENT_INFO[a.element]?.color ?? "#888";
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 0", borderBottom: "1px solid var(--color-border)" }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>{a.label}</div>
-                      <div style={{ fontSize: 9.5, color: "#999", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
-                      </div>
-                    </div>
-                    {isRiding
-                      ? <span style={{ fontSize: 9, color: "#80a870", flexShrink: 0 }}>✓ riding this</span>
-                      : <button onClick={() => start(a)} style={{ fontSize: 9.5, padding: "3px 10px", borderRadius: 8, border: `1px solid ${ec}50`, background: `${ec}10`, color: ec, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                          Ride this →
-                        </button>}
-                  </div>
-                );
-              };
-              if (!prof && chapters.length === 0) return null;
-              return (
-                <div style={{ background: "var(--color-card-2)", borderRadius: 10, padding: "10px 14px 4px" }}>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 2 }}>
-                    Supported by this season
-                  </div>
-                  <div style={{ fontSize: 10, color: "#999", marginBottom: 6, lineHeight: 1.5 }}>
-                    Territories the long cycles are currently backing — pick one to pre-fill this star's season.
-                  </div>
-                  {prof && (
-                    <Row a={{ kind: "profection", house: prof.house, until: prof.yearEnd ?? null, element: houseElement(prof.house), label: `Your ${ordinal(prof.house)}-house year · ${HOUSE_MEANINGS[prof.house]?.title ?? ""}` }}
-                      sub={`Ruler of the year: ${prof.timeLord}`} isRiding={riding("profection", prof.house)} />
-                  )}
-                  {chapters.map((t: any) => (
-                    <Row key={t.planet} a={{ kind: "chapter", planet: t.planet, house: t.house, until: t.leavesHouse ?? null, element: houseElement(t.house), label: `${PLANET_GLYPH[t.planet] ?? ""} ${t.planet} through your ${ordinal(t.house)} · ${HOUSE_MEANINGS[t.house]?.title ?? ""}` }}
-                      sub={`A slow chapter${t.retrograde ? " · currently retrograde" : ""}`} isRiding={riding("chapter", t.house, t.planet)} />
-                  ))}
-                  {(currentsData.majorTransits ?? []).slice(0, 3).map((t: any, i: number) => (
-                    <Row key={`mt${i}`} a={{ kind: "transit", planet: t.transitPlanet, house: t.natalHouse, until: null, element: houseElement(t.natalHouse), label: `${PLANET_GLYPH[t.transitPlanet] ?? ""} ${t.transitPlanet} ${String(t.aspect).toLowerCase()} your natal ${t.natalPlanet}` }}
-                      sub={`Active now${t.exact ? " · exact" : ` · ${t.orb}° orb`}`} isRiding={list.some(g => g.anchorKind === "transit" && g.anchorPlanet === t.transitPlanet && g.anchorHouse === t.natalHouse)} />
-                  ))}
-                </div>
-              );
-            })()}
 
             {pendingAnchor && (() => {
               const ec = ELEMENT_INFO[pendingAnchor.element]?.color ?? "#888";
@@ -378,6 +322,68 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
                 Create
               </button>
             </div>
+
+            {/* Optional, secondary: anchor this aim to a season the sky is
+                backing. Deliberately AFTER the aim inputs and behind a toggle —
+                you write your own intention first; the astrology comes in as
+                support, not as the leading prompt. */}
+            {premiumUnlocked && currentsData?.hasChart && (() => {
+              const prof = currentsData.profection;
+              const chapters: any[] = currentsData.transitsByHouse ?? [];
+              if (!prof && chapters.length === 0) return null;
+              const riding = (kind: string, house: number, planet?: string) =>
+                list.some(g => g.anchorKind === kind && g.anchorHouse === house && (kind !== "chapter" || g.anchorPlanet === planet));
+              const start = (a: PendingAnchor) => {
+                setPendingAnchor(a);
+                setForm(f => ({ ...f, horizon: horizonFromUntil(a.until), element: a.element }));
+              };
+              const Row = ({ a, sub, isRiding }: { a: PendingAnchor; sub: string; isRiding: boolean }) => {
+                const ec = ELEMENT_INFO[a.element]?.color ?? "#888";
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 0", borderBottom: "1px solid var(--color-border)" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>{a.label}</div>
+                      <div style={{ fontSize: 9.5, color: "#999", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
+                      </div>
+                    </div>
+                    {isRiding
+                      ? <span style={{ fontSize: 9, color: "#80a870", flexShrink: 0 }}>✓ riding this</span>
+                      : <button onClick={() => start(a)} style={{ fontSize: 9.5, padding: "3px 10px", borderRadius: 8, border: `1px solid ${ec}50`, background: `${ec}10`, color: ec, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+                          Ride this →
+                        </button>}
+                  </div>
+                );
+              };
+              return (
+                <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
+                  {!showSeasons ? (
+                    <button onClick={() => setShowSeasons(true)} style={{ fontSize: 10.5, color: "#8a8278", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                      Optional: anchor it to a season the sky is backing →
+                    </button>
+                  ) : (
+                    <div style={{ background: "var(--color-card-2)", borderRadius: 10, padding: "10px 14px 4px" }}>
+                      <div style={{ fontSize: 10, color: "#999", marginBottom: 6, lineHeight: 1.5 }}>
+                        The long cycles moving through your chart right now — riding one gives your aim a natural season instead of an invented deadline.
+                      </div>
+                      {prof && (
+                        <Row a={{ kind: "profection", house: prof.house, until: prof.yearEnd ?? null, element: houseElement(prof.house), label: `Your ${ordinal(prof.house)}-house year · ${HOUSE_MEANINGS[prof.house]?.title ?? ""}` }}
+                          sub={`Ruler of the year: ${prof.timeLord}`} isRiding={riding("profection", prof.house)} />
+                      )}
+                      {chapters.map((t: any) => (
+                        <Row key={t.planet} a={{ kind: "chapter", planet: t.planet, house: t.house, until: t.leavesHouse ?? null, element: houseElement(t.house), label: `${PLANET_GLYPH[t.planet] ?? ""} ${t.planet} through your ${ordinal(t.house)} · ${HOUSE_MEANINGS[t.house]?.title ?? ""}` }}
+                          sub={`A slow chapter${t.retrograde ? " · currently retrograde" : ""}`} isRiding={riding("chapter", t.house, t.planet)} />
+                      ))}
+                      {(currentsData.majorTransits ?? []).slice(0, 3).map((t: any, i: number) => (
+                        <Row key={`mt${i}`} a={{ kind: "transit", planet: t.transitPlanet, house: t.natalHouse, until: null, element: houseElement(t.natalHouse), label: `${PLANET_GLYPH[t.transitPlanet] ?? ""} ${t.transitPlanet} ${String(t.aspect).toLowerCase()} your natal ${t.natalPlanet}` }}
+                          sub={`Active now${t.exact ? " · exact" : ` · ${t.orb}° orb`}`} isRiding={list.some(g => g.anchorKind === "transit" && g.anchorPlanet === t.transitPlanet && g.anchorHouse === t.natalHouse)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

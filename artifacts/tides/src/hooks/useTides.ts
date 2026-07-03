@@ -41,9 +41,9 @@ export function useCurrents(testerId: string | null, houseSystem: string) {
 }
 
 export interface CautionDayHit {
-  transitPlanet: string;
+  triggerPlanet: string;  // the fast body (Sun) lighting up the flagged placement
+  cautionPlanet: string;  // the flagged natal planet
   aspect: string;
-  natalPlanet: string;
   orb: number;
   severity: string;
 }

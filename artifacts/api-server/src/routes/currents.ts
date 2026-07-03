@@ -65,23 +65,27 @@ router.get("/currents", async (req, res) => {
     // client-side, not decided here.
     const sensitivity = computePlanetarySensitivity(natal);
 
-    // Caution windows — currently-active hard aspects from ANY planet to a natal
-    // point (not trines/sextiles, which are supportive not cautionary). Covers
-    // all ten planets; the frontend flags which ones match the user's own
-    // self-reported sensitivities.
+    // Caution windows — a flagged planet's difficult quality only "activates"
+    // when a FAST body (the Moon, or the Sun) forms a hard aspect to that
+    // planet's NATAL position. That's a genuine short window, not a months-long
+    // always-on condition. (The old logic keyed off the caution planet being
+    // the *transiting* body, so slow outer-planet transits — which last months
+    // — showed as permanently "active," lighting up five at once and alarming
+    // people.) Tight orb only; the frontend matches `cautionPlanet` against the
+    // user's own self-reported list.
+    const FAST_TRIGGERS = new Set(["Moon", "Sun"]);
     const cautionWindows = transitAspects
-      .filter((t) => HARD_ASPECTS.has(t.aspect) && t.severity !== "mild")
-      .sort((a, b) => (a.exact === b.exact ? a.orb - b.orb : a.exact ? -1 : 1))
-      .slice(0, 12)
+      .filter((t) => FAST_TRIGGERS.has(t.transitPlanet) && HARD_ASPECTS.has(t.aspect) && t.orb <= 3)
+      .sort((a, b) => a.orb - b.orb)
+      .slice(0, 8)
       .map((t) => ({
-        transitPlanet: t.transitPlanet,
+        triggerPlanet: t.transitPlanet, // Moon or Sun — the fast body lighting it up
+        cautionPlanet: t.natalPlanet,   // the flagged natal placement (frontend matches on this)
         aspect: t.aspect,
-        natalPlanet: t.natalPlanet,
         natalSign: t.natalSign,
         natalHouse: t.natalHouse,
         orb: t.orb,
         exact: t.exact,
-        severity: t.severity,
       }));
 
     return res.json({
@@ -145,19 +149,24 @@ router.get("/currents/caution-days", async (req, res) => {
 
     const days: Array<{
       date: string;
-      hits: Array<{ transitPlanet: string; aspect: string; natalPlanet: string; orb: number; severity: string }>;
+      hits: Array<{ triggerPlanet: string; cautionPlanet: string; aspect: string; orb: number; severity: string }>;
     }> = [];
 
     for (let d = 0; d < numDays; d++) {
       const noon = new Date(localMidnightMs + d * 86400000 + 12 * 3600000);
+      // Calendar caution marks use the SUN as the sole trigger — a Sun hard
+      // aspect to a natal flagged planet lasts a few days and reads as a real
+      // "period" (a few times a year per planet), so marks stay sparing and
+      // meaningful. The Moon (used in the live view) would hit every point
+      // monthly and flood the calendar.
       const hits = computeTransitAspects(natal, noon)
-        .filter((t) => planetSet.has(t.transitPlanet) && HARD.has(t.aspect) && t.severity !== "mild")
+        .filter((t) => t.transitPlanet === "Sun" && planetSet.has(t.natalPlanet) && HARD.has(t.aspect) && t.orb <= 3)
         .sort((a, b) => a.orb - b.orb)
-        .slice(0, 3)
+        .slice(0, 2)
         .map((t) => ({
-          transitPlanet: t.transitPlanet,
+          triggerPlanet: t.transitPlanet,
+          cautionPlanet: t.natalPlanet,
           aspect: t.aspect,
-          natalPlanet: t.natalPlanet,
           orb: t.orb,
           severity: t.severity,
         }));

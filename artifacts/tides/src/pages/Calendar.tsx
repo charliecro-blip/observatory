@@ -569,7 +569,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
                     {voc && <span title="Void-of-course Moon — beginnings tend to drift; finish and rest instead" style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
                     {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
-                      <span title={`Caution: ${cautionMap.get(dateStr)!.map(h => `${h.transitPlanet} ${h.aspect.toLowerCase()} your natal ${h.natalPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
+                      <span title={`Caution: ${cautionMap.get(dateStr)!.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
                         style={{ fontSize:9,lineHeight:1,cursor:"help" }}>⚠️</span>
                     )}
                     {/* The day's aspects — lunar and planet-planet, with exact times */}
@@ -816,7 +816,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}>
           {cautionHits.length > 0 && (
-            <span title={`Caution: ${cautionHits.map(h => `${h.transitPlanet} ${h.aspect.toLowerCase()} your natal ${h.natalPlanet}`).join(" · ")} — one of your sensitivity planets is active. Move big commitments carefully.`}
+            <span title={`Caution: ${cautionHits.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active. Move big commitments carefully.`}
               style={{ fontSize:10,lineHeight:1,cursor:"help" }}>⚠️</span>
           )}
           {dayRuler && (

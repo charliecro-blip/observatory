@@ -241,10 +241,14 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             computed client-side, since the self-report lives in the tester
             profile, not on the server. */}
         {cautionWindows.length > 0 && (() => {
-          const withMatch = cautionWindows.map((t) => ({ t, matches: !!cautionPlanets?.includes(t.transitPlanet) }));
-          const ranked = cautionPlanets && cautionPlanets.length > 0
-            ? [...withMatch.filter((x) => x.matches), ...withMatch.filter((x) => !x.matches)]
-            : withMatch;
+          // Only show windows that match one of the user's flagged planets —
+          // a fast body hitting a natal placement they didn't flag isn't a
+          // caution for them, so don't surface it as one.
+          const withMatch = cautionWindows
+            .map((t) => ({ t, matches: !!cautionPlanets?.includes(t.cautionPlanet) }))
+            .filter((x) => x.matches);
+          if (withMatch.length === 0) return null;
+          const ranked = withMatch;
           return (
           <div>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
@@ -252,9 +256,9 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {ranked.map(({ t, matches }, i) => {
-                const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
+                const sevColor = "#a04040";
                 const aspLower = (t.aspect ?? "").toLowerCase();
-                const arch = CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE];
+                const arch = CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE];
                 return (
                   <div key={i} style={{
                     background: matches ? "#a0404008" : "var(--color-card)",
@@ -264,13 +268,13 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
-                        <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                        <span>{PLANET_GLYPH[t.triggerPlanet]}</span>
                         <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
-                        <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
+                        <span>{PLANET_GLYPH[t.cautionPlanet] ?? t.cautionPlanet[0]}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
-                          {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
+                          {t.triggerPlanet} {aspLower} your {t.cautionPlanet}
                           {arch && <span style={{ color: "#999", fontWeight: 400 }}> · {arch.label}</span>}
                         </div>
                         {arch && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch.feel}</div>}
@@ -279,9 +283,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                         <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600 }}>
                           {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
                         </div>
-                        {matches && (
-                          <div style={{ fontSize: 8, color: "#a04040", fontWeight: 600 }}>your caution planet</div>
-                        )}
+                        <div style={{ fontSize: 8, color: "#a04040", fontWeight: 600 }}>passing window</div>
                       </div>
                     </div>
                   </div>

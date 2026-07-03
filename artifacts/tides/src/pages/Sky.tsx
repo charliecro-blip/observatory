@@ -736,7 +736,11 @@ function Section({ label, icon, accent, desc, defaultOpen, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ border:`1px solid ${accent}28`, borderRadius:10, overflow:"hidden" }}>
+    // flexShrink:0 is load-bearing: this box lives in a flex column with
+    // overflow:hidden, so without it the column compresses the section below
+    // its content height and clips the header/rows — the "renders wrong until
+    // you click it" bug (a click forced a relayout that papered over it).
+    <div style={{ border:`1px solid ${accent}28`, borderRadius:10, overflow:"hidden", flexShrink:0 }}>
       <button onClick={() => setOpen(v => !v)} style={{
         width:"100%", display:"flex", alignItems:"center", gap:10, padding:"11px 14px",
         background: open ? `${accent}10` : `${accent}06`, border:"none", cursor:"pointer", textAlign:"left",
