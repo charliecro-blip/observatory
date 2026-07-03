@@ -106,49 +106,51 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           </div>
         )}
 
-        {/* Caution Periods — self-reported planetary sensitivity, not a silent
-            natal-chart verdict. Any planet can be a personal trigger; the chart
-            only pre-suggests likely answers in the questionnaire. */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
-              Caution periods · your sensitivity
+        {showQuestionnaire && (
+          <CautionQuestionnaireModal sensitivity={sensitivity} onClose={() => setShowQuestionnaire(false)} />
+        )}
+
+        {/* Major transits lead — the sharpest, most personally-felt layer of the
+            long cycles (the actual aspects landing on natal points), with hard
+            aspects first. House placements follow as the slower background. */}
+        {majorTransits.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+              Major transits · aspects to your chart
             </div>
-            {cautionPlanets && cautionPlanets.length > 0 && (
-              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 9.5, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-                Edit
-              </button>
-            )}
-          </div>
-          {cautionPlanets && cautionPlanets.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {cautionPlanets.map((p) => {
-                const arch = CAUTION_PLANET_ARCHETYPE[p];
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[...majorTransits]
+                .sort((a, b) => {
+                  const hard = (t: any) => ["Conjunction", "Square", "Opposition"].includes(t.aspect) ? 0 : 1;
+                  return hard(a) - hard(b) || (a.orb ?? 9) - (b.orb ?? 9);
+                })
+                .map((t, i) => {
+                const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
+                const aspLower = (t.aspect ?? "").toLowerCase();
                 return (
-                  <div key={p} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ fontSize: 16 }}>{PLANET_GLYPH[p]}</span>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{p} <span style={{ color: "#999", fontWeight: 400 }}>· {arch?.label}</span></div>
-                      <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch?.feel}</div>
+                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
+                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
+                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+                        {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
+                        {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
+                      </div>
+                      {t.likelyDomains?.length > 0 && (
+                        <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
+                      {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
                     </div>
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-              <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
-                Which planetary archetypes tend to hit you hardest? Any planet can be a personal trigger — this is self-reported, not computed for you.
-              </div>
-              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 11.5, padding: "7px 16px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
-                Take the questionnaire
-              </button>
-            </div>
-          )}
-        </div>
-
-        {showQuestionnaire && (
-          <CautionQuestionnaireModal sensitivity={sensitivity} onClose={() => setShowQuestionnaire(false)} />
+          </div>
         )}
 
         {/* Active chapters — outer planets by house */}
@@ -187,42 +189,51 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           </div>
         </div>
 
-        {/* Major transits — the actual aspects the slow planets are making to natal
-            points right now, not just which house they're passing through. */}
-        {majorTransits.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
-              Major transits · aspects to your chart
+        {/* Caution periods — demoted below the transits/chapters (it's a
+            personal-calibration layer, not the page's headline) and given real
+            explanation: what the questionnaire feeds, and what a "window" means. */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
+              Caution periods · your sensitivity
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {majorTransits.map((t, i) => {
-                const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
-                const aspLower = (t.aspect ?? "").toLowerCase();
+            {cautionPlanets && cautionPlanets.length > 0 && (
+              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 9.5, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                Edit
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: 10.5, color: "#999", lineHeight: 1.55, marginBottom: 8 }}>
+            The planets you marked as personal triggers. When one of them makes a hard aspect to your
+            chart, that stretch gets flagged — here, and as ⚠ marks on the Ahead calendar — so you can
+            move big commitments carefully rather than be surprised by them.
+          </div>
+          {cautionPlanets && cautionPlanets.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {cautionPlanets.map((p) => {
+                const arch = CAUTION_PLANET_ARCHETYPE[p];
                 return (
-                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
-                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
-                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
-                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
-                        {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
-                        {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
-                      </div>
-                      {t.likelyDomains?.length > 0 && (
-                        <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                      {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
+                  <div key={p} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 16 }}>{PLANET_GLYPH[p]}</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{p} <span style={{ color: "#999", fontWeight: 400 }}>· {arch?.label}</span></div>
+                      <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch?.feel}</div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          ) : (
+            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+                Which planetary archetypes tend to hit you hardest? Any planet can be a personal trigger — this is self-reported, not computed for you.
+              </div>
+              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 11.5, padding: "7px 16px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
+                Take the questionnaire
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Caution windows — currently-active HARD aspects from a heavy planet to
             a natal point (not trines/sextiles, which are supportive not cautionary).

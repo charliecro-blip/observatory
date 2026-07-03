@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, type GCalEvent } from "@/hooks/useTides";
+import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
 import { useTimeFormat } from "@/contexts/preferences-context";
+import { useTester } from "@/contexts/tester-context";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -60,9 +61,11 @@ const BIO_NOTE: Record<string, string> = {
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
   Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
+  Uranus:"#3090a0",Neptune:"#5060b0",Pluto:"#703060",
 };
 const PLANET_ICONS: Record<string, string> = {
   Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",
+  Uranus:"♅",Neptune:"♆",Pluto:"♇",
 };
 const ASPECT_SYM: Record<string, string> = {
   conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹",
@@ -448,12 +451,13 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
 
 // ── TimeGrid (week + day) ─────────────────────────────────────────────────────
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
   dates: string[];
   dataMap: Map<string, WeekDay>;
   windowsMap: Map<string, PlanningWindow[]>;
   eventsMap: Map<string, SkyEvent[]>;
   gcalMap: Map<string, GCalEvent[]>;
+  cautionMap: Map<string, CautionDayHit[]>;
   testerId: string | null;
   today: string;
   lat: number; lon: number;
@@ -561,24 +565,28 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, to
                       <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"#888" }}>{PLANET_ICONS[nowHour.ruler]}</span>
                     )}
                   </div>
-                  <div style={{ display:"flex",alignItems:"center",gap:2 }}>
-                    {voc && <span style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
-                    {/* Moon's planetary aspects active this day — ☽ prefix makes clear these
-                        are all Moon-to-planet aspects (e.g. ☽ ⚹♄ = Moon sextile Saturn) */}
-                    {moonAspects.length>0 && (
-                      <span title={moonAspects.map(a=>`Moon ${a.aspect} ${a.planet} — ${a.orb}° orb, ${a.applying?"applying":"separating"}`).join(" · ")}
-                        style={{ display:"flex",gap:3,alignItems:"center" }}>
-                        <span style={{ fontSize:8.5,color:"#7080a0" }}>☽</span>
-                        {moonAspects.slice(0, isDay?3:2).map((a,ai)=>(
-                          <span key={ai}
-                            style={{ fontSize:8.5,color:PLANET_COLORS[a.planet]??"#888",fontWeight:600,whiteSpace:"nowrap" }}>
-                            {ASPECT_SYM[a.aspect]??"·"}{PLANET_ICONS[a.planet]??a.planet[0]}
-                          </span>
-                        ))}
-                      </span>
+                  <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
+                    {voc && <span title="Void-of-course Moon — beginnings tend to drift; finish and rest instead" style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
+                    {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
+                      <span title={`Caution: ${cautionMap.get(dateStr)!.map(h => `${h.transitPlanet} ${h.aspect.toLowerCase()} your natal ${h.natalPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
+                        style={{ fontSize:9,lineHeight:1,cursor:"help" }}>⚠️</span>
                     )}
-                    {/* quality bar — no number */}
-                    {qs>0 && <div style={{ flex:1,height:3,borderRadius:2,background:"#e0dbd6",marginLeft:2 }}><div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/></div>}
+                    {/* The day's aspects — lunar and planet-planet, with exact times */}
+                    {(() => {
+                      const dayAspects = (eventsMap.get(dateStr) ?? []).filter(ev => ev.type === "moon_aspect" || ev.type === "aspect");
+                      if (dayAspects.length === 0) return null;
+                      return dayAspects.slice(0, isDay ? 3 : 2).map((ev, ai) => {
+                        const parts = aspectLineParts(ev);
+                        if (!parts) return null;
+                        const col = ev.quality === "caution" ? "#a05020" : ev.quality === "favorable" ? "#3a6020" : "#60708a";
+                        return (
+                          <span key={ai} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`}
+                            style={{ fontSize:8.5,color:col,fontWeight:ev.type==="aspect"?700:500,whiteSpace:"nowrap" }}>
+                            {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}
+                          </span>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
@@ -746,26 +754,42 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, testerId, to
 
 // ── MonthCell (bigger, richer) ────────────────────────────────────────────────
 
-function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignNames, vocFrac, wins, gcalEvents, skyEvents, onClick }: {
+// Compact "☽□♀ 2:12p" line for a moon_aspect / planet-planet aspect event.
+// Title formats are "Moon □ Venus" / "Sun □ Saturn" from the events endpoint.
+function aspectLineParts(ev: SkyEvent): { left: string; sym: string; right: string } | null {
+  const m = ev.title.split(" ");
+  if (m.length < 3) return null;
+  const [p1, sym, p2] = [m[0], m[1], m.slice(2).join(" ")];
+  return {
+    left: PLANET_ICONS[p1] ?? p1,
+    sym,
+    right: PLANET_ICONS[p2] ?? p2,
+  };
+}
+
+function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignNames, vocFrac, wins, gcalEvents, skyEvents, cautionHits, onClick }: {
   dateStr: string; dayData?: WeekDay; isToday: boolean; isSelected: boolean; isPast: boolean;
   showSignNames: boolean; vocFrac?: {top:number; height:number} | null;
-  wins: PlanningWindow[]; gcalEvents: GCalEvent[]; skyEvents: SkyEvent[]; onClick: () => void;
+  wins: PlanningWindow[]; gcalEvents: GCalEvent[]; skyEvents: SkyEvent[];
+  cautionHits: CautionDayHit[]; onClick: () => void;
 }) {
   const fmtTime = useTimeFormat();
   const dayNum = parseInt(dateStr.split("-")[2]);
   const elem = dayData?.element ?? "";
   const phase = dayData?.moonPhase ?? "";
-  const qs = dayData?.qualityScore ?? 0;
   const voc = dayData?.voidPeriods ?? false;
-  const crossings = (dayData?.crossings ?? []) as any[];
   const moonSign = dayData?.moonSign ?? "";
   const signKey = parseSign(moonSign);
-  const bio = dayData?.biodynamicType ?? "";
   const dayRuler = dayData?.dayRuler ?? "";
   const bg = dayData && !isPast ? (ELEMENT_TINT[elem] ?? "var(--color-card-2)") : "var(--color-card-2)";
   const border = isSelected ? "2px solid #1a2a3a" : isToday ? "2px solid #c09040" : "2px solid transparent";
-  const ec = ELEMENT_ACCENT[elem] ?? "#888";
   const rulerCol = PLANET_COLORS[dayRuler] ?? "#999";
+
+  // Aspects lead the cell: lunar + planet-planet, with times. Ingresses keep a
+  // small line; crossings/quality bars are gone (they read as unexplained
+  // glyphs and mystery bars).
+  const aspectEvents = skyEvents.filter(ev => ev.type === "moon_aspect" || ev.type === "aspect");
+  const ingressEvents = skyEvents.filter(ev => ev.type === "ingress");
 
   return (
     <button onClick={onClick} style={{
@@ -783,13 +807,17 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         }}/>
       )}
 
-      {/* Row 1: date + moon emoji + phase short */}
+      {/* Row 1: date + day ruler + moon phase + caution */}
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
           <span style={{ fontSize:16,lineHeight:1,fontWeight:isToday?700:500,color:isToday?"#b07820":"#333" }}>{dayNum}</span>
           {isToday && <span style={{ fontSize:8,color:"#b07820",fontWeight:600,lineHeight:1.2 }}>TODAY</span>}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}>
+          {cautionHits.length > 0 && (
+            <span title={`Caution: ${cautionHits.map(h => `${h.transitPlanet} ${h.aspect.toLowerCase()} your natal ${h.natalPlanet}`).join(" · ")} — one of your sensitivity planets is active. Move big commitments carefully.`}
+              style={{ fontSize:10,lineHeight:1,cursor:"help" }}>⚠️</span>
+          )}
           {dayRuler && (
             <span title={`${dayRuler}'s day`} style={{
               fontSize:9, color:rulerCol, background:`${rulerCol}18`, borderRadius:8,
@@ -797,7 +825,6 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             }}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span>
           )}
           {phase && <span style={{ fontSize:12 }}>{MOON_EMOJI[phase]??""}</span>}
-          {qs>0 && <div style={{ width:16,height:4,borderRadius:2,background:"#e0dbd6",alignSelf:"center" }}><div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/></div>}
         </div>
       </div>
 
@@ -813,33 +840,37 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         </div>
       )}
 
-      {/* Row 3: badges row — VOC + crossings (biodynamic hidden by default) */}
-      {dayData && (
-        <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2,flexWrap:"wrap" }}>
-          {voc && <span style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#f8e840",color:"#705010",lineHeight:"14px",fontWeight:600 }}>VOC</span>}
-          {crossings.length>0 && (
-            <span style={{ fontSize:8.5,color:PLANET_COLORS[crossings[0]?.planet]??"#aaa",fontWeight:500 }}>
-              {crossings.slice(0,2).map((c:any)=>`${PLANET_ICONS[c.planet]??c.planet[0]}${c.time?.slice(0,5)??""}`.trim()).join(" ")}
-              {crossings.length>2&&` +${crossings.length-2}`}
-            </span>
-          )}
+      {/* Row 3: VOC badge */}
+      {dayData && voc && (
+        <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2 }}>
+          <span title="Void-of-course Moon — a stretch where beginnings tend to drift; finish and rest instead" style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#f8e840",color:"#705010",lineHeight:"14px",fontWeight:600 }}>VOC</span>
         </div>
       )}
 
-      {/* Sky event dots */}
-      {skyEvents.length > 0 && (
-        <div style={{ display:"flex",gap:2,flexWrap:"wrap",marginBottom:2 }}>
-          {skyEvents.slice(0,5).map((ev,i) => {
-            const col = ev.type==="moon_aspect" ? "#7080a0" : ev.type==="crossing" ? "#6040a0" : ev.type==="ingress" ? "#4a7040" : ev.type==="moon_phase" ? "#c08020" : "#888";
+      {/* Aspects — the day's astrological headline */}
+      {aspectEvents.length > 0 && (
+        <div style={{ display:"flex",flexDirection:"column",gap:1,marginBottom:2 }}>
+          {aspectEvents.slice(0,3).map((ev,i) => {
+            const parts = aspectLineParts(ev);
+            if (!parts) return null;
+            const col = ev.quality === "caution" ? "#a05020" : ev.quality === "favorable" ? "#3a6020" : "#60708a";
+            const isPP = ev.type === "aspect";
             return (
-              <div key={i} title={`${ev.icon} ${ev.title}${ev.time ? " · "+ev.time : ""}`} style={{
-                fontSize:10, color:col, lineHeight:1,
-              }}>{ev.icon}</div>
+              <div key={i} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{ fontSize:8.5,color:col,fontWeight:isPP?700:500,lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
+              </div>
             );
           })}
-          {skyEvents.length > 5 && <div style={{ fontSize:8.5,color:"#bbb" }}>+{skyEvents.length-5}</div>}
+          {aspectEvents.length > 3 && <div style={{ fontSize:7.5,color:"#bbb" }}>+{aspectEvents.length-3} more</div>}
         </div>
       )}
+
+      {/* Ingress — sign change marker */}
+      {ingressEvents.slice(0,1).map((ev,i) => (
+        <div key={i} title={ev.title} style={{ fontSize:8,color:"#4a7040",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+          → {ev.title.replace("Moon enters ", "")}{ev.time ? ` ${ev.time}` : ""}
+        </div>
+      ))}
 
       {/* Event chips */}
       <div style={{ flex:1,overflow:"hidden",display:"flex",flexDirection:"column",gap:1 }}>
@@ -865,13 +896,6 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         })}
         {(wins.length + gcalEvents.length)>5 && <div style={{ fontSize:7,color:"#aaa" }}>+{wins.length+gcalEvents.length-5} more</div>}
       </div>
-
-      {/* Quality bar */}
-      {dayData && qs>0 && (
-        <div style={{ position:"absolute",bottom:0,left:0,right:0,height:3,background:"#e0dbd2",borderRadius:"0 0 6px 6px" }}>
-          <div style={{ height:"100%",borderRadius:"0 0 6px 6px",width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
-        </div>
-      )}
     </button>
   );
 }
@@ -1007,6 +1031,16 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const { data: weekData }   = useTidesWeek(90, lat, lon);
   const { data: eventsData } = useSkyEvents(90, lat, lon);
 
+  // Caution days — ⚠ marks from the user's self-reported sensitivity (Currents
+  // questionnaire). Only fetched when they've actually marked planets.
+  const { profile: testerProfile } = useTester();
+  const { data: cautionData } = useCautionDays(testerId, testerProfile?.cautionPlanets, 45);
+  const cautionMap = useMemo(() => {
+    const m = new Map<string, CautionDayHit[]>();
+    for (const d of cautionData?.days ?? []) m.set(d.date, d.hits);
+    return m;
+  }, [cautionData]);
+
   const { data: gcalStatus } = useGCalStatus(testerId);
   const gcalStart = useMemo(() => new Date(today).toISOString(), [today]);
   const gcalEnd   = useMemo(() => new Date(Date.now() + 90*86400000).toISOString(), []);
@@ -1136,7 +1170,15 @@ export default function Calendar({ testerId, now, lat, lon }: {
         {calView==="month" && (
           <>
             <div style={{ flex:1,display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 10px 10px",minWidth:0 }}>
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:8,flexShrink:0 }}>
+              {/* Legend — every mark on the grid, named */}
+              <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"#a09888",flexShrink:0 }}>
+                <span>tint = the day's element (Moon's sign)</span>
+                <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>
+                <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>
+                <span><span style={{ background:"#f8e840",color:"#705010",padding:"0 3px",borderRadius:2,fontWeight:600 }}>VOC</span> = void Moon</span>
+                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = your caution day</span>}
+              </div>
+              <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
                   const ruler = WEEKDAY_RULERS[i];
                   return (
@@ -1158,6 +1200,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
                       wins={windowsMap.get(dateStr)??[]}
                       gcalEvents={gcalMap.get(dateStr)??[]}
                       skyEvents={eventsMap.get(dateStr)??[]}
+                      cautionHits={cautionMap.get(dateStr)??[]}
                       onClick={()=>setSelectedDate(dateStr)}
                     />
                   );
@@ -1178,7 +1221,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
         {calView!=="month" && (
           <TimeGrid
             dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
-            gcalMap={gcalMap}
+            gcalMap={gcalMap} cautionMap={cautionMap}
             testerId={testerId} today={today} lat={lat} lon={lon}
             isDay={calView==="day"}
             onAddEvent={(date,hour)=>setAddModal({date,hour})}

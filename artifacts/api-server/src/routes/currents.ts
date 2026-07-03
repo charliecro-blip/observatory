@@ -99,4 +99,78 @@ router.get("/currents", async (req, res) => {
   }
 });
 
+/**
+ * GET /api/currents/caution-days — forward scan of the user's self-reported
+ * caution planets against their natal chart.
+ *   ?planets=Mars,Saturn   the planets the user marked in the questionnaire
+ *   ?days=30               how far ahead to scan (max 45)
+ *   ?tz=300                viewer tz offset (minutes; getTimezoneOffset convention)
+ *
+ * Returns, per viewer-local day, the hard aspects (conjunction/square/
+ * opposition, non-mild) any listed planet makes to a natal point — the data
+ * behind ⚠ marks on the Ahead calendar. Self-reported sensitivities live
+ * client-side, so the planet list arrives as a query param rather than being
+ * read from the database.
+ */
+router.get("/currents/caution-days", async (req, res) => {
+  const testerId = (req.headers["x-tester-id"] as string) ?? null;
+  if (!testerId) return res.status(401).json({ error: "tester id required" });
+
+  const planets = ((req.query.planets as string) ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (planets.length === 0) return res.json({ hasChart: true, days: [] });
+
+  const numDays = Math.min(45, Math.max(1, parseInt((req.query.days as string) ?? "30", 10)));
+  const tzOffsetMin = Number.isFinite(parseInt((req.query.tz as string) ?? "", 10))
+    ? parseInt((req.query.tz as string), 10)
+    : 0;
+  const reqSystem = (req.query.houseSystem as string) ?? "whole-sign";
+  const houseSystem: HouseSystem = HOUSE_SYSTEMS.includes(reqSystem as HouseSystem)
+    ? (reqSystem as HouseSystem) : "whole-sign";
+
+  const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+  if (!stored) return res.json({ hasChart: false, days: [] });
+
+  try {
+    const natal = computeNatalChart(
+      stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset, houseSystem,
+    );
+
+    const HARD = new Set(["Conjunction", "Square", "Opposition"]);
+    const planetSet = new Set(planets);
+
+    // Viewer-local midnight as a UTC instant, then sample each day at local noon.
+    const shifted = new Date(Date.now() - tzOffsetMin * 60000);
+    const localMidnightMs =
+      Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) + tzOffsetMin * 60000;
+
+    const days: Array<{
+      date: string;
+      hits: Array<{ transitPlanet: string; aspect: string; natalPlanet: string; orb: number; severity: string }>;
+    }> = [];
+
+    for (let d = 0; d < numDays; d++) {
+      const noon = new Date(localMidnightMs + d * 86400000 + 12 * 3600000);
+      const hits = computeTransitAspects(natal, noon)
+        .filter((t) => planetSet.has(t.transitPlanet) && HARD.has(t.aspect) && t.severity !== "mild")
+        .sort((a, b) => a.orb - b.orb)
+        .slice(0, 3)
+        .map((t) => ({
+          transitPlanet: t.transitPlanet,
+          aspect: t.aspect,
+          natalPlanet: t.natalPlanet,
+          orb: t.orb,
+          severity: t.severity,
+        }));
+      if (hits.length > 0) {
+        const localDate = new Date(localMidnightMs + d * 86400000 - tzOffsetMin * 60000);
+        days.push({ date: localDate.toISOString().slice(0, 10), hits });
+      }
+    }
+
+    return res.json({ hasChart: true, days });
+  } catch (err) {
+    return res.status(500).json({ error: "failed to compute caution days", detail: String(err) });
+  }
+});
+
 export default router;

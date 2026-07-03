@@ -108,7 +108,7 @@ export interface SkyEvent {
   date: string;
   time?: string;
   at?: string;        // ISO UTC instant for timed events; date/time are localized from this in the client
-  type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window" | "moon_aspect";
+  type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window" | "moon_aspect" | "aspect";
   title: string;
   subtitle?: string;
   icon: string;

@@ -137,8 +137,12 @@ router.get("/tides/now", async (req, res) => {
     Venus: "The Connector", Mars: "The Warrior", Jupiter: "The Sage", Saturn: "The Builder",
   };
 
+  // Format a UTC instant as "HH:MM" in the VIEWER's timezone (tzOffset from the
+  // query). toLocaleTimeString here formatted in the SERVER's timezone — UTC on
+  // Railway — so every hour boundary the client displayed was wrong.
   function fmtTime(d: Date) {
-    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const s = new Date(d.getTime() - tzOffset * 60000);
+    return `${String(s.getUTCHours()).padStart(2, "0")}:${String(s.getUTCMinutes()).padStart(2, "0")}`;
   }
 
   // Compute next 4 planetary hours
@@ -194,20 +198,27 @@ router.get("/tides/now", async (req, res) => {
   });
 
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
-  const dayRuler = DAY_RULERS[date.getDay()];
+  // Day-of-week in the VIEWER's calendar, not the server's (getDay() on Railway
+  // is UTC — after ~7-8pm US time it rolled to tomorrow's ruler).
+  const dayRuler = DAY_RULERS[new Date(date.getTime() - tzOffset * 60000).getUTCDay()];
 
   // Next moon ingress — approximate as next sign change (scan forward hourly)
   let nextIngress: string | null = null;
   if (voc) {
     const currentSign = moonSign;
+    const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     for (let h = 1; h <= 72; h++) {
       const futureJd = jd + h / 24;
       const futPlanets = getPlanetPositions(futureJd);
       const futMoonSign = futPlanets.find((p) => p.planet === "Moon")!.sign;
       if (futMoonSign !== currentSign) {
-        const ingressDate = new Date(date.getTime() + h * 3600000);
-        nextIngress = ingressDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
-        if (h >= 24) nextIngress = ingressDate.toLocaleDateString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+        // Format in the viewer's timezone (same shift as fmtTime).
+        const local = new Date(date.getTime() + h * 3600000 - tzOffset * 60000);
+        let hr = local.getUTCHours();
+        const ampm = hr >= 12 ? "PM" : "AM";
+        hr = hr % 12 || 12;
+        const clock = `${String(hr).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")} ${ampm}`;
+        nextIngress = h >= 24 ? `${WEEKDAYS[local.getUTCDay()]} ${clock}` : clock;
         break;
       }
     }
@@ -290,10 +301,20 @@ router.get("/tides/week", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
   const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 30);
-  const now   = new Date();
+  // Viewer timezone offset — days must be the VIEWER's calendar days. On UTC
+  // day boundaries, a US viewer's "today" straddles two UTC dates: a void
+  // period midday their time fell outside the old 9am/noon/3pm UTC samples,
+  // so today's VoC never showed while future ones did.
+  const tzOffsetMin = Number.isFinite(parseInt((req.query.tz as string) ?? "", 10))
+    ? parseInt((req.query.tz as string), 10)
+    : 0;
+  const now = new Date();
 
-  // Start from today UTC midnight
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  // Start from the viewer's local midnight (as a UTC instant).
+  const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
+  const todayUtc = new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) + tzOffsetMin * 60000,
+  );
 
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
 
@@ -317,21 +338,23 @@ router.get("/tides/week", (req, res) => {
   }> = [];
 
   for (let d = 0; d < numDays; d++) {
-    const dayMs   = todayUtc.getTime() + d * 86400000;
-    const dayDate = new Date(dayMs);
-    const noonJd  = julianDay(new Date(dayMs + 12 * 3600000)); // noon UTC
+    const dayMs   = todayUtc.getTime() + d * 86400000; // viewer-local midnight, as a UTC instant
+    const noonJd  = julianDay(new Date(dayMs + 12 * 3600000)); // viewer-local noon
 
     const { name: phaseName, fraction } = moonPhase(noonJd);
     const planetsNoon = getPlanetPositions(noonJd);
     const moonSignNoon = planetsNoon.find((p) => p.planet === "Moon")!.sign;
     const elemNoon  = getDailyElementEmphasis(noonJd);
 
-    // Check morning (9am) and afternoon (3pm) for VOC presence
-    const amJd  = julianDay(new Date(dayMs + 9  * 3600000));
-    const pmJd  = julianDay(new Date(dayMs + 15 * 3600000));
-    const amVoc = voidOfCourse(amJd).voc;
-    const pmVoc = voidOfCourse(pmJd).voc;
-    const hasVoc = amVoc || pmVoc || elemNoon.voidOfCourse;
+    // Sample the waking span of the viewer's local day for VOC presence. The
+    // day-level badge means "a meaningful stretch of this day is void" — at
+    // least ~3 waking hours (2 of 6 samples) — not "the Moon is void for five
+    // minutes at some point," which is true of more than half of all days and
+    // would make the badge noise.
+    const vocSamples = [6, 9, 12, 15, 18, 21].filter(
+      (h) => voidOfCourse(julianDay(new Date(dayMs + h * 3600000))).voc,
+    ).length;
+    const hasVoc = vocSamples >= 2 || elemNoon.voidOfCourse;
 
     // Best-for list
     const element = elemNoon.element;
@@ -404,10 +427,12 @@ router.get("/tides/week", (req, res) => {
         orb: parseFloat(a.orb.toFixed(1)),
       }));
 
+    // Recover the viewer-local calendar date/weekday from the (UTC) local-midnight instant.
+    const localDay = new Date(dayMs - tzOffsetMin * 60000);
     days.push({
-      date:         dayDate.toISOString().split("T")[0],
-      label:        DAY_LABELS[dayDate.getUTCDay()],
-      dayRuler:     DAY_RULERS[dayDate.getUTCDay()],
+      date:         localDay.toISOString().split("T")[0],
+      label:        DAY_LABELS[localDay.getUTCDay()],
+      dayRuler:     DAY_RULERS[localDay.getUTCDay()],
       moonSign:     moonSignNoon,
       moonPhase:    phaseName,
       moonFraction: fraction,
@@ -830,6 +855,45 @@ router.get("/tides/events", (req, res) => {
           delete prevOrb[key]; // reset until next aspect window
         } else {
           prevOrb[key] = asp.orb;
+        }
+      }
+    }
+  }
+
+  // ── Planet-planet aspects: day-resolution scan for perfection days ──
+  // Slow pairs change orb slowly, so daily sampling finds the exact day
+  // reliably. These are the "Sun □ Saturn exact" landmarks the calendar
+  // should lead with alongside the lunar stream.
+  {
+    const ASPECT_ICONS: Record<string, string> = {
+      conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍",
+    };
+    const ASPECT_QUALITY: Record<string, "favorable"|"caution"|"neutral"> = {
+      trine:"favorable", sextile:"favorable", conjunction:"neutral", square:"caution", opposition:"caution",
+    };
+    const prevOrbPP: Record<string, number> = {};
+    for (let d = 0; d <= numDays; d++) {
+      const scanJd = startJd + d;
+      for (const asp of getMajorAspects(scanJd)) {
+        if (asp.planet1 === "Moon" || asp.planet2 === "Moon") continue;
+        const key = `${asp.planet1}:${asp.planet2}:${asp.aspect}`;
+        const prev = prevOrbPP[key];
+        // Perfection: orb was shrinking, now grows, and got tight enough to matter.
+        if (prev !== undefined && asp.orb > prev && prev < 1.2) {
+          const exactDate = new Date((scanJd - 0.5 - 2440587.5) * 86400000);
+          const sym = ASPECT_ICONS[asp.aspect] ?? "·";
+          events.push({
+            date: exactDate.toISOString().split("T")[0],
+            at: exactDate.toISOString(),
+            type: "aspect" as any,
+            title: `${asp.planet1} ${sym} ${asp.planet2}`,
+            subtitle: `${asp.nature} — exact around this day`,
+            icon: sym,
+            quality: ASPECT_QUALITY[asp.aspect] ?? "neutral",
+          });
+          delete prevOrbPP[key];
+        } else {
+          prevOrbPP[key] = asp.orb;
         }
       }
     }

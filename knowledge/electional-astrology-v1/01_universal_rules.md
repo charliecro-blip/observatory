@@ -27,9 +27,11 @@ every universal rule below is really a rule about the Moon.
    forward with no near relief. Prefer moments where the Moon's *next* aspect
    (her "first applying aspect," see below) is soft.
 5. **Mercury retrograde**, specifically for anything involving contracts,
-   communication, or purchases (signing, publishing, launching a message-driven
-   venture). Not a hard rule for every category (see `02_categories.md`), but a
-   near-universal soft caution.
+   commitments, or releases (signing, publishing, financial ventures). Not a
+   hard rule for every category (see `02_categories.md`), and notably NOT a
+   caution for writing itself — drafting, revising, and returning to old
+   material classically *suit* the retrograde. The caution is about what goes
+   out into the world under it, not what gets worked on privately.
 6. **Eclipses within ~3 days** (before or after). Eclipses are traditionally
    read as accelerants that also destabilize — a launch too close to one tends
    to run hot and change shape faster than planned. The app's `activeEclipse`

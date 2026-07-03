@@ -62,83 +62,121 @@ function nearestEclipseDays(date: Date): number {
 
 export type ElectionWeight = "light" | "standard" | "heavy";
 
+// How Mercury retrograde bears on a category:
+//   hard      — classically disqualifying (contracts, publishing, financial commitments)
+//   soft      — a mild caution, not disqualifying
+//   favorable — the retrograde actually SUITS this beginning (drafting, revision)
+export type MercuryRetroMode = "hard" | "soft" | "favorable";
+
 export interface ElectionCategory {
   key: string;
   label: string;
   houses: number[];           // relevant whole-sign houses, from the moment's own ASC
   significators: string[];    // co-significator planets, for ruler-condition checks
-  hardMercuryRetro: boolean;  // Mercury retrograde is a HARD block for this category
+  mercuryRetro: MercuryRetroMode;
+  mercuryRetroNote?: string;  // category-specific copy shown when Mercury is retrograde
   preferredHourRulers: string[]; // planetary-hour rulers that sharpen this category
   weight: ElectionWeight;      // classical "stakes" — governs how much checklist detail the UI shows
   description: string;
 }
 
+// Ordered by stakes, lightest first — the picker renders in this order, so the
+// everyday elections lead and the tradition's high-scrutiny ones (contracts,
+// marriage) sit at the end where their weight is legible.
 export const ELECTION_CATEGORIES: ElectionCategory[] = [
   {
+    key: "habit_start", label: "New habit or practice",
+    houses: [6], significators: [], mercuryRetro: "soft",
+    preferredHourRulers: [], weight: "light",
+    description: "Starting a daily practice — exercise, meditation, a wellness routine.",
+  },
+  {
+    key: "date", label: "Scheduling a date",
+    houses: [5], significators: ["Venus"], mercuryRetro: "soft",
+    preferredHourRulers: ["Venus"], weight: "light",
+    description: "A first date, or a date that matters.",
+  },
+  {
+    key: "travel_short", label: "Short trip",
+    houses: [3], significators: ["Mercury"], mercuryRetro: "soft",
+    preferredHourRulers: ["Mercury", "Jupiter"], weight: "light",
+    description: "Local or short-distance travel.",
+  },
+  {
+    key: "conversation", label: "An important conversation",
+    houses: [3, 7], significators: ["Mercury"], mercuryRetro: "soft",
+    mercuryRetroNote: "Mercury is retrograde — fine for revisiting old ground or clearing the air, but expect to restate things; save brand-new proposals for after it turns direct.",
+    preferredHourRulers: ["Mercury", "Venus"], weight: "light",
+    description: "Raising something difficult, making an ask, clearing the air.",
+  },
+  {
+    key: "writing_start", label: "Starting a writing project",
+    houses: [3], significators: ["Mercury"], mercuryRetro: "favorable",
+    mercuryRetroNote: "Mercury retrograde suits this — drafting, revising, and returning to old material are classically favored under it. Just hold publication until it turns direct.",
+    preferredHourRulers: ["Mercury", "Jupiter"], weight: "standard",
+    description: "Beginning a manuscript, essay, or body of writing (releasing it is a separate election).",
+  },
+  {
+    key: "creative_launch", label: "Creative project launch",
+    houses: [5], significators: ["Sun", "Venus"], mercuryRetro: "soft",
+    preferredHourRulers: ["Sun", "Venus"], weight: "standard",
+    description: "Debuting art, performance, or a creative body of work.",
+  },
+  {
+    key: "job_application", label: "Submitting a job application",
+    houses: [10, 6], significators: ["Mercury", "Sun"], mercuryRetro: "soft",
+    mercuryRetroNote: "Mercury is retrograde — applications sent now tend to need follow-up or resubmission. Double-check every document, and don't be surprised by delays in hearing back.",
+    preferredHourRulers: ["Mercury", "Sun"], weight: "standard",
+    description: "Sending an application or pitch for a position you want.",
+  },
+  {
+    key: "job_start", label: "Starting a new job",
+    houses: [6, 10], significators: ["Sun", "Saturn"], mercuryRetro: "soft",
+    preferredHourRulers: ["Sun", "Mercury"], weight: "standard",
+    description: "First day at a new position or role.",
+  },
+  {
+    key: "travel_long", label: "Long journey",
+    houses: [9, 4], significators: ["Jupiter"], mercuryRetro: "soft",
+    preferredHourRulers: ["Jupiter", "Sun"], weight: "standard",
+    description: "International or long-distance travel, relocation journeys.",
+  },
+  {
+    key: "publishing", label: "Publishing or releasing",
+    houses: [9, 3], significators: ["Mercury", "Jupiter"], mercuryRetro: "hard",
+    preferredHourRulers: ["Mercury", "Jupiter"], weight: "standard",
+    description: "Releasing a publication, launching content into the world.",
+  },
+  {
     key: "business_launch", label: "Business or product launch",
-    houses: [10, 1], significators: ["Sun", "Saturn"], hardMercuryRetro: false,
+    houses: [10, 1], significators: ["Sun", "Saturn"], mercuryRetro: "soft",
+    mercuryRetroNote: "Mercury is retrograde — not disqualifying for a launch, but expect messaging, contracts, and logistics to need another pass once it turns direct. Build the follow-up adjustment into the plan.",
     preferredHourRulers: ["Sun", "Jupiter"], weight: "heavy",
     description: "Opening a business, launching a product or website, going public with a venture.",
   },
   {
+    key: "home_purchase", label: "Home purchase or move",
+    houses: [4], significators: ["Moon", "Saturn"], mercuryRetro: "soft",
+    preferredHourRulers: ["Moon", "Saturn"], weight: "heavy",
+    description: "Closing on a home, signing a lease, moving in.",
+  },
+  {
+    key: "financial_venture", label: "Financial venture",
+    houses: [2, 8], significators: ["Venus", "Jupiter"], mercuryRetro: "hard",
+    preferredHourRulers: ["Jupiter", "Venus"], weight: "heavy",
+    description: "Investments, loans, major purchases or financial commitments.",
+  },
+  {
     key: "contract", label: "Signing a contract",
-    houses: [7, 3], significators: ["Mercury"], hardMercuryRetro: true,
+    houses: [7, 3], significators: ["Mercury"], mercuryRetro: "hard",
     preferredHourRulers: ["Mercury", "Jupiter"], weight: "heavy",
     description: "Signing agreements, publishing deals, formal commitments in writing.",
   },
   {
     key: "marriage", label: "Marriage or partnership",
-    houses: [7], significators: ["Venus", "Moon"], hardMercuryRetro: false,
+    houses: [7], significators: ["Venus", "Moon"], mercuryRetro: "soft",
     preferredHourRulers: ["Venus", "Sun"], weight: "heavy",
     description: "Weddings, formalizing a partnership, relationship commitments.",
-  },
-  {
-    key: "travel_short", label: "Short trip",
-    houses: [3], significators: ["Mercury"], hardMercuryRetro: false,
-    preferredHourRulers: ["Mercury", "Jupiter"], weight: "light",
-    description: "Local or short-distance travel.",
-  },
-  {
-    key: "travel_long", label: "Long journey",
-    houses: [9, 4], significators: ["Jupiter"], hardMercuryRetro: false,
-    preferredHourRulers: ["Jupiter", "Sun"], weight: "standard",
-    description: "International or long-distance travel, relocation journeys.",
-  },
-  {
-    key: "writing_publishing", label: "Writing or publishing",
-    houses: [3, 9], significators: ["Mercury", "Jupiter"], hardMercuryRetro: true,
-    preferredHourRulers: ["Mercury", "Jupiter"], weight: "standard",
-    description: "Starting a manuscript, releasing a publication, launching content.",
-  },
-  {
-    key: "creative_launch", label: "Creative project launch",
-    houses: [5], significators: ["Sun", "Venus"], hardMercuryRetro: false,
-    preferredHourRulers: ["Sun", "Venus"], weight: "standard",
-    description: "Debuting art, performance, or a creative body of work.",
-  },
-  {
-    key: "home_purchase", label: "Home purchase or move",
-    houses: [4], significators: ["Moon", "Saturn"], hardMercuryRetro: false,
-    preferredHourRulers: ["Moon", "Saturn"], weight: "heavy",
-    description: "Closing on a home, signing a lease, moving in.",
-  },
-  {
-    key: "job_start", label: "Starting a new job",
-    houses: [6, 10], significators: ["Sun", "Saturn"], hardMercuryRetro: false,
-    preferredHourRulers: ["Sun", "Mercury"], weight: "standard",
-    description: "First day at a new position or role.",
-  },
-  {
-    key: "financial_venture", label: "Financial venture",
-    houses: [2, 8], significators: ["Venus", "Jupiter"], hardMercuryRetro: false,
-    preferredHourRulers: ["Jupiter", "Venus"], weight: "heavy",
-    description: "Investments, loans, major purchases or financial commitments.",
-  },
-  {
-    key: "habit_start", label: "New habit or practice",
-    houses: [6], significators: [], hardMercuryRetro: false,
-    preferredHourRulers: [], weight: "light",
-    description: "Starting a daily practice — exercise, meditation, a wellness routine.",
   },
 ];
 
@@ -236,16 +274,25 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
       : "No recent perfected Moon aspect found in the lookback window.",
   });
 
-  // 5. Mercury retrograde — hard for this category, or soft otherwise
+  // 5. Mercury retrograde — hard, soft, or genuinely favorable, per category.
+  // Writing/revision work classically SUITS a retrograde; only release-into-
+  // the-world categories (publishing, contracts, financial commitments) treat
+  // it as disqualifying.
   const mercRetro = isRetrograde("Mercury", jd);
+  const retroDetail = mercRetro
+    ? category.mercuryRetroNote ?? (
+        category.mercuryRetro === "hard"
+          ? "Mercury is retrograde — classically avoided for signing, publishing, or committing in writing, regardless of how the Moon looks."
+          : "Mercury is retrograde — a mild caution for anything communication- or contract-adjacent, though not disqualifying for this category."
+      )
+    : "Mercury is direct.";
   rules.push({
-    key: "mercury_retrograde", label: "Mercury retrograde",
-    severity: category.hardMercuryRetro ? "hard" : "soft", passed: !mercRetro,
-    detail: mercRetro
-      ? category.hardMercuryRetro
-        ? "Mercury is retrograde — classically avoided for signing, publishing, or committing in writing, regardless of how the Moon looks."
-        : "Mercury is retrograde — a mild caution for anything communication- or contract-adjacent, though not disqualifying for this category."
-      : "Mercury is direct.",
+    key: "mercury_retrograde",
+    label: category.mercuryRetro === "favorable" && mercRetro ? "Mercury retrograde (suits this work)" : "Mercury retrograde",
+    severity: category.mercuryRetro === "hard" ? "hard" : category.mercuryRetro === "favorable" ? "support" : "soft",
+    // For favorable categories the retrograde is a positive signal, not a failure.
+    passed: category.mercuryRetro === "favorable" ? true : !mercRetro,
+    detail: retroDetail,
   });
 
   // 6. Eclipse within ~3 days — hard
@@ -395,7 +442,7 @@ export function scanElection(
   // active, tell the user honestly when it clears rather than silently hiding
   // every window in the range (per 05_safety_and_limits.md's "never manufacture
   // a false all-clear" principle).
-  if (category.hardMercuryRetro && isRetrograde("Mercury", julianDay(startDate))) {
+  if (category.mercuryRetro === "hard" && isRetrograde("Mercury", julianDay(startDate))) {
     let clearsOn: string | null = null;
     for (let d = 0; d <= 90; d++) {
       const check = new Date(startDate.getTime() + d * 86400000);

@@ -545,9 +545,12 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 
       <QualityStrip week={week} days={days} />
 
-      {/* Main area */}
+      {/* Main area — content column capped at a readable width so the sections
+          render identically whether or not the detail panel is open (previously
+          the panel-less state sprawled full-bleed and looked broken until a
+          click opened the panel and narrowed it). */}
       <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative" }}>
-        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10, maxWidth:760, margin:"0 auto", width:"100%" }}>
           {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
 
           {/* ── Angular crossings ── */}

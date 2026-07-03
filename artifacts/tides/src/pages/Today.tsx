@@ -87,8 +87,12 @@ function journalKey(testerId: string | null, date: string) {
   return `tides-journal-${testerId ?? "anon"}-${date}`;
 }
 
-function isDefaultLocation(lat: number, lon: number) {
-  return Math.abs(lat - 40.7) < 0.01 && Math.abs(lon - (-74.0)) < 0.01;
+// "No saved location" now means we're on the timezone-derived fallback (right
+// timezone, approximate city) rather than a fixed New York default — still
+// worth nudging for a real location since sunrise/sunset and the planetary-
+// hour grid sharpen with real coordinates.
+function hasSavedLocation(profile: { lat?: number; lon?: number } | null) {
+  return profile?.lat != null && profile?.lon != null;
 }
 
 // ── Pin button ────────────────────────────────────────────────────────────────
@@ -399,7 +403,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
-  const { updateLocation } = useTester();
+  const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
   const [crossingsOn, setCrossingsOn] = useState(true);
@@ -605,25 +609,25 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Tooltip content={
             <div>
-              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>{el} element · {now?.quality}</div>
-              <div style={{ fontSize: 10, color: "#b0aaa4" }}>Element shapes the day's quality. Moon in {now?.moonSign} gives a {el} quality to this time.</div>
+              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>An {el} day, {now?.quality} conditions</div>
+              <div style={{ fontSize: 10, color: "#b0aaa4" }}>The Moon in {now?.moonSign} makes this an {el}-element day; "{now?.quality}" is the overall working conditions (void periods, retrogrades, and aspects, combined).</div>
             </div>
           }>
             <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
-              {el} · {now?.quality}
+              {el} day · {now?.quality} conditions
             </div>
           </Tooltip>
-          {isDefaultLocation(lat, lon) ? (
+          {!hasSavedLocation(testerProfile) ? (
             <button
               onClick={useCurrentLocation}
               disabled={locating}
-              title="Use your current location, or set one manually in Settings"
+              title="Sunrise, sunset, and planetary hours are computed for your location — right now we're estimating it from your timezone"
               style={{
                 fontSize: 9, color: "#c07020", background: "#fff8ee", border: "1px solid #e0c080",
                 borderRadius: 6, padding: "3px 9px", cursor: locating ? "default" : "pointer",
               }}
             >
-              {locating ? "Locating…" : locationError ? "⚠ Couldn't get location — set it in Settings" : "⚠ Set location for local crossings"}
+              {locating ? "Locating…" : locationError ? "⚠ Couldn't get location — set it in Settings" : "⚠ Set location — hours & sun times are estimated"}
             </button>
           ) : (
             <button
@@ -668,7 +672,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
-              There's more beneath the surface — long-cycle transits and personal caution windows.
+              This page is the day's weather. The <b>Currents</b> tab tracks your slow cycles — the multi-year transits moving through your chart right now.
             </div>
             <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               Explore
@@ -1511,6 +1515,18 @@ function PlanetaryPulse({ now }: { now: any }) {
 
   if (emphasized.length === 0) return null;
 
+  // Each aspect involves two planets, so it lands in both planets' lists — but
+  // the same square shown as "Sun □ Saturn" on one row and "Saturn □ Sun" on
+  // the next reads as a duplicate. Show each pair once: the higher-emphasis
+  // planet keeps it, the partner's row falls back to its next distinct aspect.
+  const shownPairs = new Set<string>();
+  const pairKey = (a: string, b: string, asp: string) => [a, b].sort().join("-") + ":" + asp;
+  const rows = emphasized.map(([planet, data]) => {
+    const asp = data.aspects.find(x => !shownPairs.has(pairKey(planet, x.partner, x.aspectName))) ?? null;
+    if (asp) shownPairs.add(pairKey(planet, asp.partner, asp.aspectName));
+    return { planet, data, asp };
+  });
+
   return (
     <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:12, padding:"14px 18px", flexShrink:0 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
@@ -1518,10 +1534,9 @@ function PlanetaryPulse({ now }: { now: any }) {
         <div style={{ fontSize:9, color:"#bbb" }}>active sky emphasis</div>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {emphasized.map(([planet, data]) => {
+        {rows.map(({ planet, data, asp }) => {
           const info = PLANET_THEMES[planet];
           if (!info) return null;
-          const asp = data.aspects[0];
           const aspInfo = ASPECT_NATURE[asp?.aspectName ?? ""] ?? null;
           const intensityW = Math.min(100, Math.round(data.score * 80));
           return (

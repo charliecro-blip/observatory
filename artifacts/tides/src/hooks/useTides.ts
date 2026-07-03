@@ -40,6 +40,33 @@ export function useCurrents(testerId: string | null, houseSystem: string) {
   });
 }
 
+export interface CautionDayHit {
+  transitPlanet: string;
+  aspect: string;
+  natalPlanet: string;
+  orb: number;
+  severity: string;
+}
+
+/** Forward scan of the user's self-reported caution planets — the data behind
+ *  ⚠ marks on the Ahead calendar. planets come from the tester profile
+ *  (client-side), so they're passed as a param rather than read server-side. */
+export function useCautionDays(testerId: string | null, planets: string[] | undefined, days = 45) {
+  const list = (planets ?? []).join(",");
+  return useQuery<{ hasChart: boolean; days: { date: string; hits: CautionDayHit[] }[] }>({
+    queryKey: ["caution-days", testerId, list, days],
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/currents/caution-days?planets=${encodeURIComponent(list)}&days=${days}&${tzParam()}`,
+        { headers: authHeaders(testerId) },
+      );
+      return r.json();
+    },
+    enabled: !!testerId && list.length > 0,
+    staleTime: 3600_000,
+  });
+}
+
 export function useTidesNow(testerId: string | null, lat = 40.7, lon = -74.0) {
   return useQuery<TidesNow>({
     queryKey: ["tides-now", testerId, lat, lon],
@@ -63,7 +90,7 @@ export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0) {
   return useQuery<TidesWeek>({
     queryKey: ["tides-week", days, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/week?days=${days}&${loc(lat, lon)}`);
+      const r = await fetch(`/api/tides/week?days=${days}&${loc(lat, lon)}&${tzParam()}`);
       const data: TidesWeek = await r.json();
       for (const day of data.days ?? []) {
         if (day.crossings) {

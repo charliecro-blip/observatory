@@ -363,7 +363,17 @@ function inferDomains(
   for (const d of byNatal[natalPlanet] ?? []) domains.add(d);
   for (const d of byHouse[natalHouse] ?? []) domains.add(d);
 
-  return [...domains].slice(0, 5);
+  // The Set only catches exact duplicates — "deep fatigue" (transit list) and
+  // "fatigue" (natal list) both survived it and read as a repeat. Drop any
+  // domain that's a sub-phrase of one already kept.
+  const deduped: string[] = [];
+  for (const d of domains) {
+    const overlaps = deduped.findIndex((kept) => kept.includes(d) || d.includes(kept));
+    if (overlaps === -1) deduped.push(d);
+    else if (d.length > deduped[overlaps].length) deduped[overlaps] = d; // keep the more specific phrase
+  }
+
+  return deduped.slice(0, 5);
 }
 
 function scoreTransit(
@@ -410,8 +420,8 @@ export interface TransitAspect {
   likelyDomains: string[];
 }
 
-export function computeTransitAspects(natal: ComputedNatalChart): TransitAspect[] {
-  const now = new Date();
+export function computeTransitAspects(natal: ComputedNatalChart, at?: Date): TransitAspect[] {
+  const now = at ?? new Date();
   const jd = julianDay(now);
   const currentPlanets = getPlanetPositions(jd);
 
