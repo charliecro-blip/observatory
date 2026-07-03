@@ -16,10 +16,21 @@ router.get("/planning/goals", requireTesterId, async (req, res) => {
   res.json(rows);
 });
 
+// Guiding Stars are deliberately few — a max of 5 active at once keeps this a
+// focus tool, not a second to-do list.
+const MAX_ACTIVE_GUIDING_STARS = 5;
+
 router.post("/planning/goals", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
+  if ((status ?? "active") === "active") {
+    const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
+    if (active.length >= MAX_ACTIVE_GUIDING_STARS) {
+      res.status(400).json({ error: "max_guiding_stars", message: `Only ${MAX_ACTIVE_GUIDING_STARS} active Guiding Stars at a time — retire or pause one first.` });
+      return;
+    }
+  }
   const [inserted] = await db.insert(goals).values({
     testerId, title: title.trim(),
     description: description ?? null,
@@ -40,6 +51,13 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
   const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
+  if (status === "active" && existing.status !== "active") {
+    const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
+    if (active.length >= MAX_ACTIVE_GUIDING_STARS) {
+      res.status(400).json({ error: "max_guiding_stars", message: `Only ${MAX_ACTIVE_GUIDING_STARS} active Guiding Stars at a time — retire or pause one first.` });
+      return;
+    }
+  }
   const updates: Partial<typeof goals.$inferSelect> & { updatedAt: Date } = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
@@ -51,27 +69,6 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   if (anchorHouse !== undefined) updates.anchorHouse = anchorHouse;
   if (anchorUntil !== undefined) updates.anchorUntil = anchorUntil;
   const [updated] = await db.update(goals).set(updates).where(eq(goals.id, id)).returning();
-  res.json(updated);
-});
-
-// Toggle North Star status. Enforces a max of 3 active North Stars — the whole
-// point is forced focus, not a second goals list.
-router.post("/planning/goals/:id/north-star", requireTesterId, async (req, res) => {
-  const testerId = res.locals.testerId as string;
-  const id = parseInt(req.params.id as string, 10);
-  const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
-  if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
-  const { on } = req.body as { on: boolean };
-  if (on) {
-    const current = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.isNorthStar, true)));
-    if (current.length >= 3 && !existing.isNorthStar) {
-      res.status(400).json({ error: "max_north_stars", message: "Only 3 North Stars at a time — retire one first." });
-      return;
-    }
-  }
-  const [updated] = await db.update(goals)
-    .set({ isNorthStar: !!on, northStarSince: on ? new Date() : null, updatedAt: new Date() })
-    .where(eq(goals.id, id)).returning();
   res.json(updated);
 });
 
@@ -186,15 +183,16 @@ router.delete("/planning/milestones/:id", requireTesterId, async (req, res) => {
   res.status(204).send();
 });
 
-// ── North Stars ───────────────────────────────────────────────────────────────
+// ── Guiding Stars overview ──────────────────────────────────────────────────
+// Kept at the historical /planning/north-stars path (frontend hook unchanged).
 
-// Active North Stars with this week's sessions (scheduled + completed + ad-hoc),
+// Active Guiding Stars with this week's sessions (scheduled + completed + ad-hoc),
 // in one call — this is what the Now/Ahead surfaces render directly.
 router.get("/planning/north-stars", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const stars = await db.select().from(goals)
-    .where(and(eq(goals.testerId, testerId), eq(goals.isNorthStar, true), eq(goals.status, "active")))
-    .orderBy(desc(goals.northStarSince));
+    .where(and(eq(goals.testerId, testerId), eq(goals.status, "active")))
+    .orderBy(desc(goals.createdAt));
 
   const now = new Date();
   const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0, 0, 0, 0);

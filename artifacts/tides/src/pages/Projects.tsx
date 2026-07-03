@@ -113,6 +113,34 @@ function ProjectCard({ project, goals, testerId }: { project: any; goals: any[];
     enabled: expanded,
   });
 
+  // A project can spawn its own tasks/habits directly, not only through a
+  // Guiding Star — mirrors the milestone add pattern below.
+  const { data: allTasks = [] } = useQuery<any[]>({
+    queryKey: ["tasks", testerId, "all"],
+    queryFn: async () => (await fetch("/api/tasks", { headers: authH(testerId) })).json(),
+    enabled: expanded,
+  });
+  const { data: allHabits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => (await fetch("/api/habits", { headers: authH(testerId) })).json(),
+    enabled: expanded,
+  });
+  const projectTasks = allTasks.filter((t: any) => t.projectId === project.id && t.done !== "true");
+  const projectHabits = allHabits.filter((h: any) => h.projectId === project.id);
+
+  const addTask = useMutation({
+    mutationFn: async (t: string) => {
+      await fetch("/api/tasks", { method: "POST", headers: authH(testerId), body: JSON.stringify({ title: t, projectId: project.id, goalId: project.goalId ?? undefined }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+  const addHabit = useMutation({
+    mutationFn: async (t: string) => {
+      await fetch("/api/habits", { method: "POST", headers: authH(testerId), body: JSON.stringify({ name: t, projectId: project.id, goalId: project.goalId ?? undefined }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
+  });
+
   const patchProject = useMutation({
     mutationFn: async (body: object) => {
       await fetch(`/api/planning/projects/${project.id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify(body) });
@@ -158,7 +186,7 @@ function ProjectCard({ project, goals, testerId }: { project: any; goals: any[];
               style={{ flex: 1, padding: "3px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 12, outline: "none" }}
             />
             <select value={goalId} onChange={e => setGoalId(e.target.value)} style={{ padding: "3px 5px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10 }}>
-              <option value="">No goal</option>
+              <option value="">No Guiding Star</option>
               {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
             </select>
             <button onClick={() => patchProject.mutate({ title, goalId: goalId ? parseInt(goalId) : null })}
@@ -190,6 +218,21 @@ function ProjectCard({ project, goals, testerId }: { project: any; goals: any[];
           <div style={{ marginTop: 6 }}>
             <InlineAdd placeholder="Add milestone" onAdd={t => addMilestone.mutate(t)} />
           </div>
+
+          {/* Tasks and habits this project spawns directly */}
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#bbb", marginBottom: 6 }}>Tasks & habits</div>
+            {projectTasks.map((t: any) => (
+              <div key={`t${t.id}`} style={{ fontSize: 11, color: "#555", padding: "2px 0" }}>☐ {t.title}</div>
+            ))}
+            {projectHabits.map((h: any) => (
+              <div key={`h${h.id}`} style={{ fontSize: 11, color: "#555", padding: "2px 0" }}>↻ {h.name}</div>
+            ))}
+            <div style={{ display: "flex", gap: 14, marginTop: 4 }}>
+              <InlineAdd placeholder="task" onAdd={t => addTask.mutate(t)} />
+              <InlineAdd placeholder="habit" onAdd={t => addHabit.mutate(t)} />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -218,13 +261,6 @@ export default function Projects({ testerId }: { testerId: string | null }) {
     enabled: !!testerId,
   });
 
-  const addGoal = useMutation({
-    mutationFn: async (title: string) => {
-      await fetch("/api/planning/goals", { method: "POST", headers: authH(testerId), body: JSON.stringify({ title }) });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
-  });
-
   const addProject = useMutation({
     mutationFn: async (title: string) => {
       await fetch("/api/planning/projects", {
@@ -233,13 +269,6 @@ export default function Projects({ testerId }: { testerId: string | null }) {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
-  });
-
-  const archiveGoal = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ status: "archived" }) });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
   });
 
   const visibleProjects = selectedGoalId === null
@@ -253,13 +282,13 @@ export default function Projects({ testerId }: { testerId: string | null }) {
       {/* Header */}
       <div style={{ padding: "14px 22px 10px", borderBottom: "1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", marginBottom: 2 }}>Projects</div>
-        <div style={{ fontSize: 10, color: "#aaa" }}>Structure for a goal complex enough to need it — most goals don't need a project at all</div>
+        <div style={{ fontSize: 10, color: "#aaa" }}>Structure for a Guiding Star complex enough to need it — most don't need a project at all</div>
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Goals sidebar */}
+        {/* Guiding Stars sidebar — filter only; creating/archiving a star happens on the Guiding Stars page */}
         <div style={{ width: 200, minWidth: 200, borderRight: "1px solid var(--color-border)", overflowY: "auto", padding: "12px 0", flexShrink: 0, background: "var(--color-card-2)" }}>
-          <div style={{ padding: "0 12px 8px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>Goals</div>
+          <div style={{ padding: "0 12px 8px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>Guiding Stars</div>
 
           <button onClick={() => setSelectedGoalId(null)} style={{
             width: "100%", textAlign: "left", padding: "7px 14px", background: selectedGoalId === null ? "#e8e4de" : "transparent",
@@ -269,28 +298,20 @@ export default function Projects({ testerId }: { testerId: string | null }) {
           <button onClick={() => setSelectedGoalId(0)} style={{
             width: "100%", textAlign: "left", padding: "7px 14px", background: selectedGoalId === 0 ? "#e8e4de" : "transparent",
             border: "none", cursor: "pointer", fontSize: 11, color: "#888",
-          }}>No goal</button>
+          }}>No Guiding Star</button>
 
           <div style={{ height: 1, background: "#d8d2ca", margin: "6px 12px" }} />
 
           {goals.filter((g: any) => g.status === "active").map((g: any) => (
-            <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-              <button onClick={() => setSelectedGoalId(g.id)} style={{
-                flex: 1, textAlign: "left", padding: "7px 14px", background: selectedGoalId === g.id ? "#e8e4de" : "transparent",
-                border: "none", cursor: "pointer", fontSize: 11, color: selectedGoalId === g.id ? "#1a2a3a" : "#555",
-                fontWeight: selectedGoalId === g.id ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                <span style={{ color: g.element ? ELEMENT_COLORS[g.element] : "#9060c0", marginRight: 5 }}>◆</span>{g.title}
-                {g.horizon && <span style={{ fontSize: 8, color: "#bbb", marginLeft: 4 }}>{g.horizon}</span>}
-              </button>
-              <button onClick={() => { if (confirm("Archive this goal?")) archiveGoal.mutate(g.id); }}
-                style={{ fontSize: 8, color: "#ddd", background: "none", border: "none", cursor: "pointer", padding: "0 8px 0 0", flexShrink: 0 }}>✕</button>
-            </div>
+            <button key={g.id} onClick={() => setSelectedGoalId(g.id)} style={{
+              width: "100%", textAlign: "left", padding: "7px 14px", background: selectedGoalId === g.id ? "#e8e4de" : "transparent",
+              border: "none", cursor: "pointer", fontSize: 11, color: selectedGoalId === g.id ? "#1a2a3a" : "#555",
+              fontWeight: selectedGoalId === g.id ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              <span style={{ color: g.element ? ELEMENT_COLORS[g.element] : "#9060c0", marginRight: 5 }}>◆</span>{g.title}
+              {g.horizon && <span style={{ fontSize: 8, color: "#bbb", marginLeft: 4 }}>{g.horizon}</span>}
+            </button>
           ))}
-
-          <div style={{ padding: "8px 12px 0" }}>
-            <InlineAdd placeholder="New goal" onAdd={t => addGoal.mutate(t)} />
-          </div>
         </div>
 
         {/* Projects main area */}

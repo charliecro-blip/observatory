@@ -12,6 +12,10 @@ export const PROJECT_PRIORITIES = ["low", "medium", "high"] as const;
 // encourages spreading the 1-3 active North Stars across different life domains.
 export const GOAL_ELEMENTS = ["fire", "earth", "air", "water"] as const;
 
+// Guiding Stars — the long-term ideals a person is steering by. This table used
+// to hold a bigger "Goals" tier with a smaller isNorthStar-flagged subset; that
+// distinction is gone — every row here IS a Guiding Star, gated by a max-5-active
+// cap enforced in the route layer instead of a boolean toggle.
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
@@ -19,7 +23,6 @@ export const goals = pgTable("goals", {
   description: text("description"),
   horizon: text("horizon"), // near | mid | long
   status: text("status").notNull().default("active"), // active | paused | completed | archived
-  isNorthStar: boolean("is_north_star").notNull().default(false), // chief aim — max 3 active at once
   element: text("element"), // fire | earth | air | water — the domain this goal lives in
   // Cycle anchor — ties a goal to the long-cycle context that suggested/supports
   // it, giving it a natural season instead of an invented deadline (cyclical
@@ -29,7 +32,6 @@ export const goals = pgTable("goals", {
   anchorPlanet: text("anchor_planet"), // e.g. Saturn (chapter anchors only)
   anchorHouse: integer("anchor_house"), // 1-12 natal house
   anchorUntil: text("anchor_until"), // ISO date the chapter/year closes
-  northStarSince: timestamp("north_star_since", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -98,6 +100,7 @@ export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
   goalId: integer("goal_id"), // nullable FK to goals — a habit can serve a Guiding Star
+  projectId: integer("project_id"), // nullable FK to projects — a habit can also serve a project
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),

@@ -28,8 +28,10 @@ interface Habit {
   id: number; name: string; emoji?: string; description?: string;
   favoredElements?: string; favoredPhases?: string; favoredBiodynamic?: string;
   bestWindowType?: string; streak: number; doneToday: boolean;
-  days: HabitDay[];
+  days: HabitDay[]; goalId?: number; projectId?: number;
 }
+interface GoalLite { id: number; title: string; }
+interface ProjectLite { id: number; title: string; }
 
 function authH(tid: string|null) {
   return { ...(tid ? {"x-tester-id":tid} : {}), "Content-Type":"application/json" };
@@ -58,6 +60,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
+  const [newGoalId, setNewGoalId] = useState<number|"">("");
+  const [newProjectId, setNewProjectId] = useState<number|"">("");
+
+  const { data: goalsList = [] } = useQuery<GoalLite[]>({
+    queryKey: ["planning-goals-active", testerId],
+    queryFn: async () => { const r = await fetch("/api/planning/goals?status=active", { headers: authH(testerId) }); return r.json(); },
+    enabled: !!testerId,
+  });
+  const { data: projectsList = [] } = useQuery<ProjectLite[]>({
+    queryKey: ["planning-projects-active", testerId],
+    queryFn: async () => { const r = await fetch("/api/planning/projects?status=active", { headers: authH(testerId) }); return r.json(); },
+    enabled: !!testerId,
+  });
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["habits", testerId],
@@ -80,10 +95,16 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           favoredBiodynamic: form.favoredBiodynamic.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
           minimumViable: form.minimumViable.trim() || undefined,
+          goalId: newGoalId || undefined,
+          projectId: newProjectId || undefined,
         }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false); setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""}); },
+    onSuccess: () => {
+      qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""});
+      setNewGoalId(""); setNewProjectId("");
+    },
   });
 
   const toggleLog = useMutation({
@@ -231,6 +252,24 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                 {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
               </select>
             </div>
+            {(goalsList.length > 0 || projectsList.length > 0) && (
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                {goalsList.length > 0 && (
+                  <select value={newGoalId} onChange={e=>setNewGoalId(e.target.value ? Number(e.target.value) : "")}
+                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                    <option value="">Guiding Star: none</option>
+                    {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                  </select>
+                )}
+                {projectsList.length > 0 && (
+                  <select value={newProjectId} onChange={e=>setNewProjectId(e.target.value ? Number(e.target.value) : "")}
+                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                    <option value="">Project: none</option>
+                    {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <input value={form.minimumViable} onChange={e=>setForm(f=>({...f,minimumViable:e.target.value}))}
                 placeholder="Minimum viable (e.g. 5 min walk)…"

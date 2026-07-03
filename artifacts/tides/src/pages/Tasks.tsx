@@ -199,7 +199,7 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
                 {goalsList.length > 0 && (
                   <select value={newGoalId} onChange={e => setNewGoalId(e.target.value ? Number(e.target.value) : "")}
                     style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
-                    <option value="">Goal: none</option>
+                    <option value="">Guiding Star: none</option>
                     {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                   </select>
                 )}

@@ -5,6 +5,8 @@ import { smoothPathD } from "@/lib/smoothPath";
 import { useTester } from "@/contexts/tester-context";
 import { isWithinFreeWindow, isAwakeDuring, sleepIntervals } from "@/lib/chronotype";
 import { railSunTimes } from "@/components/Rail";
+import { useTidesWeek } from "@/hooks/useTides";
+import type { WeekDay } from "@/lib/types";
 
 // The hero. If the app is called Tides, this picture carries the brand — it has
 // to read as WATER under a real SKY, and answer three questions at a glance:
@@ -38,6 +40,20 @@ const LENS_HINTS: Record<string, string> = {
 // the "deep" always feels like the same ocean).
 const DEEP = "#141d30";
 
+// Muted equivalents for the low-stimulation styles — same hue family, desaturated
+// and lightened so nothing reads as bright or saturated against the card background.
+const MUTED_ELEMENT_COLORS: Record<string, string> = {
+  fire: "#a87868", earth: "#7a9070", air: "#8478a0", water: "#6c8398",
+};
+
+export type ChartStyle = "water" | "calm" | "minimal" | "bars";
+export const CHART_STYLES: { key: ChartStyle; label: string; hint: string }[] = [
+  { key: "water",   label: "Water",   hint: "animated sea + sky — the original" },
+  { key: "calm",    label: "Calm",    hint: "muted, mostly still" },
+  { key: "minimal", label: "Minimal", hint: "one quiet line" },
+  { key: "bars",    label: "Bars",    hint: "flat character strip, no curve" },
+];
+
 function easeInOut(t: number) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
 function clockAt(dayStartMs: number, hour: number) {
@@ -46,14 +62,71 @@ function clockAt(dayStartMs: number, hour: number) {
     .toLowerCase().replace(" ", "");
 }
 
+// Week/month view — one bar per day (a day is a discrete unit at this zoom,
+// not a continuous curve), muted palette to match the "calm" day style.
+function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: boolean; timeframe: "week" | "month" }) {
+  const W = 700, H = 150, PAD_T = 10, PAD_B = 22;
+  const barTop = PAD_T, barBot = H - PAD_B;
+  const n = days.length || 1;
+  const gap = timeframe === "week" ? 6 : 2;
+  const barW = (W - gap * (n - 1)) / n;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const labelCol = dark ? "#9aa4bc" : "#7a7264";
+  const axisCol = dark ? "#5a6478" : "#c4bcae";
+
+  const energies = days.map((d) => d.tide?.energy ?? (d.qualityScore ?? 4) / 7);
+  const minE = Math.min(...energies), maxE = Math.max(...energies);
+  const span = Math.max(maxE - minE, 0.15);
+  const heightOf = (e: number) => Math.max(6, ((e - minE) / span) * (barBot - barTop - 10) + 10);
+
+  // Sparse date labels for month view — every 5th day plus first/last, to avoid crowding.
+  const showLabel = (i: number) => timeframe === "week" ? true : (i === 0 || i === n - 1 || i % 5 === 0);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {days.map((d, i) => {
+        const el = d.tide?.element ?? d.element ?? "water";
+        const col = MUTED_ELEMENT_COLORS[el] ?? "#8a8f9a";
+        const h = heightOf(energies[i]);
+        const bx = i * (barW + gap);
+        const isToday = d.date === todayIso;
+        return (
+          <g key={d.date}>
+            <rect x={bx} y={barBot - h} width={barW} height={h} rx={timeframe === "week" ? 3 : 1}
+              fill={col} opacity={isToday ? (dark ? 0.85 : 0.75) : (dark ? 0.5 : 0.4)} />
+            {isToday && <rect x={bx} y={barBot - h} width={barW} height={h} rx={timeframe === "week" ? 3 : 1} fill="none" stroke={col} strokeWidth="1.4" />}
+            {showLabel(i) && (
+              <text x={bx + barW / 2} y={H - 7} textAnchor="middle" fontSize={timeframe === "week" ? 9 : 7.5} fill={isToday ? labelCol : axisCol}>
+                {timeframe === "week" ? d.label.slice(0, 3) : new Date(d.date + "T12:00:00").getDate()}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; lat: number; lon: number }) {
   const { profile } = useTester();
   const W = 700, H = 210, PAD_T = 12, PAD_B = 26;
   const WATER_TOP = PAD_T + 26;      // highest the surface can reach (leaves sky visible)
   const WATER_BOT = H - PAD_B - 14;  // lowest the surface can fall (keeps some depth)
   const [lens, setLens] = useState("overall");
+  const [style, setStyle] = useState<ChartStyle>(() => {
+    const saved = localStorage.getItem("tw_style");
+    return (saved === "calm" || saved === "minimal" || saved === "bars" || saved === "water") ? saved : "calm";
+  });
+  const setChartStyle = (s: ChartStyle) => { setStyle(s); localStorage.setItem("tw_style", s); };
+  const [timeframe, setTimeframe] = useState<"day" | "week" | "month">(() => {
+    const saved = localStorage.getItem("tw_timeframe");
+    return (saved === "week" || saved === "month") ? saved : "day";
+  });
+  const setChartTimeframe = (t: "day" | "week" | "month") => { setTimeframe(t); localStorage.setItem("tw_timeframe", t); };
+  const { data: weekData } = useTidesWeek(timeframe === "month" ? 30 : 7, lat, lon);
   // Display options — user-tunable, persisted. "fill" = the day's own range
-  // fills the canvas (dramatic); off = true 0..1 height (honest/even).
+  // fills the canvas (dramatic); off = true 0..1 height (honest/even). Only
+  // relevant to the "water" style — the other styles have their own fixed look.
   const [showOpts, setShowOpts] = useState(false);
   const [opts, setOptsState] = useState<{ sky: boolean; motion: boolean; fill: boolean }>(() => {
     try { return { sky: true, motion: true, fill: true, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
@@ -102,7 +175,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const hourOf = (iso: string) => (new Date(iso).getTime() - dayStartMs) / 3600000;
   const nowH = (Date.now() - dayStartMs) / 3600000;
 
-  if (target.length < 2 || dispE.length < 2) return null;
+  if (timeframe === "day" && (target.length < 2 || dispE.length < 2)) return null;
 
   // ── Normalization: the day's own range fills the water column, floored so a
   // near-flat day amplifies at most ~5x instead of turning noise into cliffs.
@@ -143,6 +216,14 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
     const c = ELEMENT_COLORS[el] ?? "#4a6a90";
     charStops.push({ off: bounds[i] / 24, color: c }, { off: bounds[i + 1] / 24, color: c });
   }
+  // Muted equivalent for the "calm" style — same segment structure, desaturated tones.
+  const mutedCharStops: { off: number; color: string }[] = [];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const seg = segByHour((bounds[i] + bounds[i + 1]) / 2);
+    const el = CHARACTER_ELEMENT[(seg?.character ?? "water") as TideCharacter] ?? "water";
+    const c = MUTED_ELEMENT_COLORS[el] ?? "#8a8f9a";
+    mutedCharStops.push({ off: bounds[i] / 24, color: c }, { off: bounds[i + 1] / 24, color: c });
+  }
 
   // ── Sky: time-of-day gradient anchored to real sunrise/sunset.
   const sun = railSunTimes(lat, lon);
@@ -169,6 +250,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const nowChar = (nowSeg?.character ?? "water") as string;
   const nowEl = CHARACTER_ELEMENT[nowChar as TideCharacter] ?? "water";
   const nowColor = ELEMENT_COLORS[nowEl] ?? "#4a6a90";
+  const mutedNowColor = MUTED_ELEMENT_COLORS[nowEl] ?? "#8a8f9a";
   const heightWord = (arc.height ?? 0.5) >= 0.62 ? "high water day" : (arc.height ?? 0.5) >= 0.45 ? "mid water" : "quiet water";
 
   const axisCol = dark ? "#5a6478" : "#c4bcae";
@@ -189,32 +271,71 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
       `}</style>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>The tide today</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 9.5, color: nowColor, fontWeight: 600 }}>
-            {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "#aaa", fontWeight: 400 }}>· {heightWord}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+            The tide {timeframe === "day" ? "today" : timeframe === "week" ? "this week" : "this month"}
           </div>
-          <button onClick={() => setShowOpts(v => !v)} title="Chart options" style={{
-            fontSize: 11, color: showOpts ? "var(--color-primary)" : "#b8b0a4", background: "none",
-            border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
-          }}>⚙</button>
+          <div style={{ display: "flex", gap: 3 }}>
+            {(["day", "week", "month"] as const).map((t) => (
+              <button key={t} onClick={() => setChartTimeframe(t)} style={{
+                fontSize: 9, padding: "2px 8px", borderRadius: 8, cursor: "pointer", textTransform: "capitalize",
+                border: timeframe === t ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                background: timeframe === t ? "var(--color-primary)" : "transparent",
+                color: timeframe === t ? "var(--color-card)" : "#999",
+                fontWeight: timeframe === t ? 600 : 400,
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {timeframe === "day" && (
+            <div style={{ fontSize: 9.5, color: style === "water" ? nowColor : mutedNowColor, fontWeight: 600 }}>
+              {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "#aaa", fontWeight: 400 }}>· {heightWord}</span>
+            </div>
+          )}
+          {timeframe !== "day" && weekData?.weekElement && (
+            <div style={{ fontSize: 9.5, color: mutedNowColor, fontWeight: 600, textTransform: "capitalize" }}>
+              {weekData.weekElement}-leaning
+            </div>
+          )}
+          {timeframe === "day" && (
+            <button onClick={() => setShowOpts(v => !v)} title="Chart options" style={{
+              fontSize: 11, color: showOpts ? "var(--color-primary)" : "#b8b0a4", background: "none",
+              border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
+            }}>⚙</button>
+          )}
         </div>
       </div>
 
-      {showOpts && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-          {([["fill", "fill the day", "true height"], ["sky", "sky", "no sky"], ["motion", "motion", "still"]] as const).map(([k, onLabel, offLabel]) => (
-            <button key={k} onClick={() => setOpt(k, !opts[k])} style={{
-              fontSize: 9, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
-              border: "1px solid var(--color-border)",
-              background: opts[k] ? "var(--color-card-2)" : "transparent",
-              color: opts[k] ? "var(--color-foreground)" : "#a89e90",
-            }}>{opts[k] ? onLabel : offLabel}</button>
-          ))}
+      {timeframe === "day" && showOpts && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: opts && style === "water" ? 6 : 0, flexWrap: "wrap" }}>
+            {CHART_STYLES.map((s) => (
+              <button key={s.key} onClick={() => setChartStyle(s.key)} title={s.hint} style={{
+                fontSize: 9.5, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
+                border: style === s.key ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
+                background: style === s.key ? "#1a2a3a" : "var(--color-card-2)",
+                color: style === s.key ? "#fff" : "var(--color-foreground)",
+                fontWeight: style === s.key ? 600 : 400,
+              }}>{s.label}</button>
+            ))}
+          </div>
+          {style === "water" && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {([["fill", "fill the day", "true height"], ["sky", "sky", "no sky"], ["motion", "motion", "still"]] as const).map(([k, onLabel, offLabel]) => (
+                <button key={k} onClick={() => setOpt(k, !opts[k])} style={{
+                  fontSize: 9, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
+                  border: "1px solid var(--color-border)",
+                  background: opts[k] ? "var(--color-card-2)" : "transparent",
+                  color: opts[k] ? "var(--color-foreground)" : "#a89e90",
+                }}>{opts[k] ? onLabel : offLabel}</button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {lenses.length > 1 && (
+      {timeframe === "day" && lenses.length > 1 && (
         <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
           {lenses.map((L) => {
             const ec = (ELEMENT_COLORS as Record<string, string>)[L.key]; // element lenses get their own color
@@ -235,7 +356,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         </div>
       )}
 
-      {lens !== "overall" && bestTimes?.windows?.length > 0 && (() => {
+      {timeframe === "day" && lens !== "overall" && bestTimes?.windows?.length > 0 && (() => {
         const chronotype = profile?.chronotype;
         const allWindows: any[] = bestTimes.windows;
         // Rank: awake + free first, then awake, then asleep (a sky-perfect window
@@ -262,7 +383,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         );
       })()}
 
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden" }}>
+      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden" }}>
         <defs>
           <linearGradient id="twSky" x1="0" y1="0" x2="1" y2="0">
             {skyStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.c} />)}
@@ -274,106 +395,181 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             <stop offset="0%" stopColor={DEEP} stopOpacity="0" />
             <stop offset="100%" stopColor={DEEP} stopOpacity={dark ? "0.85" : "0.55"} />
           </linearGradient>
+          <linearGradient id="twMuted" x1="0" y1="0" x2="1" y2="0">
+            {mutedCharStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.color} />)}
+          </linearGradient>
         </defs>
 
-        {/* Sky */}
-        {opts.sky && <rect x="0" y="0" width={W} height={H - PAD_B} fill="url(#twSky)" opacity={dark ? 0.9 : 0.75} />}
+        {/* ── Hour axis + high/low labels are shared across every style ── */}
+        {style === "water" && (<>
+          {/* Sky */}
+          {opts.sky && <rect x="0" y="0" width={W} height={H - PAD_B} fill="url(#twSky)" opacity={dark ? 0.9 : 0.75} />}
 
-        {/* Sunrise / sunset ticks */}
-        {opts.sky && [{ h: srH, up: true }, { h: ssH, up: false }].map(({ h, up }, i) => (h > 0 && h < 24) ? (
-          <g key={i} opacity="0.8">
-            <text x={x(h)} y={12} textAnchor="middle" fontSize="8" fill={dark ? "#c8b070" : "#b08830"}>☀{up ? "↑" : "↓"}</text>
-          </g>
-        ) : null)}
-
-        {/* Slack water (VOC) */}
-        {(arc.vocWindows ?? []).map((v: any, i: number) => {
-          const x0 = x(hourOf(v.start)), x1 = x(hourOf(v.end));
-          return (
-            <g key={`voc${i}`}>
-              <rect x={x0} y={0} width={x1 - x0} height={H - PAD_B} fill={dark ? "rgba(190,190,220,0.05)" : "rgba(120,110,90,0.07)"} />
-              <text x={(x0 + x1) / 2} y={WATER_TOP - 6} textAnchor="middle" fontSize="7.5" fill={dark ? "#8a86a0" : "#a89660"} fontStyle="italic">slack water</text>
+          {/* Sunrise / sunset ticks */}
+          {opts.sky && [{ h: srH, up: true }, { h: ssH, up: false }].map(({ h, up }, i) => (h > 0 && h < 24) ? (
+            <g key={i} opacity="0.8">
+              <text x={x(h)} y={12} textAnchor="middle" fontSize="8" fill={dark ? "#c8b070" : "#b08830"}>☀{up ? "↑" : "↓"}</text>
             </g>
-          );
-        })}
+          ) : null)}
 
-        {/* Water — drifting depth layers, then the lit surface */}
-        <g className={opts.motion ? "tw-layer-b" : undefined} opacity={dark ? 0.14 : 0.12}>
-          <path d={extArea} fill="url(#twChar)" transform="translate(0,16)" />
-        </g>
-        <g className={opts.motion ? "tw-layer-a" : undefined} opacity={dark ? 0.22 : 0.18}>
-          <path d={extArea} fill="url(#twChar)" transform="translate(0,8)" />
-        </g>
-        <path d={surfaceArea} fill="url(#twChar)" opacity={dark ? 0.42 : 0.34} />
-        <path d={surfaceArea} fill="url(#twDepth)" />
-        <path d={surfaceD} fill="none" stroke="url(#twChar)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={surfaceD} fill="none" stroke={dark ? "rgba(240,246,255,0.5)" : "rgba(255,255,255,0.75)"} strokeWidth="0.9"
-          strokeLinejoin="round" strokeLinecap="round" transform="translate(0,-1.1)" />
+          {/* Slack water (VOC) */}
+          {(arc.vocWindows ?? []).map((v: any, i: number) => {
+            const x0 = x(hourOf(v.start)), x1 = x(hourOf(v.end));
+            return (
+              <g key={`voc${i}`}>
+                <rect x={x0} y={0} width={x1 - x0} height={H - PAD_B} fill={dark ? "rgba(190,190,220,0.05)" : "rgba(120,110,90,0.07)"} />
+                <text x={(x0 + x1) / 2} y={WATER_TOP - 6} textAnchor="middle" fontSize="7.5" fill={dark ? "#8a86a0" : "#a89660"} fontStyle="italic">slack water</text>
+              </g>
+            );
+          })}
 
-        {/* Personal night — hours the user is typically asleep (chronotype).
-            Distinct from astronomical night: the sky shows the sun's day, this
-            shows YOURS. High water while you sleep is information, not advice. */}
-        {sleepIntervals(profile?.chronotype).map(([h0, h1], i) => (
-          <g key={`sleep${i}`}>
-            <rect x={x(h0)} y={0} width={x(h1) - x(h0)} height={H - PAD_B} fill={DEEP} opacity={dark ? 0.38 : 0.2} />
-            {h1 - h0 > 1.5 && (
-              <text x={(x(h0) + x(h1)) / 2} y={PAD_T + 8} textAnchor="middle" fontSize="8" fill={dark ? "#7a86a4" : "#8a90a8"} opacity="0.85">☾</text>
-            )}
+          {/* Water — drifting depth layers, then the lit surface */}
+          <g className={opts.motion ? "tw-layer-b" : undefined} opacity={dark ? 0.14 : 0.12}>
+            <path d={extArea} fill="url(#twChar)" transform="translate(0,16)" />
           </g>
-        ))}
+          <g className={opts.motion ? "tw-layer-a" : undefined} opacity={dark ? 0.22 : 0.18}>
+            <path d={extArea} fill="url(#twChar)" transform="translate(0,8)" />
+          </g>
+          <path d={surfaceArea} fill="url(#twChar)" opacity={dark ? 0.42 : 0.34} />
+          <path d={surfaceArea} fill="url(#twDepth)" />
+          <path d={surfaceD} fill="none" stroke="url(#twChar)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={surfaceD} fill="none" stroke={dark ? "rgba(240,246,255,0.5)" : "rgba(255,255,255,0.75)"} strokeWidth="0.9"
+            strokeLinejoin="round" strokeLinecap="round" transform="translate(0,-1.1)" />
 
-        {/* High / low water — the tide table */}
-        <g>
-          <circle cx={x(hours[hiIdx])} cy={y(targetE[hiIdx])} r="2.6" fill={dark ? "#f0f4ff" : "#fff"} stroke="url(#twChar)" strokeWidth="1.4" />
-          <text x={hiX} y={Math.max(WATER_TOP - 16, y(targetE[hiIdx]) - 12)} textAnchor="middle" fontSize="9" fontWeight="700" fill={dark ? "#dfe6f5" : "#3a3428"}>
-            high water {clockAt(dayStartMs, hours[hiIdx])}
-          </text>
-          <text x={loX} y={Math.min(H - PAD_B - 6, y(targetE[loIdx]) + 16)} textAnchor="middle" fontSize="8.5" fontWeight="600" fill={dark ? "#8f9ab4" : "rgba(255,255,255,0.95)"}>
-            low water {clockAt(dayStartMs, hours[loIdx])}
-          </text>
-        </g>
-
-        {/* Event dots — quiet, on the surface */}
-        {events.map((e: any, i: number) => {
-          const h = hourOf(e.time);
-          if (h < 0 || h > 24) return null;
-          const isNext = e === nextEvent;
-          const col = e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
-          return (
-            <g key={i} opacity={e.past ? 0.35 : 1}>
-              <circle cx={x(h)} cy={y(energyAt(h))} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
+          {/* Personal night — hours the user is typically asleep (chronotype).
+              Distinct from astronomical night: the sky shows the sun's day, this
+              shows YOURS. High water while you sleep is information, not advice. */}
+          {sleepIntervals(profile?.chronotype).map(([h0, h1], i) => (
+            <g key={`sleep${i}`}>
+              <rect x={x(h0)} y={0} width={x(h1) - x(h0)} height={H - PAD_B} fill={DEEP} opacity={dark ? 0.38 : 0.2} />
+              {h1 - h0 > 1.5 && (
+                <text x={(x(h0) + x(h1)) / 2} y={PAD_T + 8} textAnchor="middle" fontSize="8" fill={dark ? "#7a86a4" : "#8a90a8"} opacity="0.85">☾</text>
+              )}
             </g>
-          );
-        })}
+          ))}
 
-        {/* NEXT — the one labeled event */}
-        {nextEvent && (() => {
-          const h = hourOf(nextEvent.time);
-          if (h < 0 || h > 24) return null;
-          const ex = x(h), ey = y(energyAt(h));
-          const glyph = nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
-          const label = `${glyph} ${nextEvent.label} · ${nextEvent.clock}`;
-          const wEst = label.length * 4.6 + 14;
-          const bx = Math.max(4, Math.min(W - wEst - 4, ex - wEst / 2));
-          const by = Math.max(4, ey - 34);
-          return (
+          {/* Event dots — quiet, on the surface */}
+          {events.map((e: any, i: number) => {
+            const h = hourOf(e.time);
+            if (h < 0 || h > 24) return null;
+            const isNext = e === nextEvent;
+            const col = e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            return (
+              <g key={i} opacity={e.past ? 0.35 : 1}>
+                <circle cx={x(h)} cy={y(energyAt(h))} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
+              </g>
+            );
+          })}
+
+          {/* NEXT — the one labeled event */}
+          {nextEvent && (() => {
+            const h = hourOf(nextEvent.time);
+            if (h < 0 || h > 24) return null;
+            const ex = x(h), ey = y(energyAt(h));
+            const glyph = nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
+            const label = `${glyph} ${nextEvent.label} · ${nextEvent.clock}`;
+            const wEst = label.length * 4.6 + 14;
+            const bx = Math.max(4, Math.min(W - wEst - 4, ex - wEst / 2));
+            const by = Math.max(4, ey - 34);
+            return (
+              <g>
+                <line x1={ex} y1={ey} x2={ex} y2={by + 18} stroke={dark ? "#8fa0c0" : "#8a8070"} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.6" />
+                <rect x={bx} y={by} width={wEst} height={16} rx="8" fill={dark ? "rgba(20,28,46,0.92)" : "rgba(255,255,255,0.92)"} stroke={dark ? "#3a4560" : "#e0d8ca"} strokeWidth="0.8" />
+                <text x={bx + wEst / 2} y={by + 11} textAnchor="middle" fontSize="8.5" fontWeight="600" fill={dark ? "#dfe6f5" : "#4a4438"}>{label}</text>
+              </g>
+            );
+          })()}
+
+          {/* Now — beam + breathing halo */}
+          {nowH >= 0 && nowH <= 24 && (
             <g>
-              <line x1={ex} y1={ey} x2={ex} y2={by + 18} stroke={dark ? "#8fa0c0" : "#8a8070"} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.6" />
-              <rect x={bx} y={by} width={wEst} height={16} rx="8" fill={dark ? "rgba(20,28,46,0.92)" : "rgba(255,255,255,0.92)"} stroke={dark ? "#3a4560" : "#e0d8ca"} strokeWidth="0.8" />
-              <text x={bx + wEst / 2} y={by + 11} textAnchor="middle" fontSize="8.5" fontWeight="600" fill={dark ? "#dfe6f5" : "#4a4438"}>{label}</text>
+              <rect x={x(nowH) - 7} y={0} width={14} height={H - PAD_B} fill={nowColor} opacity="0.07" />
+              <line x1={x(nowH)} y1={0} x2={x(nowH)} y2={H - PAD_B} stroke={nowColor} strokeWidth="1.2" opacity="0.55" />
+              <circle className={opts.motion ? "tw-halo" : undefined} cx={x(nowH)} cy={y(energyAt(nowH))} r="10" fill={nowColor} />
+              <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4.6" fill={nowColor} stroke={dark ? "#0d1120" : "#fff"} strokeWidth="2" />
             </g>
-          );
-        })()}
+          )}
 
-        {/* Now — beam + breathing halo */}
-        {nowH >= 0 && nowH <= 24 && (
           <g>
-            <rect x={x(nowH) - 7} y={0} width={14} height={H - PAD_B} fill={nowColor} opacity="0.07" />
-            <line x1={x(nowH)} y1={0} x2={x(nowH)} y2={H - PAD_B} stroke={nowColor} strokeWidth="1.2" opacity="0.55" />
-            <circle className={opts.motion ? "tw-halo" : undefined} cx={x(nowH)} cy={y(energyAt(nowH))} r="10" fill={nowColor} />
-            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4.6" fill={nowColor} stroke={dark ? "#0d1120" : "#fff"} strokeWidth="2" />
+            <circle cx={x(hours[hiIdx])} cy={y(targetE[hiIdx])} r="2.6" fill={dark ? "#f0f4ff" : "#fff"} stroke="url(#twChar)" strokeWidth="1.4" />
+            <text x={hiX} y={Math.max(WATER_TOP - 16, y(targetE[hiIdx]) - 12)} textAnchor="middle" fontSize="9" fontWeight="700" fill={dark ? "#dfe6f5" : "#3a3428"}>
+              high water {clockAt(dayStartMs, hours[hiIdx])}
+            </text>
+            <text x={loX} y={Math.min(H - PAD_B - 6, y(targetE[loIdx]) + 16)} textAnchor="middle" fontSize="8.5" fontWeight="600" fill={dark ? "#8f9ab4" : "rgba(255,255,255,0.95)"}>
+              low water {clockAt(dayStartMs, hours[loIdx])}
+            </text>
           </g>
-        )}
+        </>)}
+
+        {/* ── CALM: muted single-tone fill, no sky, no drift, no glow ── */}
+        {style === "calm" && (<>
+          {(arc.vocWindows ?? []).map((v: any, i: number) => {
+            const x0 = x(hourOf(v.start)), x1 = x(hourOf(v.end));
+            return <rect key={`voc${i}`} x={x0} y={0} width={x1 - x0} height={H - PAD_B} fill={dark ? "rgba(190,190,220,0.05)" : "rgba(120,110,90,0.05)"} />;
+          })}
+          {sleepIntervals(profile?.chronotype).map(([h0, h1], i) => (
+            <rect key={`sleep${i}`} x={x(h0)} y={0} width={x(h1) - x(h0)} height={H - PAD_B} fill={DEEP} opacity={dark ? 0.16 : 0.06} />
+          ))}
+          <path d={surfaceArea} fill="url(#twMuted)" opacity={0.14} />
+          <path d={surfaceD} fill="none" stroke="url(#twMuted)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+
+          {events.map((e: any, i: number) => {
+            const h = hourOf(e.time);
+            if (h < 0 || h > 24) return null;
+            return <circle key={i} cx={x(h)} cy={y(energyAt(h))} r="2" fill={dark ? "#2a3142" : "#fff"} stroke={mutedNowColor} strokeWidth="1" opacity={e.past ? 0.3 : 0.7} />;
+          })}
+
+          <text x={hiX} y={Math.max(WATER_TOP - 10, y(targetE[hiIdx]) - 10)} textAnchor="middle" fontSize="9" fontWeight="600" fill={labelCol}>
+            high {clockAt(dayStartMs, hours[hiIdx])}
+          </text>
+          <text x={loX} y={Math.min(H - PAD_B - 6, y(targetE[loIdx]) + 14)} textAnchor="middle" fontSize="9" fontWeight="600" fill={labelCol}>
+            low {clockAt(dayStartMs, hours[loIdx])}
+          </text>
+
+          {nowH >= 0 && nowH <= 24 && (
+            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4" fill={mutedNowColor} stroke={dark ? "#141a26" : "#fff"} strokeWidth="1.6" />
+          )}
+        </>)}
+
+        {/* ── MINIMAL: one quiet monochrome line, nothing else moving ── */}
+        {style === "minimal" && (<>
+          <path d={surfaceD} fill="none" stroke={axisCol} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+          {(arc.vocWindows ?? []).map((v: any, i: number) => (
+            <line key={`voc${i}`} x1={x(hourOf(v.start))} y1={H - PAD_B} x2={x(hourOf(v.start))} y2={H - PAD_B + 5} stroke={axisCol} strokeWidth="1" />
+          ))}
+          <text x={hiX} y={Math.max(WATER_TOP - 8, y(targetE[hiIdx]) - 8)} textAnchor="middle" fontSize="8.5" fill={labelCol}>
+            {clockAt(dayStartMs, hours[hiIdx])}
+          </text>
+          <text x={loX} y={Math.min(H - PAD_B - 4, y(targetE[loIdx]) + 12)} textAnchor="middle" fontSize="8.5" fill={labelCol}>
+            {clockAt(dayStartMs, hours[loIdx])}
+          </text>
+          {nowH >= 0 && nowH <= 24 && (
+            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="3" fill={labelCol} />
+          )}
+        </>)}
+
+        {/* ── BARS: flat character strip — no curve, no water metaphor ── */}
+        {style === "bars" && (() => {
+          const barTop = H / 2 - 22, barH = 44;
+          return (<>
+            {bounds.slice(0, -1).map((b, i) => {
+              const seg = segByHour((b + bounds[i + 1]) / 2);
+              const el = CHARACTER_ELEMENT[(seg?.character ?? "water") as TideCharacter] ?? "water";
+              const col = MUTED_ELEMENT_COLORS[el] ?? "#8a8278";
+              return <rect key={i} x={x(b)} y={barTop} width={x(bounds[i + 1]) - x(b)} height={barH} fill={col} opacity={dark ? 0.55 : 0.4} />;
+            })}
+            {events.map((e: any, i: number) => {
+              const h = hourOf(e.time);
+              if (h < 0 || h > 24) return null;
+              return <circle key={i} cx={x(h)} cy={barTop - 6} r="2" fill={labelCol} opacity={e.past ? 0.3 : 0.8} />;
+            })}
+            <text x={hiX} y={barTop - 10} textAnchor="middle" fontSize="9" fontWeight="600" fill={labelCol}>high {clockAt(dayStartMs, hours[hiIdx])}</text>
+            <text x={loX} y={barTop + barH + 16} textAnchor="middle" fontSize="9" fontWeight="600" fill={labelCol}>low {clockAt(dayStartMs, hours[loIdx])}</text>
+            {nowH >= 0 && nowH <= 24 && (
+              <line x1={x(nowH)} y1={barTop - 4} x2={x(nowH)} y2={barTop + barH + 4} stroke={nowColor} strokeWidth="2" />
+            )}
+          </>);
+        })()}
 
         {/* Hour axis */}
         {[0, 6, 12, 18, 24].map((h) => (
@@ -381,10 +577,25 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
           </text>
         ))}
-      </svg>
+      </svg>}
+
+      {timeframe !== "day" && (
+        weekData?.days?.length ? (
+          <>
+            <WeekMonthStrip days={weekData.days} dark={dark} timeframe={timeframe} />
+            {weekData.weekTone && (
+              <div style={{ fontSize: 10.5, color: labelCol, lineHeight: 1.5, marginTop: 6, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+                {weekData.weekTone}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: "#999", padding: "24px 0", textAlign: "center" }}>Reading the sky…</div>
+        )
+      )}
 
       {/* Upcoming events — only what's ahead */}
-      {(() => {
+      {timeframe === "day" && (() => {
         const upcoming = events.filter((e: any) => !e.past).slice(0, 4);
         if (!upcoming.length) return null;
         return (

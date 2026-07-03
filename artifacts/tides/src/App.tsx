@@ -16,7 +16,6 @@ import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
-import Goals from "@/pages/Goals";
 import Projects from "@/pages/Projects";
 import Sky from "@/pages/Sky";
 import Currents from "@/pages/Currents";
@@ -24,18 +23,18 @@ import Launch from "@/pages/Launch";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "overview" | "habits" | "tasks" | "goals" | "projects";
+type WorkTab = "overview" | "tasks" | "habits" | "projects";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
-  // Altitude order — why (stars/goals) → structure (projects) → doing (tasks)
-  // → rhythm (habits) — so the nav itself teaches the hierarchy.
+  // Guiding Stars leads (the why), then the daily-doing axes (tasks, habits),
+  // then Projects last as the optional structuring layer for anything complex
+  // enough to need it — most Guiding Stars never touch a project at all.
   const TABS: {id:WorkTab; label:string}[] = [
     {id:"overview",  label:"Guiding Stars"},
-    {id:"goals",     label:"Goals"},
-    {id:"projects",  label:"Projects"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
+    {id:"projects",  label:"Projects"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -55,7 +54,6 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} onNavigate={setTab}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {tab==="goals"     && <Goals    testerId={testerId}/>}
         {tab==="projects"  && <Projects testerId={testerId}/>}
       </div>
     </div>

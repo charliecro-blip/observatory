@@ -83,6 +83,9 @@ export interface PersonalTransit {
 
 export interface TidesWeek {
   days: WeekDay[];
+  weekOf?: string;
+  weekTone?: string;
+  weekElement?: string;
 }
 
 export interface WeekDay {
@@ -98,6 +101,7 @@ export interface WeekDay {
   voidPeriods?: boolean;
   crossings?: Crossing[];
   moonAspects?: { planet: string; aspect: string; applying: boolean; orb: number }[];
+  tide?: { character: string; element: string; energy: number; levelLabel: string };
 }
 
 export interface SkyEvent {
