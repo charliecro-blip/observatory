@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
 import { useTimeFormat } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -970,14 +971,18 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, onAddEvent }: {
           )}
           {crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:6 }}>Crossings</div>
+              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:2 }}>Angle crossings</div>
+              <div style={{ fontSize:8.5,color:"#999",lineHeight:1.45,marginBottom:6 }}>
+                Moments a planet crosses one of your local chart angles (rising point, midheaven) — a brief window, ~20 minutes, when that planet's themes peak.
+              </div>
               {crossings.map((c:any,i:number)=>{
                 const col = PLANET_COLORS[c.planet]??"#888";
+                const ANGLE_WORD: Record<string,string> = { ASC:"rises", MC:"culminates", DSC:"sets", IC:"grounds" };
                 return (
                   <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
                     <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{PLANET_ICONS[c.planet]??c.planet[0]}</div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:10,fontWeight:500,color:"#333" }}>{c.planet} × {c.angle}</div>
+                      <div style={{ fontSize:10,fontWeight:500,color:"#333" }}>{c.planet} {ANGLE_WORD[c.angle] ?? `crosses ${c.angle}`}</div>
                       <div style={{ fontSize:8,color:"#aaa" }}>{c.time}</div>
                     </div>
                   </div>
@@ -1019,12 +1024,15 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const todayYear  = parseInt(today.slice(0,4));
   const todayMonth = parseInt(today.slice(5,7))-1;
 
-  const [calView, setCalView]           = useState<CalView>("month");
+  // Phones default to the day view — a 7-column month grid at 390px is
+  // unreadable slivers, and the side detail panel would crush it further.
+  const isMobile = useIsMobile();
+  const [calView, setCalView]           = useState<CalView>(isMobile ? "day" : "month");
   const [year, setYear]                 = useState(todayYear);
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showSignNames, setShowSignNames] = useState(true);
-  const [showDetail, setShowDetail]     = useState(true);
+  const [showDetail, setShowDetail]     = useState(!isMobile);
   const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
   const qc = useQueryClient();
 
@@ -1165,7 +1173,8 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
 
-      <div style={{ flex:1,display:"flex",overflow:"hidden" }}>
+      {/* On phones the detail panel stacks below the grid instead of crushing it */}
+      <div style={{ flex:1,display:"flex",overflow:isMobile?"auto":"hidden",flexDirection:isMobile?"column":"row" }}>
         {/* Month view */}
         {calView==="month" && (
           <>
