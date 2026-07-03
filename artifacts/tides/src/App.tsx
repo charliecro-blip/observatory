@@ -19,12 +19,11 @@ import Habits from "@/pages/Habits";
 import Goals from "@/pages/Goals";
 import Projects from "@/pages/Projects";
 import Sky from "@/pages/Sky";
-import Modules from "@/pages/Modules";
 import Currents from "@/pages/Currents";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "overview" | "habits" | "tasks" | "goals" | "projects" | "practices";
+type WorkTab = "overview" | "habits" | "tasks" | "goals" | "projects";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
@@ -34,7 +33,6 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
     {id:"habits",    label:"Habits"},
     {id:"goals",     label:"Goals"},
     {id:"projects",  label:"Projects"},
-    {id:"practices", label:"Practices"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -56,7 +54,6 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="goals"     && <Goals    testerId={testerId}/>}
         {tab==="projects"  && <Projects testerId={testerId}/>}
-        {tab==="practices" && <Modules  testerId={testerId} lat={lat} lon={lon}/>}
       </div>
     </div>
   );
@@ -68,7 +65,8 @@ type View = "today"|"calendar"|"sky"|"currents"|"work"|"settings";
 
 // Primary tabs — the time-zoom spine: move right to look further ahead.
 // Now → Ahead → Horizon are the timescale ladder; Sky is the depth layer;
-// Life is your own content (Modules dissolved into Life → Practices).
+// Life is your own content (Goals -> optional Projects -> Tasks, plus Habits
+// as a separate recurring axis; no standalone Practices tab).
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Now",      zoom:true},
   {id:"calendar", label:"Ahead",    zoom:true},

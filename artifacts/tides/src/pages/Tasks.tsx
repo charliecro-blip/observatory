@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
+import { useCurrents } from "@/hooks/useTides";
+import { usePremium } from "@/contexts/premium-context";
+import { useTester } from "@/contexts/tester-context";
+import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
+
+const PLANET_GLYPH: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
+};
 
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"
@@ -35,6 +44,16 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
   const [newTitle, setNewTitle] = useState("");
   const [newWindow, setNewWindow] = useState("");
   const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
+
+  // "Guarding" — the same self-reported caution windows shown on Guiding
+  // Stars/Currents, surfaced right where you're committing to something new.
+  const { unlocked: premiumUnlocked } = usePremium();
+  const { profile } = useTester();
+  const { data: currentsData } = useCurrents(testerId, localStorage.getItem("obs_house_system") ?? "whole-sign");
+  const cautionPlanets = profile?.cautionPlanets;
+  const activeCautionMatches = premiumUnlocked && cautionPlanets && cautionPlanets.length > 0
+    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.transitPlanet))
+    : [];
 
   const { data: upcomingWindows = [] } = useQuery<PlanningWindow[]>({
     queryKey: ["planning-windows-all", testerId],
@@ -112,6 +131,13 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
 
         {showAdd && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"14px 16px"}}>
+            {filter === "today" && activeCautionMatches.length > 0 && (
+              <div style={{fontSize:10.5,color:"#a04040",background:"#a0404008",border:"1px solid #a0404030",borderRadius:7,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>
+                Heads up — {activeCautionMatches.map((t:any,i:number) => (
+                  <span key={i}>{i>0 && ", "}{PLANET_GLYPH[t.transitPlanet]} {t.transitPlanet} ({CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
+                ))} is active today — one of your caution windows.
+              </div>
+            )}
             <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)}
               onKeyDown={e => e.key==="Enter" && newTitle.trim() && addTask.mutate()}
               placeholder="Task title…"

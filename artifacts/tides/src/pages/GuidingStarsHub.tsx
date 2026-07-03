@@ -1,9 +1,21 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNorthStars } from "@/hooks/useTides";
+import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, type ElementMythos } from "@/lib/mythos";
+import { usePremium } from "@/contexts/premium-context";
+import { useTester } from "@/contexts/tester-context";
+import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
+
+const PLANET_GLYPH: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
+};
+
+function houseSystemPref(): string {
+  return localStorage.getItem("obs_house_system") ?? "whole-sign";
+}
 
 /**
  * The Life tab's front door — per the Life-tab rework schema (see memory:
@@ -15,10 +27,24 @@ const ELEMENTS = ["fire", "earth", "air", "water"] as const;
  */
 export default function GuidingStarsHub({ testerId, onNavigate }: {
   testerId: string | null;
-  onNavigate: (tab: "tasks" | "habits" | "goals" | "projects" | "practices") => void;
+  onNavigate: (tab: "tasks" | "habits" | "goals" | "projects") => void;
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading } = useNorthStars(testerId);
+  const { unlocked: premiumUnlocked } = usePremium();
+  const { profile } = useTester();
+  // Standing "guarding" summary — reuses the exact same caution-windows data
+  // and self-reported sensitivity as the Currents page, just surfaced here too
+  // since Life is where you're actually committing to things. Only shown to
+  // premium-unlocked users with a completed questionnaire and an active match.
+  const { data: currentsData } = useCurrents(testerId, houseSystemPref());
+  const cautionPlanets = profile?.cautionPlanets;
+  // /api/currents already filters cautionWindows to hard aspects only (conjunction/
+  // square/opposition) — trines/sextiles from these planets are supportive, not
+  // cautionary, so they're excluded server-side already.
+  const activeCautionMatches = premiumUnlocked && cautionPlanets && cautionPlanets.length > 0
+    ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.transitPlanet))
+    : [];
 
   const logSession = useMutation({
     mutationFn: async (goalId: number) => {
@@ -62,6 +88,26 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.4px" }}>Guiding Stars</div>
           <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>Your chief aims, and how each element is doing this week</div>
         </div>
+
+        {/* Standing caution-window summary — a quiet "eyes open" signal, not a
+            block. Only shows when a currently-active window matches a planet
+            the user self-reported as a personal trigger (Currents page). */}
+        {activeCautionMatches.length > 0 && (
+          <div style={{ background: "#a0404008", border: "1px solid #a0404030", borderLeft: "3px solid #a04040", borderRadius: 10, padding: "10px 14px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#a04040", marginBottom: 2 }}>
+              {activeCautionMatches.length === 1 ? "A caution window is active" : `${activeCautionMatches.length} caution windows are active`}
+            </div>
+            <div style={{ fontSize: 10.5, color: "#8a5050", lineHeight: 1.5 }}>
+              {activeCautionMatches.map((t: any, i: number) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  {PLANET_GLYPH[t.transitPlanet]} {t.transitPlanet} ({CAUTION_PLANET_ARCHETYPE[t.transitPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
+                </span>
+              ))}
+              {" — move big commitments carefully this stretch."}
+            </div>
+          </div>
+        )}
 
         {/* North Stars */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px" }}>
@@ -121,7 +167,7 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
               const m: ElementMythos = ELEMENT_MYTHOS[el];
               const tally = byElement[el];
               return (
-                <button key={el} onClick={() => onNavigate("practices")} style={{
+                <button key={el} onClick={() => onNavigate("habits")} style={{
                   textAlign: "left", cursor: "pointer", background: "var(--color-card)",
                   border: `1px solid ${m.color}30`, borderRadius: 12, padding: "12px 14px",
                   display: "flex", flexDirection: "column", gap: 6,
