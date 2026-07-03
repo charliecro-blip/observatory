@@ -268,6 +268,10 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const [weekdayEnd, setWeekdayEnd] = useState("22:00");
   const [weekendStart, setWeekendStart] = useState("09:00");
   const [weekendEnd, setWeekendEnd] = useState("21:00");
+  // Solar profile — typical wake/sleep, so the tide chart can shade the
+  // user's personal night and best-times can skip sleeping hours.
+  const [wakeTime, setWakeTime] = useState("07:00");
+  const [sleepTime, setSleepTime] = useState("23:00");
 
   function buildFreeWindows(): Record<Weekday, FreeWindow> {
     const weekdayWin: FreeWindow = { start: weekdayStart, end: weekdayEnd, flexibility: "flex" };
@@ -283,6 +287,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         profile: chronoProfile,
         description: chronoDescription.trim() || undefined,
         freeWindows: buildFreeWindows(),
+        wakeTime, sleepTime,
         updatedAt: new Date().toISOString(),
       });
     }
@@ -508,6 +513,21 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                   <div style={{ fontSize:9.5, color:"#999", marginTop:1 }}>{o.desc}</div>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Solar profile — wake/sleep cycle */}
+          <div>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually awake</div>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+              <span style={{ color:"#bbb", fontSize:11 }}>to</span>
+              <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)}
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+            </div>
+            <div style={{ fontSize:9.5, color:"#bbb", marginTop:4, lineHeight:1.4 }}>
+              Shapes your tide chart — hours you're asleep are shaded, and timing suggestions skip them.
             </div>
           </div>
 

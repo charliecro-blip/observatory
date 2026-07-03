@@ -22,6 +22,11 @@ export interface Chronotype {
   profile: ChronotypeProfile;
   description?: string;               // user's own words from onboarding
   freeWindows: Record<Weekday, FreeWindow>;
+  // Typical wake/sleep — the solar profile. Lets the tide chart shade the
+  // user's personal night (high water at 3am is useless if you're asleep)
+  // and best-times demote sleeping-hours windows.
+  wakeTime?: string;                  // "HH:MM", 24h
+  sleepTime?: string;                 // "HH:MM", 24h
   updatedAt: string;                  // ISO
 }
 

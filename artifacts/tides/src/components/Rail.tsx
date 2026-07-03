@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
+import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 
 const ELEMENT_COLORS: Record<string, string> = {
   water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
@@ -300,6 +301,16 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
               </span>
             )}
           </div>
+          {/* What this Moon sign favors — the "so what do I do differently" line */}
+          {(() => {
+            const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
+            if (!sm) return null;
+            return (
+              <div title={sm.feel} style={{ fontSize: 9.5, color: "#8a8278", marginTop: 6, lineHeight: 1.5 }}>
+                <span style={{ color: "#aaa" }}>favors</span> {sm.favors.slice(0, 3).join(" · ")}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -417,6 +428,17 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
           <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
           </div>
+          {/* One concrete thing this hour's voice favors — rotates with the hour */}
+          {(() => {
+            const acts = PLANET_ACTIVITIES[planetaryHour.planet];
+            if (!acts?.length) return null;
+            const pick = acts[new Date().getHours() % acts.length];
+            return (
+              <div style={{ fontSize: 9.5, color: "#8a8278", marginBottom: 8, lineHeight: 1.45 }}>
+                <span style={{ color: "#aaa" }}>this hour</span> {pick}
+              </div>
+            );
+          })()}
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {(upcomingHours ?? []).slice(0, 5).map((h) => {
               const hCol = planetColor(h.planet);

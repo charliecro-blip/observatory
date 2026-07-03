@@ -658,6 +658,8 @@ function ChronotypeSection() {
   const [weekdayEnd, setWeekdayEnd] = useState(existing?.freeWindows?.mon?.end ?? "22:00");
   const [weekendStart, setWeekendStart] = useState(existing?.freeWindows?.sat?.start ?? "09:00");
   const [weekendEnd, setWeekendEnd] = useState(existing?.freeWindows?.sat?.end ?? "21:00");
+  const [wakeTime, setWakeTime] = useState(existing?.wakeTime ?? "07:00");
+  const [sleepTime, setSleepTime] = useState(existing?.sleepTime ?? "23:00");
 
   useEffect(() => {
     if (existing) {
@@ -667,6 +669,8 @@ function ChronotypeSection() {
       setWeekdayEnd(existing.freeWindows?.mon?.end ?? "22:00");
       setWeekendStart(existing.freeWindows?.sat?.start ?? "09:00");
       setWeekendEnd(existing.freeWindows?.sat?.end ?? "21:00");
+      setWakeTime(existing.wakeTime ?? "07:00");
+      setSleepTime(existing.sleepTime ?? "23:00");
     }
   }, [existing]);
 
@@ -678,6 +682,7 @@ function ChronotypeSection() {
       profile: chronoProfile,
       description: description.trim() || undefined,
       freeWindows: { mon: weekdayWin, tue: weekdayWin, wed: weekdayWin, thu: weekdayWin, fri: weekdayWin, sat: weekendWin, sun: weekendWin },
+      wakeTime, sleepTime,
       updatedAt: new Date().toISOString(),
     });
     setSaved(true); setEditing(false);
@@ -697,6 +702,7 @@ function ChronotypeSection() {
               </div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
                 Weekdays {existing.freeWindows?.mon?.start}–{existing.freeWindows?.mon?.end} · Weekends {existing.freeWindows?.sat?.start}–{existing.freeWindows?.sat?.end}
+                {existing.wakeTime && existing.sleepTime && <> · Awake {existing.wakeTime}–{existing.sleepTime}</>}
               </div>
               {existing.description && <div style={{ fontSize: 10, color: "#aaa", marginTop: 4, fontStyle: "italic" }}>"{existing.description}"</div>}
             </div>
@@ -727,6 +733,12 @@ function ChronotypeSection() {
           </div>
 
           <div>
+            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually awake</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+              <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} style={inputStyle} />
+              <span style={{ color: "#bbb", fontSize: 11 }}>to</span>
+              <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)} style={inputStyle} />
+            </div>
             <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually free — weekdays</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="time" value={weekdayStart} onChange={e => setWeekdayStart(e.target.value)} style={inputStyle} />

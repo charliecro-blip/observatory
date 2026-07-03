@@ -307,15 +307,26 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   // Lenses — the same tide, but SIGNED per-planet weights so lenses that pull in
   // opposite directions (Body vs Rest, Focus vs Connect) genuinely invert at the
   // same aspect crest rather than both just rising by different amounts.
+  // Lenses = the four ELEMENTS (per the vocabulary treaty: elements are the
+  // domains of a life). Replaced the old Focus/Body/Connect/Rest activity
+  // lenses, which were a fourth vocabulary belonging to no treaty layer.
+  // Each lens responds to (a) Moon-aspect crests via planet→element affinity
+  // weights and (b) the Moon's SIGN element — a baseline lift when the Moon
+  // swims through the lens's own element, a small dip in its antagonist
+  // (fire↔water, earth↔air). The old lenses ignored (b) entirely, which is
+  // why low-aspect days made every lens look identical.
   const LENSES: { key: string; label: string; w: Record<string, number> }[] = [
-    { key: "overall",  label: "Overall",  w: {} },
-    { key: "focus",    label: "Focus",    w: { Mercury: 2.0, Saturn: 1.6, Sun: 1.0, Jupiter: 0.7, Moon: 0.1, Venus: -0.4, Mars: -0.6 } },
-    { key: "body",     label: "Body",     w: { Mars: 2.2, Sun: 1.4, Jupiter: 1.0, Moon: 0.1, Mercury: -0.3, Venus: -0.2, Saturn: -0.5 } },
-    { key: "connect",  label: "Connect",  w: { Venus: 2.2, Moon: 1.4, Mercury: 1.2, Jupiter: 0.9, Sun: 0.4, Mars: -0.6, Saturn: -0.8 } },
-    { key: "rest",     label: "Rest",     w: { Moon: 2.0, Neptune: 1.6, Venus: 0.8, Saturn: 0.4, Sun: -0.5, Mercury: -0.6, Mars: -1.2 } },
+    { key: "overall", label: "Overall", w: {} },
+    { key: "fire",    label: "Fire",    w: { Mars: 2.2, Sun: 1.6, Jupiter: 1.0, Moon: -0.2, Saturn: -0.8, Neptune: -0.8 } },
+    { key: "earth",   label: "Earth",   w: { Saturn: 2.0, Venus: 1.2, Mercury: 0.8, Sun: 0.6, Mars: 0.3, Neptune: -0.6 } },
+    { key: "air",     label: "Air",     w: { Mercury: 2.2, Uranus: 1.4, Venus: 1.2, Jupiter: 1.0, Sun: 0.5, Moon: -0.3, Saturn: -0.3 } },
+    { key: "water",   label: "Water",   w: { Moon: 2.2, Neptune: 1.6, Venus: 1.0, Pluto: 0.6, Jupiter: 0.3, Mars: -1.0, Mercury: -0.5, Sun: -0.3 } },
   ];
 
-  function buildCurve(weights: Record<string, number>, isOverall: boolean): DayArcCurvePoint[] {
+  const CHAR_TO_ELEMENT: Record<string, string> = { deep: "water", surge: "fire", building: "earth", clear: "air" };
+  const ELEMENT_ANTAGONIST: Record<string, string> = { fire: "water", water: "fire", earth: "air", air: "earth" };
+
+  function buildCurve(weights: Record<string, number>, isOverall: boolean, lensElement?: string): DayArcCurvePoint[] {
     return steps.map((s, i) => {
       let crests = 0;
       for (const pf of perfMs) {
@@ -325,7 +336,14 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
         if (w === 0) continue;
         crests += pf.amp * w * Math.exp(-0.5 * ((s.t - pf.t) / 3600000 / SIGMA_H) ** 2);
       }
-      let e = height + baseComp[i] + crests;
+      // Moon-sign element resonance for element lenses.
+      let signLift = 0;
+      if (lensElement) {
+        const stepEl = CHAR_TO_ELEMENT[signChar[i]] ?? "water";
+        if (stepEl === lensElement) signLift = 0.05;
+        else if (ELEMENT_ANTAGONIST[lensElement] === stepEl) signLift = -0.03;
+      }
+      let e = height + baseComp[i] + crests + signLift;
       // VOC becalms the shape — eased in/out over a blend window (not an instant
       // multiply) so the curve doesn't step at the void's edges. vocF: 1 = fully
       // outside the void, 0 = deep inside it.
@@ -337,7 +355,7 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   }
 
   const curves: Record<string, DayArcCurvePoint[]> = {};
-  for (const L of LENSES) curves[L.key] = buildCurve(L.w, L.key === "overall");
+  for (const L of LENSES) curves[L.key] = buildCurve(L.w, L.key === "overall", L.key === "overall" ? undefined : L.key);
 
   return {
     dayStart: dayStart.toISOString(), dayEnd: dayEnd.toISOString(),

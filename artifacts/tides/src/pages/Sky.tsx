@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
+import { SIGN_MYTHOS } from "@/lib/mythos";
 
 const QUALITY_COLORS: Record<string, string> = {
   favorable: "#3a6020", caution: "#a05020", neutral: "#555",
@@ -430,6 +431,17 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
           {event.time && <div style={{ fontSize:9.5, color:accentColor, fontWeight:500 }}>{event.time}</div>}
         </div>
         {event.subtitle && <div style={{ fontSize:10, color:"#888", lineHeight:1.4, marginTop:1 }}>{event.subtitle}</div>}
+        {/* Ingresses get the sign's concrete "so what" — what the new water favors */}
+        {event.type === "ingress" && (() => {
+          const sign = Object.keys(SIGN_MYTHOS).find(s => (event.title ?? "").includes(s));
+          const sm = sign ? SIGN_MYTHOS[sign] : null;
+          if (!sm) return null;
+          return (
+            <div style={{ fontSize:9.5, color:"#9a9284", lineHeight:1.45, marginTop:2 }}>
+              <span style={{ color:"#b8b0a2" }}>favors</span> {sm.favors.slice(0, 3).join(" · ")}
+            </div>
+          );
+        })()}
       </div>
       <div style={{ fontSize:9, color:"#ccc", flexShrink:0, marginTop:4 }}>›</div>
     </button>

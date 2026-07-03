@@ -445,8 +445,11 @@ router.get("/tides/week", (req, res) => {
 // the next N days and returns the highest-energy windows for that lens.
 
 const BEST_TIMES_LABEL: Record<string, string> = {
-  overall: "a resonant window", focus: "focused, heads-down work", body: "movement or a workout",
-  connect: "conversation and connection", rest: "rest and recovery",
+  overall: "a resonant window",
+  fire: "bold moves — start, train, perform",
+  earth: "building & finishing — craft, tend, complete",
+  air: "words & connection — write, meet, learn",
+  water: "feeling & rest — heal, dream, restore",
 };
 
 router.get("/tides/best-times", (req, res) => {

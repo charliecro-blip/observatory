@@ -35,3 +35,37 @@ export function isWithinFreeWindow(
   const fwEnd = toWindowMinutes(fw.end);
   return s < fwEnd && e > fwStart; // any overlap counts
 }
+
+/**
+ * Is the user typically awake for this window? Uses the chronotype's
+ * wake/sleep times; handles wrap-around (a night owl sleeping at 02:00 is
+ * awake 11:00→26:00). Permissive when unset — same rule as free windows:
+ * optional onboarding data never hides a feature.
+ */
+export function isAwakeDuring(
+  win: { startAt: string; endAt: string },
+  chronotype: Chronotype | undefined,
+): boolean {
+  if (!chronotype?.wakeTime || !chronotype?.sleepTime) return true;
+  const midMin = (toMinutesOfDay(win.startAt) + toMinutesOfDay(win.endAt)) / 2;
+  const wake = toWindowMinutes(chronotype.wakeTime);
+  const sleep = toWindowMinutes(chronotype.sleepTime);
+  if (wake === sleep) return true;
+  return sleep > wake
+    ? midMin >= wake && midMin < sleep            // normal day: awake wake→sleep
+    : midMin >= wake || midMin < sleep;           // wraps midnight
+}
+
+/**
+ * The user's sleep intervals as [startHour, endHour] pairs within a 0–24 day,
+ * for shading the tide chart's personal night. Empty when wake/sleep unset.
+ */
+export function sleepIntervals(chronotype: Chronotype | undefined): [number, number][] {
+  if (!chronotype?.wakeTime || !chronotype?.sleepTime) return [];
+  const wake = toWindowMinutes(chronotype.wakeTime) / 60;
+  const sleep = toWindowMinutes(chronotype.sleepTime) / 60;
+  if (wake === sleep) return [];
+  return sleep > wake
+    ? [[0, wake], [sleep, 24]]   // asleep before wake and after sleepTime
+    : [[sleep, wake]];           // wraps midnight: asleep sleepTime→wake
+}

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/elements";
 import { smoothPathD } from "@/lib/smoothPath";
 import { useTester } from "@/contexts/tester-context";
-import { isWithinFreeWindow } from "@/lib/chronotype";
+import { isWithinFreeWindow, isAwakeDuring, sleepIntervals } from "@/lib/chronotype";
 import { railSunTimes } from "@/components/Rail";
 
 // The hero. If the app is called Tides, this picture carries the brand — it has
@@ -23,6 +23,15 @@ const ASPECT_GLYPH: Record<string, string> = {
 
 const CHARACTER_WORD: Record<string, string> = {
   deep: "Deep", surge: "Surge", building: "Building", clear: "Clear",
+};
+
+// Plain-language readings for the element lenses — the treaty bridge: the
+// element names the domain, the hint says what kind of doing it means.
+const LENS_HINTS: Record<string, string> = {
+  fire:  "bold moves — start, train, perform, lead",
+  earth: "build & finish — craft, tend, organize, complete",
+  air:   "words & connection — write, meet, learn, trade",
+  water: "feeling & rest — heal, dream, tend the inner life",
 };
 
 // Deepwater tone the vertical gradient sinks into (shared across characters so
@@ -178,34 +187,44 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
       </div>
 
       {lenses.length > 1 && (
-        <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
-          {lenses.map((L) => (
-            <button key={L.key} onClick={() => setLens(L.key)} style={{
-              fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer",
-              border: lens === L.key ? "1px solid #1a2a3a" : "1px solid #e0dad0",
-              background: lens === L.key ? "#1a2a3a" : "var(--color-card-2)",
-              color: lens === L.key ? "var(--color-background)" : "#8a8278",
-              fontWeight: lens === L.key ? 600 : 400,
-            }}>{L.label}</button>
-          ))}
+        <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {lenses.map((L) => {
+            const ec = (ELEMENT_COLORS as Record<string, string>)[L.key]; // element lenses get their own color
+            const active = lens === L.key;
+            return (
+              <button key={L.key} onClick={() => setLens(L.key)} style={{
+                fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer",
+                border: active ? `1px solid ${ec ?? "#1a2a3a"}` : "1px solid #e0dad0",
+                background: active ? (ec ?? "#1a2a3a") : "var(--color-card-2)",
+                color: active ? "#fff" : (ec ?? "#8a8278"),
+                fontWeight: active ? 600 : 500,
+              }}>{L.label}</button>
+            );
+          })}
+          {LENS_HINTS[lens] && (
+            <span style={{ fontSize: 9.5, color: "#a09888", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
+          )}
         </div>
       )}
 
       {lens !== "overall" && bestTimes?.windows?.length > 0 && (() => {
         const chronotype = profile?.chronotype;
         const allWindows: any[] = bestTimes.windows;
-        const ranked = chronotype
-          ? [...allWindows.filter(w => isWithinFreeWindow(w, chronotype)), ...allWindows.filter(w => !isWithinFreeWindow(w, chronotype))]
-          : allWindows;
+        // Rank: awake + free first, then awake, then asleep (a sky-perfect window
+        // at 3am is not a suggestion, it's a taunt).
+        const rank = (w: any) => (isAwakeDuring(w, chronotype) ? 0 : 2) + (isWithinFreeWindow(w, chronotype) ? 0 : 1);
+        const ranked = chronotype ? [...allWindows].sort((a, b) => rank(a) - rank(b)) : allWindows;
         const shown = ranked.slice(0, 3);
         return (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "#6a6258" }}>
-            <span style={{ color: "#999" }}>Best this week for {bestTimes.windows[0].label}:</span>
+            <span style={{ color: "#999" }}>Best this week for {String(bestTimes.windows[0].label).split(" — ")[0]}:</span>
             {shown.map((w: any, i: number) => {
               const fits = chronotype ? isWithinFreeWindow(w, chronotype) : null;
+              const awake = isAwakeDuring(w, chronotype);
               return (
-                <span key={i} style={{ fontWeight: 500, color: "var(--color-foreground)" }}>
-                  {fits && <span title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
+                <span key={i} style={{ fontWeight: 500, color: awake ? "var(--color-foreground)" : "#b8b0a4" }}>
+                  {fits && awake && <span title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
+                  {!awake && <span title="You're usually asleep" style={{ marginRight: 2 }}>☾</span>}
                   {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
                   {i < shown.length - 1 ? " ·" : ""}
                 </span>
@@ -262,6 +281,18 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         <path d={surfaceD} fill="none" stroke="url(#twChar)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
         <path d={surfaceD} fill="none" stroke={dark ? "rgba(240,246,255,0.5)" : "rgba(255,255,255,0.75)"} strokeWidth="0.9"
           strokeLinejoin="round" strokeLinecap="round" transform="translate(0,-1.1)" />
+
+        {/* Personal night — hours the user is typically asleep (chronotype).
+            Distinct from astronomical night: the sky shows the sun's day, this
+            shows YOURS. High water while you sleep is information, not advice. */}
+        {sleepIntervals(profile?.chronotype).map(([h0, h1], i) => (
+          <g key={`sleep${i}`}>
+            <rect x={x(h0)} y={0} width={x(h1) - x(h0)} height={H - PAD_B} fill={DEEP} opacity={dark ? 0.38 : 0.2} />
+            {h1 - h0 > 1.5 && (
+              <text x={(x(h0) + x(h1)) / 2} y={PAD_T + 8} textAnchor="middle" fontSize="8" fill={dark ? "#7a86a4" : "#8a90a8"} opacity="0.85">☾</text>
+            )}
+          </g>
+        ))}
 
         {/* High / low water — the tide table */}
         <g>
