@@ -80,7 +80,7 @@ const PLANET_MEANING: Record<string, string> = {
 };
 
 // Approximate sunrise/sunset for the Rail (mirrors Today.tsx logic)
-function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
+export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
   const today = new Date().toISOString().slice(0, 10);
   // lstNoon below is expressed in UTC hours, so the base these offsets are added
   // to must also be UTC midnight — otherwise sun times are shifted by the local

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tides",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/tides", "run", "dev"],
+      "port": 5174
+    }
+  ]
+}
