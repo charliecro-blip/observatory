@@ -9,6 +9,7 @@ import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { TideCardModal } from "@/components/TideCard";
+import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow } from "@/lib/chronotype";
@@ -1027,8 +1028,15 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
 
 // ── ConditionsStrip ──────────────────────────────────────────────────────────────
 
+// Slow outer retrogrades run nearly half of every year — they're wallpaper, not
+// news, and shouldn't sit front-and-center next to a Mercury retrograde that
+// actually changes your week. They collapse to one muted line at the bottom.
+const FAST_RETRO = new Set(["Mercury", "Venus", "Mars"]);
+
 function ConditionsStrip({ now, today }: { now: any; today: string }) {
   const retros: string[] = now?.retrogrades ?? [];
+  const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
+  const slowRetros = retros.filter((p) => !FAST_RETRO.has(p));
   const ecl = activeEclipse(today, 5);
   // Standing non-lunar aspects: tight orb, not involving the Moon (those are transient)
   const standing = (now?.aspects ?? [])
@@ -1056,7 +1064,7 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
             </div>
           </div>
         )}
-        {retros.map((p) => (
+        {fastRetros.map((p) => (
           <div key={p} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             <span style={{ fontSize: 12, flexShrink: 0, color: "#a06040" }}>{PLANET_GLYPH[p] ?? p[0]}℞</span>
             <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
@@ -1074,6 +1082,11 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
             </div>
           </div>
         ))}
+        {slowRetros.length > 0 && (
+          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.5 }}>
+            background · {slowRetros.map((p) => `${p} ℞`).join(" · ")} — slow inner revisions, in effect for months
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1336,51 +1349,80 @@ const MODULE_META: Record<string, { label: string; icon: string; view: string }>
   content:       { label: "Content",       icon: "◻", view: "work" },
 };
 
+// Resonant Now, redesigned per feedback: the Moon's sign was the only driver and
+// the module names (Creative/Spiritual/Relationships) were too vague to act on.
+// Now THREE independent voices each contribute one CONCRETE suggestion, each
+// with a chip naming its source: the planetary hour (fastest), the Moon's sign
+// (the ~2.5-day texture), and the strongest applying Moon aspect (the day's
+// event). Concrete verbs come from the language layer (PLANET_ACTIVITIES /
+// SIGN_MYTHOS) instead of module labels.
 function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) => void }) {
-  const moonSign = now?.moonSign ?? "";
-  const hourPlanet = now?.planetaryHour?.planet ?? "";
+  const moonSign: string = (now?.moonSign ?? "").split(" ")[0];
+  const hourPlanet: string = now?.planetaryHour?.planet ?? "";
+  const sm = SIGN_MYTHOS[moonSign];
 
-  const el: Element = (SIGN_ELEMENTS[moonSign] ?? "water") as Element;
-  const emphasizedPlanets = [hourPlanet, "Moon"].filter(Boolean);
+  const suggestions: { text: string; source: string; color: string; title?: string }[] = [];
 
-  const ranked = Object.keys(MODULE_META)
-    .map(id => ({ id, score: moduleResonance(id, el, emphasizedPlanets) }))
-    .filter(m => m.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+  // 1 — the hour's voice (rotate through its activities so it varies hour to hour)
+  const hourActs = PLANET_ACTIVITIES[hourPlanet];
+  if (hourActs?.length) {
+    const idx = new Date().getHours() % hourActs.length;
+    suggestions.push({
+      text: hourActs[idx],
+      source: `${hourPlanet} hour`,
+      color: PLANET_THEMES[hourPlanet]?.color ?? "#8a8278",
+      title: PLANET_MYTHOS[hourPlanet]?.whenLoud,
+    });
+  }
 
-  if (ranked.length === 0) return null;
+  // 2 — the Moon's sign (rotate daily so a 2.5-day sign doesn't repeat itself)
+  if (sm) {
+    const idx = new Date().getDate() % sm.favors.length;
+    suggestions.push({
+      text: sm.favors[idx],
+      source: `Moon in ${moonSign}`,
+      color: ELEMENT_COLORS[sm.element as Element] ?? "#4a6a90",
+      title: sm.feel,
+    });
+  }
 
-  const elColor = ELEMENT_COLORS[el] ?? "#2a5a80";
+  // 3 — the strongest applying Moon aspect: harmonious → lean into the partner's
+  // activities; hard → the partner's voice needs a deliberate, softer outlet.
+  const applying = (now?.moonAspects ?? [])
+    .filter((a: any) => a.applying)
+    .sort((a: any, b: any) => (a.hoursToExact ?? 99) - (b.hoursToExact ?? 99))[0];
+  if (applying) {
+    const partner = applying.planet1 === "Moon" ? applying.planet2 : applying.planet1;
+    const acts = PLANET_ACTIVITIES[partner];
+    const hard = applying.aspect === "square" || applying.aspect === "opposition";
+    if (acts?.length) {
+      suggestions.push({
+        text: hard ? `${acts[0]} — gently; this current runs hot` : acts[new Date().getDate() % acts.length],
+        source: `Moon ${applying.aspect} ${partner}`,
+        color: hard ? "#a05050" : "#4a7aa0",
+        title: PLANET_MYTHOS[partner]?.essence,
+      });
+    }
+  }
+
+  if (suggestions.length === 0) return null;
 
   return (
     <div style={{ margin: "12px 0" }}>
       <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9a9090", marginBottom: 8 }}>
-        Resonant now · {el} emphasis
+        Resonant now
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        {ranked.map(({ id, score }) => {
-          const meta = MODULE_META[id];
-          const strength = score >= 1 ? "Strong" : score >= 0.6 ? "Good" : "Mild";
-          return (
-            <button key={id} onClick={() => onNavigate?.("work")} style={{
-              flex: 1, background: ELEMENT_BG[el], border: `1px solid ${elColor}25`,
-              borderRadius: 10, padding: "10px 12px", cursor: "pointer",
-              textAlign: "left", display: "flex", flexDirection: "column", gap: 4,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 14, color: elColor }}>{meta.icon}</span>
-                <span style={{ fontSize: 8, color: elColor, background: `${elColor}15`, padding: "1px 5px", borderRadius: 8 }}>
-                  {strength}
-                </span>
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-primary)" }}>{meta.label}</div>
-              <div style={{ height: 3, borderRadius: 2, background: `${elColor}20`, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${score * 100}%`, background: elColor, borderRadius: 2 }} />
-              </div>
-            </button>
-          );
-        })}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {suggestions.map((s, i) => (
+          <button key={i} onClick={() => onNavigate?.("work")} title={s.title} style={{
+            flex: "1 1 180px", background: "var(--color-card)", border: `1px solid ${s.color}30`,
+            borderLeft: `3px solid ${s.color}`, borderRadius: 10, padding: "10px 12px",
+            cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 5,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.35 }}>{s.text}</div>
+            <div style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</div>
+          </button>
+        ))}
       </div>
     </div>
   );

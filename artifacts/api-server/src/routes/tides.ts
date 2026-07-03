@@ -92,7 +92,7 @@ router.get("/tides/now", async (req, res) => {
         const transits = computeTransitAspects(natal);
         personalTransits = transits
           .filter((t) => t.severity === "strong" || t.severity === "major" || (t.severity === "moderate" && t.exact))
-          .slice(0, 5)
+          .slice(0, 12)
           .map((t) => ({
             transitPlanet: t.transitPlanet,
             aspect:        t.aspect.toLowerCase(),

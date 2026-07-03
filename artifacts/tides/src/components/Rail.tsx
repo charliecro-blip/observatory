@@ -5,6 +5,8 @@ import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
+import { useNorthStars } from "@/hooks/useTides";
+import { ELEMENT_MYTHOS } from "@/lib/mythos";
 
 const ELEMENT_COLORS: Record<string, string> = {
   water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
@@ -169,13 +171,16 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
   );
 }
 
-export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number }) {
+export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
   const [wavesOpen, setWavesOpen] = useState(true);
+  const [transitsOpen, setTransitsOpen] = useState(true);
+  const [transitsExpanded, setTransitsExpanded] = useState(false);
+  const { data: northStars } = useNorthStars(testerId);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const qc = useQueryClient();
@@ -535,18 +540,72 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0 }: { now: 
         </div>
       )}
 
-      {/* Personal transits */}
-      {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (
+      {/* Personal transits — collapsible, grouped fast → slow. Fast movers
+          (Sun/Mercury/Venus/Mars) are this week's weather; slow ones
+          (Jupiter → Pluto) are the chapter you're living in. */}
+      {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (() => {
+        const FAST = new Set(["Sun", "Mercury", "Venus", "Mars", "Moon"]);
+        const fast = now.personalTransits!.filter((t: any) => FAST.has(t.transitPlanet));
+        const slow = now.personalTransits!.filter((t: any) => !FAST.has(t.transitPlanet));
+        const shown = transitsExpanded ? now.personalTransits!.length : 3;
+        let count = 0;
+        const row = (t: any, i: number) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555" }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
+            <span>{t.summary}</span>
+          </div>
+        );
+        return (
+          <div style={{ borderBottom: "1px solid var(--color-border)" }}>
+            <button onClick={() => setTransitsOpen(v => !v)} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px",
+              width: "100%", background: "none", border: "none", cursor: "pointer",
+              fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa",
+            }}>
+              <span style={{ display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></span>
+              <span style={{ fontSize: 8, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+            </button>
+            {transitsOpen && (
+              <div style={{ padding: "0 14px 10px" }}>
+                {fast.length > 0 && (
+                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", margin: "2px 0 2px" }}>this week — fast</div>
+                )}
+                {fast.map((t: any, i: number) => (count++ < shown ? row(t, i) : null))}
+                {slow.length > 0 && (
+                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", margin: "6px 0 2px" }}>chapters — slow</div>
+                )}
+                {slow.map((t: any, i: number) => (count++ < shown ? row(t, i + 100) : null))}
+                {now.personalTransits!.length > 3 && (
+                  <button onClick={() => setTransitsExpanded(v => !v)} style={{ fontSize: 9, color: "#a89a88", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0", textDecoration: "underline" }}>
+                    {transitsExpanded ? "show fewer" : `show all ${now.personalTransits!.length}`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+      {/* Guiding Stars — the chief aims, always in the corner of your eye */}
+      {(northStars?.length ?? 0) > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></div>
-          {now.personalTransits.slice(0, 3).map((t, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555" }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
-              <span>{t.summary}</span>
-            </div>
-          ))}
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>★ Guiding Stars</div>
+          {northStars!.map((g: any) => {
+            const m = ELEMENT_MYTHOS[g.element ?? ""];
+            const target = Math.max(g.scheduledCount ?? 0, 2);
+            return (
+              <button key={g.id} onClick={() => onNavigate?.("work")} title={m ? m.essence : undefined} style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "3px 0", width: "100%",
+                background: "none", border: "none", cursor: "pointer", textAlign: "left",
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: m?.color ?? "#c8b89a", flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 10.5, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
+                <span style={{ fontSize: 8.5, color: "#b0a89c", flexShrink: 0 }}>{g.completedCount ?? 0}/{target}</span>
+              </button>
+            );
+          })}
         </div>
       )}
+
       {/* Waves — habits / tasks / goals */}
       <div style={{ borderTop: "1px solid var(--color-border)" }}>
         <button onClick={() => setWavesOpen(v => !v)} style={{

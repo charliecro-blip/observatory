@@ -711,7 +711,7 @@ function Shell() {
         {/* Left sidebar: Rail (desktop only — the hero carries moon/hour on phones) */}
         {!isMobile && (
           <div style={{display:"flex",flexDirection:"column",borderRight:"1px solid var(--color-border)",width:210,minWidth:210,flexShrink:0,background:"var(--color-rail)"}}>
-            <Rail now={now} testerId={testerId} lat={lat} lon={lon} />
+            <Rail now={now} testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} />
           </div>
         )}
 

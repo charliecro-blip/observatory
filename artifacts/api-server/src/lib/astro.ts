@@ -292,9 +292,16 @@ export function voidOfCourse(jd: number): { voc: boolean } {
   const daysLeft = degLeft / 13.0;                 // Moon ~13°/day
   const STEP     = 0.25 / 24;                       // 15-minute steps
 
-  // Seed previous separations
-  const prevSep: Record<string, number> = {};
-  for (const name of VOC_PLANETS) prevSep[name] = sep180(moonLon0, bodyLongitude(name, jd));
+  // Perfection detection uses the SIGNED separation (0..360), not the folded
+  // 0..180 one: the folded distance only *touches* 0 at a conjunction and 180
+  // at an opposition without changing sign, so a sign-crossing test silently
+  // misses both — which declared the Moon void early whenever its last aspect
+  // before ingress was a conjunction or opposition. The signed delta increases
+  // monotonically (the Moon outruns every classical planet), so every aspect
+  // angle — including 0 and 180 — is a clean crossing.
+  const ANGLES = [0, 60, 90, 120, 180, 240, 270, 300];
+  const prevDelta: Record<string, number> = {};
+  for (const name of VOC_PLANETS) prevDelta[name] = normalize360(moonLon0 - bodyLongitude(name, jd));
 
   for (let dt = STEP; dt <= daysLeft + STEP; dt += STEP) {
     const cj    = jd + dt;
@@ -302,14 +309,15 @@ export function voidOfCourse(jd: number): { voc: boolean } {
     if (Math.floor(mLon / 30) !== sign0) break;    // reached ingress — stop
 
     for (const name of VOC_PLANETS) {
-      const sepNow = sep180(mLon, bodyLongitude(name, cj));
-      for (const A of MAJOR_ASPECTS) {
-        // Perfection = (sep - A) changes sign between steps, i.e. crosses the aspect exactly.
-        if ((prevSep[name] - A) * (sepNow - A) <= 0 && Math.abs(prevSep[name] - sepNow) < 3) {
-          return { voc: false };
-        }
+      const d = normalize360(mLon - bodyLongitude(name, cj));
+      const p = prevDelta[name];
+      if (d >= p) {
+        for (const A of ANGLES) if (p < A && A <= d) return { voc: false };
+      } else {
+        // Wrapped past 360 → 0: crossings are any angle above p, plus 0 itself.
+        for (const A of ANGLES) if (A > p || A <= d) return { voc: false };
       }
-      prevSep[name] = sepNow;
+      prevDelta[name] = d;
     }
   }
   return { voc: true };

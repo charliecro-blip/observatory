@@ -14,7 +14,7 @@ interface Goal {
 
 // A goal's cycle anchor — the long-cycle context that suggested/supports it.
 interface PendingAnchor {
-  kind: "chapter" | "profection";
+  kind: "chapter" | "profection" | "transit";
   planet?: string;
   house: number;
   until: string | null;
@@ -243,6 +243,16 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                   isRiding={riding("chapter", t.house, t.planet)}
                 />
               ))}
+              {/* Major transits — sharper, shorter-lived backing than a chapter:
+                  a strong aspect from a slow planet to one of your natal points.
+                  No end date is computed for these yet, so no "until". */}
+              {(currents.majorTransits ?? []).slice(0, 3).map((t: any, i: number) => (
+                <Row key={`mt${i}`}
+                  a={{kind:"transit", planet:t.transitPlanet, house:t.natalHouse, until:null, element:houseElement(t.natalHouse), label:`${PLANET_GLYPH[t.transitPlanet] ?? ""} ${t.transitPlanet} ${String(t.aspect).toLowerCase()} your natal ${t.natalPlanet}`}}
+                  sub={`Active now${t.exact ? " · exact" : ` · ${t.orb}° orb`}${t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0,2).join(", ")}` : ""}`}
+                  isRiding={goals.some(g => g.status==="active" && g.anchorKind==="transit" && g.anchorPlanet===t.transitPlanet && g.anchorHouse===t.natalHouse)}
+                />
+              ))}
             </div>
           );
         })()}
@@ -303,7 +313,9 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                     const closingSoon = dLeft != null && dLeft >= 0 && dLeft <= 30;
                     const label = goal.anchorKind === "chapter"
                       ? `rides ${goal.anchorPlanet} through your ${ordinal(goal.anchorHouse)}`
-                      : `rides your ${ordinal(goal.anchorHouse)}-house year`;
+                      : goal.anchorKind === "transit"
+                        ? `rides a ${goal.anchorPlanet} transit to your ${ordinal(goal.anchorHouse)}`
+                        : `rides your ${ordinal(goal.anchorHouse)}-house year`;
                     return (
                       <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,fontSize:9.5,color:ec,background:`${ec}10`,border:`1px solid ${ec}30`,borderRadius:6,padding:"2px 7px"}}>
                         <span>⏳ {label}{goal.anchorUntil ? ` · until ${fmtMonth(goal.anchorUntil)}` : ""}</span>

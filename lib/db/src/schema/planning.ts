@@ -97,6 +97,7 @@ export const tasks = pgTable("tasks", {
 export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  goalId: integer("goal_id"), // nullable FK to goals — a habit can serve a Guiding Star
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),

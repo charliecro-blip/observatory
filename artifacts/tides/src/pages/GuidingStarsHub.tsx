@@ -1,5 +1,5 @@
-import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, type ElementMythos } from "@/lib/mythos";
 import { usePremium } from "@/contexts/premium-context";
@@ -69,6 +69,37 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
   });
 
   const list: any[] = stars ?? [];
+
+  // A Guiding Star is bigger than a goal: it's the goal plus the tasks and
+  // habits that serve it. Both link via goalId; quick-adds here create them
+  // already attached (task inherits nothing else; habit inherits the star's
+  // element as its favored element).
+  const authH = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) } as Record<string, string>;
+  const { data: allTasks = [] } = useQuery<any[]>({
+    queryKey: ["tasks", testerId, "all"],
+    queryFn: async () => (await fetch("/api/tasks", { headers: authH })).json(),
+    enabled: !!testerId && list.length > 0,
+  });
+  const { data: allHabits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => (await fetch("/api/habits", { headers: authH })).json(),
+    enabled: !!testerId && list.length > 0,
+  });
+  const [quickAdd, setQuickAdd] = useState<{ goalId: number; kind: "task" | "habit" } | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const createLinked = useMutation({
+    mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
+      if (kind === "task") {
+        await fetch("/api/tasks", { method: "POST", headers: authH, body: JSON.stringify({ title, goalId }) });
+      } else {
+        await fetch("/api/habits", { method: "POST", headers: authH, body: JSON.stringify({ name: title, goalId, favoredElements: element || undefined }) });
+      }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: [v.kind === "task" ? "tasks" : "habits"] });
+      setQuickAdd(null); setQuickTitle("");
+    },
+  });
 
   // Tally this week's sessions per element from the North Stars already tagged
   // with one. A North Star with no element assigned doesn't count toward any
@@ -185,6 +216,45 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "var(--color-card-2)", color: "#6a6258", cursor: "pointer", flexShrink: 0,
                     }}>+ log</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Constellations — what serves each star */}
+          {list.length > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 6 }}>
+              {list.map((g: any) => {
+                const info = ELEMENT_MYTHOS[g.element ?? ""];
+                const gTasks = allTasks.filter((t: any) => t.goalId === g.id && t.done !== "true");
+                const gHabits = allHabits.filter((h: any) => h.goalId === g.id);
+                const adding = quickAdd && quickAdd.goalId === g.id ? quickAdd.kind : null;
+                return (
+                  <div key={`c${g.id}`} style={{ fontSize: 9.5, color: "#8a8278", display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: info?.color ?? "#c8b89a", flexShrink: 0 }} />
+                    <span style={{ maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#a09888" }}>{g.title}</span>
+                    <span>{gTasks.length} task{gTasks.length === 1 ? "" : "s"} · {gHabits.length} habit{gHabits.length === 1 ? "" : "s"}</span>
+                    {adding ? (
+                      <span style={{ display: "flex", gap: 4, alignItems: "center", flex: 1, minWidth: 160 }}>
+                        <input autoFocus value={quickTitle} onChange={e => setQuickTitle(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && quickTitle.trim()) createLinked.mutate({ goalId: g.id, kind: adding, title: quickTitle.trim(), element: g.element ?? undefined });
+                            if (e.key === "Escape") { setQuickAdd(null); setQuickTitle(""); }
+                          }}
+                          placeholder={adding === "task" ? "Task for this star…" : "Habit for this star…"}
+                          style={{ flex: 1, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 10, outline: "none", background: "var(--color-card-2)" }}
+                        />
+                        <button onClick={() => quickTitle.trim() && createLinked.mutate({ goalId: g.id, kind: adding, title: quickTitle.trim(), element: g.element ?? undefined })}
+                          style={{ fontSize: 9, padding: "3px 8px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                      </span>
+                    ) : (
+                      <span style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "task" }); setQuickTitle(""); }}
+                          style={{ fontSize: 9, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ task</button>
+                        <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "habit" }); setQuickTitle(""); }}
+                          style={{ fontSize: 9, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ habit</button>
+                      </span>
+                    )}
                   </div>
                 );
               })}

@@ -52,6 +52,15 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const WATER_TOP = PAD_T + 26;      // highest the surface can reach (leaves sky visible)
   const WATER_BOT = H - PAD_B - 14;  // lowest the surface can fall (keeps some depth)
   const [lens, setLens] = useState("overall");
+  // Display options — user-tunable, persisted. "fill" = the day's own range
+  // fills the canvas (dramatic); off = true 0..1 height (honest/even).
+  const [showOpts, setShowOpts] = useState(false);
+  const [opts, setOptsState] = useState<{ sky: boolean; motion: boolean; fill: boolean }>(() => {
+    try { return { sky: true, motion: true, fill: true, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
+    catch { return { sky: true, motion: true, fill: true }; }
+  });
+  const setOpt = (k: "sky" | "motion" | "fill", v: boolean) =>
+    setOptsState(o => { const n = { ...o, [k]: v }; localStorage.setItem("tw_options", JSON.stringify(n)); return n; });
   const lenses: { key: string; label: string }[] = arc.lenses ?? [{ key: "overall", label: "Overall" }];
   const dark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
   const reduceMotion = useRef(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches).current;
@@ -100,7 +109,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const minE = Math.min(...dispE), maxE = Math.max(...dispE);
   const mid = (minE + maxE) / 2;
   const span = Math.max(maxE - minE, 0.16);
-  const lo = mid - span / 2, hi = mid + span / 2;
+  const lo = opts.fill ? mid - span / 2 : 0, hi = opts.fill ? mid + span / 2 : 1;
   const x = (h: number) => (h / 24) * W;
   const y = (e: number) => WATER_BOT - ((e - lo) / (hi - lo)) * (WATER_BOT - WATER_TOP);
 
@@ -181,10 +190,29 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>The tide today</div>
-        <div style={{ fontSize: 9.5, color: nowColor, fontWeight: 600 }}>
-          {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "#aaa", fontWeight: 400 }}>· {heightWord}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 9.5, color: nowColor, fontWeight: 600 }}>
+            {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "#aaa", fontWeight: 400 }}>· {heightWord}</span>
+          </div>
+          <button onClick={() => setShowOpts(v => !v)} title="Chart options" style={{
+            fontSize: 11, color: showOpts ? "var(--color-primary)" : "#b8b0a4", background: "none",
+            border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
+          }}>⚙</button>
         </div>
       </div>
+
+      {showOpts && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+          {([["fill", "fill the day", "true height"], ["sky", "sky", "no sky"], ["motion", "motion", "still"]] as const).map(([k, onLabel, offLabel]) => (
+            <button key={k} onClick={() => setOpt(k, !opts[k])} style={{
+              fontSize: 9, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
+              border: "1px solid var(--color-border)",
+              background: opts[k] ? "var(--color-card-2)" : "transparent",
+              color: opts[k] ? "var(--color-foreground)" : "#a89e90",
+            }}>{opts[k] ? onLabel : offLabel}</button>
+          ))}
+        </div>
+      )}
 
       {lenses.length > 1 && (
         <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -249,10 +277,10 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         </defs>
 
         {/* Sky */}
-        <rect x="0" y="0" width={W} height={H - PAD_B} fill="url(#twSky)" opacity={dark ? 0.9 : 0.75} />
+        {opts.sky && <rect x="0" y="0" width={W} height={H - PAD_B} fill="url(#twSky)" opacity={dark ? 0.9 : 0.75} />}
 
         {/* Sunrise / sunset ticks */}
-        {[{ h: srH, up: true }, { h: ssH, up: false }].map(({ h, up }, i) => (h > 0 && h < 24) ? (
+        {opts.sky && [{ h: srH, up: true }, { h: ssH, up: false }].map(({ h, up }, i) => (h > 0 && h < 24) ? (
           <g key={i} opacity="0.8">
             <text x={x(h)} y={12} textAnchor="middle" fontSize="8" fill={dark ? "#c8b070" : "#b08830"}>☀{up ? "↑" : "↓"}</text>
           </g>
@@ -270,10 +298,10 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         })}
 
         {/* Water — drifting depth layers, then the lit surface */}
-        <g className="tw-layer-b" opacity={dark ? 0.14 : 0.12}>
+        <g className={opts.motion ? "tw-layer-b" : undefined} opacity={dark ? 0.14 : 0.12}>
           <path d={extArea} fill="url(#twChar)" transform="translate(0,16)" />
         </g>
-        <g className="tw-layer-a" opacity={dark ? 0.22 : 0.18}>
+        <g className={opts.motion ? "tw-layer-a" : undefined} opacity={dark ? 0.22 : 0.18}>
           <path d={extArea} fill="url(#twChar)" transform="translate(0,8)" />
         </g>
         <path d={surfaceArea} fill="url(#twChar)" opacity={dark ? 0.42 : 0.34} />
@@ -342,7 +370,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           <g>
             <rect x={x(nowH) - 7} y={0} width={14} height={H - PAD_B} fill={nowColor} opacity="0.07" />
             <line x1={x(nowH)} y1={0} x2={x(nowH)} y2={H - PAD_B} stroke={nowColor} strokeWidth="1.2" opacity="0.55" />
-            <circle className="tw-halo" cx={x(nowH)} cy={y(energyAt(nowH))} r="10" fill={nowColor} />
+            <circle className={opts.motion ? "tw-halo" : undefined} cx={x(nowH)} cy={y(energyAt(nowH))} r="10" fill={nowColor} />
             <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4.6" fill={nowColor} stroke={dark ? "#0d1120" : "#fff"} strokeWidth="2" />
           </g>
         )}
