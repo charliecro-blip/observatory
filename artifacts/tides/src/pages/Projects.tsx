@@ -11,6 +11,7 @@ const MS_STATUS = ["pending", "in_progress", "completed"] as const;
 
 const PRIORITY_COLOR: Record<string, string> = { high: "#c04040", medium: "#c08030", low: "#60a060" };
 const MS_STATUS_COLOR: Record<string, string> = { pending: "#aaa", in_progress: "#c08030", completed: "#60a060" };
+const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
 
 function InlineAdd({ placeholder, onAdd, disabled }: { placeholder: string; onAdd: (v: string) => void; disabled?: boolean }) {
   const [val, setVal] = useState("");
@@ -142,10 +143,12 @@ function ProjectCard({ project, goals, testerId }: { project: any; goals: any[];
 
   const pColor = PRIORITY_COLOR[project.priority] ?? "#aaa";
   const doneCount = milestones.filter((m: any) => m.status === "completed").length;
-  const goalLabel = goals.find(g => g.id === project.goalId)?.title;
+  const linkedGoal = goals.find(g => g.id === project.goalId);
+  const goalLabel = linkedGoal?.title;
+  const elColor = linkedGoal?.element ? ELEMENT_COLORS[linkedGoal.element] : undefined;
 
   return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: elColor ? `3px solid ${elColor}` : "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", cursor: "pointer" }} onClick={() => setExpanded(v => !v)}>
         <div style={{ width: 8, height: 8, borderRadius: 2, background: pColor, flexShrink: 0 }} />
         {editing ? (
@@ -164,7 +167,7 @@ function ProjectCard({ project, goals, testerId }: { project: any; goals: any[];
         ) : (
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>{project.title}</div>
-            {goalLabel && <div style={{ fontSize: 9, color: "#9070c0", marginTop: 1 }}>↳ {goalLabel}</div>}
+            {goalLabel && <div style={{ fontSize: 9, color: elColor ?? "#9070c0", marginTop: 1 }}>↳ {goalLabel}</div>}
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -250,7 +253,7 @@ export default function Projects({ testerId }: { testerId: string | null }) {
       {/* Header */}
       <div style={{ padding: "14px 22px 10px", borderBottom: "1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", marginBottom: 2 }}>Projects</div>
-        <div style={{ fontSize: 10, color: "#aaa" }}>Goal → Project → Milestone · the planning spine</div>
+        <div style={{ fontSize: 10, color: "#aaa" }}>Structure for a goal complex enough to need it — most goals don't need a project at all</div>
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -277,7 +280,7 @@ export default function Projects({ testerId }: { testerId: string | null }) {
                 border: "none", cursor: "pointer", fontSize: 11, color: selectedGoalId === g.id ? "#1a2a3a" : "#555",
                 fontWeight: selectedGoalId === g.id ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                <span style={{ color: "#9060c0", marginRight: 5 }}>◆</span>{g.title}
+                <span style={{ color: g.element ? ELEMENT_COLORS[g.element] : "#9060c0", marginRight: 5 }}>◆</span>{g.title}
                 {g.horizon && <span style={{ fontSize: 8, color: "#bbb", marginLeft: 4 }}>{g.horizon}</span>}
               </button>
               <button onClick={() => { if (confirm("Archive this goal?")) archiveGoal.mutate(g.id); }}
@@ -292,20 +295,26 @@ export default function Projects({ testerId }: { testerId: string | null }) {
 
         {/* Projects main area */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
-          {selectedGoalId !== null && selectedGoalId > 0 && (
-            <div style={{ marginBottom: 14, padding: "10px 14px", background: "#f0ebf8", borderRadius: 8, border: "1px solid #d8c8f0" }}>
-              <div style={{ fontSize: 10, color: "#9060c0", fontWeight: 600, marginBottom: 1 }}>
-                Goal · {goals.find(g => g.id === selectedGoalId)?.horizon ?? ""}
+          {selectedGoalId !== null && selectedGoalId > 0 && (() => {
+            const g = goals.find(g => g.id === selectedGoalId);
+            const ec = g?.element ? ELEMENT_COLORS[g.element] : "#9060c0";
+            return (
+              <div style={{ marginBottom: 14, padding: "10px 14px", background: `${ec}10`, borderRadius: 8, border: `1px solid ${ec}40` }}>
+                <div style={{ fontSize: 10, color: ec, fontWeight: 600, marginBottom: 1 }}>
+                  Goal · {g?.horizon ?? ""}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--color-primary)" }}>{g?.title}</div>
+                {g?.description && (
+                  <div style={{ fontSize: 10, color: "#777", marginTop: 4 }}>{g.description}</div>
+                )}
               </div>
-              <div style={{ fontSize: 13, color: "var(--color-primary)" }}>{goals.find(g => g.id === selectedGoalId)?.title}</div>
-              {goals.find(g => g.id === selectedGoalId)?.description && (
-                <div style={{ fontSize: 10, color: "#777", marginTop: 4 }}>{goals.find(g => g.id === selectedGoalId)?.description}</div>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {visibleProjects.length === 0 && (
-            <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", marginTop: 32 }}>No projects yet. Add one below.</div>
+            <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", marginTop: 32, lineHeight: 1.6, padding: "0 20px" }}>
+              No projects yet — that's normal. Only add one when a goal genuinely needs multiple steps and milestones, not for everything.
+            </div>
           )}
 
           {visibleProjects.map((p: any) => (

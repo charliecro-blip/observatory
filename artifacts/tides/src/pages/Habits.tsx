@@ -102,6 +102,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
       return order[a.timing] - order[b.timing];
     });
 
+  // This week's completions per element — a habit tagged with multiple
+  // elements counts toward each. Reuses the 14-day `days` log already fetched
+  // per habit rather than a separate query.
+  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const weekByElement: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
+  for (const h of habits) {
+    const els = h.favoredElements?.split(",").map(s => s.trim()).filter(Boolean) ?? [];
+    if (els.length === 0) continue;
+    const completedThisWeek = h.days.filter(d => d.done && d.date >= weekAgo).length;
+    for (const el of els) if (weekByElement[el] !== undefined) weekByElement[el] += completedThisWeek;
+  }
+  const weekTotal = Object.values(weekByElement).reduce((a, b) => a + b, 0);
+
   const toggleEl = (el: string) => setForm(f => ({
     ...f, favoredElements: f.favoredElements.includes(el) ? f.favoredElements.filter(e=>e!==el) : [...f.favoredElements, el]
   }));
@@ -121,6 +134,18 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
       </div>
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+
+        {/* This week per element */}
+        {weekTotal > 0 && (
+          <div style={{display:"flex",gap:6,alignItems:"center",fontSize:10.5,color:"#999",padding:"2px 2px"}}>
+            <span style={{textTransform:"uppercase",letterSpacing:"0.5px",fontSize:9,color:"#bbb"}}>This week</span>
+            {ELEMENTS.filter(el => weekByElement[el] > 0).map(el => (
+              <span key={el} style={{color:ELEMENT_COLORS[el],fontWeight:600}}>
+                {el} {weekByElement[el]}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Add form */}
         {showAdd && (
@@ -201,6 +226,13 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                   {h.streak > 0 && <div style={{fontSize:9,color:"#aaa",marginTop:1}}>{h.streak}d streak</div>}
                 </div>
 
+                {h.favoredElements && (
+                  <div style={{display:"flex",gap:2,flexShrink:0}} title={`Elements: ${h.favoredElements}`}>
+                    {h.favoredElements.split(",").map(s=>s.trim()).filter(Boolean).map(el => (
+                      <span key={el} style={{width:6,height:6,borderRadius:"50%",background:ELEMENT_COLORS[el]??"#ccc",display:"inline-block"}}/>
+                    ))}
+                  </div>
+                )}
                 <div style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
                 <button onClick={()=>removeHabit.mutate(h.id)} style={{fontSize:11,color:"#ddd",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
               </div>
