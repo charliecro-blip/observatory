@@ -3,7 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
 
 const ELEMENTS = ["water","fire","earth","air"];
-const PHASES = ["new","waxing crescent","first quarter","waxing gibbous","full","waning gibbous","last quarter","waning crescent"];
+// Simplified lunation quarters for tagging — timingScore matches these against
+// the live phase name via includes(), so "waxing" catches both crescent and
+// gibbous. New = begin/reset, waxing = build, full = culminate, waning = release.
+const PHASES = [
+  { key:"new",    label:"New · begin" },
+  { key:"waxing", label:"Waxing · build" },
+  { key:"full",   label:"Full · culminate" },
+  { key:"waning", label:"Waning · release" },
+];
 const BIO = ["leaf","root","flower","fruit"];
 const WINDOW_TYPES = ["deep_work","creative","planning","social","recovery","study","retreat"];
 const WINDOW_LABELS: Record<string,string> = {
@@ -49,7 +57,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
+  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["habits", testerId],
@@ -68,13 +76,14 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
         body: JSON.stringify({
           name: form.name.trim(), emoji: form.emoji || undefined,
           favoredElements: form.favoredElements.join(",") || undefined,
+          favoredPhases: form.favoredPhases.join(",") || undefined,
           favoredBiodynamic: form.favoredBiodynamic.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
           minimumViable: form.minimumViable.trim() || undefined,
         }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false); setForm({name:"",emoji:"",favoredElements:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""}); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false); setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""}); },
   });
 
   const toggleLog = useMutation({
@@ -121,6 +130,9 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const toggleBio = (b: string) => setForm(f => ({
     ...f, favoredBiodynamic: f.favoredBiodynamic.includes(b) ? f.favoredBiodynamic.filter(e=>e!==b) : [...f.favoredBiodynamic, b]
   }));
+  const togglePhase = (p: string) => setForm(f => ({
+    ...f, favoredPhases: f.favoredPhases.includes(p) ? f.favoredPhases.filter(e=>e!==p) : [...f.favoredPhases, p]
+  }));
 
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -134,6 +146,17 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
       </div>
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+
+        {/* New-moon review — the lunation's reset point, the natural moment to
+            re-choose habits at the cycle scale habits actually live on. */}
+        {now?.moonPhase === "New Moon" && habits.length > 0 && (
+          <div style={{background:"#50608a08",border:"1px solid #7080a040",borderLeft:"3px solid #7080a0",borderRadius:10,padding:"10px 14px"}}>
+            <div style={{fontSize:11,fontWeight:600,color:"#50608a",marginBottom:2}}>New moon — a natural reset</div>
+            <div style={{fontSize:10.5,color:"#60709a",lineHeight:1.5}}>
+              The lunation begins again. A good moment to look down this list and ask which habits still serve — retire what doesn't, recommit to what does.
+            </div>
+          </div>
+        )}
 
         {/* This week per element */}
         {weekTotal > 0 && (
@@ -169,6 +192,20 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                     background:form.favoredElements.includes(el)?`${ELEMENT_COLORS[el]}20`:"transparent",
                     color:form.favoredElements.includes(el)?ELEMENT_COLORS[el]:"#888",
                   }}>{el}</button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{marginBottom:8}}>
+              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#aaa",marginBottom:5}}>Best moon phase</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {PHASES.map(p => (
+                  <button key={p.key} onClick={()=>togglePhase(p.key)} style={{
+                    fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
+                    borderColor:form.favoredPhases.includes(p.key)?"#7080a0":"#d8d2ca",
+                    background:form.favoredPhases.includes(p.key)?"#7080a020":"transparent",
+                    color:form.favoredPhases.includes(p.key)?"#50608a":"#888",
+                  }}>{p.label}</button>
                 ))}
               </div>
             </div>

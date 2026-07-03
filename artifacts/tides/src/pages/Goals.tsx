@@ -1,10 +1,48 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ELEMENT_MYTHOS, sortIntentToElement } from "@/lib/mythos";
+import { useCurrents } from "@/hooks/useTides";
+import { usePremium } from "@/contexts/premium-context";
+import { HOUSE_MEANINGS } from "@/lib/currents-content";
 
 interface Milestone { id:number; projectId:number; title:string; status:string; targetDate?:string; }
 interface Project { id:number; title:string; goalId?:number; status:string; priority:string; milestones?:Milestone[]; }
-interface Goal { id:number; title:string; description?:string; horizon:string; status:string; isNorthStar?:boolean; element?:string|null; }
+interface Goal {
+  id:number; title:string; description?:string; horizon:string; status:string; isNorthStar?:boolean; element?:string|null;
+  anchorKind?:string|null; anchorPlanet?:string|null; anchorHouse?:number|null; anchorUntil?:string|null;
+}
+
+// A goal's cycle anchor — the long-cycle context that suggested/supports it.
+interface PendingAnchor {
+  kind: "chapter" | "profection";
+  planet?: string;
+  house: number;
+  until: string | null;
+  element: string;
+  label: string;
+}
+
+const PLANET_GLYPH: Record<string,string> = {
+  Sun:"☉", Moon:"☽", Mercury:"☿", Venus:"♀", Mars:"♂", Jupiter:"♃", Saturn:"♄", Uranus:"♅", Neptune:"♆", Pluto:"♇",
+};
+
+// House → element by triplicity: 1/5/9 fire, 2/6/10 earth, 3/7/11 air, 4/8/12 water.
+const houseElement = (h:number) => (["water","fire","earth","air"] as const)[h % 4];
+
+const ordinal = (n:number) => { const v = n % 100; const s = ["th","st","nd","rd"]; return `${n}${s[(v-20)%10] ?? s[v] ?? s[0]}`; };
+
+const fmtMonth = (iso:string|null|undefined) => iso ? new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"}) : null;
+
+// Horizon from how long the anchoring cycle has left — a chapter closing soon is
+// near-term work; a Pluto chapter with a decade to run is a long game.
+const horizonFromUntil = (until:string|null) => {
+  if (!until) return "long";
+  const months = (new Date(until+"T12:00:00").getTime() - Date.now()) / (30.44*86400000);
+  return months <= 6 ? "near" : months <= 18 ? "mid" : "long";
+};
+
+const daysUntil = (iso:string|null|undefined) =>
+  iso ? Math.round((new Date(iso+"T12:00:00").getTime() - Date.now()) / 86400000) : null;
 
 const HORIZON_COLORS: Record<string,{bg:string;color:string}> = {
   near: {bg:"#dbeafe",color:"#2a5a90"},
@@ -31,6 +69,13 @@ export default function Goals({ testerId }: { testerId:string|null }) {
   const [goalForm, setGoalForm] = useState({title:"",description:"",horizon:"near"});
   const [projectForm, setProjectForm] = useState({title:"",priority:"medium"});
   const [milestoneForm, setMilestoneForm] = useState({title:"",targetDate:""});
+  const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor|null>(null);
+
+  // Season context for goal suggestions — same /api/currents data the Horizon
+  // page renders, so this is premium territory like the rest of the long-cycle
+  // features. Panel simply doesn't render when locked or without a birth chart.
+  const { unlocked: premiumUnlocked } = usePremium();
+  const { data: currents } = useCurrents(testerId, localStorage.getItem("obs_house_system") ?? "whole-sign");
 
   const { data: goals = [] } = useQuery<Goal[]>({
     queryKey: ["goals", testerId],
@@ -52,9 +97,27 @@ export default function Goals({ testerId }: { testerId:string|null }) {
 
   const addGoal = useMutation({
     mutationFn: async () => {
-      await fetch("/api/planning/goals", {method:"POST",headers:authH(testerId),body:JSON.stringify(goalForm)});
+      const body = {
+        ...goalForm,
+        ...(pendingAnchor ? {
+          element: pendingAnchor.element,
+          anchorKind: pendingAnchor.kind,
+          anchorPlanet: pendingAnchor.planet ?? null,
+          anchorHouse: pendingAnchor.house,
+          anchorUntil: pendingAnchor.until,
+        } : {}),
+      };
+      await fetch("/api/planning/goals", {method:"POST",headers:authH(testerId),body:JSON.stringify(body)});
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["goals"]}); setGoalForm({title:"",description:"",horizon:"near"}); setShowGoalForm(false); },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["goals"]}); setGoalForm({title:"",description:"",horizon:"near"}); setPendingAnchor(null); setShowGoalForm(false); },
+  });
+
+  const clearAnchor = useMutation({
+    mutationFn: async (id:number) => {
+      await fetch(`/api/planning/goals/${id}`, {method:"PATCH",headers:authH(testerId),
+        body:JSON.stringify({anchorKind:null,anchorPlanet:null,anchorHouse:null,anchorUntil:null})});
+    },
+    onSuccess: () => { qc.invalidateQueries({queryKey:["goals"]}); qc.invalidateQueries({queryKey:["north-stars"]}); },
   });
 
   const addProject = useMutation({
@@ -124,8 +187,78 @@ export default function Goals({ testerId }: { testerId:string|null }) {
           </div>
         )}
 
+        {/* Supported by this season — goal territories the long cycles currently
+            back, from the same /api/currents data the Horizon page shows. One tap
+            pre-fills a goal with the element (house triplicity) + cycle anchor,
+            so the goal inherits a real season instead of an invented deadline. */}
+        {premiumUnlocked && currents?.hasChart && (() => {
+          const prof = currents.profection;
+          const chapters: any[] = currents.transitsByHouse ?? [];
+          if (!prof && chapters.length === 0) return null;
+          const riding = (kind:string, house:number, planet?:string) =>
+            goals.some(g => g.status==="active" && g.anchorKind===kind && g.anchorHouse===house && (kind!=="chapter" || g.anchorPlanet===planet));
+          const start = (a:PendingAnchor) => {
+            setPendingAnchor(a);
+            setGoalForm(f => ({...f, horizon: horizonFromUntil(a.until)}));
+            setShowGoalForm(true);
+          };
+          const Row = ({a, sub, isRiding}:{a:PendingAnchor; sub:string; isRiding:boolean}) => {
+            const ec = ELEMENT_INFO[a.element]?.color ?? "#888";
+            return (
+              <div style={{display:"flex",alignItems:"center",gap:9,padding:"7px 0",borderBottom:"1px solid var(--color-border)"}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:ec,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11.5,fontWeight:600,color:"var(--color-primary)"}}>{a.label}</div>
+                  <div style={{fontSize:9.5,color:"#999",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
+                  </div>
+                </div>
+                {isRiding
+                  ? <span style={{fontSize:9,color:"#80a870",flexShrink:0}}>✓ riding this</span>
+                  : <button onClick={()=>start(a)} style={{fontSize:9.5,padding:"3px 10px",borderRadius:8,border:`1px solid ${ec}50`,background:`${ec}10`,color:ec,cursor:"pointer",fontWeight:600,flexShrink:0}}>
+                      Set a goal →
+                    </button>}
+              </div>
+            );
+          };
+          return (
+            <div style={{background:"var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"12px 16px 6px"}}>
+              <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:"0.8px",color:"#a89a88",marginBottom:2}}>
+                Supported by this season
+              </div>
+              <div style={{fontSize:10,color:"#999",marginBottom:6,lineHeight:1.5}}>
+                Territories the long cycles are currently backing — a goal set here rides its cycle's natural season.
+              </div>
+              {prof && (
+                <Row
+                  a={{kind:"profection", house:prof.house, until:prof.yearEnd ?? null, element:houseElement(prof.house), label:`Your ${ordinal(prof.house)}-house year · ${HOUSE_MEANINGS[prof.house]?.title ?? ""}`}}
+                  sub={`Ruler of the year: ${prof.timeLord}`}
+                  isRiding={riding("profection", prof.house)}
+                />
+              )}
+              {chapters.map((t:any) => (
+                <Row key={t.planet}
+                  a={{kind:"chapter", planet:t.planet, house:t.house, until:t.leavesHouse ?? null, element:houseElement(t.house), label:`${PLANET_GLYPH[t.planet] ?? ""} ${t.planet} through your ${ordinal(t.house)} · ${HOUSE_MEANINGS[t.house]?.title ?? ""}`}}
+                  sub={`A slow chapter${t.retrograde ? " · currently retrograde" : ""}`}
+                  isRiding={riding("chapter", t.house, t.planet)}
+                />
+              ))}
+            </div>
+          );
+        })()}
+
         {showGoalForm && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"16px",display:"flex",flexDirection:"column",gap:8}}>
+            {pendingAnchor && (() => {
+              const ec = ELEMENT_INFO[pendingAnchor.element]?.color ?? "#888";
+              return (
+                <div style={{display:"flex",alignItems:"center",gap:7,fontSize:10.5,color:ec,background:`${ec}10`,border:`1px solid ${ec}40`,borderRadius:7,padding:"6px 10px"}}>
+                  <span style={{fontWeight:600}}>⏳ {pendingAnchor.label}</span>
+                  {pendingAnchor.until && <span style={{color:"#999"}}>until {fmtMonth(pendingAnchor.until)}</span>}
+                  <button onClick={()=>setPendingAnchor(null)} style={{marginLeft:"auto",background:"none",border:"none",color:"#bbb",cursor:"pointer",fontSize:12,padding:0}}>✕</button>
+                </div>
+              );
+            })()}
             <input autoFocus value={goalForm.title} onChange={e=>setGoalForm(f=>({...f,title:e.target.value}))} placeholder="Goal title…"
               style={{padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)",outline:"none"}}/>
             <input value={goalForm.description} onChange={e=>setGoalForm(f=>({...f,description:e.target.value}))} placeholder="Description (optional)"
@@ -164,6 +297,22 @@ export default function Goals({ testerId }: { testerId:string|null }) {
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:600,color: "var(--color-foreground)"}}>{goal.title}</div>
                   {goal.description&&<div style={{fontSize:11,color:"#888",marginTop:2}}>{goal.description}</div>}
+                  {goal.anchorKind && goal.anchorHouse != null && (() => {
+                    const ec = goal.element ? (ELEMENT_INFO[goal.element]?.color ?? "#8a8278") : "#8a8278";
+                    const dLeft = daysUntil(goal.anchorUntil);
+                    const closingSoon = dLeft != null && dLeft >= 0 && dLeft <= 30;
+                    const label = goal.anchorKind === "chapter"
+                      ? `rides ${goal.anchorPlanet} through your ${ordinal(goal.anchorHouse)}`
+                      : `rides your ${ordinal(goal.anchorHouse)}-house year`;
+                    return (
+                      <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,fontSize:9.5,color:ec,background:`${ec}10`,border:`1px solid ${ec}30`,borderRadius:6,padding:"2px 7px"}}>
+                        <span>⏳ {label}{goal.anchorUntil ? ` · until ${fmtMonth(goal.anchorUntil)}` : ""}</span>
+                        {closingSoon && <span style={{color:"#a04040",fontWeight:700}}>closing soon</span>}
+                        <button onClick={()=>clearAnchor.mutate(goal.id)} title="Unlink from this cycle"
+                          style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:10,padding:0,lineHeight:1}}>✕</button>
+                      </div>
+                    );
+                  })()}
                   {goal.isNorthStar && (() => {
                     const suggested = !goal.element ? sortIntentToElement(`${goal.title} ${goal.description ?? ""}`) : null;
                     const mythos = goal.element ? ELEMENT_MYTHOS[goal.element] : null;

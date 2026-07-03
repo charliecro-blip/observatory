@@ -18,7 +18,7 @@ router.get("/planning/goals", requireTesterId, async (req, res) => {
 
 router.post("/planning/goals", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, description, horizon, status, element } = req.body;
+  const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
   const [inserted] = await db.insert(goals).values({
     testerId, title: title.trim(),
@@ -26,6 +26,10 @@ router.post("/planning/goals", requireTesterId, async (req, res) => {
     horizon: horizon ?? null,
     status: status ?? "active",
     element: element ?? null,
+    anchorKind: anchorKind ?? null,
+    anchorPlanet: anchorPlanet ?? null,
+    anchorHouse: anchorHouse ?? null,
+    anchorUntil: anchorUntil ?? null,
   }).returning();
   res.status(201).json(inserted);
 });
@@ -35,13 +39,17 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
-  const { title, description, horizon, status, element } = req.body;
+  const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
   const updates: Partial<typeof goals.$inferSelect> & { updatedAt: Date } = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title;
   if (description !== undefined) updates.description = description;
   if (horizon !== undefined) updates.horizon = horizon;
   if (status !== undefined) updates.status = status;
   if (element !== undefined) updates.element = element;
+  if (anchorKind !== undefined) updates.anchorKind = anchorKind;
+  if (anchorPlanet !== undefined) updates.anchorPlanet = anchorPlanet;
+  if (anchorHouse !== undefined) updates.anchorHouse = anchorHouse;
+  if (anchorUntil !== undefined) updates.anchorUntil = anchorUntil;
   const [updated] = await db.update(goals).set(updates).where(eq(goals.id, id)).returning();
   res.json(updated);
 });

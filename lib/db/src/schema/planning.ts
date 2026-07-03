@@ -21,6 +21,14 @@ export const goals = pgTable("goals", {
   status: text("status").notNull().default("active"), // active | paused | completed | archived
   isNorthStar: boolean("is_north_star").notNull().default(false), // chief aim — max 3 active at once
   element: text("element"), // fire | earth | air | water — the domain this goal lives in
+  // Cycle anchor — ties a goal to the long-cycle context that suggested/supports
+  // it, giving it a natural season instead of an invented deadline (cyclical
+  // nesting: goals ride chapters — an outer planet moving through a natal house —
+  // or the profected year).
+  anchorKind: text("anchor_kind"), // chapter | profection
+  anchorPlanet: text("anchor_planet"), // e.g. Saturn (chapter anchors only)
+  anchorHouse: integer("anchor_house"), // 1-12 natal house
+  anchorUntil: text("anchor_until"), // ISO date the chapter/year closes
   northStarSince: timestamp("north_star_since", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

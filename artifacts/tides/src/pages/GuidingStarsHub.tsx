@@ -17,6 +17,17 @@ function houseSystemPref(): string {
   return localStorage.getItem("obs_house_system") ?? "whole-sign";
 }
 
+const ordinal = (n: number) => { const v = n % 100; const s = ["th","st","nd","rd"]; return `${n}${s[(v-20)%10] ?? s[v] ?? s[0]}`; };
+const fmtMonth = (iso: string | null | undefined) => iso ? new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"}) : null;
+const fmtDay = (iso: string) => new Date(iso+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
+const daysUntil = (iso: string | null | undefined) =>
+  iso ? Math.round((new Date(iso+"T12:00:00").getTime() - Date.now()) / 86400000) : null;
+
+const anchorLabel = (g: any) =>
+  g.anchorKind === "chapter"
+    ? `rides ${g.anchorPlanet} through your ${ordinal(g.anchorHouse)}`
+    : `rides your ${ordinal(g.anchorHouse)}-house year`;
+
 /**
  * The Life tab's front door — per the Life-tab rework schema (see memory:
  * tides-life-tab-rework-schema). North Stars (identity) + four element cards
@@ -76,6 +87,15 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
     .map((el) => ({ el, completed: byElement[el].completed }))
     .sort((a, b) => b.completed - a.completed)[0];
 
+  // Cycle-turn review: goals whose anchoring cycle (chapter/profection year)
+  // closes within 30 days — the moment to land the goal or consciously hand
+  // it to the next season, rather than letting the turn pass unnoticed.
+  const closingSoon = list.filter((g: any) => {
+    if (!g.anchorKind || !g.anchorUntil) return false;
+    const d = daysUntil(g.anchorUntil);
+    return d != null && d >= 0 && d <= 30;
+  });
+
   if (isLoading) {
     return <div style={{ padding: 40, color: "#999", fontSize: 13 }}>Reading your North Stars…</div>;
   }
@@ -109,6 +129,24 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
           </div>
         )}
 
+        {/* Cycle-turn review — a season backing a goal is about to close */}
+        {closingSoon.length > 0 && (
+          <div style={{ background: "#8a6a2008", border: "1px solid #c8a84040", borderLeft: "3px solid #c8a840", borderRadius: 10, padding: "10px 14px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#8a6a20", marginBottom: 2 }}>
+              {closingSoon.length === 1 ? "A season is closing" : `${closingSoon.length} seasons are closing`}
+            </div>
+            <div style={{ fontSize: 10.5, color: "#8a7a50", lineHeight: 1.55 }}>
+              {closingSoon.map((g: any, i: number) => (
+                <span key={g.id}>
+                  {i > 0 && " · "}
+                  <b>{g.title}</b> {anchorLabel(g)}, closing {fmtDay(g.anchorUntil)}
+                </span>
+              ))}
+              {" — land it, or consciously hand it to the next season."}
+            </div>
+          </div>
+        )}
+
         {/* North Stars */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -133,6 +171,11 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
                         <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
                         {info && <span style={{ fontSize: 8.5, color: info.color }}>{info.name}</span>}
                       </div>
+                      {g.anchorKind && g.anchorHouse != null && (
+                        <div style={{ fontSize: 8.5, color: "#a89a88", marginTop: 1 }}>
+                          ⏳ {anchorLabel(g)}{g.anchorUntil ? ` · until ${fmtMonth(g.anchorUntil)}` : ""}
+                        </div>
+                      )}
                       <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: info?.color ?? "#8a8278", borderRadius: 2, opacity: 0.75 }} />
                       </div>
