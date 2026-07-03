@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
+import { usePremium } from "@/contexts/premium-context";
+import { PremiumExploreModal } from "@/components/PremiumGate";
 import { isWithinFreeWindow, isAwakeDuring } from "@/lib/chronotype";
 
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
@@ -32,10 +34,14 @@ export function ScheduleSuggest({
 }) {
   const qc = useQueryClient();
   const { profile } = useTester();
+  const { unlocked } = usePremium();
   const [busy, setBusy] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
+  // Free users go straight to picking their own time (manual scheduling is
+  // free); the app's best-time intelligence is the premium layer.
+  const [customOpen, setCustomOpen] = useState(!unlocked);
   const [customDate, setCustomDate] = useState(new Date().toISOString().slice(0, 10));
   const [customStart, setCustomStart] = useState("09:00");
+  const [showPremium, setShowPremium] = useState(false);
 
   const { data: assoc } = useQuery<Association>({
     queryKey: ["associate", title],
@@ -46,6 +52,7 @@ export function ScheduleSuggest({
       });
       return r.json();
     },
+    enabled: unlocked, // the reading is part of the premium timing intelligence
   });
 
   const element = assoc?.element ?? "earth";
@@ -106,17 +113,29 @@ export function ScheduleSuggest({
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a89a88", marginBottom: 4 }}>Find a good time</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)", marginBottom: 8 }}>{title}</div>
 
-        {assoc && (
+        {/* Premium teaser for free users — manual scheduling stays available below */}
+        {!unlocked && (
+          <div style={{ background: `${ec}0c`, border: `1px solid ${ec}33`, borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
+            <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55 }}>
+              <b style={{ color: "var(--color-primary)" }}>✦ Let Tides find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
+            </div>
+            <button onClick={() => setShowPremium(true)} style={{ marginTop: 7, fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${ec}55`, background: "var(--color-card)", color: ec, cursor: "pointer", fontWeight: 600 }}>
+              Explore premium
+            </button>
+          </div>
+        )}
+
+        {unlocked && assoc && (
           <div style={{ fontSize: 11, color: "#777", lineHeight: 1.55, marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: ec, flexShrink: 0, marginTop: 4 }} />
             <span>{assoc.rationale} <span style={{ color: "#aaa" }}>Best in {element} windows this week:</span></span>
           </div>
         )}
 
-        {!bestData && <div style={{ fontSize: 12, color: "#999", padding: "12px 0" }}>Reading the week…</div>}
+        {unlocked && !bestData && <div style={{ fontSize: 12, color: "#999", padding: "12px 0" }}>Reading the week…</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          {ranked.map((w, i) => {
+          {unlocked && ranked.map((w, i) => {
             const awake = isAwakeDuring(w, chronotype);
             const free = isWithinFreeWindow(w, chronotype);
             return (
@@ -134,7 +153,7 @@ export function ScheduleSuggest({
               </button>
             );
           })}
-          {bestData && ranked.length === 0 && (
+          {unlocked && bestData && ranked.length === 0 && (
             <div style={{ fontSize: 11.5, color: "#999" }}>No standout windows this week — pick your own time below.</div>
           )}
         </div>
@@ -162,6 +181,7 @@ export function ScheduleSuggest({
           </button>
         </div>
       </div>
+      {showPremium && <PremiumExploreModal onClose={() => setShowPremium(false)} />}
     </div>
   );
 }

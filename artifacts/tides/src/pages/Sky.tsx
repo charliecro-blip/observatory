@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
-import { SIGN_MYTHOS } from "@/lib/mythos";
+import { SIGN_MYTHOS, ELEMENT_MYTHOS, PLANET_MYTHOS } from "@/lib/mythos";
 
 const QUALITY_COLORS: Record<string, string> = {
   favorable: "#3a6020", caution: "#a05020", neutral: "#555",
@@ -551,6 +551,10 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
           click opened the panel and narrowed it). */}
       <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative" }}>
         <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10, maxWidth:760, margin:"0 auto", width:"100%" }}>
+          {/* Reference / learning — the Almanac's identity as "the book you look
+              things up in," distinct from Ahead's "your calendar." */}
+          <ReferenceSection />
+
           {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
 
           {/* ── Angular crossings ── */}
@@ -730,6 +734,64 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 }
 
 // ── Reusable collapsible section ──────────────────────────────────────────────
+
+// The Almanac's reference identity — the book you look things up in. A plain-
+// language "what does this mean" layer (elements, planets, signs) so the app is
+// legible to someone who knows no astrology. Distinct from Ahead (your time):
+// this is the sky's meanings, not its schedule.
+function ReferenceSection() {
+  const [tab, setTab] = useState<"elements" | "planets" | "signs">("elements");
+  const [open, setOpen] = useState<string | null>(null);
+  const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
+
+  const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
+    tab === "elements"
+      ? (["fire", "earth", "air", "water"] as const).map((el) => {
+          const m = ELEMENT_MYTHOS[el];
+          return { key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, body: `${m.essence} ${(m.domains ?? []).join(" · ")}` };
+        })
+      : tab === "planets"
+      ? Object.values(PLANET_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, body: m.myth }))
+      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.` }));
+
+  return (
+    <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ padding: "11px 14px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
+        <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Look anything up — no astrology background needed</div>
+        <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+          {(["elements", "planets", "signs"] as const).map((t) => (
+            <button key={t} onClick={() => { setTab(t); setOpen(null); }} style={{
+              fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
+              border: tab === t ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
+              background: tab === t ? "#1a2a3a" : "var(--color-card)", color: tab === t ? "#fff" : "#888", fontWeight: tab === t ? 600 : 400,
+            }}>{t}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: tab === "signs" ? "grid" : "flex", gridTemplateColumns: tab === "signs" ? "1fr 1fr" : undefined, flexDirection: tab === "signs" ? undefined : "column" }}>
+        {items.map((it) => (
+          <div key={it.key} style={{ borderBottom: "1px solid var(--color-border)", borderRight: tab === "signs" ? "1px solid var(--color-border)" : "none" }}>
+            <button onClick={() => setOpen(open === it.key ? null : it.key)} style={{
+              width: "100%", textAlign: "left", padding: "8px 14px", background: "none", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 9,
+            }}>
+              <span style={{ fontSize: 14, color: it.color, width: 18, textAlign: "center", flexShrink: 0 }}>{it.glyph}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-foreground)" }}>{it.name}</div>
+                <div style={{ fontSize: 9.5, color: "#999", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+              </div>
+              <span style={{ fontSize: 9, color: "#ccc", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
+            </button>
+            {open === it.key && (
+              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>{it.body}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Section({ label, icon, accent, desc, defaultOpen, children }: {
   label: string; icon: string; accent: string; desc: string; defaultOpen: boolean; children: React.ReactNode;

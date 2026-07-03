@@ -4,7 +4,14 @@
 // dev-override check in premium-context.tsx for a real entitlement check
 // later shouldn't require touching any of the UI built on top of this.
 
-export type PremiumFeature = "currents";
+// The free/paid line: FREE is a genuinely useful weather-app-plus-planner —
+// the universal tide (Now), the Ahead calendar with manual scheduling, the
+// Almanac reference, and Guiding Stars/tasks/habits usable as a plain planner
+// with no astrology required. PAID is when it becomes PERSONAL and INTELLIGENT:
+// your own chart's long cycles, your personal caution windows, and the app
+// finding the best *time* for what you're planning (the AI/tide timing layer,
+// which is also where the real per-user cost lives).
+export type PremiumFeature = "currents" | "scheduling";
 
 export interface PremiumFeatureMeta {
   key: PremiumFeature;
@@ -13,11 +20,6 @@ export interface PremiumFeatureMeta {
   icon: string;
 }
 
-// Currents (long-cycle personal transits) and Caution Periods (planetary
-// sensitivity diagnosis + upcoming hard-aspect windows) currently share one
-// gate — both live on the Currents page. Listed separately here because they
-// are two distinct value props worth messaging separately in the explore
-// modal, even though unlocking one unlocks both today.
 export const PREMIUM_FEATURES: PremiumFeatureMeta[] = [
   {
     key: "currents",
@@ -28,7 +30,13 @@ export const PREMIUM_FEATURES: PremiumFeatureMeta[] = [
   {
     key: "currents",
     title: "Caution Periods",
-    teaser: "Diagnose which planetary archetypes tend to hit you hardest, and see upcoming windows to move carefully.",
+    teaser: "Flag the planetary archetypes that hit you hardest, and get a gentle heads-up when the Sun or Moon lights one up.",
     icon: "⚠",
+  },
+  {
+    key: "scheduling",
+    title: "Smart scheduling",
+    teaser: "Tides reads what a task or habit is really about and finds its best times this week — matched to the sky and to your own free hours. You can always still pick your own time for free.",
+    icon: "✦",
   },
 ];

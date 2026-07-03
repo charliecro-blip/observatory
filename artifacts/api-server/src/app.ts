@@ -47,7 +47,12 @@ const aiLimiter = rateLimit({
 // General API: 300 requests per 15 min per tester
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  // These are cheap local-compute endpoints (ephemeris, tasks) and the app
+  // itself polls several of them per minute across components. 300/15min
+  // (20/min) was tight enough that an active session could brush it and start
+  // getting error objects back. 1000 gives real headroom; the AI limiter above
+  // (30/hr) still guards the one endpoint that actually costs money.
+  max: 1000,
   keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
   message: { error: "Too many requests — slow down a little." },
   standardHeaders: true,
