@@ -20,6 +20,7 @@ import Goals from "@/pages/Goals";
 import Projects from "@/pages/Projects";
 import Sky from "@/pages/Sky";
 import Currents from "@/pages/Currents";
+import Launch from "@/pages/Launch";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
@@ -63,20 +64,23 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"sky"|"currents"|"work"|"settings";
+type View = "today"|"calendar"|"sky"|"currents"|"work"|"launch"|"settings";
 
 // Primary tabs — the navigator's kit (naming ratified with the user): Now is
 // the water you're in, Ahead the water in front (your calendar), Currents the
 // slow water beneath (chapters, year+), Almanac the reference book of sky
 // events, and Helm where you steer (Goals -> optional Projects -> Tasks, plus
 // Habits as a separate recurring axis). Compass (the advisor) gives a bearing
-// on demand from the global bar. Internal ids unchanged — labels only.
+// on demand from the global bar. Launch is electional — picking the moment to
+// *begin* something, the mirror of the personal timing the rest of the app
+// reflects. Internal ids unchanged — labels only.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Now",      zoom:true},
   {id:"calendar", label:"Ahead",    zoom:true},
   {id:"currents", label:"Currents", zoom:true},
   {id:"sky",      label:"Almanac"},
   {id:"work",     label:"Helm"},
+  {id:"launch",   label:"Launch"},
 ];
 
 const WINDOW_TYPES = [
@@ -642,7 +646,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", currents:"✧", sky:"☽", work:"☰" };
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", currents:"✧", sky:"☽", work:"☰", launch:"▲" };
 
   return (
     <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
@@ -721,6 +725,7 @@ function Shell() {
         {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="currents" && <Currents testerId={testerId}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
 

@@ -27,6 +27,7 @@ import daemonMemoryRouter from "./daemonMemory";
 import cycleRouter from "./cycle";
 import exportIcalRouter from "./exportIcal";
 import currentsRouter from "./currents";
+import electionRouter from "./election";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(daemonMemoryRouter);
 router.use(cycleRouter);
 router.use(exportIcalRouter);
 router.use(currentsRouter);
+router.use(electionRouter);
 
 export default router;
