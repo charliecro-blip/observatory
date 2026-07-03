@@ -636,10 +636,24 @@ function CycleSection({ testerId }: { testerId: string | null }) {
 function PremiumPreviewSection() {
   const { unlocked, setUnlocked } = usePremium();
   return (
-    <SectionCard title="Premium preview (dev)" sub="No billing exists yet — use this to preview both sides of the paywall.">
-      <Row label="Premium unlocked" sub={unlocked ? "Showing Currents & Caution Periods as a paying user would see them." : "Showing the locked/teaser view a free user would see."}>
+    <SectionCard title="Premium — try both sides" sub="No billing exists yet. Flip this to feel exactly what's free vs paid across the app.">
+      <Row label={unlocked ? "Premium: ON" : "Premium: OFF (free view)"} sub={unlocked ? "You're seeing everything a paying user would." : "You're seeing the free experience a new user gets."}>
         <Toggle on={unlocked} onChange={setUnlocked} />
       </Row>
+      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#6a8a5a", marginBottom: 5 }}>Free</div>
+          <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+            The daily tide & Big Sky · the Ahead calendar · scheduling tasks & habits yourself · the Almanac reference · Guiding Stars, tasks & habits as a plain planner
+          </div>
+        </div>
+        <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
+          <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+            Currents (your long cycles) · personal caution windows · smart scheduling (best times found for you) · the Compass advisor
+          </div>
+        </div>
+      </div>
     </SectionCard>
   );
 }
@@ -1202,6 +1216,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         {/* Account — recovery key */}
         <AccountSection />
 
+        {/* Premium — near the top so it's easy to find and toggle */}
+        <PremiumPreviewSection />
+
         {/* Notifications */}
         <NotificationSection lat={lat} lon={lon} />
 
@@ -1307,9 +1324,6 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             </button>
           </div>
         </SectionCard>
-
-        {/* Premium preview toggle (dev-only, no billing yet) */}
-        <PremiumPreviewSection />
 
         {/* Chronotype / rhythm */}
         <ChronotypeSection />

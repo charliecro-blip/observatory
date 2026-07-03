@@ -8,6 +8,31 @@ import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 
+// A small, accurate moon-phase disc. The old rail moon was a fixed radial
+// gradient that always looked ~full regardless of the real phase. This renders
+// the true illuminated fraction and the correct lit side (waxing = right,
+// waning = left in the northern hemisphere). Kept deliberately small and quiet
+// — the tide chart is the app's hero, not the moon.
+function MoonDisc({ illum, waxing, size = 26 }: { illum: number; waxing: boolean; size?: number }) {
+  const r = size / 2;
+  const lit = "#e7ddc6", dark = "#413d33";
+  const f = Math.max(0, Math.min(1, illum));
+  // Signed terminator radius: +r at new (nothing lit), 0 at half, -r at full.
+  const x = (1 - 2 * f) * r;
+  const rxTerm = Math.abs(x);
+  const sweepTerm = x > 0 ? 1 : 0;
+  // Right-lit shape (outer right semicircle + terminator ellipse back to top);
+  // mirror horizontally for a waning moon so the light sits on the left.
+  const d = `M ${r} 0 A ${r} ${r} 0 0 1 ${r} ${size} A ${rxTerm} ${r} 0 0 ${sweepTerm} ${r} 0 Z`;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0, transform: waxing ? "none" : "scaleX(-1)" }} aria-hidden>
+      <circle cx={r} cy={r} r={r} fill={dark} />
+      <path d={d} fill={lit} />
+      <circle cx={r} cy={r} r={r - 0.5} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="1" />
+    </svg>
+  );
+}
+
 const ELEMENT_COLORS: Record<string, string> = {
   water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
 };
@@ -288,10 +313,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-              background: "radial-gradient(circle at 60% 40%, #e8e0d0, #9a9080)",
-            }} />
+            <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
               <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
               <div style={{ color: "#777", marginTop: 1 }}>{Math.round((moonIllumination ?? 0) * 100)}% · {moonSign}</div>

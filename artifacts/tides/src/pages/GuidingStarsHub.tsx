@@ -75,7 +75,7 @@ function authH(tid: string | null) {
 export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate }: {
   testerId: string | null;
   lat?: number; lon?: number;
-  onNavigate: (tab: "tasks" | "habits" | "projects") => void;
+  onNavigate: (tab: "tasks" | "habits") => void;
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading } = useNorthStars(testerId);
@@ -113,6 +113,48 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     queryKey: ["habits", testerId],
     queryFn: async () => (await fetch("/api/habits", { headers: authHeaders })).json(),
     enabled: !!testerId,
+  });
+  // Steps (milestones) — the one useful bit of the old Projects tab, folded in.
+  // A star's "steps" live on a backing project (goalId = star.id); the word
+  // "project" never appears — it's just an ordered checklist toward the star.
+  const { data: allProjects = [] } = useQuery<any[]>({
+    queryKey: ["projects", testerId],
+    queryFn: async () => (await fetch("/api/planning/projects?status=active", { headers: authHeaders })).json(),
+    enabled: !!testerId,
+  });
+  const { data: allMilestones = [] } = useQuery<any[]>({
+    queryKey: ["milestones", testerId],
+    queryFn: async () => (await fetch("/api/planning/milestones", { headers: authHeaders })).json(),
+    enabled: !!testerId,
+  });
+  const projectForStar = (starId: number) => allProjects.find((p: any) => p.goalId === starId);
+  const stepsForStar = (starId: number) => {
+    const proj = projectForStar(starId);
+    return proj ? allMilestones.filter((m: any) => m.projectId === proj.id) : [];
+  };
+  const [stepAdd, setStepAdd] = useState<number | null>(null);
+  const [stepTitle, setStepTitle] = useState("");
+  const addStep = useMutation({
+    mutationFn: async ({ starId, starTitle, title }: { starId: number; starTitle: string; title: string }) => {
+      let proj = projectForStar(starId);
+      if (!proj) {
+        const r = await fetch("/api/planning/projects", { method: "POST", headers: authHeaders, body: JSON.stringify({ title: starTitle, goalId: starId }) });
+        proj = await r.json();
+      }
+      await fetch("/api/planning/milestones", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, projectId: proj.id }) });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["milestones"] });
+      setStepAdd(null); setStepTitle("");
+    },
+  });
+  const cycleStep = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const next = status === "pending" ? "in_progress" : status === "in_progress" ? "completed" : "pending";
+      await fetch(`/api/planning/milestones/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ status: next }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["milestones"] }),
   });
 
   const addGoal = useMutation({
@@ -507,6 +549,41 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     ))}
                   </div>
                 )}
+                {/* Steps (ordered milestones) — the folded project structure */}
+                {(() => {
+                  const steps = stepsForStar(g.id);
+                  if (steps.length === 0) return null;
+                  const STEP_COL: Record<string, string> = { pending: "#c8c0b4", in_progress: "#c8a840", completed: "#80b870" };
+                  return (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--color-border)" }}>
+                      <div style={{ fontSize: 9, color: "#a89a88", marginBottom: 3 }}>Steps</div>
+                      {steps.map((m: any) => (
+                        <div key={m.id} onClick={() => cycleStep.mutate({ id: m.id, status: m.status })} style={{ display: "flex", alignItems: "center", gap: 7, padding: "2px 0", cursor: "pointer" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "#ccc", flexShrink: 0 }} />
+                          <span style={{ fontSize: 10.5, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Add a step (milestone) */}
+                {stepAdd === g.id && (
+                  <div style={{ display: "flex", gap: 5, marginTop: 7 }}>
+                    <input autoFocus value={stepTitle} onChange={e => setStepTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && stepTitle.trim()) addStep.mutate({ starId: g.id, starTitle: g.title, title: stepTitle.trim() });
+                        if (e.key === "Escape") { setStepAdd(null); setStepTitle(""); }
+                      }}
+                      placeholder="A step toward this star…"
+                      style={{ flex: 1, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }}
+                    />
+                    <button onClick={() => stepTitle.trim() && addStep.mutate({ starId: g.id, starTitle: g.title, title: stepTitle.trim() })}
+                      style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                    <button onClick={() => { setStepAdd(null); setStepTitle(""); }}
+                      style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>✕</button>
+                  </div>
+                )}
 
                 <div style={{ marginTop: 8 }}>
                   {adding ? (
@@ -530,8 +607,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ task</button>
                       <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "habit" }); setQuickTitle(""); }}
                         style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ habit</button>
-                      <button onClick={() => onNavigate("projects")}
-                        style={{ fontSize: 10.5, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: 0, marginLeft: "auto" }}>needs a project instead? →</button>
+                      <button onClick={() => { setStepAdd(g.id); setStepTitle(""); }}
+                        style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ step</button>
                     </div>
                   )}
                 </div>

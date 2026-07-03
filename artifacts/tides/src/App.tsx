@@ -16,25 +16,24 @@ import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
-import Projects from "@/pages/Projects";
 import Sky from "@/pages/Sky";
 import Currents from "@/pages/Currents";
 import Launch from "@/pages/Launch";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "overview" | "tasks" | "habits" | "projects";
+type WorkTab = "overview" | "tasks" | "habits";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
-  // Guiding Stars leads (the why), then the daily-doing axes (tasks, habits),
-  // then Projects last as the optional structuring layer for anything complex
-  // enough to need it — most Guiding Stars never touch a project at all.
+  // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
+  // habits). Projects was removed as a tab — its one useful bit (breaking a
+  // complex aim into ordered steps) is folded into each Guiding Star as
+  // optional milestones, so most people never meet the concept at all.
   const TABS: {id:WorkTab; label:string}[] = [
     {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
-    {id:"projects",  label:"Projects"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -54,28 +53,47 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {tab==="projects"  && <Projects testerId={testerId}/>}
       </div>
+    </div>
+  );
+}
+
+// Ahead (Calendar) and Almanac each get a slim sub-tab that folds Currents in,
+// so the long-cycle personal view lives with the time surfaces it belongs to
+// rather than as its own top-level tab.
+function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: string) => React.ReactNode }) {
+  const [active, setActive] = useState(tabs[0]);
+  return (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={{ display:"flex", borderBottom:"1px solid var(--color-border)", background:"var(--color-rail)", flexShrink:0, padding:"0 20px" }}>
+        {tabs.map(t => (
+          <button key={t} onClick={() => setActive(t)} style={{
+            padding:"9px 16px", border:"none", background:"none", cursor:"pointer",
+            fontSize:12, fontWeight: active===t ? 600 : 400,
+            color: active===t ? "var(--color-primary)" : "#888",
+            borderBottom: active===t ? "2px solid var(--color-primary)" : "2px solid transparent", marginBottom:-1,
+          }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>{children(active)}</div>
     </div>
   );
 }
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"sky"|"currents"|"work"|"launch"|"settings";
+type View = "today"|"calendar"|"sky"|"work"|"launch"|"settings";
 
-// Primary tabs — the navigator's kit (naming ratified with the user): Now is
-// the water you're in, Ahead the water in front (your calendar), Currents the
-// slow water beneath (chapters, year+), Almanac the reference book of sky
-// events, and Helm where you steer (Goals -> optional Projects -> Tasks, plus
-// Habits as a separate recurring axis). Compass (the advisor) gives a bearing
-// on demand from the global bar. Launch is electional — picking the moment to
-// *begin* something, the mirror of the personal timing the rest of the app
-// reflects. Internal ids unchanged — labels only.
+// Primary tabs (labels updated with the user 2026-07-03): Today is the tide
+// you're in; Calendar is your time ahead (with Currents — your long cycles —
+// folded in as a sub-tab); Almanac is the reference book of sky events &
+// meanings (also carrying a Currents sub-tab); Helm is where you steer (Guiding
+// Stars -> Tasks + Habits). Compass (the advisor) is in the global bar. Launch
+// is electional. Currents is no longer its own top tab — it lives under
+// Calendar and Almanac.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
-  {id:"today",    label:"Now",      zoom:true},
-  {id:"calendar", label:"Ahead",    zoom:true},
-  {id:"currents", label:"Currents", zoom:true},
+  {id:"today",    label:"Today",    zoom:true},
+  {id:"calendar", label:"Calendar", zoom:true},
   {id:"sky",      label:"Almanac"},
   {id:"work",     label:"Helm"},
   {id:"launch",   label:"Launch"},
@@ -716,7 +734,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", currents:"✧", sky:"☽", work:"☰", launch:"▲" };
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", sky:"☽", work:"☰", launch:"▲" };
 
   return (
     <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
@@ -791,10 +809,21 @@ function Shell() {
 
         {/* Main content */}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor}/>}
-        {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {view==="sky"      && <Sky      testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="calendar" && (
+          <SubTabbed tabs={["Calendar","Currents"]}>
+            {(a) => a==="Calendar"
+              ? <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>
+              : <Currents testerId={testerId}/>}
+          </SubTabbed>
+        )}
+        {view==="sky"      && (
+          <SubTabbed tabs={["Almanac","Currents"]}>
+            {(a) => a==="Almanac"
+              ? <Sky testerId={testerId} lat={lat} lon={lon}/>
+              : <Currents testerId={testerId}/>}
+          </SubTabbed>
+        )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {view==="currents" && <Currents testerId={testerId}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
