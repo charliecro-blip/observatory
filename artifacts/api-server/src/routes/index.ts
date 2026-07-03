@@ -28,6 +28,7 @@ import cycleRouter from "./cycle";
 import exportIcalRouter from "./exportIcal";
 import currentsRouter from "./currents";
 import electionRouter from "./election";
+import accountRouter from "./account";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use(cycleRouter);
 router.use(exportIcalRouter);
 router.use(currentsRouter);
 router.use(electionRouter);
+router.use(accountRouter);
 
 export default router;

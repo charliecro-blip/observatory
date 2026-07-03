@@ -1062,6 +1062,69 @@ function HouseSystemSection() {
   );
 }
 
+// ── Account section — the recovery key that carries this identity across
+// devices. The key is minted on first profile sync; if it hasn't arrived yet
+// (offline first load), the section says so instead of showing nothing.
+function AccountSection() {
+  const { profile } = useTester();
+  const [copied, setCopied] = useState(false);
+  const code = profile?.recoveryCode;
+
+  async function copy() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked — user can select the text manually */ }
+  }
+
+  return (
+    <SectionCard
+      title="Account"
+      sub="Your data follows this key, not this browser. Save it somewhere safe — it's how you get everything back on a new device or after clearing this one."
+    >
+      {code ? (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              flex: 1, fontSize: 17, fontWeight: 700, letterSpacing: "2px", color: "var(--color-primary)",
+              background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9,
+              padding: "10px 14px", textAlign: "center", userSelect: "all",
+            }}>{code}</div>
+            <button onClick={copy} style={{
+              padding: "10px 16px", borderRadius: 9, border: "1px solid var(--color-border)",
+              background: copied ? "#e8f5e0" : "var(--color-card)", color: copied ? "#3a6020" : "var(--color-primary)",
+              fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+            }}>{copied ? "Copied ✓" : "Copy"}</button>
+          </div>
+          <div style={{ fontSize: 10, color: "#999", marginTop: 8, lineHeight: 1.55 }}>
+            On another device: open Tides → "Been here before?" on the first screen → enter this key.
+            Anyone holding the key can restore your data, so treat it like a password.
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6 }}>
+          Your account key hasn't been created yet — it appears here automatically the next time the
+          app reaches the server. Check back in a moment.
+        </div>
+      )}
+
+      {/* Feedback — beta channel */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Send feedback</div>
+          <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
+        </div>
+        <a href="mailto:charliecro@gmail.com?subject=Tides%20feedback"
+          style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 14px", textDecoration: "none", background: "var(--color-card-2)", flexShrink: 0 }}>
+          ✉ Email
+        </a>
+      </div>
+    </SectionCard>
+  );
+}
+
 export default function Settings({ testerId }: { testerId: string | null }) {
   const qc = useQueryClient();
   const { profile, resetProfile, updateLocation, lat, lon } = useTester();
@@ -1135,6 +1198,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
+
+        {/* Account — recovery key */}
+        <AccountSection />
 
         {/* Notifications */}
         <NotificationSection lat={lat} lon={lon} />

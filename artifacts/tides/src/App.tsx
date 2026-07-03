@@ -242,9 +242,26 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   existingTesterId?: string | null;
   skipNameStep?: boolean;
 }) {
-  const { updateChronotype } = useTester();
+  const { updateChronotype, restoreFromCode } = useTester();
   const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
   const [name, setName] = useState("");
+  // Returning-user path: restore an existing identity from its account key
+  // instead of creating a fresh one.
+  const [showRestore, setShowRestore] = useState(false);
+  const [restoreCode, setRestoreCode] = useState("");
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  async function handleRestore() {
+    if (!restoreCode.trim()) return;
+    setRestoring(true);
+    setRestoreError(null);
+    const result = await restoreFromCode(restoreCode.trim());
+    setRestoring(false);
+    if (!result.ok) setRestoreError(result.message ?? "Couldn't restore that key.");
+    // On success the tester context flips isReady/showModal itself — the app
+    // proceeds straight past onboarding with everything back.
+  }
   // For new users, we create a testerId on name submit. For existing users, use their real one.
   const [createdTesterId, setCreatedTesterId] = useState<string | null>(existingTesterId ?? null);
 
@@ -255,6 +272,20 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const [birthLat, setBirthLat] = useState<number | null>(null);
   const [birthLon, setBirthLon] = useState<number | null>(null);
   const [utcOffset, setUtcOffset] = useState<number>(-new Date().getTimezoneOffset() / 60);
+  // The geocoder supplies the STANDARD-time offset. Births during daylight
+  // saving need +1 or the whole chart shifts by about one house — a silent
+  // trap for roughly half of all birthdays. Auto-suggested from birth month +
+  // hemisphere; the user can always override.
+  const [dstAtBirth, setDstAtBirth] = useState(false);
+  const [dstTouched, setDstTouched] = useState(false);
+
+  function suggestDst(dateStr: string, lat: number | null) {
+    if (dstTouched || !dateStr || lat == null) return;
+    const month = parseInt(dateStr.split("-")[1] ?? "0", 10);
+    const northernSummer = month >= 4 && month <= 9 && lat >= 24;
+    const southernSummer = (month >= 10 || month <= 3) && lat <= -24;
+    setDstAtBirth(northernSummer || southernSummer);
+  }
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [locationSearch, setLocationSearch] = useState("");
   const [searching, setSearching] = useState(false);
@@ -344,6 +375,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     // Prefer the geocoder's real timezone offset; fall back to a lon-based estimate.
     if (r.utcOffsetStandard != null) setUtcOffset(Math.round(r.utcOffsetStandard));
     else if (r.lon != null) setUtcOffset(Math.round(r.lon / 15));
+    suggestDst(birthDate, r.lat ?? null);
   }
 
   async function saveBirthData() {
@@ -359,7 +391,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           birthPlace,
           birthLat,
           birthLon,
-          utcOffset,
+          utcOffset: utcOffset + (dstAtBirth ? 1 : 0),
         }),
       });
     } finally {
@@ -400,8 +432,37 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             Continue →
           </button>
         </form>
+
+        {/* Returning user — restore from account key */}
+        {!showRestore ? (
+          <button onClick={() => setShowRestore(true)} style={{ width:"100%", marginTop:12, fontSize:11, color:"#8a8278", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>
+            Been here before? Restore with your account key
+          </button>
+        ) : (
+          <div style={{ marginTop:14, paddingTop:14, borderTop:"1px solid var(--color-border)" }}>
+            <div style={{ fontSize:10.5, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Your account key</div>
+            <div style={{ display:"flex", gap:8 }}>
+              <input
+                value={restoreCode} onChange={e => { setRestoreCode(e.target.value); setRestoreError(null); }}
+                onKeyDown={e => e.key === "Enter" && handleRestore()}
+                placeholder="TIDE-XXXX-XXXX" autoFocus
+                style={{ flex:1, padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background:"var(--color-card-2)", letterSpacing:"1px", textTransform:"uppercase" }}
+              />
+              <button onClick={handleRestore} disabled={restoring || !restoreCode.trim()}
+                style={{ padding:"9px 16px", borderRadius:8, border:"none", fontSize:12, fontWeight:600, cursor:"pointer",
+                  background: restoreCode.trim() ? "#1a2a3a" : "#e0dcd6", color: restoreCode.trim() ? "#fff" : "#aaa" }}>
+                {restoring ? "…" : "Restore"}
+              </button>
+            </div>
+            {restoreError && <div style={{ fontSize:10.5, color:"#a04030", marginTop:6 }}>{restoreError}</div>}
+            <div style={{ fontSize:9.5, color:"#bbb", marginTop:6, lineHeight:1.5 }}>
+              Your key is in Settings → Account on the device you signed up with.
+            </div>
+          </div>
+        )}
+
         <div style={{ fontSize:10, color:"#ccc", textAlign:"center", marginTop:16, lineHeight:1.5 }}>
-          No account needed. Your data stays on this device.
+          No password needed — you'll get an account key to bring your data to any device.
         </div>
       </div>
     </div>
@@ -421,7 +482,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           {/* Birth date */}
           <div>
             <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Date of birth</div>
-            <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)}
+            <input type="date" value={birthDate} onChange={e => { setBirthDate(e.target.value); suggestDst(e.target.value, birthLat); }}
               style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
             />
           </div>
@@ -462,13 +523,24 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           {/* UTC offset fine-tune */}
           {birthLat != null && (
             <div>
-              <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>UTC offset at birth</div>
+              <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>UTC offset at birth (standard time)</div>
               <select value={utcOffset} onChange={e => setUtcOffset(Number(e.target.value))}
                 style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)" }}>
                 {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
                   <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>
                 ))}
               </select>
+              <label style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:8, cursor:"pointer" }}>
+                <input type="checkbox" checked={dstAtBirth}
+                  onChange={e => { setDstAtBirth(e.target.checked); setDstTouched(true); }}
+                  style={{ marginTop:2, accentColor:"#1a2a3a" }} />
+                <span style={{ fontSize:11, color:"#777", lineHeight:1.5 }}>
+                  Daylight saving time was in effect <span style={{ color:"#aaa" }}>(adds 1 hour — usually true for spring/summer births in the US & Europe)</span>
+                </span>
+              </label>
+              <div style={{ fontSize:9.5, color:"#b0a898", marginTop:4 }}>
+                Chart will use UTC{(utcOffset + (dstAtBirth ? 1 : 0)) >= 0 ? "+" : ""}{utcOffset + (dstAtBirth ? 1 : 0)}:00
+              </div>
             </div>
           )}
 

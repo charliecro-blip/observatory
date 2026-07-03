@@ -5,6 +5,7 @@ import {
   saveLocation,
   saveChronotype,
   saveCautionPlanets,
+  saveRecoveryCode,
   createProfile,
   clearProfile,
   DEFAULT_TESTER_ID,
@@ -27,7 +28,33 @@ interface TesterContextValue {
   updateLocation: (lat: number, lon: number, label: string) => void;
   updateChronotype: (chronotype: Chronotype) => void;
   updateCautionPlanets: (planets: CautionPlanet[]) => void;
+  restoreFromCode: (code: string) => Promise<{ ok: boolean; message?: string }>;
   resetProfile: () => void;
+}
+
+// Push the profile to the server (upsert) and pull back the account key.
+// Fire-and-forget from the UI's perspective — a failed sync never blocks the
+// app, it just means the key isn't minted yet; the next change retries.
+async function syncAccount(p: TesterProfile, onCode: (code: string) => void) {
+  try {
+    const r = await fetch("/api/account/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-tester-id": p.testerId },
+      body: JSON.stringify({
+        displayName: p.displayName,
+        chronotype: p.chronotype ?? null,
+        cautionPlanets: p.cautionPlanets ?? null,
+        lat: p.lat ?? null,
+        lon: p.lon ?? null,
+        locationLabel: p.locationLabel ?? null,
+      }),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data?.recoveryCode) onCode(data.recoveryCode);
+  } catch {
+    // offline or server down — retry on the next profile change
+  }
 }
 
 const TesterContext = createContext<TesterContextValue | null>(null);
@@ -101,46 +128,101 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  // Absorb the recovery code the server mints and keep the local profile in
+  // step with it — used by every sync call below.
+  const absorbCode = useCallback((code: string) => {
+    saveRecoveryCode(code);
+    setProfile(p => (p && p.recoveryCode !== code) ? { ...p, recoveryCode: code } : p);
+  }, []);
+
   useEffect(() => {
     const saved = loadProfile();
     if (saved) {
       setProfile(saved);
       setIsReady(true);
+      // Existing users (pre-account-system) get registered on first load —
+      // this is what backfills a recovery key for data created before today.
+      void syncAccount(saved, absorbCode);
     } else {
       setShowModal(true);
     }
-  }, []);
+  }, [absorbCode]);
 
   const updateLocation = useCallback((lat: number, lon: number, label: string) => {
     saveLocation(lat, lon, label);
-    setProfile(p => p ? { ...p, lat, lon, locationLabel: label } : p);
-  }, []);
+    setProfile(p => {
+      const next = p ? { ...p, lat, lon, locationLabel: label } : p;
+      if (next) void syncAccount(next, absorbCode);
+      return next;
+    });
+  }, [absorbCode]);
 
   const updateChronotype = useCallback((chronotype: Chronotype) => {
     saveChronotype(chronotype);
-    setProfile(p => p ? { ...p, chronotype } : p);
-  }, []);
+    setProfile(p => {
+      const next = p ? { ...p, chronotype } : p;
+      if (next) void syncAccount(next, absorbCode);
+      return next;
+    });
+  }, [absorbCode]);
 
   const updateCautionPlanets = useCallback((cautionPlanets: CautionPlanet[]) => {
     saveCautionPlanets(cautionPlanets);
-    setProfile(p => p ? { ...p, cautionPlanets } : p);
-  }, []);
+    setProfile(p => {
+      const next = p ? { ...p, cautionPlanets } : p;
+      if (next) void syncAccount(next, absorbCode);
+      return next;
+    });
+  }, [absorbCode]);
 
   const applyProfile = useCallback((p: TesterProfile) => {
     saveProfile(p);
     setProfile(p);
-    
     setIsReady(true);
     setShowModal(false);
-  }, []);
+    void syncAccount(p, absorbCode);
+  }, [absorbCode]);
 
   const createAndApply = useCallback((displayName: string): TesterProfile => {
     const p = createProfile(displayName.trim() || "Observer");
     setProfile(p);
-    
     setIsReady(true);
     setShowModal(false);
+    void syncAccount(p, absorbCode);
     return p;
+  }, [absorbCode]);
+
+  // Restore an identity from its account key — the other half of the account
+  // system. Replaces the local profile wholesale; all server-side data (natal
+  // chart, stars, tasks, habits) follows automatically since it keys on the
+  // restored tester id.
+  const restoreFromCode = useCallback(async (code: string): Promise<{ ok: boolean; message?: string }> => {
+    try {
+      const r = await fetch("/api/account/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await r.json();
+      if (!r.ok) return { ok: false, message: data?.message ?? "Couldn't restore that key." };
+      const restored: TesterProfile = {
+        testerId: data.testerId,
+        displayName: data.profile?.displayName ?? "Observer",
+        ...(data.profile?.lat != null ? { lat: data.profile.lat } : {}),
+        ...(data.profile?.lon != null ? { lon: data.profile.lon } : {}),
+        ...(data.profile?.locationLabel ? { locationLabel: data.profile.locationLabel } : {}),
+        ...(data.profile?.chronotype ? { chronotype: data.profile.chronotype } : {}),
+        ...(data.profile?.cautionPlanets ? { cautionPlanets: data.profile.cautionPlanets } : {}),
+        ...(data.profile?.recoveryCode ? { recoveryCode: data.profile.recoveryCode } : {}),
+      };
+      saveProfile(restored);
+      setProfile(restored);
+      setIsReady(true);
+      setShowModal(false);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Couldn't reach the server — try again in a moment." };
+    }
   }, []);
 
   const resetProfile = useCallback(() => {
@@ -170,6 +252,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         updateLocation,
         updateChronotype,
         updateCautionPlanets,
+        restoreFromCode,
         resetProfile,
       }}
     >

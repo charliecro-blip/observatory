@@ -3,6 +3,7 @@ const KEY_NAME = "obs_display_name";
 const KEY_LOC = "obs_location";
 const KEY_CHRONOTYPE = "obs_chronotype";
 const KEY_CAUTION_PLANETS = "obs_caution_planets";
+const KEY_RECOVERY_CODE = "obs_recovery_code";
 
 /** The default profile for the original single-user data. */
 export const DEFAULT_TESTER_ID = "obs_default_charlie";
@@ -69,6 +70,9 @@ export interface TesterProfile {
   locationLabel?: string;
   chronotype?: Chronotype;
   cautionPlanets?: CautionPlanet[];
+  // Account key from /api/account/sync — the human-friendly secret that
+  // restores this identity on another device. Shown in Settings.
+  recoveryCode?: string;
 }
 
 function generateTesterId(): string {
@@ -87,10 +91,12 @@ export function loadProfile(): TesterProfile | null {
     const chronotype = chronoRaw ? JSON.parse(chronoRaw) : undefined;
     const cautionRaw = localStorage.getItem(KEY_CAUTION_PLANETS);
     const cautionPlanets = cautionRaw ? JSON.parse(cautionRaw) : undefined;
+    const recoveryCode = localStorage.getItem(KEY_RECOVERY_CODE) ?? undefined;
     return {
       testerId, displayName, ...loc,
       ...(chronotype ? { chronotype } : {}),
       ...(cautionPlanets ? { cautionPlanets } : {}),
+      ...(recoveryCode ? { recoveryCode } : {}),
     };
   }
   return null;
@@ -109,6 +115,14 @@ export function saveProfile(profile: TesterProfile): void {
   if (profile.cautionPlanets) {
     localStorage.setItem(KEY_CAUTION_PLANETS, JSON.stringify(profile.cautionPlanets));
   }
+  if (profile.recoveryCode) {
+    localStorage.setItem(KEY_RECOVERY_CODE, profile.recoveryCode);
+  }
+}
+
+/** Save the account recovery key (from /api/account/sync). */
+export function saveRecoveryCode(code: string): void {
+  localStorage.setItem(KEY_RECOVERY_CODE, code);
 }
 
 /** Save location separately (e.g. from Settings page). */
@@ -150,6 +164,7 @@ export function clearProfile(): void {
   localStorage.removeItem(KEY_LOC);
   localStorage.removeItem(KEY_CHRONOTYPE);
   localStorage.removeItem(KEY_CAUTION_PLANETS);
+  localStorage.removeItem(KEY_RECOVERY_CODE);
 }
 
 /** Short version of a tester ID for display — first 12 chars after "obs_". */

@@ -426,6 +426,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const [showTideCard, setShowTideCard] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [dismissedPremiumBanner, setDismissedPremiumBanner] = useState(() => localStorage.getItem("obs_seen_premium_banner") === "1");
+  const [dismissedStarHint, setDismissedStarHint] = useState(() => localStorage.getItem("obs_seen_star_hint") === "1");
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
@@ -665,10 +666,28 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 
+        {/* First-star hint — for users with no Guiding Stars yet, routing them
+            to the app's strongest moment. Takes priority over the premium
+            banner so new users see one nudge, not a stack of two. */}
+        {northStars && northStars.length === 0 && !dismissedStarHint && (
+          <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>★</span>
+            <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
+              Set your first <b>Guiding Star</b> — a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports.
+            </div>
+            <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
+              To the Helm →
+            </button>
+            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Deeper-currents discovery banner — dismissible, shown once until closed.
             Not part of onboarding (kept lean); this is the low-key invitation to
             explore premium features once someone's had a moment with the core loop. */}
-        {!dismissedPremiumBanner && (
+        {(!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
@@ -795,6 +814,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {(northStars?.length ?? 0) > 0 && (
           <NorthStarsCard stars={northStars!} testerId={testerId} onNavigate={onNavigate} />
         )}
+
+        {/* Today's habits — check-off on the glance layer, so the daily loop
+            (glance → act → check off) closes without a trip into Helm. */}
+        {testerId && <TodayHabits testerId={testerId} now={now} />}
 
         {/* The tide — one coherent chart for the whole day */}
         {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
@@ -1427,6 +1450,71 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
             <div style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── TodayHabits — compact check-off strip on the glance layer ─────────────────
+
+function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: habits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => (await fetch("/api/habits", { headers: { "x-tester-id": testerId } })).json(),
+  });
+
+  const toggleLog = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      const headers = { "x-tester-id": testerId, "Content-Type": "application/json" };
+      if (done) await fetch(`/api/habits/${id}/log?date=${today}`, { method: "DELETE", headers });
+      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers, body: JSON.stringify({ date: today }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
+  });
+
+  if (!Array.isArray(habits) || habits.length === 0) return null;
+  const doneCount = habits.filter((h) => h.doneToday).length;
+
+  // Resonance against the current moment, same lightweight scoring the Habits
+  // page uses — a habit whose favored element matches today floats up.
+  const el = now?.element?.element ?? "";
+  const sorted = [...habits].sort((a, b) => {
+    const score = (h: any) => (h.doneToday ? -2 : 0) + (h.favoredElements?.includes(el) ? 1 : 0);
+    return score(b) - score(a);
+  });
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Today's habits</div>
+        <div style={{ fontSize: 9.5, color: "#999" }}>{doneCount}/{habits.length} done</div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        {sorted.map((h) => {
+          const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
+          return (
+            <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
+              title={resonant ? `Favors ${el} days — resonant now` : undefined}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "6px 12px 6px 8px", borderRadius: 18,
+                cursor: "pointer", fontSize: 11.5,
+                border: h.doneToday ? "1px solid #a8c898" : resonant ? "1px solid #b8ccb0" : "1px solid var(--color-border)",
+                background: h.doneToday ? "#eef6e8" : "var(--color-card-2)",
+                color: h.doneToday ? "#4a7040" : "var(--color-foreground)",
+              }}>
+              <span style={{
+                width: 16, height: 16, borderRadius: "50%", flexShrink: 0, fontSize: 10, color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: h.doneToday ? "#80b870" : "transparent",
+                border: h.doneToday ? "none" : "1.5px solid #c0bab0",
+              }}>{h.doneToday ? "✓" : ""}</span>
+              {h.emoji ? `${h.emoji} ` : ""}{h.name}
+              {resonant && <span style={{ fontSize: 8.5, color: "#4a8060" }}>✦</span>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
