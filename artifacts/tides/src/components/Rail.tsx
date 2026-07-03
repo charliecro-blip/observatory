@@ -177,6 +177,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
+  const [moonTakeIdx, setMoonTakeIdx] = useState(0);
   const [wavesOpen, setWavesOpen] = useState(true);
   const [transitsOpen, setTransitsOpen] = useState(true);
   const [transitsExpanded, setTransitsExpanded] = useState(false);
@@ -306,13 +307,24 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               </span>
             )}
           </div>
-          {/* What this Moon sign favors — the "so what do I do differently" line */}
+          {/* What this Moon sign means — a sign carries many meanings, so the
+              reading cycles: favors → the feel → the shadow → the essence.
+              One tap turns the gem to another facet. */}
           {(() => {
             const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
             if (!sm) return null;
+            const takes: { label: string; text: string }[] = [
+              { label: "favors", text: sm.favors.slice(0, 3).join(" · ") },
+              { label: "the feel", text: sm.feel },
+              { label: "watch for", text: sm.shadow },
+              { label: "essence", text: sm.essence },
+            ];
+            const t = takes[moonTakeIdx % takes.length];
             return (
-              <div title={sm.feel} style={{ fontSize: 9.5, color: "#8a8278", marginTop: 6, lineHeight: 1.5 }}>
-                <span style={{ color: "#aaa" }}>favors</span> {sm.favors.slice(0, 3).join(" · ")}
+              <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 6, lineHeight: 1.5 }}>
+                <span style={{ color: "#aaa" }}>{t.label}</span> {t.text}
+                <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
+                  style={{ marginLeft: 5, fontSize: 9, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
             );
           })()}
@@ -423,7 +435,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               {PLANET_ICONS[planetaryHour.planet] ?? "○"}
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{planetaryHour.planet}</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>
+                {planetaryHour.planet}
+                {(() => {
+                  // The hour ruler's current sign — a planet is never just
+                  // itself; the sign it stands in colors its voice.
+                  const sign = (now.planets ?? []).find((x: any) => x.planet === planetaryHour.planet)?.sign;
+                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "#a09888" }}> in {sign}</span> : null;
+                })()}
+              </div>
               <div style={{ fontSize: 9, color: "#888" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
             </div>
           </div>

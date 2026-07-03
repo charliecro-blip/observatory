@@ -502,3 +502,32 @@ element describes the purpose — "a Surge tide is a gift to your Fire star."
 This treaty is also the "mythic heart": the elements and planets each get a full
 content page (essence, myth, domains, practices, activities — see `lib/mythos.ts`),
 and the advisor routes "help me plan X" requests into this structure.
+
+## 17. The reading principles (RATIFIED 2026-07-03)
+
+How every interpretive surface in the app must behave — drilled in by the
+owner ahead of beta, applied first to the "Big Sky" homepage section and the
+sign-everywhere pass (commit history: sky-readings.ts):
+
+1. **Simple first.** Every reading opens with one plain-language sentence a
+   person with zero astrology can act on. Vocabulary is never required to use
+   Layer 1.
+2. **Depth on demand.** More is always available — expand, tap, explore — and
+   never in the way. A collapsed card must be complete on its own.
+3. **Concepts explained where introduced.** The first time a surface uses a
+   term (square, void, crossing, profection), the plain explanation is one tap
+   away *on that surface*, not in a glossary somewhere else.
+4. **Multiple takes.** A placement or aspect means many things; single-sentence
+   verdicts are false confidence. Interpretive cards offer "another take ↻" —
+   genuinely different framings (the dynamic / the sign-coloring / what to do),
+   not paraphrases. `composeTakes()` in `lib/sky-readings.ts` is the pattern.
+5. **Planets always carry their sign.** "Saturn square Sun" hides half the
+   story; the app writes "Saturn in Aries □ Sun in Cancer" everywhere a planet
+   is named — headlines, pulse rows, retro lines, the planetary hour, the
+   Almanac. `/tides/now` ships `planets[]` so every client surface can look up
+   signs; new surfaces must do the same.
+6. **The moment's big transits are central.** The 1–3 strongest planet-planet
+   aspects (ranked by `aspectSignificance`: planet weight × aspect weight ×
+   orb tightness × applying) lead the homepage as the "Big Sky" section with
+   full explorable readings — they are the pronounced qualities of a moment,
+   not background conditions.

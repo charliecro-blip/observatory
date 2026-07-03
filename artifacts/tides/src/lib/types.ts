@@ -42,6 +42,8 @@ export interface TidesNow {
   moonAspects?: SkyAspect[];
   aspects?: SkyAspect[];
   retrogrades?: string[];
+  /** Current position of every planet — the source for "in {sign}" wherever a planet is named. */
+  planets?: { planet: string; sign: string; degree: number; retrograde: boolean }[];
   rhythmRisk?: boolean;
   rhythmRiskFactors?: string[];
   tide?: TideState;

@@ -272,6 +272,9 @@ router.get("/tides/now", async (req, res) => {
     aspects,
     moonAspects,
     lastMoonAspect,
+    // Every planet's current sign — a planet named without its sign is only
+    // half the story, so the client puts "in {sign}" wherever a planet appears.
+    planets: planets.map((p) => ({ planet: p.planet, sign: p.sign, degree: parseFloat(p.degree.toFixed(2)), retrograde: p.retrograde })),
     localAngles,
     angularPlanets,
     invitation: voc

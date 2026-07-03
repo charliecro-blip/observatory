@@ -639,6 +639,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
                   opposition:"180° — the planets face each other, each holding half of a whole. Felt first as an external tension — a person, a circumstance, a tug-of-war — until you own both ends. The resolution is integration, not winning.",
                 };
                 const nonMoon = tidesNow!.aspects!.filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon");
+                const signOf = (p: string) => ((tidesNow as any)?.planets ?? []).find((x: any) => x.planet === p)?.sign ?? "";
                 return nonMoon.map((a: any, i: number) => {
                   const sym = ASP_SYM2[a.aspect] ?? "·";
                   const col = ASP_COL2[a.aspect] ?? "#888";
@@ -660,7 +661,9 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
                       </div>
                       <div style={{ flex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
-                          <span style={{ fontSize:11.5, fontWeight:600, color: "var(--color-primary)" }}>{a.planet1} {sym} {a.planet2}</span>
+                          <span style={{ fontSize:11.5, fontWeight:600, color: "var(--color-primary)" }}>
+                            {a.planet1}{signOf(a.planet1) ? ` in ${signOf(a.planet1)}` : ""} {sym} {a.planet2}{signOf(a.planet2) ? ` in ${signOf(a.planet2)}` : ""}
+                          </span>
                           <span style={{ fontSize:9, padding:"1px 6px", borderRadius:6, background:`${col}18`, color:col, fontWeight:600 }}>{ASP_NAT[a.aspect] ?? a.aspect}</span>
                           {exactSoon && <span style={{ fontSize:9, color:"#b07030", background:"#fff8e8", border:"1px solid #e8d080", padding:"1px 5px", borderRadius:4 }}>
                             {exactLabel}

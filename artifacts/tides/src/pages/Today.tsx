@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
+import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
@@ -810,6 +811,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           );
         })()}
 
+        {/* The big sky — the moment's defining aspects, explored */}
+        {now && <BigSky now={now} />}
+
         {/* North Stars — chief aims for the week */}
         {(northStars?.length ?? 0) > 0 && (
           <NorthStarsCard stars={northStars!} testerId={testerId} onNavigate={onNavigate} />
@@ -1065,12 +1069,12 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
   const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
   const slowRetros = retros.filter((p) => !FAST_RETRO.has(p));
   const ecl = activeEclipse(today, 5);
-  // Standing non-lunar aspects: tight orb, not involving the Moon (those are transient)
-  const standing = (now?.aspects ?? [])
-    .filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 4)
-    .slice(0, 3);
+  // Planet-planet aspects moved OUT of this strip — they're the moment's
+  // headline now (BigSky, up top), not a background condition. This strip is
+  // for the genuinely standing weather: retrogrades and eclipse windows.
+  const signOf = (p: string) => (now?.planets ?? []).find((x: any) => x.planet === p)?.sign ?? "";
 
-  const hasAny = retros.length > 0 || ecl || standing.length > 0;
+  const hasAny = retros.length > 0 || ecl;
   if (!hasAny) return null;
 
   return (
@@ -1095,23 +1099,14 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
           <div key={p} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             <span style={{ fontSize: 12, flexShrink: 0, color: "#a06040" }}>{PLANET_GLYPH[p] ?? p[0]}℞</span>
             <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
-              {RETRO_NOTES[p] ?? `${p} retrograde.`}
-            </div>
-          </div>
-        ))}
-        {standing.map((a: any, i: number) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, flexShrink: 0, color: a.nature === "challenging" ? "#a05050" : "#5080a0" }}>
-              {PLANET_GLYPH[a.planet1]}{ASPECT_GLYPH[a.aspect] ?? a.aspect}{PLANET_GLYPH[a.planet2]}
-            </span>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
-              {a.planet1} {a.aspect} {a.planet2} — a background {a.nature ?? ""} current, in effect for days.
+              <b style={{ color: "#8a5a40" }}>{p} retrograde{signOf(p) ? ` in ${signOf(p)}` : ""}</b>
+              {" — "}{(RETRO_NOTES[p] ?? `${p} retrograde.`).replace(`${p} retrograde — `, "")}
             </div>
           </div>
         ))}
         {slowRetros.length > 0 && (
           <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.5 }}>
-            background · {slowRetros.map((p) => `${p} ℞`).join(" · ")} — slow inner revisions, in effect for months
+            background · {slowRetros.map((p) => `${p} ℞${signOf(p) ? ` in ${signOf(p)}` : ""}`).join(" · ")} — slow inner revisions, in effect for months
           </div>
         )}
       </div>
@@ -1455,6 +1450,133 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
   );
 }
 
+// ── BigSky — the moment's defining aspects, prominent and explorable ──────────
+// The sky's headline weather (a tight Sun□Saturn, a Mars☌Uranus) was buried as
+// one-liners in Standing Conditions. These are often THE pronounced qualities
+// of a moment, so they get real estate right under the hero: one plain
+// sentence collapsed, and on expand a full reading with cycling "takes,"
+// planet-in-sign context, and a plain explanation of the aspect itself.
+
+const BIGSKY_PLANET_GLYPH: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
+};
+
+function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const [takeIdx, setTakeIdx] = useState(0);
+  const aspect = (asp.aspect ?? "").toLowerCase() as AspectName;
+  const geo = ASPECT_GEOMETRY[aspect];
+  if (!geo) return null;
+
+  const a = { planet: asp.planet1, sign: signOf(asp.planet1) };
+  const b = { planet: asp.planet2, sign: signOf(asp.planet2) };
+  const takes = composeTakes(a, b, aspect);
+  const essence = composeEssence(a, b, aspect);
+  const guidance = composeGuidance(a, b, aspect);
+  const hard = aspect === "square" || aspect === "opposition";
+  const accent = hard ? "#a05020" : aspect === "conjunction" ? "#8a6a20" : "#3a6020";
+
+  const timing = asp.applying && asp.hoursToExact != null
+    ? `exact ${fmtExactWhen(asp.hoursToExact)}`
+    : !asp.applying && asp.hoursSinceExact != null
+      ? `peaked ${fmtSinceExact(asp.hoursSinceExact)}`
+      : null;
+
+  return (
+    <div style={{ border: `1px solid ${accent}30`, borderLeft: `3px solid ${accent}`, borderRadius: 12, background: "var(--color-card)", overflow: "hidden" }}>
+      <button onClick={() => setOpen(v => !v)} style={{ width: "100%", textAlign: "left", padding: "12px 14px", border: "none", background: "none", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 15, letterSpacing: 1 }}>
+            {BIGSKY_PLANET_GLYPH[a.planet]}<span style={{ color: accent, fontWeight: 700 }}>{geo.symbol}</span>{BIGSKY_PLANET_GLYPH[b.planet]}
+          </span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-primary)" }}>
+            {a.planet} in {a.sign} {geo.symbol} {b.planet} in {b.sign}
+          </span>
+          {timing && <span style={{ fontSize: 9, color: "#b07030", background: "#fff8e8", border: "1px solid #e8d080", padding: "1px 6px", borderRadius: 5 }}>{timing}</span>}
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb", flexShrink: 0 }}>{open ? "▲ less" : "▼ explore"}</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55, marginTop: 5 }}>{essence}</div>
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 14px 12px", borderTop: "1px solid var(--color-border)" }}>
+          {/* The take — cycle through genuinely different framings */}
+          <div style={{ marginTop: 10, background: "var(--color-card-2)", borderRadius: 9, padding: "10px 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
+              <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                another take ↻ <span style={{ color: "#bbb" }}>{takeIdx + 1}/{takes.length}</span>
+              </button>
+            </div>
+            <div style={{ fontSize: 11.5, color: "#555", lineHeight: 1.65 }}>{takes[takeIdx].text}</div>
+          </div>
+
+          {/* Favors / watch */}
+          <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#3a6020" }}>FAVORS </span>
+              <span style={{ fontSize: 10.5, color: "#666", lineHeight: 1.5 }}>{guidance.favors}</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#a04030" }}>WATCH </span>
+              <span style={{ fontSize: 10.5, color: "#666", lineHeight: 1.5 }}>{guidance.watch}</span>
+            </div>
+          </div>
+
+          {/* The players — planet-in-sign context */}
+          <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 4 }}>
+            {[a, b].map((p) => {
+              const pc = PLANET_CORE[p.planet];
+              return (
+                <div key={p.planet} style={{ fontSize: 10.5, color: "#8a8278", lineHeight: 1.5 }}>
+                  <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}>{BIGSKY_PLANET_GLYPH[p.planet]} {p.planet} in {p.sign}</span>
+                  {pc ? ` — ${pc.is}.` : ""}
+                  <span style={{ color: "#a89a88" }}> In {p.sign}: {SIGN_INFLECTION[p.sign] ?? ""}.</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* The concept, explained plainly */}
+          <div style={{ marginTop: 9, fontSize: 10, color: "#a09888", lineHeight: 1.55, fontStyle: "italic" }}>
+            What a {geo.word} is: {geo.angle} apart. {geo.explain}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BigSky({ now }: { now: any }) {
+  const aspects: any[] = now?.aspects ?? [];
+  const planets: any[] = now?.planets ?? [];
+  const signOf = (p: string) => planets.find((x) => x.planet === p)?.sign ?? "";
+
+  const headliners = aspects
+    .filter((a) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 6)
+    .map((a) => ({ a, score: aspectSignificance(a) }))
+    .sort((x, y) => y.score - x.score)
+    .slice(0, 3)
+    // Keep only genuinely loud ones — a lone weak sextile shouldn't fake a headline.
+    .filter(({ score }, i) => i === 0 || score >= 12)
+    .map(({ a }) => a);
+
+  if (headliners.length === 0) return null;
+
+  return (
+    <div style={{ flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 7, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8278" }}>The big sky</div>
+        <div style={{ fontSize: 10, color: "#b0a898" }}>the strongest planet-to-planet weather right now — tap to explore</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {headliners.map((a, i) => <BigSkyCard key={`${a.planet1}-${a.planet2}-${i}`} asp={a} signOf={signOf} />)}
+      </div>
+    </div>
+  );
+}
+
 // ── TodayHabits — compact check-off strip on the glance layer ─────────────────
 
 function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
@@ -1626,6 +1748,7 @@ function PlanetaryPulse({ now }: { now: any }) {
           const info = PLANET_THEMES[planet];
           if (!info) return null;
           const aspInfo = ASPECT_NATURE[asp?.aspectName ?? ""] ?? null;
+          const sign = (now?.planets ?? []).find((x: any) => x.planet === planet)?.sign ?? "";
           const intensityW = Math.min(100, Math.round(data.score * 80));
           return (
             <div key={planet} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
@@ -1634,7 +1757,9 @@ function PlanetaryPulse({ now }: { now: any }) {
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
-                  <span style={{ fontSize:11, fontWeight:600, color: "var(--color-primary)" }}>{planet}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color: "var(--color-primary)" }}>
+                    {planet}{sign && <span style={{ fontWeight:400, color:"#a09888" }}> in {sign}</span>}
+                  </span>
                   {asp && (
                     <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${info.color}18`, color:info.color, fontWeight:500 }}>
                       {aspInfo?.label ?? asp.aspectName} {asp.partner}
