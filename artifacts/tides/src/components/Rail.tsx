@@ -241,7 +241,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const toggleHour = useCallback((key: string) => setExpandedHour(v => v === key ? null : key), []);
   const toggleAspect = useCallback((i: number) => setExpandedAspect(v => v === i ? null : i), []);
   const toggleNonMoon = useCallback((i: number) => setExpandedNonMoon(v => v === i ? null : i), []);
-  if (!now) {
+  // Also treat a malformed response (e.g. a transient 429 error object) as
+  // "not ready yet" — show the skeleton rather than crashing on now.planetaryHour.
+  if (!now || !now.planetaryHour) {
     return (
       <aside style={{ width: 210, minWidth: 210, background: "var(--color-rail)", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>

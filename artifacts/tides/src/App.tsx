@@ -51,8 +51,8 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         ))}
       </div>
       <div style={{flex:1, overflow:"hidden", display:"flex", flexDirection:"column"}}>
-        {tab==="overview"  && <GuidingStarsHub testerId={testerId} onNavigate={setTab}/>}
-        {tab==="tasks"     && <Tasks    testerId={testerId} now={now}/>}
+        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
+        {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="projects"  && <Projects testerId={testerId}/>}
       </div>

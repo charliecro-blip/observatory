@@ -5,6 +5,7 @@ import { useCurrents } from "@/hooks/useTides";
 import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
+import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 
 const PLANET_GLYPH: Record<string, string> = {
   Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
@@ -42,10 +43,12 @@ function authH(tid:string|null) {
   return { ...(tid ? {"x-tester-id":tid} : {}), "Content-Type":"application/json" };
 }
 
-export default function Tasks({ testerId, now }: { testerId:string|null; now:TidesNow|undefined }) {
+export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
+  // After a task is created, offer to find it a good time (→ Ahead calendar).
+  const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newWindow, setNewWindow] = useState("");
   const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
@@ -126,6 +129,11 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["tasks"]});
+      // Offer scheduling for the just-created task before clearing the form —
+      // unless the user already picked a specific planning-window block.
+      if (!newPlanWindow) {
+        setSuggestFor({ title: newTitle.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
+      }
       setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setNewGoalId(""); setNewProjectId("");
       setNewDueDate(today);
       setShowAdd(false);
@@ -262,6 +270,14 @@ export default function Tasks({ testerId, now }: { testerId:string|null; now:Tid
           </Sect>
         )}
       </div>
+
+      {suggestFor && (
+        <ScheduleSuggest
+          title={suggestFor.title} testerId={testerId} lat={lat} lon={lon}
+          goalId={suggestFor.goalId} projectId={suggestFor.projectId} kind="task"
+          onClose={() => setSuggestFor(null)}
+        />
+      )}
     </div>
   );
 }

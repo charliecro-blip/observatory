@@ -517,7 +517,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
       const r = await fetch(`/api/tasks?date=${today}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
-      return r.json();
+      const j = await r.json();
+      return Array.isArray(j) ? j : []; // a transient error object must not crash .filter/.map
     },
     enabled: !!testerId,
     refetchInterval: 30_000,

@@ -29,6 +29,7 @@ import exportIcalRouter from "./exportIcal";
 import currentsRouter from "./currents";
 import electionRouter from "./election";
 import accountRouter from "./account";
+import associateRouter from "./associate";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(exportIcalRouter);
 router.use(currentsRouter);
 router.use(electionRouter);
 router.use(accountRouter);
+router.use(associateRouter);
 
 export default router;

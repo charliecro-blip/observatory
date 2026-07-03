@@ -6,6 +6,7 @@ import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
+import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -71,8 +72,9 @@ function authH(tid: string | null) {
  * what season backs it, and breaking it into tasks/habits all happen in this
  * one page — no second "manage in Goals" tab to bounce to.
  */
-export default function GuidingStarsHub({ testerId, onNavigate }: {
+export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate }: {
   testerId: string | null;
+  lat?: number; lon?: number;
   onNavigate: (tab: "tasks" | "habits" | "projects") => void;
 }) {
   const qc = useQueryClient();
@@ -174,6 +176,8 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
 
   const [quickAdd, setQuickAdd] = useState<{ goalId: number; kind: "task" | "habit" } | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
+  // After a linked task/habit is created, offer to find it a good time.
+  const [suggestFor, setSuggestFor] = useState<{ title: string; goalId: number; kind: "task" | "habit" } | null>(null);
   const createLinked = useMutation({
     mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
       if (kind === "task") {
@@ -184,6 +188,7 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: [v.kind === "task" ? "tasks" : "habits"] });
+      setSuggestFor({ title: v.title, goalId: v.goalId, kind: v.kind });
       setQuickAdd(null); setQuickTitle("");
     },
   });
@@ -565,6 +570,14 @@ export default function GuidingStarsHub({ testerId, onNavigate }: {
         )}
 
       </div>
+
+      {suggestFor && (
+        <ScheduleSuggest
+          title={suggestFor.title} testerId={testerId} lat={lat} lon={lon}
+          goalId={suggestFor.goalId} kind={suggestFor.kind}
+          onClose={() => setSuggestFor(null)}
+        />
+      )}
     </div>
   );
 }

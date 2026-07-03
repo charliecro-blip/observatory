@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
+import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 
 const ELEMENTS = ["water","fire","earth","air"];
 // Simplified lunation quarters for tagging — timingScore matches these against
@@ -62,6 +63,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
+  const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
 
   const { data: goalsList = [] } = useQuery<GoalLite[]>({
     queryKey: ["planning-goals-active", testerId],
@@ -102,6 +104,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
+      setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""});
       setNewGoalId(""); setNewProjectId("");
     },
@@ -342,6 +345,14 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           </div>
         )}
       </div>
+
+      {suggestFor && (
+        <ScheduleSuggest
+          title={suggestFor.title} testerId={testerId} lat={lat} lon={lon}
+          goalId={suggestFor.goalId} projectId={suggestFor.projectId} kind="habit"
+          onClose={() => setSuggestFor(null)}
+        />
+      )}
     </div>
   );
 }
