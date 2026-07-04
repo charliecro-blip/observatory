@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
+import Planner from "@/components/Planner";
 
 const VERDICT_COLORS: Record<ElectionVerdict, string> = {
   strong: "#3a6020", workable: "#3a5a80", caution: "#a05020", avoid: "#a03030",
@@ -132,8 +133,14 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
   return (
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
+        {/* The Planner leads — "when should I do all of this?" */}
+        <Planner testerId={testerId} lat={lat} lon={lon} />
+
+        <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 22 }} />
+
+        {/* Electional — "when should I BEGIN one specific venture?" */}
         <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>
-          When
+          Begin something
         </div>
         <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 22 }}>
           When's a good moment to begin something? The sky's timing describes the shape and early tempo of a
