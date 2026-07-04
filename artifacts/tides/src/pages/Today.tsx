@@ -678,7 +678,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               Set your first <b>Guiding Star</b> — a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports.
             </div>
             <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-              To the Helm →
+              To your Aims →
             </button>
             <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕

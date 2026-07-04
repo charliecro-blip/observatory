@@ -94,8 +94,8 @@ type View = "today"|"calendar"|"work"|"launch"|"settings";
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
-  {id:"work",     label:"Helm"},
-  {id:"launch",   label:"Launch"},
+  {id:"work",     label:"Aims"},
+  {id:"launch",   label:"When"},
 ];
 
 const WINDOW_TYPES = [

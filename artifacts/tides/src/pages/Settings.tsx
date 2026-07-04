@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePremium } from "@/contexts/premium-context";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
+import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
@@ -56,6 +57,30 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
 
 function Divider() {
   return <div style={{ borderTop: "1px solid var(--color-border)", margin: "2px 0" }} />;
+}
+
+function ThemeSection() {
+  const { palette, setPalette } = useTheme();
+  return (
+    <SectionCard title="Theme" sub="The whole app's look. More coming — this is the first set from the design studio.">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {PALETTES.map((p) => (
+          <button key={p.key} onClick={() => setPalette(p.key)} style={{
+            display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer",
+            padding: "11px 13px", borderRadius: 10,
+            border: palette === p.key ? "1.5px solid var(--color-primary)" : "1px solid var(--color-border)",
+            background: palette === p.key ? "var(--color-card-2)" : "var(--color-card)",
+          }}>
+            <span style={{ width: 22, height: 22, borderRadius: "50%", background: p.swatch, flexShrink: 0, border: "1px solid rgba(0,0,0,0.1)" }} />
+            <span>
+              <span style={{ fontSize: 12.5, fontWeight: palette === p.key ? 700 : 500, color: "var(--color-foreground)", display: "block" }}>{p.name}</span>
+              <span style={{ fontSize: 9.5, color: "var(--color-muted)" }}>{p.mode === "dark" ? "Dark" : "Light"}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </SectionCard>
+  );
 }
 
 function TextSizeSection() {
@@ -1242,7 +1267,8 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         {/* Account — recovery key */}
         <AccountSection />
 
-        {/* Text size — accessibility */}
+        {/* Theme + text size */}
+        <ThemeSection />
         <TextSizeSection />
 
         {/* Premium — near the top so it's easy to find and toggle */}

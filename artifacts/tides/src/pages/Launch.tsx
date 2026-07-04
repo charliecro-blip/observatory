@@ -133,10 +133,10 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>
-          Launch
+          When
         </div>
         <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 22 }}>
-          Choose a moment to begin something. Electional timing describes the shape and early tempo of a
+          When's a good moment to begin something? The sky's timing describes the shape and early tempo of a
           beginning — not a guaranteed outcome. Perfect windows are rare; this shows the best available one honestly.
         </div>
 
