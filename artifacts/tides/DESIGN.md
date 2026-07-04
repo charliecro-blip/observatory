@@ -531,3 +531,39 @@ sign-everywhere pass (commit history: sky-readings.ts):
    orb tightness × applying) lead the homepage as the "Big Sky" section with
    full explorable readings — they are the pronounced qualities of a moment,
    not background conditions.
+
+## 18. The nesting-of-scales principle (RATIFIED 2026-07-03)
+
+Owner's framing: "There are levels of granularity in terms of big → small
+astrological cycles — the nesting needs to start with the big, slow, and
+simple, and then make its way to the granular."
+
+Every surface that presents "what's in the sky" is ordered and weighted by
+timescale — slowest/simplest/most life-shaping first, fastest/most granular
+last (and often hidden). A beginner reads only the top and already has
+something to act on; the expert detail waits below. The ladder:
+
+1. **Chapters / years** — outer-planet transits through natal houses, the
+   profected year (Currents). Slowest.
+2. **Season** — the Sun's sign (~1 month). "It's Cancer season."
+3. **Lunation** — the Moon's phase (~29.5 days).
+4. **Moon sign / element** — the day's character (~2.5 days).
+5. **Planetary day** — the day's ruler (24h).
+6. **Planetary hour** — the hour's ruler (~1h).
+7. **Transient states** — void-of-course, exact aspect perfections (minutes–hours).
+
+Applications:
+- **Rail** (done 2026-07-03): Season (Sun sign, element-colored chip) → Moon
+  (phase + sign chip + VoC) → This day (planetary ruler) → This hour → granular
+  aspects/retro/transits below. Element-colored sign chips ("Sun in Cancer",
+  "Moon in Aquarius") are the beginner-legible unit.
+- **Calendar**: default presentation should lead with the slow/simple layer
+  (element/season/phase/day-ruler) and reveal the granular (aspects, crossings,
+  caution windows) on tap — the month grid is currently too dense for an
+  absolute beginner; a "simple vs detailed" density control is the open next step.
+- **Colors carry meaning-type, not just decoration**: void-of-course is a
+  liminal *state* (calm slate-lavender "slack water"), NOT a warning — kept
+  visually distinct from the amber/red used for cautions so the two never blur.
+- **Caution marks stay rare** (tight orb) and each **explains itself on the
+  specific day** (tap → what transit, what to expect) rather than peppering the
+  calendar with unexplained flags.

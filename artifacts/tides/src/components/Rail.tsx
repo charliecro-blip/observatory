@@ -40,6 +40,30 @@ const ELEMENT_COLORS: Record<string, string> = {
   water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
 };
 
+// Void-of-course is a liminal, restful state — NOT a warning. It gets its own
+// calm slate-lavender ("slack water"), deliberately distinct from the yellow/
+// amber used for cautions so the two never read as the same signal.
+const VOC_COLOR = "#6f6a90";
+const VOC_BG = "#ece9f4";
+
+// An element-colored chip for a sign — the "colored bit for Sun in Cancer /
+// Moon in Aquarius" a beginner can read at a glance.
+function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?: string }) {
+  const el = sign ? (SIGN_MYTHOS[sign.split(" ")[0]]?.element ?? "water") : "water";
+  const col = ELEMENT_COLORS[el] ?? "#888";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+      <span style={{ color: col }}>{glyph}</span>
+      <span style={{ fontWeight: 600, color: "var(--color-foreground)" }}>{label}</span>
+      {sign && (
+        <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 8, background: `${col}1e`, color: col, fontWeight: 600 }}>
+          {sign} · {el}
+        </span>
+      )}
+    </span>
+  );
+}
+
 const ASPECT_COLORS: Record<string, string> = {
   "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
 };
@@ -290,6 +314,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   }
 
   const { planetaryHour, upcomingHours, moonSign, moonPhase, moonIllumination, element } = now;
+  const sunSign: string | undefined = (now as any).sunSign;
+  const dayRuler: string | undefined = (now as any).dayRuler;
+  const isVOC: boolean = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
   const pct = progressPct(planetaryHour.began, planetaryHour.ends);
   const elemColor = ELEMENT_COLORS[element?.element ?? "water"] ?? "#888";
   const pColor = planetColor(planetaryHour.planet);
@@ -308,10 +335,26 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       </div>
 
-      {/* Sun arc — hidden for now; kept as a backend/optional element.
-          Re-enable by rendering <SunArc lat={lat} lon={lon} /> here. */}
+      {/* ── The nesting ladder: big/slow/simple → small/fast/granular ──
+          Season (Sun, ~a month) → Moon (phase ~a month, sign ~2.5 days) →
+          This day (24h) → This hour (~1h) → the granular aspects below. A
+          beginner reads only the top of this and already has something to work
+          with; the detail waits below for whoever wants it. */}
 
-      {/* Moon */}
+      {/* SEASON — the slowest, simplest signifier: what sign the Sun is in. */}
+      {sunSign && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Season</div>
+          <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
+          {(() => {
+            const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
+            return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
+          })()}
+        </div>
+      )}
+
+      {/* MOON — phase (where in the ~month cycle) + sign (the ~2.5-day character)
+          + void-of-course state. */}
       {railSections.includes("moon") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></div>
@@ -319,10 +362,19 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
               <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
-              <div style={{ color: "#777", marginTop: 1 }}>{Math.round((moonIllumination ?? 0) * 100)}% · {moonSign}</div>
+              <div style={{ color: "#777", marginTop: 1, fontSize: 10 }}>{Math.round((moonIllumination ?? 0) * 100)}% lit</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+          <div style={{ marginTop: 6 }}>
+            <SignChip glyph="☽" label="Moon in" sign={moonSign} />
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+            {isVOC && (
+              <span title="Void of course — the Moon makes no more aspects before changing sign. A liminal, 'slack water' stretch: rest, finish, review; not the moment to launch."
+                style={{ fontSize: 9, padding: "2px 8px", borderRadius: 8, background: VOC_BG, color: VOC_COLOR, fontWeight: 600 }}>
+                ◒ void of course
+              </span>
+            )}
             {now.tide ? (
               <span title="Today's tide — character (energy type) and level (how charged, which way it's moving)"
                 style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor, fontWeight: 600 }}>
@@ -334,9 +386,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               </span>
             )}
           </div>
-          {/* What this Moon sign means — a sign carries many meanings, so the
-              reading cycles: favors → the feel → the shadow → the essence.
-              One tap turns the gem to another facet. */}
+          {/* What this Moon sign means — cycles favors → feel → shadow → essence. */}
           {(() => {
             const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
             if (!sm) return null;
@@ -448,10 +498,31 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       )}
 
+      {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
+          hour; a whole day has one keynote. */}
+      {dayRuler && railSections.includes("hour") && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>This day</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
+              {PLANET_ICONS[dayRuler] ?? "○"}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 12.5 }}>{dayRuler}'s day</div>
+              <div style={{ fontSize: 9, color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
+            </div>
+          </div>
+          {(() => {
+            const acts = PLANET_ACTIVITIES[dayRuler];
+            return acts?.length ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}><span style={{ color: "#aaa" }}>good for</span> {acts.slice(0, 3).join(" · ")}</div> : null;
+          })()}
+        </div>
+      )}
+
       {/* Planetary Hour */}
       {railSections.includes("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Planetary hour<HelpBadge term="planetaryHour"/></div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",

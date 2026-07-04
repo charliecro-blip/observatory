@@ -159,8 +159,11 @@ router.get("/currents/caution-days", async (req, res) => {
       // "period" (a few times a year per planet), so marks stay sparing and
       // meaningful. The Moon (used in the live view) would hit every point
       // monthly and flood the calendar.
+      // Tight orb (<=1.5°) so a caution "period" is only the ~3 days around the
+      // exact hit, not a broad week — otherwise the calendar flags so many days
+      // the mark stops meaning anything.
       const hits = computeTransitAspects(natal, noon)
-        .filter((t) => t.transitPlanet === "Sun" && planetSet.has(t.natalPlanet) && HARD.has(t.aspect) && t.orb <= 3)
+        .filter((t) => t.transitPlanet === "Sun" && planetSet.has(t.natalPlanet) && HARD.has(t.aspect) && t.orb <= 1.5)
         .sort((a, b) => a.orb - b.orb)
         .slice(0, 2)
         .map((t) => ({

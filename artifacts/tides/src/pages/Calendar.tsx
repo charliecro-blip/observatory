@@ -4,6 +4,7 @@ import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDay
 import { useTimeFormat } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -567,7 +568,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
-                    {voc && <span title="Void-of-course Moon — beginnings tend to drift; finish and rest instead" style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#faf0c0",color:"#806020",border:"1px solid #d0b040",lineHeight:"14px",whiteSpace:"nowrap" }}>◌ VOC</span>}
+                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#ece9f4",color:"#6f6a90",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
                     {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
                       <span title={`Caution: ${cautionMap.get(dateStr)!.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
                         style={{ fontSize:9,lineHeight:1,cursor:"help" }}>⚠️</span>
@@ -684,10 +685,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                       <div style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,top:topPx,height:botPx-topPx,
                         zIndex:3,pointerEvents:"none",
-                        background:"repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(200,180,0,0.07) 8px,rgba(200,180,0,0.07) 9px)",
-                        borderLeft:"2px solid #d0b04060",
+                        background:"repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(111,106,144,0.08) 8px,rgba(111,106,144,0.08) 9px)",
+                        borderLeft:"2px solid #6f6a9050",
                       }}>
-                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"#a08020",fontWeight:600 }}>◌ VOC</div>
+                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"#8a86a8",fontWeight:600 }}>◒ VOC</div>
                       </div>
                     );
                   })()}
@@ -768,11 +769,11 @@ function aspectLineParts(ev: SkyEvent): { left: string; sym: string; right: stri
   };
 }
 
-function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignNames, vocFrac, wins, gcalEvents, skyEvents, cautionHits, onClick }: {
+function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignNames, vocFrac, wins, gcalEvents, skyEvents, cautionHits, simple = false, onClick }: {
   dateStr: string; dayData?: WeekDay; isToday: boolean; isSelected: boolean; isPast: boolean;
   showSignNames: boolean; vocFrac?: {top:number; height:number} | null;
   wins: PlanningWindow[]; gcalEvents: GCalEvent[]; skyEvents: SkyEvent[];
-  cautionHits: CautionDayHit[]; onClick: () => void;
+  cautionHits: CautionDayHit[]; simple?: boolean; onClick: () => void;
 }) {
   const fmtTime = useTimeFormat();
   const dayNum = parseInt(dateStr.split("-")[2]);
@@ -844,12 +845,14 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Row 3: VOC badge */}
       {dayData && voc && (
         <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2 }}>
-          <span title="Void-of-course Moon — a stretch where beginnings tend to drift; finish and rest instead" style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#f8e840",color:"#705010",lineHeight:"14px",fontWeight:600 }}>VOC</span>
+          <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning." style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#ece9f4",color:"#6f6a90",lineHeight:"14px",fontWeight:600 }}>◒ VOC</span>
         </div>
       )}
 
-      {/* Aspects — the day's astrological headline */}
-      {aspectEvents.length > 0 && (
+      {/* Aspects — the day's astrological granularity. Hidden in Simple mode
+          (the default): a beginner meets element/phase/sign/ruler first, and
+          taps the day for the aspect detail. */}
+      {!simple && aspectEvents.length > 0 && (
         <div style={{ display:"flex",flexDirection:"column",gap:1,marginBottom:2 }}>
           {aspectEvents.slice(0,3).map((ev,i) => {
             const parts = aspectLineParts(ev);
@@ -866,8 +869,8 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         </div>
       )}
 
-      {/* Ingress — sign change marker */}
-      {ingressEvents.slice(0,1).map((ev,i) => (
+      {/* Ingress — sign change marker (detail only) */}
+      {!simple && ingressEvents.slice(0,1).map((ev,i) => (
         <div key={i} title={ev.title} style={{ fontSize:8,color:"#4a7040",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
           → {ev.title.replace("Moon enters ", "")}{ev.time ? ` ${ev.time}` : ""}
         </div>
@@ -903,8 +906,8 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
 
 // ── DayDetailPanel ────────────────────────────────────────────────────────────
 
-function DayDetailPanel({ dateStr, dayData, testerId, now, onAddEvent }: {
-  dateStr: string; dayData?: WeekDay; testerId: string | null; now?: TidesNow; onAddEvent: () => void;
+function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onAddEvent }: {
+  dateStr: string; dayData?: WeekDay; testerId: string | null; now?: TidesNow; cautionHits?: CautionDayHit[]; onAddEvent: () => void;
 }) {
   const fmtTime = useTimeFormat();
   const qc = useQueryClient();
@@ -949,7 +952,24 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, onAddEvent }: {
               </div>
             </div>
             <div style={{ fontSize:9.5,color:"#666",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
-            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#faf5e0",border:"1px solid #e0d090",fontSize:9,color:"#8a7830" }}>◌ Void of course — avoid new starts</div>}
+            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#ece9f4",border:"1px solid #d2cee2",fontSize:9,color:"#6f6a90" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
+            {/* Caution — the specific transit that flagged this day, explained.
+                This is the "illuminate a specific day" the caution mark points to. */}
+            {cautionHits.length > 0 && (
+              <div style={{ marginTop:6,padding:"7px 9px",borderRadius:6,background:"#a0404008",border:"1px solid #a0404030",borderLeft:"3px solid #a04040" }}>
+                {cautionHits.map((h, i) => {
+                  const arch = CAUTION_PLANET_ARCHETYPE[h.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE];
+                  return (
+                    <div key={i} style={{ marginBottom: i < cautionHits.length-1 ? 5 : 0 }}>
+                      <div style={{ fontSize:10,fontWeight:600,color:"#a04040" }}>
+                        Sun {h.aspect.toLowerCase()} your {h.cautionPlanet}{arch ? ` · ${arch.label.toLowerCase()}` : ""}
+                      </div>
+                      {arch && <div style={{ fontSize:9,color:"#8a6060",lineHeight:1.5,marginTop:1 }}>What to expect: {arch.feel}. Move big commitments gently for a day or two — it passes.</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"#bbb",marginBottom:5 }}>Quality</div>
@@ -1032,6 +1052,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showSignNames, setShowSignNames] = useState(true);
+  // Month view defaults to SIMPLE — the big/slow essentials only (element tint,
+  // phase, moon sign, day ruler, VoC). Detailed adds the granular aspect times.
+  // Nesting principle: an absolute beginner should meet the slow layer first.
+  const [monthSimple, setMonthSimple] = useState(true);
   const [showDetail, setShowDetail]     = useState(!isMobile);
   const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
   const qc = useQueryClient();
@@ -1165,6 +1189,9 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         {calView==="month" && (
           <>
+            {calView==="month" && (
+              <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"#888":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
+            )}
             <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"#aaa",cursor:"pointer" }}>Signs</button>
             <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"#888",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
           </>
@@ -1182,10 +1209,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
               {/* Legend — every mark on the grid, named */}
               <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"#a09888",flexShrink:0 }}>
                 <span>tint = the day's element (Moon's sign)</span>
-                <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>
-                <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>
-                <span><span style={{ background:"#f8e840",color:"#705010",padding:"0 3px",borderRadius:2,fontWeight:600 }}>VOC</span> = void Moon</span>
-                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = your caution day</span>}
+                {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
+                {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
+                <span><span style={{ background:"#ece9f4",color:"#6f6a90",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
+                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = a caution day for you — tap the day to see what & why</span>}
               </div>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
@@ -1210,6 +1237,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
                       gcalEvents={gcalMap.get(dateStr)??[]}
                       skyEvents={eventsMap.get(dateStr)??[]}
                       cautionHits={cautionMap.get(dateStr)??[]}
+                      simple={monthSimple}
                       onClick={()=>setSelectedDate(dateStr)}
                     />
                   );
@@ -1220,6 +1248,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
               <DayDetailPanel
                 dateStr={selectedDate} dayData={dataMap.get(selectedDate)}
                 testerId={testerId} now={now}
+                cautionHits={cautionMap.get(selectedDate) ?? []}
                 onAddEvent={()=>setAddModal({date:selectedDate})}
               />
             )}
