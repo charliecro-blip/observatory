@@ -459,7 +459,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     }}>
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
           Tides
         </div>

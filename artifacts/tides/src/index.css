@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
+/* Baar Sophia — the Tides wordmark / display face (self-hosted; not a Google font). */
+@font-face {
+  font-family: 'Baar Sophia';
+  src: url('/baar-sophia.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-serif: 'Georgia', serif;
+  --font-display: 'Baar Sophia', 'Georgia', serif;
 
   --color-background: #f0ede8;
   --color-rail: #e8e4de;
