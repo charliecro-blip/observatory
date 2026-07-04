@@ -48,6 +48,14 @@ const ELEMENT_NOTE: Record<string, string> = {
   earth:"Grounding, patience, and practical focus.",
   air:"Conceptual, communicative, and eclectic energy.",
 };
+// Plain-language meaning of the day's coherence tier (backend quality label),
+// so "Workable" et al. explain themselves instead of reading as jargon.
+const QUALITY_NOTE: Record<string, string> = {
+  excellent:"an unusually clear, well-aligned day",
+  good:"smooth, well-supported conditions",
+  workable:"fine for most things — nothing pushing hard either way",
+  mixed:"crosscurrents — keep plans flexible",
+};
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
   Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
@@ -988,13 +996,19 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             )}
           </div>
           <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-            <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"#bbb",marginBottom:5 }}>Quality</div>
-            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:3 }}>
+            <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"#bbb",marginBottom:5 }}>Conditions</div>
+            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
               <div style={{ flex:1,height:4,borderRadius:2,background:"#e8e4de" }}>
                 <div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
               </div>
             </div>
-            <div style={{ fontSize:9.5,color:ELEMENT_LABEL[elem]??"#888",textTransform:"capitalize" }}>{elem} · {dayData.quality?.replace(/_/g," ")}</div>
+            {/* element = the day's character; quality = how coherent conditions are */}
+            <div style={{ fontSize:10.5,fontWeight:600,color:ELEMENT_LABEL[elem]??"#888",textTransform:"capitalize",marginBottom:2 }}>
+              {elem} day · {dayData.quality?.replace(/_/g," ")}
+            </div>
+            <div style={{ fontSize:9.5,color:"#888",lineHeight:1.5 }}>
+              {ELEMENT_NOTE[elem] ?? ""} {QUALITY_NOTE[dayData.quality ?? ""] ? `Overall: ${QUALITY_NOTE[dayData.quality ?? ""]}.` : ""}
+            </div>
           </div>
           {crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
