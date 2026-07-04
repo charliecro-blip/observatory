@@ -23,7 +23,7 @@ import Launch from "@/pages/Launch";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "overview" | "tasks" | "habits";
+type WorkTab = "overview" | "tasks" | "habits" | "currents";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
@@ -35,6 +35,7 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
     {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
+    {id:"currents",  label:"Currents"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -54,6 +55,7 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {tab==="currents"  && <Currents testerId={testerId}/>}
       </div>
     </div>
   );

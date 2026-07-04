@@ -277,33 +277,6 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           </button>
         </div>
 
-        {/* Your long weather — Currents folded in as the context band above the
-            Helm. The slow arcs moving through your chart ARE the seasons your
-            Guiding Stars ride, so they belong right here where you steer, not on
-            a separate page. Premium (personal chart). */}
-        {premiumUnlocked && currentsData?.hasChart && (() => {
-          const prof = currentsData.profection;
-          const transits: any[] = currentsData.majorTransits ?? [];
-          if (!prof && transits.length === 0) return null;
-          return (
-            <div style={{ background: "linear-gradient(180deg, var(--color-card) 0%, var(--color-card-2) 100%)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8ba0", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
-              {prof && (
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)", marginBottom: transits.length ? 6 : 0 }}>
-                  {PLANET_GLYPH[prof.timeLord] ?? "◔"} Your {ordinal(prof.house)}-house year
-                  <span style={{ fontWeight: 400, color: "#999" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
-                </div>
-              )}
-              {transits.slice(0, 2).map((t: any, i: number) => (
-                <div key={i} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline" }}>
-                  <span style={{ color: "#a04040", flexShrink: 0 }}>{PLANET_GLYPH[t.transitPlanet]}</span>
-                  <span>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
         {activeCautionMatches.length > 0 && (
           <div style={{ background: "#a0404008", border: "1px solid #a0404030", borderLeft: "3px solid #a04040", borderRadius: 10, padding: "10px 14px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#a04040", marginBottom: 2 }}>
@@ -616,6 +589,33 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             </div>
           );
         })}
+
+        {/* Your long weather — Currents folded in as a context band. It sits
+            BELOW your stars: you steer by your own aims first, and the slow
+            arcs moving through your chart are the seasons those stars can ride.
+            Premium (personal chart). */}
+        {premiumUnlocked && currentsData?.hasChart && (() => {
+          const prof = currentsData.profection;
+          const transits: any[] = currentsData.majorTransits ?? [];
+          if (!prof && transits.length === 0) return null;
+          return (
+            <div style={{ background: "linear-gradient(180deg, var(--color-card) 0%, var(--color-card-2) 100%)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8ba0", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
+              {prof && (
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)", marginBottom: transits.length ? 6 : 0 }}>
+                  {PLANET_GLYPH[prof.timeLord] ?? "◔"} Your {ordinal(prof.house)}-house year
+                  <span style={{ fontWeight: 400, color: "#999" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
+                </div>
+              )}
+              {transits.slice(0, 2).map((t: any, i: number) => (
+                <div key={i} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline" }}>
+                  <span style={{ color: "#a04040", flexShrink: 0 }}>{PLANET_GLYPH[t.transitPlanet]}</span>
+                  <span>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Weekly retro */}
         {topElement && topElement.completed > 0 && (
