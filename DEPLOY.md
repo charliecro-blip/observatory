@@ -1,7 +1,18 @@
 # Deploying Tides
 
-Two services to deploy: **API server** (Railway) + **Frontend** (Vercel).
-Estimated time with accounts ready: ~30 minutes.
+**One service: Railway.** The Railway server is a single server — it builds the
+frontend *and* the API, then serves both at one URL (static frontend +
+`/api/*`, see `railway.toml` and `artifacts/api-server/src/app.ts`). Share the
+Railway URL as the app.
+
+> Vercel is retired. It was the original frontend host back when the API server
+> didn't serve static files; that role now lives on Railway. Auto-deploys are
+> turned off via `git.deploymentEnabled: false` in `vercel.json`. To remove it
+> for good, delete (or disconnect the repo from) the project in the Vercel
+> dashboard. The old Vercel steps are kept at the bottom of this file for
+> reference only.
+
+Estimated time with accounts ready: ~20 minutes.
 
 ---
 
@@ -33,11 +44,15 @@ PORT=3000
 ```
 
 5. Deploy. Wait for health check at `/api/healthz` to pass (green).
-6. Copy your Railway public URL (e.g. `https://tides-api.up.railway.app`)
+6. Copy your Railway public URL — **this is your app URL.** Open it in a browser
+   and you get the Tides frontend; the same server answers `/api/*`.
 
 ---
 
-## 3. Frontend — Vercel
+## 3. Frontend — Vercel *(retired — reference only)*
+
+> No longer part of a deploy. Railway serves the frontend (step 2). Kept for
+> historical reference. Auto-deploys are already disabled in `vercel.json`.
 
 1. Go to [vercel.com](https://vercel.com) → New project → import this repo
 2. Leave **Root Directory** at the repo root (vercel.json handles the rest)
@@ -72,7 +87,7 @@ npx web-push generate-vapid-keys
 
 ## 6. Verify
 
-- Open your Vercel URL → onboarding modal should appear
+- Open your Railway URL → onboarding modal should appear
 - Check `/api/healthz` on Railway → should return `{ "status": "ok" }`
 - Set a location in Settings → confirm location search works
 - Open Sky view → confirm events load
@@ -81,7 +96,7 @@ npx web-push generate-vapid-keys
 
 ## Sharing with users
 
-Once deployed, users just open the Vercel URL. Each person gets a unique `testerId`
+Once deployed, users just open the Railway URL. Each person gets a unique `testerId`
 generated in their browser on first visit. No sign-up required.
 
-To share: send the Vercel URL. That's it.
+To share: send the Railway URL. That's it.

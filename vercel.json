@@ -1,4 +1,6 @@
 {
+  "//": "Vercel is retired — Railway serves both the frontend and the API as a single server (see railway.toml + api-server/src/app.ts static serving). This flag stops Vercel from auto-building on every push. Flip to true (or delete this file and reconnect the project) to bring Vercel back.",
+  "git": { "deploymentEnabled": { "main": false } },
   "buildCommand": "pnpm --filter @workspace/tides run build && mkdir -p public && cp -r artifacts/tides/public/* public/",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
