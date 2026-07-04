@@ -99,14 +99,15 @@ interface Slot {
   peakE: number;
 }
 
-// Waking hours (local) we're willing to schedule into. The tide's energy peaks
-// can fall in the middle of the night; for actually *doing* things we keep to the
-// day, nudging a nocturnal peak to the morning rather than booking 3 AM.
-// (A proper chronotype-aware window is a follow-up.)
-const WAKE_START = 8, WAKE_END = 21;
+// Waking hours (local, 0–24) we're willing to schedule into — the tide's energy
+// peaks can fall in the middle of the night, and for actually *doing* things we
+// keep to the person's day, nudging a nocturnal peak to the morning rather than
+// booking 3 AM. The client passes the profile's wake/sleep; these are the
+// fallback for anyone who hasn't set a chronotype.
+const DEFAULT_WAKE = 8, DEFAULT_SLEEP = 21;
 
 /** Every candidate energy-peak window across the horizon, per elemental lane. */
-function buildSlots(days: number, lat: number, lon: number, tz: number): Slot[] {
+function buildSlots(days: number, lat: number, lon: number, tz: number, wake: number, sleep: number): Slot[] {
   const now = Date.now();
   const slots: Slot[] = [];
   for (let d = 0; d < days; d++) {
@@ -116,9 +117,9 @@ function buildSlots(days: number, lat: number, lon: number, tz: number): Slot[] 
     for (const element of ["fire", "earth", "air", "water"]) {
       const curve = arc.curves[element] ?? arc.curve;
       for (const p of findPeakWindows(curve, 3, 2)) {
-        const startHour = Math.max(p.startHour, WAKE_START);
-        if (startHour >= WAKE_END) continue; // peak sits at night — skip for task-doing
-        const endHour = Math.min(Math.max(p.endHour, startHour + 1), WAKE_END + 1);
+        const startHour = Math.max(p.startHour, wake);
+        if (startHour >= sleep) continue; // peak sits outside waking hours — skip
+        const endHour = Math.min(Math.max(p.endHour, startHour + 1), sleep);
         slots.push({
           date: localDate,
           element,
@@ -131,6 +132,26 @@ function buildSlots(days: number, lat: number, lon: number, tz: number): Slot[] 
   }
   return slots;
 }
+
+// "HH:MM" → fractional local hour (0–24); null-safe.
+function hourFromClock(v: unknown, fallback: number): number {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(v ?? ""));
+  if (!m) return fallback;
+  const h = parseInt(m[1], 10) + parseInt(m[2], 10) / 60;
+  return h >= 0 && h <= 24 ? h : fallback;
+}
+
+/** POST /api/plan/parse — raw dump → editable structured tasks (with a lane preview). */
+router.post("/plan/parse", requireTesterId, async (req, res) => {
+  const tz = Number.isFinite(parseInt(req.body.tz, 10)) ? parseInt(req.body.tz, 10) : 0;
+  const todayISO = new Date(Date.now() - tz * 60000).toISOString().slice(0, 10);
+  const items = await parseList(String(req.body.rawList ?? ""), todayISO);
+  const tasks = items.map((t) => {
+    const a = associateDeterministic(t.title);
+    return { ...t, element: a.element, windowType: a.windowType, planets: a.planets, rationale: a.rationale };
+  });
+  res.json({ tasks });
+});
 
 const overlaps = (aS: number, aE: number, bS: number, bE: number) => aS < bE && bS < aE;
 
@@ -160,9 +181,14 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   }
   if (items.length === 0) { res.json({ horizon, planned: [], unplaced: [] }); return; }
 
-  const slots = buildSlots(days, lat, lon, tz).filter((s) => s.endMs > nowMs);
+  // Waking window from the caller's chronotype (falls back to a generic day).
+  const wake = hourFromClock(req.body.wakeTime, DEFAULT_WAKE);
+  let sleep = hourFromClock(req.body.sleepTime, DEFAULT_SLEEP);
+  if (sleep <= wake) sleep = DEFAULT_SLEEP; // ignore wrap-past-midnight bedtimes for slotting
+  const slots = buildSlots(days, lat, lon, tz, wake, sleep).filter((s) => s.endMs > nowMs);
 
-  // Existing calendar blocks in the horizon become busy time we won't overwrite.
+  // Existing calendar blocks in the horizon become busy time we won't overwrite —
+  // both the app's own planning windows and (when passed) Google Calendar events.
   const existing = await db.select().from(planningWindows).where(and(
     eq(planningWindows.testerId, testerId),
     gte(planningWindows.startTime, new Date(nowMs)),
@@ -171,6 +197,13 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   const reserved: { s: number; e: number }[] = existing.map((w) => ({
     s: new Date(w.startTime).getTime(), e: new Date(w.endTime).getTime(),
   }));
+  if (Array.isArray(req.body.busy)) {
+    for (const b of req.body.busy) {
+      const s = Date.parse(b?.startAt ?? b?.start ?? "");
+      const e = Date.parse(b?.endAt ?? b?.end ?? "");
+      if (Number.isFinite(s) && Number.isFinite(e) && e > s) reserved.push({ s, e });
+    }
+  }
 
   // Enrich + order: hard deadlines first, then the longest/most-demanding work,
   // so the constrained tasks claim their scarce good windows before the rest.
