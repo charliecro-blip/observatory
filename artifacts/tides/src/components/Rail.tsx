@@ -104,6 +104,93 @@ function planetColor(planet: string) {
   return map[planet] ?? "#888";
 }
 
+// Mobile instrument strip — the desktop rail's nesting ladder, ported to a
+// single horizontal row of glyph "instruments" under the phone top bar. A
+// fluent user reads Sun/Moon/Day/Hour at a glance; tapping one opens an inline
+// detail card. This is the nesting-principle dashboard on the device most
+// people actually use.
+export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [moonTake, setMoonTake] = useState(0);
+  if (!now) return null;
+  const { moonSign, moonPhase, moonIllumination, planetaryHour, element } = now;
+  const sunSign = (now as any).sunSign as string | undefined;
+  const dayRuler = (now as any).dayRuler as string | undefined;
+  const isVOC = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
+  const elemColor = ELEMENT_COLORS[element?.element ?? "water"] ?? "#888";
+
+  const chipStyle = (id: string, accent: string): React.CSSProperties => ({
+    display: "flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer",
+    padding: "5px 10px", borderRadius: 16, fontSize: 12,
+    border: open === id ? `1px solid ${accent}` : "1px solid var(--color-border)",
+    background: open === id ? `${accent}14` : "var(--color-card)",
+  });
+
+  const sun = signGlyphInfo(sunSign);
+  const moon = signGlyphInfo(moonSign);
+
+  const detail = (() => {
+    if (open === "sun" && sunSign) {
+      const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
+      return <><b>{sunSign} season</b>{sm && <> — {sm.essence}</>}</>;
+    }
+    if (open === "moon") {
+      const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
+      const takes = sm ? [
+        { l: "favors", t: sm.favors.slice(0, 3).join(" · ") },
+        { l: "the feel", t: sm.feel },
+        { l: "watch for", t: sm.shadow },
+      ] : [];
+      const tk = takes.length ? takes[moonTake % takes.length] : null;
+      return <>
+        <b>{moonPhase?.replace(/_/g, " ")} · {moonSign}</b>{isVOC && <span style={{ color: VOC_COLOR }}> · void of course</span>}
+        {tk && <div style={{ marginTop: 3 }}><span style={{ color: "#aaa" }}>{tk.l}</span> {tk.t}
+          <button onClick={() => setMoonTake(i => i + 1)} style={{ marginLeft: 5, fontSize: 10, color: "#b0a898", background: "none", border: "none", cursor: "pointer" }}>↻</button></div>}
+      </>;
+    }
+    if (open === "day" && dayRuler) {
+      const acts = PLANET_ACTIVITIES[dayRuler];
+      return <><b>{dayRuler}'s day</b> <span style={{ color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>{acts?.length ? <div style={{ marginTop: 3 }}><span style={{ color: "#aaa" }}>good for</span> {acts.slice(0, 3).join(" · ")}</div> : null}</>;
+    }
+    if (open === "hour") {
+      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "#999" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "#8a8278" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div></>;
+    }
+    return null;
+  })();
+
+  return (
+    <div style={{ background: "var(--color-rail)", borderBottom: "1px solid var(--color-border)", flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "7px 10px" }}>
+        {sunSign && (
+          <button onClick={() => setOpen(o => o === "sun" ? null : "sun")} style={chipStyle("sun", sun?.color ?? "#888")}>
+            <span style={{ color: sun?.color }}>☉ {sun?.glyph}</span>
+            <span style={{ color: "#666" }}>{sunSign}</span>
+          </button>
+        )}
+        <button onClick={() => setOpen(o => o === "moon" ? null : "moon")} style={chipStyle("moon", moon?.color ?? "#888")}>
+          <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={15} />
+          <span style={{ color: "#666" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
+          <span style={{ color: moon?.color }}>{moon?.glyph}</span>
+          {isVOC && <span style={{ color: VOC_COLOR }}>◒</span>}
+        </button>
+        {dayRuler && (
+          <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
+            <span style={{ color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+            <span style={{ color: "#666" }}>day</span>
+          </button>
+        )}
+        <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
+          <span style={{ color: planetColor(planetaryHour.planet) }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ color: "#666" }}>hr</span>
+        </button>
+      </div>
+      {detail && (
+        <div style={{ padding: "0 12px 9px", fontSize: 11, color: "#6a6258", lineHeight: 1.5 }}>{detail}</div>
+      )}
+    </div>
+  );
+}
+
 function progressPct(began: string, ends: string) {
   const parse = (t: string) => {
     const [h, m] = t.split(":").map(Number);

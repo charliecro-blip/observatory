@@ -9,7 +9,7 @@ import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import Rail from "@/components/Rail";
+import Rail, { MobileInstruments } from "@/components/Rail";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
@@ -558,17 +558,23 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                   <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>
                 ))}
               </select>
-              <label style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:8, cursor:"pointer" }}>
-                <input type="checkbox" checked={dstAtBirth}
-                  onChange={e => { setDstAtBirth(e.target.checked); setDstTouched(true); }}
-                  style={{ marginTop:2, accentColor:"#1a2a3a" }} />
-                <span style={{ fontSize:11, color:"#777", lineHeight:1.5 }}>
-                  Daylight saving time was in effect <span style={{ color:"#aaa" }}>(adds 1 hour — usually true for spring/summer births in the US & Europe)</span>
-                </span>
-              </label>
-              <div style={{ fontSize:9.5, color:"#b0a898", marginTop:4 }}>
-                Chart will use UTC{(utcOffset + (dstAtBirth ? 1 : 0)) >= 0 ? "+" : ""}{utcOffset + (dstAtBirth ? 1 : 0)}:00
-              </div>
+              {/* DST only matters when we know the time-of-day. Hidden for a
+                  timeless chart (which is computed at noon). */}
+              {!timeUnknown && (
+                <label style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:8, cursor:"pointer" }}>
+                  <input type="checkbox" checked={dstAtBirth}
+                    onChange={e => { setDstAtBirth(e.target.checked); setDstTouched(true); }}
+                    style={{ marginTop:2, accentColor:"#1a2a3a" }} />
+                  <span style={{ fontSize:11, color:"#777", lineHeight:1.5 }}>
+                    Daylight saving time was in effect <span style={{ color:"#aaa" }}>(adds 1 hour — usually true for spring/summer births in the US & Europe)</span>
+                  </span>
+                </label>
+              )}
+              {!timeUnknown && (
+                <div style={{ fontSize:9.5, color:"#b0a898", marginTop:4 }}>
+                  Chart will use UTC{(utcOffset + (dstAtBirth ? 1 : 0)) >= 0 ? "+" : ""}{utcOffset + (dstAtBirth ? 1 : 0)}:00
+                </div>
+              )}
             </div>
           )}
 
@@ -807,6 +813,10 @@ function Shell() {
           borderBottom: view==="settings" ? "2px solid var(--color-primary)" : "2px solid transparent",
         }}>{isMobile ? "⚙" : "⚙ Settings"}</button>
       </div>
+
+      {/* Mobile instrument strip — the rail's sky ladder as a horizontal glyph
+          row on phones (which don't get the rail). Sky-facing views only. */}
+      {isMobile && (view==="today" || view==="calendar") && <MobileInstruments now={now} />}
 
       {/* ── Content row ── */}
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
