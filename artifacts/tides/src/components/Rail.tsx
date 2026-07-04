@@ -46,6 +46,29 @@ const ELEMENT_COLORS: Record<string, string> = {
 const VOC_COLOR = "#6f6a90";
 const VOC_BG = "#ece9f4";
 
+// The sign's zodiac glyph + its element color — the atomic "instrument reading".
+function signGlyphInfo(sign?: string) {
+  if (!sign) return null;
+  const sm = SIGN_MYTHOS[sign.split(" ")[0]];
+  const el = sm?.element ?? "water";
+  return { glyph: sm?.glyph ?? "", color: ELEMENT_COLORS[el] ?? "#888", el };
+}
+
+// A collapsed section: one dense clickable row (label + glyphs/values), the
+// instrument a fluent user reads at a glance. Click anywhere to expand.
+function GlyphRow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} title={`Expand ${label}`} style={{
+      width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 14px",
+      borderBottom: "1px solid var(--color-border)", background: "none", border: "none",
+      borderBottomWidth: 1, cursor: "pointer", textAlign: "left",
+    }}>
+      <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.5px", color: "#bbb", width: 34, flexShrink: 0 }}>{label}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>{children}</span>
+    </button>
+  );
+}
+
 // An element-colored chip for a sign — the "colored bit for Sun in Cancer /
 // Moon in Aquarius" a beginner can read at a glance.
 function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?: string }) {
@@ -230,6 +253,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
   const [moonTakeIdx, setMoonTakeIdx] = useState(0);
+  // Instrument-dashboard collapse: `compact` (persisted) turns every core
+  // section into a one-line glyph an experienced user reads at a glance; while
+  // compact, an individual section can still be expanded (added to `expanded`).
+  // isOpen(id) = full form; else the glyph row.
+  const [compact, setCompact] = useState<boolean>(() => localStorage.getItem("obs_rail_compact") === "1");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const isOpen = (id: string) => !compact || expanded.has(id);
+  const toggleOpen = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
   const [wavesOpen, setWavesOpen] = useState(true);
   const [transitsOpen, setTransitsOpen] = useState(true);
   const [transitsExpanded, setTransitsExpanded] = useState(false);
@@ -328,11 +360,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       flex: 1, minHeight: 0,
     }}>
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
-      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
+      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
           Tides
         </div>
+        <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
+          fontSize: 12, lineHeight: 1, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 2,
+        }}>{compact ? "⊞" : "⊟"}</button>
       </div>
 
       {/* ── The nesting ladder: big/slow/simple → small/fast/granular ──
@@ -342,22 +377,42 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           with; the detail waits below for whoever wants it. */}
 
       {/* SEASON — the slowest, simplest signifier: what sign the Sun is in. */}
-      {sunSign && (
+      {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Season</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa" }}>Season</div>
+            {compact && <button onClick={() => toggleOpen("season")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}
+          </div>
           <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
             return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
           })()}
         </div>
-      )}
+      ) : (
+        <GlyphRow label="Sun" onClick={() => toggleOpen("season")}>
+          <span style={{ fontSize: 12, color: signGlyphInfo(sunSign)?.color }}>☉ {signGlyphInfo(sunSign)?.glyph}</span>
+          <span style={{ fontSize: 10, color: "#999" }}>{sunSign}</span>
+        </GlyphRow>
+      ))}
 
       {/* MOON — phase (where in the ~month cycle) + sign (the ~2.5-day character)
           + void-of-course state. */}
-      {railSections.includes("moon") && (
+      {railSections.includes("moon") && !isOpen("moon") && (
+        <GlyphRow label="Moon" onClick={() => toggleOpen("moon")}>
+          <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={16} />
+          <span style={{ fontSize: 10, color: "#777" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
+          <span style={{ fontSize: 12, color: signGlyphInfo(moonSign)?.color }}>{signGlyphInfo(moonSign)?.glyph}</span>
+          <span style={{ fontSize: 10, color: "#999" }}>{moonSign}</span>
+          {isVOC && <span style={{ fontSize: 11, color: VOC_COLOR }}>◒</span>}
+        </GlyphRow>
+      )}
+      {railSections.includes("moon") && isOpen("moon") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></span>
+            {compact && <button onClick={() => toggleOpen("moon")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
@@ -500,9 +555,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
       {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
           hour; a whole day has one keynote. */}
-      {dayRuler && railSections.includes("hour") && (
+      {dayRuler && railSections.includes("hour") && !isOpen("day") && (
+        <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
+          <span style={{ fontSize: 12, color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+          <span style={{ fontSize: 10, color: "#999" }}>{dayRuler}'s day</span>
+        </GlyphRow>
+      )}
+      {dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>This day</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", justifyContent: "space-between" }}>This day{compact && <button onClick={() => toggleOpen("day")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
               {PLANET_ICONS[dayRuler] ?? "○"}
@@ -520,9 +581,16 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Planetary Hour */}
-      {railSections.includes("hour") && (
+      {railSections.includes("hour") && !isOpen("hour") && (
+        <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
+          <span style={{ fontSize: 12, color: pColor }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ fontSize: 10, color: "#999" }}>{planetaryHour.planet}</span>
+          <span style={{ fontSize: 9, color: "#bbb", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
+        </GlyphRow>
+      )}
+      {railSections.includes("hour") && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></span>{compact && <button onClick={() => toggleOpen("hour")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
