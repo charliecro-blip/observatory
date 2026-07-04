@@ -280,7 +280,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {activeCautionMatches.length > 0 && (
           <div style={{ background: "#a0404008", border: "1px solid #a0404030", borderLeft: "3px solid #a04040", borderRadius: 10, padding: "10px 14px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#a04040", marginBottom: 2 }}>
-              {activeCautionMatches.length === 1 ? "A caution window is active" : `${activeCautionMatches.length} caution windows are active`}
+              {activeCautionMatches.length === 1 ? "An advisory is active" : `${activeCautionMatches.length} advisories are active`}
             </div>
             <div style={{ fontSize: 10.5, color: "#8a5050", lineHeight: 1.5 }}>
               {activeCautionMatches.map((t: any, i: number) => (

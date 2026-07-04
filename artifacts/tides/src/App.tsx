@@ -833,12 +833,10 @@ function Shell() {
         {/* Main content */}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor}/>}
         {view==="calendar" && (
-          <SubTabbed tabs={["Calendar","Almanac","Currents"]}>
-            {(a) => a==="Calendar"
-              ? <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>
-              : a==="Almanac"
+          <SubTabbed tabs={["Calendar","Almanac"]}>
+            {(a) => a==="Almanac"
               ? <Sky testerId={testerId} lat={lat} lon={lon}/>
-              : <Currents testerId={testerId}/>}
+              : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}

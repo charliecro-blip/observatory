@@ -695,7 +695,7 @@ function PremiumPreviewSection() {
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
           <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-            Currents (your long cycles) · personal caution windows · smart scheduling (best times found for you) · the Compass advisor
+            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · the Compass advisor
           </div>
         </div>
       </div>

@@ -270,7 +270,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           return (
           <div>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
-              Caution windows · active now
+              Advisories · active now
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {ranked.map(({ t, matches }, i) => {

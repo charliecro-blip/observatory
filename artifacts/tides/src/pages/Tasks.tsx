@@ -186,7 +186,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
               <div style={{fontSize:10.5,color:"#a04040",background:"#a0404008",border:"1px solid #a0404030",borderRadius:7,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>
                 Heads up — {activeCautionMatches.map((t:any,i:number) => (
                   <span key={i}>{i>0 && ", "}{PLANET_GLYPH[t.triggerPlanet]} {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
-                ))} is active today — one of your caution windows.
+                ))} is active today — one of your advisories.
               </div>
             )}
             <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)}
