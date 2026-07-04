@@ -707,6 +707,8 @@ function Shell() {
   // renders inside Today (it needs Today's gcalEvents/weekSummary context), so
   // opening it from elsewhere jumps to Today first.
   const [showAdvisor, setShowAdvisor] = useState(false);
+  const [advisorSeed, setAdvisorSeed] = useState<string | null>(null);
+  const askCompass = (seed: string) => { setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -796,7 +798,7 @@ function Shell() {
           <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
         )}
         <button
-          onClick={() => { setView("today"); setShowAdvisor(true); }}
+          onClick={() => { setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
           style={{
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
@@ -833,7 +835,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed}/>}
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
@@ -843,7 +845,7 @@ function Shell() {
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
-        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
 

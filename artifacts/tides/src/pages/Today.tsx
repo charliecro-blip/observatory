@@ -131,7 +131,7 @@ const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask }: {
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -139,6 +139,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
   weekSummary: string;
   onAddTask: (title: string) => void;
+  seedMessage?: string | null;
 }) {
   const [history, setHistory] = useState<AdvisorMessage[]>([]);
   const [input, setInput] = useState("");
@@ -154,6 +155,12 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [history, streamBuffer]);
+  // Opened from a "reflect with Compass" prompt elsewhere (e.g. a planet
+  // check-in) — auto-ask it once so the conversation starts on that thread.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seedMessage && !seededRef.current) { seededRef.current = true; send(seedMessage); }
+  }, [seedMessage]);
 
   async function send(message: string) {
     if (!message.trim() || streaming) return;
@@ -398,9 +405,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
-  showAdvisor: boolean; setShowAdvisor: (v: boolean) => void;
+  showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
@@ -656,6 +663,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           onClose={() => setShowAdvisor(false)}
           gcalEvents={gcalEvents}
           weekSummary={weekSummary}
+          seedMessage={advisorSeed}
           onAddTask={title => {
             setNewTaskTitle(title);
             setShowAddTask(true);

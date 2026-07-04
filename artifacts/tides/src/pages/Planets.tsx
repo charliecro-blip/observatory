@@ -34,7 +34,17 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
-export default function Planets({ testerId }: { testerId: string | null; lat?: number; lon?: number }) {
+// Compose a context-rich opening message for Compass so the reflection lands on
+// this specific planet — its placement, what's activating it, and the question.
+function reflectSeed(planet: string, name: string, sign: string | undefined, house: number | null | undefined, activations: any[]): string {
+  const parts = [`I want to check in with my inner ${name}.`];
+  if (sign) parts.push(`In my chart it's in ${sign}${house ? `, my ${ordinal(house)} house` : ""}.`);
+  if (activations.length) parts.push(`Right now, transiting ${activations[0].transitPlanet} is ${String(activations[0].aspect).toLowerCase()} it.`);
+  parts.push(`Help me reflect: ${CHECK_IN[planet]}`);
+  return parts.join(" ");
+}
+
+export default function Planets({ testerId, onReflect }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void }) {
   const [selected, setSelected] = useState("Sun");
 
   const { data: natal } = useQuery<any>({
@@ -139,7 +149,13 @@ export default function Planets({ testerId }: { testerId: string | null; lat?: n
         {/* Check in */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${col}`, borderRadius: 10, padding: "13px 16px" }}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>Check in with your inner {core.name}</div>
-          <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.6, fontStyle: "italic" }}>{CHECK_IN[selected]}</div>
+          <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>{CHECK_IN[selected]}</div>
+          {onReflect && (
+            <button onClick={() => onReflect(reflectSeed(selected, core.name, sign, house, activations))} style={{
+              fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer",
+              border: `1px solid ${col}`, background: `${col}12`, color: col,
+            }}>🧭 Reflect with Compass →</button>
+          )}
         </div>
       </div>
     </div>
