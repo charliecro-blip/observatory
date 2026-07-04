@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
 
 const VERDICT_COLORS: Record<ElectionVerdict, string> = {
@@ -42,9 +43,33 @@ function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
   );
 }
 
-function ElectionWindowCard({ result, defaultOpen }: { result: ElectionResult; defaultOpen: boolean }) {
+function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { result: ElectionResult; defaultOpen: boolean; testerId: string | null; categoryLabel: string }) {
   const [open, setOpen] = useState(defaultOpen);
   const failedHard = result.rules.filter((r) => r.severity === "hard" && !r.passed);
+  const qc = useQueryClient();
+  const [added, setAdded] = useState(false);
+
+  // Putting a chosen window on the calendar is a plain manual schedule (free) —
+  // it writes a planning window at that time so Launch stops dead-ending.
+  const addToCalendar = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/planning/windows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) },
+        body: JSON.stringify({
+          title: categoryLabel,
+          windowType: "launch",
+          startTime: result.windowStart,
+          endTime: result.windowEnd,
+        }),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["windows"] });
+      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      setAdded(true);
+    },
+  });
 
   return (
     <div style={{
@@ -70,11 +95,21 @@ function ElectionWindowCard({ result, defaultOpen }: { result: ElectionResult; d
         <div style={{ fontSize: 11, color: "#bbb" }}>{open ? "▲" : "▼"}</div>
       </button>
       <div style={{ padding: "0 14px 10px" }}>
-        <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginBottom: open ? 8 : 0 }}>{result.summary}</div>
+        <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5, marginBottom: 8 }}>{result.summary}</div>
         {open && (
-          <div style={{ marginTop: 4 }}>
+          <div style={{ marginTop: 4, marginBottom: 8 }}>
             {result.rules.map((r) => <RuleRow key={r.key} rule={r} />)}
           </div>
+        )}
+        {result.verdict !== "avoid" && (
+          added ? (
+            <div style={{ fontSize: 11, color: "#3a6020", fontWeight: 600 }}>✓ Added to your calendar (Ahead)</div>
+          ) : (
+            <button onClick={() => addToCalendar.mutate()} disabled={addToCalendar.isPending} style={{
+              fontSize: 11, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer",
+              border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)",
+            }}>{addToCalendar.isPending ? "Adding…" : "＋ Put it on my calendar"}</button>
+          )
         )}
       </div>
       {failedHard.length > 0 && !open && (
@@ -86,7 +121,7 @@ function ElectionWindowCard({ result, defaultOpen }: { result: ElectionResult; d
   );
 }
 
-export default function Launch({ lat, lon }: { testerId: string | null; lat: number; lon: number }) {
+export default function Launch({ testerId, lat, lon }: { testerId: string | null; lat: number; lon: number }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
   const { data: catData } = useElectionCategories();
@@ -154,7 +189,8 @@ export default function Launch({ lat, lon }: { testerId: string | null; lat: num
             )}
 
             {scan?.windows.map((w, i) => (
-              <ElectionWindowCard key={w.date} result={w} defaultOpen={i === 0 && activeCategory?.weight !== "light"} />
+              <ElectionWindowCard key={w.date} result={w} defaultOpen={i === 0 && activeCategory?.weight !== "light"}
+                testerId={testerId} categoryLabel={activeCategory?.label ?? "Launch"} />
             ))}
           </>
         )}

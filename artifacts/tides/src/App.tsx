@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
+import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
@@ -753,7 +754,7 @@ function Shell() {
   const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", launch:"▲" };
 
   return (
-    <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
+    <div style={{display:"flex",height:"calc(100dvh / var(--app-zoom, 1))",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
 
@@ -867,8 +868,9 @@ function Shell() {
 }
 
 export default function App() {
-  // Register service worker once on mount
+  // Register service worker + apply the saved text-size once on mount
   React.useEffect(() => {
+    applyTextScale();
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }

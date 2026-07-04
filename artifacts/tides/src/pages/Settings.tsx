@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePremium } from "@/contexts/premium-context";
+import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
@@ -55,6 +56,25 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
 
 function Divider() {
   return <div style={{ borderTop: "1px solid var(--color-border)", margin: "2px 0" }} />;
+}
+
+function TextSizeSection() {
+  const [scale, setScale] = useState(getTextScale());
+  return (
+    <SectionCard title="Text size" sub="Make everything bigger and easier to read. Applies across the whole app.">
+      <div style={{ display: "flex", gap: 8 }}>
+        {TEXT_SCALES.map((t) => (
+          <button key={t.key} onClick={() => { setTextScale(t.key); setScale(t.key); }} style={{
+            flex: 1, padding: "9px 0", borderRadius: 9, cursor: "pointer",
+            border: scale === t.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+            background: scale === t.key ? "#1a2a3a10" : "var(--color-card-2)",
+            color: scale === t.key ? "#1a2a3a" : "#777", fontWeight: scale === t.key ? 600 : 400,
+            fontSize: t.key === "default" ? 12 : t.key === "large" ? 13.5 : 15,
+          }}>{t.label}</button>
+        ))}
+      </div>
+    </SectionCard>
+  );
 }
 
 // ---- Notification section ----
@@ -1221,6 +1241,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Account — recovery key */}
         <AccountSection />
+
+        {/* Text size — accessibility */}
+        <TextSizeSection />
 
         {/* Premium — near the top so it's easy to find and toggle */}
         <PremiumPreviewSection />
