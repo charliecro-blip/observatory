@@ -61,6 +61,24 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
       </div>
     );
   }
+  // Chart exists but the birth time is unknown — Currents is entirely house/
+  // Ascendant-based, so it genuinely can't be computed. Say so honestly.
+  if (data.timeKnown === false) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+        <div style={{ maxWidth: 400, textAlign: "center" }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🕰️</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)", marginBottom: 8 }}>Currents needs your birth time</div>
+          <div style={{ fontSize: 12.5, color: "#777", lineHeight: 1.6 }}>
+            Your profected year, house chapters, and rising sign are all measured from
+            the exact moment you were born — so they can't be worked out without a birth
+            time. Your daily tide, Big Sky, and planet readings work fine without it.
+            Add a time in Settings whenever you find it, and this unlocks.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const prof = data.profection;
   const transits: any[] = data.transitsByHouse ?? [];

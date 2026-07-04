@@ -855,9 +855,10 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
       await fetch("/api/natal-chart", {
         method: "POST",
         headers: authH(testerId),
-        body: JSON.stringify({ birthDate: form.birthDate, birthTime: form.birthTime || "12:00", birthPlace: form.birthPlace, birthLat: form.birthLat, birthLon: form.birthLon, utcOffset: form.utcOffset }),
+        body: JSON.stringify({ birthDate: form.birthDate, birthTime: form.birthTime || "12:00", birthPlace: form.birthPlace, birthLat: form.birthLat, birthLon: form.birthLon, utcOffset: form.utcOffset, timeKnown: !!form.birthTime }),
       });
       qc.invalidateQueries({ queryKey: ["natal-chart"] });
+      qc.invalidateQueries({ queryKey: ["currents"] });
       setSaved(true); setEditing(false);
       setTimeout(() => setSaved(false), 3000);
     } finally { setSaving(false); }
@@ -874,9 +875,14 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{chart.birthDate} {chart.birthTime && `at ${chart.birthTime}`}</div>
+              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{chart.birthDate}{chart.timeKnown === false ? " · time unknown" : chart.birthTime && ` at ${chart.birthTime}`}</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{chart.birthPlace}</div>
-              {chart.ascendant && (
+              {chart.timeKnown === false ? (
+                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+                  ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign} <span style={{ color: "#b0a898" }}>(approx)</span>
+                  <div style={{ color: "#b0a898", marginTop: 2 }}>Rising sign, houses & Currents need a birth time — add it below to unlock them.</div>
+                </div>
+              ) : chart.ascendant && (
                 <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
                   ↑ {chart.ascendant.sign} rising · ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign}
                 </div>

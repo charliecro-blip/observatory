@@ -24,6 +24,10 @@ router.get("/currents", async (req, res) => {
 
   const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
   if (!stored) return res.json({ hasChart: false });
+  // Currents is entirely house/Ascendant-based (profection, house transits),
+  // which need an exact birth time. Without one, say so honestly rather than
+  // computing profections off a noon guess.
+  if (stored.timeKnown === false) return res.json({ hasChart: true, timeKnown: false });
 
   try {
     const natal = computeNatalChart(
@@ -90,6 +94,7 @@ router.get("/currents", async (req, res) => {
 
     return res.json({
       hasChart: true,
+      timeKnown: true,
       houseSystem,
       ascendant: natal.ascendant,
       profection,

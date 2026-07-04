@@ -1,4 +1,4 @@
-import { pgTable, serial, text, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, real, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,6 +11,11 @@ export const natalCharts = pgTable("natal_charts", {
   birthLat: real("birth_lat").notNull(),
   birthLon: real("birth_lon").notNull(),
   utcOffset: real("utc_offset").notNull().default(0),
+  // Whether the birth TIME is actually known. When false the chart is computed
+  // at noon as an approximation, and everything that genuinely depends on the
+  // exact time — Ascendant, Midheaven, houses, profections — is suppressed
+  // rather than fabricated. Planet signs (Moon approximate) and aspects remain.
+  timeKnown: boolean("time_known").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

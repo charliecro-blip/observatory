@@ -25,6 +25,17 @@ function buildResponse(stored: typeof natalCharts.$inferSelect) {
     stored.birthLon,
     stored.utcOffset,
   );
+  const timeKnown = stored.timeKnown !== false;
+  // When the birth time is unknown, everything below is genuinely unknowable —
+  // don't ship a fabricated Ascendant/houses to the client where it could be
+  // shown as fact. Planet signs and aspects survive (Moon is approximate).
+  const suppressed = timeKnown ? computed : {
+    ...computed,
+    ascendant: null,
+    midheaven: null,
+    houses: [],
+    planets: computed.planets.map((p) => ({ ...p, houseNumber: null })),
+  };
   return {
     id: stored.id,
     birthDate: stored.birthDate,
@@ -33,8 +44,9 @@ function buildResponse(stored: typeof natalCharts.$inferSelect) {
     birthLat: stored.birthLat,
     birthLon: stored.birthLon,
     utcOffset: stored.utcOffset,
+    timeKnown,
     createdAt: stored.createdAt,
-    ...computed,
+    ...suppressed,
   };
 }
 
@@ -53,20 +65,22 @@ router.get("/natal-chart", requireTesterId, async (req, res) => {
 router.post("/natal-chart", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const body = UpsertNatalChartBody.parse(req.body);
+  // timeKnown isn't in the generated zod body — read it directly, default true.
+  const timeKnown = (req.body as { timeKnown?: boolean })?.timeKnown !== false;
   const existing = await getStoredChart(testerId);
 
   let stored: typeof natalCharts.$inferSelect;
   if (existing) {
     const [updated] = await db
       .update(natalCharts)
-      .set({ ...body, updatedAt: new Date() })
+      .set({ ...body, timeKnown, updatedAt: new Date() })
       .where(eq(natalCharts.id, existing.id))
       .returning();
     stored = updated;
   } else {
     const [inserted] = await db
       .insert(natalCharts)
-      .values({ ...body, testerId })
+      .values({ ...body, timeKnown, testerId })
       .returning();
     stored = inserted;
   }

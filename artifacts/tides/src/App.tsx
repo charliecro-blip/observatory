@@ -284,6 +284,9 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   // Birth form state
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
+  // "I don't know my birth time" — computes a planets-only "timeless" chart
+  // instead of inventing an Ascendant/houses off a noon guess.
+  const [timeUnknown, setTimeUnknown] = useState(false);
   const [birthPlace, setBirthPlace] = useState("");
   const [birthLat, setBirthLat] = useState<number | null>(null);
   const [birthLon, setBirthLon] = useState<number | null>(null);
@@ -403,11 +406,12 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         headers: { "x-tester-id": createdTesterId, "Content-Type": "application/json" },
         body: JSON.stringify({
           birthDate,
-          birthTime: birthTime || "12:00",
+          birthTime: timeUnknown ? "12:00" : (birthTime || "12:00"),
           birthPlace,
           birthLat,
           birthLon,
-          utcOffset: utcOffset + (dstAtBirth ? 1 : 0),
+          utcOffset: utcOffset + (!timeUnknown && dstAtBirth ? 1 : 0),
+          timeKnown: !timeUnknown && !!birthTime,
         }),
       });
     } finally {
@@ -506,11 +510,19 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           {/* Birth time */}
           <div>
             <div style={{ fontSize:10.5, color:"#aaa", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>
-              Time of birth <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(optional — needed for Ascendant)</span>
+              Time of birth <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(needed for your rising sign & houses)</span>
             </div>
-            <input type="time" value={birthTime} onChange={e => setBirthTime(e.target.value)}
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            <input type="time" value={birthTime} disabled={timeUnknown} onChange={e => setBirthTime(e.target.value)}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box", opacity: timeUnknown ? 0.45 : 1 }}
             />
+            <label style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:7, cursor:"pointer" }}>
+              <input type="checkbox" checked={timeUnknown}
+                onChange={e => setTimeUnknown(e.target.checked)}
+                style={{ marginTop:2, accentColor:"#1a2a3a" }} />
+              <span style={{ fontSize:11, color:"#777", lineHeight:1.5 }}>
+                I don't know my birth time <span style={{ color:"#aaa" }}>— you'll get a chart from your planets and signs; your rising sign, houses, and long-cycle Currents stay locked until you add a time.</span>
+              </span>
+            </label>
           </div>
 
           {/* Birth place */}

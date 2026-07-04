@@ -88,17 +88,21 @@ router.get("/tides/now", async (req, res) => {
     try {
       const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
       if (stored) {
+        const timeKnown = stored.timeKnown !== false;
         const natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset);
         const transits = computeTransitAspects(natal);
         personalTransits = transits
           .filter((t) => t.severity === "strong" || t.severity === "major" || (t.severity === "moderate" && t.exact))
+          // With no birth time, the Ascendant and houses are unknowable — drop
+          // any transit to the Ascendant, and don't report house numbers.
+          .filter((t) => timeKnown || t.natalPlanet !== "Ascendant")
           .slice(0, 12)
           .map((t) => ({
             transitPlanet: t.transitPlanet,
             aspect:        t.aspect.toLowerCase(),
             natalPlanet:   t.natalPlanet,
             natalSign:     t.natalSign,
-            natalHouse:    t.natalHouse,
+            natalHouse:    timeKnown ? t.natalHouse : 0,
             orb:           t.orb,
             exact:         t.exact,
             severity:      t.severity,
