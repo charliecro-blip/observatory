@@ -486,25 +486,27 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   // Planetary hours legend height (day view only, fixed below grid)
   const LEGEND_H = isDay ? 108 : 0;
 
+  // One shared vertical scroll for the gutter + every day column, so the hour
+  // labels stay locked to the grid rows while you scroll (previously each column
+  // scrolled on its own and the labels sat still — the confusing part).
+  const HDR_H = (isDay ? 48 : 44) + 32; // day/date block + astro strip — matches each column header
+
   return (
-    <div style={{ display:"flex",flex:1,overflow:"hidden" }}>
-      {/* Hour labels column — scrolls in sync with time body via shared overflow parent */}
-      <div style={{ width:LABEL_W,flexShrink:0,display:"flex",flexDirection:"column",background: "var(--color-card-2)",borderRight:"1px solid var(--color-border)" }}>
-        {/* spacer for header */}
-        <div style={{ flexShrink:0, height: isDay ? (48 + 32) : (44 + 32) }}/>
-        {/* time labels scroll area */}
-        <div style={{ flex:1, overflowY:"hidden", position:"relative" }}>
+    <div style={{ flex:1, overflowY:"auto", overflowX: isDay ? "hidden" : "auto", position:"relative" }}>
+      <div style={{ display:"flex", minWidth: isDay ? "100%" : "max-content", alignItems:"stretch" }}>
+        {/* Hour labels gutter — sticky on the left, scrolls vertically with the grid */}
+        <div style={{ width:LABEL_W, flexShrink:0, position:"sticky", left:0, zIndex:30, background:"var(--color-card-2)", borderRight:"1px solid var(--color-border)" }}>
+          {/* header spacer — sticky top so the corner stays put */}
+          <div style={{ height:HDR_H, position:"sticky", top:0, zIndex:31, background:"var(--color-card-2)", borderBottom:"1px solid var(--color-border)" }}/>
+          {isDay && <div style={{ height:LEGEND_H, borderBottom:"1px solid var(--color-border)", background:"var(--color-card-2)" }}/>}
           {Array.from({length:HOURS+1},(_,i)=>(
             <div key={i} style={{ height:ROW_H,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:8,paddingTop:2 }}>
               <span style={{ fontSize:9,color:"#bbb",fontWeight:500 }}>{fmtHour(HOUR_START+i)}</span>
             </div>
           ))}
         </div>
-        {isDay && <div style={{ height:LEGEND_H,flexShrink:0 }}/>}
-      </div>
 
-      {/* Columns */}
-      <div style={{ flex:1,display:"flex",overflowX:isDay?"hidden":"auto",overflowY:"hidden" }}>
+        {/* Day columns */}
         {dates.map(dateStr => {
           const dayData = dataMap.get(dateStr);
           const isToday = dateStr===today;
@@ -532,7 +534,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           const ASTRO_STRIP_H = 32;
 
           return (
-            <div key={dateStr} style={{ flex:1,minWidth:isDay?0:110,borderRight:"1px solid var(--color-border)",flexShrink:isDay?1:0,display:"flex",flexDirection:"column",overflow:"hidden" }}>
+            <div key={dateStr} style={{ flex:1,minWidth:isDay?0:110,borderRight:"1px solid var(--color-border)",flexShrink:isDay?1:0,display:"flex",flexDirection:"column" }}>
               {/* Column header — sticky */}
               <div style={{
                 flexShrink:0, borderBottom:"1px solid var(--color-border)",
@@ -619,9 +621,9 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                 </div>
               )}
 
-              {/* Time body — scrolls internally */}
-              <div style={{ flex:1,overflowY:"auto",position:"relative",background:isPast?"var(--color-card-2)":"#fff" }}>
-                <div style={{ position:"relative",height:HOURS*ROW_H,minHeight:"100%" }}>
+              {/* Time body — height comes from the rows; the whole grid scrolls as one */}
+              <div style={{ position:"relative",background:isPast?"var(--color-card-2)":"#fff" }}>
+                <div style={{ position:"relative",height:HOURS*ROW_H }}>
 
                   {/* Planetary hours — week: full-width tint; day: left bar */}
                   {allHours.map((ph,phi) => {
@@ -651,13 +653,14 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                         </div>
                       );
                     } else {
-                      // Week: full-width background tint, very subtle
+                      // Week: full-width background tint, very subtle (bands blend
+                      // into a gradient of the day rather than reading as blocks)
                       return (
                         <div key={phi} style={{
                           position:"absolute",top:topPx,height:Math.max(1,botPx-topPx),
                           left:0,right:0,
-                          background:`${col}${ph.isDayHour?"22":"14"}`,
-                          borderTop:`1px solid ${col}35`,zIndex:1,pointerEvents:"none",
+                          background:`${col}${ph.isDayHour?"16":"0d"}`,
+                          borderTop:`1px solid ${col}20`,zIndex:1,pointerEvents:"none",
                         }}/>
                       );
                     }
@@ -665,14 +668,17 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
 
                   {/* Hour grid lines + click zones */}
                   {Array.from({length:HOURS},(_,i)=>(
-                    <div key={i} onClick={()=>!isPast&&onAddEvent(dateStr,HOUR_START+i)} style={{
-                      position:"absolute",left:PLANET_BAR_W,right:0,top:i*ROW_H,height:ROW_H,
-                      borderBottom:"1px solid var(--color-border)",cursor:isPast?"default":"pointer",zIndex:2,
-                    }}
-                      onMouseEnter={e=>{if(!isPast)(e.currentTarget as HTMLElement).style.background="#f5f5fc";}}
-                      onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background="";}}
+                    <div key={i} onClick={()=>!isPast&&onAddEvent(dateStr,HOUR_START+i)}
+                      title={isPast ? undefined : `Add an event at ${fmtHour(HOUR_START+i)}`}
+                      style={{
+                        position:"absolute",left:PLANET_BAR_W,right:0,top:i*ROW_H,height:ROW_H,
+                        borderBottom:"1px solid var(--color-border)",cursor:isPast?"default":"pointer",zIndex:2,
+                      }}
+                      onMouseEnter={e=>{ if(isPast) return; const el=e.currentTarget as HTMLElement; el.style.background="rgba(90,120,160,0.10)"; el.style.boxShadow="inset 0 0 0 1.5px rgba(90,120,160,0.45)"; const h=el.querySelector('[data-add]') as HTMLElement|null; if(h) h.style.opacity="1"; }}
+                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.background=""; el.style.boxShadow=""; const h=el.querySelector('[data-add]') as HTMLElement|null; if(h) h.style.opacity="0"; }}
                     >
                       <div style={{ position:"absolute",left:0,right:0,top:"50%",borderTop:"1px dashed #f0ede8" }}/>
+                      {!isPast && <span data-add style={{ position:"absolute",left:4,top:2,fontSize:8.5,fontWeight:700,color:"#5a78a0",opacity:0,transition:"opacity 0.1s",pointerEvents:"none" }}>＋ add</span>}
                     </div>
                   ))}
 
@@ -709,6 +715,29 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                         <div style={{ position:"absolute",bottom:1,right:3,fontSize:7.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>
                           {PLANET_ICONS[c.planet]??c.planet[0]} {c.angle}
                         </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Lunar (and planet-planet) aspects — timed markers on the day itself */}
+                  {(eventsMap.get(dateStr) ?? []).filter(ev => (ev.type==="moon_aspect"||ev.type==="aspect") && ev.at).map((ev,ei) => {
+                    const d = new Date(ev.at!);
+                    const mins = d.getHours()*60 + d.getMinutes();
+                    const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
+                    if (topPx<0||topPx>HOURS*ROW_H) return null;
+                    const parts = aspectLineParts(ev);
+                    const col = ev.quality==="caution" ? "#a05020" : ev.quality==="favorable" ? "#3a6020" : "#60708a";
+                    return (
+                      <div key={`asp${ei}`} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{
+                        position:"absolute",left:PLANET_BAR_W,right:0,top:topPx-8,height:16,zIndex:5,
+                        pointerEvents:"none",display:"flex",alignItems:"center",gap:3,
+                      }}>
+                        <div style={{ flex:1,borderTop:`1px dashed ${col}59` }}/>
+                        {parts && (
+                          <div style={{ fontSize:8,color:col,fontWeight:700,background:"rgba(255,255,255,0.82)",padding:"0 3px",borderRadius:3,whiteSpace:"nowrap" }}>
+                            {parts.left}{parts.sym}{parts.right} {fmtTime(d)}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
