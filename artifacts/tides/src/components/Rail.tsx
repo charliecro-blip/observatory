@@ -345,10 +345,21 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // compact, an individual section can still be expanded (added to `expanded`).
   // isOpen(id) = full form; else the glyph row.
   const [compact, setCompact] = useState<boolean>(() => localStorage.getItem("obs_rail_compact") === "1");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const isOpen = (id: string) => !compact || expanded.has(id);
-  const toggleOpen = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());   // compact mode: sections opened back out
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set()); // full mode: sections individually minimized
+  // Each section is independently collapsible in BOTH modes (accordion): in
+  // compact everything starts as a glyph and you open the ones you want; in full
+  // everything starts open and you can minimize the ones you don't.
+  const isOpen = (id: string) => compact ? expanded.has(id) : !collapsed.has(id);
+  const toggleOpen = (id: string) => {
+    const set = compact ? setExpanded : setCollapsed;
+    set(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); setCollapsed(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
+  // A clear, always-visible minimize control for an open section header.
+  const Collapse = ({ id }: { id: string }) => (
+    <button onClick={() => toggleOpen(id)} title="Minimize" style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
+  );
   const [wavesOpen, setWavesOpen] = useState(true);
   const [transitsOpen, setTransitsOpen] = useState(true);
   const [transitsExpanded, setTransitsExpanded] = useState(false);
@@ -468,7 +479,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa" }}>Season</div>
-            {compact && <button onClick={() => toggleOpen("season")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}
+            <Collapse id="season" />
           </div>
           <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
@@ -498,7 +509,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></span>
-            {compact && <button onClick={() => toggleOpen("moon")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}
+            <Collapse id="moon" />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
@@ -551,9 +562,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Moon Aspects */}
-      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && (
+      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
+        <GlyphRow label="Moon aspects" onClick={() => toggleOpen("aspects")}>
+          <span style={{ fontSize: 12, color: "#888" }}>☽</span>
+          <span style={{ fontSize: 10, color: "#999" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
+        </GlyphRow>
+      )}
+      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center" }}>Moon aspects<HelpBadge term="moonAspects"/></div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>Moon aspects<HelpBadge term="moonAspects"/></span><Collapse id="aspects" /></div>
           {now.moonAspects.slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
             const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
@@ -650,7 +667,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", justifyContent: "space-between" }}>This day{compact && <button onClick={() => toggleOpen("day")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", justifyContent: "space-between" }}>This day<Collapse id="day" /></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
               {PLANET_ICONS[dayRuler] ?? "○"}
@@ -677,7 +694,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {railSections.includes("hour") && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></span>{compact && <button onClick={() => toggleOpen("hour")} style={{ fontSize: 8, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>▴</button>}</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></span><Collapse id="hour" /></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
