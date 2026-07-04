@@ -693,7 +693,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
-              This page is the day's weather. The <b>Currents</b> tab tracks your slow cycles — the multi-year transits moving through your chart right now.
+              This page is the day's weather. <b>Currents</b> (under Calendar) tracks your slow cycles — the multi-year transits moving through your chart right now.
             </div>
             <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               Explore

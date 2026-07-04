@@ -82,19 +82,17 @@ function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: stri
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"sky"|"work"|"launch"|"settings";
+type View = "today"|"calendar"|"work"|"launch"|"settings";
 
-// Primary tabs (labels updated with the user 2026-07-03): Today is the tide
-// you're in; Calendar is your time ahead (with Currents — your long cycles —
-// folded in as a sub-tab); Almanac is the reference book of sky events &
-// meanings (also carrying a Currents sub-tab); Helm is where you steer (Guiding
-// Stars -> Tasks + Habits). Compass (the advisor) is in the global bar. Launch
-// is electional. Currents is no longer its own top tab — it lives under
-// Calendar and Almanac.
+// Primary tabs (2026-07-03): Today is the tide you're in; Calendar is the whole
+// "time & sky" home — your grid, the Almanac (sky events + reference/meanings),
+// and Currents (your long cycles) as sub-tabs, since they all answer "when /
+// what's in the sky" and separating them just confused people; Helm is where
+// you steer (Guiding Stars -> Tasks + Habits); Launch is electional; Compass
+// (the advisor) is in the global bar.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
-  {id:"sky",      label:"Almanac"},
   {id:"work",     label:"Helm"},
   {id:"launch",   label:"Launch"},
 ];
@@ -734,7 +732,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", sky:"☽", work:"☰", launch:"▲" };
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", launch:"▲" };
 
   return (
     <div style={{display:"flex",height:"100vh",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
@@ -810,15 +808,10 @@ function Shell() {
         {/* Main content */}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor}/>}
         {view==="calendar" && (
-          <SubTabbed tabs={["Calendar","Currents"]}>
+          <SubTabbed tabs={["Calendar","Almanac","Currents"]}>
             {(a) => a==="Calendar"
               ? <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>
-              : <Currents testerId={testerId}/>}
-          </SubTabbed>
-        )}
-        {view==="sky"      && (
-          <SubTabbed tabs={["Almanac","Currents"]}>
-            {(a) => a==="Almanac"
+              : a==="Almanac"
               ? <Sky testerId={testerId} lat={lat} lon={lon}/>
               : <Currents testerId={testerId}/>}
           </SubTabbed>

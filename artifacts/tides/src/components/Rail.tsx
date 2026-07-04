@@ -17,10 +17,13 @@ function MoonDisc({ illum, waxing, size = 26 }: { illum: number; waxing: boolean
   const r = size / 2;
   const lit = "#e7ddc6", dark = "#413d33";
   const f = Math.max(0, Math.min(1, illum));
-  // Signed terminator radius: +r at new (nothing lit), 0 at half, -r at full.
   const x = (1 - 2 * f) * r;
   const rxTerm = Math.abs(x);
-  const sweepTerm = x > 0 ? 1 : 0;
+  // Terminator ellipse bulge: for a gibbous moon (illum>0.5, x<0) it must bulge
+  // LEFT so the lit region is the big 86%-style shape; for a crescent it bulges
+  // right to leave a thin sliver lit. (Getting this backwards drew the ~14%
+  // crescent lit and made an 86% moon read as mostly dark.)
+  const sweepTerm = x < 0 ? 1 : 0;
   // Right-lit shape (outer right semicircle + terminator ellipse back to top);
   // mirror horizontally for a waning moon so the light sits on the left.
   const d = `M ${r} 0 A ${r} ${r} 0 0 1 ${r} ${size} A ${rxTerm} ${r} 0 0 ${sweepTerm} ${r} 0 Z`;
