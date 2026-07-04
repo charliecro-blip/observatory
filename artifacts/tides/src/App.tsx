@@ -20,6 +20,7 @@ import Habits from "@/pages/Habits";
 import Sky from "@/pages/Sky";
 import Currents from "@/pages/Currents";
 import Launch from "@/pages/Launch";
+import Planets from "@/pages/Planets";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
@@ -85,7 +86,7 @@ function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: stri
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"work"|"launch"|"settings";
+type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 
 // Primary tabs (2026-07-03): Today is the tide you're in; Calendar is the whole
 // "time & sky" home — your grid, the Almanac (sky events + reference/meanings),
@@ -98,6 +99,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
   {id:"launch",   label:"When"},
+  {id:"planets",  label:"Planets"},
 ];
 
 const WINDOW_TYPES = [
@@ -841,6 +843,7 @@ function Shell() {
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
 
