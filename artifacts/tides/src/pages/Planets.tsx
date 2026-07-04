@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrents } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
+import Orrery from "@/components/Orrery";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -100,10 +101,11 @@ function PlanetsView({ natal, currents, onReflect }: { natal: any; currents: any
 
   return (
     <>
-      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 16 }}>
+      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 8 }}>
         The ten drives you're made of. Visit one to see what it means, how it lives in your chart, and how the sky is moving it right now.
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22 }}>
+      <Orrery planets={natal?.planets ?? []} selected={selected} onSelect={setSelected} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22, marginTop: 8 }}>
         {ORDER.map((p) => {
           const active = p === selected, pc = COLOR[p] ?? "#888";
           return (

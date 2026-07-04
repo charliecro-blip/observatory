@@ -122,6 +122,11 @@ export default function Dashboard({
             <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>ruled by {prof.timeLord}</div>
           </Card>
         )}
+
+        <Card title="Star Base · your chart" icon="✵" onOpen={onNavigate ? () => onNavigate("planets") : undefined}>
+          <div style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>Visit your planets and houses</div>
+          <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>what you're made of, and how it's moving now</div>
+        </Card>
       </div>
     </div>
   );
