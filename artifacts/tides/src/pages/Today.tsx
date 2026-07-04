@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
+import Dashboard from "@/components/Dashboard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
@@ -810,6 +811,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             </div>
           );
         })()}
+
+        {/* Daily report — the home as a navigation console: weather + where you're
+            steering + what's on deck + the week, at a glance. */}
+        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} />}
 
         {/* The big sky — the moment's defining aspects, explored */}
         {now && <BigSky now={now} />}
