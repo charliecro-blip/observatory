@@ -48,18 +48,6 @@ const ELEMENT_NOTE: Record<string, string> = {
   earth:"Grounding, patience, and practical focus.",
   air:"Conceptual, communicative, and eclectic energy.",
 };
-const BIO_COLOR: Record<string, string> = {
-  fruit:"#c07030",root:"#806050",flower:"#b05070",leaf:"#408070",
-};
-const BIO_LABEL: Record<string, string> = {
-  fruit:"Fruit",root:"Root",flower:"Flower",leaf:"Leaf",
-};
-const BIO_NOTE: Record<string, string> = {
-  fruit:"Peak vitality — train, perform, and take on challenges.",
-  root:"Grounding — strength work, steady habits, earthy foods.",
-  flower:"Sensitivity — self-care, aesthetic work, gentle movement.",
-  leaf:"Cleansing — hydration, rest, light fasting, lymphatic support.",
-};
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
   Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
@@ -524,7 +512,6 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           const phase = dayData?.moonPhase ?? "";
           const qs = dayData?.qualityScore ?? 0;
           const voc = vocRangeForDate(dateStr, eventsMap);
-          const bio = dayData?.biodynamicType ?? "";
           const moonAspects = dayData?.moonAspects ?? [];
           const dayRuler = dayData?.dayRuler ?? "";
           const allHours = planetaryHoursMap.get(dateStr) ?? [];
@@ -946,7 +933,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
   const elem = dayData?.element??"", phase = dayData?.moonPhase??"", qs = dayData?.qualityScore??0;
   const voc = dayData?.voidPeriods??false, crossings = (dayData?.crossings??[]) as any[];
   const moonSign = dayData?.moonSign??"", signKey = parseSign(moonSign);
-  const bio = dayData?.biodynamicType??"", dayRuler = dayData?.dayRuler??"";
+  const dayRuler = dayData?.dayRuler??"";
 
   const { data: wins=[] } = useQuery<PlanningWindow[]>({
     queryKey:["windows",testerId,dateStr],
@@ -1009,15 +996,6 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             </div>
             <div style={{ fontSize:9.5,color:ELEMENT_LABEL[elem]??"#888",textTransform:"capitalize" }}>{elem} · {dayData.quality?.replace(/_/g," ")}</div>
           </div>
-          {bio && (
-            <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-              <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:3 }}>
-                <div style={{ width:7,height:7,borderRadius:"50%",background:BIO_COLOR[bio]??"#bbb" }}/>
-                <div style={{ fontSize:10.5,fontWeight:600,color:"#333" }}>{BIO_LABEL[bio]} day</div>
-              </div>
-              <div style={{ fontSize:9.5,color:"#666",lineHeight:1.5 }}>{BIO_NOTE[bio]}</div>
-            </div>
-          )}
           {crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:2 }}>Angle crossings</div>

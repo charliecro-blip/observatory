@@ -13,7 +13,6 @@ const PHASES = [
   { key:"full",   label:"Full · culminate" },
   { key:"waning", label:"Waning · release" },
 ];
-const BIO = ["leaf","root","flower","fruit"];
 const WINDOW_TYPES = ["deep_work","creative","planning","social","recovery","study","retreat"];
 const WINDOW_LABELS: Record<string,string> = {
   deep_work:"Deep work",creative:"Creative",planning:"Planning",social:"Social",
@@ -27,7 +26,7 @@ const ELEMENT_COLORS: Record<string,string> = {
 interface HabitDay { date: string; done: boolean; isToday: boolean; }
 interface Habit {
   id: number; name: string; emoji?: string; description?: string;
-  favoredElements?: string; favoredPhases?: string; favoredBiodynamic?: string;
+  favoredElements?: string; favoredPhases?: string;
   bestWindowType?: string; streak: number; doneToday: boolean;
   days: HabitDay[]; goalId?: number; projectId?: number;
 }
@@ -43,11 +42,9 @@ function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|
   if (!now) return "neutral";
   const el = now.element?.element ?? "";
   const phase = now.moonPhase?.toLowerCase() ?? "";
-  const bio = now.biodynamicType?.toLowerCase() ?? "";
   let score = 0;
   if (h.favoredElements?.split(",").map(s=>s.trim()).includes(el)) score += 2;
   if (h.favoredPhases?.split(",").map(s=>s.trim()).some(p => phase.includes(p))) score += 1;
-  if (h.favoredBiodynamic?.split(",").map(s=>s.trim()).includes(bio)) score += 1;
   if (score >= 3) return "resonant";
   if (score >= 1) return "supported";
   return "neutral";
@@ -60,7 +57,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredBiodynamic:[] as string[], bestWindowType:"", minimumViable:"" });
+  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], bestWindowType:"", minimumViable:"" });
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
@@ -94,7 +91,6 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           name: form.name.trim(), emoji: form.emoji || undefined,
           favoredElements: form.favoredElements.join(",") || undefined,
           favoredPhases: form.favoredPhases.join(",") || undefined,
-          favoredBiodynamic: form.favoredBiodynamic.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
           minimumViable: form.minimumViable.trim() || undefined,
           goalId: newGoalId || undefined,
@@ -105,7 +101,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
-      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredBiodynamic:[],bestWindowType:"",minimumViable:""});
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],bestWindowType:"",minimumViable:""});
       setNewGoalId(""); setNewProjectId("");
     },
   });
@@ -151,9 +147,6 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const toggleEl = (el: string) => setForm(f => ({
     ...f, favoredElements: f.favoredElements.includes(el) ? f.favoredElements.filter(e=>e!==el) : [...f.favoredElements, el]
   }));
-  const toggleBio = (b: string) => setForm(f => ({
-    ...f, favoredBiodynamic: f.favoredBiodynamic.includes(b) ? f.favoredBiodynamic.filter(e=>e!==b) : [...f.favoredBiodynamic, b]
-  }));
   const togglePhase = (p: string) => setForm(f => ({
     ...f, favoredPhases: f.favoredPhases.includes(p) ? f.favoredPhases.filter(e=>e!==p) : [...f.favoredPhases, p]
   }));
@@ -162,7 +155,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
         <div style={{fontSize:12,color:"#888"}}>
-          {now ? `${now.element?.element} · ${now.biodynamicType} · ${now.moonPhase?.replace(/_/g," ")}` : "Loading…"}
+          {now ? `${now.element?.element} · ${now.moonPhase?.replace(/_/g," ")}` : "Loading…"}
         </div>
         <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
           + New habit
@@ -230,20 +223,6 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                     background:form.favoredPhases.includes(p.key)?"#7080a020":"transparent",
                     color:form.favoredPhases.includes(p.key)?"#50608a":"#888",
                   }}>{p.label}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#aaa",marginBottom:5}}>Best biodynamic days</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                {BIO.map(b => (
-                  <button key={b} onClick={()=>toggleBio(b)} style={{
-                    fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
-                    borderColor:form.favoredBiodynamic.includes(b)?"#5a7a50":"#d8d2ca",
-                    background:form.favoredBiodynamic.includes(b)?"#d0e8c8":"transparent",
-                    color:form.favoredBiodynamic.includes(b)?"#3a5a30":"#888",
-                  }}>{b}</button>
                 ))}
               </div>
             </div>
@@ -332,7 +311,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
               {/* Timing note */}
               {h.timing === "resonant" && (
                 <div style={{fontSize:9,color:"#3a6020",marginTop:6,paddingTop:6,borderTop:"1px solid #e8f0e4"}}>
-                  ✦ Resonant now — {[h.favoredElements,h.favoredBiodynamic].filter(Boolean).join(" · ")}
+                  ✦ Resonant now — {[h.favoredElements,h.favoredPhases].filter(Boolean).join(" · ")}
                 </div>
               )}
             </div>

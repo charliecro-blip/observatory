@@ -107,7 +107,7 @@ export const habits = pgTable("habits", {
   // Timing affinity (mirrors cultivator logic)
   favoredElements: text("favored_elements"), // comma-separated: water,earth
   favoredPhases: text("favored_phases"),     // comma-separated: waxing,full
-  favoredBiodynamic: text("favored_biodynamic"), // comma-separated: leaf,root
+  favoredBiodynamic: text("favored_biodynamic"), // DEPRECATED (biodynamic removed 2026-07): unused; kept so a plain deploy `push` doesn't try a destructive drop — remove with `pnpm run push-force` when convenient
   bestWindowType: text("best_window_type"),  // deep_work | social | etc.
   minimumViable: text("minimum_viable"),     // smallest version on a hard day
   status: text("status").notNull().default("active"),

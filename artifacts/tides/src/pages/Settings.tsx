@@ -322,7 +322,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
 // ---- Display section ----
 
 const RAIL_SECTIONS = [
-  { key: "moon" as const,       label: "Moon & element",   sub: "Phase, sign, biodynamic type" },
+  { key: "moon" as const,       label: "Moon & element",   sub: "Phase, sign, element" },
   { key: "aspects" as const,    label: "Moon aspects",     sub: "Current applying/separating aspects" },
   { key: "retrogrades" as const, label: "Retrogrades",     sub: "Planets in retrograde motion" },
   { key: "hour" as const,       label: "Planetary hour",   sub: "Current hour + upcoming 4" },

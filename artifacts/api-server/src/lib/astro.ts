@@ -871,21 +871,11 @@ const SIGN_TO_ELEMENT: Record<string, string> = {
   Cancer:      "water",  Scorpio:     "water",  Pisces:      "water",
 };
 
-// Biodynamic day types (after Maria Thun): Moon sign → plant/body resonance
-const ELEMENT_TO_BIODYNAMIC: Record<string, string> = {
-  fire:   "fruit-seed",   // Leo, Aries, Sagittarius — seed vitality, yang energy
-  earth:  "root",         // Virgo, Taurus, Capricorn — grounding, structure, body
-  air:    "flower",       // Gemini, Libra, Aquarius  — breath, pollination, relationship
-  water:  "leaf",         // Cancer, Scorpio, Pisces  — fluid, receptive, emotional body
-  spirit: "fallow",       // VOC — rest, threshold, between-worlds
-};
-
 export interface DailyElementEmphasis {
   element: "fire" | "earth" | "air" | "water" | "spirit";
   source: "moon-sign" | "void-of-course";
   moonSign: string;
   voidOfCourse: boolean;
-  biodynamicType: string;  // fruit-seed | root | flower | leaf | fallow
 }
 
 /**
@@ -899,11 +889,11 @@ export function getDailyElementEmphasis(jd: number): DailyElementEmphasis {
   const { voc }  = voidOfCourse(jd);
 
   if (voc) {
-    return { element: "spirit", source: "void-of-course", moonSign, voidOfCourse: true, biodynamicType: "fallow" };
+    return { element: "spirit", source: "void-of-course", moonSign, voidOfCourse: true };
   }
 
   const element = (SIGN_TO_ELEMENT[moonSign] ?? "water") as DailyElementEmphasis["element"];
-  return { element, source: "moon-sign", moonSign, voidOfCourse: false, biodynamicType: ELEMENT_TO_BIODYNAMIC[element] ?? "root" };
+  return { element, source: "moon-sign", moonSign, voidOfCourse: false };
 }
 
 export function getAstroSnapshot(date: Date, lat = 40.7, lon = -74.0) {

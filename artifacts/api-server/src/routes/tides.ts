@@ -268,10 +268,6 @@ router.get("/tides/now", async (req, res) => {
     moonIllumination: fraction, // alias for Rail component
     moonSign,
     sunSign,
-    biodynamicType: ((): string => {
-      const bioMap: Record<string, string> = { fire: "fruit", earth: "root", air: "flower", water: "leaf", spirit: "rest" };
-      return bioMap[elemEmph.element] ?? "root";
-    })(),
     retrogrades,
     aspects,
     moonAspects,
@@ -333,7 +329,6 @@ router.get("/tides/week", (req, res) => {
     moonPhase: string;
     moonFraction: number;
     element: string;
-    biodynamicType: string;
     voidPeriods: boolean;
     quality: string;
     qualityScore: number;
@@ -381,11 +376,6 @@ router.get("/tides/week", (req, res) => {
       score >= 7 ? "excellent" :
       score >= 5 ? "good" :
       score >= 2 ? "workable" : "mixed";
-
-    // Biodynamic day type from element
-    const bioMap: Record<string, string> = {
-      fire: "fruit", earth: "root", air: "flower", water: "leaf", spirit: "rest",
-    };
 
     // Moon aspects at noon (used for tide trend/coherence)
     const noonMoonAspects = getMajorAspects(noonJd).filter(a => a.planet1 === "Moon" || a.planet2 === "Moon");
@@ -444,7 +434,6 @@ router.get("/tides/week", (req, res) => {
       moonPhase:    phaseName,
       moonFraction: fraction,
       element,
-      biodynamicType: bioMap[element] ?? "root",
       voidPeriods:  hasVoc,
       quality:      qualityLabel,
       qualityScore: score,

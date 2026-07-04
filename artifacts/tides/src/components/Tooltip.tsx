@@ -98,13 +98,9 @@ export const GLOSSARY = {
     title: "Day Element",
     body: "The element of the current lunar sign shapes the day's underlying quality. Fire (Aries, Leo, Sagittarius) — dynamic, initiating, high energy. Earth (Taurus, Virgo, Capricorn) — grounded, practical, productive. Air (Gemini, Libra, Aquarius) — social, communicative, intellectual. Water (Cancer, Scorpio, Pisces) — intuitive, emotional, receptive.",
   },
-  biodynamicType: {
-    title: "Biodynamic Day Type",
-    body: "From biodynamic farming, which correlates the Moon's zodiac position to plant growth patterns. Fruit days (fire signs) — high vitality, good for creative and decisive work. Root days (earth signs) — grounded and practical. Flower days (air signs) — sensitive and aesthetic. Leaf days (water signs) — fluid, emotional, nutritive.",
-  },
   qualityScore: {
     title: "Quality Score",
-    body: "A 1–7 composite score drawing on lunar aspects, element, biodynamic type, void of course status, and planetary hour quality. 6–7 = excellent or good window; 4–5 = workable; 1–3 = mixed or challenging. The score is a guide, not a guarantee.",
+    body: "A 1–7 composite score drawing on lunar aspects, element, void of course status, and planetary hour quality. 6–7 = excellent or good window; 4–5 = workable; 1–3 = mixed or challenging. The score is a guide, not a guarantee.",
   },
   angleCrossing: {
     title: "Angle Crossing",
@@ -124,7 +120,7 @@ export const GLOSSARY = {
   },
   resonance: {
     title: "Cycle Resonance",
-    body: "The alignment of multiple timing cycles simultaneously. A high-resonance moment occurs when the planetary hour, lunar phase, biodynamic type, and aspect quality all point in the same direction. The bands below the wave show each cycle independently — look for moments when all three glow warm at the same column.",
+    body: "The alignment of multiple timing cycles simultaneously. A high-resonance moment occurs when the planetary hour, lunar phase, element, and aspect quality all point in the same direction. The bands below the wave show each cycle independently — look for moments when all three glow warm at the same column.",
   },
 } as const;
 

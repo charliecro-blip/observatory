@@ -50,7 +50,6 @@ const WINDOW_COLORS: Record<string, string> = {
 function heroText(now: any): string {
   const el = now?.element?.element ?? "water";
   const q = now?.quality ?? "supported";
-  const bio = now?.biodynamicType ?? "";
   const map: Record<string, Record<string, string>> = {
     water: {
       good: "Deep, still water — ideal for absorption and focus.",

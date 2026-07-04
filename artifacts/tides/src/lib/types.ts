@@ -32,7 +32,6 @@ export interface TidesNow {
   moonPhase: string;
   moonIllumination: number;
   moonSign: string;
-  biodynamicType: string;
   elementEmphasis?: string;
   planetaryHour: { planet: string; began: string; ends: string; quality: string; archetype?: string };
   upcomingHours: { planet: string; time: string }[];
@@ -99,7 +98,6 @@ export interface WeekDay {
   element: string;
   moonSign: string;
   moonPhase: string;
-  biodynamicType: string;
   voidPeriods?: boolean;
   crossings?: Crossing[];
   moonAspects?: { planet: string; aspect: string; applying: boolean; orb: number }[];
