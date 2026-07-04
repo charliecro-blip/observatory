@@ -99,7 +99,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
   {id:"launch",   label:"When"},
-  {id:"planets",  label:"Planets"},
+  {id:"planets",  label:"Star Base"},
 ];
 
 const WINDOW_TYPES = [
