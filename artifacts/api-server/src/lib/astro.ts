@@ -436,17 +436,24 @@ export function getPlanetaryHour(date: Date, lat = 40.7, lon = -74.0): Planetary
     };
   }
 
+  // The planetary DAY ruler is set by the weekday of the *local* daytime span,
+  // not UTC. Derive the local civil day from longitude (local solar time ≈
+  // UTC + lon/15h) so eastern-hemisphere users and instants near the UTC date
+  // line get the right ruling planet. (getUTCDay on the raw instant was wrong
+  // wherever local time and UTC fall on different calendar days.)
+  const localDow = (d: Date) => new Date(d.getTime() + (lon / 15) * 3600000).getUTCDay();
+
   if (now >= riseMs && now < setMs) {
     // Today's day hours
-    const dayRuler = WEEKDAY_RULERS[sunrise.getUTCDay()];
+    const dayRuler = WEEKDAY_RULERS[localDow(sunrise)];
     return computeHour(riseMs, setMs, dayRuler, 0, true);
   } else if (now >= setMs && now < nextRiseMs) {
     // Tonight's night hours
-    const dayRuler = WEEKDAY_RULERS[sunrise.getUTCDay()];
+    const dayRuler = WEEKDAY_RULERS[localDow(sunrise)];
     return computeHour(setMs, nextRiseMs, dayRuler, 12, false);
   } else {
     // Last night's hours (before today's sunrise)
-    const dayRuler = WEEKDAY_RULERS[prevSunrise.getUTCDay()];
+    const dayRuler = WEEKDAY_RULERS[localDow(prevSunrise)];
     return computeHour(prevSetMs, riseMs, dayRuler, 12, false);
   }
 }
