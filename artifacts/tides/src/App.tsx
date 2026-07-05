@@ -21,6 +21,7 @@ import Sky from "@/pages/Sky";
 import Currents from "@/pages/Currents";
 import Launch from "@/pages/Launch";
 import Planets from "@/pages/Planets";
+import Log from "@/pages/Log";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
@@ -86,7 +87,7 @@ function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: stri
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
+type View = "today"|"calendar"|"work"|"launch"|"planets"|"log"|"settings";
 
 // Primary tabs (2026-07-03): Today is the tide you're in; Calendar is the whole
 // "time & sky" home — your grid, the Almanac (sky events + reference/meanings),
@@ -98,6 +99,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
+  {id:"log",      label:"Log"},
   {id:"launch",   label:"When"},
   {id:"planets",  label:"Star Base"},
 ];
@@ -761,7 +763,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", launch:"▲" };
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", log:"📖", launch:"▲" };
 
   return (
     <div style={{display:"flex",height:"calc(100dvh / var(--app-zoom, 1))",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
@@ -848,6 +850,7 @@ function Shell() {
           </SubTabbed>
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="log"      && <Log      testerId={testerId}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
