@@ -43,7 +43,7 @@ const DEEP = "#141d30";
 // Muted equivalents for the low-stimulation styles — same hue family, desaturated
 // and lightened so nothing reads as bright or saturated against the card background.
 const MUTED_ELEMENT_COLORS: Record<string, string> = {
-  fire: "#a87868", earth: "#7a9070", air: "#8478a0", water: "#6c8398",
+  fire: "#a87868", earth: "#7a9070", air: "#c19a3a", water: "#6c8398",
 };
 
 export type ChartStyle = "water" | "calm" | "minimal" | "bars";

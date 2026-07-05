@@ -34,13 +34,13 @@ const SIGN_SYMBOL: Record<string, string> = {
   Libra:"♎",Scorpio:"♏",Sagittarius:"♐",Capricorn:"♑",Aquarius:"♒",Pisces:"♓",
 };
 const ELEMENT_TINT: Record<string, string> = {
-  water:"#ebf1f7",fire:"#f9f0e8",earth:"#edf3e8",air:"#f1edf8",
+  water:"#ebf1f7",fire:"#f9f0e8",earth:"#edf3e8",air:"#f4efdd",
 };
 const ELEMENT_ACCENT: Record<string, string> = {
-  water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#602080",
+  water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#c19a3a",
 };
 const ELEMENT_LABEL: Record<string, string> = {
-  water:"#4a6a90",fire:"#9a4a30",earth:"#4a7040",air:"#7030a0",
+  water:"#4a6a90",fire:"#9a4a30",earth:"#4a7040",air:"#c19a3a",
 };
 const ELEMENT_NOTE: Record<string, string> = {
   water:"Emotional depth, intuition, and receptive energy.",

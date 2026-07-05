@@ -33,7 +33,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
     activities: ["build", "save & budget", "cook & tend", "practice the craft", "organize", "complete", "repair"],
   },
   air: {
-    key: "air", name: "Air", color: "#7040a0",
+    key: "air", name: "Air", color: "#c19a3a",
     essence: "The will to understand — language, connection, and the space between minds.",
     myth: "Air is the element of relation: ideas only become knowledge when they move between people, and air is the moving. It doubts, compares, translates, connects. An air North Star is a place you've chosen to think in public — to write, teach, converse, and be changed by the exchange.",
     domains: ["writing & speech", "study & ideas", "friendship & network", "trade & negotiation", "teaching"],

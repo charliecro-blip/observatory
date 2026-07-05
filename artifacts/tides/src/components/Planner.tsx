@@ -8,7 +8,7 @@ import { useTester } from "@/contexts/tester-context";
 // AI guessed), then weave those into open windows for review before anything is
 // written. Honors your waking hours and works around your Google Calendar.
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 const PLANET_GLYPH: Record<string, string> = { Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇" };
 const ENERGIES = ["low", "medium", "high"] as const;
 

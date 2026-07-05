@@ -6,7 +6,7 @@ import { useCurrents } from "@/hooks/useTides";
 // Each card is a compact instrument that opens its fuller surface. Assembled
 // entirely from data the home already fetches (plus currents).
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80", spirit: "#6f6a90" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80", spirit: "#6f6a90" };
 const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹" };
 const PLANET_GLYPH: Record<string, string> = { Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇" };
 const MOON_EMOJI: Record<string, string> = { new: "🌑", waxing_crescent: "🌒", first_quarter: "🌓", waxing_gibbous: "🌔", full: "🌕", waning_gibbous: "🌖", last_quarter: "🌗", waning_crescent: "🌘" };

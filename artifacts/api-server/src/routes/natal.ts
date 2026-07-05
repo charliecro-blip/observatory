@@ -3,7 +3,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertNatalChartBody } from "@workspace/api-zod";
 import { julianDay } from "../lib/astro.js";
-import { computeNatalChart, computeTransitAspects, computeNatalHealthInsights } from "../lib/natal.js";
+import { computeNatalChart, computeTransitAspects, computeNatalHealthInsights, computeTransitForecast } from "../lib/natal.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 
 const router: IRouter = Router();
@@ -124,6 +124,19 @@ router.get("/natal-chart/transits", requireTesterId, async (req, res) => {
   );
   const transits = computeTransitAspects(computed);
   res.json(transits);
+});
+
+// GET /api/natal-chart/transits/forecast?days=30 — dated transits for the weeks ahead
+router.get("/natal-chart/transits/forecast", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const stored = await getStoredChart(testerId);
+  if (!stored) { res.status(404).json({ error: "No natal chart saved yet" }); return; }
+  const computed = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset);
+  const days = Math.max(7, Math.min(60, parseInt((req.query.days as string) ?? "30", 10) || 30));
+  let transits = computeTransitForecast(computed, days);
+  // Without a known birth time the Ascendant is a guess — don't forecast to it.
+  if (!stored.timeKnown) transits = transits.filter((t) => t.natalPlanet !== "Ascendant").map((t) => ({ ...t, natalHouse: null }));
+  res.json({ days, timeKnown: stored.timeKnown, transits });
 });
 
 // GET /api/natal-chart/debug

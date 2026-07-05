@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useCurrents } from "@/hooks/useTides";
+import { useCurrents, useTransitForecast } from "@/hooks/useTides";
 import { HOUSE_MEANINGS, PLANET_MODES, PROFECTION_GUIDANCE, composePlacement } from "@/lib/currents-content";
 import { PremiumGate } from "@/components/PremiumGate";
 import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
@@ -42,6 +42,8 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
   const { data, isLoading } = useCurrents(testerId, houseSystem);
   const { profile } = useTester();
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [forecastDays, setForecastDays] = useState(30);
+  const { data: forecast } = useTransitForecast(testerId, forecastDays);
   const cautionPlanets = profile?.cautionPlanets;
 
   if (isLoading) {
@@ -170,6 +172,61 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             </div>
           </div>
         )}
+
+        {/* The weeks ahead — a dated forecast of transits landing on your chart */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
+              The weeks ahead · transits landing on your chart
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[30, 60].map((d) => (
+                <button key={d} onClick={() => setForecastDays(d)} style={{
+                  fontSize: 10, padding: "2px 9px", borderRadius: 6, cursor: "pointer",
+                  border: forecastDays === d ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
+                  background: forecastDays === d ? "#1a2a3a10" : "var(--color-card)",
+                  color: forecastDays === d ? "#1a2a3a" : "#999", fontWeight: forecastDays === d ? 600 : 400,
+                }}>{d}d</button>
+              ))}
+            </div>
+          </div>
+          {(forecast?.transits ?? []).length === 0 ? (
+            <div style={{ fontSize: 12, color: "#aaa", padding: "8px 2px" }}>No notable transits perfect in the next {forecastDays} days — a quiet stretch.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(forecast?.transits ?? []).map((t: any, i: number) => {
+                const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
+                const aspLower = (t.aspect ?? "").toLowerCase();
+                const peak = new Date(t.peakDate);
+                const rel = t.dayOffset === 0 ? "today" : t.dayOffset === 1 ? "tomorrow" : `in ${t.dayOffset} days`;
+                return (
+                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${sevColor}`, borderRadius: 9, padding: "9px 13px", display: "flex", alignItems: "center", gap: 11 }}>
+                    <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{peak.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                      <div style={{ fontSize: 8.5, color: "#aaa" }}>{rel}</div>
+                    </div>
+                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
+                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
+                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+                        {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
+                        {t.natalPlanet !== "Ascendant" && t.natalHouse ? ` (${t.natalSign}, house ${t.natalHouse})` : t.natalPlanet !== "Ascendant" ? ` (${t.natalSign})` : ""}
+                      </div>
+                      {t.likelyDomains?.length > 0 && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.slice(0, 3).join(" · ")}</div>}
+                    </div>
+                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>{t.exact ? "exact" : `${t.orb}°`}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div style={{ fontSize: 9.5, color: "#bbb", marginTop: 8, lineHeight: 1.5 }}>
+            Dated to the day each aspect is tightest. Slow-planet transits (Saturn, Uranus, Neptune, Pluto) color a whole season; fast ones pass in days.
+          </div>
+        </div>
 
         {/* Active chapters — outer planets by house */}
         <div>

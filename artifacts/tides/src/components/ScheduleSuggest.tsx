@@ -5,7 +5,7 @@ import { usePremium } from "@/contexts/premium-context";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import { isWithinFreeWindow, isAwakeDuring } from "@/lib/chronotype";
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
 interface BestWindow { date: string; startClock: string; endClock: string; startAt: string; endAt: string; peakE: number; label: string; }
 interface Association { element: string; planets: string[]; windowType: string; rationale: string; source: string; }

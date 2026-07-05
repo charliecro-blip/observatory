@@ -19,14 +19,14 @@ const PLANET_GLYPH: Record<string, string> = {
 const ELEMENT_INFO: Record<string, { color: string; label: string }> = {
   fire:  { color: "#c04830", label: "Fire" },
   earth: { color: "#4a7040", label: "Earth" },
-  air:   { color: "#7040a0", label: "Air" },
+  air:   { color: "#c19a3a", label: "Air" },
   water: { color: "#3a5a80", label: "Water" },
 };
 
 const HORIZON_COLORS: Record<string, { bg: string; color: string }> = {
   near: { bg: "#dbeafe", color: "#2a5a90" },
   mid:  { bg: "#f0e8d8", color: "#8a5020" },
-  long: { bg: "#e8d8f0", color: "#602080" },
+  long: { bg: "#e8d8f0", color: "#c19a3a" },
 };
 
 function houseSystemPref(): string {

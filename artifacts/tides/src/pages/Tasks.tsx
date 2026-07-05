@@ -37,7 +37,7 @@ interface Task {
 interface GoalLite { id:number; title:string; element?:string|null; }
 interface ProjectLite { id:number; title:string; goalId?:number|null; }
 
-const ELEMENT_COLORS: Record<string,string> = { fire:"#c04830", earth:"#4a7040", air:"#7040a0", water:"#3a5a80" };
+const ELEMENT_COLORS: Record<string,string> = { fire:"#c04830", earth:"#4a7040", air:"#c19a3a", water:"#3a5a80" };
 
 function authH(tid:string|null) {
   return { ...(tid ? {"x-tester-id":tid} : {}), "Content-Type":"application/json" };

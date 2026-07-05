@@ -1018,7 +1018,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
 const NS_ELEMENT_INFO: Record<string, { color: string; label: string }> = {
   fire: { color: "#c04830", label: "Fire" }, earth: { color: "#4a7040", label: "Earth" },
-  air: { color: "#7040a0", label: "Air" }, water: { color: "#3a5a80", label: "Water" },
+  air: { color: "#c19a3a", label: "Air" }, water: { color: "#3a5a80", label: "Water" },
 };
 
 function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerId: string | null; onNavigate?: (v: string) => void }) {
@@ -1814,7 +1814,7 @@ const WINDOW_TO_ELEMENT: Record<string, string> = {
 const ELEM_INFO: Record<string, { color: string; label: string; glyph: string }> = {
   fire:   { color: "#c04830", label: "Fire",   glyph: "🔥" },
   earth:  { color: "#4a7040", label: "Earth",  glyph: "🌱" },
-  air:    { color: "#7040a0", label: "Air",     glyph: "💨" },
+  air:    { color: "#c19a3a", label: "Air",     glyph: "💨" },
   water:  { color: "#3a5a80", label: "Water",  glyph: "💧" },
   spirit: { color: "#a08060", label: "Spirit", glyph: "✦"  },
 };
@@ -2544,7 +2544,7 @@ const WAVE_ROW_STYLE: Record<WaveRowType, { border: string; dot: string; textCol
   "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: "#3a5a80" },
   "practice-soften":    { border: "#d0a060", dot: "#d0a060", textColor: "#8a5020", dim: true },
   "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222" },
-  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: "#602080" },
+  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: "#c19a3a" },
 };
 
 function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: string; sub?: string; onCheck?: () => void }) {

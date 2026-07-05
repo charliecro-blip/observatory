@@ -11,7 +11,7 @@ const QUALITY_BG: Record<string, string> = {
   favorable: "#e8f5e0", caution: "#f8ede0", neutral: "var(--color-background)",
 };
 const ELEMENT_COLORS: Record<string, string> = {
-  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
+  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#c19a3a",
 };
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#c06090",
@@ -742,7 +742,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 function ReferenceSection() {
   const [tab, setTab] = useState<"elements" | "planets" | "signs">("elements");
   const [open, setOpen] = useState<string | null>(null);
-  const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#7040a0", water: "#3a5a80" };
+  const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
   const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
     tab === "elements"

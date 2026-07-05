@@ -420,7 +420,7 @@ export interface TransitAspect {
   likelyDomains: string[];
 }
 
-export function computeTransitAspects(natal: ComputedNatalChart, at?: Date): TransitAspect[] {
+export function computeTransitAspects(natal: ComputedNatalChart, at?: Date, limit = 20): TransitAspect[] {
   const now = at ?? new Date();
   const jd = julianDay(now);
   const currentPlanets = getPlanetPositions(jd);
@@ -485,7 +485,63 @@ export function computeTransitAspects(natal: ComputedNatalChart, at?: Date): Tra
   // Sort by score descending — most astrologically significant first
   return transitAspects
     .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
+    .slice(0, limit);
+}
+
+export interface TransitForecastItem {
+  transitPlanet: string;
+  natalPlanet: string;
+  natalSign: string;
+  natalHouse: number | null;
+  aspect: string;
+  orb: number;          // tightest orb reached within the window
+  exact: boolean;       // does it perfect (orb ≤ 1°) inside the window
+  score: number;
+  severity: string;
+  likelyDomains: string[];
+  peakDate: string;     // ISO — the day it's tightest
+  dayOffset: number;    // days from today to the peak
+}
+
+/**
+ * Scan the next `days` and return each transit-to-natal aspect that gets tight
+ * within the window, dated to the day it peaks. The Moon is skipped (it makes
+ * dozens of passes a month — noise for a forecast). Slow transits already in
+ * orb are surfaced at their tightest day in-window. This is "your transits for
+ * the weeks ahead" — a dated list, not just today's snapshot.
+ */
+export function computeTransitForecast(natal: ComputedNatalChart, days = 30): TransitForecastItem[] {
+  const byKey = new Map<string, { a: TransitAspect; orb: number; dayOffset: number; date: Date }>();
+  const start = Date.now();
+  for (let d = 0; d <= days; d++) {
+    const date = new Date(start + d * 86400000);
+    date.setUTCHours(12, 0, 0, 0);
+    for (const a of computeTransitAspects(natal, date, Number.POSITIVE_INFINITY)) {
+      if (a.transitPlanet === "Moon") continue;
+      const key = `${a.transitPlanet}|${a.aspect}|${a.natalPlanet}`;
+      const prev = byKey.get(key);
+      if (!prev || a.orb < prev.orb) byKey.set(key, { a, orb: a.orb, dayOffset: d, date });
+    }
+  }
+  const out: TransitForecastItem[] = [];
+  for (const { a, orb, dayOffset, date } of byKey.values()) {
+    if (orb > 2.5) continue; // only surface transits that actually get tight in-window
+    out.push({
+      transitPlanet: a.transitPlanet,
+      natalPlanet: a.natalPlanet,
+      natalSign: a.natalSign,
+      natalHouse: a.natalHouse,
+      aspect: a.aspect,
+      orb: parseFloat(orb.toFixed(2)),
+      exact: orb <= 1,
+      score: a.score,
+      severity: a.severity,
+      likelyDomains: a.likelyDomains,
+      peakDate: date.toISOString(),
+      dayOffset,
+    });
+  }
+  return out.sort((x, y) => x.dayOffset - y.dayOffset);
 }
 
 // ── Planetary Sensitivity ("Caution Periods" diagnosis) ───────────────────────

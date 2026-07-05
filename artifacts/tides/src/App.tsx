@@ -181,7 +181,7 @@ const INTRO_SLIDES: {
       { label: "Deep",     sub: "water", color: "#2a5a80", bg: "#eaf0f8", note: "feel · rest · create · listen" },
       { label: "Surge",    sub: "fire",  color: "#b84020", bg: "#fff0ec", note: "act · lead · initiate · move" },
       { label: "Building", sub: "earth", color: "#4a7040", bg: "#f0f5ee", note: "build · finish · organize · tend" },
-      { label: "Clear",    sub: "air",   color: "#5040a0", bg: "#f0eef8", note: "think · write · connect · talk" },
+      { label: "Clear",    sub: "air",   color: "#c19a3a", bg: "#f4efdd", note: "think · write · connect · talk" },
     ],
   },
   {
@@ -192,7 +192,7 @@ const INTRO_SLIDES: {
   },
   {
     glyph: "✦",
-    glyphColor: "#7040a0",
+    glyphColor: "#c19a3a",
     title: "Then make it yours.",
     body: "Add your birth details and the tide becomes personal — your own timing, your year ahead, and the long cycles moving through your life right now.",
   },

@@ -37,7 +37,7 @@ function MoonDisc({ illum, waxing, size = 26 }: { illum: number; waxing: boolean
 }
 
 const ELEMENT_COLORS: Record<string, string> = {
-  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#602080",
+  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#c19a3a",
 };
 
 // Void-of-course is a liminal, restful state — NOT a warning. It gets its own
@@ -946,7 +946,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               }}>
                 <div style={{ width: 5, height: 5, borderRadius: 1, background: "#a060c0", flexShrink: 0, transform: "rotate(45deg)" }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, color: "#602080", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
+                  <div style={{ fontSize: 10.5, color: "#c19a3a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
                   {g.horizon && <div style={{ fontSize: 8, color: "#bbb" }}>{g.horizon}</div>}
                 </div>
               </div>

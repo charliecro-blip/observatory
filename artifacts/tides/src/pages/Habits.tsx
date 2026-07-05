@@ -20,7 +20,7 @@ const WINDOW_LABELS: Record<string,string> = {
 };
 
 const ELEMENT_COLORS: Record<string,string> = {
-  water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#602080",
+  water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#c19a3a",
 };
 
 interface HabitDay { date: string; done: boolean; isToday: boolean; }

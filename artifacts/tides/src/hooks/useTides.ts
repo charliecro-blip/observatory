@@ -40,6 +40,19 @@ export function useCurrents(testerId: string | null, houseSystem: string) {
   });
 }
 
+export function useTransitForecast(testerId: string | null, days = 30) {
+  return useQuery<{ days: number; timeKnown: boolean; transits: any[] }>({
+    queryKey: ["transit-forecast", testerId, days],
+    queryFn: async () => {
+      const r = await fetch(`/api/natal-chart/transits/forecast?days=${days}`, { headers: authHeaders(testerId) });
+      if (!r.ok) return { days, timeKnown: false, transits: [] };
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 3600_000,
+  });
+}
+
 export interface CautionDayHit {
   triggerPlanet: string;  // the fast body (Sun) lighting up the flagged placement
   cautionPlanet: string;  // the flagged natal planet

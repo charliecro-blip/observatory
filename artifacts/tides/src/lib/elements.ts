@@ -8,14 +8,14 @@ export type Element = "fire" | "earth" | "air" | "water";
 export const ELEMENT_COLORS: Record<Element, string> = {
   fire:  "#b84020",
   earth: "#4a7040",
-  air:   "#5040a0",
+  air:   "#c19a3a",
   water: "#2a5a80",
 };
 
 export const ELEMENT_BG: Record<Element, string> = {
   fire:  "#fff0ec",
   earth: "#f0f5ee",
-  air:   "#f0eef8",
+  air:   "#f4efdd",
   water: "#eaf0f8",
 };
 

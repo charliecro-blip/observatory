@@ -12,7 +12,7 @@ const PLANET_COLOR: Record<string, string> = {
   Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a",
 };
 // Element tint per sign (fire, earth, air, water repeating from Aries).
-const SIGN_TINT = ["#c0483015", "#4a704015", "#7040a015", "#3a5a8015", "#c0483015", "#4a704015", "#7040a015", "#3a5a8015", "#c0483015", "#4a704015", "#7040a015", "#3a5a8015"];
+const SIGN_TINT = ["#c0483015", "#4a704015", "#c19a3a15", "#3a5a8015", "#c0483015", "#4a704015", "#c19a3a15", "#3a5a8015", "#c0483015", "#4a704015", "#c19a3a15", "#3a5a8015"];
 
 const CX = 150, CY = 150;
 const R_OUTER = 142, R_INNER = 112, R_SIGN = 127;
