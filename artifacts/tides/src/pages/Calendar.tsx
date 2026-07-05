@@ -6,6 +6,7 @@ import { useTester } from "@/contexts/tester-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
+import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
 function hasRealLocation(lat: number, lon: number): boolean {
@@ -28,10 +29,6 @@ const MOON_MEANING: Record<string, string> = {
   "Last Quarter":"Edit and release. Remove what no longer serves.",
   "Waning Crescent":"Rest. Let the field lie fallow.",
   "Balsamic Moon":"Surrender. Deepest inner work before the new cycle.",
-};
-const SIGN_SYMBOL: Record<string, string> = {
-  Aries:"♈",Taurus:"♉",Gemini:"♊",Cancer:"♋",Leo:"♌",Virgo:"♍",
-  Libra:"♎",Scorpio:"♏",Sagittarius:"♐",Capricorn:"♑",Aquarius:"♒",Pisces:"♓",
 };
 const ELEMENT_TINT: Record<string, string> = {
   water:"#ebf1f7",fire:"#f9f0e8",earth:"#edf3e8",air:"#f4efdd",
@@ -60,10 +57,6 @@ const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
   Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
   Uranus:"#3090a0",Neptune:"#5060b0",Pluto:"#703060",
-};
-const PLANET_ICONS: Record<string, string> = {
-  Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",
-  Uranus:"♅",Neptune:"♆",Pluto:"♇",
 };
 const ASPECT_SYM: Record<string, string> = {
   conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹",

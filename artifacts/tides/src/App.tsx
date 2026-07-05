@@ -728,7 +728,11 @@ function Shell() {
   });
 
   useEffect(() => {
-    if (!chartLoading && existingChart === null && isReady && !showModal) {
+    // "Skip for now" is remembered — without the flag this re-armed on every
+    // load for anyone without a chart, re-onboarding them each visit. Birth
+    // data stays one tap away in Settings.
+    if (!chartLoading && existingChart === null && isReady && !showModal
+        && !localStorage.getItem("obs_birth_skipped")) {
       setShowBirthPrompt(true);
     }
   }, [chartLoading, existingChart, isReady, showModal]);
@@ -751,7 +755,7 @@ function Shell() {
       <OnboardingModal
         existingTesterId={testerId}
         skipNameStep={true}
-        onComplete={() => setShowBirthPrompt(false)}
+        onComplete={() => { localStorage.setItem("obs_birth_skipped", "1"); setShowBirthPrompt(false); }}
       />
     );
   }

@@ -16,6 +16,7 @@ import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
+import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
@@ -33,10 +34,6 @@ const PLANET_SIGNIFICATION: Record<string, string> = {
   Uranus: "disruption · surprise · liberation · shake-up",
 };
 
-const PLANET_ICONS: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆",
-};
 
 const QUALITY_COLORS: Record<string, string> = {
   good: "#60a060", supported: "#60a060", challenging: "#c04040", caution: "#d0a040", neutral: "#888",
@@ -1468,10 +1465,6 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
 // sentence collapsed, and on expand a full reading with cycling "takes,"
 // planet-in-sign context, and a plain explanation of the aspect itself.
 
-const BIGSKY_PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
-};
 
 function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }) {
   const [open, setOpen] = useState(false);

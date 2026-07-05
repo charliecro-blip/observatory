@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANETS, CAUTION_PLANET_ARCHETYPE, type CautionPlanet } from "@/lib/tester-profile";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
-const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
-};
 
 // The three slow, powerful outer planets are the recommended starting set —
 // they're what most people feel most distinctly, and keeping the list short

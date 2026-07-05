@@ -19,6 +19,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split the stable framework code from app code so app changes don't
+        // re-download React, and the main chunk stays under the 500KB warning.
+        manualChunks: {
+          vendor: ["react", "react-dom", "@tanstack/react-query"],
+        },
+      },
+    },
   },
   server: {
     port: 5174,

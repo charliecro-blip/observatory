@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
 import { SIGN_MYTHOS, ELEMENT_MYTHOS, PLANET_MYTHOS } from "@/lib/mythos";
+import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
 const QUALITY_COLORS: Record<string, string> = {
   favorable: "#3a6020", caution: "#a05020", neutral: "#555",
@@ -16,10 +17,6 @@ const ELEMENT_COLORS: Record<string, string> = {
 const PLANET_COLORS: Record<string, string> = {
   Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#c06090",
   Mars:"#c04040", Jupiter:"#6040a0", Saturn:"#807060", Uranus:"#3090a0",
-};
-const PLANET_ICONS: Record<string, string> = {
-  Sun:"☉", Moon:"☽", Mercury:"☿", Venus:"♀", Mars:"♂",
-  Jupiter:"♃", Saturn:"♄", Uranus:"♅", Neptune:"♆",
 };
 
 function formatDate(dateStr: string) {

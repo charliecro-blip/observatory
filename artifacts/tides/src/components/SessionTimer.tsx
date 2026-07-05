@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
-const PLANET_ICONS: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀",
-  Mars: "♂", Jupiter: "♃", Saturn: "♄",
-};
 
 function planetColor(p: string) {
   return { Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#a06080",

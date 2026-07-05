@@ -6,11 +6,8 @@ import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import TransitTake from "@/components/TransitTake";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
-const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
-};
 
 const ASPECT_SYM: Record<string, string> = {
   conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹",

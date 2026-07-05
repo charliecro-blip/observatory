@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
 import Planner from "@/components/Planner";
+import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
 const VERDICT_COLORS: Record<ElectionVerdict, string> = {
   strong: "#3a6020", workable: "#3a5a80", caution: "#a05020", avoid: "#a03030",
@@ -11,9 +12,6 @@ const VERDICT_BG: Record<ElectionVerdict, string> = {
 };
 const VERDICT_LABELS: Record<ElectionVerdict, string> = {
   strong: "Strong", workable: "Workable", caution: "Caution", avoid: "Avoid",
-};
-const PLANET_ICONS: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄",
 };
 
 function fmtRange(startIso: string, endIso: string): string {

@@ -8,14 +8,11 @@ import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import TransitTake from "@/components/TransitTake";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
 
-const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
-};
 
 const ELEMENT_INFO: Record<string, { color: string; label: string }> = {
   fire:  { color: "#c04830", label: "Fire" },

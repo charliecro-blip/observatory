@@ -4,6 +4,7 @@ import { useCurrents } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import Orrery from "@/components/Orrery";
+import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -12,7 +13,6 @@ import Orrery from "@/components/Orrery";
 // that already exists (sky-readings, HOUSE_MEANINGS, currents transits).
 
 const ORDER = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
-const GLYPH: Record<string, string> = { Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇" };
 const COLOR: Record<string, string> = {
   Sun: "#c8971e", Moon: "#5a6b8c", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830",
   Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a",

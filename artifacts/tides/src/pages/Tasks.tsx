@@ -6,11 +6,8 @@ import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
-const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
-};
 
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"

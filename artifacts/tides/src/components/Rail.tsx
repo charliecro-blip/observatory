@@ -8,6 +8,7 @@ import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
+import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -92,10 +93,6 @@ const ASPECT_COLORS: Record<string, string> = {
   "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
 };
 
-const PLANET_ICONS: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆",
-};
 
 function planetColor(planet: string) {
   const map: Record<string, string> = {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
 // The Planner — dump everything you need to do, and it weaves each task into the
 // calendar at the time the sky best supports it (GTD + astrology). Two steps:
@@ -9,7 +10,6 @@ import { useTester } from "@/contexts/tester-context";
 // written. Honors your waking hours and works around your Google Calendar.
 
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
-const PLANET_GLYPH: Record<string, string> = { Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂", Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇" };
 const ENERGIES = ["low", "medium", "high"] as const;
 
 interface Card {
