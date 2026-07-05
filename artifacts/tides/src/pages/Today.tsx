@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
+import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -128,7 +128,7 @@ const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage }: {
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, now, northStars }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -137,6 +137,8 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   weekSummary: string;
   onAddTask: (title: string) => void;
   seedMessage?: string | null;
+  now?: any;
+  northStars?: any[] | null;
 }) {
   const [history, setHistory] = useState<AdvisorMessage[]>([]);
   const [input, setInput] = useState("");
@@ -255,7 +257,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
         }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>🧭 Compass</div>
-            <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What does this moment support?</div>
+            <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {history.length > 0 && !showPins && (
@@ -297,30 +299,92 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
 
         {!showPins && <>
 
-        {/* Quick intentions (only before first message) */}
-        {history.length === 0 && (
-          <div style={{ padding: "14px 20px 8px", flexShrink: 0 }}>
-            <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Quick start</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {QUICK_INTENTIONS.map(q => (
-                <button key={q.label} onClick={() => {
-                  if (q.mode === "send") send(q.value);
-                  else { setInput(q.value); inputRef.current?.focus(); }
-                }} style={{
-                  fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "1px solid var(--color-border)",
-                  background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
-                  transition: "background 0.1s",
-                }}>{q.label}</button>
-              ))}
+        {/* Orientation picker (only before first message) — "what do you want
+            to orient to?": your stars, this moment's grain, rest, or timing. */}
+        {history.length === 0 && (() => {
+          const tideChar = (now?.tide?.character ?? null) as TideCharacter | null;
+          const charLabel = tideChar ? CHARACTER_LABEL[tideChar] : null;
+          const charElement = tideChar ? CHARACTER_ELEMENT[tideChar] : null;
+          const charColor = charElement ? (ELEMENT_COLORS[charElement] ?? "#4a5a6a") : "#4a5a6a";
+          const level = now?.tide?.level ?? null;
+          const restful = level === "low" || level === "ebb";
+          const activeStars = (northStars ?? []).filter((s: any) => s.status === "active" || !s.status).slice(0, 4);
+
+          const Row = ({ icon, iconColor, label, sub, onClick }: {
+            icon: string; iconColor: string; label: string; sub?: string; onClick: () => void;
+          }) => (
+            <button onClick={onClick} style={{
+              display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left",
+              padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-border)",
+              background: "var(--color-card)", cursor: "pointer",
+            }}>
+              <span style={{ fontSize: 15, color: iconColor, width: 18, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{label}</span>
+                {sub && <span style={{ display: "block", fontSize: 10, color: "#999", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
+              </span>
+              <span style={{ fontSize: 11, color: "#ccc", flexShrink: 0 }}>→</span>
+            </button>
+          );
+
+          return (
+            <div style={{ padding: "14px 20px 4px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Your Guiding Stars */}
+              {activeStars.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Your guiding stars</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {activeStars.map((s: any) => (
+                      <Row key={s.id} icon="✦" iconColor="#c19a3a"
+                        label={s.title}
+                        sub="Make progress on this — with the sky as it is now"
+                        onClick={() => send(`Help me make progress on my guiding star "${s.title}" right now. Given the current sky and my rhythm, what's one concrete thing I could do toward it in this window, and is now a good time for that kind of effort? If the moment doesn't suit it, say so and tell me when would be better.`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Right now — this moment's grain + rest */}
+              <div>
+                <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Right now</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {charLabel && (
+                    <Row icon="◐" iconColor={charColor}
+                      label={`Work with the ${charLabel} tide`}
+                      sub={tideChar ? CHARACTER_ESSENCE[tideChar] : undefined}
+                      onClick={() => send(`The tide right now is ${charLabel}. Given that grain and my tasks and goals, what's the best thing I could do with this moment? Keep it to what genuinely fits this kind of energy.`)}
+                    />
+                  )}
+                  <Row icon={restful ? "☾" : "⏸"} iconColor="#7080a0"
+                    label={restful ? "Rest — the tide is low" : "Permission to rest"}
+                    sub={restful ? "This window ebbs. Let me help you feel okay stepping back." : "Is stepping back the right call right now?"}
+                    onClick={() => send(`Is this a moment to rest? Look honestly at the current tide and my chart. If the window supports rest or a gentler pace, help me feel okay about that instead of pushing. If it genuinely supports effort, tell me that plainly too.`)}
+                  />
+                </div>
+              </div>
+
+              {/* Ask about timing */}
+              <div>
+                <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Ask about timing</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {QUICK_INTENTIONS.filter(q => q.mode === "fill").map(q => (
+                    <button key={q.label} onClick={() => { setInput(q.value); inputRef.current?.focus(); }} style={{
+                      fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "1px solid var(--color-border)",
+                      background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
+                    }}>{q.label}</button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Message thread */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {allMessages.length === 0 && (
-            <div style={{ color: "#bbb", fontSize: 12, textAlign: "center", marginTop: 20 }}>
-              Pick an intention above or ask anything below.
+            <div style={{ color: "#bbb", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+              Choose above, or ask anything below.
             </div>
           )}
           {allMessages.map((m, i) => (
@@ -661,6 +725,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           gcalEvents={gcalEvents}
           weekSummary={weekSummary}
           seedMessage={advisorSeed}
+          now={now}
+          northStars={northStars}
           onAddTask={title => {
             setNewTaskTitle(title);
             setShowAddTask(true);
