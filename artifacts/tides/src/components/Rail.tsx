@@ -7,6 +7,7 @@ import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
+import TransitTake from "@/components/TransitTake";
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -363,6 +364,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [wavesOpen, setWavesOpen] = useState(true);
   const [transitsOpen, setTransitsOpen] = useState(true);
   const [transitsExpanded, setTransitsExpanded] = useState(false);
+  const [expandedPersonal, setExpandedPersonal] = useState<string | null>(null);
   const { data: northStars } = useNorthStars(testerId);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -843,12 +845,22 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         const slow = now.personalTransits!.filter((t: any) => !FAST.has(t.transitPlanet));
         const shown = transitsExpanded ? now.personalTransits!.length : 3;
         let count = 0;
-        const row = (t: any, i: number) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555" }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
-            <span>{t.summary}</span>
-          </div>
-        );
+        // Each row opens the shared plain-language take — the same explainer a
+        // transit gets on Currents, so "click to learn more" works here too.
+        const row = (t: any, i: number) => {
+          const key = `${t.transitPlanet}|${t.aspect}|${t.natalPlanet}`;
+          const isExp = expandedPersonal === key;
+          return (
+            <div key={i}>
+              <button onClick={() => setExpandedPersonal(v => v === key ? null : key)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{t.summary}</span>
+                <span style={{ fontSize: 7, color: isExp ? "#8a7a50" : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+              </button>
+              {isExp && <TransitTake t={t} />}
+            </div>
+          );
+        };
         return (
           <div style={{ borderBottom: "1px solid var(--color-border)" }}>
             <button onClick={() => setTransitsOpen(v => !v)} style={{
@@ -908,12 +920,19 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           cursor: "pointer", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px",
           color: "#aaa",
         }}>
-          <span>Waves</span>
+          <span>Waves · what to ride today</span>
           <span style={{ fontSize: 8, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
         </button>
 
         {wavesOpen && (
           <div style={{ paddingBottom: 8 }}>
+            {/* What a "wave" is — the one-line gloss that was missing. */}
+            <div style={{ fontSize: 8.5, color: "#b0a89c", lineHeight: 1.5, padding: "0 14px 6px" }}>
+              The doable pieces of your aims — practices, tasks, and stars — surfaced when today's conditions support them.
+            </div>
+            {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").length > 0 && (
+              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
+            )}
             {/* Resonant practices */}
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").slice(0, 3).map((p: any) => (
               <div key={p.id} style={{
@@ -929,6 +948,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             ))}
 
             {/* Tasks */}
+            {(tasks as any[]).filter(t => t.done !== "true").length > 0 && (
+              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "4px 14px 2px" }}>open tasks</div>
+            )}
             {(tasks as any[]).filter(t => t.done !== "true").slice(0, 6).map((t: any) => (
               <div key={t.id} style={{
                 display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
@@ -942,16 +964,20 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               </div>
             ))}
 
-            {/* Goals */}
+            {/* Guiding Stars — labeled so a star's title ("aligned spine") reads
+                as what it is, not a mystery item. */}
+            {(goals as any[]).length > 0 && (
+              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "4px 14px 2px" }}>your guiding stars</div>
+            )}
             {(goals as any[]).slice(0, 3).map((g: any) => (
               <div key={g.id} style={{
                 display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
-                borderLeft: "3px solid #a060c0",
+                borderLeft: "3px solid #c8b06a",
               }}>
-                <div style={{ width: 5, height: 5, borderRadius: 1, background: "#a060c0", flexShrink: 0, transform: "rotate(45deg)" }}/>
+                <span style={{ fontSize: 9, color: "#c8b06a", flexShrink: 0 }}>✦</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, color: "#c19a3a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
-                  {g.horizon && <div style={{ fontSize: 8, color: "#bbb" }}>{g.horizon}</div>}
+                  <div style={{ fontSize: 10.5, color: "#8a7a50", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
+                  {g.horizon && <div style={{ fontSize: 8, color: "#bbb" }}>guiding star · {g.horizon} horizon</div>}
                 </div>
               </div>
             ))}

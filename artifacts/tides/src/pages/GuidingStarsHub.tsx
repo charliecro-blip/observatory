@@ -7,6 +7,7 @@ import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
+import TransitTake from "@/components/TransitTake";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -88,6 +89,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     : [];
 
   const [showForm, setShowForm] = useState(false);
+  const [expandedWeather, setExpandedWeather] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "" });
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -149,6 +151,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       setStepAdd(null); setStepTitle("");
     },
   });
+  // Inline check-off — affirming a task or today's habit right on the star card,
+  // so the review loop closes here instead of requiring a trip to Tasks/Habits.
+  const completeTask = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: true }) });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
+  });
+  const toggleHabitToday = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      if (done) await fetch(`/api/habits/${id}/log`, { method: "DELETE", headers: authHeaders });
+      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers: authHeaders, body: JSON.stringify({ date: new Date().toISOString().slice(0, 10) }) });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["habits"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
+  });
+
   const cycleStep = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const next = status === "pending" ? "in_progress" : status === "in_progress" ? "completed" : "pending";
@@ -506,7 +524,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 {gTasks.length > 0 && (
                   <div style={{ marginBottom: gHabits.length > 0 ? 6 : 0 }}>
                     {gTasks.slice(0, 4).map((t: any) => (
-                      <div key={t.id} style={{ fontSize: 10.5, color: "#6a6258", padding: "2px 0" }}>☐ {t.title}</div>
+                      <button key={t.id} onClick={() => completeTask.mutate(t.id)} title="Mark done"
+                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, color: "#6a6258", padding: "2px 0", background: "none", border: "none", cursor: "pointer" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#3a6020"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#6a6258"; }}
+                      >☐ {t.title}</button>
                     ))}
                     {gTasks.length > 4 && (
                       <button onClick={() => onNavigate("tasks")} style={{ fontSize: 9.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
@@ -518,7 +540,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 {gHabits.length > 0 && (
                   <div>
                     {gHabits.map((h: any) => (
-                      <div key={h.id} style={{ fontSize: 10.5, color: "#6a6258", padding: "2px 0" }}>↻ {h.name}</div>
+                      <button key={h.id} onClick={() => toggleHabitToday.mutate({ id: h.id, done: !!h.doneToday })} title={h.doneToday ? "Undo today's practice" : "Affirm today's practice"}
+                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, padding: "2px 0", background: "none", border: "none", cursor: "pointer", color: h.doneToday ? "#5a8a48" : "#6a6258" }}>
+                        {h.doneToday ? "✓" : "↻"} {h.name}{h.doneToday ? <span style={{ color: "#9ab88a", fontSize: 9 }}> · done today</span> : ""}
+                      </button>
                     ))}
                   </div>
                 )}
@@ -597,20 +622,37 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {premiumUnlocked && currentsData?.hasChart && (() => {
           const prof = currentsData.profection;
           const transits: any[] = currentsData.majorTransits ?? [];
-          if (!prof && transits.length === 0) return null;
+          // Jupiter & Saturn's house chapters — the great time-keepers get equal
+          // billing with the profection and the slow aspects.
+          const keepers: any[] = (currentsData.transitsByHouse ?? []).filter((t: any) => t.planet === "Jupiter" || t.planet === "Saturn");
+          if (!prof && transits.length === 0 && keepers.length === 0) return null;
           return (
             <div style={{ background: "linear-gradient(180deg, var(--color-card) 0%, var(--color-card-2) 100%)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
               <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8ba0", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
               {prof && (
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)", marginBottom: transits.length ? 6 : 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", marginBottom: 5 }}>
                   {PLANET_GLYPH[prof.timeLord] ?? "◔"} Your {ordinal(prof.house)}-house year
                   <span style={{ fontWeight: 400, color: "#999" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
                 </div>
               )}
-              {transits.slice(0, 2).map((t: any, i: number) => (
-                <div key={i} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline" }}>
-                  <span style={{ color: "#a04040", flexShrink: 0 }}>{PLANET_GLYPH[t.transitPlanet]}</span>
-                  <span>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
+              {transits.slice(0, 2).map((t: any, i: number) => {
+                const key = `lw-${t.transitPlanet}-${t.natalPlanet}`;
+                const isExp = expandedWeather === key;
+                return (
+                  <div key={i}>
+                    <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
+                      <span style={{ color: "#a04040", flexShrink: 0 }}>{PLANET_GLYPH[t.transitPlanet]}</span>
+                      <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
+                      <span style={{ fontSize: 8, color: "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
+                    </button>
+                    {isExp && <TransitTake t={t} accent="#8a8ba0" />}
+                  </div>
+                );
+              })}
+              {keepers.map((t: any, i: number) => (
+                <div key={`k${i}`} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", padding: "1px 0" }}>
+                  <span style={{ color: "#5a6b8c", flexShrink: 0 }}>{PLANET_GLYPH[t.planet]}</span>
+                  <span>{t.planet} through your {ordinal(t.house)} · {HOUSE_MEANINGS[t.house]?.title ?? ""} — {t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}</span>
                 </div>
               ))}
             </div>

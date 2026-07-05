@@ -74,6 +74,7 @@ router.get("/tides/now", async (req, res) => {
   const testerId = (req.headers["x-tester-id"] as string) ?? null;
   let personalTransits: Array<{
     transitPlanet: string;
+    transitSign: string;
     aspect: string;
     natalPlanet: string;
     natalSign: string;
@@ -99,6 +100,7 @@ router.get("/tides/now", async (req, res) => {
           .slice(0, 12)
           .map((t) => ({
             transitPlanet: t.transitPlanet,
+            transitSign:   t.transitSign,
             aspect:        t.aspect.toLowerCase(),
             natalPlanet:   t.natalPlanet,
             natalSign:     t.natalSign,

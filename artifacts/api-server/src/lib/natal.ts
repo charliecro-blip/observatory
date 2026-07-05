@@ -490,6 +490,7 @@ export function computeTransitAspects(natal: ComputedNatalChart, at?: Date, limi
 
 export interface TransitForecastItem {
   transitPlanet: string;
+  transitSign: string;
   natalPlanet: string;
   natalSign: string;
   natalHouse: number | null;
@@ -528,6 +529,7 @@ export function computeTransitForecast(natal: ComputedNatalChart, days = 30): Tr
     if (orb > 2.5) continue; // only surface transits that actually get tight in-window
     out.push({
       transitPlanet: a.transitPlanet,
+      transitSign: a.transitSign,
       natalPlanet: a.natalPlanet,
       natalSign: a.natalSign,
       natalHouse: a.natalHouse,

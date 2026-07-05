@@ -827,10 +827,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* The big sky — the moment's defining aspects, explored */}
         {now && <BigSky now={now} />}
 
-        {/* North Stars — chief aims for the week */}
-        {(northStars?.length ?? 0) > 0 && (
-          <NorthStarsCard stars={northStars!} testerId={testerId} onNavigate={onNavigate} />
-        )}
+        {/* (North Stars card absorbed into the dashboard's Guiding stars card —
+            it duplicated the same list right below it.) */}
 
         {/* Today's habits — check-off on the glance layer, so the daily loop
             (glance → act → check off) closes without a trip into Helm. */}

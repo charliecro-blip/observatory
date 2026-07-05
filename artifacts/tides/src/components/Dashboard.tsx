@@ -89,14 +89,8 @@ export default function Dashboard({
           )) : <div style={{ fontSize: 12, color: "#aaa" }}>Nothing scheduled. Plan your day in When →</div>}
         </Card>
 
-        <Card title="The big sky" icon="◈" onOpen={onNavigate ? () => onNavigate("calendar") : undefined}>
-          {aspects.length > 0 ? aspects.map((a: any, i: number) => (
-            <div key={i} style={{ fontSize: 12.5, color: "var(--color-foreground)", padding: "3px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {PLANET_GLYPH[a.planet1] ?? a.planet1} {ASPECT_GLYPH[a.aspect] ?? ""} {PLANET_GLYPH[a.planet2] ?? a.planet2}
-              <span style={{ color: "#999", fontSize: 11, marginLeft: 5 }}>{a.planet1} {a.aspect} {a.planet2}</span>
-            </div>
-          )) : <div style={{ fontSize: 12, color: "#aaa" }}>Calm skies — no strong aspects right now.</div>}
-        </Card>
+        {/* (The big-sky card was dropped — the full explorable BigSky section
+            renders directly below the dashboard, so it only echoed it.) */}
 
         <Card title="The week ahead" icon="↝" onOpen={onNavigate ? () => onNavigate("calendar") : undefined}>
           <div style={{ display: "flex", gap: 5, alignItems: "flex-end", height: 44 }}>

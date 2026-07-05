@@ -5,6 +5,7 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
+import TransitTake from "@/components/TransitTake";
 
 const PLANET_GLYPH: Record<string, string> = {
   Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
@@ -43,6 +44,8 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
   const { profile } = useTester();
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [forecastDays, setForecastDays] = useState(30);
+  const [profOpen, setProfOpen] = useState(false);
+  const [expandedTransit, setExpandedTransit] = useState<string | null>(null);
   const { data: forecast } = useTransitForecast(testerId, forecastDays);
   const cautionPlanets = profile?.cautionPlanets;
 
@@ -101,30 +104,56 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           </div>
         </div>
 
-        {/* Profected year — the annual frame */}
-        {prof && (
-          <div style={{ background: "linear-gradient(135deg,#2a3a52,#3a4a68)", borderRadius: 14, padding: "18px 22px", color: "#fff" }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.2px", color: "rgba(255,255,255,0.55)", marginBottom: 6 }}>
-              Your year · age {prof.age} · through {fmtDate(prof.yearEnd)}
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 3 }}>
-              {prof.house}th House year · {profHouse?.title}
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, marginBottom: 12 }}>
-              {PROFECTION_GUIDANCE[prof.house]}
-            </div>
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 11 }}>
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px" }}>Ruler of the year</div>
-                <div style={{ fontWeight: 600, marginTop: 2 }}>{PLANET_GLYPH[prof.timeLord]} {prof.timeLord} <span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 400 }}>· watch its transits</span></div>
+        {/* Your season now — THREE equal readings, none subordinate: the profected
+            year (annual frame), the sharpest slow aspects (what's landing), and
+            Jupiter & Saturn by house (the two great time-keepers' chapters). */}
+        {(() => {
+          const topAspects = [...majorTransits]
+            .sort((a, b) => {
+              const hard = (t: any) => ["Conjunction", "Square", "Opposition"].includes(t.aspect) ? 0 : 1;
+              return hard(a) - hard(b) || (a.orb ?? 9) - (b.orb ?? 9);
+            })
+            .slice(0, 3);
+          const greatKeepers = transits.filter((t: any) => t.planet === "Jupiter" || t.planet === "Saturn");
+          const cardStyle: React.CSSProperties = { background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 15px", display: "flex", flexDirection: "column", gap: 5, minWidth: 0 };
+          const labelStyle: React.CSSProperties = { fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a89a88" };
+          return (
+            <div>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+                Your season now
               </div>
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px" }}>This month</div>
-                <div style={{ fontWeight: 600, marginTop: 2 }}>{prof.monthHouse}th House · {HOUSE_MEANINGS[prof.monthHouse]?.title}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+                {prof && (
+                  <div style={{ ...cardStyle, cursor: "pointer" }} onClick={() => setProfOpen(v => !v)} title="The annual frame — click for what this year favors">
+                    <div style={labelStyle}>Profected year · through {fmtDate(prof.yearEnd)}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>{prof.house}th house · {profHouse?.title}</div>
+                    <div style={{ fontSize: 11, color: "#888" }}>{PLANET_GLYPH[prof.timeLord]} ruled by {prof.timeLord} · this month: {prof.monthHouse}th ({HOUSE_MEANINGS[prof.monthHouse]?.title})</div>
+                    {profOpen && <div style={{ fontSize: 11, color: "#777", lineHeight: 1.6 }}>{PROFECTION_GUIDANCE[prof.house]}</div>}
+                    <div style={{ fontSize: 9, color: "#bbb", marginTop: "auto" }}>{profOpen ? "▲ less" : "▼ what this year favors"}</div>
+                  </div>
+                )}
+                <div style={cardStyle}>
+                  <div style={labelStyle}>Slow aspects · landing now</div>
+                  {topAspects.length ? topAspects.map((t: any, i: number) => (
+                    <div key={i} style={{ fontSize: 11.5, color: "var(--color-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {PLANET_GLYPH[t.transitPlanet]} <span style={{ color: SEVERITY_COLOR[t.severity] ?? "#999" }}>{ASPECT_SYM[(t.aspect ?? "").toLowerCase()] ?? "·"}</span> {PLANET_GLYPH[t.natalPlanet] ?? ""} {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
+                    </div>
+                  )) : <div style={{ fontSize: 11.5, color: "#999" }}>Quiet — no slow planet is on a natal point.</div>}
+                  <div style={{ fontSize: 9, color: "#bbb", marginTop: "auto" }}>details below ↓</div>
+                </div>
+                <div style={cardStyle}>
+                  <div style={labelStyle}>Jupiter & Saturn · by house</div>
+                  {greatKeepers.length ? greatKeepers.map((t: any, i: number) => (
+                    <div key={i} style={{ fontSize: 11.5, color: "var(--color-foreground)" }}>
+                      {PLANET_GLYPH[t.planet]} {t.planet} through your {t.house}th · {HOUSE_MEANINGS[t.house]?.title}
+                      <div style={{ fontSize: 9.5, color: "#999" }}>{t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}{t.leavesHouse ? ` · until ${fmtDate(t.leavesHouse)}` : ""}</div>
+                    </div>
+                  )) : <div style={{ fontSize: 11.5, color: "#999" }}>—</div>}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {showQuestionnaire && (
           <CautionQuestionnaireModal sensitivity={sensitivity} onClose={() => setShowQuestionnaire(false)} />
@@ -147,25 +176,31 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                 .map((t, i) => {
                 const sevColor = SEVERITY_COLOR[t.severity] ?? "#999";
                 const aspLower = (t.aspect ?? "").toLowerCase();
+                const key = `major-${t.transitPlanet}-${aspLower}-${t.natalPlanet}`;
+                const isExp = expandedTransit === key;
                 return (
-                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
-                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
-                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
-                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
-                        {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
-                        {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
+                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden" }}>
+                    <button onClick={() => setExpandedTransit(v => v === key ? null : key)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}>
+                      <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
+                        <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                        <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
+                        <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
                       </div>
-                      {t.likelyDomains?.length > 0 && (
-                        <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                      {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
-                    </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+                          {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
+                          {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
+                        </div>
+                        {t.likelyDomains?.length > 0 && (
+                          <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
+                        {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
+                      </div>
+                      <span style={{ fontSize: 9, color: isExp ? sevColor : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
+                    </button>
+                    {isExp && <div style={{ padding: "0 14px 10px" }}><TransitTake t={t} accent={sevColor} /></div>}
                   </div>
                 );
               })}
@@ -199,25 +234,31 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                 const aspLower = (t.aspect ?? "").toLowerCase();
                 const peak = new Date(t.peakDate);
                 const rel = t.dayOffset === 0 ? "today" : t.dayOffset === 1 ? "tomorrow" : `in ${t.dayOffset} days`;
+                const key = `fc-${i}-${t.transitPlanet}-${aspLower}-${t.natalPlanet}`;
+                const isExp = expandedTransit === key;
                 return (
-                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${sevColor}`, borderRadius: 9, padding: "9px 13px", display: "flex", alignItems: "center", gap: 11 }}>
-                    <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{peak.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
-                      <div style={{ fontSize: 8.5, color: "#aaa" }}>{rel}</div>
-                    </div>
-                    <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
-                      <span>{PLANET_GLYPH[t.transitPlanet]}</span>
-                      <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
-                      <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
-                        {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
-                        {t.natalPlanet !== "Ascendant" && t.natalHouse ? ` (${t.natalSign}, house ${t.natalHouse})` : t.natalPlanet !== "Ascendant" ? ` (${t.natalSign})` : ""}
+                  <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${sevColor}`, borderRadius: 9, overflow: "hidden" }}>
+                    <button onClick={() => setExpandedTransit(v => v === key ? null : key)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "9px 13px", display: "flex", alignItems: "center", gap: 11, textAlign: "left" }}>
+                      <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{peak.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+                        <div style={{ fontSize: 8.5, color: "#aaa" }}>{rel}</div>
                       </div>
-                      {t.likelyDomains?.length > 0 && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.slice(0, 3).join(" · ")}</div>}
-                    </div>
-                    <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>{t.exact ? "exact" : `${t.orb}°`}</div>
+                      <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
+                        <span>{PLANET_GLYPH[t.transitPlanet]}</span>
+                        <span style={{ color: sevColor, fontSize: 12 }}>{ASPECT_SYM[aspLower] ?? "·"}</span>
+                        <span>{PLANET_GLYPH[t.natalPlanet] ?? t.natalPlanet[0]}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+                          {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
+                          {t.natalPlanet !== "Ascendant" && t.natalHouse ? ` (${t.natalSign}, house ${t.natalHouse})` : t.natalPlanet !== "Ascendant" ? ` (${t.natalSign})` : ""}
+                        </div>
+                        {t.likelyDomains?.length > 0 && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.slice(0, 3).join(" · ")}</div>}
+                      </div>
+                      <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>{t.exact ? "exact" : `${t.orb}°`}</div>
+                      <span style={{ fontSize: 9, color: isExp ? sevColor : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
+                    </button>
+                    {isExp && <div style={{ padding: "0 13px 9px" }}><TransitTake t={t} accent={sevColor} /></div>}
                   </div>
                 );
               })}

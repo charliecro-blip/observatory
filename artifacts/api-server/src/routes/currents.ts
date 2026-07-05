@@ -52,6 +52,7 @@ router.get("/currents", async (req, res) => {
       .slice(0, 8)
       .map((t) => ({
         transitPlanet: t.transitPlanet,
+        transitSign: t.transitSign,
         aspect: t.aspect,
         natalPlanet: t.natalPlanet,
         natalSign: t.natalSign,
