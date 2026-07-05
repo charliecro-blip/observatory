@@ -675,7 +675,9 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
                         </div>
                         <div style={{ fontSize:10, color:"#777", lineHeight:1.5 }}>{ASP_DESC[a.aspect]}</div>
                         <div style={{ fontSize:9, color:"#aaa", marginTop:3 }}>
-                          {a.applying ? `Applying — ${a.orb.toFixed(1)}° to exact` : `Separating — ${a.orb.toFixed(1)}° past exact`}
+                          {a.stationsBeforeExact ? `Closing at ${a.orb.toFixed(1)}° — but a station turns it back before this perfects`
+                            : a.neverPerfected ? `Separating at ${a.orb.toFixed(1)}° — never perfected; a station turned it back short of exact`
+                            : a.applying ? `Applying — ${a.orb.toFixed(1)}° to exact` : `Separating — ${a.orb.toFixed(1)}° past exact`}
                         </div>
                       </div>
                     </div>

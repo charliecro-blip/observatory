@@ -478,6 +478,12 @@ export interface PlanetAspect {
   applying: boolean;
   hoursToExact: number | null;     // real time-to-perfection, applying aspects only
   hoursSinceExact: number | null;  // real time-since-perfection, separating aspects only
+  // True when a station turns the pair around before the aspect ever perfects
+  // (e.g. Mercury stations retrograde short of the conjunction). Without this,
+  // linear extrapolation invents an exact time for a perfection that never
+  // happens — astrologically wrong, and readers who know stations notice.
+  stationsBeforeExact?: boolean;   // applying now, but turns back before 0°
+  neverPerfected?: boolean;        // separating now, but was never exact (approached, stationed, retreated)
 }
 
 /**
@@ -490,6 +496,28 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
   const planetsNext = getPlanetPositions(jd + 1 / 24); // 1 hour forward
 
   const aspects: PlanetAspect[] = [];
+
+  // Snapshot cache for the station-aware scan below: positions at 6-hour steps,
+  // computed lazily and shared across all non-Moon pairs in this call.
+  const SCAN_STEP_H = 6, SCAN_SPAN_H = 14 * 24;
+  const snapCache = new Map<number, ReturnType<typeof getPlanetPositions>>();
+  const posAt = (hOffset: number) => {
+    let s = snapCache.get(hOffset);
+    if (!s) { s = getPlanetPositions(jd + hOffset / 24); snapCache.set(hOffset, s); }
+    return s;
+  };
+  const sepAt = (hOffset: number, name1: string, name2: string, exactAngle: number) => {
+    const snap = posAt(hOffset);
+    const a = snap.find((p) => p.planet === name1)!;
+    const b = snap.find((p) => p.planet === name2)!;
+    const raw = normalize360(a.longitude - b.longitude);
+    const angle = raw > 180 ? 360 - raw : raw;
+    return Math.abs(angle - exactAngle);
+  };
+  // Sampled minimum can sit up to ~half a step off true perfection for the
+  // fastest non-Moon mover (Mercury ~2°/day ≈ 0.5°/step), so "perfected" means
+  // the scan dipped under this rather than exactly zero.
+  const PERFECT_EPS = 0.3;
 
   for (let i = 0; i < planets.length; i++) {
     for (let j = i + 1; j < planets.length; j++) {
@@ -513,16 +541,43 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
           // ratePerHour > 0 means the orb is shrinking (applying).
           const ratePerHour = sep - sepN;
           const applying = sepN < sep;
-          const hoursToExact = applying && ratePerHour > 1e-6
+          // Linear estimates — exact enough for Moon pairs (fast, never stations),
+          // and the fallback when perfection lies beyond the scan window.
+          let hoursToExact = applying && ratePerHour > 1e-6
             ? parseFloat((sep / ratePerHour).toFixed(1))
             : null;
-          // Mirror of hoursToExact for separating aspects — how long ago this pair
-          // was exact, from the same (negated) closing-speed approximation. Without
-          // this, separating aspects showed no time at all in Planetary Pulse, which
-          // read as "some aspects have timing and some don't."
-          const hoursSinceExact = !applying && ratePerHour < -1e-6
+          let hoursSinceExact = !applying && ratePerHour < -1e-6
             ? parseFloat((sep / -ratePerHour).toFixed(1))
             : null;
+          let stationsBeforeExact = false;
+          let neverPerfected = false;
+
+          // Station-aware correction for non-Moon pairs: a linear estimate lies
+          // when a planet stations and turns around short of perfection (e.g.
+          // Mercury stationing retrograde before conjoining Jupiter). Walk the
+          // real ephemeris to see whether the aspect actually perfects (ahead)
+          // or actually perfected (behind).
+          const isMoonPair = p1.planet === "Moon" || p2.planet === "Moon";
+          if (!isMoonPair) {
+            const dir = applying ? 1 : -1; // scan toward the supposed perfection
+            let prev = sep, minSep = sep, minAtH = 0, turned = false;
+            for (let h = SCAN_STEP_H; h <= SCAN_SPAN_H; h += SCAN_STEP_H) {
+              const s = sepAt(dir * h, p1.planet, p2.planet, def.angle);
+              if (s < minSep) { minSep = s; minAtH = h; }
+              if (s > prev + 1e-9 && minSep > PERFECT_EPS) { turned = true; break; }
+              if (minSep <= PERFECT_EPS && s > prev) break; // perfected, then moving off
+              prev = s;
+            }
+            if (minSep <= PERFECT_EPS) {
+              if (applying) hoursToExact = minAtH;
+              else hoursSinceExact = minAtH;
+            } else if (turned) {
+              // The pair reverses before reaching exact — no perfection to report.
+              if (applying) { stationsBeforeExact = true; hoursToExact = null; }
+              else { neverPerfected = true; hoursSinceExact = null; }
+            }
+            // else: still closing at the window edge — keep the linear estimate.
+          }
 
           aspects.push({
             planet1:    p1.planet,
@@ -534,6 +589,8 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
             applying,
             hoursToExact,
             hoursSinceExact,
+            ...(stationsBeforeExact ? { stationsBeforeExact } : {}),
+            ...(neverPerfected ? { neverPerfected } : {}),
           });
           break; // one aspect per planet pair
         }

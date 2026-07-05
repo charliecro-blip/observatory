@@ -2,6 +2,10 @@ export interface SkyAspect {
   planet1: string; planet2: string; aspect: string; nature: string; orb: number; applying: boolean;
   hoursToExact?: number | null;
   hoursSinceExact?: number | null;
+  /** A station turns the pair around before the aspect perfects (no exact time exists). */
+  stationsBeforeExact?: boolean;
+  /** Separating, but the aspect never actually perfected — approached, stationed, retreated. */
+  neverPerfected?: boolean;
 }
 
 export type TideCharacter = "deep" | "surge" | "building" | "clear";

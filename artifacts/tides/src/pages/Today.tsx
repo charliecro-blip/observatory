@@ -1490,11 +1490,15 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
   const hard = aspect === "square" || aspect === "opposition";
   const accent = hard ? "#a05020" : aspect === "conjunction" ? "#8a6a20" : "#3a6020";
 
-  const timing = asp.applying && asp.hoursToExact != null
-    ? `exact ${fmtExactWhen(asp.hoursToExact)}`
-    : !asp.applying && asp.hoursSinceExact != null
-      ? `peaked ${fmtSinceExact(asp.hoursSinceExact)}`
-      : null;
+  const timing = asp.stationsBeforeExact
+    ? "℞ stations before exact"
+    : asp.neverPerfected
+      ? "℞ separating · never perfected"
+      : asp.applying && asp.hoursToExact != null
+        ? `exact ${fmtExactWhen(asp.hoursToExact)}`
+        : !asp.applying && asp.hoursSinceExact != null
+          ? `peaked ${fmtSinceExact(asp.hoursSinceExact)}`
+          : null;
 
   return (
     <div style={{ border: `1px solid ${accent}30`, borderLeft: `3px solid ${accent}`, borderRadius: 12, background: "var(--color-card)", overflow: "hidden" }}>

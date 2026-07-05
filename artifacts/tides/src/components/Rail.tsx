@@ -804,8 +804,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                         <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
                         <span style={{ color:p2c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
                         <span style={{ flex:1, fontSize:9, color:"#777", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }}>
-                          {a.orb.toFixed(1)}°{a.applying?" →":"←"}
+                        <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }} title={
+                          a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
+                          : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
+                          : undefined
+                        }>
+                          {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
                         </span>
                         <span style={{ fontSize:8, color: isExp ? col : "#ccc", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
                       </button>
