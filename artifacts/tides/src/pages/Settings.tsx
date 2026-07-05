@@ -83,6 +83,36 @@ function ThemeSection() {
   );
 }
 
+// Email reports — Phase 1 is the CONTENT, previewable here so the voice can be
+// tuned before a sender exists (see EMAIL-REPORTS.md). Opt-in + sending is Phase 2.
+function EmailReportsSection({ testerId }: { testerId: string | null }) {
+  const tz = new Date().getTimezoneOffset();
+  const open = (span: string) => {
+    // The preview endpoint authenticates via header normally; for a browser tab
+    // we pass the tester id as a query param the middleware also accepts — if it
+    // doesn't, the fetch-and-open fallback below still works.
+    fetch(`/api/reports/preview?span=${span}&tz=${tz}`, { headers: testerId ? { "x-tester-id": testerId } : {} })
+      .then(r => r.text())
+      .then(html => { const w = window.open("", "_blank"); if (w) { w.document.write(html); w.document.close(); } });
+  };
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>Email reports <span style={{ fontSize: 9, fontWeight: 600, color: "#8a6a30", background: "#f0e8d8", padding: "1px 6px", borderRadius: 6, marginLeft: 4 }}>PREVIEW</span></div>
+      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+        A short weather bulletin for your life — the day each morning, the week on Sundays, the month at the New Moon.
+        Sending isn't wired yet; preview how they'd read:
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {(["day", "week", "month"] as const).map(s => (
+          <button key={s} onClick={() => open(s)} style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
+            The {s} ahead ↗
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TextSizeSection() {
   const [scale, setScale] = useState(getTextScale());
   return (
@@ -1270,6 +1300,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         {/* Theme + text size */}
         <ThemeSection />
         <TextSizeSection />
+        <EmailReportsSection testerId={testerId} />
 
         {/* Premium — near the top so it's easy to find and toggle */}
         <PremiumPreviewSection />

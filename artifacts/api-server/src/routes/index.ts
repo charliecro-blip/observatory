@@ -31,6 +31,7 @@ import electionRouter from "./election";
 import accountRouter from "./account";
 import associateRouter from "./associate";
 import planRouter from "./plan";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(electionRouter);
 router.use(accountRouter);
 router.use(associateRouter);
 router.use(planRouter);
+router.use(reportsRouter);
 
 export default router;
