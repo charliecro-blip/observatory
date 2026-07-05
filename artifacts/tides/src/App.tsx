@@ -12,32 +12,29 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
+import CurrentsContextHeader from "@/components/CurrentsContextHeader";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
 import Sky from "@/pages/Sky";
-import Currents from "@/pages/Currents";
 import Launch from "@/pages/Launch";
 import Planets from "@/pages/Planets";
 import Log from "@/pages/Log";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
-type WorkTab = "overview" | "tasks" | "habits" | "currents";
+type WorkTab = "overview" | "tasks" | "habits";
 
 function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
   const [tab, setTab] = useState<WorkTab>("overview");
   // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
-  // habits). Projects was removed as a tab — its one useful bit (breaking a
-  // complex aim into ordered steps) is folded into each Guiding Star as
-  // optional milestones, so most people never meet the concept at all.
+  // habits). Currents (long-cycle context) is now a header at the top.
   const TABS: {id:WorkTab; label:string}[] = [
     {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
-    {id:"currents",  label:"Currents"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -53,11 +50,14 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
           }}>{t.label}</button>
         ))}
       </div>
-      <div style={{flex:1, overflow:"hidden", display:"flex", flexDirection:"column"}}>
+      <div style={{flex:1, overflow:"auto", display:"flex", flexDirection:"column", padding:"16px 20px"}}>
+        {/* Currents context header — shows long-cycle transits + profections at top */}
+        <CurrentsContextHeader testerId={testerId} collapsed={false} />
+
+        {/* Tab content — inherits flex from parent, scrollable together with header */}
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {tab==="currents"  && <Currents testerId={testerId}/>}
       </div>
     </div>
   );
