@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCurrents } from "@/hooks/useTides";
+import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import Orrery from "@/components/Orrery";
@@ -89,7 +89,8 @@ function SectionCard({ label, accent, children }: { label: string; accent?: stri
   );
 }
 
-function PlanetsView({ natal, currents, onReflect }: { natal: any; currents: any; onReflect?: (s: string) => void }) {
+function PlanetsView({ natal, currents, onReflect, testerId, lat, lon }: { natal: any; currents: any; onReflect?: (s: string) => void; testerId: string | null; lat: number; lon: number }) {
+  const { data: anglesData } = useNatalAngles(testerId, lat, lon);
   const [selected, setSelected] = useState("Sun");
   const core = PLANET_CORE[selected] ?? { name: selected, is: "", short: "", use: "" };
   const col = COLOR[selected] ?? "#888";
@@ -128,6 +129,26 @@ function PlanetsView({ natal, currents, onReflect }: { natal: any; currents: any
         </div>
         <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.65, marginTop: 8 }}>{core.name} is {core.is}. Good for {core.use}.</div>
       </div>
+
+      {/* Personal timing — when THIS planet's natal degree crosses the local
+          angles today. Rising = the day's personal sunrise for this drive;
+          culminating = its noon. Classic electional practice, made ambient. */}
+      {(() => {
+        const evs = (anglesData?.events ?? []).filter((e) => e.planet === selected);
+        if (!evs.length) return null;
+        const fmt = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        const rise = evs.find((e) => e.angle === "ASC");
+        const culm = evs.find((e) => e.angle === "MC");
+        const soon = evs.find((e) => Math.abs(Date.parse(e.at) - Date.now()) < 15 * 60000);
+        return (
+          <div style={{ background: soon ? `${col}14` : "var(--color-card)", border: `1px solid ${soon ? col : "var(--color-border)"}`, borderRadius: 12, padding: "11px 16px", marginBottom: 14, display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: soon ? col : "#aaa" }}>{soon ? `✦ your ${core.name} is on an angle now` : "Today at your location"}</span>
+            {rise && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>rises</b> {fmt(rise.at)}{rise.approximate ? " ~" : ""}</span>}
+            {culm && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>culminates</b> {fmt(culm.at)}{culm.approximate ? " ~" : ""}</span>}
+            <span style={{ fontSize: 10, color: "#999" }}>good moments to lead with {core.short.replace(/^the /, "")}</span>
+          </div>
+        );
+      })()}
 
       <SectionCard label="In your chart">
         {sign ? (
@@ -217,7 +238,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
   );
 }
 
-export default function StarBase({ testerId, onReflect }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void }) {
+export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void }) {
   const [mode, setMode] = useState<"planets" | "houses">("planets");
 
   const { data: natal } = useQuery<any>({
@@ -247,7 +268,7 @@ export default function StarBase({ testerId, onReflect }: { testerId: string | n
         </div>
 
         {mode === "planets"
-          ? <PlanetsView natal={natal} currents={currents} onReflect={onReflect} />
+          ? <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} />
           : <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
       </div>
     </div>

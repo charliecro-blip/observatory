@@ -819,7 +819,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* Daily report — the home as a navigation console: weather + where you're
             steering + what's on deck + the week, at a glance. */}
-        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} />}
+        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
 
         {/* The big sky — the moment's defining aspects, explored */}
         {now && <BigSky now={now} />}

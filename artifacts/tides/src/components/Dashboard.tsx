@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrents } from "@/hooks/useTides";
+import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 
 // The daily report — the home as a navigation console. Weather + calendar +
@@ -27,12 +27,13 @@ function Card({ title, icon, onOpen, children }: { title: string; icon: string; 
 }
 
 export default function Dashboard({
-  now, week, northStars, windows, testerId, today, onNavigate,
+  now, week, northStars, windows, testerId, today, onNavigate, lat = 40.7, lon = -74.0,
 }: {
   now: any; week: any; northStars: any[] | undefined; windows: any[] | undefined;
-  testerId: string | null; today: string; onNavigate?: (v: string) => void;
+  testerId: string | null; today: string; onNavigate?: (v: string) => void; lat?: number; lon?: number;
 }) {
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
+  const { data: anglesData } = useNatalAngles(testerId, lat, lon);
 
   const el = now?.tide?.element ?? now?.element?.element ?? "water";
   const elCol = ELEMENT_COLOR[el] ?? "#888";
@@ -116,6 +117,32 @@ export default function Dashboard({
             <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>ruled by {prof.timeLord}</div>
           </Card>
         )}
+
+        {/* Your sky clock — the next moments one of YOUR natal degrees crosses a
+            local angle (rises or culminates). Personal timing, not the sky's. */}
+        {(() => {
+          const upcoming = (anglesData?.events ?? [])
+            .filter((e) => Date.parse(e.at) > Date.now() - 10 * 60000)
+            .slice(0, 3);
+          if (!upcoming.length) return null;
+          const fmt = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          return (
+            <Card title="Your sky clock" icon="✧" onOpen={onNavigate ? () => onNavigate("planets") : undefined}>
+              {upcoming.map((e, i) => {
+                const nowish = Math.abs(Date.parse(e.at) - Date.now()) < 10 * 60000;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0" }}>
+                    <span style={{ fontSize: 11, color: nowish ? "#a8862e" : "#999", flexShrink: 0, minWidth: 52, fontWeight: nowish ? 700 : 400 }}>{nowish ? "now" : fmt(e.at)}</span>
+                    <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
+                      {PLANET_GLYPH[e.planet]} your {e.planet} {e.angle === "ASC" ? "rises" : "culminates"}{e.approximate ? " ~" : ""}
+                    </span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>your degrees crossing the local angles</div>
+            </Card>
+          );
+        })()}
 
         <Card title="Star Base · your chart" icon="✵" onOpen={onNavigate ? () => onNavigate("planets") : undefined}>
           <div style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>Visit your planets and houses</div>

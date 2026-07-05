@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertNatalChartBody } from "@workspace/api-zod";
-import { julianDay } from "../lib/astro.js";
+import { julianDay, getNatalDegreeAngles } from "../lib/astro.js";
 import { computeNatalChart, computeTransitAspects, computeNatalHealthInsights, computeTransitForecast } from "../lib/natal.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 
@@ -124,6 +124,35 @@ router.get("/natal-chart/transits", requireTesterId, async (req, res) => {
   );
   const transits = computeTransitAspects(computed);
   res.json(transits);
+});
+
+// GET /api/natal-chart/angles-today?lat=&lon= — when YOUR natal degrees rise or
+// culminate at this location today (personal electional timing). Works without
+// a birth time: planet degrees don't depend on houses — only the Moon is
+// approximate (±~6°/± ~25min), flagged so the UI can say so.
+router.get("/natal-chart/angles-today", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const stored = await getStoredChart(testerId);
+  if (!stored) { res.status(404).json({ error: "No natal chart saved yet" }); return; }
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const computed = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset);
+  const jd = julianDay(new Date());
+  const events = getNatalDegreeAngles(
+    computed.planets.map((p) => ({ planet: p.planet, longitude: p.longitude })),
+    jd, lat, lon, 24,
+  ).map((e) => {
+    const natal = computed.planets.find((p) => p.planet === e.planet)!;
+    return {
+      planet: e.planet,
+      natalSign: natal.sign,
+      natalDegree: parseFloat(natal.degree.toFixed(1)),
+      angle: e.angle,                               // ASC = rising, MC = culminating
+      at: new Date((e.jd - 2440587.5) * 86400000).toISOString(),
+      approximate: e.planet === "Moon" && stored.timeKnown === false,
+    };
+  });
+  res.json({ timeKnown: stored.timeKnown !== false, events });
 });
 
 // GET /api/natal-chart/transits/forecast?days=30 — dated transits for the weeks ahead

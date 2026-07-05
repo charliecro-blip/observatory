@@ -40,6 +40,25 @@ export function useCurrents(testerId: string | null, houseSystem: string) {
   });
 }
 
+export interface NatalAngleEvent {
+  planet: string; natalSign: string; natalDegree: number;
+  angle: "ASC" | "MC"; at: string; approximate: boolean;
+}
+
+/** When your natal degrees rise/culminate at this location today — personal timing. */
+export function useNatalAngles(testerId: string | null, lat: number, lon: number) {
+  return useQuery<{ timeKnown: boolean; events: NatalAngleEvent[] }>({
+    queryKey: ["natal-angles", testerId, lat.toFixed(2), lon.toFixed(2)],
+    queryFn: async () => {
+      const r = await fetch(`/api/natal-chart/angles-today?lat=${lat}&lon=${lon}`, { headers: authHeaders(testerId) });
+      if (!r.ok) return { timeKnown: false, events: [] };
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 30 * 60_000,
+  });
+}
+
 export function useTransitForecast(testerId: string | null, days = 30) {
   return useQuery<{ days: number; timeKnown: boolean; transits: any[] }>({
     queryKey: ["transit-forecast", testerId, days],

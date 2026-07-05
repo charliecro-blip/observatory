@@ -830,6 +830,57 @@ export interface LocalAngles {
  * @param latDeg Observer latitude  (positive = north)
  * @param lonDeg Observer longitude (positive = east, negative = west)
  */
+/**
+ * Personal angle times — when FIXED natal degrees rise (cross the local
+ * Ascendant) or culminate (cross the local Midheaven) at a given place.
+ * The mirror of getNextAngularCrossings: that one asks "when do today's
+ * planets hit the local angles" (collective); this asks "when do the local
+ * angles sweep across the degrees of YOUR chart" (personal). Each natal
+ * degree rises and culminates once per sidereal day, so a 24h scan finds
+ * one of each per planet. Sign-change detection on the wrapped difference,
+ * linearly interpolated — accurate to well under a minute at 2-min steps.
+ */
+export interface NatalAngleEvent {
+  planet: string;
+  angle: "ASC" | "MC";   // rising | culminating
+  jd: number;            // instant of exactness
+}
+
+export function getNatalDegreeAngles(
+  natalPlanets: { planet: string; longitude: number }[],
+  jd: number,
+  latDeg: number,
+  lonDeg: number,
+  lookAheadHours = 24,
+): NatalAngleEvent[] {
+  const STEP_MIN = 2;
+  const STEP_JD = STEP_MIN / (24 * 60);
+  const STEPS = Math.floor((lookAheadHours * 60) / STEP_MIN);
+  const wrap180 = (d: number) => { const w = normalize360(d); return w > 180 ? w - 360 : w; };
+
+  const out: NatalAngleEvent[] = [];
+  // Previous wrapped differences per planet-angle pair
+  const prev = new Map<string, number>();
+
+  for (let step = 0; step <= STEPS; step++) {
+    const t = jd + step * STEP_JD;
+    const angles = getLocalAngles(t, latDeg, lonDeg);
+    for (const p of natalPlanets) {
+      for (const [name, lon] of [["ASC", angles.asc], ["MC", angles.mc]] as const) {
+        const f = wrap180(lon - p.longitude); // angle sweeps forward past the degree: f crosses 0 upward
+        const key = `${p.planet}-${name}`;
+        const fPrev = prev.get(key);
+        if (fPrev !== undefined && fPrev < 0 && f >= 0 && f - fPrev < 30) {
+          const frac = -fPrev / (f - fPrev);
+          out.push({ planet: p.planet, angle: name, jd: t - STEP_JD + frac * STEP_JD });
+        }
+        prev.set(key, f);
+      }
+    }
+  }
+  return out.sort((a, b) => a.jd - b.jd);
+}
+
 export function getLocalAngles(jd: number, latDeg: number, lonDeg: number): LocalAngles {
   const T = (jd - 2451545.0) / 36525;
 
