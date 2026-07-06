@@ -23,9 +23,23 @@ Your Railway API base URL (the callback lives here):
    - Save. Copy the **Client ID** and **Client secret**.
 4. **APIs & Services → OAuth consent screen**:
    - **Scopes**: it only needs `.../auth/calendar.readonly` (read-only — the app never writes to your calendar).
-   - **Publishing status** matters: while it's in **"Testing"**, only emails on the **Test users** list can connect. Either
-     - add each tester's Google email under **Test users**, or
-     - click **Publish app** (a read-only calendar scope generally doesn't need Google's formal verification for basic use, but confirm the current console prompts).
+   - **Publishing status** matters — and the two states trade off differently:
+     - **Testing**: only emails on the **Test users** list can connect, and
+       Google **expires refresh tokens after 7 days**, so every tester gets
+       silently disconnected weekly. Bad for a beta.
+     - **Published (unverified)** — *recommended for the beta*: anyone can
+       connect and tokens don't expire, but because `calendar.readonly` is a
+       **sensitive scope**, Google shows a **"Google hasn't verified this
+       app"** warning until formal verification is done. Users click
+       **Advanced → Go to Tides (unsafe)** to continue — tell testers to
+       expect this (it's covered in TESTER-NOTES.md).
+   - **Removing the warning = Google OAuth verification** (days–weeks; do
+     before public launch): requires a **custom domain you own** (Google
+     won't verify a `*.up.railway.app` subdomain), a **published privacy
+     policy** and homepage on that domain (see PRIVACY-POLICY-DRAFT.md),
+     app name/logo, and a short justification for calendar access. No
+     third-party security audit is needed for read-only calendar (that's
+     only for restricted scopes like Gmail/Drive).
 
 > **This is the usual reason "connect" fails silently in prod:** the app is in Testing mode and the person connecting isn't on the Test users list, or the redirect URI doesn't match to the character.
 
