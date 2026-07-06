@@ -506,14 +506,33 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   useEffect(() => {
     const saved = localStorage.getItem(journalKey(testerId, today));
-    if (saved) setJournalText(saved);
+    if (saved) { setJournalText(saved); return; }
+    // No local copy (new device / cleared storage) — hydrate from the server
+    // check-in so the journal follows the account, not the browser.
+    if (!testerId) return;
+    fetch("/api/check-ins/today", { headers: { "x-tester-id": testerId } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(row => { if (row?.notes) setJournalText(row.notes); })
+      .catch(() => {});
   }, [testerId, today]);
 
+  // Journal persists to the day's check-in row (debounced) so it shows up in
+  // The Log, sky-stamped — localStorage stays as the instant/offline copy.
+  const journalPostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function saveJournal(text: string) {
     setJournalText(text);
     localStorage.setItem(journalKey(testerId, today), text);
     setJournalSaved(true);
     setTimeout(() => setJournalSaved(false), 1500);
+    if (!testerId) return;
+    if (journalPostTimer.current) clearTimeout(journalPostTimer.current);
+    journalPostTimer.current = setTimeout(() => {
+      fetch("/api/check-ins", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ date: today, notes: text }),
+      }).catch(() => {});
+    }, 900);
   }
 
   const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
@@ -907,9 +926,36 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Standing conditions */}
         {now && <ConditionsStrip now={now} today={today} />}
 
-        {/* TideFeedback ("How did today feel?" check-in / reflection loop) removed
-            from the home page for now — placement not yet decided, and it's not
-            meant to be a headline feature. Component still defined below. */}
+        {/* Logbook — the reflect loop. Quiet card, not a headline feature, but
+            it's what feeds The Log: the felt rating + a one-line journal both
+            persist to the day's check-in row, sky-stamped. */}
+        {now && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <TideFeedback now={now} today={today} testerId={testerId} />
+            {todayShowJournal && (
+              <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>Logbook line</span>
+                  <span style={{ fontSize: 9, color: "var(--color-muted)" }}>
+                    {journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
+                  </span>
+                </div>
+                <textarea
+                  value={journalText}
+                  onChange={e => saveJournal(e.target.value)}
+                  placeholder="A line about today — what you did, how the water was…"
+                  rows={2}
+                  style={{
+                    width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8,
+                    border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                    fontSize: 12, lineHeight: 1.5, color: "var(--color-foreground)",
+                    outline: "none", resize: "vertical", fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
@@ -1229,6 +1275,17 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
     localStorage.setItem(feltKey(testerId, today), JSON.stringify({
       felt, character: now?.tide?.character ?? null, level: now?.tide?.level ?? null, date: today,
     }));
+    // Mirror to the day's check-in row (as behaviorTags — no schema change) so
+    // the felt loop survives browser clears and reads back in The Log.
+    if (!testerId) return;
+    const tags = [`felt:${felt}`];
+    if (now?.tide?.character) tags.push(`tideChar:${now.tide.character}`);
+    if (now?.tide?.level) tags.push(`tideLevel:${now.tide.level}`);
+    fetch("/api/check-ins", {
+      method: "POST",
+      headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+      body: JSON.stringify({ date: today, behaviorTags: tags }),
+    }).catch(() => {});
   }
 
   return (

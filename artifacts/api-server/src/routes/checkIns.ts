@@ -29,39 +29,25 @@ router.post("/check-ins", requireTesterId, async (req, res) => {
   const body = UpsertCheckInBody.parse(req.body);
   const date = body.date ?? todayString();
 
+  // Partial upsert: only fields present in the body are written. Different
+  // surfaces write different slices of the same day (journal → notes,
+  // felt-rating → behaviorTags, a scores form → energy/mood/…) and must not
+  // null each other out. Send an explicit null to clear a field.
+  const FIELDS = [
+    "energy", "mood", "stress", "focus", "digestion",
+    "sleepQuality", "pain", "regulation", "symptomTags", "behaviorTags", "notes",
+  ] as const;
+  const provided: Record<string, unknown> = {};
+  for (const f of FIELDS) {
+    if ((body as Record<string, unknown>)[f] !== undefined) provided[f] = (body as Record<string, unknown>)[f];
+  }
+
   const [row] = await db
     .insert(dailyCheckIns)
-    .values({
-      testerId,
-      date,
-      energy: body.energy ?? null,
-      mood: body.mood ?? null,
-      stress: body.stress ?? null,
-      focus: body.focus ?? null,
-      digestion: body.digestion ?? null,
-      sleepQuality: body.sleepQuality ?? null,
-      pain: body.pain ?? null,
-      regulation: body.regulation ?? null,
-      symptomTags: body.symptomTags ?? null,
-      behaviorTags: body.behaviorTags ?? null,
-      notes: body.notes ?? null,
-    })
+    .values({ testerId, date, ...provided })
     .onConflictDoUpdate({
       target: [dailyCheckIns.testerId, dailyCheckIns.date],
-      set: {
-        energy: body.energy ?? null,
-        mood: body.mood ?? null,
-        stress: body.stress ?? null,
-        focus: body.focus ?? null,
-        digestion: body.digestion ?? null,
-        sleepQuality: body.sleepQuality ?? null,
-        pain: body.pain ?? null,
-        regulation: body.regulation ?? null,
-        symptomTags: body.symptomTags ?? null,
-        behaviorTags: body.behaviorTags ?? null,
-        notes: body.notes ?? null,
-        updatedAt: new Date(),
-      },
+      set: { ...provided, updatedAt: new Date() },
     })
     .returning();
 
