@@ -696,6 +696,59 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
   return best;
 }
 
+// ── Moon contacts to a single planet (the weekly teacher) ────────────────────
+// The Moon perfects an aspect to every planet roughly weekly — the app's
+// sky-literacy layer leans on that rhythm ("your saturnine day"). Scan a jd
+// range hourly for perfection minima of Moon-to-planet aspects.
+
+export interface MoonContact {
+  jd: number;
+  at: string;        // ISO instant of perfection (±30min at 1h steps)
+  aspect: string;    // conjunction | sextile | square | trine | opposition
+  nature: string;    // intensifying | supportive | challenging | flowing | polarizing
+  hard: boolean;     // conjunction/square/opposition — the "flavor day" contacts
+}
+
+function jdToDate(jd: number): Date {
+  return new Date((jd - 2440587.5) * 86400000);
+}
+
+export function getMoonContacts(planet: string, jdStart: number, jdEnd: number): MoonContact[] {
+  const MAX_ORB = 1.5;
+  const hours = Math.max(0, Math.round((jdEnd - jdStart) * 24));
+  const orbs: number[] = [];
+  for (let h = 0; h <= hours; h++) {
+    const t = jdStart + h / 24;
+    orbs.push(nearestAspectDiff(moonLongitude(t), bodyLongitude(planet, t)));
+  }
+
+  const contacts: MoonContact[] = [];
+  for (let h = 1; h < hours; h++) {
+    if (orbs[h] < orbs[h - 1] && orbs[h] < orbs[h + 1] && orbs[h] <= MAX_ORB) {
+      const t = jdStart + h / 24;
+      const raw = normalize360(moonLongitude(t) - bodyLongitude(planet, t));
+      const ang = raw > 180 ? 360 - raw : raw;
+      let aspectName = "conjunction";
+      let aspectNature = "intensifying";
+      for (const def of ASPECT_DEFS) {
+        if (Math.abs(ang - def.angle) <= def.orb) {
+          aspectName = def.name;
+          aspectNature = def.nature;
+          break;
+        }
+      }
+      contacts.push({
+        jd: t,
+        at: jdToDate(t).toISOString(),
+        aspect: aspectName,
+        nature: aspectNature,
+        hard: aspectName === "conjunction" || aspectName === "square" || aspectName === "opposition",
+      });
+    }
+  }
+  return contacts;
+}
+
 // ── Angular Crossing Events ───────────────────────────────────────────────────
 
 export interface AngularCrossing {

@@ -711,6 +711,10 @@ function Shell() {
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [advisorSeed, setAdvisorSeed] = useState<string | null>(null);
   const askCompass = (seed: string) => { setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  // Teachable-moment deep link: "today feels saturnine" on Today → Star Base
+  // opens on that planet's page.
+  const [visitPlanet, setVisitPlanet] = useState<string | null>(null);
+  const goToPlanet = (planet: string) => { setVisitPlanet(planet); setView("planets"); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -841,7 +845,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} onVisitPlanet={goToPlanet}/>}
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
@@ -852,7 +856,7 @@ function Shell() {
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {view==="log"      && <Log      testerId={testerId}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
-        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass}/>}
+        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
 

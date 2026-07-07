@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
+import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -466,9 +467,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, onVisitPlanet }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
+  onVisitPlanet?: (planet: string) => void;
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
@@ -904,6 +906,43 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* Daily report — the home as a navigation console: weather + where you're
             steering + what's on deck + the week, at a glance. */}
+        {/* Teachable moment — when the Moon is on a planet today, name the
+            flavor in feeling-language and offer the door into Star Base. The
+            sky schedules the lesson; we just point at it. */}
+        {(() => {
+          if (!now?.moonAspects?.length) return null;
+          const HARD = new Set(["conjunction", "square", "opposition"]);
+          // Slow/social planets carry the distinct, learnable flavors; skip
+          // Sun (already the day-ruler story) and Mercury/Venus at low weight.
+          const WEIGHT: Record<string, number> = { Saturn: 9, Pluto: 8, Neptune: 7, Uranus: 6, Jupiter: 5, Mars: 4, Venus: 2, Mercury: 1 };
+          const best = (now.moonAspects as any[])
+            .map((a) => ({ ...a, partner: a.planet1 === "Moon" ? a.planet2 : a.planet1 }))
+            .filter((a) => HARD.has(a.aspect) && WEIGHT[a.partner] && a.orb <= 4)
+            .sort((a, b) => (WEIGHT[b.partner] - WEIGHT[a.partner]) || (a.orb - b.orb))[0];
+          if (!best) return null;
+          const lit = PLANET_LITERACY[best.partner];
+          if (!lit) return null;
+          const pc = { Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" }[best.partner] ?? "#888";
+          return (
+            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${pc}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <span style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.55 }}>
+                  Today has {lit.undertone}.
+                </span>
+                <span style={{ fontSize: 10.5, color: "#999", marginLeft: 6 }}>
+                  Moon {best.aspect} {best.partner} — comes around about once a week.
+                </span>
+              </div>
+              {onVisitPlanet && (
+                <button onClick={() => onVisitPlanet(best.partner)} style={{
+                  fontSize: 10.5, fontWeight: 600, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                  border: `1px solid ${pc}50`, background: `${pc}10`, color: pc, flexShrink: 0,
+                }}>meet your {best.partner} →</button>
+              )}
+            </div>
+          );
+        })()}
+
         {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
 
         {/* The big sky — the moment's defining aspects, explored */}

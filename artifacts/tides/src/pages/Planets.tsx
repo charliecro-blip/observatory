@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
+import { PLANET_LITERACY, CONTACT_TONE } from "@/lib/sky-literacy";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import Orrery from "@/components/Orrery";
 import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
@@ -89,9 +90,12 @@ function SectionCard({ label, accent, children }: { label: string; accent?: stri
   );
 }
 
-function PlanetsView({ natal, currents, onReflect, testerId, lat, lon }: { natal: any; currents: any; onReflect?: (s: string) => void; testerId: string | null; lat: number; lon: number }) {
+function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPlanet }: { natal: any; currents: any; onReflect?: (s: string) => void; testerId: string | null; lat: number; lon: number; initialPlanet?: string | null }) {
   const { data: anglesData } = useNatalAngles(testerId, lat, lon);
-  const [selected, setSelected] = useState("Sun");
+  const [selected, setSelected] = useState(initialPlanet && ORDER.includes(initialPlanet) ? initialPlanet : "Sun");
+  useEffect(() => {
+    if (initialPlanet && ORDER.includes(initialPlanet)) setSelected(initialPlanet);
+  }, [initialPlanet]);
   const core = PLANET_CORE[selected] ?? { name: selected, is: "", short: "", use: "" };
   const col = COLOR[selected] ?? "#888";
   const natalPos = (natal?.planets ?? []).find((p: any) => p.planet === selected);
@@ -99,6 +103,24 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon }: { natal
   const house = natalPos?.houseNumber as number | null | undefined;
   const houseMeaning = house ? HOUSE_MEANINGS[house] : null;
   const activations = ((currents?.majorTransits ?? []) as any[]).filter((t) => t.natalPlanet === selected);
+
+  // Sky-literacy: the weekly Moon-contact rhythm + the user's felt history on
+  // this planet's days. Moon has no contacts-to-itself; its rhythm is taught
+  // by the phase cycle instead.
+  const lit = PLANET_LITERACY[selected];
+  const { data: contacts } = useQuery<any>({
+    queryKey: ["sky-literacy", selected, testerId],
+    queryFn: async () => {
+      const tz = new Date().getTimezoneOffset();
+      const r = await fetch(`/api/sky-literacy/${selected}?tz=${tz}&lookback=30`, {
+        headers: testerId ? { "x-tester-id": testerId } : {},
+      });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!testerId && selected !== "Moon",
+    staleTime: 1000 * 60 * 30,
+  });
 
   return (
     <>
@@ -129,6 +151,60 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon }: { natal
         </div>
         <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.65, marginTop: 8 }}>{core.name} is {core.is}. Good for {core.use}.</div>
       </div>
+
+      {/* ── Sky literacy: how it feels, when it comes around, what it means long-term ── */}
+      {lit && (
+        <SectionCard label={`How ${lit.adjective} time feels`} accent={col}>
+          <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.65 }}>{lit.feelsLike}</div>
+          <div style={{ fontSize: 12, color: "#8a7060", lineHeight: 1.6, marginTop: 8 }}>
+            <b style={{ color: "#7a6050" }}>The honest edge:</b> {lit.shadow}
+          </div>
+          <div style={{ fontSize: 12, color: "#666", lineHeight: 1.6, marginTop: 8 }}>
+            <b style={{ color: col }}>Use it:</b> {lit.useIt}
+          </div>
+          {lit.etymology && (
+            <div style={{ fontSize: 10.5, color: "#a89a88", lineHeight: 1.5, marginTop: 8, fontStyle: "italic" }}>{lit.etymology}</div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* The weekly rhythm — the learnable rep. Real ephemeris: the next Moon
+          contact + the user's own felt-ratings on past contact days. */}
+      {lit && selected !== "Moon" && (
+        <SectionCard label={`Your ${lit.adjective} days`} accent={col}>
+          <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>{lit.weeklyNote}</div>
+          {contacts?.nextHard && (
+            <div style={{ background: `${col}0e`, border: `1px solid ${col}30`, borderRadius: 9, padding: "9px 12px", marginBottom: 10 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>
+                Next one: {new Date(contacts.nextHard.at).toLocaleDateString("en-US", { weekday: "long" })}{" "}
+                <span style={{ fontWeight: 400, color: "#999" }}>
+                  around {new Date(contacts.nextHard.at).toLocaleTimeString("en-US", { hour: "numeric" })} · Moon {contacts.nextHard.aspect} {selected}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "#888", lineHeight: 1.5, marginTop: 3 }}>
+                Likely to arrive {CONTACT_TONE[contacts.nextHard.aspect] ?? "as a distinct flavor in the day"}. Notice it — then rate the day on Today and see if you felt it.
+              </div>
+            </div>
+          )}
+          {contacts && contacts.pastHardDays?.length > 0 && (
+            <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6 }}>
+              Last 30 days: <b style={{ color: "#666" }}>{contacts.pastHardDays.length}</b> {lit.adjective} day{contacts.pastHardDays.length === 1 ? "" : "s"}.
+              {contacts.ratedCount > 0
+                ? <> You rated {contacts.ratedCount} of them — <b style={{ color: "#4a8060" }}>{contacts.alignedCount} felt aligned</b>. Your evidence lives in the Log.</>
+                : <> None rated yet — rate days on Today and your own evidence will build here.</>}
+            </div>
+          )}
+        </SectionCard>
+      )}
+      {lit && selected === "Moon" && (
+        <SectionCard label="The Moon's rhythm" accent={col}>
+          <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6 }}>{lit.weeklyNote}</div>
+        </SectionCard>
+      )}
+
+      <SectionCard label="The long arc" accent={col}>
+        <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.65 }}>{lit?.longArc}</div>
+      </SectionCard>
 
       {/* Personal timing — when THIS planet's natal degree crosses the local
           angles today. Rising = the day's personal sunrise for this drive;
@@ -238,8 +314,11 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
   );
 }
 
-export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void }) {
+export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect, initialPlanet }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void; initialPlanet?: string | null }) {
   const [mode, setMode] = useState<"planets" | "houses">("planets");
+  // Arriving via a teachable-moment link ("today feels saturnine → visit
+  // Saturn") lands directly on that planet's page.
+  useEffect(() => { if (initialPlanet) setMode("planets"); }, [initialPlanet]);
 
   const { data: natal } = useQuery<any>({
     queryKey: ["natal-chart", testerId],
@@ -268,7 +347,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect 
         </div>
 
         {mode === "planets"
-          ? <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} />
+          ? <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={initialPlanet} />
           : <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
       </div>
     </div>
