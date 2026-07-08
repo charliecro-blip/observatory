@@ -9,7 +9,7 @@ import {
   UpdateLogBody,
   DeleteLogParams,
 } from "@workspace/api-zod";
-import { getAstroSnapshot, moonPhase, julianDay, getDailyElementEmphasis } from "../lib/astro.js";
+import { getAstroSnapshot, moonPhase, julianDay, getDailyElementEmphasis, getMoonContacts } from "../lib/astro.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { natalCharts } from "@workspace/db";
@@ -114,6 +114,9 @@ function localDayBounds(date: string, tz: number): [Date, Date] {
   return [startUtc, new Date(startUtc.getTime() + 86400000)];
 }
 
+// Planets whose hard Moon contacts give a day its "flavor" (sky literacy).
+const FLAVOR_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const;
+
 // UTC instant → the viewer's local YYYY-MM-DD.
 function localDateOf(d: Date, tz: number): string {
   return new Date(d.getTime() - tz * 60000).toISOString().slice(0, 10);
@@ -166,6 +169,14 @@ router.get("/logs/day", requireTesterId, async (req, res) => {
   const dayDate = new Date(dayStart.getTime() + 12 * 3600000);
   const phaseData = moonPhase(julianDay(dayDate));
   const element = getDailyElementEmphasis(julianDay(dayDate));
+
+  // The day's planetary flavors — which planets the Moon hit hard that day
+  // (the sky-literacy vocabulary: a Saturn contact = a saturnine day).
+  const jdStart = julianDay(dayStart);
+  const jdEnd = julianDay(dayEnd);
+  const flavors = FLAVOR_PLANETS.filter((p) =>
+    getMoonContacts(p, jdStart, jdEnd).some((c) => c.hard),
+  );
   let personalTransits = null;
 
   // If user has natal chart, compute their personal transits for this date
@@ -200,6 +211,7 @@ router.get("/logs/day", requireTesterId, async (req, res) => {
     sky: {
       moonPhase: phaseData.fraction,
       element: element.element,
+      flavors,
       personalTransits,
     },
   });
@@ -265,8 +277,20 @@ router.get("/logs/timeline", requireTesterId, async (req, res) => {
   const feltOf = (ci: typeof checkIns[number] | null) =>
     ci?.behaviorTags?.find((t) => t.startsWith("felt:"))?.slice(5) ?? null;
 
+  // Readback-by-flavor: ?flavor=Saturn narrows the list to that planet's
+  // hard-Moon-contact days ("show me my saturnine days") — logged or not,
+  // so the empty rows still teach the rhythm.
+  const flavor = (req.query.flavor as string) ?? null;
+  let flavorDates: Set<string> | null = null;
+  if (flavor && (FLAVOR_PLANETS as readonly string[]).includes(flavor)) {
+    const contacts = getMoonContacts(flavor, julianDay(rangeStart), julianDay(rangeEnd));
+    flavorDates = new Set(contacts.filter((c) => c.hard).map((c) => localDateOf(new Date(c.at), tz)));
+    for (const d of flavorDates) bucket(d); // flavor days appear even with no entries
+  }
+
   const summaries = [...byDate.entries()]
     .filter(([date]) => date >= startDate && date <= endDate)
+    .filter(([date]) => !flavorDates || flavorDates.has(date))
     .sort((a, b) => b[0].localeCompare(a[0]))
     .slice(offset, offset + limit)
     .map(([date, b]) => {

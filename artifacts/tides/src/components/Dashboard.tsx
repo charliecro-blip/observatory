@@ -1,6 +1,7 @@
 import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { usePreferences } from "@/contexts/preferences-context";
 
 // The daily report — the home as a navigation console. Weather + calendar +
 // where you're steering, in one glance, day-focused with a look down the week.
@@ -34,6 +35,8 @@ export default function Dashboard({
 }) {
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
   const { data: anglesData } = useNatalAngles(testerId, lat, lon);
+  const { prefs } = usePreferences();
+  const bilingual = prefs.display.skyLanguage === "bilingual";
 
   const el = now?.tide?.element ?? now?.element?.element ?? "water";
   const elCol = ELEMENT_COLOR[el] ?? "#888";
@@ -62,6 +65,16 @@ export default function Dashboard({
           <span style={{ fontSize: 13, color: elCol, fontWeight: 600 }}>{now?.tide?.levelLabel ?? ""}</span>
           <span style={{ fontSize: 12.5, color: "#888", textTransform: "capitalize" }}>· {el} · {now?.quality ?? ""}</span>
         </div>
+        {/* Bilingual sky language — show the mechanism behind the label so
+            fluency grows by exposure (Settings → Sky language). */}
+        {bilingual && now?.moonSign && (() => {
+          const hourPlanet = now?.planetaryHour?.planet ?? now?.planetaryHour?.ruler;
+          return (
+            <div style={{ fontSize: 11, color: "#998a76", marginTop: 5 }}>
+              ☽ Moon in {now.moonSign} sets the character{hourPlanet ? <> · {PLANET_GLYPH[hourPlanet]} {hourPlanet} hour colors this stretch</> : null}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Instrument bento */}

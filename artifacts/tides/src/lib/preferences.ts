@@ -23,6 +23,10 @@ export interface DisplayPrefs {
   todayShowJournal: boolean;
   compactRail: boolean;
   timeFormat: "12h" | "24h";
+  // Vocabulary graduation — "plain" speaks only the app's feeling-language
+  // (Deep Tide, Surge); "bilingual" adds the sky's own words next to them
+  // (Moon in Pisces, ☽ □ ♄) so fluency grows by exposure.
+  skyLanguage: "plain" | "bilingual";
 }
 
 export interface TimingPrefs {
@@ -60,6 +64,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     todayShowJournal: true,
     compactRail: false,
     timeFormat: "12h",
+    skyLanguage: "plain",
   },
   timing: {
     watchPlanets: [],

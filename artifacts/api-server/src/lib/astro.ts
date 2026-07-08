@@ -270,11 +270,13 @@ function bodyLongitude(name: string, jd: number): number {
 
 /** Nearest major-aspect separation in degrees between two longitudes. */
 function nearestAspectDiff(a: number, b: number): number {
-  const angle = normalize360(a - b);
-  return Math.min(...MAJOR_ASPECTS.map((asp) => {
-    const d = Math.abs(angle - asp);
-    return Math.min(d, 360 - d);
-  }));
+  // Fold to 0..180 BEFORE comparing: aspects are unsigned separations, so a
+  // 270° raw angle IS a square (90°). The old circular-distance-to-asp math
+  // returned 180 for that case, making every WANING square/sextile/trine
+  // invisible — getLastMoonAspect (rail) and getMoonContacts (sky literacy)
+  // silently skipped half the Moon's aspects.
+  const angle = sep180(a, b);
+  return Math.min(...MAJOR_ASPECTS.map((asp) => Math.abs(angle - asp)));
 }
 
 /**

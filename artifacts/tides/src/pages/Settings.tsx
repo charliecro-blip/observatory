@@ -396,6 +396,19 @@ function DisplaySection() {
           ))}
         </div>
       </Row>
+      <Divider />
+      <Row label="Sky language" sub="Plain keeps the app's own words (Deep, Surge). Bilingual adds the sky's words next to them (Moon in Pisces) — fluency by exposure.">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["plain", "bilingual"] as const).map(mode => (
+            <button key={mode} onClick={() => updateDisplay({ skyLanguage: mode })} style={{
+              fontSize: 11, padding: "3px 12px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
+              background: d.skyLanguage === mode ? "#fff" : "transparent",
+              color: d.skyLanguage === mode ? "#1a2a3a" : "#999",
+              fontWeight: d.skyLanguage === mode ? 600 : 400,
+            }}>{mode}</button>
+          ))}
+        </div>
+      </Row>
 
       <div style={{ height: 16 }} />
       <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>

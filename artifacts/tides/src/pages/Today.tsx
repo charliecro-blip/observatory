@@ -421,6 +421,11 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                     title="Save to daemon memory (persists across sessions)"
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: memSaved === i ? "#9060c0" : "#ddd", padding: "1px 3px" }}
                   >{memSaved === i ? "✦" : "◆"}</button>
+                  <button
+                    onClick={() => send("Why? Briefly show me which sky factors shaped that answer — the Moon's sign, the tide, the planetary hour, my transits — and what each one contributed. Teach me the mechanism so I could read it myself next time.")}
+                    title="Why? — see the sky reasoning behind this answer"
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: "#c8b088", padding: "1px 3px", fontWeight: 700 }}
+                  >?</button>
                 </div>
               )}
             </div>

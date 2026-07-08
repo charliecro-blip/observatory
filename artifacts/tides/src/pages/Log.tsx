@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { PLANET_LITERACY } from "@/lib/sky-literacy";
+import { PLANET_GLYPH } from "@/lib/glyphs";
 
 const ELEMENTS = {
   fire: { label: "Surge", color: "#b84020", bg: "#fff0ec" },
@@ -57,9 +59,12 @@ interface DayDetail {
   sky: {
     moonPhase: number; // 0-1
     element: string;
+    flavors?: string[];
     personalTransits: any[] | null;
   };
 }
+
+const FLAVOR_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
 
 // The felt-rating lives in behaviorTags as `felt:aligned`, `tideChar:deep`, …
 function decodeFelt(tags: string[] | null | undefined) {
@@ -166,6 +171,8 @@ export default function Log({ testerId }: { testerId: string | null }) {
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState(30); // days back
+  // Readback-by-flavor: narrow the timeline to one planet's Moon-contact days.
+  const [flavor, setFlavor] = useState<string>("");
   // Viewer timezone offset — day boundaries are the viewer's midnights.
   const tz = new Date().getTimezoneOffset();
 
@@ -182,11 +189,11 @@ export default function Log({ testerId }: { testerId: string | null }) {
 
   // Fetch timeline (list of days)
   const { data: timelineData, isLoading: timelineLoading } = useQuery({
-    queryKey: ["logs-timeline", testerId, startDate, endDate],
+    queryKey: ["logs-timeline", testerId, startDate, endDate, flavor],
     queryFn: async () => {
       if (!testerId) return null;
       const r = await fetch(
-        `/api/logs/timeline?startDate=${startDate}&endDate=${endDate}&limit=100&tz=${tz}`,
+        `/api/logs/timeline?startDate=${startDate}&endDate=${endDate}&limit=100&tz=${tz}${flavor ? `&flavor=${flavor}` : ""}`,
         { headers: { "x-tester-id": testerId } },
       );
       if (!r.ok) throw new Error("timeline failed");
@@ -283,6 +290,24 @@ export default function Log({ testerId }: { testerId: string | null }) {
             fontSize: 11, outline: "none",
           }}
         />
+        {/* Readback-by-flavor — "show me my saturnine days" */}
+        <select
+          value={flavor}
+          onChange={(e) => setFlavor(e.target.value)}
+          style={{
+            width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
+            borderRadius: 6, border: flavor ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+            background: "var(--color-card-2)", color: flavor ? "var(--color-primary)" : "var(--color-foreground)",
+            fontSize: 11, outline: "none", fontWeight: flavor ? 600 : 400,
+          }}
+        >
+          <option value="">All days</option>
+          {FLAVOR_PLANETS.map((p) => (
+            <option key={p} value={p}>
+              {PLANET_GLYPH[p]} {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} days · Moon × {p}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Timeline list */}
@@ -293,11 +318,17 @@ export default function Log({ testerId }: { testerId: string | null }) {
           </div>
         ) : summaries.length === 0 ? (
           <div style={{ fontSize: 12, color: "#888", padding: "20px 8px", textAlign: "center", lineHeight: 1.7 }}>
-            Nothing in the logbook yet.
-            <br />
-            Rate your day or jot a line in the journal on <b>Today</b> — it lands
-            here automatically, stamped with that day's sky. Completed sessions
-            show up here too.
+            {flavor ? (
+              <>No {PLANET_LITERACY[flavor]?.adjective ?? flavor} days in this window — try a longer lookback.</>
+            ) : (
+              <>
+                Nothing in the logbook yet.
+                <br />
+                Rate your day or jot a line in the journal on <b>Today</b> — it lands
+                here automatically, stamped with that day's sky. Completed sessions
+                show up here too.
+              </>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 16 }}>
@@ -439,6 +470,11 @@ export default function Log({ testerId }: { testerId: string | null }) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
                   {ELEMENTS[dayDetail.sky.element as keyof typeof ELEMENTS]?.label ?? dayDetail.sky.element}
                 </div>
+                {(dayDetail.sky.flavors ?? []).length > 0 && (
+                  <div style={{ fontSize: 10, color: "#998a76", marginTop: 2 }}>
+                    a {(dayDetail.sky.flavors ?? []).map((p) => PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()).join(" + ")} day
+                  </div>
+                )}
               </div>
               {dayDetail.sky.moonPhase !== undefined && (
                 <div style={{ fontSize: 18, paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>

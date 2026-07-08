@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
 import { SIGN_MYTHOS, ELEMENT_MYTHOS, PLANET_MYTHOS } from "@/lib/mythos";
+import { CURRICULUM } from "@/lib/sky-literacy";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
 const QUALITY_COLORS: Record<string, string> = {
@@ -739,12 +740,19 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 // legible to someone who knows no astrology. Distinct from Ahead (your time):
 // this is the sky's meanings, not its schedule.
 function ReferenceSection() {
-  const [tab, setTab] = useState<"elements" | "planets" | "signs">("elements");
+  const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
   const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
   const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
-    tab === "elements"
+    tab === "learn"
+      // The sequenced primer — the curriculum ladder, rung by rung. Reading
+      // ahead is allowed; living it is the actual course.
+      ? CURRICULUM.map((l) => ({
+          key: String(l.n), glyph: String(l.n), name: l.title, sub: l.essence, color: "#8a7050",
+          body: `${l.body}\n\nPractice: ${l.practice}`,
+        }))
+      : tab === "elements"
       ? (["fire", "earth", "air", "water"] as const).map((el) => {
           const m = ELEMENT_MYTHOS[el];
           return { key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, body: `${m.essence} ${(m.domains ?? []).join(" · ")}` };
@@ -757,14 +765,14 @@ function ReferenceSection() {
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
       <div style={{ padding: "11px 14px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
         <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
-        <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Look anything up — no astrology background needed</div>
+        <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
         <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
-          {(["elements", "planets", "signs"] as const).map((t) => (
+          {(["learn", "elements", "planets", "signs"] as const).map((t) => (
             <button key={t} onClick={() => { setTab(t); setOpen(null); }} style={{
               fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
               border: tab === t ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
               background: tab === t ? "#1a2a3a" : "var(--color-card)", color: tab === t ? "#fff" : "#888", fontWeight: tab === t ? 600 : 400,
-            }}>{t}</button>
+            }}>{t === "learn" ? "✦ learn the sky" : t}</button>
           ))}
         </div>
       </div>
@@ -783,7 +791,7 @@ function ReferenceSection() {
               <span style={{ fontSize: 9, color: "#ccc", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
             </button>
             {open === it.key && (
-              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>{it.body}</div>
+              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>{it.body}</div>
             )}
           </div>
         ))}
