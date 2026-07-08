@@ -675,6 +675,42 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -15 && x.diff <= 15)
     .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
 
+  // Ritual mode — Today reads the clock. Morning opens the day's loop,
+  // evening closes it; midday the page is its usual self.
+  const localHour = new Date().getHours();
+  const ritualMode: "morning" | "evening" | null = localHour < 12 ? "morning" : localHour >= 18 ? "evening" : null;
+
+  // The reflect loop (felt rating + logbook line). In evening mode it rides
+  // directly under the "Log the day" card — that IS the ritual — otherwise it
+  // keeps its usual quiet spot further down the page.
+  const reflectBlock = now ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <TideFeedback now={now} today={today} testerId={testerId} />
+      {todayShowJournal && (
+        <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>Logbook line</span>
+            <span style={{ fontSize: 9, color: "var(--color-muted)" }}>
+              {journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
+            </span>
+          </div>
+          <textarea
+            value={journalText}
+            onChange={e => saveJournal(e.target.value)}
+            placeholder="A line about today — what you did, how the water was…"
+            rows={2}
+            style={{
+              width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8,
+              border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+              fontSize: 12, lineHeight: 1.5, color: "var(--color-foreground)",
+              outline: "none", resize: "vertical", fontFamily: "inherit",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
+
   if (nowLoading) {
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -704,14 +740,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           {new Date().toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* One vocabulary, not two: the chip speaks tide (character × level)
+              instead of the legacy good/workable favorability labels, which
+              contradicted the coherence model (and carried a fire/air bias). */}
           <Tooltip content={
             <div>
-              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>An {el} day, {now?.quality} conditions</div>
-              <div style={{ fontSize: 10, color: "#b0aaa4" }}>The Moon in {now?.moonSign} makes this an {el}-element day; "{now?.quality}" is the overall working conditions (void periods, retrogrades, and aspects, combined).</div>
+              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>
+                {now?.tide ? `${now.tide.characterLabel} tide — ${now.tide.levelLabel.toLowerCase()}` : `An ${el} day`}
+              </div>
+              <div style={{ fontSize: 10, color: "#b0aaa4" }}>
+                The Moon in {now?.moonSign} sets the day's character ({el}); the level is how charged the water is and which way it's moving. Rising: lean in. Ebbing: finish and rest.
+              </div>
             </div>
           }>
             <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
-              {el} day · {now?.quality} conditions
+              {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
             </div>
           </Tooltip>
           {!hasSavedLocation(testerProfile) ? (
@@ -763,7 +806,34 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
       {showTideCard && now && <TideCardModal now={now} week={week} northStars={northStars ?? []} testerId={testerId} onClose={() => setShowTideCard(false)} />}
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{
+        flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14,
+        // Time-of-day atmosphere — the page knows dawn from dusk from night.
+        // A wash at the top of the scroll, gone by ~360px; subtle on purpose.
+        background: localHour < 6 || localHour >= 21
+          ? "linear-gradient(180deg, #26304414, transparent 360px)"   // night — cool indigo
+          : localHour < 9
+            ? "linear-gradient(180deg, #e0964018, transparent 360px)" // dawn — low gold
+            : localHour >= 17
+              ? "linear-gradient(180deg, #b06a5014, transparent 360px)" // dusk — rose
+              : undefined,                                              // midday — plain light
+      }}>
+
+        {/* The ritual anchor — morning "Cast off" / evening "Log the day".
+            First thing on the page during ritual hours, absent midday. */}
+        {ritualMode && now && (
+          <RitualCard
+            mode={ritualMode}
+            now={now}
+            week={week}
+            todayTasks={todayTasks}
+            windows={windows}
+            gcalEvents={gcalEvents}
+            testerId={testerId}
+            displayName={testerProfile?.displayName}
+          />
+        )}
+        {ritualMode === "evening" && reflectBlock}
 
         {/* First-star hint — for users with no Guiding Stars yet, routing them
             to the app's strongest moment. Takes priority over the premium
@@ -957,8 +1027,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             it duplicated the same list right below it.) */}
 
         {/* Today's habits — check-off on the glance layer, so the daily loop
-            (glance → act → check off) closes without a trip into Helm. */}
-        {testerId && <TodayHabits testerId={testerId} now={now} />}
+            (glance → act → check off) closes without a trip into Helm.
+            During ritual hours the RitualCard carries the habit chips, so
+            this card stands down to keep the page lean. */}
+        {testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
 
         {/* The tide — one coherent chart for the whole day */}
         {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
@@ -970,36 +1042,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Standing conditions */}
         {now && <ConditionsStrip now={now} today={today} />}
 
-        {/* Logbook — the reflect loop. Quiet card, not a headline feature, but
-            it's what feeds The Log: the felt rating + a one-line journal both
-            persist to the day's check-in row, sky-stamped. */}
-        {now && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <TideFeedback now={now} today={today} testerId={testerId} />
-            {todayShowJournal && (
-              <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>Logbook line</span>
-                  <span style={{ fontSize: 9, color: "var(--color-muted)" }}>
-                    {journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
-                  </span>
-                </div>
-                <textarea
-                  value={journalText}
-                  onChange={e => saveJournal(e.target.value)}
-                  placeholder="A line about today — what you did, how the water was…"
-                  rows={2}
-                  style={{
-                    width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8,
-                    border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                    fontSize: 12, lineHeight: 1.5, color: "var(--color-foreground)",
-                    outline: "none", resize: "vertical", fontFamily: "inherit",
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {/* Logbook — the reflect loop, in its usual quiet spot outside evening
+            hours (evenings it rides up under the "Log the day" card). */}
+        {ritualMode !== "evening" && reflectBlock}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
@@ -1625,7 +1670,7 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
               borderLeft: `3px solid ${s.color}`, borderRadius: 10, padding: "10px 12px",
               cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 5,
             }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.35 }}>
+              <div key={idx} className="phrase-in" style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.35 }}>
                 {s.options[idx]}{s.suffix && <span style={{ fontWeight: 400, color: "#a05050" }}>{s.suffix}</span>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
@@ -1768,6 +1813,186 @@ function BigSky({ now }: { now: any }) {
 }
 
 // ── TodayHabits — compact check-off strip on the glance layer ─────────────────
+
+// ── RitualCard — the twice-a-day check-in anchor ─────────────────────────────
+// Today reads the clock: mornings open with "Cast off" (weather line, habit
+// encouragement with streaks, today's three), evenings close with "Log the
+// day" (what got done, an earned accomplishment line, tomorrow's water).
+// Midday, the card stays out of the way entirely.
+
+const STREAK_NUDGE = (streak: number) =>
+  streak >= 21 ? `day ${streak + 1} — this is who you are now`
+  : streak >= 7 ? `day ${streak + 1} — the streak is the point`
+  : streak >= 3 ? `day ${streak + 1} — momentum is real`
+  : "small and daily beats big and rare";
+
+function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName }: {
+  mode: "morning" | "evening";
+  now: any; week: any;
+  todayTasks: { id: number; title: string; done: string }[];
+  windows: any[] | undefined;
+  gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
+  testerId: string | null;
+  displayName?: string;
+}) {
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: habits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => (await fetch("/api/habits", { headers: { "x-tester-id": testerId ?? "" } })).json(),
+    enabled: !!testerId,
+  });
+  const toggleLog = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      const headers = { "x-tester-id": testerId ?? "", "Content-Type": "application/json" };
+      if (done) await fetch(`/api/habits/${id}/log?date=${today}`, { method: "DELETE", headers });
+      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers, body: JSON.stringify({ date: today }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
+  });
+
+  const tide = now?.tide;
+  const character = (tide?.character ?? "deep") as TideCharacter;
+  const elKey = CHARACTER_ELEMENT[character] ?? "water";
+  const elColor = ELEMENT_COLORS[elKey] ?? "#3a5a80";
+  const habitList = Array.isArray(habits) ? habits : [];
+  const el = now?.element?.element ?? "";
+
+  // The day's flavor, for an honest accomplishment line on heavy days
+  const HARD = new Set(["conjunction", "square", "opposition"]);
+  const HEAVY = new Set(["Saturn", "Mars", "Pluto"]);
+  const heavyContact = (now?.moonAspects ?? [])
+    .map((a: any) => ({ ...a, partner: a.planet1 === "Moon" ? a.planet2 : a.planet1 }))
+    .find((a: any) => HARD.has(a.aspect) && HEAVY.has(a.partner) && a.orb <= 4);
+  const heavyAdj = heavyContact ? PLANET_LITERACY[heavyContact.partner]?.adjective : null;
+
+  const firstName = (displayName ?? "").split(" ")[0];
+
+  if (mode === "morning") {
+    const nowMs = Date.now();
+    const nextEvent = gcalEvents
+      .filter((e) => !e.allDay && Date.parse(e.end) > nowMs)
+      .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    const nextBlock = (windows ?? []).filter((w: any) => !w.completedAt)
+      .sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
+    const nextTask = todayTasks.find((t) => t.done !== "true");
+    const three = [
+      nextTask && { glyph: "☐", label: nextTask.title, sub: "top task" },
+      nextEvent && { glyph: "◷", label: nextEvent.title, sub: new Date(nextEvent.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
+      nextBlock && { glyph: "▸", label: nextBlock.title, sub: new Date(nextBlock.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
+    ].filter(Boolean) as { glyph: string; label: string; sub: string }[];
+
+    return (
+      <div style={{ background: `linear-gradient(135deg, ${elColor}16, ${elColor}05)`, border: `1px solid ${elColor}30`, borderRadius: 14, padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 3 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>⛵ Cast off{firstName ? `, ${firstName}` : ""}</span>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: "#777", marginBottom: 10 }}>
+          {CHARACTER_LABEL[character]} tide, {tide?.levelLabel?.toLowerCase() ?? "steady"} — {CHARACTER_ESSENCE[character]?.toLowerCase().replace(/\.$/, "")}.
+        </div>
+
+        {habitList.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {habitList.map((h: any) => {
+                const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
+                return (
+                  <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })} style={{
+                    display: "flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 18, cursor: "pointer",
+                    border: h.doneToday ? "1px solid #4a806040" : `1px solid ${resonant ? elColor : "var(--color-border)"}`,
+                    background: h.doneToday ? "#4a806012" : "var(--color-card)",
+                  }}>
+                    <span style={{ fontSize: 11, color: h.doneToday ? "#4a8060" : "#999" }}>{h.doneToday ? "✓" : "○"}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: h.doneToday ? "#4a8060" : "var(--color-foreground)" }}>{h.name}</span>
+                    {resonant && <span style={{ fontSize: 10, color: elColor }}>✦</span>}
+                    <span style={{ fontSize: 9, color: "#aaa" }}>{h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {three.length > 0 ? (
+          <div>
+            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 5 }}>Today's three</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {three.map((t, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12 }}>
+                  <span style={{ color: elColor, width: 14, textAlign: "center", flexShrink: 0 }}>{t.glyph}</span>
+                  <span style={{ color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</span>
+                  <span style={{ fontSize: 9.5, color: "#aaa", flexShrink: 0 }}>{t.sub}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: "#999" }}>Nothing on deck yet — weave the day in <b>When</b>, or just ride the tide.</div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Evening: Log the day ──
+  const keptHabits = habitList.filter((h: any) => h.doneToday);
+  const doneBlocks = (windows ?? []).filter((w: any) => w.completedAt);
+  const closedTasks = todayTasks.filter((t) => t.done === "true");
+  const didAnything = keptHabits.length + doneBlocks.length + closedTasks.length > 0;
+  const parts: string[] = [];
+  if (habitList.length) parts.push(`kept ${keptHabits.length} of ${habitList.length} habit${habitList.length === 1 ? "" : "s"}`);
+  if (closedTasks.length) parts.push(`closed ${closedTasks.length} task${closedTasks.length === 1 ? "" : "s"}`);
+  if (doneBlocks.length) parts.push(`completed ${doneBlocks.length} block${doneBlocks.length === 1 ? "" : "s"}`);
+  const tomorrow = (week?.days ?? [])[1];
+  const tomorrowChar = tomorrow?.element ? ({ water: "Deep", fire: "Surge", earth: "Building", air: "Clear" } as Record<string, string>)[tomorrow.element] : null;
+
+  return (
+    <div style={{ background: `linear-gradient(135deg, ${elColor}16, ${elColor}05)`, border: `1px solid ${elColor}30`, borderRadius: 14, padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 3 }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>🌙 Log the day{firstName ? `, ${firstName}` : ""}</span>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>evening</span>
+      </div>
+
+      {didAnything ? (
+        <>
+          <div style={{ fontSize: 12.5, color: "var(--color-foreground)", marginBottom: 6 }}>
+            You {parts.join(" · ")}.
+            {heavyAdj && <span style={{ color: "#8a7060" }}> On a {heavyAdj} day, that counts double.</span>}
+          </div>
+          {keptHabits.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+              {keptHabits.map((h: any) => (
+                <span key={h.id} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 14, background: "#4a806012", border: "1px solid #4a806030", color: "#4a8060", fontWeight: 600 }}>
+                  ✓ {h.name}{h.streak > 0 ? ` · ${h.streak}d` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+          {habitList.some((h: any) => !h.doneToday) && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+              {habitList.filter((h: any) => !h.doneToday).map((h: any) => (
+                <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: false })} style={{
+                  fontSize: 10, padding: "3px 9px", borderRadius: 14, background: "var(--color-card)",
+                  border: "1px solid var(--color-border)", color: "#999", cursor: "pointer",
+                }}>○ {h.name} — did it? tap to log</button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+          A quiet day in the log is still a day in the log.
+          {(tide?.level === "low" || tide?.level === "ebb") && " The tide was low — resting was reading the water right."}
+        </div>
+      )}
+
+      <div style={{ fontSize: 10.5, color: "#999", paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+        Rate the day below — it lands in the Log, stamped with tonight's sky.
+        {tomorrowChar && <span style={{ color: "#8a8278" }}> Tomorrow: a {tomorrowChar} day.</span>}
+      </div>
+    </div>
+  );
+}
 
 function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
   const qc = useQueryClient();

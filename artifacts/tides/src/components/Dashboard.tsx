@@ -61,9 +61,10 @@ export default function Dashboard({
           <span style={{ fontSize: 11, color: "#999" }}>{phase && MOON_EMOJI[phase]} {phase.replace(/_/g, " ")} · {Math.round((now?.moonIllumination ?? 0) * 100)}%</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>{now?.tide?.headline ?? "—"}</span>
+          {/* The one big word on the screen — the tide, in the display face */}
+          <span style={{ fontSize: 30, fontWeight: 400, fontFamily: "var(--font-display)", color: "var(--color-primary)", letterSpacing: "0.01em", lineHeight: 1.1 }}>{now?.tide?.headline ?? "—"}</span>
           <span style={{ fontSize: 13, color: elCol, fontWeight: 600 }}>{now?.tide?.levelLabel ?? ""}</span>
-          <span style={{ fontSize: 12.5, color: "#888", textTransform: "capitalize" }}>· {el} · {now?.quality ?? ""}</span>
+          <span style={{ fontSize: 12.5, color: "#888", textTransform: "capitalize" }}>· {el}</span>
         </div>
         {/* Bilingual sky language — show the mechanism behind the label so
             fluency grows by exposure (Settings → Sky language). */}

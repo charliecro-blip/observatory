@@ -115,7 +115,8 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
         fontFamily: "inherit", ...style,
       }}
     >
-      <span style={{ color: "#aaa" }}>{prefix}</span> {shown.join(" · ")}
+      <span style={{ color: "#aaa" }}>{prefix}</span>{" "}
+      <span key={start} className="phrase-in">{shown.join(" · ")}</span>
       <span style={{ marginLeft: 5, color: "#c0b8aa", fontSize: 8.5, whiteSpace: "nowrap" }}>
         ⟳ {show === 1 ? `${start + 1}/${n}` : "more"}
       </span>

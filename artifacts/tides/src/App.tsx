@@ -51,8 +51,9 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         ))}
       </div>
       <div style={{flex:1, overflow:"auto", display:"flex", flexDirection:"column", padding:"16px 20px"}}>
-        {/* Currents context header — shows long-cycle transits + profections at top */}
-        <CurrentsContextHeader testerId={testerId} collapsed={false} />
+        {/* Currents context header — the long weather, one line until tapped,
+            so the page leads with the user's own stars rather than transits */}
+        <CurrentsContextHeader testerId={testerId} collapsed={true} />
 
         {/* Tab content — inherits flex from parent, scrollable together with header */}
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
