@@ -1553,30 +1553,34 @@ const MODULE_META: Record<string, { label: string; icon: string; view: string }>
 // (the ~2.5-day texture), and the strongest applying Moon aspect (the day's
 // event). Concrete verbs come from the language layer (PLANET_ACTIVITIES /
 // SIGN_MYTHOS) instead of module labels.
-function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) => void }) {
+function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
   const moonSign: string = (now?.moonSign ?? "").split(" ")[0];
   const hourPlanet: string = now?.planetaryHour?.planet ?? "";
   const sm = SIGN_MYTHOS[moonSign];
+  // Tap-to-cycle offsets, one per card. Each card carries its voice's WHOLE
+  // list — the seeded pick is just the opening suggestion, and tapping turns
+  // up the other ways that same influence could play out, in place.
+  const [offs, setOffs] = useState<Record<number, number>>({});
 
-  const suggestions: { text: string; source: string; color: string; title?: string }[] = [];
+  const suggestions: { options: string[]; seed: number; source: string; color: string; title?: string; suffix?: string }[] = [];
 
-  // 1 — the hour's voice (rotate through its activities so it varies hour to hour)
+  // 1 — the hour's voice (seed rotates with the hour so untouched cards vary)
   const hourActs = PLANET_ACTIVITIES[hourPlanet];
   if (hourActs?.length) {
-    const idx = new Date().getHours() % hourActs.length;
     suggestions.push({
-      text: hourActs[idx],
+      options: hourActs,
+      seed: new Date().getHours(),
       source: `${hourPlanet} hour`,
       color: PLANET_THEMES[hourPlanet]?.color ?? "#8a8278",
       title: PLANET_MYTHOS[hourPlanet]?.whenLoud,
     });
   }
 
-  // 2 — the Moon's sign (rotate daily so a 2.5-day sign doesn't repeat itself)
+  // 2 — the Moon's sign (seed rotates daily so a 2.5-day sign doesn't repeat)
   if (sm) {
-    const idx = new Date().getDate() % sm.favors.length;
     suggestions.push({
-      text: sm.favors[idx],
+      options: sm.favors,
+      seed: new Date().getDate(),
       source: `Moon in ${moonSign}`,
       color: ELEMENT_COLORS[sm.element as Element] ?? "#4a6a90",
       title: sm.feel,
@@ -1594,7 +1598,9 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
     const hard = applying.aspect === "square" || applying.aspect === "opposition";
     if (acts?.length) {
       suggestions.push({
-        text: hard ? `${acts[0]} — gently; this current runs hot` : acts[new Date().getDate() % acts.length],
+        options: acts,
+        seed: hard ? 0 : new Date().getDate(),
+        suffix: hard ? " — gently; this current runs hot" : undefined,
         source: `Moon ${applying.aspect} ${partner}`,
         color: hard ? "#a05050" : "#4a7aa0",
         title: PLANET_MYTHOS[partner]?.essence,
@@ -1607,19 +1613,28 @@ function ModulePulse({ now, onNavigate }: { now: any; onNavigate?: (v: string) =
   return (
     <div style={{ margin: "12px 0" }}>
       <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9a9090", marginBottom: 8 }}>
-        Resonant now
+        Resonant now <span style={{ letterSpacing: 0, textTransform: "none", color: "#c0b8ac" }}>· tap a card for another way in</span>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {suggestions.map((s, i) => (
-          <button key={i} onClick={() => onNavigate?.("work")} title={s.title} style={{
-            flex: "1 1 180px", background: "var(--color-card)", border: `1px solid ${s.color}30`,
-            borderLeft: `3px solid ${s.color}`, borderRadius: 10, padding: "10px 12px",
-            cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 5,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.35 }}>{s.text}</div>
-            <div style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</div>
-          </button>
-        ))}
+        {suggestions.map((s, i) => {
+          const n = s.options.length;
+          const idx = (((s.seed % n) + n) % n + (offs[i] ?? 0)) % n;
+          return (
+            <button key={i} onClick={() => setOffs((o) => ({ ...o, [i]: (o[i] ?? 0) + 1 }))} title={s.title} style={{
+              flex: "1 1 180px", background: "var(--color-card)", border: `1px solid ${s.color}30`,
+              borderLeft: `3px solid ${s.color}`, borderRadius: 10, padding: "10px 12px",
+              cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 5,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.35 }}>
+                {s.options[idx]}{s.suffix && <span style={{ fontWeight: 400, color: "#a05050" }}>{s.suffix}</span>}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
+                <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
+                <span style={{ fontSize: 8.5, color: "#c0b8ac", flexShrink: 0 }}>⟳ {idx + 1}/{n}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

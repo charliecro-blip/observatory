@@ -93,6 +93,36 @@ const ASPECT_COLORS: Record<string, string> = {
   "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
 };
 
+// Tap-to-cycle suggestion line — each tap turns up another way the same voice
+// could play out ("plan the expansion" → "say yes bigger" → …). The ⟳ n/m
+// affordance says there are more behind the one showing. `seed` keeps the
+// default rotating with the hour/day so untouched rails still vary.
+function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
+  prefix: string; options: string[]; seed?: number; show?: number; style?: React.CSSProperties;
+}) {
+  const [off, setOff] = useState(0);
+  if (!options?.length) return null;
+  const n = options.length;
+  const start = (((seed % n) + n) % n + off) % n;
+  const shown = Array.from({ length: Math.min(show, n) }, (_, i) => options[(start + i) % n]);
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setOff((o) => o + 1); }}
+      title="Tap for another way this could play out"
+      style={{
+        display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
+        padding: 0, cursor: "pointer", fontSize: 9.5, color: "#8a8278", lineHeight: 1.45,
+        fontFamily: "inherit", ...style,
+      }}
+    >
+      <span style={{ color: "#aaa" }}>{prefix}</span> {shown.join(" · ")}
+      <span style={{ marginLeft: 5, color: "#c0b8aa", fontSize: 8.5, whiteSpace: "nowrap" }}>
+        ⟳ {show === 1 ? `${start + 1}/${n}` : "more"}
+      </span>
+    </button>
+  );
+}
+
 
 function planetColor(planet: string) {
   const map: Record<string, string> = {
@@ -147,11 +177,12 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       </>;
     }
     if (open === "day" && dayRuler) {
-      const acts = PLANET_ACTIVITIES[dayRuler];
-      return <><b>{dayRuler}'s day</b> <span style={{ color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>{acts?.length ? <div style={{ marginTop: 3 }}><span style={{ color: "#aaa" }}>good for</span> {acts.slice(0, 3).join(" · ")}</div> : null}</>;
+      return <><b>{dayRuler}'s day</b> <span style={{ color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>
+        <CycleLine prefix="good for" options={PLANET_ACTIVITIES[dayRuler] ?? []} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "hour") {
-      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "#999" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "#8a8278" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div></>;
+      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "#999" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "#8a8278" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
+        <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     return null;
   })();
@@ -676,10 +707,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div style={{ fontSize: 9, color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
             </div>
           </div>
-          {(() => {
-            const acts = PLANET_ACTIVITIES[dayRuler];
-            return acts?.length ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}><span style={{ color: "#aaa" }}>good for</span> {acts.slice(0, 3).join(" · ")}</div> : null;
-          })()}
+          <CycleLine
+            prefix="good for"
+            options={PLANET_ACTIVITIES[dayRuler] ?? []}
+            show={3}
+            style={{ marginTop: 5, lineHeight: 1.5 }}
+          />
         </div>
       )}
 
@@ -722,17 +755,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
           </div>
-          {/* One concrete thing this hour's voice favors — rotates with the hour */}
-          {(() => {
-            const acts = PLANET_ACTIVITIES[planetaryHour.planet];
-            if (!acts?.length) return null;
-            const pick = acts[new Date().getHours() % acts.length];
-            return (
-              <div style={{ fontSize: 9.5, color: "#8a8278", marginBottom: 8, lineHeight: 1.45 }}>
-                <span style={{ color: "#aaa" }}>this hour</span> {pick}
-              </div>
-            );
-          })()}
+          {/* One concrete thing this hour's voice favors — rotates with the
+              hour by default, and tapping cycles the other ways it could
+              play out without leaving the frame. */}
+          <CycleLine
+            prefix="this hour"
+            options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
+            seed={new Date().getHours()}
+            style={{ marginBottom: 8 }}
+          />
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {(upcomingHours ?? []).slice(0, 5).map((h) => {
               const hCol = planetColor(h.planet);
