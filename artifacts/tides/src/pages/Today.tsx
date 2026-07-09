@@ -1027,6 +1027,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
 
+        {/* The month's water — the Almanac's 30-day view, tappable per day */}
+        {todayShow14Day && <MonthBars testerId={testerId} lat={lat} lon={lon} today={today} />}
+
         {/* The big sky — the moment's defining aspects, explored */}
         {now && <BigSky now={now} />}
 
@@ -1049,9 +1052,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Standing conditions */}
         {now && <ConditionsStrip now={now} today={today} />}
 
-        {/* Logbook — the reflect loop, in its usual quiet spot outside evening
-            hours (evenings it rides up under the "Log the day" card). */}
-        {ritualMode !== "evening" && reflectBlock}
+        {/* Logbook — the reflect loop, in its usual quiet spot midday only:
+            evenings it rides up under "Log the day", and mornings it stands
+            down entirely ("how did today feel?" is a nonsense question at 8am
+            — the morning card asks about yesterday instead). */}
+        {ritualMode === null && reflectBlock}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
@@ -1167,8 +1172,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {/* Resonant practices first */}
-            {resonant.map(p => <WaveRow key={`p-${p.id}`} type="practice-resonant" label={p.name} sub={p.reasons?.[0]} />)}
+            {/* Practices moved into the Habits & practices card — habits and
+                practices are one concept now; Waves is tasks + goals. */}
             {/* Active tasks */}
             {todayTasks.filter(t => t.done !== "true").map(t => (
               <WaveRow key={`t-${t.id}`} type="task"
@@ -1182,9 +1187,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <WaveRow key={`g-${g.id}`} type="goal" label={g.title}
                 sub={g.horizon} />
             ))}
-            {/* Supported + soften practices below */}
-            {supported.map(p => <WaveRow key={`ps-${p.id}`} type="practice-supported" label={p.name} sub={p.reasons?.[0]} />)}
-            {soften.map(p => <WaveRow key={`pf-${p.id}`} type="practice-soften" label={p.name} />)}
             {/* Add task */}
             <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
               {showAddTask ? (
@@ -1875,6 +1877,31 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
   const firstName = (displayName ?? "").split(" ")[0];
 
+  // Morning-only: if yesterday was never rated, offer it here — the reflect
+  // loop's question belongs to the evening, but an unrated yesterday is still
+  // worth thirty seconds over coffee.
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const { data: yDay } = useQuery<any>({
+    queryKey: ["logs-day", testerId, yesterday],
+    queryFn: async () => {
+      const r = await fetch(`/api/logs/day?date=${yesterday}&tz=${new Date().getTimezoneOffset()}`, { headers: { "x-tester-id": testerId ?? "" } });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!testerId && mode === "morning",
+    staleTime: 1000 * 60 * 30,
+  });
+  const [yRated, setYRated] = useState<string | null>(null);
+  const yesterdayFelt = yRated ?? (yDay?.checkIn?.behaviorTags ?? []).find((t: string) => t.startsWith("felt:"))?.slice(5) ?? null;
+  const rateYesterday = (felt: string) => {
+    setYRated(felt);
+    fetch("/api/check-ins", {
+      method: "POST",
+      headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+      body: JSON.stringify({ date: yesterday, behaviorTags: [`felt:${felt}`] }),
+    }).catch(() => {});
+  };
+
   if (mode === "morning") {
     const nowMs = Date.now();
     const nextEvent = gcalEvents
@@ -1899,13 +1926,41 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           {CHARACTER_LABEL[character]} tide, {tide?.levelLabel?.toLowerCase() ?? "steady"} — {CHARACTER_ESSENCE[character]?.toLowerCase().replace(/\.$/, "")}.
         </div>
 
+        {/* Yesterday, if it slipped past unrated */}
+        {testerId && yDay !== undefined && !yesterdayFelt && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 10.5, color: "#998a76" }}>
+            <span>Yesterday felt…</span>
+            {[["aligned", "●", "#4a8060"], ["mixed", "◐", "#a08040"], ["off", "○", "#9a6060"]].map(([k, icon, c]) => (
+              <button key={k} onClick={() => rateYesterday(k)} style={{
+                fontSize: 10.5, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
+                border: "1px solid var(--color-border)", background: "var(--color-card)", color: c,
+              }}>{icon} {k}</button>
+            ))}
+          </div>
+        )}
+        {yRated && <div style={{ fontSize: 10, color: "#4a8060", marginBottom: 10 }}>✓ yesterday logged</div>}
+
         {habitList.length > 0 && (
           <div style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {habitList.map((h: any) => {
                 const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
+                // Daily sun/moon anchor — fire rides sunrise, air the high sun,
+                // earth lands by sunset, water takes the Moon's own hour.
+                const dl = (now as any)?.daylight;
+                const moonHr = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
+                const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
+                const fe = h.favoredElements?.[0];
+                const anchor = h.doneToday ? null
+                  : fe === "fire" && dl?.sunrise ? `☉ ${fmtT(dl.sunrise)}`
+                  : fe === "air" && dl?.sunrise && dl?.sunset ? `☉ ${fmtT(new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2).toISOString())}`
+                  : fe === "earth" && dl?.sunset ? `☉ by ${fmtT(dl.sunset)}`
+                  : fe === "water" && moonHr ? `☽ ${moonHr.time}`
+                  : null;
                 return (
-                  <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })} style={{
+                  <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
+                    title={anchor ? "A daily sky anchor for this habit — sun or moon time that suits its element" : undefined}
+                    style={{
                     display: "flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 18, cursor: "pointer",
                     border: h.doneToday ? "1px solid #4a806040" : `1px solid ${resonant ? elColor : "var(--color-border)"}`,
                     background: h.doneToday ? "#4a806012" : "var(--color-card)",
@@ -1914,6 +1969,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: h.doneToday ? "#4a8060" : "var(--color-foreground)" }}>{h.name}</span>
                     {resonant && <span style={{ fontSize: 10, color: elColor }}>✦</span>}
                     <span style={{ fontSize: 9, color: "#aaa" }}>{h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}</span>
+                    {anchor && <span style={{ fontSize: 8.5, color: "#998a76" }}>{anchor}</span>}
                   </button>
                 );
               })}
@@ -2018,7 +2074,37 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
   });
 
-  if (!Array.isArray(habits) || habits.length === 0) return null;
+  // Practices fold in here — habits and practices are ONE daily-doing card
+  // now, with practice timing expressed in the app's FIT language instead of
+  // its own resonant/supported/soften dialect.
+  const { data: practicesData } = usePractices(testerId, 40.7, -74.0);
+  const practiceRows = (practicesData?.practices ?? []).filter((p: any) => p.timing !== "neutral").slice(0, 4);
+  const FIT_LABEL: Record<string, { text: string; color: string }> = {
+    resonant: { text: "✦ a great time for this", color: "#3a7040" },
+    supported: { text: "· this time will do", color: "#8a8278" },
+    soften: { text: "≋ against the current — soften it", color: "#a06020" },
+    protect: { text: "≋ against the current — protect the minimum", color: "#a06020" },
+  };
+
+  // Daily sun/moon link per habit — a concrete anchor in the day's real sky:
+  // fire → sunrise, air → midday sun, earth → before sunset, water → the
+  // Moon's own planetary hour.
+  const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
+  const dl = (now as any)?.daylight;
+  const moonHour = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
+  const anchorFor = (h: any): { label: string; why: string } | null => {
+    const e = h.favoredElements?.[0];
+    if (e === "fire" && dl?.sunrise) return { label: `☉ sunrise ${fmtT(dl.sunrise)}`, why: "Fire habits ride the rising sun — anchor it to first light." };
+    if (e === "air" && dl?.sunrise && dl?.sunset) {
+      const noon = new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2);
+      return { label: `☉ midday ${fmtT(noon.toISOString())}`, why: "Air habits suit the high sun — clear head, full light." };
+    }
+    if (e === "earth" && dl?.sunset) return { label: `☉ by sunset ${fmtT(dl.sunset)}`, why: "Earth habits close the day — land it before the light goes." };
+    if (e === "water" && moonHour) return { label: `☽ Moon hour ${moonHour.time}`, why: "Water habits belong to the Moon — its own hour today." };
+    return null;
+  };
+
+  if ((!Array.isArray(habits) || habits.length === 0) && practiceRows.length === 0) return null;
   const doneCount = habits.filter((h) => h.doneToday).length;
 
   // Resonance against the current moment, same lightweight scoring the Habits
@@ -2032,15 +2118,16 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Today's habits</div>
-        <div style={{ fontSize: 9.5, color: "#999" }}>{doneCount}/{habits.length} done</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Habits & practices</div>
+        {habits.length > 0 && <div style={{ fontSize: 9.5, color: "#999" }}>{doneCount}/{habits.length} done</div>}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
         {sorted.map((h) => {
           const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
+          const anchor = !h.doneToday ? anchorFor(h) : null;
           return (
             <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
-              title={resonant ? `Favors ${el} days — resonant now` : undefined}
+              title={[resonant ? `Favors ${el} days — a great time for this` : null, anchor?.why].filter(Boolean).join(" ") || undefined}
               style={{
                 display: "flex", alignItems: "center", gap: 6, padding: "6px 12px 6px 8px", borderRadius: 18,
                 cursor: "pointer", fontSize: 11.5,
@@ -2056,10 +2143,25 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
               }}>{h.doneToday ? "✓" : ""}</span>
               {h.emoji ? `${h.emoji} ` : ""}{h.name}
               {resonant && <span style={{ fontSize: 8.5, color: "#4a8060" }}>✦</span>}
+              {anchor && <span style={{ fontSize: 8.5, color: "#998a76" }}>{anchor.label}</span>}
             </button>
           );
         })}
       </div>
+      {practiceRows.length > 0 && (
+        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 3 }}>
+          {practiceRows.map((p: any) => {
+            const fit = FIT_LABEL[p.timing];
+            return (
+              <div key={p.id} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 11 }}>
+                <span style={{ color: "var(--color-foreground)", fontWeight: 500 }}>{p.name}</span>
+                {fit && <span style={{ fontSize: 9.5, color: fit.color, fontWeight: 600 }}>{fit.text}</span>}
+                {p.reasons?.[0] && <span style={{ fontSize: 9, color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -2975,6 +3077,80 @@ function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: stri
         <div style={{ fontSize: 12, color: s.textColor, fontWeight: type === "practice-resonant" ? 500 : 400 }}>{label}</div>
         {sub && <div style={{ fontSize: 9, color: "#bbb", marginTop: 1 }}>{sub}</div>}
       </div>
+    </div>
+  );
+}
+
+// ── MonthBars — the Almanac's 30-day view, brought home and made tappable ────
+// Each bar is a day: element color, height = how charged. Tapping a bar opens
+// the day's explanation (character, moon, vibe, aspects) so the strip teaches
+// instead of just decorating.
+function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat: number; lon: number; today: string }) {
+  const { data: month } = useTidesWeek(30, lat, lon);
+  const [sel, setSel] = useState<string | null>(null);
+  const days = (month?.days ?? []) as any[];
+  if (!days.length) return null;
+  const selDay = days.find((d) => d.date === sel);
+
+  const CHAR_WORD: Record<string, string> = { water: "Deep", fire: "Surge", earth: "Building", air: "Clear" };
+  const chargeLine = (qs: number) =>
+    qs >= 5.5 ? "high charge — a day to lean in" : qs >= 3.5 ? "steady water — this day will do for most things" : "low water — keep plans light";
+
+  return (
+    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>The month's water</span>
+        <span style={{ fontSize: 9.5, color: "#aaa" }}>next 30 days · tap a day</span>
+      </div>
+      <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 52 }}>
+        {days.map((d) => {
+          const ec = ELEMENT_COLORS[(d.element ?? "water") as Element] ?? "#888";
+          const qs = d.qualityScore ?? 4;
+          const h = 10 + Math.round((qs / 7) * 38);
+          const active = sel === d.date;
+          const isToday = d.date === today;
+          return (
+            <button key={d.date} onClick={() => setSel(active ? null : d.date)}
+              title={new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              style={{
+                flex: 1, height: h, minWidth: 0, padding: 0, cursor: "pointer",
+                background: active ? ec : `${ec}${isToday ? "88" : "55"}`,
+                border: "none", borderTop: `2px solid ${ec}`, borderRadius: 2,
+                outline: isToday ? `1.5px solid ${ec}` : "none", outlineOffset: 1,
+              }} />
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#bbb", marginTop: 3 }}>
+        <span>today</span><span>+30d</span>
+      </div>
+
+      {selDay && (() => {
+        const ec = ELEMENT_COLORS[(selDay.element ?? "water") as Element] ?? "#888";
+        const aspects = (selDay.moonAspects ?? []) as any[];
+        const d = new Date(selDay.date + "T12:00:00");
+        return (
+          <div style={{ marginTop: 10, padding: "10px 12px", background: `${ec}0a`, borderLeft: `3px solid ${ec}`, borderRadius: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
+              {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              <span style={{ color: ec, marginLeft: 8 }}>{CHAR_WORD[selDay.element] ?? ""} day</span>
+              <span style={{ fontWeight: 400, color: "#999", marginLeft: 6, fontSize: 10.5 }}>· {selDay.element}</span>
+            </div>
+            <div style={{ fontSize: 10.5, color: "#888", marginTop: 3 }}>{chargeLine(selDay.qualityScore ?? 4)}</div>
+            <div style={{ fontSize: 10.5, color: "#777", marginTop: 5, lineHeight: 1.5 }}>{buildDayVibe(selDay)}</div>
+            {aspects.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
+                {aspects.slice(0, 3).map((a: any, i: number) => (
+                  <div key={i} style={{ fontSize: 9.5, color: "#666" }}>
+                    <span style={{ color: ASP_COLOR[a.aspect] ?? "#888", fontWeight: 600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
+                    {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

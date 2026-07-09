@@ -170,6 +170,10 @@ const TIER_NOTE: Record<Tier, string> = {
   against: "swimming against the current — the only open water left",
 };
 
+// Only the seven classical planets rule hours — an outer-planet association
+// (Uranus/Neptune/Pluto) can't be hour-targeted.
+const HOUR_RULERS = new Set(["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]);
+
 // "HH:MM" → fractional local hour (0–24); null-safe.
 function hourFromClock(v: unknown, fallback: number): number {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(v ?? ""));
@@ -270,7 +274,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       .filter((s) => s.startMs >= nowMs && s.startMs + durMs <= Math.min(s.endMs + 30 * 60000, dueMs))
       .sort((a, b) => rank(b) - rank(a));
 
-    const push = (start: number, date: string, matchedLane: boolean, tier: Tier) => {
+    const push = (start: number, date: string, matchedLane: boolean, tier: Tier, note?: string) => {
       reserved.push({ s: start, e: start + durMs });
       planned.push({
         title: t.title,
@@ -287,13 +291,36 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         planetaryHour: getPlanetaryHour(new Date(start), lat, lon).ruler,
         matchedLane,
         tier,
-        tierNote: TIER_NOTE[tier],
+        tierNote: note ?? TIER_NOTE[tier],
       });
     };
 
-    // Pass 1 — the sky's peak windows, own lane first.
     let placed = false;
+
+    // Pass 0 — short tasks with a clear planetary voice go to that planet's
+    // OWN HOUR. For a 30-minute "reply to DMs" the Mercury hour matters more
+    // than which element the Moon is in; the element lane is the right frame
+    // for the big multi-hour blocks, not the small stitches.
+    const hourTargets = new Set(t.assoc.planets.filter((p) => HOUR_RULERS.has(p)));
+    if (t.estimatedMinutes <= 75 && hourTargets.size > 0) {
+      outer0: for (const grid of dayGrids) {
+        for (let h = wake; h + t.estimatedMinutes / 60 <= sleep; h += 0.5) {
+          const start = grid.dayStartMs + h * 3600000;
+          if (start < nowMs) continue;
+          if (start + durMs > dueMs) break outer0;
+          if (!hourTargets.has(getPlanetaryHour(new Date(start), lat, lon).ruler)) continue;
+          if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
+          const ruler = getPlanetaryHour(new Date(start), lat, lon).ruler;
+          push(start, grid.date, true, "great", `a great time — ${ruler}'s own hour`);
+          placed = true;
+          break outer0;
+        }
+      }
+    }
+
+    // Pass 1 — the sky's peak windows, own lane first.
     for (const s of candidates) {
+      if (placed) break;
       const start = s.startMs;
       if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
       const matched = s.element === t.assoc.element;

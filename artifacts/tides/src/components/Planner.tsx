@@ -202,10 +202,20 @@ export default function Planner({ testerId, lat, lon }: { testerId: string | nul
                       }}>{en}</button>
                     ))}
                   </div>
-                  <label style={{ fontSize: 11, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
-                    due <input type="date" value={c.dueDate ?? ""} onChange={(e) => editCard(i, { dueDate: e.target.value || null })}
-                      style={{ padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
-                  </label>
+                  {/* Deadlines are opt-in — most tasks don't have one, and an
+                      empty date field reads as a demand to invent one. */}
+                  {c.dueDate != null ? (
+                    <label style={{ fontSize: 11, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                      due <input type="date" value={c.dueDate} onChange={(e) => editCard(i, { dueDate: e.target.value || null })}
+                        style={{ padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
+                      <button onClick={() => editCard(i, { dueDate: null })} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
+                    </label>
+                  ) : (
+                    <button onClick={() => editCard(i, { dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) })}
+                      style={{ fontSize: 10.5, color: "#a09888", background: "none", border: "1px dashed var(--color-border)", borderRadius: 6, padding: "3px 9px", cursor: "pointer" }}>
+                      + due date
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -35,6 +35,14 @@ const MOON_MEANING: Record<string, string> = {
 const ELEMENT_TINT: Record<string, string> = {
   water:"#3a5a801c",fire:"#8a3a2016",earth:"#3a60301a",air:"#c19a3a1c",
 };
+// Plain meaning per planet for the crossing hover — what the window is FOR.
+const CROSSING_MEANING: Record<string, string> = {
+  Sun: "visibility, decisions, being seen", Moon: "care, feelings, home matters",
+  Mercury: "writing, calls, sending the thing", Venus: "connection, beauty, asking nicely",
+  Mars: "decisive action, workouts, the hard cut", Jupiter: "launches, asks, thinking bigger",
+  Saturn: "structure, commitments, the disciplined task",
+};
+
 const ELEMENT_ACCENT: Record<string, string> = {
   water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#c19a3a",
 };
@@ -697,9 +705,11 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     if (topPx<0||topPx>HOURS*ROW_H) return null;
                     const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
                     return (
-                      <div key={ci} style={{
+                      <div key={ci}
+                        title={`${c.planet} ${c.angle==="ASC"?"rises":c.angle==="MC"?"culminates":c.angle==="DSC"?"sets":"reaches the low point"} at ${c.time?.slice(0,5)} — a strong ~20-minute window for ${CROSSING_MEANING[c.planet] ?? "this planet's themes"}.`}
+                        style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,
-                        top:topPx-18,height:36,zIndex:4,pointerEvents:"none",
+                        top:topPx-18,height:36,zIndex:4,cursor:"help",
                         background:`linear-gradient(to bottom,transparent 0%,${pCol}35 40%,${pCol}55 50%,${pCol}35 60%,transparent 100%)`,
                       }}>
                         <div style={{ position:"absolute",bottom:1,right:3,fontSize:7.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>

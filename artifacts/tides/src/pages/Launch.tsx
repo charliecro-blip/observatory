@@ -10,8 +10,10 @@ const VERDICT_COLORS: Record<ElectionVerdict, string> = {
 const VERDICT_BG: Record<ElectionVerdict, string> = {
   strong: "#e8f5e0", workable: "#e8eef8", caution: "#f8ede0", avoid: "#f8e4e0",
 };
+// One grading language app-wide (the FIT scale): electional keeps a 4th step
+// because a BEGINNING can be genuinely worth refusing.
 const VERDICT_LABELS: Record<ElectionVerdict, string> = {
-  strong: "Strong", workable: "Workable", caution: "Caution", avoid: "Avoid",
+  strong: "A great time", workable: "This time will do", caution: "Against the current", avoid: "Avoid",
 };
 
 function fmtRange(startIso: string, endIso: string): string {

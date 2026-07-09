@@ -2,6 +2,7 @@ import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import { usePreferences } from "@/contexts/preferences-context";
+import { PLANET_LITERACY } from "@/lib/sky-literacy";
 
 // The daily report — the home as a navigation console. Weather + calendar +
 // where you're steering, in one glance, day-focused with a look down the week.
@@ -145,9 +146,11 @@ export default function Dashboard({
               {upcoming.map((e, i) => {
                 const nowish = Math.abs(Date.parse(e.at) - Date.now()) < 10 * 60000;
                 return (
-                  <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0" }}>
+                  <div key={i}
+                    title={`${e.angle === "ASC" ? "Rising" : "Culminating"} = your ${e.planet}'s strongest ~20 minutes of the day. Use it: ${PLANET_LITERACY[e.planet]?.useIt ?? "lead with this drive."}`}
+                    style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0", cursor: "help" }}>
                     <span style={{ fontSize: 11, color: nowish ? "#a8862e" : "#999", flexShrink: 0, minWidth: 52, fontWeight: nowish ? 700 : 400 }}>{nowish ? "now" : fmt(e.at)}</span>
-                    <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
+                    <span style={{ fontSize: 12.5, color: "var(--color-foreground)", borderBottom: "1px dotted #d8d2c8" }}>
                       {PLANET_GLYPH[e.planet]} your {e.planet} {e.angle === "ASC" ? "rises" : "culminates"}{e.approximate ? " ~" : ""}
                     </span>
                   </div>
