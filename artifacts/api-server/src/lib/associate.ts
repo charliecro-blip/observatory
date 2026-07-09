@@ -36,7 +36,9 @@ interface PlanetProfile {
 const PLANETS: Record<string, PlanetProfile> = {
   Sun: {
     element: "fire", windowType: "deep_work", short: "vitality and visible purpose",
-    keywords: ["shine", "vitality", "energy", "confidence", "confident", "lead", "leader", "leadership", "visible", "visibility", "present", "presence", "express", "expression", "identity", "purpose", "spine", "backbone", "posture", "vital", "alive", "radiate", "self", "courageous", "stage", "perform", "spotlight", "authentic"],
+    keywords: ["shine", "vitality", "energy", "confidence", "confident", "lead", "leader", "leadership", "visible", "visibility", "present", "presence", "express", "expression", "identity", "purpose", "spine", "backbone", "posture", "vital", "alive", "radiate", "self", "courageous", "stage", "perform", "spotlight", "authentic",
+      // being seen online IS solar work — posting is visibility, not paperwork
+      "post", "posts", "posting", "instagram", "ig", "tiktok", "brand", "branding", "audience", "announce", "announcement", "promote", "promotion", "showcase", "profile", "bio"],
   },
   Moon: {
     element: "water", windowType: "recovery", short: "care and rest",
@@ -44,7 +46,8 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
   Mercury: {
     element: "air", windowType: "planning", short: "thinking and communicating",
-    keywords: ["write", "writing", "read", "reading", "learn", "learning", "study", "think", "thinking", "plan", "planning", "organize", "organise", "sort", "communicate", "communication", "talk", "email", "message", "call", "connect", "idea", "ideas", "notes", "journal", "language", "words", "schedule", "admin", "errand", "errands", "research", "code", "coding"],
+    keywords: ["write", "writing", "read", "reading", "learn", "learning", "study", "think", "thinking", "plan", "planning", "organize", "organise", "sort", "communicate", "communication", "talk", "email", "message", "call", "connect", "idea", "ideas", "notes", "journal", "language", "words", "schedule", "admin", "errand", "errands", "research", "code", "coding",
+      "content", "caption", "captions", "newsletter", "blog", "podcast", "tweet", "thread", "text", "texts", "edit", "editing", "upload", "website", "site", "draft", "outline", "reply", "replies", "dm", "dms", "inbox"],
   },
   Venus: {
     element: "earth", windowType: "social", short: "beauty, pleasure, and relating",
@@ -52,11 +55,13 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
   Mars: {
     element: "fire", windowType: "deep_work", short: "drive and physical effort",
-    keywords: ["train", "training", "exercise", "workout", "run", "running", "lift", "gym", "strength", "strong", "fight", "push", "drive", "action", "act", "assert", "boundary", "boundaries", "courage", "brave", "compete", "sprint", "sweat", "physical", "body", "move", "movement", "muscle", "discipline", "hard", "cut", "decisive", "attack", "protect", "defend"],
+    keywords: ["train", "training", "exercise", "workout", "run", "running", "lift", "gym", "strength", "strong", "fight", "push", "drive", "action", "act", "assert", "boundary", "boundaries", "courage", "brave", "compete", "sprint", "sweat", "physical", "body", "move", "movement", "muscle", "discipline", "hard", "cut", "decisive", "attack", "protect", "defend",
+      "start", "begin", "initiate", "ship", "tackle", "chase", "hustle"],
   },
   Jupiter: {
     element: "fire", windowType: "study", short: "growth and the bigger frame",
-    keywords: ["grow", "growth", "expand", "expansion", "teach", "teaching", "publish", "publishing", "learn", "study", "travel", "adventure", "explore", "philosophy", "meaning", "faith", "believe", "vision", "big", "abundance", "generous", "generosity", "optimism", "wisdom", "mentor", "share", "scale", "reach", "opportunity"],
+    keywords: ["grow", "growth", "expand", "expansion", "teach", "teaching", "publish", "publishing", "learn", "study", "travel", "adventure", "explore", "philosophy", "meaning", "faith", "believe", "vision", "big", "abundance", "generous", "generosity", "optimism", "wisdom", "mentor", "share", "scale", "reach", "opportunity",
+      "launch", "market", "marketing", "pitch", "sell", "sales", "campaign", "outreach", "apply", "application", "sponsor", "collab", "collaboration"],
   },
   Saturn: {
     element: "earth", windowType: "deep_work", short: "structure and discipline",
@@ -68,7 +73,8 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
   Neptune: {
     element: "water", windowType: "creative", short: "imagination and the inner life",
-    keywords: ["dream", "dreams", "imagine", "imagination", "art", "music", "poetry", "spiritual", "spirit", "meditate", "meditation", "intuition", "intuitive", "compassion", "surrender", "flow", "creative", "vision", "mystical", "escape", "film", "photography", "paint", "painting", "float", "pray", "prayer"],
+    keywords: ["dream", "dreams", "imagine", "imagination", "art", "music", "poetry", "spiritual", "spirit", "meditate", "meditation", "intuition", "intuitive", "compassion", "surrender", "flow", "creative", "vision", "mystical", "escape", "film", "photography", "paint", "painting", "float", "pray", "prayer",
+      "photo", "photos", "image", "images", "visual", "visuals", "video", "videos", "reel", "reels", "shoot", "footage", "moodboard"],
   },
   Pluto: {
     element: "water", windowType: "deep_work", short: "depth and transformation",
@@ -107,10 +113,13 @@ export function associateDeterministic(text: string): Association {
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
 
   if (ranked.length === 0) {
-    // Nothing matched — a neutral, honest default rather than a forced reading.
+    // Nothing matched — say so honestly. The UI offers element overrides, so
+    // a shrug here is an invitation to correct, not a verdict. (This default
+    // used to silently paint every unrecognized task "earth" — the owner
+    // noticed a whole list coming back identical.)
     return {
       element: "earth", planets: [], windowType: "deep_work", source: "keywords",
-      rationale: "No strong planetary signature — treat this as a steady, do-it-in-a-focused-block aim.",
+      rationale: "No clear signature from the words alone — defaulting to a steady earth block. Tap an element to correct it.",
     };
   }
 

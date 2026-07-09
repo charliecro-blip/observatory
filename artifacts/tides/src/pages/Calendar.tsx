@@ -30,8 +30,10 @@ const MOON_MEANING: Record<string, string> = {
   "Waning Crescent":"Rest. Let the field lie fallow.",
   "Balsamic Moon":"Surrender. Deepest inner work before the new cycle.",
 };
+// Alpha tints over var(--color-card) so the grid follows the theme — the
+// old hardcoded pastels kept week/day views bright in night mode.
 const ELEMENT_TINT: Record<string, string> = {
-  water:"#ebf1f7",fire:"#f9f0e8",earth:"#edf3e8",air:"#f4efdd",
+  water:"#3a5a801c",fire:"#8a3a2016",earth:"#3a60301a",air:"#c19a3a1c",
 };
 const ELEMENT_ACCENT: Record<string, string> = {
   water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#c19a3a",
@@ -402,7 +404,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     return (
       <div title="Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env to enable" style={{
         fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-        background:"#f8f8f8", color:"#ccc", cursor:"not-allowed",
+        background:"var(--color-card-2)", color:"#ccc", cursor:"not-allowed",
         display:"flex", alignItems:"center", gap:4,
       }}>
         <span style={{ fontSize:10 }}>📅</span> Google Cal
@@ -415,7 +417,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
       <div style={{ display:"flex", alignItems:"center", gap:4 }}>
         <div style={{
           fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid #b0d0b0",
-          background:"#f0faf0", color:"#408040",
+          background:"#3a602018", color:"#408040",
           display:"flex", alignItems:"center", gap:4,
         }}>
           <span style={{ fontSize:10 }}>📅</span>
@@ -423,7 +425,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
         </div>
         <button onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" style={{
           fontSize:9, padding:"2px 6px", borderRadius:5, border:"1px solid #e0ccc0",
-          background:"#fff8f5", color:"#c06040", cursor:"pointer",
+          background:"#8a3a2012", color:"#c06040", cursor:"pointer",
         }}>✕</button>
       </div>
     );
@@ -500,7 +502,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           const dayData = dataMap.get(dateStr);
           const isToday = dateStr===today;
           const ec = ELEMENT_ACCENT[dayData?.element ?? ""] ?? "#888";
-          const et = ELEMENT_TINT[dayData?.element ?? ""] ?? "#fff";
+          const et = ELEMENT_TINT[dayData?.element ?? ""] ?? "var(--color-card)";
           const wins = windowsMap.get(dateStr) ?? [];
           const crossings = realLocation ? ((dayData?.crossings ?? []) as any[]) : [];
           const isPast = dateStr < today;
@@ -533,7 +535,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                 <div style={{ height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
                   <div style={{ fontSize:isDay?10:9,color:isToday?ec:"#bbb",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
                   <div style={{
-                    fontSize:isDay?18:15,fontWeight:700,color:isToday?"#fff":"#444",lineHeight:1,
+                    fontSize:isDay?18:15,fontWeight:700,color:isToday?"#fff":"var(--color-foreground)",lineHeight:1,
                     width:isDay?28:22,height:isDay?28:22,borderRadius:"50%",
                     background:isToday?ec:"transparent",
                     display:"flex",alignItems:"center",justifyContent:"center",
@@ -558,7 +560,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
-                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#ece9f4",color:"#6f6a90",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
+                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"#6f6a90",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
                     {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
                       <span title={`Advisory: ${cautionMap.get(dateStr)!.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
                         style={{ fontSize:9,lineHeight:1,cursor:"help" }}>⚠️</span>
@@ -585,7 +587,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
 
               {/* Day view: planetary hours legend ABOVE scroll area */}
               {isDay && (
-                <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"#f8f5f0",padding:"6px 8px",overflowY:"auto" }}>
+                <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"var(--color-card-2)",padding:"6px 8px",overflowY:"auto" }}>
                   <div style={{ fontSize:7.5,color:"#bbb",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
                     {allHours.map((ph,i)=>{
@@ -610,7 +612,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
               )}
 
               {/* Time body — height comes from the rows; the whole grid scrolls as one */}
-              <div style={{ position:"relative",background:isPast?"var(--color-card-2)":"#fff" }}>
+              <div style={{ position:"relative",background:isPast?"var(--color-card-2)":"var(--color-card)" }}>
                 <div style={{ position:"relative",height:HOURS*ROW_H }}>
 
                   {/* Planetary hours — week: full-width tint; day: left bar */}
@@ -862,7 +864,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Row 3: VOC badge */}
       {dayData && voc && (
         <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2 }}>
-          <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning." style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#ece9f4",color:"#6f6a90",lineHeight:"14px",fontWeight:600 }}>◒ VOC</span>
+          <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning." style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"#6f6a90",lineHeight:"14px",fontWeight:600 }}>◒ VOC</span>
         </div>
       )}
 
@@ -969,7 +971,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
               </div>
             </div>
             <div style={{ fontSize:9.5,color:"#666",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
-            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#ece9f4",border:"1px solid #d2cee2",fontSize:9,color:"#6f6a90" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
+            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#6f6a9022",border:"1px solid #d2cee2",fontSize:9,color:"#6f6a90" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
             {/* Caution — the specific transit that flagged this day, explained.
                 This is the "illuminate a specific day" the caution mark points to. */}
             {cautionHits.length > 0 && (
@@ -1189,11 +1191,11 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <button onClick={nextPeriod} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>›</button>
         <button onClick={goToday} style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
 
-        <div style={{ display:"flex",background:"#e0dcd6",borderRadius:7,padding:3,gap:1 }}>
+        <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
           {(["day","week","month"] as CalView[]).map(v=>(
             <button key={v} onClick={()=>setCalView(v)} style={{
               fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
-              background:calView===v?"#fff":"transparent",color:calView===v?"#1a2a3a":"#999",
+              background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"#999",
               fontWeight:calView===v?600:400,textTransform:"capitalize",
             }}>{v}</button>
           ))}
@@ -1225,7 +1227,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
                 <span>tint = the day's element (Moon's sign)</span>
                 {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
                 {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
-                <span><span style={{ background:"#ece9f4",color:"#6f6a90",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
+                <span><span style={{ background:"#6f6a9022",color:"#6f6a90",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
                 {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = a caution day for you — tap the day to see what & why</span>}
               </div>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>

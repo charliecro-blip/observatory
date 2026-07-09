@@ -23,6 +23,9 @@ export interface DisplayPrefs {
   todayShowJournal: boolean;
   compactRail: boolean;
   timeFormat: "12h" | "24h";
+  // Angular-crossing markers on the Today wave — a tuning knob, so it lives
+  // in Settings rather than as a button on the home page.
+  todayShowCrossings: boolean;
   // Vocabulary graduation — "plain" speaks only the app's feeling-language
   // (Deep Tide, Surge); "bilingual" adds the sky's own words next to them
   // (Moon in Pisces, ☽ □ ♄) so fluency grows by exposure.
@@ -64,6 +67,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     todayShowJournal: true,
     compactRail: false,
     timeFormat: "12h",
+    todayShowCrossings: true,
     skyLanguage: "plain",
   },
   timing: {

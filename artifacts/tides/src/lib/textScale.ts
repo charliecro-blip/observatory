@@ -7,9 +7,9 @@
 const KEY = "obs_text_scale";
 
 export const TEXT_SCALES: { key: string; label: string; scale: number }[] = [
-  { key: "default", label: "Default", scale: 1 },
-  { key: "large",   label: "Large",   scale: 1.12 },
-  { key: "larger",  label: "Larger",  scale: 1.25 },
+  { key: "default", label: "Default", scale: 1.08 },
+  { key: "large",   label: "Large",   scale: 1.2 },
+  { key: "larger",  label: "Larger",  scale: 1.32 },
 ];
 
 export function getTextScale(): string {

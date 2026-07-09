@@ -97,7 +97,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
   };
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>Email reports <span style={{ fontSize: 9, fontWeight: 600, color: "#8a6a30", background: "#f0e8d8", padding: "1px 6px", borderRadius: 6, marginLeft: 4 }}>PREVIEW</span></div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>Email reports <span style={{ fontSize: 9, fontWeight: 600, color: "#8a6a30", background: "#8a6a3026", padding: "1px 6px", borderRadius: 6, marginLeft: 4 }}>PREVIEW</span></div>
       <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
         A short weather bulletin for your life — the day each morning, the week on Sundays, the month at the New Moon.
         Sending isn't wired yet; preview how they'd read:
@@ -216,7 +216,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
           const tid = localStorage.getItem("obs_tester_id");
           const r = await fetch("/api/push/test", { method: "POST", headers: { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" } });
           setSubMsg(r.ok ? "Test sent — check your notifications ✓" : "Test failed — check subscription.");
-        }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "#f5f0ec", color: "#555", cursor: "pointer", marginBottom: 6 }}>
+        }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer", marginBottom: 6 }}>
           Send test notification
         </button>
       )}
@@ -426,6 +426,10 @@ function DisplaySection() {
       <Divider />
       <Row label="Journal" sub="Daily reflection prompt.">
         <Toggle on={d.todayShowJournal} onChange={v => updateDisplay({ todayShowJournal: v })} />
+      </Row>
+      <Divider />
+      <Row label="Angle crossings" sub="Timed markers when planets cross the local angles (moved here from the Today page).">
+        <Toggle on={d.todayShowCrossings} onChange={v => updateDisplay({ todayShowCrossings: v })} />
       </Row>
     </SectionCard>
   );
@@ -1117,10 +1121,10 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
           <span style={{ fontSize: 10, color: "#ccc", padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 6 }}>Not configured</span>
         ) : status?.connected ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, color: "#408040", padding: "3px 10px", border: "1px solid #b0d0b0", borderRadius: 6, background: "#f0faf0" }}>
+            <span style={{ fontSize: 10, color: "#408040", padding: "3px 10px", border: "1px solid #b0d0b0", borderRadius: 6, background: "#40804018" }}>
               📅 {status.email ?? "Connected"}
             </span>
-            <button onClick={() => disconnect.mutate()} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: "1px solid #e0ccc0", background: "#fff8f5", color: "#c06040", cursor: "pointer" }}>
+            <button onClick={() => disconnect.mutate()} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: "1px solid #e0ccc0", background: "#c0604016", color: "#c06040", cursor: "pointer" }}>
               Disconnect
             </button>
           </div>

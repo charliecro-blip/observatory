@@ -123,6 +123,11 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
 export default function Launch({ testerId, lat, lon }: { testerId: string | null; lat: number; lon: number }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
+  // Plan has two distinct rooms: SCHEDULE (weave the week's tasks into good
+  // windows) and BEGIN (electional — pick the moment to start one specific
+  // venture). A switcher instead of one long scroll, so each mode gets the
+  // whole surface and neither buries the other.
+  const [mode, setMode] = useState<"schedule" | "begin">("schedule");
   const { data: catData } = useElectionCategories();
   const { data: scan, isLoading } = useElectionScan(category, days, lat, lon);
   const categories = catData?.categories ?? [];
@@ -131,11 +136,21 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
   return (
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-        {/* The Planner leads — "when should I do all of this?" */}
-        <Planner testerId={testerId} lat={lat} lon={lon} />
+        {/* Mode switcher */}
+        <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>
+          {([["schedule", "Schedule"], ["begin", "Begin"]] as const).map(([m, label]) => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              padding: "6px 18px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
+              background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "#999",
+              fontWeight: mode === m ? 600 : 400, boxShadow: mode === m ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+            }}>{label}</button>
+          ))}
+        </div>
 
-        <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 22 }} />
+        {/* SCHEDULE — "when should I do all of this?" */}
+        {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} />}
 
+        {mode === "begin" && (<>
         {/* Electional — "when should I BEGIN one specific venture?" */}
         <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>
           Begin something
@@ -204,6 +219,7 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
           A v1 ruleset — sources disagree on some secondary rules, and this takes reasonable, commonly-cited
           positions. Health, surgical, and medical timing decisions are out of scope everywhere in this app.
         </div>
+        </>)}
       </div>
     </div>
   );

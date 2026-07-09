@@ -4,7 +4,6 @@ import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { PLANET_LITERACY, CONTACT_TONE } from "@/lib/sky-literacy";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
-import Orrery from "@/components/Orrery";
 import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
@@ -127,7 +126,9 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 8 }}>
         The ten drives you're made of. Visit one to see what it means, how it lives in your chart, and how the sky is moving it right now.
       </div>
-      <Orrery planets={natal?.planets ?? []} selected={selected} onSelect={setSelected} />
+      {/* (The orrery chart is parked for now — owner found it distracting on
+          this page. The component survives at components/Orrery.tsx for a
+          future "sky map" surface.) */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22, marginTop: 8 }}>
         {ORDER.map((p) => {
           const active = p === selected, pc = COLOR[p] ?? "#888";
@@ -145,7 +146,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
         <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 6 }}>
           <div style={{ width: 46, height: 46, borderRadius: "50%", flexShrink: 0, background: `${col}20`, color: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{GLYPH[selected]}</div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>your inner {core.name}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>Your inner {core.name}</div>
             <div style={{ fontSize: 12, color: col, fontWeight: 600 }}>{core.short}</div>
           </div>
         </div>
@@ -173,6 +174,14 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       {lit && selected !== "Moon" && (
         <SectionCard label={`Your ${lit.adjective} days`} accent={col}>
           <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>{lit.weeklyNote}</div>
+          {/* The Moon-contact rhythm isn't the whole story for the Sun: the
+              week itself carries a solar day, and the natal Sun a monthly one. */}
+          {selected === "Sun" && (
+            <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>
+              Two more kinds of solar day: <b>every Sunday</b> (the Sun rules the day itself), and once a
+              month <b>the Moon crosses your natal Sun</b> — a personal solar day{sign ? ` (yours is in ${sign})` : " (add your birth details to track it)"}.
+            </div>
+          )}
           {contacts?.nextHard && (
             <div style={{ background: `${col}0e`, border: `1px solid ${col}30`, borderRadius: 9, padding: "9px 12px", marginBottom: 10 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>
@@ -283,7 +292,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
       </div>
 
       <div style={{ background: `linear-gradient(180deg, ${col}12, ${col}04)`, border: "1px solid var(--color-border)", borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>your {ordinal(selected)} house · {meaning.title}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>Your {ordinal(selected)} house · {meaning.title}</div>
         <div style={{ fontSize: 13, color: col, fontWeight: 600, marginTop: 2 }}>{meaning.domains}</div>
         {meaning.keywords?.length > 0 && <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>{meaning.keywords.join(" · ")}</div>}
       </div>

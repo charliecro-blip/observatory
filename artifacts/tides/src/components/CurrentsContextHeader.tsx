@@ -101,7 +101,7 @@ export default function CurrentsContextHeader({
                 style={{
                   marginTop: 8,
                   padding: 8,
-                  background: "#f8f4f0",
+                  background: "var(--color-card-2)",
                   borderRadius: 6,
                   fontSize: 10,
                   color: "#888",

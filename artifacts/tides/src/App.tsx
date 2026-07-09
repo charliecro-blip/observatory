@@ -101,7 +101,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
   {id:"log",      label:"Log"},
-  {id:"launch",   label:"When"},
+  {id:"launch",   label:"Plan"},
   {id:"planets",  label:"Star Base"},
 ];
 
@@ -855,7 +855,7 @@ function Shell() {
           </SubTabbed>
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
-        {view==="log"      && <Log      testerId={testerId}/>}
+        {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}

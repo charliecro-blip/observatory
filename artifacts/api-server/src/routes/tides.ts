@@ -9,7 +9,7 @@ import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects, getLocalAngles, getAngularPlanets,
-  getLastMoonAspect, getNextAngularCrossings,
+  getLastMoonAspect, getNextAngularCrossings, getSunriseSunset,
 } from "../lib/astro.js";
 import { db } from "@workspace/db";
 import { natalCharts } from "@workspace/db";
@@ -243,8 +243,33 @@ router.get("/tides/now", async (req, res) => {
   if (natalDisruption.length > 0) rhythmRiskFactors.push(`Moon ${natalDisruption[0].aspect} natal ${natalDisruption[0].natalPlanet}`);
   const rhythmRisk = rhythmRiskFactors.length >= 2;
 
+  // ── Solar cycle: daylight as part of the tides. Day length, its direction,
+  // and where we are in the light-year (solstice-to-solstice). ─────────────
+  const sunNow = getSunriseSunset(jd, lat, lon);
+  const sunYest = getSunriseSunset(jd - 1, lat, lon);
+  const lenMin = Math.round((sunNow.sunset.getTime() - sunNow.sunrise.getTime()) / 60000);
+  const deltaMin = Math.round((lenMin * 60000 - (sunYest.sunset.getTime() - sunYest.sunrise.getTime())) / 60000);
+  // Light phase from the Sun's ecliptic longitude (season-accurate, hemisphere-aware)
+  const sunLon = planets.find((p) => p.planet === "Sun")?.longitude ?? 90;
+  const north = lat >= 0;
+  // 90° = June solstice, 270° = December solstice
+  const fromJune = ((sunLon - 90) + 360) % 360; // degrees past June solstice
+  const nearJune = fromJune < 45 || fromJune > 315;
+  const nearDec = Math.abs(fromJune - 180) < 45;
+  const lightPhase =
+    (north ? nearJune : nearDec) ? "high light" :
+    (north ? nearDec : nearJune) ? "deep dark" :
+    deltaMin >= 0 ? "light growing" : "light waning";
+
   res.json({
     timestamp: date.toISOString(),
+    daylight: {
+      sunrise: sunNow.sunrise.toISOString(),
+      sunset: sunNow.sunset.toISOString(),
+      lengthMin: lenMin,
+      deltaMin,
+      phase: lightPhase,
+    },
     dayRuler,
     momentLabel: voc
       ? `Void Moon in ${moonSign}`

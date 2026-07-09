@@ -106,14 +106,29 @@ interface Slot {
 // fallback for anyone who hasn't set a chronotype.
 const DEFAULT_WAKE = 8, DEFAULT_SLEEP = 21;
 
-/** Every candidate energy-peak window across the horizon, per elemental lane. */
-function buildSlots(days: number, lat: number, lon: number, tz: number, wake: number, sleep: number): Slot[] {
+interface DayGrid {
+  date: string;
+  dayStartMs: number;
+  arc: ReturnType<typeof computeDayArc>;
+}
+
+/** Per-day arcs for the horizon — peaks come from these, and so does the
+ *  gap-fallback sampler (energy at an arbitrary hour). */
+function buildDays(days: number, lat: number, lon: number, tz: number): DayGrid[] {
   const now = Date.now();
-  const slots: Slot[] = [];
+  const out: DayGrid[] = [];
   for (let d = 0; d < days; d++) {
     const arc = computeDayArc(new Date(now + d * 86400000), lat, lon, tz);
     const dayStartMs = new Date(arc.dayStart).getTime();
-    const localDate = new Date(dayStartMs - tz * 60000).toISOString().slice(0, 10);
+    out.push({ date: new Date(dayStartMs - tz * 60000).toISOString().slice(0, 10), dayStartMs, arc });
+  }
+  return out;
+}
+
+/** Every candidate energy-peak window across the horizon, per elemental lane. */
+function buildSlots(dayGrids: DayGrid[], wake: number, sleep: number): Slot[] {
+  const slots: Slot[] = [];
+  for (const { date, dayStartMs, arc } of dayGrids) {
     for (const element of ["fire", "earth", "air", "water"]) {
       const curve = arc.curves[element] ?? arc.curve;
       for (const p of findPeakWindows(curve, 3, 2)) {
@@ -121,7 +136,7 @@ function buildSlots(days: number, lat: number, lon: number, tz: number, wake: nu
         if (startHour >= sleep) continue; // peak sits outside waking hours — skip
         const endHour = Math.min(Math.max(p.endHour, startHour + 1), sleep);
         slots.push({
-          date: localDate,
+          date,
           element,
           startMs: dayStartMs + startHour * 3600000,
           endMs: dayStartMs + endHour * 3600000,
@@ -132,6 +147,28 @@ function buildSlots(days: number, lat: number, lon: number, tz: number, wake: nu
   }
   return slots;
 }
+
+/** Energy of an element's curve at a given local hour (nearest point). */
+function energyAt(grid: DayGrid, element: string, hour: number): number {
+  const curve = grid.arc.curves[element] ?? grid.arc.curve;
+  let best = 0.5, bestD = Infinity;
+  for (const p of curve) {
+    const d = Math.abs(p.hour - hour);
+    if (d < bestD) { bestD = d; best = p.e; }
+  }
+  return best;
+}
+
+// Timing tiers — the app's grading language for a placement. "great" = a peak
+// in the task's own lane; "workable" = a real slot that will do; "against" =
+// the only opening left runs counter to the task's current. Nothing honest is
+// hidden behind a refusal to schedule.
+type Tier = "great" | "workable" | "against";
+const TIER_NOTE: Record<Tier, string> = {
+  great: "a great time for this",
+  workable: "this time will do",
+  against: "swimming against the current — the only open water left",
+};
 
 // "HH:MM" → fractional local hour (0–24); null-safe.
 function hourFromClock(v: unknown, fallback: number): number {
@@ -185,7 +222,12 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   const wake = hourFromClock(req.body.wakeTime, DEFAULT_WAKE);
   let sleep = hourFromClock(req.body.sleepTime, DEFAULT_SLEEP);
   if (sleep <= wake) sleep = DEFAULT_SLEEP; // ignore wrap-past-midnight bedtimes for slotting
-  const slots = buildSlots(days, lat, lon, tz, wake, sleep).filter((s) => s.endMs > nowMs);
+  // One extra day beyond the horizon: when someone weaves "today" at 9pm
+  // there is no waking water left today — the fallback rolls into tomorrow
+  // morning instead of refusing (peak-slot pass stays within the horizon).
+  const dayGrids = buildDays(days + 1, lat, lon, tz);
+  const horizonGrids = dayGrids.slice(0, days);
+  const slots = buildSlots(horizonGrids, wake, sleep).filter((s) => s.endMs > nowMs);
 
   // Existing calendar blocks in the horizon become busy time we won't overwrite —
   // both the app's own planning windows and (when passed) Google Calendar events.
@@ -228,13 +270,8 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       .filter((s) => s.startMs >= nowMs && s.startMs + durMs <= Math.min(s.endMs + 30 * 60000, dueMs))
       .sort((a, b) => rank(b) - rank(a));
 
-    let placed = false;
-    for (const s of candidates) {
-      const start = s.startMs;
-      const end = start + durMs;
-      if (reserved.some((r) => overlaps(start, end, r.s, r.e))) continue;
-      reserved.push({ s: start, e: end });
-      const ruler = getPlanetaryHour(new Date(start), lat, lon).ruler;
+    const push = (start: number, date: string, matchedLane: boolean, tier: Tier) => {
+      reserved.push({ s: start, e: start + durMs });
       planned.push({
         title: t.title,
         estimatedMinutes: t.estimatedMinutes,
@@ -244,20 +281,53 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         windowType: t.assoc.windowType,
         planets: t.assoc.planets,
         rationale: t.assoc.rationale,
-        date: s.date,
+        date,
         startAt: new Date(start).toISOString(),
-        endAt: new Date(end).toISOString(),
-        planetaryHour: ruler,
-        matchedLane: s.element === t.assoc.element,
+        endAt: new Date(start + durMs).toISOString(),
+        planetaryHour: getPlanetaryHour(new Date(start), lat, lon).ruler,
+        matchedLane,
+        tier,
+        tierNote: TIER_NOTE[tier],
       });
+    };
+
+    // Pass 1 — the sky's peak windows, own lane first.
+    let placed = false;
+    for (const s of candidates) {
+      const start = s.startMs;
+      if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
+      const matched = s.element === t.assoc.element;
+      push(start, s.date, matched, matched ? "great" : "workable");
       placed = true;
       break;
     }
+
+    // Pass 2 — no peak fit, so walk the plain open water: every half hour of
+    // every waking day before the deadline. A task must never bounce just
+    // because the *best* windows are taken; it gets an honest tier instead.
+    if (!placed) {
+      outer: for (const grid of dayGrids) {
+        for (let h = wake; h + t.estimatedMinutes / 60 <= sleep; h += 0.5) {
+          const start = grid.dayStartMs + h * 3600000;
+          if (start < nowMs) continue;
+          if (start + durMs > dueMs) break outer; // past the deadline — later days won't help
+          if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
+          const e = energyAt(grid, t.assoc.element, h);
+          push(start, grid.date, false, e >= 0.35 ? "workable" : "against");
+          placed = true;
+          break outer;
+        }
+      }
+    }
+
+    // Only a genuinely full calendar lands here now.
     if (!placed) {
       unplaced.push({
         title: t.title, estimatedMinutes: t.estimatedMinutes, energy: t.energy, dueDate: t.dueDate,
         element: t.assoc.element, windowType: t.assoc.windowType, planets: t.assoc.planets, rationale: t.assoc.rationale,
-        reason: t.dueDate ? "no open window before the deadline" : "no open window in this range",
+        reason: t.dueDate
+          ? "every waking slot before the deadline is already booked — free something up or push the date"
+          : "the whole range is booked solid — clear a block and weave again",
       });
     }
   }

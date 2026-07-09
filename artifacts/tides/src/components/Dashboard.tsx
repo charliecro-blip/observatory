@@ -101,7 +101,7 @@ export default function Dashboard({
               <span style={{ fontSize: 11, color: "#999", flexShrink: 0, minWidth: 52 }}>{fmtTime(w.startTime)}</span>
               <span style={{ fontSize: 12.5, color: "var(--color-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.title}</span>
             </div>
-          )) : <div style={{ fontSize: 12, color: "#aaa" }}>Nothing scheduled. Plan your day in When →</div>}
+          )) : <div style={{ fontSize: 12, color: "#aaa" }}>Nothing scheduled — weave your day in Plan →</div>}
         </Card>
 
         {/* (The big-sky card was dropped — the full explorable BigSky section

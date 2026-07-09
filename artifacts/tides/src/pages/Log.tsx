@@ -167,7 +167,7 @@ function ReflectComposer({ testerId, date, dayDetail }: {
   );
 }
 
-export default function Log({ testerId }: { testerId: string | null }) {
+export default function Log({ testerId, onVisitPlanet }: { testerId: string | null; onVisitPlanet?: (planet: string) => void }) {
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState(30); // days back
@@ -471,8 +471,17 @@ export default function Log({ testerId }: { testerId: string | null }) {
                   {ELEMENTS[dayDetail.sky.element as keyof typeof ELEMENTS]?.label ?? dayDetail.sky.element}
                 </div>
                 {(dayDetail.sky.flavors ?? []).length > 0 && (
-                  <div style={{ fontSize: 10, color: "#998a76", marginTop: 2 }}>
-                    a {(dayDetail.sky.flavors ?? []).map((p) => PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()).join(" + ")} day
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, flexWrap: "wrap" }}>
+                    {(dayDetail.sky.flavors ?? []).map((p) => (
+                      /* The Log looks back AND checks in — each flavor is a
+                         door to that planet's page (natal + transits + goals). */
+                      <button key={p} onClick={() => onVisitPlanet?.(p)} disabled={!onVisitPlanet} style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: onVisitPlanet ? "pointer" : "default",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#998a76",
+                      }}>
+                        a {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} day{onVisitPlanet ? " · check in →" : ""}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

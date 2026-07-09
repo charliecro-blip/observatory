@@ -185,6 +185,25 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "#999" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "#8a8278" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
         <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
+    if (open === "aspects") {
+      const asps = ((now as any).moonAspects ?? []) as any[];
+      return <>
+        <b>Moon aspects</b>
+        {asps.length === 0 && <div style={{ marginTop: 3, color: "#8a8278" }}>None in orb right now — open water.</div>}
+        {asps.slice(0, 4).map((a: any, i: number) => {
+          const partner = a.planet1 === "Moon" ? a.planet2 : a.planet1;
+          const glyph = { conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[a.aspect as string] ?? "·";
+          return (
+            <div key={i} style={{ marginTop: 3, color: "#8a8278" }}>
+              ☽ {glyph} {PLANET_ICONS[partner] ?? ""} <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
+              <span style={{ color: "#aaa", marginLeft: 5 }}>
+                {a.applying && a.hoursToExact != null ? `exact in ~${Math.round(a.hoursToExact)}h` : !a.applying ? `${a.orb.toFixed(1)}° past` : `${a.orb.toFixed(1)}° orb`}
+              </span>
+            </div>
+          );
+        })}
+      </>;
+    }
     return null;
   })();
 
@@ -207,6 +226,12 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
             <span style={{ color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
             <span style={{ color: "#666" }}>day</span>
+          </button>
+        )}
+        {((now as any).moonAspects ?? []).length > 0 && (
+          <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", "#7080a0")}>
+            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
+            <span style={{ color: "#666" }}>{(now as any).moonAspects.length}</span>
           </button>
         )}
         <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
@@ -517,6 +542,18 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
             return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
           })()}
+          {/* The solar cycle IS part of the tides — daylight as the year's
+              slowest wave: how much light, and which way it's running. */}
+          {(now as any)?.daylight && (() => {
+            const d = (now as any).daylight;
+            const h = Math.floor(d.lengthMin / 60), m = d.lengthMin % 60;
+            const drift = d.deltaMin === 0 ? "holding steady" : `${Math.abs(d.deltaMin)} min ${d.deltaMin > 0 ? "longer" : "shorter"} than yesterday`;
+            return (
+              <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>
+                ☀ {h}h {String(m).padStart(2, "0")}m of light · <b style={{ color: "#a08a50" }}>{d.phase}</b> · {drift}
+              </div>
+            );
+          })()}
         </div>
       ) : (
         <GlyphRow label="Sun" onClick={() => toggleOpen("season")}>
@@ -623,7 +660,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <div style={{ fontSize:9 }}>
                       {a.orb < 0.5
-                        ? <span style={{ fontSize:8, background:"#f0e8d8", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
+                        ? <span style={{ fontSize:8, background:"#b0703024", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
                         : a.applying
                           ? (() => {
                               // Use the backend's real per-pair closing speed so this
@@ -812,7 +849,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"#aaa" }}>
               Planetary aspects
             </span>
-            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#faf5e8", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
+            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
               {showNonMoonAspects ? "▲ hide" : `${now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length} ▼`}
             </span>
           </button>
@@ -966,7 +1003,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").slice(0, 3).map((p: any) => (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
-                borderLeft: "3px solid #60a060", background: "#f8fff8",
+                borderLeft: "3px solid #60a060", background: "#60a06016",
               }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#60a060", flexShrink: 0 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>

@@ -16,7 +16,7 @@ interface Card {
   title: string; estimatedMinutes: number; energy: string; dueDate: string | null;
   element: string; windowType: string; planets: string[]; rationale: string;
 }
-interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; }
+interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; }
 interface UnplacedItem { title: string; element: string; reason: string; }
 interface WeaveResult { horizon: string; planned: PlannedItem[]; unplaced: UnplacedItem[]; }
 
@@ -165,8 +165,27 @@ export default function Planner({ testerId, lat, lon }: { testerId: string | nul
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                   <input value={c.title} onChange={(e) => editCard(i, { title: e.target.value })}
                     style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none", outline: "none" }} />
-                  <span style={{ fontSize: 10, color: col }}>● {c.element}</span>
+                  {c.planets?.length > 0 && (
+                    <span style={{ fontSize: 10, color: "#999" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
+                  )}
                   <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
+                </div>
+                {/* The read is a guess, not a verdict — every element stays one
+                    tap away (a list of unrecognized tasks once came back
+                    uniformly "earth" with no way to disagree). */}
+                <div style={{ display: "flex", gap: 4, marginBottom: 7 }}>
+                  {(["fire", "earth", "air", "water"] as const).map((el) => {
+                    const ec = ELEMENT_COLOR[el];
+                    const active = c.element === el;
+                    return (
+                      <button key={el} onClick={() => editCard(i, { element: el })} style={{
+                        fontSize: 10, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
+                        border: active ? `1.5px solid ${ec}` : "1px solid var(--color-border)",
+                        background: active ? `${ec}14` : "var(--color-card-2)",
+                        color: active ? ec : "#999", fontWeight: active ? 600 : 400,
+                      }}>● {el}</button>
+                    );
+                  })}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <label style={{ fontSize: 11, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
@@ -225,6 +244,15 @@ export default function Planner({ testerId, lat, lon }: { testerId: string | nul
                         <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>
                         <span style={{ color: "#999", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>
                       </div>
+                      {/* Timing tier — the grading language for the slot itself */}
+                      {item.tierNote && (
+                        <div style={{
+                          fontSize: 10.5, marginTop: 3, fontWeight: 600,
+                          color: item.tier === "great" ? "#3a7040" : item.tier === "against" ? "#a06020" : "#8a8278",
+                        }}>
+                          {item.tier === "great" ? "✦ " : item.tier === "against" ? "≋ " : "· "}{item.tierNote}
+                        </div>
+                      )}
                       <div style={{ fontSize: 10.5, color: "#999", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>
                     </div>
                     <button onClick={() => setDropped((prev) => new Set(prev).add(idx))} title="Drop this one" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1 }}>✕</button>

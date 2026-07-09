@@ -289,7 +289,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                   <span style={{ fontSize: 9, color: "#bbb" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                   <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
                     fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
-                    background: "#f5f0ec", color: "#4a5a6a", cursor: "pointer",
+                    background: "var(--color-card-2)", color: "#4a5a6a", cursor: "pointer",
                   }}>→ task</button>
                 </div>
               </div>
@@ -482,7 +482,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
-  const [crossingsOn, setCrossingsOn] = useState(true);
+  // Crossings display moved to Settings (a tuning knob, not a daily control).
+  const crossingsOn = prefs.display.todayShowCrossings;
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState(false);
 
@@ -749,7 +750,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 {now?.tide ? `${now.tide.characterLabel} tide — ${now.tide.levelLabel.toLowerCase()}` : `An ${el} day`}
               </div>
               <div style={{ fontSize: 10, color: "#b0aaa4" }}>
-                The Moon in {now?.moonSign} sets the day's character ({el}); the level is how charged the water is and which way it's moving. Rising: lean in. Ebbing: finish and rest.
+                The Moon in {now?.moonSign} sets the day's character ({el}); the level is how charged the water is and which way it's moving.
+                {/* One state at a time — listing "rising: X, ebbing: Y" here read
+                    as the tide being both at once. */}
+                {now?.tide?.trend === "rising" ? " Rising — lean in."
+                  : now?.tide?.trend === "ebbing" ? " Ebbing — finish and rest."
+                  : " Steady — work as usual."}
               </div>
             </div>
           }>
@@ -757,7 +763,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
             </div>
           </Tooltip>
-          {!hasSavedLocation(testerProfile) ? (
+          {/* Crossings on/off moved to Settings → Today page — the topbar
+              stays for status (location), not tuning knobs. */}
+          {!hasSavedLocation(testerProfile) && (
             <button
               onClick={useCurrentLocation}
               disabled={locating}
@@ -768,18 +776,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               }}
             >
               {locating ? "Locating…" : locationError ? "⚠ Couldn't get location — set it in Settings" : "⚠ Set location — hours & sun times are estimated"}
-            </button>
-          ) : (
-            <button
-              onClick={() => setCrossingsOn(v => !v)}
-              style={{
-                fontSize: 9, padding: "3px 8px", borderRadius: 8, border: "1px solid var(--color-border)",
-                background: crossingsOn ? "#fff8f0" : "var(--color-background)", color: crossingsOn ? "#b07020" : "#aaa",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: crossingsOn ? "#e0a040" : "#ccc", display: "inline-block" }} />
-              Crossings {crossingsOn ? "on" : "off"}
             </button>
           )}
         </div>
@@ -998,6 +994,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const lit = PLANET_LITERACY[best.partner];
           if (!lit) return null;
           const pc = { Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" }[best.partner] ?? "#888";
+          // Say WHEN, not just what: perfection time → a part-of-day phrase.
+          const partOfDay = (d: Date) => {
+            const h = d.getHours();
+            return h < 5 ? "overnight" : h < 12 ? "this morning" : h < 17 ? "this afternoon" : h < 21 ? "this evening" : "tonight";
+          };
+          const clock = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric" });
+          const whenPhrase = best.applying && best.hoursToExact != null
+            ? (() => { const d = new Date(Date.now() + best.hoursToExact * 3600000); return `peaks ${partOfDay(d)} around ${clock(d)}`; })()
+            : !best.applying && best.hoursSinceExact != null
+              ? (() => { const d = new Date(Date.now() - best.hoursSinceExact * 3600000); return `peaked ${partOfDay(d)}, now easing`; })()
+              : null;
           return (
             <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${pc}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 220 }}>
@@ -1005,14 +1012,14 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   Today has {lit.undertone}.
                 </span>
                 <span style={{ fontSize: 10.5, color: "#999", marginLeft: 6 }}>
-                  Moon {best.aspect} {best.partner} — comes around about once a week.
+                  Moon {best.aspect} {best.partner}{whenPhrase ? ` — ${whenPhrase}` : ""} · comes around about once a week.
                 </span>
               </div>
               {onVisitPlanet && (
                 <button onClick={() => onVisitPlanet(best.partner)} style={{
                   fontSize: 10.5, fontWeight: 600, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
                   border: `1px solid ${pc}50`, background: `${pc}10`, color: pc, flexShrink: 0,
-                }}>meet your {best.partner} →</button>
+                }}>check in with your {best.partner} →</button>
               )}
             </div>
           );
@@ -1928,7 +1935,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: 11, color: "#999" }}>Nothing on deck yet — weave the day in <b>When</b>, or just ride the tide.</div>
+          <div style={{ fontSize: 11, color: "#999" }}>Nothing on deck yet — weave the day in <b>Plan</b>, or just ride the tide.</div>
         )}
       </div>
     );
