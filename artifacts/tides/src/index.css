@@ -9,7 +9,7 @@
 }
 
 @theme {
-  --font-sans: 'Geist', 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Geist', 'Space Grotesk', 'Inter', 'Noto Sans Symbols 2', 'Noto Sans Symbols', system-ui, sans-serif;
   --font-serif: 'Spectral', 'Georgia', serif;
   --font-display: 'Baar Sophia', 'Spectral', 'Georgia', serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;

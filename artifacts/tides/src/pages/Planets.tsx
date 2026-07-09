@@ -5,6 +5,7 @@ import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { PLANET_LITERACY, CONTACT_TONE } from "@/lib/sky-literacy";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
+import Glyph from "@/components/Glyph";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -137,14 +138,14 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
               display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 999, cursor: "pointer",
               border: active ? `1.5px solid ${pc}` : "1px solid var(--color-border)", background: active ? `${pc}14` : "var(--color-card)",
               color: active ? pc : "#888", fontWeight: active ? 600 : 400, fontSize: 12,
-            }}><span style={{ fontSize: 14 }}>{GLYPH[p]}</span>{p}</button>
+            }}><Glyph name={p} size={15} bg="var(--color-card)" tint={active} style={active ? undefined : { color: "#999" }} />{p}</button>
           );
         })}
       </div>
 
       <div style={{ background: `linear-gradient(180deg, ${col}12, ${col}04)`, border: "1px solid var(--color-border)", borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 6 }}>
-          <div style={{ width: 46, height: 46, borderRadius: "50%", flexShrink: 0, background: `${col}20`, color: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{GLYPH[selected]}</div>
+          <div style={{ width: 46, height: 46, borderRadius: "50%", flexShrink: 0, background: `${col}20`, display: "flex", alignItems: "center", justifyContent: "center" }}><Glyph name={selected} size={26} bg="var(--color-card)" /></div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>Your inner {core.name}</div>
             <div style={{ fontSize: 12, color: col, fontWeight: 600 }}>{core.short}</div>

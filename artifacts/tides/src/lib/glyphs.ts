@@ -6,17 +6,23 @@
 // Colors are deliberately NOT consolidated here yet: element/planet palettes
 // still vary per surface and are part of the active design-glyph work.
 
+// Every glyph carries U+FE0E (text-presentation selector) — without it,
+// browsers swap in color emoji instead of the line glyph. Pluto is U+2BD3
+// (circle-in-crescent over cross) per the design handoff, NOT U+2647 ("PL").
+const T = "\uFE0E";
+
 export const PLANET_GLYPH: Record<string, string> = {
-  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
-  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
+  Sun: "☉" + T, Moon: "☽" + T, Mercury: "☿" + T, Venus: "♀" + T, Mars: "♂" + T,
+  Jupiter: "♃" + T, Saturn: "♄" + T, Uranus: "♅" + T, Neptune: "♆" + T,
+  Pluto: String.fromCodePoint(0x2bd3) + T,
 };
 
 export const SIGN_GLYPH: Record<string, string> = {
-  Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋", Leo: "♌", Virgo: "♍",
-  Libra: "♎", Scorpio: "♏", Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
+  Aries: "♈" + T, Taurus: "♉" + T, Gemini: "♊" + T, Cancer: "♋" + T, Leo: "♌" + T, Virgo: "♍" + T,
+  Libra: "♎" + T, Scorpio: "♏" + T, Sagittarius: "♐" + T, Capricorn: "♑" + T, Aquarius: "♒" + T, Pisces: "♓" + T,
 };
 
 // Lowercase aspect names (the API's convention after .toLowerCase()).
 export const ASPECT_GLYPH: Record<string, string> = {
-  conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹",
+  conjunction: "☌" + T, opposition: "☍" + T, square: "□" + T, trine: "△" + T, sextile: "⚹" + T,
 };
