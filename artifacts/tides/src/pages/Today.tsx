@@ -4,6 +4,7 @@ import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
+import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
@@ -1029,6 +1030,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* The month's water — the Almanac's 30-day view, tappable per day */}
         {todayShow14Day && <MonthBars testerId={testerId} lat={lat} lon={lon} today={today} />}
+
+        {/* Your rhythm today — body cycles read against the sky's (rhythm as
+            the app's foundation: chronotype↔solar, menstrual↔lunar). */}
+        {now && <RhythmCard now={now} />}
 
         {/* The big sky — the moment's defining aspects, explored */}
         {now && <BigSky now={now} />}
