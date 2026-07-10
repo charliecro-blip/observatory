@@ -2,6 +2,7 @@ import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import { usePreferences } from "@/contexts/preferences-context";
+import { FourTidesBadge } from "@/components/FourTides";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 
 // The daily report — the home as a navigation console. Weather + calendar +
@@ -58,7 +59,10 @@ export default function Dashboard({
         borderRadius: 14, padding: "15px 18px", marginBottom: 12,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: elCol, fontWeight: 600 }}>Today's weather</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: elCol, fontWeight: 600 }}>Today's weather</span>
+            <FourTidesBadge current={now?.tide?.character} />
+          </span>
           <span style={{ fontSize: 11, color: "#999" }}>{phase && MOON_EMOJI[phase]} {phase.replace(/_/g, " ")} · {Math.round((now?.moonIllumination ?? 0) * 100)}%</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>

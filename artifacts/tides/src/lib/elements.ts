@@ -117,6 +117,15 @@ export const CHARACTER_ESSENCE: Record<TideCharacter, string> = {
   clear:    "Thought, communication, and connection.",
 };
 
+// Why each is NAMED that — the explication the names need. Each name is meant
+// to evoke its element AND what the time is for, so the word does double duty.
+export const CHARACTER_WHY: Record<TideCharacter, string> = {
+  deep:     "Named for still, deep water — the tide of what's below the surface: feeling, intuition, slow depth. The Moon in a water sign.",
+  surge:    "Named for a surge — fire rising, energy breaking forward into action and visibility. The Moon in a fire sign.",
+  building: "Named for the work of building — earth's patient making, structuring, finishing what's begun. The Moon in an earth sign.",
+  clear:    "Named for clear air and a clear head — thought, words, connection, the open sky. The Moon in an air sign.",
+};
+
 // What the character is good for — used in the "what to do" line
 export const CHARACTER_GRAIN: Record<TideCharacter, string> = {
   deep:     "feel, dream, heal, create, listen, rest",
