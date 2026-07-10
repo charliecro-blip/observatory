@@ -13,6 +13,7 @@ import Rail, { MobileInstruments } from "@/components/Rail";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import CurrentsContextHeader from "@/components/CurrentsContextHeader";
+import SpineGauge from "@/components/SpineGauge";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
@@ -168,6 +169,7 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
 const INTRO_SLIDES: {
   glyph: string; glyphColor: string; title: string; body: string;
   cards?: { label: string; sub: string; color: string; bg: string; note: string }[];
+  spine?: boolean;
 }[] = [
   {
     glyph: "◐",
@@ -194,6 +196,13 @@ const INTRO_SLIDES: {
     body: "Beyond its character, each moment has a level — how charged it is, and which way it's moving. High and rising: lean in. Low or ebbing: rest, and don't force it.",
   },
   {
+    glyph: "≋",
+    glyphColor: "#3f8493",
+    title: "The sky is nested rhythms.",
+    body: "The hour sits inside the day, the day inside the month, the month inside the year. Tides reads them all and tells you where you are — this ladder is the whole map.",
+    spine: true,
+  },
+  {
     glyph: "✦",
     glyphColor: "#c19a3a",
     title: "Then make it yours.",
@@ -216,7 +225,9 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
         <div style={{ fontSize:20, fontWeight:700, color: "var(--color-primary)", marginBottom:10, textAlign:"center", lineHeight:1.3, letterSpacing:"-0.3px" }}>{s.title}</div>
 
         {/* Body */}
-        <div style={{ fontSize:13, color:"#666", lineHeight:1.7, textAlign:"center", marginBottom: s.cards ? 20 : 32 }}>{s.body}</div>
+        <div style={{ fontSize:13, color:"#666", lineHeight:1.7, textAlign:"center", marginBottom: (s.cards || s.spine) ? 18 : 32 }}>{s.body}</div>
+
+        {s.spine && <div style={{ marginBottom: 24 }}><SpineGauge compact /></div>}
 
         {/* Character cards (the four tides) */}
         {s.cards && (

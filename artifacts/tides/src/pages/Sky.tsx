@@ -4,6 +4,8 @@ import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
 import { SIGN_MYTHOS, ELEMENT_MYTHOS, PLANET_MYTHOS } from "@/lib/mythos";
 import { CURRICULUM } from "@/lib/sky-literacy";
+import SpineGauge from "@/components/SpineGauge";
+import { useTheme } from "@/contexts/theme-context";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
 const QUALITY_COLORS: Record<string, string> = {
@@ -740,6 +742,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 // legible to someone who knows no astrology. Distinct from Ahead (your time):
 // this is the sky's meanings, not its schedule.
 function ReferenceSection() {
+  const { theme } = useTheme();
   const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
   const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
@@ -776,6 +779,13 @@ function ReferenceSection() {
           ))}
         </div>
       </div>
+      {/* The spine — the nested-rhythm ladder leads the primer, since it's the
+          map every other lesson is a rung of. */}
+      {tab === "learn" && (
+        <div style={{ padding: "14px 14px 4px" }}>
+          <SpineGauge dark={theme === "dark"} />
+        </div>
+      )}
       <div style={{ display: tab === "signs" ? "grid" : "flex", gridTemplateColumns: tab === "signs" ? "1fr 1fr" : undefined, flexDirection: tab === "signs" ? undefined : "column" }}>
         {items.map((it) => (
           <div key={it.key} style={{ borderBottom: "1px solid var(--color-border)", borderRight: tab === "signs" ? "1px solid var(--color-border)" : "none" }}>

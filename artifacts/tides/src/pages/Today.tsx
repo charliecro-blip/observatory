@@ -2334,7 +2334,9 @@ function ElementalBalance({ habits, tasks }: { habits: any[]; tasks: { bestWindo
   const counts: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0, spirit: 0 };
 
   for (const h of habits) {
-    const els = (h.favoredElements ?? "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    // favoredElements is an array now (merged practices model); tolerate the
+    // legacy comma-string too.
+    const els = Array.isArray(h.favoredElements) ? h.favoredElements : String(h.favoredElements ?? "").split(",").map((s: string) => s.trim()).filter(Boolean);
     for (const el of els) {
       if (el in counts) counts[el]++;
     }
