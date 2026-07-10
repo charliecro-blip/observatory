@@ -11,7 +11,7 @@
 // your own chart's long cycles, your personal caution windows, and the app
 // finding the best *time* for what you're planning (the AI/tide timing layer,
 // which is also where the real per-user cost lives).
-export type PremiumFeature = "currents" | "scheduling";
+export type PremiumFeature = "currents" | "scheduling" | "practitioner";
 
 export interface PremiumFeatureMeta {
   key: PremiumFeature;
@@ -32,6 +32,12 @@ export const PREMIUM_FEATURES: PremiumFeatureMeta[] = [
     title: "Caution Periods",
     teaser: "Flag the planetary archetypes that hit you hardest, and get a gentle heads-up when the Sun or Moon lights one up.",
     icon: "⚠",
+  },
+  {
+    key: "practitioner",
+    title: "The Chart",
+    teaser: "The live astro clock: your natal wheel with today's transits overlaid, the full geometry, and AI transit readings that weigh each transit against your whole chart. For when you want the sky itself, not the weather.",
+    icon: "⊕",
   },
   {
     key: "scheduling",

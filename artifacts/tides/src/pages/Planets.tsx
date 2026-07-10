@@ -6,6 +6,8 @@ import { PLANET_LITERACY, CONTACT_TONE } from "@/lib/sky-literacy";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
+import ChartWheel from "@/components/ChartWheel";
+import { PremiumGate } from "@/components/PremiumGate";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -324,8 +326,115 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
   );
 }
 
+// ── ChartView — the practitioner astro clock (premium) ──────────────────────
+const ASP_GLYPH: Record<string, string> = { Conjunction: "☌", Sextile: "⚹", Square: "□", Trine: "△", Opposition: "☍" };
+const ASP_TONE: Record<string, string> = { Conjunction: "#a8862e", Sextile: "#5a8fb0", Square: "#c05a4a", Trine: "#5a9a6a", Opposition: "#c05a4a" };
+const SEV_ORDER: Record<string, number> = { major: 0, strong: 1, moderate: 2, mild: 3 };
+
+function ChartView({ testerId }: { testerId: string | null }) {
+  const [picked, setPicked] = useState<{ transitPlanet: string; natalPlanet: string; aspect: string } | null>(null);
+  const [reading, setReading] = useState<{ key: string; text: string } | null>(null);
+  const [loadingRead, setLoadingRead] = useState(false);
+
+  const { data: chart, isLoading } = useQuery<any>({
+    queryKey: ["chart-now", testerId],
+    queryFn: async () => {
+      const hs = (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign";
+      const r = await fetch(`/api/chart/now?houseSystem=${hs}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  async function explicate(a: { transitPlanet: string; natalPlanet: string; aspect: string }) {
+    setPicked(a);
+    const key = `${a.transitPlanet}-${a.aspect}-${a.natalPlanet}`;
+    setLoadingRead(true);
+    setReading(null);
+    try {
+      const hs = (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign";
+      const r = await fetch("/api/chart/explicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) },
+        body: JSON.stringify({ ...a, houseSystem: hs }),
+      });
+      const data = await r.json();
+      setReading({ key, text: data.reading ?? "No reading available." });
+    } catch {
+      setReading({ key, text: "Couldn't reach the reader — try again." });
+    } finally {
+      setLoadingRead(false);
+    }
+  }
+
+  if (isLoading) return <div style={{ fontSize: 12, color: "#999", padding: 20 }}>Casting the chart…</div>;
+  if (!chart) return <div style={{ fontSize: 12.5, color: "#aaa", padding: 20 }}>Add your birth details in Settings to see your chart.</div>;
+
+  const aspects = (chart.aspects ?? []) as any[];
+
+  return (
+    <>
+      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 14 }}>
+        Your natal chart with today's sky ringed outside it — the live geometry. Tap any transit for a reading that weighs it against the rest of your chart.
+        {!chart.timeKnown && <span style={{ color: "#a08040" }}> Houses and angles are hidden — add your birth time to draw them.</span>}
+      </div>
+
+      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 14, padding: "16px 12px", marginBottom: 16 }}>
+        <ChartWheel
+          natalPlanets={chart.natal.planets}
+          transitPlanets={chart.transit}
+          cusps={chart.natal.cusps}
+          ascendant={chart.natal.ascendant}
+          aspects={aspects}
+          highlight={picked}
+          onPickAspect={(a) => explicate({ transitPlanet: a.transitPlanet, natalPlanet: a.natalPlanet, aspect: a.aspect })}
+        />
+      </div>
+
+      {/* Ranked transit stack */}
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 8 }}>Transits now · strongest first</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {[...aspects].sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9) || a.orb - b.orb).slice(0, 14).map((a: any, i: number) => {
+          const key = `${a.transitPlanet}-${a.aspect}-${a.natalPlanet}`;
+          const isPicked = picked && picked.transitPlanet === a.transitPlanet && picked.natalPlanet === a.natalPlanet && picked.aspect === a.aspect;
+          return (
+            <div key={i} style={{ border: `1px solid ${isPicked ? ASP_TONE[a.aspect] : "var(--color-border)"}`, borderRadius: 9, background: "var(--color-card)", overflow: "hidden" }}>
+              <button onClick={() => explicate({ transitPlanet: a.transitPlanet, natalPlanet: a.natalPlanet, aspect: a.aspect })}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                  <Glyph name={a.transitPlanet} size={15} bg="var(--color-card)" />
+                  <span style={{ color: ASP_TONE[a.aspect], fontWeight: 700, fontSize: 13 }}>{ASP_GLYPH[a.aspect] ?? a.aspect}</span>
+                  <Glyph name={a.natalPlanet} size={15} bg="var(--color-card)" />
+                </span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--color-foreground)" }}>
+                  {a.transitPlanet} {a.aspect.toLowerCase()} natal {a.natalPlanet}
+                  {a.natalHouse ? <span style={{ color: "#999" }}> · {ordinal(a.natalHouse)} house</span> : null}
+                </span>
+                {a.exact && <span style={{ fontSize: 9, color: "#a8862e", fontWeight: 600 }}>exact</span>}
+                <span style={{ fontSize: 10, color: "#aaa", fontVariantNumeric: "tabular-nums" }}>{a.orb.toFixed(1)}°</span>
+              </button>
+              {isPicked && (
+                <div style={{ padding: "10px 14px", borderTop: `1px solid var(--color-border)`, background: "var(--color-card-2)" }}>
+                  {loadingRead && reading?.key !== key ? (
+                    <div style={{ fontSize: 11, color: "#999" }}>Reading the chart…</div>
+                  ) : reading?.key === key ? (
+                    <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{reading.text}</div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {aspects.length === 0 && <div style={{ fontSize: 12, color: "#999" }}>No transits in orb right now — a quiet sky.</div>}
+      </div>
+    </>
+  );
+}
+
 export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect, initialPlanet }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void; initialPlanet?: string | null }) {
-  const [mode, setMode] = useState<"planets" | "houses">("planets");
+  const [mode, setMode] = useState<"planets" | "houses" | "chart">("planets");
   // Arriving via a teachable-moment link ("today feels saturnine → visit
   // Saturn") lands directly on that planet's page.
   useEffect(() => { if (initialPlanet) setMode("planets"); }, [initialPlanet]);
@@ -345,20 +454,24 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px", marginBottom: 12 }}>Star Base</div>
-        {/* Console toggle — the two kinds of destination */}
+        {/* Console toggle — the three kinds of destination */}
         <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>
-          {(["planets", "houses"] as const).map((m) => (
+          {([["planets", "Planets"], ["houses", "Houses"], ["chart", "Chart ⊕"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 16px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
               background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "#999",
               fontWeight: mode === m ? 600 : 400, boxShadow: mode === m ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-            }}>{m === "planets" ? "Planets" : "Houses"}</button>
+            }}>{label}</button>
           ))}
         </div>
 
-        {mode === "planets"
-          ? <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={initialPlanet} />
-          : <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
+        {mode === "planets" && <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={initialPlanet} />}
+        {mode === "houses" && <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
+        {mode === "chart" && (
+          <PremiumGate feature="practitioner">
+            <ChartView testerId={testerId} />
+          </PremiumGate>
+        )}
       </div>
     </div>
   );

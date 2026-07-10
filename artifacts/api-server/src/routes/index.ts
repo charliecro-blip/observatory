@@ -33,6 +33,7 @@ import associateRouter from "./associate";
 import planRouter from "./plan";
 import reportsRouter from "./reports";
 import skyLiteracyRouter from "./skyLiteracy";
+import chartRouter from "./chart";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(associateRouter);
 router.use(planRouter);
 router.use(reportsRouter);
 router.use(skyLiteracyRouter);
+router.use(chartRouter);
 
 export default router;
