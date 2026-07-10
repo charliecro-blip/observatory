@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
+import Glyph from "@/components/Glyph";
+
+const PLANET_CHOICES = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"];
 
 const ELEMENTS = ["water","fire","earth","air"];
 // Simplified lunation quarters for tagging — timingScore matches these against
@@ -26,10 +29,14 @@ const ELEMENT_COLORS: Record<string,string> = {
 interface HabitDay { date: string; done: boolean; isToday: boolean; }
 interface Habit {
   id: number; name: string; emoji?: string; description?: string;
-  favoredElements?: string; favoredPhases?: string;
-  bestWindowType?: string; streak: number; doneToday: boolean;
+  // Merged practices model: the server now returns these as arrays + a
+  // computed resonance (element + planetary hour + phase + planet timing).
+  favoredElements?: string[]; favoredPhases?: string[]; favoredPlanets?: string[];
+  bestWindowType?: string; minimumViable?: string; streak: number; doneToday: boolean;
   days: HabitDay[]; goalId?: number; projectId?: number;
+  resonance?: "resonant"|"supported"|"neutral"|"soften"|"protect"; resonanceNote?: string;
 }
+const asArr = (v: unknown): string[] => Array.isArray(v) ? v : String(v ?? "").split(",").map(s=>s.trim()).filter(Boolean);
 interface GoalLite { id: number; title: string; }
 interface ProjectLite { id: number; title: string; }
 
@@ -37,27 +44,24 @@ function authH(tid: string|null) {
   return { ...(tid ? {"x-tester-id":tid} : {}), "Content-Type":"application/json" };
 }
 
-// Score a habit against current conditions
-function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|"neutral"|"soften" {
+// The server computes resonance now (element + planetary hour + phase + planet
+// timing — the merged practices model). Fall back to a light element check
+// only if the server didn't send one.
+function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|"neutral"|"soften"|"protect" {
+  if (h.resonance) return h.resonance;
   if (!now) return "neutral";
   const el = now.element?.element ?? "";
-  const phase = now.moonPhase?.toLowerCase() ?? "";
-  let score = 0;
-  if (h.favoredElements?.split(",").map(s=>s.trim()).includes(el)) score += 2;
-  if (h.favoredPhases?.split(",").map(s=>s.trim()).some(p => phase.includes(p))) score += 1;
-  if (score >= 3) return "resonant";
-  if (score >= 1) return "supported";
-  return "neutral";
+  return asArr(h.favoredElements).includes(el) ? "supported" : "neutral";
 }
 
-const TIMING_COLORS = { resonant:"#3a6020", supported:"#3a5a80", neutral:"#888", soften:"#8a5020" };
-const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", soften:"#f0e0c0" };
+const TIMING_COLORS = { resonant:"#3a6020", supported:"#3a5a80", neutral:"#888", soften:"#8a5020", protect:"#8a5020" };
+const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", soften:"#f0e0c0", protect:"#f0e0c0" };
 
 export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0,10);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], bestWindowType:"", minimumViable:"" });
+  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"" });
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
@@ -91,6 +95,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           name: form.name.trim(), emoji: form.emoji || undefined,
           favoredElements: form.favoredElements.join(",") || undefined,
           favoredPhases: form.favoredPhases.join(",") || undefined,
+          favoredPlanets: form.favoredPlanets.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
           minimumViable: form.minimumViable.trim() || undefined,
           goalId: newGoalId || undefined,
@@ -101,7 +106,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
-      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],bestWindowType:"",minimumViable:""});
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:""});
       setNewGoalId(""); setNewProjectId("");
     },
   });
@@ -127,8 +132,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const scored = habits
     .map(h => ({ ...h, timing: timingScore(h, now) }))
     .sort((a,b) => {
-      const order = { resonant:0, supported:1, neutral:2, soften:3 };
-      return order[a.timing] - order[b.timing];
+      const order = { resonant:0, supported:1, neutral:2, soften:3, protect:4 };
+      return (order[a.timing] ?? 2) - (order[b.timing] ?? 2);
     });
 
   // This week's completions per element — a habit tagged with multiple
@@ -137,7 +142,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
   const weekByElement: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
   for (const h of habits) {
-    const els = h.favoredElements?.split(",").map(s => s.trim()).filter(Boolean) ?? [];
+    const els = asArr(h.favoredElements);
     if (els.length === 0) continue;
     const completedThisWeek = h.days.filter(d => d.done && d.date >= weekAgo).length;
     for (const el of els) if (weekByElement[el] !== undefined) weekByElement[el] += completedThisWeek;
@@ -149,6 +154,9 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   }));
   const togglePhase = (p: string) => setForm(f => ({
     ...f, favoredPhases: f.favoredPhases.includes(p) ? f.favoredPhases.filter(e=>e!==p) : [...f.favoredPhases, p]
+  }));
+  const togglePlanet = (p: string) => setForm(f => ({
+    ...f, favoredPlanets: f.favoredPlanets.includes(p) ? f.favoredPlanets.filter(e=>e!==p) : [...f.favoredPlanets, p]
   }));
 
   return (
@@ -227,6 +235,24 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
               </div>
             </div>
 
+            {/* Planet linking — the merged practices intelligence: a habit can
+                declare the planet(s) it serves, so its own hour lifts it. */}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#aaa",marginBottom:5}}>Supported by planet</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                {PLANET_CHOICES.map(p => {
+                  const on = form.favoredPlanets.includes(p);
+                  return (
+                    <button key={p} type="button" onClick={()=>togglePlanet(p)} style={{
+                      display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:14,cursor:"pointer",fontSize:11,
+                      border:on?"1.5px solid #7a6cae":"1px solid var(--color-border)",
+                      background:on?"#7a6cae18":"var(--color-card-2)",color:on?"#6a5c9e":"#888",fontWeight:on?600:400,
+                    }}><Glyph name={p} size={12} bg="var(--color-card-2)" tint={on} style={on?undefined:{color:"#999"}} />{p}</button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
               <select value={form.bestWindowType} onChange={e=>setForm(f=>({...f,bestWindowType:e.target.value}))}
                 style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"#555"}}>
@@ -284,12 +310,17 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                   {h.streak > 0 && <div style={{fontSize:9,color:"#aaa",marginTop:1}}>{h.streak}d streak</div>}
                 </div>
 
-                {h.favoredElements && (
-                  <div style={{display:"flex",gap:2,flexShrink:0}} title={`Elements: ${h.favoredElements}`}>
-                    {h.favoredElements.split(",").map(s=>s.trim()).filter(Boolean).map(el => (
+                {asArr(h.favoredElements).length > 0 && (
+                  <div style={{display:"flex",gap:2,flexShrink:0}} title={`Elements: ${asArr(h.favoredElements).join(", ")}`}>
+                    {asArr(h.favoredElements).map(el => (
                       <span key={el} style={{width:6,height:6,borderRadius:"50%",background:ELEMENT_COLORS[el]??"#ccc",display:"inline-block"}}/>
                     ))}
                   </div>
+                )}
+                {asArr(h.favoredPlanets).length > 0 && (
+                  <span style={{display:"flex",gap:3,flexShrink:0,fontSize:12}} title={`Supports: ${asArr(h.favoredPlanets).join(", ")}`}>
+                    {asArr(h.favoredPlanets).map(p => <Glyph key={p} name={p} size={12} bg="var(--color-card)" />)}
+                  </span>
                 )}
                 <div style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
                 <button onClick={()=>removeHabit.mutate(h.id)} style={{fontSize:11,color:"#ddd",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
@@ -308,10 +339,10 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                 <div style={{fontSize:8,color:"#ccc",marginLeft:4}}>14d</div>
               </div>
 
-              {/* Timing note */}
-              {h.timing === "resonant" && (
-                <div style={{fontSize:9,color:"#3a6020",marginTop:6,paddingTop:6,borderTop:"1px solid #e8f0e4"}}>
-                  ✦ Resonant now — {[h.favoredElements,h.favoredPhases].filter(Boolean).join(" · ")}
+              {/* Timing note — the merged practices intelligence, in plain words */}
+              {h.resonanceNote && h.timing !== "neutral" && (
+                <div style={{fontSize:9.5,color:tc,marginTop:6,paddingTop:6,borderTop:"1px solid var(--color-border)"}}>
+                  {h.timing === "resonant" ? "✦ " : h.timing === "soften" || h.timing === "protect" ? "◡ " : "· "}{h.resonanceNote}
                 </div>
               )}
             </div>

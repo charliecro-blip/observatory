@@ -2,6 +2,10 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { habits, habitLogs } from "@workspace/db/schema";
 import { eq, and, desc, gte } from "drizzle-orm";
+import {
+  julianDay, moonPhase, getPlanetPositions, getDailyElementEmphasis,
+  getPlanetaryHour, getMajorAspects, voidOfCourse,
+} from "../lib/astro.js";
 
 const router = Router();
 
@@ -11,10 +15,65 @@ function tid(req: any, res: any): string | null {
   return id;
 }
 
-// GET /habits — list active habits with recent streak (last 14 days)
+// Habits absorbed the old "practices/cultivations" timing model (2026-07-09
+// merge): each habit is scored against the current sky the way cultivations
+// were, so ONE daily-doing surface carries both the streak game and the timing
+// intelligence.
+function phaseQuadrant(name: string): string {
+  if (name.includes("New")) return "new";
+  if (name.includes("Waxing")) return "waxing";
+  if (name.includes("Full")) return "full";
+  return "waning";
+}
+const csv = (v: unknown): string[] =>
+  String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+function scoreHabitTiming(
+  h: { favoredElements: string | null; favoredPhases: string | null; favoredPlanets?: string | null; minimumViable: string | null },
+  sky: { element: string; hourRuler: string; phase: string; voc: boolean; moonApplyingTo: Set<string>; retro: Set<string> },
+): { match: string; note: string } {
+  const elems = csv(h.favoredElements);
+  const phases = csv(h.favoredPhases);
+  const favored = csv(h.favoredPlanets);
+  let score = 0;
+  const why: string[] = [];
+  if (elems.includes(sky.element)) { score += 3; why.push(`it's a ${sky.element} day`); }
+  if (favored.includes(sky.hourRuler)) { score += 2; why.push(`${sky.hourRuler}'s hour is running`); }
+  for (const fp of favored) {
+    if (sky.moonApplyingTo.has(fp)) { score += 1; why.push(`the Moon is lighting up ${fp}`); }
+    if (sky.retro.has(fp)) { score -= 1; }
+  }
+  if (phases.includes(sky.phase)) { score += 1; why.push(`the ${sky.phase} moon favors it`); }
+  if (sky.voc) score -= 1;
+
+  const match = score >= 5 ? "resonant" : score >= 2 ? "supported" : score >= 0 ? "neutral" : score >= -2 ? "soften" : "protect";
+  const note =
+    match === "resonant" ? `Strongly backed right now — ${why[0] ?? "the sky is with it"}.`
+    : match === "supported" ? `Supported today${why[0] ? ` — ${why[0]}` : ""}.`
+    : match === "neutral" ? "A neutral day for this — do it if you feel like it."
+    : `Consider the minimum today${h.minimumViable ? `: ${h.minimumViable}` : ""}.`;
+  return { match, note };
+}
+
+// GET /habits — list active habits with recent streak (last 14 days) + how
+// each one sits against today's sky (the merged practices timing).
 router.get("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const rows = await db.select().from(habits).where(and(eq(habits.testerId, testerId), eq(habits.status, "active"))).orderBy(habits.createdAt);
+
+  // Current sky snapshot for timing resonance
+  const nowDate = new Date();
+  const jd = julianDay(nowDate);
+  const elem = getDailyElementEmphasis(jd).element;
+  const hourRuler = getPlanetaryHour(nowDate, lat, lon).ruler;
+  const { name: phaseName } = moonPhase(jd);
+  const planets = getPlanetPositions(jd);
+  const retro = new Set(planets.filter((p) => p.retrograde).map((p) => p.planet));
+  const moonAspects = getMajorAspects(jd).filter((a) => a.planet1 === "Moon" || a.planet2 === "Moon");
+  const moonApplyingTo = new Set(moonAspects.filter((a) => a.applying).map((a) => (a.planet1 === "Moon" ? a.planet2 : a.planet1)));
+  const sky = { element: elem, hourRuler, phase: phaseQuadrant(phaseName), voc: voidOfCourse(jd).voc, moonApplyingTo, retro };
 
   // Fetch last 14 days of logs for all habits
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
@@ -41,7 +100,17 @@ router.get("/habits", async (req, res) => {
     for (let i = 12; i >= 0; i--) {
       if (days[i].done) streak++; else break;
     }
-    return { ...h, days, streak, doneToday: doneSet.has(today.toISOString().slice(0, 10)) };
+    const timing = scoreHabitTiming(h as any, sky);
+    return {
+      ...h,
+      // Normalize the comma-strings to arrays for the client (the merged
+      // practices model reads planets/elements as lists).
+      favoredElements: csv(h.favoredElements),
+      favoredPlanets: csv((h as any).favoredPlanets),
+      favoredPhases: csv(h.favoredPhases),
+      days, streak, doneToday: doneSet.has(today.toISOString().slice(0, 10)),
+      resonance: timing.match, resonanceNote: timing.note,
+    };
   });
 
   res.json(enriched);
@@ -50,9 +119,15 @@ router.get("/habits", async (req, res) => {
 // POST /habits
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, goalId, projectId } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId } = req.body;
   if (!name) return res.status(400).json({ error: "name required" });
-  const [row] = await db.insert(habits).values({ testerId, name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, goalId: goalId ?? null, projectId: projectId ?? null }).returning();
+  // Client may send arrays (the merged model) or comma-strings — store as CSV.
+  const asCsv = (v: unknown) => Array.isArray(v) ? v.join(",") : (v ?? null);
+  const [row] = await db.insert(habits).values({
+    testerId, name, description, emoji,
+    favoredElements: asCsv(favoredElements), favoredPhases: asCsv(favoredPhases), favoredPlanets: asCsv(favoredPlanets),
+    bestWindowType, minimumViable, goalId: goalId ?? null, projectId: projectId ?? null,
+  }).returning();
   res.status(201).json(row);
 });
 

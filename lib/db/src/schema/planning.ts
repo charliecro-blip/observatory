@@ -104,9 +104,11 @@ export const habits = pgTable("habits", {
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),
-  // Timing affinity (mirrors cultivator logic)
+  // Timing affinity — habits absorbed the old "practices/cultivations" timing
+  // model in the 2026-07-09 merge, so one daily-doing concept carries it all.
   favoredElements: text("favored_elements"), // comma-separated: water,earth
   favoredPhases: text("favored_phases"),     // comma-separated: waxing,full
+  favoredPlanets: text("favored_planets"),   // comma-separated: Mars,Sun — the planet(s) this supports
   bestWindowType: text("best_window_type"),  // deep_work | social | etc.
   minimumViable: text("minimum_viable"),     // smallest version on a hard day
   status: text("status").notNull().default("active"),
