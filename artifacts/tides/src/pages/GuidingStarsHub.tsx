@@ -424,9 +424,27 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               );
             })()}
 
+            {/* A short walk-through so the blank field isn't intimidating — a
+                Guiding Star is a direction, not a to-do, and examples give
+                people a shape to copy. Owner #4: 'setting up a new guiding
+                star needs encouragement / walking people through it.' */}
+            <div style={{ fontSize: 11.5, color: "#8a8278", lineHeight: 1.55 }}>
+              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, place it in an element, and set a horizon. You'll break it into tasks and habits next, right below.
+            </div>
+            {!form.title && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                <span style={{ fontSize: 9.5, color: "#b0a898", alignSelf: "center", marginRight: 2 }}>e.g.</span>
+                {["Finish the book", "Grow the business", "Get strong & steady", "Deepen my closest bonds"].map(ex => (
+                  <button key={ex} onClick={() => setForm(f => ({ ...f, title: ex }))} style={{
+                    fontSize: 10, padding: "3px 10px", borderRadius: 10, border: "1px dashed #d0c8bc",
+                    background: "var(--color-card-2)", color: "#8a8278", cursor: "pointer",
+                  }}>{ex}</button>
+                ))}
+              </div>
+            )}
             <input autoFocus value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="What are you steering toward?"
               style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none" }} />
-            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Description (optional)"
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Why does it matter? (optional — a line to your future self)"
               style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none" }} />
 
             <div>
@@ -528,8 +546,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
         {/* Active Guiding Stars — each with explicit task/habit breakdown right here */}
         {list.length === 0 && !showForm && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb", fontSize: 13, lineHeight: 1.6 }}>
-            No Guiding Stars yet. Set one above — a long-term ideal, then break it into tasks and habits right on this page.
+          <div style={{ textAlign: "center", padding: "44px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>
+            <div style={{ fontSize: 12.5, color: "#8a8278", lineHeight: 1.6, maxWidth: 380 }}>
+              A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Tides helps you time them to the sky.
+            </div>
+            <button onClick={() => setShowForm(true)} style={{
+              marginTop: 4, padding: "8px 20px", borderRadius: 9, border: "none",
+              background: "#1a2a3a", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            }}>✦ Name your first star</button>
           </div>
         )}
 
