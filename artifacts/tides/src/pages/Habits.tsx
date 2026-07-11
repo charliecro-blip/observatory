@@ -68,12 +68,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
   const { data: goalsList = [] } = useQuery<GoalLite[]>({
     queryKey: ["planning-goals-active", testerId],
-    queryFn: async () => { const r = await fetch("/api/planning/goals?status=active", { headers: authH(testerId) }); return r.json(); },
+    queryFn: async () => { const r = await fetch("/api/planning/goals?status=active", { headers: authH(testerId) }); const j = await r.json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const { data: projectsList = [] } = useQuery<ProjectLite[]>({
     queryKey: ["planning-projects-active", testerId],
-    queryFn: async () => { const r = await fetch("/api/planning/projects?status=active", { headers: authH(testerId) }); return r.json(); },
+    queryFn: async () => { const r = await fetch("/api/planning/projects?status=active", { headers: authH(testerId) }); const j = await r.json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
 
@@ -81,7 +81,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     queryKey: ["habits", testerId],
     queryFn: async () => {
       const r = await fetch("/api/habits", { headers: authH(testerId) });
-      return r.json();
+      const j = await r.json();
+      return Array.isArray(j) ? j : []; // 429/500 error bodies must not crash .map
     },
     enabled: !!testerId,
     refetchInterval: 60_000,

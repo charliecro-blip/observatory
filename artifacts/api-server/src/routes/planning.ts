@@ -2,8 +2,88 @@ import { Router, type IRouter } from "express";
 import { db, goals, projects, milestones, planningWindows, tasks } from "@workspace/db";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
+
+// ── AI milestone breakdown ──────────────────────────────────────────────────
+// "Break this Guiding Star into steps": propose 4–7 ordered milestones for a
+// big aim, each tagged with the element its work lives in (so later weaving
+// lands each step's tasks in the right sky windows). Preview only — nothing
+// is written until the client commits the accepted steps.
+const ELEMS = new Set(["fire", "earth", "air", "water"]);
+router.post("/planning/breakdown", requireTesterId, async (req, res) => {
+  const title = String(req.body?.title ?? "").trim();
+  const description = String(req.body?.description ?? "").trim();
+  if (!title) { res.status(400).json({ error: "title required" }); return; }
+
+  const fallback = () => ({
+    milestones: [
+      { title: "Define what 'done' looks like", element: "air" },
+      { title: "Do the groundwork / research", element: "air" },
+      { title: "Build the core of it", element: "earth" },
+      { title: "Refine and finish", element: "earth" },
+      { title: "Share it / put it into the world", element: "fire" },
+    ],
+  });
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 500,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You break a big personal goal into an ordered sequence of 4-7 concrete milestones (steps). " +
+            "Reply ONLY with JSON {\"milestones\":[{\"title\": short imperative step, \"element\": one of \"fire\"|\"earth\"|\"air\"|\"water\"}]}. " +
+            "element = the KIND of work the step is: fire = launching/pitching/visible action; earth = building/finishing/structured making; " +
+            "air = research/writing/planning/communicating; water = reflection/rest/creative-intuitive. " +
+            "Order them so each depends on the ones before. Keep titles under 8 words.",
+        },
+        { role: "user", content: description ? `${title} — ${description}` : title },
+      ],
+    });
+    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+    const arr = Array.isArray(parsed.milestones) ? parsed.milestones : [];
+    if (arr.length === 0) { res.json(fallback()); return; }
+    res.json({
+      milestones: arr.slice(0, 7).map((m: any) => ({
+        title: String(m.title ?? "").trim() || "Step",
+        element: ELEMS.has(String(m.element)) ? m.element : "earth",
+      })),
+    });
+  } catch {
+    res.json(fallback());
+  }
+});
+
+// Commit accepted breakdown steps: ensure a backing project for the star, then
+// insert the milestones in order. Returns the created milestones.
+router.post("/planning/breakdown/commit", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const goalId = parseInt(String(req.body?.goalId ?? ""), 10);
+  const steps: any[] = Array.isArray(req.body?.milestones) ? req.body.milestones : [];
+  if (!goalId || steps.length === 0) { res.status(400).json({ error: "goalId and milestones required" }); return; }
+
+  const goal = (await db.select().from(goals).where(and(eq(goals.id, goalId), eq(goals.testerId, testerId))).limit(1))[0];
+  if (!goal) { res.status(404).json({ error: "Star not found" }); return; }
+
+  let proj = (await db.select().from(projects).where(and(eq(projects.testerId, testerId), eq(projects.goalId, goalId))).limit(1))[0];
+  if (!proj) {
+    [proj] = await db.insert(projects).values({ testerId, title: goal.title, goalId }).returning();
+  }
+  const created = [];
+  for (const s of steps.slice(0, 12)) {
+    const [m] = await db.insert(milestones).values({
+      testerId, projectId: proj.id, title: String(s.title ?? "Step").trim(),
+      description: ELEMS.has(String(s.element)) ? `element:${s.element}` : null,
+    }).returning();
+    created.push(m);
+  }
+  res.json({ created, count: created.length });
+});
 
 // ── Star progress rollup ────────────────────────────────────────────────────
 // Turns a Guiding Star into a project: task → step (milestone) → star. Returns,
@@ -187,7 +267,9 @@ router.get("/planning/milestones", requireTesterId, async (req, res) => {
   const projectId = req.query.projectId ? parseInt(req.query.projectId as string, 10) : undefined;
   const conditions = [eq(milestones.testerId, testerId)];
   if (projectId) conditions.push(eq(milestones.projectId, projectId));
-  const rows = await db.select().from(milestones).where(and(...conditions)).orderBy(desc(milestones.createdAt));
+  // Ascending: steps are an ORDERED sequence (each depends on the ones before),
+  // so they must display and weave in creation order, not newest-first.
+  const rows = await db.select().from(milestones).where(and(...conditions)).orderBy(milestones.createdAt, milestones.id);
   res.json(rows);
 });
 

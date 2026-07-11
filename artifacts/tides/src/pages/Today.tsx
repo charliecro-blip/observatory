@@ -601,7 +601,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     queryKey: ["goals", testerId],
     queryFn: async () => {
       const r = await fetch("/api/planning/goals", { headers: testerId ? { "x-tester-id": testerId } : {} });
-      return r.json();
+      const j = await r.json();
+      return Array.isArray(j) ? j : []; // 429/500 error bodies must not crash .slice/.map
     },
     enabled: !!testerId,
   });

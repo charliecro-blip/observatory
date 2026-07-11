@@ -141,7 +141,10 @@ function planetColor(planet: string) {
 export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
   const [open, setOpen] = useState<string | null>(null);
   const [moonTake, setMoonTake] = useState(0);
-  if (!now) return null;
+  // A transient/partial `now` (e.g. an error body cached mid-reload) can lack
+  // planetaryHour; the hour chip dereferences it, so guard the whole strip
+  // rather than crash the page on mobile.
+  if (!now || !now.planetaryHour) return null;
   const { moonSign, moonPhase, moonIllumination, planetaryHour, element } = now;
   const sunSign = (now as any).sunSign as string | undefined;
   const dayRuler = (now as any).dayRuler as string | undefined;

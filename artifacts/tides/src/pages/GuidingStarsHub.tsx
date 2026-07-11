@@ -97,7 +97,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // paused ones can be shown/resumed here too, without a separate tab.
   const { data: allGoals = [] } = useQuery<any[]>({
     queryKey: ["goals", testerId],
-    queryFn: async () => { const r = await fetch("/api/planning/goals", { headers: authH(testerId) }); return r.json(); },
+    queryFn: async () => { const r = await fetch("/api/planning/goals", { headers: authH(testerId) }); const j = await r.json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const pausedGoals = allGoals.filter((g: any) => g.status !== "active");
@@ -105,12 +105,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) } as Record<string, string>;
   const { data: allTasks = [] } = useQuery<any[]>({
     queryKey: ["tasks", testerId, "all"],
-    queryFn: async () => (await fetch("/api/tasks", { headers: authHeaders })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/tasks", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const { data: allHabits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => (await fetch("/api/habits", { headers: authHeaders })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/habits", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   // Steps (milestones) — the one useful bit of the old Projects tab, folded in.
@@ -118,12 +118,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // "project" never appears — it's just an ordered checklist toward the star.
   const { data: allProjects = [] } = useQuery<any[]>({
     queryKey: ["projects", testerId],
-    queryFn: async () => (await fetch("/api/planning/projects?status=active", { headers: authHeaders })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/planning/projects?status=active", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const { data: allMilestones = [] } = useQuery<any[]>({
     queryKey: ["milestones", testerId],
-    queryFn: async () => (await fetch("/api/planning/milestones", { headers: authHeaders })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/planning/milestones", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const projectForStar = (starId: number) => allProjects.find((p: any) => p.goalId === starId);
@@ -136,7 +136,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // star). Tasks are already loaded above as `allTasks`; group them by step.
   const { data: starProgress = {} } = useQuery<Record<string, any>>({
     queryKey: ["star-progress", testerId],
-    queryFn: async () => (await fetch("/api/planning/star-progress", { headers: authHeaders })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/planning/star-progress", { headers: authHeaders })).json(); return (j && typeof j === "object" && !Array.isArray(j)) ? j : {}; },
     enabled: !!testerId,
   });
   const tasksForStep = (milestoneId: number) => (allTasks as any[]).filter((t) => t.milestoneId === milestoneId);
@@ -163,6 +163,51 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: !done }) });
     },
     onSuccess: refreshPM,
+  });
+
+  // AI milestone breakdown — propose steps for a big star, review, accept.
+  const [breakdownFor, setBreakdownFor] = useState<number | null>(null);
+  const [proposedSteps, setProposedSteps] = useState<{ title: string; element: string }[]>([]);
+  const runBreakdown = useMutation({
+    mutationFn: async ({ title, description }: { title: string; description?: string }) => {
+      const r = await fetch("/api/planning/breakdown", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, description }) });
+      return (await r.json()).milestones as { title: string; element: string }[];
+    },
+    onSuccess: (steps) => setProposedSteps(steps ?? []),
+  });
+  const commitBreakdown = useMutation({
+    mutationFn: async ({ goalId }: { goalId: number }) => {
+      await fetch("/api/planning/breakdown/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ goalId, milestones: proposedSteps }) });
+    },
+    onSuccess: () => { refreshPM(); qc.invalidateQueries({ queryKey: ["projects"] }); setBreakdownFor(null); setProposedSteps([]); },
+  });
+
+  // Weave the whole star: gather its open tasks in step order and hand them to
+  // the planner, staggering soft deadlines by step so earlier steps schedule
+  // first (the timing-aware plan the design doc calls for). Commits directly.
+  const [weaveResult, setWeaveResult] = useState<{ starId: number; placed: number; unplaced: number } | null>(null);
+  const weaveStar = useMutation({
+    mutationFn: async ({ starId }: { starId: number }) => {
+      const steps = stepsForStar(starId);
+      const stepOrder = new Map(steps.map((m: any, i: number) => [m.id, i]));
+      const open = (allTasks as any[])
+        .filter((t) => t.goalId === starId && t.done !== "true" && t.milestoneId != null)
+        .sort((a, b) => (stepOrder.get(a.milestoneId) ?? 99) - (stepOrder.get(b.milestoneId) ?? 99));
+      if (open.length === 0) return { placed: 0, unplaced: 0 };
+      // Soft deadline per step: step 0 within ~3 days, each later step +4 days,
+      // so the deadline-first weaver keeps the sequence.
+      const payload = open.map((t) => {
+        const si = stepOrder.get(t.milestoneId) ?? 0;
+        const due = new Date(Date.now() + (3 + si * 4) * 86400000).toISOString().slice(0, 10);
+        return { title: t.title, estimatedMinutes: 45, energy: "medium", dueDate: due };
+      });
+      const wr = await fetch("/api/plan/weave", { method: "POST", headers: authHeaders, body: JSON.stringify({ tasks: payload, horizon: "month", lat, lon, tz: new Date().getTimezoneOffset() }) });
+      const data = await wr.json();
+      const planned = (data.planned ?? []).filter((p: any) => p.title);
+      if (planned.length) await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: planned }) });
+      return { placed: planned.length, unplaced: (data.unplaced ?? []).length };
+    },
+    onSuccess: (r, vars) => { refreshPM(); qc.invalidateQueries({ queryKey: ["windows"] }); qc.invalidateQueries({ queryKey: ["planning-windows-all"] }); setWeaveResult({ starId: vars.starId, ...r }); },
   });
   const addStep = useMutation({
     mutationFn: async ({ starId, starTitle, title }: { starId: number; starTitle: string; title: string }) => {
@@ -637,9 +682,50 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                           </div>
                         );
                       })}
+                      {/* Weave the whole star — timing-aware scheduling of every
+                          open task, in step order, onto the calendar. */}
+                      {(() => {
+                        const openCount = (allTasks as any[]).filter((t) => t.goalId === g.id && t.done !== "true" && t.milestoneId != null).length;
+                        if (openCount === 0) return null;
+                        const done = weaveResult?.starId === g.id;
+                        return (
+                          <div style={{ marginTop: 6 }}>
+                            {done ? (
+                              <div style={{ fontSize: 9.5, color: "#3a6020" }}>✓ Woven {weaveResult!.placed} onto your calendar (Plan/Ahead){weaveResult!.unplaced ? ` · ${weaveResult!.unplaced} couldn't fit` : ""}.</div>
+                            ) : (
+                              <button onClick={() => weaveStar.mutate({ starId: g.id })} disabled={weaveStar.isPending}
+                                style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: `1px solid ${elCol}40`, background: `${elCol}0e`, color: elCol, cursor: "pointer", fontWeight: 600 }}>
+                                {weaveStar.isPending ? "Reading the sky…" : `✦ Schedule these ${openCount} — the sky picks the times`}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
+
+                {/* AI breakdown review — proposed steps for this star */}
+                {breakdownFor === g.id && proposedSteps.length > 0 && (
+                  <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)" }}>
+                    <div style={{ fontSize: 10, color: "#8a8278", marginBottom: 6 }}>Proposed steps — edit or drop, then keep them:</div>
+                    {proposedSteps.map((s, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: ELEMENT_INFO[s.element]?.color ?? "#aaa", flexShrink: 0 }} />
+                        <input value={s.title} onChange={(e) => setProposedSteps((ps) => ps.map((p, j) => j === i ? { ...p, title: e.target.value } : p))}
+                          style={{ flex: 1, padding: "3px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }} />
+                        <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} style={{ fontSize: 11, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button onClick={() => commitBreakdown.mutate({ goalId: g.id })} disabled={commitBreakdown.isPending || proposedSteps.length === 0}
+                        style={{ fontSize: 10.5, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+                        {commitBreakdown.isPending ? "Adding…" : `Keep ${proposedSteps.length} steps`}
+                      </button>
+                      <button onClick={() => { setBreakdownFor(null); setProposedSteps([]); }} style={{ fontSize: 10, color: "#999", background: "none", border: "none", cursor: "pointer" }}>discard</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Add a step (milestone) */}
                 {stepAdd === g.id && (
@@ -676,13 +762,21 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>✕</button>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                       <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "task" }); setQuickTitle(""); }}
                         style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ task</button>
                       <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "habit" }); setQuickTitle(""); }}
                         style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ habit</button>
                       <button onClick={() => { setStepAdd(g.id); setStepTitle(""); }}
                         style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ step</button>
+                      {/* AI breakdown — only advertise when the star has no steps yet */}
+                      {stepsForStar(g.id).length === 0 && breakdownFor !== g.id && (
+                        <button onClick={() => { setBreakdownFor(g.id); setProposedSteps([]); runBreakdown.mutate({ title: g.title, description: g.description ?? undefined }); }}
+                          disabled={runBreakdown.isPending}
+                          style={{ fontSize: 10.5, color: "#7a6cae", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", fontWeight: 600 }}>
+                          {runBreakdown.isPending && breakdownFor === g.id ? "thinking…" : "✦ break into steps"}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
