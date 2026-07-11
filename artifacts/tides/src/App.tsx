@@ -103,7 +103,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"work",     label:"Aims"},
   {id:"log",      label:"Log"},
   {id:"launch",   label:"Plan"},
-  {id:"planets",  label:"Star Base"},
+  {id:"planets",  label:"Inner Sky"},
 ];
 
 const WINDOW_TYPES = [

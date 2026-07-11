@@ -1851,11 +1851,18 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { data: habits = [] } = useQuery<any[]>({
+  // Defensive: these come from queries that can momentarily hand back a
+  // non-array (a transient error body). The ritual card is time-gated, so a
+  // bad value here surfaces as a whole-page crash rather than a skipped card.
+  const tasks = Array.isArray(todayTasks) ? todayTasks : [];
+  const wins = Array.isArray(windows) ? windows : [];
+  const cal = Array.isArray(gcalEvents) ? gcalEvents : [];
+  const { data: habitsRaw = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => (await fetch("/api/habits", { headers: { "x-tester-id": testerId ?? "" } })).json(),
+    queryFn: async () => { const j = await (await fetch("/api/habits", { headers: { "x-tester-id": testerId ?? "" } })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
+  const habits = Array.isArray(habitsRaw) ? habitsRaw : [];
   const toggleLog = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
       const headers = { "x-tester-id": testerId ?? "", "Content-Type": "application/json" };
@@ -1909,12 +1916,12 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
   if (mode === "morning") {
     const nowMs = Date.now();
-    const nextEvent = gcalEvents
+    const nextEvent = cal
       .filter((e) => !e.allDay && Date.parse(e.end) > nowMs)
       .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const nextBlock = (windows ?? []).filter((w: any) => !w.completedAt)
+    const nextBlock = wins.filter((w: any) => !w.completedAt)
       .sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
-    const nextTask = todayTasks.find((t) => t.done !== "true");
+    const nextTask = tasks.find((t) => t.done !== "true");
     const three = [
       nextTask && { glyph: "☐", label: nextTask.title, sub: "top task" },
       nextEvent && { glyph: "◷", label: nextEvent.title, sub: new Date(nextEvent.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
@@ -2004,8 +2011,8 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
   // ── Evening: Log the day ──
   const keptHabits = habitList.filter((h: any) => h.doneToday);
-  const doneBlocks = (windows ?? []).filter((w: any) => w.completedAt);
-  const closedTasks = todayTasks.filter((t) => t.done === "true");
+  const doneBlocks = wins.filter((w: any) => w.completedAt);
+  const closedTasks = tasks.filter((t) => t.done === "true");
   const didAnything = keptHabits.length + doneBlocks.length + closedTasks.length > 0;
   const parts: string[] = [];
   if (habitList.length) parts.push(`kept ${keptHabits.length} of ${habitList.length} habit${habitList.length === 1 ? "" : "s"}`);
