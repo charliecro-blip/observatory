@@ -1,5 +1,13 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { HOUSE_MEANINGS, PROFECTION_GUIDANCE } from "@/lib/currents-content";
+import { PLANET_GLYPH } from "@/lib/glyphs";
+
+// 1 → 1st, 3 → 3rd, 11 → 11th
+function ord(n: number) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
 
 export default function CurrentsContextHeader({
   testerId,
@@ -66,32 +74,47 @@ export default function CurrentsContextHeader({
             <div style={{ fontSize: 12, color: "#888" }}>Loading…</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {/* Slow transits (outer planets) */}
-              {currents?.slowTransits && currents.slowTransits.length > 0 && (
+              {/* Slow transits — the API returns these as transitsByHouse
+                  (outer planets moving through your houses), not slowTransits.
+                  Reading the wrong key was why this panel came up empty. */}
+              {Array.isArray(currents?.transitsByHouse) && currents.transitsByHouse.length > 0 && (
                 <div>
                   <div style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase", marginBottom: 6 }}>
                     Major cycles
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {currents.slowTransits.slice(0, 3).map((t: any, i: number) => (
-                      <div key={i} style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
-                        <span style={{ fontWeight: 600 }}>{t.planet}</span> in your{" "}
-                        <span style={{ fontWeight: 600 }}>{t.houseName || t.house}</span> · {t.summary}
-                      </div>
-                    ))}
+                    {currents.transitsByHouse.slice(0, 4).map((t: any, i: number) => {
+                      const h = HOUSE_MEANINGS[t.house];
+                      return (
+                        <div key={i} style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 600 }}>{PLANET_GLYPH[t.planet] ?? ""} {t.planet}</span>
+                          {t.retrograde ? " ℞" : ""} through your{" "}
+                          <span style={{ fontWeight: 600 }}>{h ? `${ord(t.house)} · ${h.title}` : ord(t.house)}</span>
+                          {h ? ` — ${h.domains}` : ""}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Profections */}
+              {/* Profection — real fields are timeLord + house/sign; there is no
+                  ruler/summary. Compose the year's theme from the house meaning
+                  and the profection guidance copy. */}
               {currents?.profection && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase", marginBottom: 6 }}>
                     Your year ahead
                   </div>
-                  <div style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
-                    <span style={{ fontWeight: 600 }}>{currents.profection.ruler}</span> year ·{" "}
-                    {currents.profection.summary}
+                  <div style={{ fontSize: 11, color: "#666", lineHeight: 1.5 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {PLANET_GLYPH[currents.profection.timeLord] ?? ""} {currents.profection.timeLord} year
+                    </span>
+                    {" · "}
+                    {HOUSE_MEANINGS[currents.profection.house]?.title} ({ord(currents.profection.house)}) in {currents.profection.sign}
+                    {PROFECTION_GUIDANCE[currents.profection.house] ? (
+                      <div style={{ marginTop: 3, color: "#888" }}>{PROFECTION_GUIDANCE[currents.profection.house]}</div>
+                    ) : null}
                   </div>
                 </div>
               )}
