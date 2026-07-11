@@ -745,6 +745,9 @@ function ReferenceSection() {
   const { theme } = useTheme();
   const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
+  // The whole reference is a big block; let people fold it away when they're
+  // here for the day's sky, not the textbook (owner #23: needs expand/contract).
+  const [sectionOpen, setSectionOpen] = useState(false);
   const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
   const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
@@ -766,10 +769,20 @@ function ReferenceSection() {
 
   return (
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
-      <div style={{ padding: "11px 14px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
-        <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
-        <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+      <button onClick={() => setSectionOpen(v => !v)} style={{
+        width: "100%", textAlign: "left", padding: "11px 14px", background: "var(--color-card-2)",
+        border: "none", borderBottom: sectionOpen ? "1px solid var(--color-border)" : "none", cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
+          <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
+        </div>
+        <span style={{ fontSize: 10, color: "#bbb", transform: sectionOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>›</span>
+      </button>
+      {sectionOpen && (
+      <div style={{ padding: "0 14px 11px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", gap: 5, marginTop: 10 }}>
           {(["learn", "elements", "planets", "signs"] as const).map((t) => (
             <button key={t} onClick={() => { setTab(t); setOpen(null); }} style={{
               fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
@@ -779,13 +792,15 @@ function ReferenceSection() {
           ))}
         </div>
       </div>
+      )}
       {/* The spine — the nested-rhythm ladder leads the primer, since it's the
           map every other lesson is a rung of. */}
-      {tab === "learn" && (
+      {sectionOpen && tab === "learn" && (
         <div style={{ padding: "14px 14px 4px" }}>
           <SpineGauge dark={theme === "dark"} />
         </div>
       )}
+      {sectionOpen && (
       <div style={{ display: tab === "signs" ? "grid" : "flex", gridTemplateColumns: tab === "signs" ? "1fr 1fr" : undefined, flexDirection: tab === "signs" ? undefined : "column" }}>
         {items.map((it) => (
           <div key={it.key} style={{ borderBottom: "1px solid var(--color-border)", borderRight: tab === "signs" ? "1px solid var(--color-border)" : "none" }}>
@@ -806,6 +821,7 @@ function ReferenceSection() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
