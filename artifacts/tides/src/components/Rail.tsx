@@ -701,35 +701,6 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Retrogrades */}
-      {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
-        <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
-            <Tooltip content={
-              <div>
-                <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>
-                <div style={{ color:"#b0aaa4", fontSize:10.5, lineHeight:1.55 }}>
-                  {now.retrogrades.map(p => {
-                    const notes: Record<string,string> = {
-                      Mercury: "Mercury retrograde affects communication, contracts, travel, and technology. Re-read, revise, and revisit rather than launch.",
-                      Venus: "Venus retrograde affects relationships, finances, and aesthetics. Revisit rather than initiate new connections or purchases.",
-                      Mars: "Mars retrograde affects decisive action and assertion. Redirect energy inward; avoid forcing outcomes.",
-                      Jupiter: "Jupiter retrograde is a time for inner growth and philosophical review — expansion happens internally.",
-                      Saturn: "Saturn retrograde calls for reassessing commitments, structures, and responsibilities.",
-                      Uranus: "Uranus retrograde turns disruption inward — personal breakthroughs and course corrections.",
-                      Neptune: "Neptune retrograde heightens clarity through illusion — a good time to review ideals and creative projects.",
-                      Pluto: "Pluto retrograde intensifies inner transformation. Deep review of power dynamics and hidden patterns.",
-                    };
-                    return <div key={p} style={{ marginBottom:5 }}><strong style={{ color:"#e8e4de" }}>{p}:</strong> {notes[p] ?? `${p} retrograde — revisit and review rather than initiate.`}</div>;
-                  })}
-                </div>
-              </div>
-            } width={280}>
-              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"#d8d2ca", color:"#888", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
-            </Tooltip>
-          </div>
-        </div>
-      )}
 
       {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
           hour; a whole day has one keynote. */}
@@ -747,7 +718,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               {PLANET_ICONS[dayRuler] ?? "○"}
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>{dayRuler}'s day</div>
+              <div style={{ fontWeight: 600, fontSize: 12.5 }}>
+                {dayRuler}'s day
+                {(() => {
+                  // The day-ruler's current sign — same "…in {sign}" treatment
+                  // the hour gets, since a planet is never just itself.
+                  const sign = (now.planets ?? []).find((x: any) => x.planet === dayRuler)?.sign;
+                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "#a09888" }}> in {sign}</span> : null;
+                })()}
+              </div>
               <div style={{ fontSize: 9, color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
             </div>
           </div>
@@ -908,6 +887,39 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       )}
 
+      {/* Retrogrades — moved BELOW the aspects (owner 2026-07-11): they
+          were popping as "important" up top; they are slow background
+          context, so they sit here under the planetary aspects. */}
+      {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
+        <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+            <Tooltip content={
+              <div>
+                <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>
+                <div style={{ color:"#b0aaa4", fontSize:10.5, lineHeight:1.55 }}>
+                  {now.retrogrades.map(p => {
+                    const notes: Record<string,string> = {
+                      Mercury: "Mercury retrograde affects communication, contracts, travel, and technology. Re-read, revise, and revisit rather than launch.",
+                      Venus: "Venus retrograde affects relationships, finances, and aesthetics. Revisit rather than initiate new connections or purchases.",
+                      Mars: "Mars retrograde affects decisive action and assertion. Redirect energy inward; avoid forcing outcomes.",
+                      Jupiter: "Jupiter retrograde is a time for inner growth and philosophical review — expansion happens internally.",
+                      Saturn: "Saturn retrograde calls for reassessing commitments, structures, and responsibilities.",
+                      Uranus: "Uranus retrograde turns disruption inward — personal breakthroughs and course corrections.",
+                      Neptune: "Neptune retrograde heightens clarity through illusion — a good time to review ideals and creative projects.",
+                      Pluto: "Pluto retrograde intensifies inner transformation. Deep review of power dynamics and hidden patterns.",
+                    };
+                    return <div key={p} style={{ marginBottom:5 }}><strong style={{ color:"#e8e4de" }}>{p}:</strong> {notes[p] ?? `${p} retrograde — revisit and review rather than initiate.`}</div>;
+                  })}
+                </div>
+              </div>
+            } width={280}>
+              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"#d8d2ca", color:"#888", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
+            </Tooltip>
+          </div>
+        </div>
+      )}
+
       {/* Personal transits — collapsible, grouped fast → slow. Fast movers
           (Sun/Mercury/Venus/Mars) are this week's weather; slow ones
           (Jupiter → Pluto) are the chapter you're living in. */}
@@ -998,9 +1010,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
         {wavesOpen && (
           <div style={{ paddingBottom: 8 }}>
-            {/* What a "wave" is — the one-line gloss that was missing. */}
+            {/* What a "wave" is — the doable pieces (tasks & habits), not the
+                long-term stars (those live in Aims). */}
             <div style={{ fontSize: 8.5, color: "#b0a89c", lineHeight: 1.5, padding: "0 14px 6px" }}>
-              The doable pieces of your aims — practices, tasks, and stars — surfaced when today's conditions support them.
+              The doable pieces — your tasks and habits — surfaced when today's conditions support them.
             </div>
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").length > 0 && (
               <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
@@ -1036,23 +1049,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               </div>
             ))}
 
-            {/* Guiding Stars — labeled so a star's title ("aligned spine") reads
-                as what it is, not a mystery item. */}
-            {(goals as any[]).length > 0 && (
-              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "4px 14px 2px" }}>your guiding stars</div>
-            )}
-            {(goals as any[]).slice(0, 3).map((g: any) => (
-              <div key={g.id} style={{
-                display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
-                borderLeft: "3px solid #c8b06a",
-              }}>
-                <span style={{ fontSize: 9, color: "#c8b06a", flexShrink: 0 }}>✦</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, color: "#8a7a50", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
-                  {g.horizon && <div style={{ fontSize: 8, color: "#bbb" }}>guiding star · {g.horizon} horizon</div>}
-                </div>
-              </div>
-            ))}
+            {/* Guiding Stars are intentionally NOT here (owner 2026-07-11) —
+                Waves is the doable daily layer (tasks + habits); the long-term
+                stars live in Aims, not the daily rail. */}
 
             {/* Add task inline */}
             {showAddTask ? (

@@ -3119,7 +3119,11 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
       </div>
       <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 52 }}>
         {days.map((d) => {
-          const ec = ELEMENT_COLORS[(d.element ?? "water") as Element] ?? "#888";
+          // Always a 6-digit hex (so the `${ec}55` alpha suffix stays valid) and
+          // a defined color for spirit/VOC days — they were rendering as a
+          // broken white-body/grey-top bar because "spirit" fell to "#888".
+          const MB_HEX: Record<string, string> = { fire: "#b84020", earth: "#4a7040", air: "#c19a3a", water: "#2a5a80", spirit: "#7a7196" };
+          const ec = MB_HEX[d.element ?? "water"] ?? "#7a7196";
           const qs = d.qualityScore ?? 4;
           const h = 10 + Math.round((qs / 7) * 38);
           const active = sel === d.date;

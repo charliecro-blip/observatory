@@ -100,7 +100,7 @@ export default function Dashboard({
           }) : <div style={{ fontSize: 12, color: "#aaa" }}>Set a guiding star to steer by →</div>}
         </Card>
 
-        <Card title="On deck · today" icon="◷" onOpen={onNavigate ? () => onNavigate("calendar") : undefined}>
+        <Card title="On deck · today" icon="◷" onOpen={onNavigate ? () => onNavigate("launch") : undefined}>
           {todayWindows.length > 0 ? todayWindows.map((w: any, i: number) => (
             <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0" }}>
               <span style={{ fontSize: 11, color: "#999", flexShrink: 0, minWidth: 52 }}>{fmtTime(w.startTime)}</span>
@@ -128,47 +128,11 @@ export default function Dashboard({
           </div>
         </Card>
 
-        {prof && (
-          <Card title="Currents · the long season" icon="≋" onOpen={onNavigate ? () => onNavigate("work") : undefined}>
-            <div style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
-              {PLANET_GLYPH[prof.timeLord] ?? ""} Your {ordinal(prof.house)}-house year
-            </div>
-            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>ruled by {prof.timeLord}</div>
-          </Card>
-        )}
-
-        {/* Your sky clock — the next moments one of YOUR natal degrees crosses a
-            local angle (rises or culminates). Personal timing, not the sky's. */}
-        {(() => {
-          const upcoming = (anglesData?.events ?? [])
-            .filter((e) => Date.parse(e.at) > Date.now() - 10 * 60000)
-            .slice(0, 3);
-          if (!upcoming.length) return null;
-          const fmt = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-          return (
-            <Card title="Your sky clock" icon="✧" onOpen={onNavigate ? () => onNavigate("planets") : undefined}>
-              {upcoming.map((e, i) => {
-                const nowish = Math.abs(Date.parse(e.at) - Date.now()) < 10 * 60000;
-                return (
-                  <div key={i}
-                    title={`${e.angle === "ASC" ? "Rising" : "Culminating"} = your ${e.planet}'s strongest ~20 minutes of the day. Use it: ${PLANET_LITERACY[e.planet]?.useIt ?? "lead with this drive."}`}
-                    style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0", cursor: "help" }}>
-                    <span style={{ fontSize: 11, color: nowish ? "#a8862e" : "#999", flexShrink: 0, minWidth: 52, fontWeight: nowish ? 700 : 400 }}>{nowish ? "now" : fmt(e.at)}</span>
-                    <span style={{ fontSize: 12.5, color: "var(--color-foreground)", borderBottom: "1px dotted #d8d2c8" }}>
-                      {PLANET_GLYPH[e.planet]} your {e.planet} {e.angle === "ASC" ? "rises" : "culminates"}{e.approximate ? " ~" : ""}
-                    </span>
-                  </div>
-                );
-              })}
-              <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>your degrees crossing the local angles</div>
-            </Card>
-          );
-        })()}
-
-        <Card title="Inner Sky · your chart" icon="✵" onOpen={onNavigate ? () => onNavigate("planets") : undefined}>
-          <div style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>Visit your planets and houses</div>
-          <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>what you're made of, and how it's moving now</div>
-        </Card>
+        {/* Currents, Sky Clock, and Inner Sky cards were removed from the home
+            (owner 2026-07-11): the home shows only your aims (Guiding Stars),
+            what's on deck, and the week. The long-cycle Currents lives in Aims;
+            the sky clock and personal crossings are moving into the Calendar
+            day view where the day's timing belongs. */}
       </div>
     </div>
   );

@@ -519,7 +519,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
   return (
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px", marginBottom: 12 }}>Inner Sky</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px", marginBottom: 12 }}>Planets</div>
         {/* Console toggle — hidden while Houses/Chart are filed away */}
         {SHOW_ADVANCED_MODES && (
         <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>

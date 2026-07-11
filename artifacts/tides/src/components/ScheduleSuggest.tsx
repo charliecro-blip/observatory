@@ -65,13 +65,23 @@ export function ScheduleSuggest({
     enabled: !!assoc,
   });
 
-  // Rank suggested windows by fit: awake + free first. A sky-perfect 3am slot
-  // is a taunt, not a suggestion.
+  // Waking-hours filter + a clear order. A sky-perfect 3am slot is a taunt,
+  // not a suggestion, so night windows are REMOVED (not just deprioritized)
+  // unless the user's chronotype says they're awake then. Then: free-time fit
+  // first, and within that, SOONEST first — so the list has a legible logic.
   const chronotype = profile?.chronotype;
+  const wakeH = chronotype?.wakeTime ? parseInt(chronotype.wakeTime.split(":")[0], 10) : 7;
+  const sleepH = chronotype?.sleepTime ? parseInt(chronotype.sleepTime.split(":")[0], 10) : 22;
+  const isWaking = (w: BestWindow) => {
+    const h = new Date(w.startAt).getHours(); // viewer-local
+    return sleepH > wakeH ? (h >= wakeH && h < sleepH) : (h >= wakeH || h < sleepH);
+  };
   const ranked = [...(bestData?.windows ?? [])]
+    .filter(isWaking)
     .sort((a, b) => {
-      const rank = (w: BestWindow) => (isAwakeDuring(w, chronotype) ? 0 : 2) + (isWithinFreeWindow(w, chronotype) ? 0 : 1);
-      return rank(a) - rank(b);
+      const free = (w: BestWindow) => (isWithinFreeWindow(w, chronotype) ? 0 : 1);
+      if (free(a) !== free(b)) return free(a) - free(b);
+      return Date.parse(a.startAt) - Date.parse(b.startAt); // soonest first
     })
     .slice(0, 3);
 

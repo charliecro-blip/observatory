@@ -103,7 +103,7 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"work",     label:"Aims"},
   {id:"log",      label:"Log"},
   {id:"launch",   label:"Plan"},
-  {id:"planets",  label:"Inner Sky"},
+  {id:"planets",  label:"Planets"},
 ];
 
 const WINDOW_TYPES = [
@@ -779,7 +779,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", log:"📖", launch:"▲" };
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"✦", log:"📖", launch:"▲" };
 
   return (
     <div style={{

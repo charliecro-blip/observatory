@@ -9,7 +9,13 @@
 }
 
 @theme {
-  --font-sans: 'Geist', 'Space Grotesk', 'Inter', 'Noto Sans Symbols 2', 'Noto Sans Symbols', system-ui, sans-serif;
+  /* Noto symbol faces are NOT in this global chain on purpose: when they were,
+     any astrological glyph sitting inline in body text fell through to the
+     heavier symbol font, so text weight looked inconsistent across the app.
+     The symbol faces are applied only where glyphs are explicitly rendered
+     (components/Glyph.tsx, lib/celestialGlyphs.ts). */
+  --font-sans: 'Geist', 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-symbol: 'Noto Sans Symbols 2', 'Noto Sans Symbols', system-ui, sans-serif;
   --font-serif: 'Spectral', 'Georgia', serif;
   --font-display: 'Baar Sophia', 'Spectral', 'Georgia', serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
