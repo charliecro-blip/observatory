@@ -90,6 +90,9 @@ export const tasks = pgTable("tasks", {
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
   goalId: integer("goal_id"),
   projectId: integer("project_id"),
+  // The missing join for project facilitation: a task can belong to a step
+  // (milestone) of a Guiding Star, so progress rolls up task → step → star.
+  milestoneId: integer("milestone_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

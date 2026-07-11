@@ -131,8 +131,39 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     const proj = projectForStar(starId);
     return proj ? allMilestones.filter((m: any) => m.projectId === proj.id) : [];
   };
+
+  // Project facilitation: the server-computed progress rollup (task → step →
+  // star). Tasks are already loaded above as `allTasks`; group them by step.
+  const { data: starProgress = {} } = useQuery<Record<string, any>>({
+    queryKey: ["star-progress", testerId],
+    queryFn: async () => (await fetch("/api/planning/star-progress", { headers: authHeaders })).json(),
+    enabled: !!testerId,
+  });
+  const tasksForStep = (milestoneId: number) => (allTasks as any[]).filter((t) => t.milestoneId === milestoneId);
+
   const [stepAdd, setStepAdd] = useState<number | null>(null);
   const [stepTitle, setStepTitle] = useState("");
+  // Adding a task under a specific step
+  const [stepTaskAdd, setStepTaskAdd] = useState<number | null>(null);
+  const [stepTaskTitle, setStepTaskTitle] = useState("");
+  const refreshPM = () => {
+    qc.invalidateQueries({ queryKey: ["tasks"] });
+    qc.invalidateQueries({ queryKey: ["star-progress"] });
+    qc.invalidateQueries({ queryKey: ["milestones"] });
+  };
+  const addTaskToStep = useMutation({
+    mutationFn: async ({ milestoneId, starId, title, element }: { milestoneId: number; starId: number; title: string; element?: string }) => {
+      const windowType = element === "fire" ? "creative" : element === "earth" ? "deep_work" : element === "air" ? "planning" : element === "water" ? "recovery" : undefined;
+      await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId: starId, milestoneId, bestWindowType: windowType }) });
+    },
+    onSuccess: () => { refreshPM(); setStepTaskAdd(null); setStepTaskTitle(""); },
+  });
+  const toggleStepTask = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: !done }) });
+    },
+    onSuccess: refreshPM,
+  });
   const addStep = useMutation({
     mutationFn: async ({ starId, starTitle, title }: { starId: number; starTitle: string; title: string }) => {
       let proj = projectForStar(starId);
@@ -145,6 +176,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["milestones"] });
+      qc.invalidateQueries({ queryKey: ["star-progress"] });
       setStepAdd(null); setStepTitle("");
     },
   });
@@ -169,7 +201,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       const next = status === "pending" ? "in_progress" : status === "in_progress" ? "completed" : "pending";
       await fetch(`/api/planning/milestones/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ status: next }) });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["milestones"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["milestones"] }); qc.invalidateQueries({ queryKey: ["star-progress"] }); },
   });
 
   const addGoal = useMutation({
@@ -544,20 +576,67 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     ))}
                   </div>
                 )}
-                {/* Steps (ordered milestones) — the folded project structure */}
+                {/* Steps (ordered milestones) with their tasks — the project
+                    facilitation: task → step → star, with a rollup bar. */}
                 {(() => {
                   const steps = stepsForStar(g.id);
                   if (steps.length === 0) return null;
                   const STEP_COL: Record<string, string> = { pending: "#c8c0b4", in_progress: "#c8a840", completed: "#80b870" };
+                  const prog = starProgress[g.id];
+                  const elCol = ELEMENT_INFO[g.element ?? ""]?.color ?? "#7a8a9a";
                   return (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--color-border)" }}>
-                      <div style={{ fontSize: 9, color: "#a89a88", marginBottom: 3 }}>Steps</div>
-                      {steps.map((m: any) => (
-                        <div key={m.id} onClick={() => cycleStep.mutate({ id: m.id, status: m.status })} style={{ display: "flex", alignItems: "center", gap: 7, padding: "2px 0", cursor: "pointer" }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "#ccc", flexShrink: 0 }} />
-                          <span style={{ fontSize: 10.5, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
+                      {/* Rollup bar */}
+                      {prog && (prog.tasksTotal > 0 || prog.stepsTotal > 0) && (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                            <span style={{ fontSize: 9, color: "#a89a88" }}>Project · {prog.pct}%</span>
+                            <span style={{ fontSize: 9, color: "#bbb" }}>
+                              {prog.tasksTotal > 0 ? `${prog.tasksDone}/${prog.tasksTotal} tasks` : `${prog.stepsDone}/${prog.stepsTotal} steps`}
+                            </span>
+                          </div>
+                          <div style={{ height: 4, borderRadius: 2, background: "var(--color-card-2)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${prog.pct}%`, background: elCol, borderRadius: 2, transition: "width 0.3s" }} />
+                          </div>
                         </div>
-                      ))}
+                      )}
+                      <div style={{ fontSize: 9, color: "#a89a88", marginBottom: 3 }}>Steps</div>
+                      {steps.map((m: any) => {
+                        const stepTasks = tasksForStep(m.id);
+                        return (
+                          <div key={m.id} style={{ marginBottom: 3 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "2px 0" }}>
+                              <span onClick={() => cycleStep.mutate({ id: m.id, status: m.status })} title="Cycle step status"
+                                style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "#ccc", flexShrink: 0, cursor: "pointer" }} />
+                              <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
+                              {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "#bbb" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
+                              <button onClick={() => { setStepTaskAdd(m.id); setStepTaskTitle(""); }} title="Add a task to this step"
+                                style={{ fontSize: 11, color: "#c0b8aa", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>+</button>
+                            </div>
+                            {/* Tasks under the step */}
+                            {stepTasks.map((t) => (
+                              <div key={t.id} onClick={() => toggleStepTask.mutate({ id: t.id, done: t.done === "true" })}
+                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "1px 0 1px 15px", cursor: "pointer" }}>
+                                <span style={{ fontSize: 10, color: t.done === "true" ? "#80b870" : "#ccc" }}>{t.done === "true" ? "✓" : "○"}</span>
+                                <span style={{ fontSize: 10, color: t.done === "true" ? "#bbb" : "#7a736a", textDecoration: t.done === "true" ? "line-through" : "none" }}>{t.title}</span>
+                              </div>
+                            ))}
+                            {stepTaskAdd === m.id && (
+                              <div style={{ display: "flex", gap: 4, padding: "2px 0 2px 15px" }}>
+                                <input autoFocus value={stepTaskTitle} onChange={(e) => setStepTaskTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && stepTaskTitle.trim()) addTaskToStep.mutate({ milestoneId: m.id, starId: g.id, title: stepTaskTitle.trim(), element: g.element ?? undefined });
+                                    if (e.key === "Escape") { setStepTaskAdd(null); setStepTaskTitle(""); }
+                                  }}
+                                  placeholder="Task for this step…"
+                                  style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10, outline: "none", background: "var(--color-card)" }} />
+                                <button onClick={() => stepTaskTitle.trim() && addTaskToStep.mutate({ milestoneId: m.id, starId: g.id, title: stepTaskTitle.trim(), element: g.element ?? undefined })}
+                                  style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })()}

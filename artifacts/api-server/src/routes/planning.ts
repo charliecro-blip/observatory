@@ -1,9 +1,55 @@
 import { Router, type IRouter } from "express";
-import { db, goals, projects, milestones, planningWindows } from "@workspace/db";
+import { db, goals, projects, milestones, planningWindows, tasks } from "@workspace/db";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 
 const router: IRouter = Router();
+
+// ── Star progress rollup ────────────────────────────────────────────────────
+// Turns a Guiding Star into a project: task → step (milestone) → star. Returns,
+// per goalId, the milestone breakdown and an overall percent, so the UI can
+// draw one progress ring. A step counts done when all its tasks are done (or
+// it has no tasks but is marked completed).
+router.get("/planning/star-progress", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const [projRows, mileRows, taskRows] = await Promise.all([
+    db.select().from(projects).where(eq(projects.testerId, testerId)),
+    db.select().from(milestones).where(eq(milestones.testerId, testerId)),
+    db.select().from(tasks).where(eq(tasks.testerId, testerId)),
+  ]);
+  // project.id → goalId (a star's steps live on a backing project, goalId = star.id)
+  const projGoal = new Map<number, number>();
+  for (const p of projRows) if (p.goalId != null) projGoal.set(p.id, p.goalId);
+
+  // tasks grouped by milestoneId
+  const byMile = new Map<number, { done: number; total: number }>();
+  for (const t of taskRows) {
+    if (t.milestoneId == null) continue;
+    const b = byMile.get(t.milestoneId) ?? { done: 0, total: 0 };
+    b.total += 1;
+    if (t.done === "true") b.done += 1;
+    byMile.set(t.milestoneId, b);
+  }
+
+  const out: Record<number, { pct: number; tasksDone: number; tasksTotal: number; stepsDone: number; stepsTotal: number; milestones: any[] }> = {};
+  for (const m of mileRows) {
+    const goalId = projGoal.get(m.projectId);
+    if (goalId == null) continue;
+    const tc = byMile.get(m.id) ?? { done: 0, total: 0 };
+    const stepDone = m.status === "completed" || (tc.total > 0 && tc.done === tc.total);
+    const g = out[goalId] ?? { pct: 0, tasksDone: 0, tasksTotal: 0, stepsDone: 0, stepsTotal: 0, milestones: [] };
+    g.tasksDone += tc.done; g.tasksTotal += tc.total;
+    g.stepsTotal += 1; if (stepDone) g.stepsDone += 1;
+    g.milestones.push({ id: m.id, title: m.title, status: m.status, tasksDone: tc.done, tasksTotal: tc.total, done: stepDone });
+    out[goalId] = g;
+  }
+  // Percent: prefer task granularity, fall back to steps when a star has no tasks yet.
+  for (const g of Object.values(out)) {
+    g.pct = g.tasksTotal > 0 ? Math.round((g.tasksDone / g.tasksTotal) * 100)
+      : g.stepsTotal > 0 ? Math.round((g.stepsDone / g.stepsTotal) * 100) : 0;
+  }
+  res.json(out);
+});
 
 // ── Goals ─────────────────────────────────────────────────────────────────────
 
