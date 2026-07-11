@@ -249,6 +249,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 today={today}
                 onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})}
                 onDelete={() => remove.mutate(t.id)}
+                onSchedule={() => setSuggestFor({ title: t.title, goalId: t.goalId, projectId: t.projectId })}
                 highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
               />
             ))}
@@ -290,9 +291,9 @@ function Sect({ label, children, accent, color, muted }: any) {
   );
 }
 
-function Row({ task, goal, project, today, onToggle, onDelete, highlight, dim }: {
+function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highlight, dim }: {
   task:Task; goal?:GoalLite; project?:ProjectLite; today:string;
-  onToggle:()=>void; onDelete:()=>void; highlight?:boolean; dim?:boolean;
+  onToggle:()=>void; onDelete:()=>void; onSchedule?:()=>void; highlight?:boolean; dim?:boolean;
 }) {
   const isDone = task.done === "true";
   const wc = task.bestWindowType ? WINDOW_COLORS[task.bestWindowType] : undefined;
@@ -312,9 +313,13 @@ function Row({ task, goal, project, today, onToggle, onDelete, highlight, dim }:
       {project && !isDone && (
         <div title={`Project: ${project.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:"#3a5a80",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
       )}
-      {task.planningWindowId && !isDone && (
+      {task.planningWindowId && !isDone ? (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:"#3a5a80",fontWeight:600,flexShrink:0}}>▦ block</div>
-      )}
+      ) : (!isDone && onSchedule && (
+        // Schedule an EXISTING task — the sky picks a good time (owner: 'if a
+        // task exists, I should be encouraged to schedule it').
+        <button onClick={onSchedule} title="Find a good time for this" style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+      ))}
       {task.bestWindowType && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}

@@ -409,13 +409,16 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
   }
 
   if (status?.configured === false) {
+    // Unconfigured = the Google OAuth credentials aren't set on the server
+    // (owner Railway task per GCAL-SETUP.md). Say so plainly so it doesn't
+    // read as a broken button.
     return (
-      <div title="Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env to enable" style={{
-        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-        background:"var(--color-card-2)", color:"#ccc", cursor:"not-allowed",
+      <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
+        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
+        background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
         display:"flex", alignItems:"center", gap:4,
       }}>
-        <span style={{ fontSize:10 }}>📅</span> Google Cal
+        <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
       </div>
     );
   }
