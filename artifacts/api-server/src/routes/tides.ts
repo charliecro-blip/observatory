@@ -125,7 +125,11 @@ router.get("/tides/now", async (req, res) => {
   const planHour       = getPlanetaryHour(date, lat, lon);
   const retrogrades    = planets.filter((p) => p.retrograde).map((p) => p.planet);
   const INNER_PLANETS = new Set(["Sun", "Moon", "Mercury", "Venus", "Mars"]);
-  const allAspects     = getMajorAspects(jd);
+  const LUMINARIES = new Set(["Sun", "Moon"]);
+  // Non-luminary pairs stay in orb for ages — only surface them when tight
+  // (< 5 deg), or the "planetary weather" reads as permanently stormy.
+  const allAspects     = getMajorAspects(jd).filter(a =>
+    LUMINARIES.has(a.planet1) || LUMINARIES.has(a.planet2) || a.orb < 5);
   // Filter out outer-planet-only pairs — they stay in orb for months and feel stale
   const aspects        = allAspects.filter(a => INNER_PLANETS.has(a.planet1) || INNER_PLANETS.has(a.planet2));
   const localAngles    = getLocalAngles(jd, lat, lon);

@@ -106,6 +106,33 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
   const houseMeaning = house ? HOUSE_MEANINGS[house] : null;
   const activations = ((currents?.majorTransits ?? []) as any[]).filter((t) => t.natalPlanet === selected);
 
+  // Your work under this planet — the stars/habits/tasks that live in its
+  // domain (by explicit planet link, season anchor, or element kinship).
+  // Overlap across planets is expected and fine.
+  const PLANET_EL: Record<string, string> = { Sun: "fire", Mars: "fire", Jupiter: "fire", Saturn: "earth", Venus: "earth", Mercury: "air", Uranus: "air", Moon: "water", Neptune: "water", Pluto: "water" };
+  const authHeaders = { ...(testerId ? { "x-tester-id": testerId } : {}) } as Record<string, string>;
+  const { data: relStars = [] } = useQuery<any[]>({
+    queryKey: ["north-stars", testerId],
+    queryFn: async () => { const r = await fetch("/api/planning/north-stars", { headers: authHeaders }); const j = await r.json(); return Array.isArray(j) ? j : []; },
+    enabled: !!testerId,
+  });
+  const { data: relHabits = [] } = useQuery<any[]>({
+    queryKey: ["habits", testerId],
+    queryFn: async () => { const r = await fetch("/api/habits", { headers: authHeaders }); const j = await r.json(); return Array.isArray(j) ? j : []; },
+    enabled: !!testerId,
+  });
+  const { data: relTasks = [] } = useQuery<any[]>({
+    queryKey: ["tasks", testerId, "all"],
+    queryFn: async () => { const r = await fetch("/api/tasks", { headers: authHeaders }); const j = await r.json(); return Array.isArray(j) ? j : []; },
+    enabled: !!testerId,
+  });
+  const planetEl = PLANET_EL[selected];
+  const myStars = relStars.filter((g: any) => g.anchorPlanet === selected || g.element === planetEl);
+  const starIds = new Set(myStars.map((g: any) => g.id));
+  const myHabits = relHabits.filter((h: any) => (Array.isArray(h.favoredPlanets) ? h.favoredPlanets : []).includes(selected)
+    || (Array.isArray(h.favoredElements) ? h.favoredElements : []).includes(planetEl));
+  const myTasks = relTasks.filter((t: any) => t.done !== "true" && t.goalId != null && starIds.has(t.goalId)).slice(0, 5);
+
   // Sky-literacy: the weekly Moon-contact rhythm + the user's felt history on
   // this planet's days. Moon has no contacts-to-itself; its rhythm is taught
   // by the phase cycle instead.
@@ -211,6 +238,41 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       {lit && selected === "Moon" && (
         <SectionCard label="The Moon's rhythm" accent={col}>
           <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6 }}>{lit.weeklyNote}</div>
+        </SectionCard>
+      )}
+
+      {/* Your work under this planet — where the archetype meets the to-do list */}
+      {(myStars.length > 0 || myHabits.length > 0 || myTasks.length > 0) && (
+        <SectionCard label={`Your work under ${core.name}`} accent={col}>
+          {myStars.length > 0 && (
+            <div style={{ marginBottom: myHabits.length || myTasks.length ? 8 : 0 }}>
+              {myStars.map((g: any) => (
+                <div key={g.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0" }}>
+                  <span style={{ fontSize: 11, color: col }}>✦</span>
+                  <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>{g.title}</span>
+                  <span style={{ fontSize: 9.5, color: "#aaa" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {myHabits.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: myTasks.length ? 8 : 0 }}>
+              {myHabits.map((h: any) => (
+                <span key={h.id} style={{ fontSize: 10.5, padding: "3px 10px", borderRadius: 12, border: `1px solid ${col}30`, background: `${col}0c`, color: "var(--color-foreground)" }}>
+                  ↻ {h.name}{h.streak > 0 ? ` · ${h.streak}d` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+          {myTasks.length > 0 && myTasks.map((t: any) => (
+            <div key={t.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "1px 0" }}>
+              <span style={{ fontSize: 10, color: "#ccc" }}>○</span>
+              <span style={{ fontSize: 11.5, color: "#7a736a" }}>{t.title}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 9.5, color: "#b0a898", marginTop: 6 }}>
+            {selected === "Moon" ? "Work that shares the Moon's water." : `Aims anchored to ${selected} or sharing its ${planetEl} nature — overlap with other planets is normal.`}
+          </div>
         </SectionCard>
       )}
 
@@ -438,6 +500,10 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
   // Arriving via a teachable-moment link ("today feels saturnine → visit
   // Saturn") lands directly on that planet's page.
   useEffect(() => { if (initialPlanet) setMode("planets"); }, [initialPlanet]);
+  // FILED AWAY (owner, 2026-07-11): Houses and the practitioner Chart are
+  // hidden for now — too much surface too soon. The views and their routes
+  // stay fully built; flip this to re-reveal (Chart stays premium-gated).
+  const SHOW_ADVANCED_MODES = false;
 
   const { data: natal } = useQuery<any>({
     queryKey: ["natal-chart", testerId],
@@ -454,7 +520,8 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px", marginBottom: 12 }}>Star Base</div>
-        {/* Console toggle — the three kinds of destination */}
+        {/* Console toggle — hidden while Houses/Chart are filed away */}
+        {SHOW_ADVANCED_MODES && (
         <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>
           {([["planets", "Planets"], ["houses", "Houses"], ["chart", "Chart ⊕"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
@@ -464,6 +531,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
             }}>{label}</button>
           ))}
         </div>
+        )}
 
         {mode === "planets" && <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={initialPlanet} />}
         {mode === "houses" && <HousesView natal={natal} currents={currents} onReflect={onReflect} />}

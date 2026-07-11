@@ -51,7 +51,11 @@ router.get("/chart/now", requireTesterId, async (req, res) => {
 
   // Current transit-to-transit aspects (the mundane sky), from the station-aware
   // engine so retrograde perfection timing is honest.
-  const skyAspects = getMajorAspects(jd).map((a) => ({
+  const LUM = new Set(["Sun", "Moon"]);
+  const skyAspects = getMajorAspects(jd)
+    // same display rule as Today: non-luminary pairs only under 5 deg orb
+    .filter((a) => LUM.has(a.planet1) || LUM.has(a.planet2) || a.orb < 5)
+    .map((a) => ({
     planet1: a.planet1, planet2: a.planet2, aspect: a.aspect, orb: a.orb,
     applying: a.applying, exactAt: a.hoursToExact != null ? new Date(now.getTime() + a.hoursToExact * 3600000).toISOString() : null,
     neverPerfected: a.neverPerfected ?? false, stationsBeforeExact: a.stationsBeforeExact ?? false,

@@ -413,7 +413,16 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); setCollapsed(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
   // A clear, always-visible minimize control for an open section header.
   const Collapse = ({ id }: { id: string }) => (
-    <button onClick={() => toggleOpen(id)} title="Minimize" style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
+    <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} title="Minimize" style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
+  );
+  // Section header — the WHOLE row toggles (clicking exactly on the tiny ▾
+  // was the only target before, which read as broken). Inner controls like
+  // HelpBadge stop propagation themselves.
+  const SectionHeader = ({ id, children }: { id: string; children: React.ReactNode }) => (
+    <div onClick={() => toggleOpen(id)} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+      <span style={{ display: "flex", alignItems: "center" }}>{children}</span>
+      <Collapse id={id} />
+    </div>
   );
   const [wavesOpen, setWavesOpen] = useState(true);
   const [transitsOpen, setTransitsOpen] = useState(true);
@@ -533,10 +542,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* SEASON — the slowest, simplest signifier: what sign the Sun is in. */}
       {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa" }}>Season</div>
-            <Collapse id="season" />
-          </div>
+          <SectionHeader id="season">Season</SectionHeader>
           <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
@@ -575,10 +581,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {railSections.includes("moon") && isOpen("moon") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ display: "flex", alignItems: "center" }}>Moon<HelpBadge term="moonPhase"/></span>
-            <Collapse id="moon" />
-          </div>
+          <SectionHeader id="moon">Moon<HelpBadge term="moonPhase"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
@@ -638,7 +641,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>Moon aspects<HelpBadge term="moonAspects"/></span><Collapse id="aspects" /></div>
+          <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
           {now.moonAspects.slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
             const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
@@ -735,7 +738,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", justifyContent: "space-between" }}>This day<Collapse id="day" /></div>
+          <SectionHeader id="day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
               {PLANET_ICONS[dayRuler] ?? "○"}
@@ -764,7 +767,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {railSections.includes("hour") && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center" }}>This hour<HelpBadge term="planetaryHour"/></span><Collapse id="hour" /></div>
+          <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",

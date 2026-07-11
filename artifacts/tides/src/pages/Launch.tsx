@@ -162,21 +162,33 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
           beginning — not a guaranteed outcome. Perfect windows are rare; this shows the best available one honestly.
         </div>
 
-        {/* Category picker */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
-          {categories.map((c) => (
-            <button key={c.key} onClick={() => setCategory(c.key)} style={{
-              textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-              border: category === c.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
-              background: category === c.key ? "#1a2a3a10" : "var(--color-card)",
-            }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: category === c.key ? "#1a2a3a" : "var(--color-foreground)" }}>
-                {c.label}
-              </div>
-              <div style={{ fontSize: 10, color: "#999", marginTop: 2, lineHeight: 1.4 }}>{c.description}</div>
-            </button>
-          ))}
-        </div>
+        {/* Category picker — one idea at a time: once a category is chosen the
+            grid folds away to just the choice + a "change" affordance, so the
+            screen belongs to the results (mobile-first pacing). */}
+        {!category ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
+            {categories.map((c) => (
+              <button key={c.key} onClick={() => setCategory(c.key)} style={{
+                textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                border: "1px solid var(--color-border)", background: "var(--color-card)",
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-foreground)" }}>{c.label}</div>
+                <div style={{ fontSize: 10, color: "#999", marginTop: 2, lineHeight: 1.4 }}>{c.description}</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #1a2a3a", background: "var(--color-card)" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{activeCategory?.label}</div>
+              <div style={{ fontSize: 10, color: "#999", marginTop: 1, lineHeight: 1.4 }}>{activeCategory?.description}</div>
+            </div>
+            <button onClick={() => setCategory(null)} style={{
+              fontSize: 10.5, padding: "4px 12px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+              border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#888",
+            }}>← change</button>
+          </div>
+        )}
 
         {category && (
           <>

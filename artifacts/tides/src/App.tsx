@@ -8,7 +8,7 @@ import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profil
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
@@ -782,7 +782,15 @@ function Shell() {
   const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"☰", log:"📖", launch:"▲" };
 
   return (
-    <div style={{display:"flex",height:"calc(100dvh / var(--app-zoom, 1))",width:"100%",background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
+    <div style={{
+      display:"flex",height:"calc(100dvh / var(--app-zoom, 1))",
+      // Mobile preview on desktop: the forced-mobile layout renders in a
+      // centered 390px phone frame so the one-page-at-a-time pacing is
+      // reviewable from a desk.
+      width: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? 390 : "100%",
+      margin: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? "0 auto" : undefined,
+      boxShadow: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? "0 0 0 1px var(--color-border), 0 12px 48px rgba(0,0,0,0.25)" : undefined,
+      background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
 
@@ -826,6 +834,14 @@ function Shell() {
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
         >🧭 Compass</button>
+        {window.matchMedia("(min-width: 769px)").matches && (
+          <button onClick={() => setForceMobile(!getForceMobile())}
+            title={getForceMobile() ? "Back to desktop layout" : "Preview the mobile layout"} style={{
+            fontSize:11, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
+            background: getForceMobile() ? "var(--color-border)" : "var(--color-card)",
+            color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
+          }}>📱</button>
+        )}
         <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
           fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
           background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
