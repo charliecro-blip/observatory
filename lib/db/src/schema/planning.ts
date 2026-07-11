@@ -88,6 +88,11 @@ export const tasks = pgTable("tasks", {
   done: text("done").notNull().default("false"), // "true" | "false"
   dueDate: text("due_date"), // ISO date YYYY-MM-DD, nullable
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
+  // How long it needs and how much you'll have to bring — both feed the
+  // scheduler (fit a block of the right length into a window whose energy the
+  // sky supports) and let the list surface "quick + low" things on flat days.
+  estMinutes: integer("est_minutes"),        // rough duration, nullable
+  energy: text("energy"),                    // low | medium | high, nullable
   goalId: integer("goal_id"),
   projectId: integer("project_id"),
   // The missing join for project facilitation: a task can belong to a step

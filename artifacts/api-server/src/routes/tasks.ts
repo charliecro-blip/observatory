@@ -32,10 +32,11 @@ router.get("/tasks", async (req, res) => {
 router.post("/tasks", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { title, notes, dueDate, bestWindowType, goalId, projectId, milestoneId, sortOrder } = req.body;
+  const { title, notes, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder } = req.body;
   if (!title) return res.status(400).json({ error: "title required" });
   const [row] = await db.insert(tasks).values({
     testerId, title, notes, dueDate, bestWindowType,
+    estMinutes: estMinutes ?? null, energy: energy ?? null,
     goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
     sortOrder: sortOrder ?? 0,
   }).returning();
@@ -47,9 +48,9 @@ router.patch("/tasks/:id", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { title, notes, done, dueDate, bestWindowType, goalId, projectId, milestoneId, sortOrder } = req.body;
+  const { title, notes, done, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder } = req.body;
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, dueDate, bestWindowType, goalId, projectId, milestoneId, sortOrder, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });

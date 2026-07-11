@@ -28,8 +28,16 @@ const HOUR_WINDOW: Record<string,string> = {
 interface Task {
   id:number; title:string; notes?:string; done:string;
   dueDate?:string; bestWindowType?:string; planningWindowId?:number;
+  estMinutes?:number; energy?:string;
   goalId?:number; projectId?:number;
 }
+
+const ENERGY_META: Record<string,{label:string;bg:string;fg:string}> = {
+  low:    { label:"low",    bg:"#e8efe6", fg:"#4a7040" },
+  medium: { label:"med",    bg:"#f2ecdd", fg:"#9a7a2a" },
+  high:   { label:"high",   bg:"#f3e4de", fg:"#b0502e" },
+};
+function fmtEst(m:number){ return m >= 120 ? `${Math.round(m/60)}h` : m >= 60 ? "1h" : `${m}m`; }
 
 interface GoalLite { id:number; title:string; element?:string|null; }
 interface ProjectLite { id:number; title:string; goalId?:number|null; }
@@ -50,6 +58,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const [newWindow, setNewWindow] = useState("");
   const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
   const [newDueDate, setNewDueDate] = useState(today);
+  const [newEstMinutes, setNewEstMinutes] = useState<number|"">("");
+  const [newEnergy, setNewEnergy] = useState<""|"low"|"medium"|"high">("");
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
 
@@ -118,6 +128,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
           title: newTitle.trim(),
           dueDate: newDueDate || undefined,
           bestWindowType: newWindow || undefined,
+          estMinutes: newEstMinutes || undefined,
+          energy: newEnergy || undefined,
           planningWindowId: newPlanWindow || undefined,
           goalId: newGoalId || undefined,
           projectId: newProjectId || undefined,
@@ -132,6 +144,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
         setSuggestFor({ title: newTitle.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       }
       setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setNewGoalId(""); setNewProjectId("");
+      setNewEstMinutes(""); setNewEnergy("");
       setNewDueDate(today);
       setShowAdd(false);
     },
@@ -199,6 +212,26 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
                 <option value="">Best time: any</option>
                 {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
+              </select>
+            </div>
+            {/* How long + how much energy — the scheduler fits a block of this
+                length into a window, and "quick + low" tasks surface on flat days. */}
+            <div style={{display:"flex",gap:8,marginBottom:6}}>
+              <select value={newEstMinutes} onChange={e => setNewEstMinutes(e.target.value ? Number(e.target.value) : "")}
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                <option value="">Takes: any length</option>
+                <option value={15}>~15 min</option>
+                <option value={30}>~30 min</option>
+                <option value={60}>~1 hour</option>
+                <option value={120}>~2 hours</option>
+                <option value={240}>half a day</option>
+              </select>
+              <select value={newEnergy} onChange={e => setNewEnergy(e.target.value as ""|"low"|"medium"|"high")}
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                <option value="">Energy: any</option>
+                <option value="low">Low energy</option>
+                <option value="medium">Medium energy</option>
+                <option value="high">High energy</option>
               </select>
             </div>
             {(goalsList.length > 0 || projectsList.length > 0) && (
@@ -306,6 +339,12 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
       <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"#bbb":"#222",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
       {task.dueDate && task.dueDate !== today && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#f0ede8",color:"#999",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
+      )}
+      {task.estMinutes && !isDone && (
+        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"#6a7684",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
+      )}
+      {task.energy && ENERGY_META[task.energy] && !isDone && (
+        <div title={`${task.energy} energy`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
       )}
       {goal && !isDone && (
         <div title={`Goal: ${goal.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "#8a8278",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
