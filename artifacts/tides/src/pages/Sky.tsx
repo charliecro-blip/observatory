@@ -480,7 +480,7 @@ function QualityStrip({ week, days }: { week: any; days: number }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
+export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, onVisitPlanet }: { testerId: string | null; lat?: number; lon?: number; onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
   const [days, setDays] = useState(30);
   const [selectedEvent, setSelectedEvent] = useState<SkyEvent | null>(null);
   const [showAllCrossings, setShowAllCrossings] = useState(false);
@@ -553,7 +553,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
         <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10, maxWidth:760, margin:"0 auto", width:"100%" }}>
           {/* Reference / learning — the Almanac's identity as "the book you look
               things up in," distinct from Ahead's "your calendar." */}
-          <ReferenceSection />
+          <ReferenceSection onStartStar={onStartStar} onVisitPlanet={onVisitPlanet} />
 
           {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
 
@@ -741,7 +741,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 // language "what does this mean" layer (elements, planets, signs) so the app is
 // legible to someone who knows no astrology. Distinct from Ahead (your time):
 // this is the sky's meanings, not its schedule.
-function ReferenceSection() {
+function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
   const { theme } = useTheme();
   const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
@@ -750,7 +750,7 @@ function ReferenceSection() {
   const [sectionOpen, setSectionOpen] = useState(false);
   const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
-  const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
+  const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string; element?: string; planet?: string }[] =
     tab === "learn"
       // The sequenced primer — the curriculum ladder, rung by rung. Reading
       // ahead is allowed; living it is the actual course.
@@ -759,13 +759,24 @@ function ReferenceSection() {
           body: `${l.body}\n\nPractice: ${l.practice}`,
         }))
       : tab === "elements"
+      // Fuller read (#24): the myth, the life-domains it governs, and concrete
+      // things you'd plan or log under it — all already in ELEMENT_MYTHOS, just
+      // wasn't being surfaced here.
       ? (["fire", "earth", "air", "water"] as const).map((el) => {
           const m = ELEMENT_MYTHOS[el];
-          return { key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, body: `${m.essence} ${(m.domains ?? []).join(" · ")}` };
+          return {
+            key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, element: el,
+            body: `${m.myth}\n\nGoverns: ${(m.domains ?? []).join(" · ")}\n\nPlan or log here: ${(m.activities ?? []).join(" · ")}`,
+          };
         })
       : tab === "planets"
-      ? Object.values(PLANET_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, body: m.myth }))
-      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.` }));
+      // Fuller read (#24): the myth, what the voice speaks for, and what to do
+      // when it's loud.
+      ? Object.values(PLANET_MYTHOS).map((m) => ({
+          key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, planet: m.name,
+          body: `${m.myth}\n\nSpeaks for: ${(m.speaksFor ?? []).join(" · ")}\n\nWhen it's loud: ${m.whenLoud}`,
+        }))
+      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.`, element: m.element }));
 
   return (
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
@@ -816,7 +827,27 @@ function ReferenceSection() {
               <span style={{ fontSize: 9, color: "#ccc", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
             </button>
             {open === it.key && (
-              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>{it.body}</div>
+              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                {it.body}
+                {/* Turn a meaning into an intention (#25): steer a Guiding Star
+                    into this element, or open the full planet page (#24). */}
+                {(it.element || it.planet) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                    {it.element && onStartStar && (
+                      <button onClick={() => onStartStar(it.element!)} style={{
+                        fontSize: 10, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${it.color}55`, background: `${it.color}12`, color: it.color, fontWeight: 600,
+                      }}>✦ Set a Guiding Star in {ELEMENT_MYTHOS[it.element]?.name ?? it.element}</button>
+                    )}
+                    {it.planet && onVisitPlanet && (
+                      <button onClick={() => onVisitPlanet(it.planet!)} style={{
+                        fontSize: 10, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${it.color}55`, background: `${it.color}12`, color: it.color, fontWeight: 600,
+                      }}>Open {it.planet} in Planets →</button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, sortIntentToElement, type ElementMythos } from "@/lib/mythos";
@@ -70,10 +70,12 @@ function authH(tid: string | null) {
  * what season backs it, and breaking it into tasks/habits all happen in this
  * one page — no second "manage in Goals" tab to bounce to.
  */
-export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate }: {
+export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate, seedElement, onSeedConsumed }: {
   testerId: string | null;
   lat?: number; lon?: number;
   onNavigate: (tab: "tasks" | "habits") => void;
+  seedElement?: string | null;
+  onSeedConsumed?: () => void;
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading } = useNorthStars(testerId);
@@ -91,6 +93,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showSeasons, setShowSeasons] = useState(false);
+
+  // Landed here from "Set a Guiding Star in this element" in the Almanac: open
+  // the creation form with the element pre-chosen, then clear the seed so it
+  // doesn't re-fire on the next render (#25).
+  useEffect(() => {
+    if (!seedElement) return;
+    setForm(f => ({ ...f, element: seedElement }));
+    setShowForm(true);
+    onSeedConsumed?.();
+  }, [seedElement]);
 
   const list: any[] = stars ?? [];
   // useNorthStars only returns active goals server-side today — fetch all so

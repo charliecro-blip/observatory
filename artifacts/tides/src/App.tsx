@@ -28,8 +28,11 @@ import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
-function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
+function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
+  // Arriving with an element seed (from the Almanac reference) always lands on
+  // Guiding Stars, where the pre-filled creation form opens.
+  useEffect(() => { if (seedElement) setTab("overview"); }, [seedElement]);
   // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
   // habits). Currents (long-cycle context) is now a header at the top.
   const TABS: {id:WorkTab; label:string}[] = [
@@ -57,7 +60,7 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         <CurrentsContextHeader testerId={testerId} collapsed={true} />
 
         {/* Tab content — inherits flex from parent, scrollable together with header */}
-        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
+        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
       </div>
@@ -727,6 +730,10 @@ function Shell() {
   // opens on that planet's page.
   const [visitPlanet, setVisitPlanet] = useState<string | null>(null);
   const goToPlanet = (planet: string) => { setVisitPlanet(planet); setView("planets"); };
+  // "Set a Guiding Star in this element" from the Almanac reference (#25):
+  // seed the element, jump to Aims, let GuidingStarsHub open its form pre-filled.
+  const [starSeedElement, setStarSeedElement] = useState<string | null>(null);
+  const startStarInElement = (element: string) => { setStarSeedElement(element); setView("work"); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -877,11 +884,11 @@ function Shell() {
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
-              ? <Sky testerId={testerId} lat={lat} lon={lon}/>
+              ? <Sky testerId={testerId} lat={lat} lon={lon} onStartStar={startStarInElement} onVisitPlanet={goToPlanet}/>
               : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
-        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)}/>}
         {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
