@@ -668,15 +668,58 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // (e.g. Jupiter AND Pluto both at an angle) was silently concealed behind it.
   const todayData = week?.days?.find(d => d.date === today);
   const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
+  // A chart angle sweeps the ecliptic at ~14°/hr (the ~15°/hr diurnal rate,
+  // minus the Moon's own ~0.5°/hr drift), so a 3° orb is ~13 minutes either
+  // side of exact — the window an angle crossing is genuinely "active" for.
+  // Owner: give any crossing a 3° orb and treat it as live, not past.
+  const CROSS_DEG_PER_MIN = 14 / 60;      // ≈0.233°/min
+  const CROSS_ORB_DEG = 3;
+  const CROSS_WINDOW_MIN = CROSS_ORB_DEG / CROSS_DEG_PER_MIN; // ≈12.9 min
   const activeCrossings = (todayData?.crossings ?? [])
     .map(c => {
       if (!c.time) return null;
       const [ch, cm] = c.time.split(":").map(Number);
       const crossMin = ch * 60 + (cm ?? 0);
-      return { c, diff: crossMin - nowMinutesForCross };
+      const diff = crossMin - nowMinutesForCross;
+      return { c, diff, orbDeg: Math.abs(diff) * CROSS_DEG_PER_MIN };
     })
-    .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -15 && x.diff <= 15)
+    .filter((x): x is { c: Crossing; diff: number; orbDeg: number } => x !== null && Math.abs(x.diff) <= CROSS_WINDOW_MIN)
     .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+
+  // An active crossing is a peak moment — it rides at the very TOP of the page
+  // (owner: "when that's active, this banner should come to the top of the
+  // screen"), and reads as live, not "N min ago".
+  const crossingBanner = crossingsOn && activeCrossings.length > 0 ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {activeCrossings.map(({ c: cr, diff, orbDeg }, i) => {
+        const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
+        const sig = PLANET_SIGNIFICATION[cr.planet];
+        const isBenefic = ["Venus", "Jupiter", "Sun"].includes(cr.planet);
+        const whenLabel = Math.abs(diff) < 2 ? "peaking now"
+          : diff < 0 ? `exact ${Math.round(-diff)}m ago · ${orbDeg.toFixed(1)}° orb`
+          : `exact in ${Math.round(diff)}m · ${orbDeg.toFixed(1)}° orb`;
+        return (
+          <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
+            background: `${pCol}14`, border: `1px solid ${pCol}55`, borderLeft: `3px solid ${pCol}`,
+            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <span className="phrase-in" style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
+                {cr.planet} crosses {cr.angle} · active now
+              </div>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                {cr.time} · {whenLabel}{sig ? ` — ${sig}` : ""}
+              </div>
+            </div>
+            <div style={{ fontSize: 8, background: `${pCol}22`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
+              ● {isBenefic ? "↑" : ""} {cr.angle}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
 
   // Ritual mode — Today reads the clock. Morning opens the day's loop,
   // evening closes it; midday the page is its usual self.
@@ -816,6 +859,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               ? "linear-gradient(180deg, #b06a5014, transparent 360px)" // dusk — rose
               : undefined,                                              // midday — plain light
       }}>
+
+        {/* Active angle crossing(s) ride at the very top — a peak moment the
+            day is passing through right now, above even the ritual card. */}
+        {crossingBanner}
 
         {/* The ritual anchor — morning "Cast off" / evening "Log the day".
             First thing on the page during ritual hours, absent midday. */}
@@ -1132,40 +1179,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Angle crossing alerts — one per active crossing, so simultaneous crossings
-            (e.g. Jupiter and Pluto both at an angle) don't hide each other. */}
-        {crossingsOn && activeCrossings.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {activeCrossings.map(({ c: cr, diff }, i) => {
-              const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
-              const sig = PLANET_SIGNIFICATION[cr.planet];
-              const isBenefic = ["Venus","Jupiter","Sun"].includes(cr.planet);
-              const whenLabel = Math.abs(diff) < 2 ? "now"
-                : diff < 0 ? `${Math.round(-diff)} min ago`
-                : `in ${Math.round(diff)} min`;
-              return (
-                <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
-                  background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
-                  borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
-                      {cr.planet} crosses {cr.angle} · {cr.time} ({whenLabel})
-                    </div>
-                    {sig && (
-                      <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                    {isBenefic ? "↑" : "—"} {cr.angle}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
 

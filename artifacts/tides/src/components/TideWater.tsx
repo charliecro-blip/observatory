@@ -138,6 +138,15 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const dark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
   const reduceMotion = useRef(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches).current;
 
+  // Hover-to-inspect (#tide-chart): scrub the day and read what's driving the
+  // water at that moment — the level, the character, and any aspect/ingress/void.
+  const [hoverH, setHoverH] = useState<number | null>(null);
+  const onScrub = (e: React.MouseEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const vx = ((e.clientX - r.left) / r.width) * W;
+    setHoverH(Math.max(0, Math.min(24, (vx / W) * 24)));
+  };
+
   const { data: bestTimes } = useQuery<any>({
     queryKey: ["best-times", lens, lat, lon],
     queryFn: async () => {
@@ -383,7 +392,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         );
       })()}
 
-      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden" }}>
+      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} onMouseMove={onScrub} onMouseLeave={() => setHoverH(null)} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden", cursor: "crosshair" }}>
         <defs>
           <linearGradient id="twSky" x1="0" y1="0" x2="1" y2="0">
             {skyStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.c} />)}
@@ -577,6 +586,45 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
           </text>
         ))}
+
+        {/* ── Hover inspector — a scrub line + a read-out of what's shaping the
+            water at the pointer: level, character, and the nearest sky event. ── */}
+        {hoverH != null && style !== "bars" && (() => {
+          const eH = energyAt(hoverH);
+          const px = x(hoverH), py = y(eH);
+          const seg = segByHour(hoverH);
+          const charLabel = seg?.characterLabel ?? "—";
+          const inVoc = (arc.vocWindows ?? []).some((v: any) => hoverH >= hourOf(v.start) && hoverH < hourOf(v.end));
+          // Nearest event within ~40 min of the pointer.
+          let near: any = null, nearGap = 0.7;
+          for (const ev of (arc.events ?? [])) {
+            const g = Math.abs(hourOf(ev.time) - hoverH);
+            if (g < nearGap) { nearGap = g; near = ev; }
+          }
+          const line2 = inVoc ? "slack water · void of course" : near ? `${near.label} · ${near.clock}` : `${charLabel} water`;
+          const boxW = Math.max(112, line2.length * 5.1 + 20);
+          const flip = px > W - boxW - 12;
+          const bx = flip ? px - boxW - 8 : px + 8;
+          const tc = dark ? "#e8ecf4" : "#f4f6fb";
+          return (
+            <g pointerEvents="none">
+              <line x1={px} y1={WATER_TOP - 8} x2={px} y2={H - PAD_B} stroke={dark ? "rgba(220,228,245,0.5)" : "rgba(40,50,70,0.4)"} strokeWidth="1" strokeDasharray="3 3" />
+              <circle cx={px} cy={py} r="3.6" fill={dark ? "#0d1120" : "#fff"} stroke={dark ? "#c9d4ee" : "#2a3a52"} strokeWidth="1.6" />
+              <rect x={bx} y={WATER_TOP - 6} width={boxW} height={inVoc || near ? 42 : 30} rx="6" fill={dark ? "rgba(16,20,30,0.94)" : "rgba(26,34,52,0.94)"} />
+              <text x={bx + 9} y={WATER_TOP + 8} fontSize="9.5" fontWeight="700" fill={tc}>
+                {clockAt(dayStartMs, hoverH)} · charge {Math.round(eH * 100)}%
+              </text>
+              <text x={bx + 9} y={WATER_TOP + 21} fontSize="8.5" fill={dark ? "#aeb8cc" : "#c2ccde"}>
+                {charLabel} water
+              </text>
+              {(inVoc || near) && (
+                <text x={bx + 9} y={WATER_TOP + 33} fontSize="8.5" fill={inVoc ? "#c8b06a" : (dark ? "#aeb8cc" : "#c2ccde")}>
+                  {line2}
+                </text>
+              )}
+            </g>
+          );
+        })()}
       </svg>}
 
       {timeframe !== "day" && (
