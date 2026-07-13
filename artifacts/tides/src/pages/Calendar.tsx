@@ -94,7 +94,7 @@ const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const CHALDEAN: string[] = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
 const WEEKDAY_RULERS: string[] = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
 
-type CalView = "month" | "week" | "day";
+type CalView = "agenda" | "month" | "week" | "day";
 type LayerLevel = 0 | 1 | 2;
 
 interface PlanetHour {
@@ -1066,6 +1066,129 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 
 // ── Main Calendar ─────────────────────────────────────────────────────────────
 
+// ── Agenda view ───────────────────────────────────────────────────────────────
+// The day as a Google-Calendar-style schedule: a chronological list of the key
+// sky moments (moon sign, aspects, VoC, planetary aspects, crossings) plus your
+// scheduled blocks — plain language, no grid. Planetary hours and crossings are
+// opt-in layers so the essentials read first (#13b, #20).
+interface AgendaMoment { min: number; time: string; glyph: string; label: string; sub?: string; color: string; faded?: boolean; onDelete?: () => void; }
+
+function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat, lon, showHours, showCrossings, onAddEvent, onDeleteWindow }: {
+  dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; windows: PlanningWindow[];
+  gcalEvents: GCalEvent[]; lat: number; lon: number; showHours: boolean; showCrossings: boolean;
+  onAddEvent: (hour?: number) => void; onDeleteWindow: (id: number) => void;
+}) {
+  const fmtTime = useTimeFormat();
+  const realLoc = hasRealLocation(lat, lon);
+  const minOf = (d: Date) => d.getHours() * 60 + d.getMinutes();
+  const elem = dayData?.element ?? "";
+  const accent = ELEMENT_ACCENT[elem] ?? "#8a8278";
+  const moonSign = dayData?.moonSign ?? "";
+  const signKey = parseSign(moonSign);
+
+  const moments: AgendaMoment[] = [];
+
+  // Moon aspects + planetary aspects (the day's weather fronts) — timed ones
+  for (const ev of events) {
+    if ((ev.type === "moon_aspect" || ev.type === "aspect") && ev.at) {
+      const d = new Date(ev.at);
+      moments.push({
+        min: minOf(d), time: fmtTime(d), glyph: ev.icon || (ev.type === "aspect" ? "✦" : "☽"),
+        label: ev.title, sub: ev.subtitle, color: ev.type === "aspect" ? "#6f6a90" : "#60708a",
+      });
+    }
+  }
+
+  // Void-of-course Moon — a rest window, shown as start/end bookends
+  const voc = vocRangeForDate(dateStr, new Map([[dateStr, events]]));
+  if (voc) {
+    moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "drifting — rest, don't launch", color: "#6f6a90" });
+    if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "#6f6a90" });
+  }
+
+  // Angle crossings (advanced layer)
+  if (showCrossings && realLoc) {
+    for (const c of (dayData?.crossings ?? []) as any[]) {
+      const d = c.at ? new Date(c.at) : null;
+      const min = d ? minOf(d) : (typeof c.time === "string" ? timeToMinutes(c.time) : 0);
+      moments.push({
+        min, time: d ? fmtTime(d) : c.time, glyph: PLANET_ICONS[c.planet] ?? "✷",
+        label: `${c.planet} crosses your ${c.angle}`, sub: c.type, color: PLANET_COLORS[c.planet] ?? "#8a8278", faded: true,
+      });
+    }
+  }
+
+  // Planetary hours (advanced layer) — the sky clock, woven in here (#20)
+  if (showHours) {
+    for (const ph of computeAllPlanetaryHours(dateStr, lat, lon)) {
+      moments.push({
+        min: minOf(ph.startTime), time: fmtTime(ph.startTime), glyph: PLANET_ICONS[ph.ruler] ?? "·",
+        label: `${ph.ruler} hour`, color: PLANET_COLORS[ph.ruler] ?? "#8a8278", faded: true,
+      });
+    }
+  }
+
+  // Your scheduled blocks
+  for (const w of windows) {
+    const s = new Date(w.startTime);
+    moments.push({ min: minOf(s), time: fmtTime(s), glyph: "▦", label: w.title, sub: "your block", color: "#3a5a80", onDelete: () => onDeleteWindow(w.id) });
+  }
+  for (const ev of gcalEvents) {
+    if (ev.allDay) { moments.push({ min: -1, time: "all day", glyph: "◷", label: ev.title, sub: "Google Calendar", color: "#4a7a4a" }); continue; }
+    const s = new Date(ev.start);
+    moments.push({ min: minOf(s), time: fmtTime(s), glyph: "◷", label: ev.title, sub: "Google Calendar", color: "#4a7a4a" });
+  }
+
+  moments.sort((a, b) => a.min - b.min);
+  const isToday = dateStr === today;
+  const nowMin = isToday ? minOf(new Date()) : -999;
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 40px" }}>
+      <div style={{ maxWidth: 620, margin: "0 auto" }}>
+        {/* The day's character */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: `${accent}0e`, border: `1px solid ${accent}33`, marginBottom: 16 }}>
+          <div style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽"}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-primary)" }}>
+              {dayData?.tide?.character ? `${dayData.tide.character.charAt(0).toUpperCase()}${dayData.tide.character.slice(1)} Tide` : "The day"}
+              {dayData?.tide?.levelLabel ? <span style={{ color: accent, fontWeight: 500 }}> · {dayData.tide.levelLabel}</span> : null}
+            </div>
+            <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
+              {moonSign ? `Moon in ${moonSign.split(" ")[0]}` : ""}{dayData?.moonPhase ? ` · ${dayData.moonPhase}` : ""}
+              {dayData?.dayRuler ? ` · ${dayData.dayRuler}'s day` : ""}
+            </div>
+          </div>
+          <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#666", cursor: "pointer", flexShrink: 0 }}>+ block</button>
+        </div>
+
+        {moments.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: "#999", padding: "24px 4px", textAlign: "center" }}>
+            A quiet day — no standout sky moments. Turn on planetary hours for the full clock, or add a block.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {moments.map((m, i) => {
+              const past = isToday && m.min >= 0 && m.min < nowMin;
+              return (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", borderTop: i === 0 ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
+                  <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "#999", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
+                  <div style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "#777" : "var(--color-foreground)" }}>{m.label}</div>
+                    {m.sub && <div style={{ fontSize: 10, color: "#a09888", marginTop: 1 }}>{m.sub}</div>}
+                  </div>
+                  {m.onDelete && <button onClick={m.onDelete} title="Remove block" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Calendar({ testerId, now, lat, lon }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
 }) {
@@ -1076,7 +1199,13 @@ export default function Calendar({ testerId, now, lat, lon }: {
   // Phones default to the day view — a 7-column month grid at 390px is
   // unreadable slivers, and the side detail panel would crush it further.
   const isMobile = useIsMobile();
-  const [calView, setCalView]           = useState<CalView>(isMobile ? "day" : "month");
+  // Phones open on the Agenda — a plain-language schedule of the day's key sky
+  // moments, the "weave your day" surface (#13b). Desktop keeps the month grid.
+  const [calView, setCalView]           = useState<CalView>(isMobile ? "agenda" : "month");
+  // Agenda granularity — the fine layers are opt-in so the day reads as key
+  // moments first; toggle them on for the full clock (#13b/#20).
+  const [agHours, setAgHours]           = useState(false);
+  const [agCrossings, setAgCrossings]   = useState(true);
   const [year, setYear]                 = useState(todayYear);
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -1205,7 +1334,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <button onClick={goToday} style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
-          {(["day","week","month"] as CalView[]).map(v=>(
+          {(["agenda","day","week","month"] as CalView[]).map(v=>(
             <button key={v} onClick={()=>setCalView(v)} style={{
               fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
               background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"#999",
@@ -1215,6 +1344,13 @@ export default function Calendar({ testerId, now, lat, lon }: {
         </div>
 
         <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#fff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
+
+        {calView==="agenda" && (
+          <>
+            <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"#aaa",cursor:"pointer" }}>Planetary hours</button>
+            <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"#aaa",cursor:"pointer" }}>Crossings</button>
+          </>
+        )}
 
         {calView==="month" && (
           <>
@@ -1284,8 +1420,23 @@ export default function Calendar({ testerId, now, lat, lon }: {
           </>
         )}
 
+        {/* Agenda — the day as a plain schedule of key sky moments (#13b/#20) */}
+        {calView==="agenda" && (
+          <AgendaView
+            dateStr={selectedDate} today={today}
+            dayData={dataMap.get(selectedDate)}
+            events={eventsMap.get(selectedDate) ?? []}
+            windows={windowsMap.get(selectedDate) ?? []}
+            gcalEvents={gcalMap.get(selectedDate) ?? []}
+            lat={lat} lon={lon}
+            showHours={agHours} showCrossings={agCrossings}
+            onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
+            onDeleteWindow={id=>delWindow.mutate(id)}
+          />
+        )}
+
         {/* Week / Day view */}
-        {calView!=="month" && (
+        {(calView==="week"||calView==="day") && (
           <TimeGrid
             dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
             gcalMap={gcalMap} cautionMap={cautionMap}
