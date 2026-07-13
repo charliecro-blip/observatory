@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
-import { useNorthStars } from "@/hooks/useTides";
+import { useNorthStars, useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 
@@ -231,9 +231,56 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
   );
 }
 
+// Whether the location is real (not the NYC default) — angle crossings are
+// meaningless without the user's actual horizon.
+function locationIsReal(lat: number, lon: number): boolean {
+  return Math.abs(lat - 40.7) > 0.01 || Math.abs(lon - -74.0) > 0.01;
+}
+
+// Advanced timing layer for a beginning (#10): the personal angle crossings in
+// the scan range — moments a planet crosses your Ascendant/Midheaven, i.e. rises
+// or culminates over your horizon. Off by default and clearly explained, since
+// it's a subtler, more advanced signal than the planetary hour / Moon's aspects.
+function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lon: number }) {
+  const { data: week } = useTidesWeek(Math.min(days, 14), lat, lon);
+  const real = locationIsReal(lat, lon);
+  const rows: { date: string; time: string; planet: string; angle: string; type: string }[] = [];
+  for (const d of week?.days ?? []) {
+    for (const c of (d.crossings ?? []) as any[]) {
+      rows.push({ date: d.date, time: c.time, planet: c.planet, angle: c.angle, type: c.type });
+    }
+  }
+  return (
+    <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
+      <div style={{ fontSize: 11.5, color: "#777", lineHeight: 1.55, marginBottom: rows.length ? 10 : 0 }}>
+        <b style={{ color: "var(--color-primary)" }}>Angle crossings</b> are moments a planet crosses one of your chart's angles — rising over your eastern horizon (Ascendant) or culminating overhead (Midheaven). Traditionally, beginning something as a benefic (Venus, Jupiter) crosses an angle lends it that planet's character. A subtle, advanced signal — use it to fine-tune a time you've already chosen from the windows above.
+      </div>
+      {!real ? (
+        <div style={{ fontSize: 11, color: "#a05020" }}>Set your real location (Settings) — crossings depend on your exact horizon.</div>
+      ) : rows.length === 0 ? (
+        <div style={{ fontSize: 11, color: "#999" }}>No notable angle crossings in this range.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {rows.slice(0, 12).map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+              <span style={{ width: 96, flexShrink: 0, color: "#999", fontVariantNumeric: "tabular-nums" }}>
+                {new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </span>
+              <span style={{ width: 54, flexShrink: 0, color: "#888", fontVariantNumeric: "tabular-nums" }}>{r.time}</span>
+              <span style={{ flexShrink: 0 }}>{PLANET_ICONS[r.planet] ?? ""}</span>
+              <span style={{ color: "var(--color-foreground)" }}>{r.planet} crosses your {r.angle}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
+  const [showCrossings, setShowCrossings] = useState(false);
   // Plan has two distinct rooms: SCHEDULE (weave the week's tasks into good
   // windows) and BEGIN (electional — pick the moment to start one specific
   // venture). A switcher instead of one long scroll, so each mode gets the
@@ -318,6 +365,16 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
                 }}>{d} days</button>
               ))}
             </div>
+
+            {/* Advanced: personal angle crossings across the range (#10) */}
+            <div style={{ marginBottom: 14 }}>
+              <button onClick={() => setShowCrossings((v) => !v)} style={{
+                fontSize: 10.5, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                border: "1px solid var(--color-border)", background: showCrossings ? "#fff8f0" : "var(--color-card)",
+                color: showCrossings ? "#b07020" : "#888", fontWeight: 500,
+              }}>{showCrossings ? "▾" : "▸"} Angle crossings · advanced</button>
+            </div>
+            {showCrossings && <AngleCrossingsPanel days={days} lat={lat} lon={lon} />}
 
             {isLoading && <div style={{ fontSize: 12, color: "#999" }}>Scanning the sky…</div>}
 
