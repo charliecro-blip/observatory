@@ -117,21 +117,24 @@ const WINDOW_LABELS: Record<string,string> = {
   social:"Social",relationship:"Relationship",recovery:"Recovery",study:"Study",launch:"Launch",retreat:"Retreat",
 };
 
-function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: () => void }) {
+function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string|null; onClose: () => void; onDumpToPlanner: (text: string) => void }) {
   const qc = useQueryClient();
-  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [windowType, setWindowType] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  async function submit() {
-    if (!title.trim() || !testerId) return;
-    await fetch("/api/tasks", {
+  // One task per non-empty line, so a single capture can be a whole brain-dump.
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  async function addAll() {
+    if (lines.length === 0 || !testerId) return;
+    await Promise.all(lines.map(title => fetch("/api/tasks", {
       method: "POST",
       headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), bestWindowType: windowType || undefined }),
-    });
+      body: JSON.stringify({ title, bestWindowType: windowType || undefined }),
+    })));
     qc.invalidateQueries({ queryKey: ["tasks"] });
     onClose();
   }
@@ -142,24 +145,33 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
       display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 420,
+        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440,
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
-        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 10 }}>Quick capture</div>
-        <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
-          placeholder="What needs to get done?"
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 14, outline: "none", background: "var(--color-card-2)", marginBottom: 10 }}
+        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>Quick capture</div>
+        <div style={{ fontSize: 10.5, color: "#bbb", marginBottom: 10 }}>One thing per line — dump as many as you like.</div>
+        <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addAll(); if (e.key === "Escape") onClose(); }}
+          placeholder={"reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"}
+          rows={4}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select value={windowType} onChange={e => setWindowType(e.target.value)}
             style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "#555", background: "var(--color-card-2)" }}>
             <option value="">Best time: any</option>
             {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
-          <button onClick={submit} disabled={!title.trim()}
-            style={{ padding: "7px 18px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", background: title.trim() ? "#1a2a3a" : "#e0dcd6", color: title.trim() ? "#fff" : "#aaa" }}>
-            Add
+          {/* Weave capture into scheduling (#15): hand the dump to the Planner,
+              which reads each item's nature and finds it a good window. */}
+          <button onClick={() => { if (lines.length) { onDumpToPlanner(text); } }} disabled={lines.length === 0}
+            title="Send these to the Planner to schedule"
+            style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "#1a2a3a" : "#bbb", fontWeight: 500 }}>
+            ✦ Dump &amp; schedule →
+          </button>
+          <button onClick={addAll} disabled={lines.length === 0}
+            style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "#e0dcd6", color: lines.length ? "#fff" : "#aaa" }}>
+            {lines.length > 1 ? `Add ${lines.length}` : "Add"}
           </button>
         </div>
       </div>
@@ -734,6 +746,10 @@ function Shell() {
   // seed the element, jump to Aims, let GuidingStarsHub open its form pre-filled.
   const [starSeedElement, setStarSeedElement] = useState<string | null>(null);
   const startStarInElement = (element: string) => { setStarSeedElement(element); setView("work"); };
+  // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
+  // Planner, which parses and weaves it into good windows.
+  const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+  const dumpToPlanner = (text: string) => { setPlannerSeed(text); setCapture(false); setView("launch"); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -799,7 +815,7 @@ function Shell() {
       boxShadow: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? "0 0 0 1px var(--color-border), 0 12px 48px rgba(0,0,0,0.25)" : undefined,
       background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
-      {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
+      {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} onDumpToPlanner={dumpToPlanner} />}
 
       {/* ── Top bar ── */}
       <div style={{
@@ -890,7 +906,7 @@ function Shell() {
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)}/>}
         {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
-        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>

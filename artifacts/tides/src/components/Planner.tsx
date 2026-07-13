@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
@@ -30,7 +30,7 @@ const fmtDayHeader = (iso: string) => new Date(iso).toLocaleDateString("en-US", 
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
-export default function Planner({ testerId, lat, lon }: { testerId: string | null; lat: number; lon: number }) {
+export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }: { testerId: string | null; lat: number; lon: number; seedList?: string | null; onSeedConsumed?: () => void }) {
   const qc = useQueryClient();
   const { profile } = useTester();
   const [horizon, setHorizon] = useState("week");
@@ -45,16 +45,29 @@ export default function Planner({ testerId, lat, lon }: { testerId: string | nul
   const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); };
 
   const parse = useMutation({
-    mutationFn: async (): Promise<Card[]> => {
+    // Accepts an optional list so the quick-capture seed can be parsed
+    // immediately, before the rawList state has flushed.
+    mutationFn: async (listArg?: string): Promise<Card[]> => {
       const r = await fetch("/api/plan/parse", {
         method: "POST", headers: authHeaders,
-        body: JSON.stringify({ rawList, tz: new Date().getTimezoneOffset() }),
+        body: JSON.stringify({ rawList: listArg ?? rawList, tz: new Date().getTimezoneOffset() }),
       });
       if (!r.ok) throw new Error("parse failed");
       return (await r.json()).tasks;
     },
     onSuccess: (t) => { setCards(t); setResult(null); setCommitted(false); },
   });
+
+  // Arrived from quick capture's "dump & schedule": prefill the list and read
+  // it straight away, so capture flows seamlessly into scheduling (#15).
+  useEffect(() => {
+    if (!seedList) return;
+    setRawList(seedList);
+    reset();
+    parse.mutate(seedList);
+    onSeedConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedList]);
 
   // Best-effort: hand the weaver your Google Calendar events as busy time so it
   // schedules around real commitments. Silently skipped if GCal isn't connected.

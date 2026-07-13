@@ -122,7 +122,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
   );
 }
 
-export default function Launch({ testerId, lat, lon }: { testerId: string | null; lat: number; lon: number }) {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
   // Plan has two distinct rooms: SCHEDULE (weave the week's tasks into good
@@ -130,6 +130,8 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
   // venture). A switcher instead of one long scroll, so each mode gets the
   // whole surface and neither buries the other.
   const [mode, setMode] = useState<"schedule" | "begin">("schedule");
+  // A dump arriving from quick capture always lands in Schedule mode.
+  React.useEffect(() => { if (plannerSeed) setMode("schedule"); }, [plannerSeed]);
   const { data: catData } = useElectionCategories();
   const { data: scan, isLoading } = useElectionScan(category, days, lat, lon);
   const categories = catData?.categories ?? [];
@@ -150,7 +152,7 @@ export default function Launch({ testerId, lat, lon }: { testerId: string | null
         </div>
 
         {/* SCHEDULE — "when should I do all of this?" */}
-        {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} />}
+        {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />}
 
         {mode === "begin" && (<>
         {/* Electional — "when should I BEGIN one specific venture?" */}
