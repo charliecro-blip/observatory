@@ -1,8 +1,117 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
+import { useNorthStars } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
+
+const BD_ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
+
+// The PM breakdown, self-contained for the Plan tab (#3). Pick a Guiding Star,
+// let the AI propose steps, edit, and commit them onto the star's backing
+// project — same /api/planning/breakdown endpoints Aims uses.
+function GoalBreakdown({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  const { data: stars } = useNorthStars(testerId);
+  const list: any[] = Array.isArray(stars) ? stars : [];
+  const [goalId, setGoalId] = useState<number | "">("");
+  const [proposed, setProposed] = useState<{ title: string; element: string }[] | null>(null);
+  const [committed, setCommitted] = useState(false);
+  const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) };
+  const goal = list.find((g) => g.id === goalId);
+
+  const run = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/planning/breakdown", {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ title: goal?.title, description: goal?.description }),
+      });
+      if (!r.ok) throw new Error("breakdown failed");
+      return (await r.json()).milestones as { title: string; element: string }[];
+    },
+    onSuccess: (steps) => { setProposed(steps ?? []); setCommitted(false); },
+  });
+
+  const commit = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/planning/breakdown/commit", {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ goalId, milestones: proposed }),
+      });
+      if (!r.ok) throw new Error("commit failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["milestones"] });
+      qc.invalidateQueries({ queryKey: ["north-stars"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setCommitted(true);
+    },
+  });
+
+  return (
+    <div style={{ marginBottom: 30 }}>
+      <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Break it down</div>
+      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 18 }}>
+        Pick a Guiding Star that feels too big, and Tides proposes the steps to get there — each tagged with the
+        kind of energy it needs. Edit them, then commit; they become the star's steps, ready to schedule.
+      </div>
+
+      {list.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: "#999", padding: "20px 0" }}>
+          No Guiding Stars yet — set one under <b>Aims</b> first, then come back to break it into steps.
+        </div>
+      ) : (
+        <>
+          <select value={goalId} onChange={(e) => { setGoalId(e.target.value ? Number(e.target.value) : ""); setProposed(null); setCommitted(false); }}
+            style={{ width: "100%", maxWidth: 380, padding: "9px 11px", borderRadius: 9, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", color: "var(--color-foreground)", marginBottom: 12 }}>
+            <option value="">Which Guiding Star?</option>
+            {list.map((g) => <option key={g.id} value={g.id}>{g.title}</option>)}
+          </select>
+
+          {goalId !== "" && !proposed && (
+            <div>
+              <button onClick={() => run.mutate()} disabled={run.isPending} style={{
+                padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                background: "#1a2a3a", color: "#fff",
+              }}>{run.isPending ? "Thinking through the steps…" : "✦ Propose the steps"}</button>
+              {run.isError && <span style={{ fontSize: 11, color: "#a03030", marginLeft: 10 }}>Something went wrong — try again.</span>}
+            </div>
+          )}
+
+          {proposed && (
+            <div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Here's a path — edit any step, then commit them to <b>{goal?.title}</b>.</div>
+              {proposed.map((s, i) => {
+                const col = BD_ELEMENT_COLOR[s.element] ?? "#888";
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", marginBottom: 7, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
+                    <span style={{ fontSize: 11, color: "#bbb", flexShrink: 0 }}>{i + 1}</span>
+                    <input value={s.title} onChange={(e) => setProposed((p) => p!.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
+                      style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none", outline: "none" }} />
+                    <span style={{ fontSize: 9.5, color: col, fontWeight: 600, flexShrink: 0 }}>● {s.element}</span>
+                    <button onClick={() => setProposed((p) => p!.filter((_, j) => j !== i))} title="Remove" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                  </div>
+                );
+              })}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+                {!committed ? (
+                  <button onClick={() => commit.mutate()} disabled={commit.isPending || proposed.length === 0} style={{
+                    padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
+                    background: "#3a6020", color: "#fff", cursor: "pointer",
+                  }}>{commit.isPending ? "Saving…" : `Commit ${proposed.length} step${proposed.length === 1 ? "" : "s"} →`}</button>
+                ) : (
+                  <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Steps added to {goal?.title} — find them under Aims to schedule.</span>
+                )}
+                <button onClick={() => { setProposed(null); setCommitted(false); }} style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer" }}>start over</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 const VERDICT_COLORS: Record<ElectionVerdict, string> = {
   strong: "#3a6020", workable: "#3a5a80", caution: "#a05020", avoid: "#a03030",
@@ -129,7 +238,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
   // windows) and BEGIN (electional — pick the moment to start one specific
   // venture). A switcher instead of one long scroll, so each mode gets the
   // whole surface and neither buries the other.
-  const [mode, setMode] = useState<"schedule" | "begin">("schedule");
+  const [mode, setMode] = useState<"schedule" | "breakdown" | "begin">("schedule");
   // A dump arriving from quick capture always lands in Schedule mode.
   React.useEffect(() => { if (plannerSeed) setMode("schedule"); }, [plannerSeed]);
   const { data: catData } = useElectionCategories();
@@ -142,7 +251,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         {/* Mode switcher */}
         <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>
-          {([["schedule", "Schedule"], ["begin", "Begin"]] as const).map(([m, label]) => (
+          {([["schedule", "Schedule"], ["breakdown", "Break down"], ["begin", "Begin"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 18px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
               background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "#999",
@@ -153,6 +262,10 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
 
         {/* SCHEDULE — "when should I do all of this?" */}
         {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />}
+
+        {/* BREAK DOWN — "this goal is too big; give me the steps" (#3: the PM
+            breakdown, also reachable from Aims, surfaced here in Plan). */}
+        {mode === "breakdown" && <GoalBreakdown testerId={testerId} />}
 
         {mode === "begin" && (<>
         {/* Electional — "when should I BEGIN one specific venture?" */}
