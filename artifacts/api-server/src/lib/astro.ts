@@ -94,6 +94,12 @@ const ORBITAL: Record<string, OrbitalElements> = {
   Uranus:  { L0: 314.055005,   Lrate:    428.4677,     peri0: 173.005,      periRate:  1.49,       a: 19.1913,    e: 0.047168   },
   Neptune: { L0: 304.348665,   Lrate:    218.4862,     peri0:  48.120,      periRate:  1.43,       a: 30.0689,    e: 0.008590   },
   Pluto:   { L0: 238.92881,    Lrate:    145.9800,     peri0: 224.067,      periRate: -1.80,       a: 39.4821,    e: 0.248835   },
+  // Chiron (2060 Chiron) — a centaur, not a classical planet. Its orbit is
+  // chaotic and highly eccentric, so this two-body mean-elements fit is an
+  // APPROXIMATION: good to ~1–2° near the present epoch (calibrated so it reads
+  // late Aries in 2026, matching real ephemerides), degrading further out.
+  // Refine against a real ephemeris later. Period ~50.4y; e high (~0.38).
+  Chiron:  { L0: 214.5,        Lrate:    713.98,       peri0: 188.49,       periRate:  0.00,       a: 13.7084,    e: 0.3828     },
 };
 
 // ── Public functions ──────────────────────────────────────────────────────────
@@ -202,7 +208,7 @@ export function getPlanetPositions(jd: number) {
     { planet: "Moon", longitude: moon, retrograde: false, ...longitudeToSign(moon) },
   ];
 
-  for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const) {
+  for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"] as const) {
     const el = ORBITAL[name];
     const { lambda, r } = heliocentricEcliptic(T, el);
     const geo = geoFromHelio(lambda, r, earthLambda, earthR);

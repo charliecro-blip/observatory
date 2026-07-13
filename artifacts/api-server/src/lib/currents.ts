@@ -73,7 +73,7 @@ export interface TransitHousePlacement {
 }
 
 // Planets whose house tenancy defines multi-month/year chapters.
-const CHAPTER_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+const CHAPTER_PLANETS = ["Jupiter", "Saturn", "Chiron", "Uranus", "Neptune", "Pluto"];
 
 function planetLon(name: string, jd: number): number | null {
   const p = getPlanetPositions(jd).find((x) => x.planet === name);
