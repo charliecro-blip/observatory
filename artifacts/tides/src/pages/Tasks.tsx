@@ -157,6 +157,25 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     onSuccess: () => qc.invalidateQueries({queryKey:["tasks"]}),
   });
 
+  // Woven-in Log (#27): finishing something is the moment reflection lands, so
+  // completing a task quietly offers a one-line note straight into the logbook —
+  // no separate tab to remember to visit.
+  const [reflectOn, setReflectOn] = useState<{ title: string } | null>(null);
+  const [reflectText, setReflectText] = useState("");
+  const saveReflection = useMutation({
+    mutationFn: async (text: string) => {
+      await fetch("/api/logs", {
+        method: "POST", headers: authH(testerId),
+        body: JSON.stringify({ type: "note", notes: text, logDate: today, loggedAt: new Date().toISOString() }),
+      });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["logs"] }); setReflectOn(null); setReflectText(""); },
+  });
+  function completeTask(id: number, title: string, wasDone: boolean) {
+    toggle.mutate({ id, done: !wasDone });
+    if (!wasDone) { setReflectOn({ title }); setReflectText(""); } // just marked done
+  }
+
   const remove = useMutation({
     mutationFn: async (id:number) => {
       await fetch(`/api/tasks/${id}`, { method:"DELETE", headers: authH(testerId) });
@@ -189,6 +208,22 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
       </div>
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+
+        {/* Post-completion reflection — the woven-in logbook moment (#27) */}
+        {reflectOn && (
+          <div style={{background:"#f3f6ee",border:"1px solid #c8d8b8",borderRadius:10,padding:"11px 13px"}}>
+            <div style={{fontSize:11,color:"#5a7040",fontWeight:600,marginBottom:6}}>✓ {reflectOn.title} — note what shifted? <span style={{color:"#9ab088",fontWeight:400}}>(optional, goes to your logbook)</span></div>
+            <div style={{display:"flex",gap:8}}>
+              <input autoFocus value={reflectText} onChange={e=>setReflectText(e.target.value)}
+                onKeyDown={e=>{ if(e.key==="Enter"&&reflectText.trim()) saveReflection.mutate(reflectText.trim()); if(e.key==="Escape"){setReflectOn(null);setReflectText("");} }}
+                placeholder="how it went, what you noticed…"
+                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,outline:"none",background:"var(--color-card)"}} />
+              <button onClick={()=>reflectText.trim()&&saveReflection.mutate(reflectText.trim())} disabled={!reflectText.trim()||saveReflection.isPending}
+                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"#aaa"}}>Log it</button>
+              <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"#a0b090",cursor:"pointer",fontSize:11}}>skip</button>
+            </div>
+          </div>
+        )}
 
         {showAdd && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"14px 16px"}}>
@@ -280,7 +315,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 goal={t.goalId ? goalsById[t.goalId] : undefined}
                 project={t.projectId ? projectsById[t.projectId] : undefined}
                 today={today}
-                onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})}
+                onToggle={() => completeTask(t.id, t.title, t.done==="true")}
                 onDelete={() => remove.mutate(t.id)}
                 onSchedule={() => setSuggestFor({ title: t.title, goalId: t.goalId, projectId: t.projectId })}
                 highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
