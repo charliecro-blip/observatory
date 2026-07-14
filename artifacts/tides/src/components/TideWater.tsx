@@ -128,9 +128,11 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   // fills the canvas (dramatic); off = true 0..1 height (honest/even). Only
   // relevant to the "water" style — the other styles have their own fixed look.
   const [showOpts, setShowOpts] = useState(false);
+  // fill:false → absolute energy column (the honest default: a quiet day reads
+  // quiet). fill:true → the old min-max stretch that fills the frame.
   const [opts, setOptsState] = useState<{ sky: boolean; motion: boolean; fill: boolean }>(() => {
-    try { return { sky: true, motion: true, fill: true, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
-    catch { return { sky: true, motion: true, fill: true }; }
+    try { return { sky: true, motion: true, fill: false, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
+    catch { return { sky: true, motion: true, fill: false }; }
   });
   const setOpt = (k: "sky" | "motion" | "fill", v: boolean) =>
     setOptsState(o => { const n = { ...o, [k]: v }; localStorage.setItem("tw_options", JSON.stringify(n)); return n; });
@@ -186,14 +188,23 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
 
   if (timeframe === "day" && (target.length < 2 || dispE.length < 2)) return null;
 
-  // ── Normalization: the day's own range fills the water column, floored so a
-  // near-flat day amplifies at most ~5x instead of turning noise into cliffs.
+  // ── Vertical scale ──────────────────────────────────────────────────────────
+  // ABSOLUTE by default: the y-axis is a true 0..1 energy column, so a quiet day
+  // (new moon, no hard aspects) sits low in the frame and a charged day rides
+  // high — you can see at a glance that "approaching the top of today's curve"
+  // is NOT the same as a high-energy day. To keep the day's rhythm legible
+  // without faking its level, the SHAPE is gently amplified around the day's own
+  // mean (the band's center stays at the true absolute height; only the ripples
+  // are magnified). "Fill" mode (the old min-max stretch) remains as a toggle.
   const minE = Math.min(...dispE), maxE = Math.max(...dispE);
+  const meanE = dispE.reduce((s, e) => s + e, 0) / dispE.length;
+  const SHAPE_GAIN = 2.4;              // magnify ripples so quiet days still read as a shape
+  const absOf = (e: number) => Math.max(0, Math.min(1, meanE + (e - meanE) * SHAPE_GAIN));
   const mid = (minE + maxE) / 2;
   const span = Math.max(maxE - minE, 0.16);
   const lo = opts.fill ? mid - span / 2 : 0, hi = opts.fill ? mid + span / 2 : 1;
   const x = (h: number) => (h / 24) * W;
-  const y = (e: number) => WATER_BOT - ((e - lo) / (hi - lo)) * (WATER_BOT - WATER_TOP);
+  const y = (e: number) => WATER_BOT - ((( opts.fill ? e : absOf(e)) - lo) / (hi - lo)) * (WATER_BOT - WATER_TOP);
 
   const hours = target.map((p: any) => p.hour as number);
   const pts = dispE.map((e, i) => ({ x: x(hours[i]), y: y(e) }));
@@ -595,33 +606,43 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           const seg = segByHour(hoverH);
           const charLabel = seg?.characterLabel ?? "—";
           const inVoc = (arc.vocWindows ?? []).some((v: any) => hoverH >= hourOf(v.start) && hoverH < hourOf(v.end));
-          // Nearest event within ~40 min of the pointer.
-          let near: any = null, nearGap = 0.7;
-          for (const ev of (arc.events ?? [])) {
-            const g = Math.abs(hourOf(ev.time) - hoverH);
-            if (g < nearGap) { nearGap = g; near = ev; }
-          }
-          const line2 = inVoc ? "slack water · void of course" : near ? `${near.label} · ${near.clock}` : `${charLabel} water`;
-          const boxW = Math.max(112, line2.length * 5.1 + 20);
+          const floor = arc.height ?? 0.3;
+          // What's driving the charge here: every aspect still within its swell
+          // (σ≈3.6h), ranked by how much it's lifting the tide *right now*.
+          const SIGMA = 3.6;
+          const drivers = (arc.events ?? [])
+            .filter((ev: any) => ev.kind === "aspect")
+            .map((ev: any) => {
+              const dh = hourOf(ev.time) - hoverH;
+              const env = Math.exp(-0.5 * (dh / SIGMA) ** 2);
+              return { ev, contrib: (ev.weight ?? 0) * env };
+            })
+            .filter((d: any) => d.contrib > 0.004)
+            .sort((a: any, b: any) => b.contrib - a.contrib)
+            .slice(0, 2);
+          const aboveFloor = eH - floor;
+          const floorLine = Math.abs(aboveFloor) < 0.02 ? "at the day's still-water floor"
+            : `${Math.round(Math.abs(aboveFloor) * 100)}% ${aboveFloor > 0 ? "above" : "below"} the floor`;
+          const driverLines: string[] = inVoc ? ["slack water · void of course"]
+            : drivers.map((d: any) => `${d.ev.label} · ${d.ev.charge === "high" ? "strong charge" : "barely lifts"}`);
+          const lines = [`${charLabel} water · ${floorLine}`, ...driverLines];
+          const boxW = Math.max(128, ...lines.map(l => l.length * 5.0 + 20));
           const flip = px > W - boxW - 12;
           const bx = flip ? px - boxW - 8 : px + 8;
           const tc = dark ? "#e8ecf4" : "#f4f6fb";
+          const boxH = 22 + lines.length * 12;
           return (
             <g pointerEvents="none">
               <line x1={px} y1={WATER_TOP - 8} x2={px} y2={H - PAD_B} stroke={dark ? "rgba(220,228,245,0.5)" : "rgba(40,50,70,0.4)"} strokeWidth="1" strokeDasharray="3 3" />
               <circle cx={px} cy={py} r="3.6" fill={dark ? "#0d1120" : "#fff"} stroke={dark ? "#c9d4ee" : "#2a3a52"} strokeWidth="1.6" />
-              <rect x={bx} y={WATER_TOP - 6} width={boxW} height={inVoc || near ? 42 : 30} rx="6" fill={dark ? "rgba(16,20,30,0.94)" : "rgba(26,34,52,0.94)"} />
+              <rect x={bx} y={WATER_TOP - 6} width={boxW} height={boxH} rx="6" fill={dark ? "rgba(16,20,30,0.94)" : "rgba(26,34,52,0.94)"} />
               <text x={bx + 9} y={WATER_TOP + 8} fontSize="9.5" fontWeight="700" fill={tc}>
                 {clockAt(dayStartMs, hoverH)} · charge {Math.round(eH * 100)}%
               </text>
-              <text x={bx + 9} y={WATER_TOP + 21} fontSize="8.5" fill={dark ? "#aeb8cc" : "#c2ccde"}>
-                {charLabel} water
-              </text>
-              {(inVoc || near) && (
-                <text x={bx + 9} y={WATER_TOP + 33} fontSize="8.5" fill={inVoc ? "#c8b06a" : (dark ? "#aeb8cc" : "#c2ccde")}>
-                  {line2}
-                </text>
-              )}
+              {lines.map((l, li) => (
+                <text key={li} x={bx + 9} y={WATER_TOP + 21 + li * 12} fontSize="8.5"
+                  fill={li > 0 && inVoc ? "#c8b06a" : (dark ? "#aeb8cc" : "#c2ccde")}>{l}</text>
+              ))}
             </g>
           );
         })()}

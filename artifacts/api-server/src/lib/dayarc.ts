@@ -22,6 +22,18 @@ const ASPECTS: { angle: number; name: string }[] = [
 ];
 const ASPECT_PLANETS = ["Sun","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"];
 
+// Aspect crest by NATURE (hardness), not by ease: hard aspects are high-charge,
+// conjunctions intensify, trines/sextiles are low-arousal ease.
+const NATURE_AMP: Record<string, number> = {
+  conjunction: 0.30, square: 0.26, opposition: 0.24, trine: 0.11, sextile: 0.08,
+};
+// How activating each planet is when the Moon touches it (OVERALL curve only).
+// Mars/Uranus/Sun raise charge; Neptune/Venus barely do.
+const PLANET_AROUSAL: Record<string, number> = {
+  Mars: 1.0, Uranus: 0.95, Sun: 0.85, Jupiter: 0.7, Pluto: 0.65, Saturn: 0.55,
+  Mercury: 0.55, Venus: 0.4, Neptune: 0.2,
+};
+
 const DEG2RAD = Math.PI / 180, RAD2DEG = 180 / Math.PI;
 function norm360(d: number) { return ((d % 360) + 360) % 360; }
 function sep180(a: number, b: number) { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; }
@@ -62,6 +74,8 @@ export interface DayArcEvent {
   planet?: string;
   aspect?: string;
   past?: boolean;
+  weight?: number;   // peak contribution to the OVERALL curve (0..1) — for the hover breakdown
+  charge?: "high" | "low"; // whether this aspect raises charge much or barely
 }
 
 export interface DayArcSegment {
@@ -198,10 +212,14 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
       time: i.t.toISOString(), clock: clock(i.t, tzOffsetMin), kind: "ingress" as const,
       label: `Moon enters ${i.sign}`, past: i.t < now,
     })),
-    ...perfections.map(p => ({
-      time: p.t.toISOString(), clock: clock(p.t, tzOffsetMin), kind: "aspect" as const,
-      label: `Moon ${p.aspect} ${p.planet}`, planet: p.planet, aspect: p.aspect, past: p.t < now,
-    })),
+    ...perfections.map(p => {
+      const w = (NATURE_AMP[p.aspect] ?? 0.15) * (PLANET_AROUSAL[p.planet] ?? 0.5);
+      return {
+        time: p.t.toISOString(), clock: clock(p.t, tzOffsetMin), kind: "aspect" as const,
+        label: `Moon ${p.aspect} ${p.planet}`, planet: p.planet, aspect: p.aspect, past: p.t < now,
+        weight: parseFloat(w.toFixed(3)), charge: (w >= 0.14 ? "high" : "low") as "high" | "low",
+      };
+    }),
   ].sort((a, b) => a.time.localeCompare(b.time));
 
   // ── HEIGHT: where the whole day's tide floats (one value for the day) ────────
@@ -236,18 +254,25 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   }
   const standingH = Math.min(1, standing / 5);
 
-  const height = 0.30 + 0.55 * (0.42 * illum + 0.28 * clusterH + 0.20 * daylightFrac + 0.10 * standingH);
+  // The day's floor is set by PHASE first (a new moon is genuinely low, a full
+  // moon genuinely high), with a small seasonal-daylight lift and a whisper of
+  // standing background weather. Aspect *cluster* was removed from the floor —
+  // individual aspects belong in the SHAPE as crests, not raising the whole day
+  // (that double-counted, and let soft aspects inflate a quiet day's baseline).
+  const height = Math.max(0, Math.min(1, 0.15 + 0.50 * illum + 0.13 * daylightFrac + 0.05 * standingH));
 
-  // ── SHAPE: subtle diurnal wobble + aspect crests + VOC becalming + hour whisper
+  // ── SHAPE: aspect crests + VOC becalming + hour whisper ──────────────────────
+  // (Moon/sun *altitude* was removed — where the Moon sits above the horizon is
+  // not an astrological energy signal, only an optics one, so it no longer wobbles
+  // the curve. Owner call: "moon altitude shouldn't matter astrologically.")
   const CURVE_STEP_MS = 15 * 60000;
-  const NATURE_AMP: Record<string, number> = {
-    trine: 0.22, sextile: 0.16, conjunction: 0.18, square: 0.2, opposition: 0.22,
-  };
   const HOUR_ADJ: Record<string, number> = {   // planetary hours — a whisper only
     Moon: -0.02, Saturn: -0.03, Sun: 0.025, Mars: 0.03, Jupiter: 0.03, Venus: 0.01, Mercury: 0,
   };
-  const SIGMA_H = 0.9;
-  const W_MOON_ALT = 0.12, W_SUN_ALT = 0.05;    // subtle; sun barely-there per design
+  // The Moon crosses an aspect's orb over many hours (~0.5°/hr), so its charge
+  // swells and fades gently rather than spiking — a wide envelope, not a needle.
+  const SIGMA_H = 3.6;
+  const W_MOON_ALT = 0, W_SUN_ALT = 0;          // altitude no longer shapes the curve
   const HOUR_BLEND_MIN = 20;                     // cross-fade window around each hour boundary
 
   // Smoothed hour-whisper: cross-fades between the current and next/previous hour's
@@ -295,13 +320,15 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     }
     return 1;
   }
-  const perfMs = perfections.map(p => ({ t: p.t.getTime(), planet: p.planet, amp: NATURE_AMP[p.aspect] ?? 0.18 }));
+  const perfMs = perfections.map(p => ({
+    t: p.t.getTime(), planet: p.planet, aspect: p.aspect,
+    amp: NATURE_AMP[p.aspect] ?? 0.15,
+    arousal: PLANET_AROUSAL[p.planet] ?? 0.5,
+  }));
 
-  // Base component per step (altitude wobble + smoothed hour whisper) — shared by all lenses.
-  const baseComp = steps.map(s =>
-    (nrm(s.mAlt, mAlts) - 0.5) * W_MOON_ALT +
-    (nrm(s.sAlt, sAlts) - 0.5) * W_SUN_ALT +
-    smoothedHourAdj(s.t));
+  // Base component per step — now just the smoothed planetary-hour whisper
+  // (altitude terms removed; W_MOON_ALT/W_SUN_ALT are 0).
+  const baseComp = steps.map(s => smoothedHourAdj(s.t));
   const signChar = steps.map(s => charOf(signOf(norm360(moonLongitude(julianDay(new Date(s.t)))))));
 
   // Lenses — the same tide, but SIGNED per-planet weights so lenses that pull in
@@ -334,7 +361,11 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
         // only overall includes everything, so each lens's signal stays sharp.
         const w = weights[pf.planet] ?? (isOverall ? 1 : 0);
         if (w === 0) continue;
-        crests += pf.amp * w * Math.exp(-0.5 * ((s.t - pf.t) / 3600000 / SIGMA_H) ** 2);
+        // On the OVERALL curve, scale each crest by how activating the planet is,
+        // so a Moon–Neptune trine barely lifts the tide while a Moon–Mars square
+        // genuinely does. Lens curves keep their own thematic weighting.
+        const arousal = isOverall ? pf.arousal : 1;
+        crests += pf.amp * w * arousal * Math.exp(-0.5 * ((s.t - pf.t) / 3600000 / SIGMA_H) ** 2);
       }
       // Moon-sign element resonance for element lenses.
       let signLift = 0;
