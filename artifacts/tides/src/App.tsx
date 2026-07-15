@@ -472,8 +472,8 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px" }}>
       <div style={cardStyle}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Tides</div>
-          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Your personal timing companion — lunar cycles, planetary hours, and daily rhythm.</div>
+          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Auspice</div>
+          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Move with time — lunar cycles, planetary hours, and daily rhythm.</div>
         </div>
         <form onSubmit={handleNameSubmit}>
           <div style={{ fontSize:11, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Your name</div>

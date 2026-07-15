@@ -529,7 +529,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
-          Tides
+          {/* Rebrand (owner 2026-07-15): back to the project's original name.
+              "Tides"/"tide" stays as FEATURE vocabulary (the tide reading is
+              one instrument); Auspice is the product. */}
+          Auspice
         </div>
         <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
           fontSize: 12, lineHeight: 1, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 2,

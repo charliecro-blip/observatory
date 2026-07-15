@@ -12,7 +12,7 @@ import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
-import { TideCardModal } from "@/components/TideCard";
+import { Studio } from "@/components/Studio";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
@@ -845,7 +845,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         />
       )}
 
-      {showTideCard && now && <TideCardModal now={now} week={week} northStars={northStars ?? []} testerId={testerId} onClose={() => setShowTideCard(false)} />}
+      {/* The Studio replaced the old share-card modal (owner 2026-07-15):
+          IG-shareable day/week/lunation cards, primary sky facts only. */}
+      {showTideCard && now && <Studio now={now} lat={lat} lon={lon} onClose={() => setShowTideCard(false)} />}
 
       <div style={{
         flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14,
