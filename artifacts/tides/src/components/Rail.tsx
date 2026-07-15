@@ -893,7 +893,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+            <span style={{ fontSize:9, color:"#8a8278" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
             <Tooltip content={
               <div>
                 <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>

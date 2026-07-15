@@ -1076,8 +1076,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
 
-        {/* The month's water — the Almanac's 30-day view, tappable per day */}
-        {todayShow14Day && <MonthBars testerId={testerId} lat={lat} lon={lon} today={today} />}
+        {/* The month's water (30-day view) was removed from Today (owner
+            2026-07-15): the day view stays about today; the month lives in the
+            Calendar/Almanac. MonthBars is still defined for that surface. */}
 
         {/* Your rhythm today — body cycles read against the sky's (rhythm as
             the app's foundation: chronotype↔solar, menstrual↔lunar). */}

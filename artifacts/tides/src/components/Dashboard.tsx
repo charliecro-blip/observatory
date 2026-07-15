@@ -112,27 +112,10 @@ export default function Dashboard({
         {/* (The big-sky card was dropped — the full explorable BigSky section
             renders directly below the dashboard, so it only echoed it.) */}
 
-        <Card title="The week ahead" icon="↝" onOpen={onNavigate ? () => onNavigate("calendar") : undefined}>
-          <div style={{ display: "flex", gap: 5, alignItems: "flex-end", height: 44 }}>
-            {weekDays.map((d: any, i: number) => {
-              const col = ELEMENT_COLOR[d.element ?? ""] ?? "#ccc";
-              const h = 12 + Math.round(((d.qualityScore ?? 3) / 7) * 30);
-              const dd = new Date((d.date ?? today) + "T12:00:00");
-              return (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: "100%", height: h, background: `${col}55`, borderTop: `2px solid ${col}`, borderRadius: 2 }} />
-                  <span style={{ fontSize: 8.5, color: i === 0 ? "var(--color-primary)" : "#aaa", fontWeight: i === 0 ? 700 : 400 }}>{dd.toLocaleDateString("en-US", { weekday: "narrow" })}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Currents, Sky Clock, and Inner Sky cards were removed from the home
-            (owner 2026-07-11): the home shows only your aims (Guiding Stars),
-            what's on deck, and the week. The long-cycle Currents lives in Aims;
-            the sky clock and personal crossings are moving into the Calendar
-            day view where the day's timing belongs. */}
+        {/* Week-ahead and month's-water were removed from Today (owner
+            2026-07-15): the day view should stay about today. The week and
+            month live in the Calendar/Ahead views where the longer horizons
+            belong. Home now shows only your aims and what's on deck. */}
       </div>
     </div>
   );
