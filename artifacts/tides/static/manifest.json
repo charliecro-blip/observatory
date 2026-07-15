@@ -1,6 +1,6 @@
 {
-  "name": "Tides",
-  "short_name": "Tides",
+  "name": "Auspice",
+  "short_name": "Auspice",
   "description": "Your personal timing companion — lunar cycles, planetary hours, and daily rhythm.",
   "start_url": "/",
   "display": "standalone",

@@ -42,7 +42,7 @@ export const PREMIUM_FEATURES: PremiumFeatureMeta[] = [
   {
     key: "scheduling",
     title: "Smart scheduling",
-    teaser: "Tides reads what a task or habit is really about and finds its best times this week — matched to the sky and to your own free hours. You can always still pick your own time for free.",
+    teaser: "Auspice reads what a task or habit is really about and finds its best times this week — matched to the sky and to your own free hours. You can always still pick your own time for free.",
     icon: "✦",
   },
 ];

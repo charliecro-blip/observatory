@@ -190,7 +190,7 @@ const INTRO_SLIDES: {
     glyph: "◐",
     glyphColor: "#2a5a80",
     title: "A weather report for time.",
-    body: "Tides reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
+    body: "Auspice reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
   },
   {
     glyph: "◵ ◶ ◷ ◴",
@@ -214,7 +214,7 @@ const INTRO_SLIDES: {
     glyph: "≋",
     glyphColor: "#3f8493",
     title: "The sky is nested rhythms.",
-    body: "The hour sits inside the day, the day inside the month, the month inside the year. Tides reads them all and tells you where you are — this ladder is the whole map.",
+    body: "The hour sits inside the day, the day inside the month, the month inside the year. Auspice reads them all and tells you where you are — this ladder is the whole map.",
     spine: true,
   },
   {
@@ -528,7 +528,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:24 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your birth chart</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            Tides uses your birth data to compute personal transits — showing which planetary cycles are active in <em>your</em> chart right now. This stays private on your device.
+            Auspice uses your birth data to compute personal transits — showing which planetary cycles are active in <em>your</em> chart right now. This stays private on your device.
           </div>
         </div>
 
@@ -635,7 +635,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:24 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your rhythm</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            When you're usually free and how you naturally run helps Tides suggest timing that actually fits your life, not just the sky.
+            When you're usually free and how you naturally run helps Auspice suggest timing that actually fits your life, not just the sky.
           </div>
         </div>
 
@@ -713,7 +713,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </button>
             <button type="submit"
               style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#fff" }}>
-              Enter Tides
+              Enter Auspice
             </button>
           </div>
         </form>

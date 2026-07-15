@@ -1,4 +1,7 @@
-# Tides — Design & Astrological Architecture
+# Auspice (né Tides) — Design & Astrological Architecture
+
+> **Rebrand 2026-07-15:** the product is now **Auspice** (the project's original name).
+> "Tide(s)" remains feature vocabulary — the tide reading is one instrument, no longer the title function.
 
 > Working design document. This is the thing to argue with, not the code.
 > Status: pre-implementation. Nothing here is committed to until the "Open Decisions"

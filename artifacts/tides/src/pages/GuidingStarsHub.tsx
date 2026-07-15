@@ -562,7 +562,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>
             <div style={{ fontSize: 12.5, color: "#8a8278", lineHeight: 1.6, maxWidth: 380 }}>
-              A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Tides helps you time them to the sky.
+              A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Auspice helps you time them to the sky.
             </div>
             <button onClick={() => setShowForm(true)} style={{
               marginTop: 4, padding: "8px 20px", borderRadius: 9, border: "none",

@@ -127,7 +127,7 @@ export function ScheduleSuggest({
         {!unlocked && (
           <div style={{ background: `${ec}0c`, border: `1px solid ${ec}33`, borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
             <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55 }}>
-              <b style={{ color: "var(--color-primary)" }}>✦ Let Tides find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
+              <b style={{ color: "var(--color-primary)" }}>✦ Let Auspice find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
             </div>
             <button onClick={() => setShowPremium(true)} style={{ marginTop: 7, fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${ec}55`, background: "var(--color-card)", color: ec, cursor: "pointer", fontWeight: 600 }}>
               Explore premium
