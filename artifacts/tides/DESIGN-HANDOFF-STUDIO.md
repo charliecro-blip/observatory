@@ -41,3 +41,29 @@ Three subjects × two formats:
 ## Deliverable format
 
 Same as the glyphs handoff: a `.dc.html` visual reference showing every card × theme at final proportions, plus a README with exact tokens (spacing scale, type sizes, any new colors) and a note on which parts are per-theme vs shared. High fidelity; we port directly.
+
+---
+
+## Addendum (2026-07-15): the Best-Times series — design this FIRST
+
+Owner direction after seeing the v1 mocks: generic day posters are fine but not amazing; **focused utility cards are the priority.** "The week's best times" / "The month's best days" for four everyday activities:
+
+| Activity | Glyph | Engine signals behind every listed window |
+|---|---|---|
+| **Deep study** | Mercury ☿ | air-lens crests · boosted on Mercury/Saturn days |
+| **Training** | Mars ♂ | fire-lens crests · boosted on Mars/Sun days |
+| **Dates & play** | Venus ♀ | overall crests · Venus/Moon days · evenings · waxing half |
+| **Deep rest** | Moon ☽ | water-lens crests · waning half · void-of-course = "slack water" bonus |
+
+All windows are clamped to waking hours (7:00–23:00). Each row carries a plain-language *why* built only from primary facts ("Venus's day · Virgo moon · building").
+
+**Working reference renders** (the template to elevate): `GET /api/studio/best.png?span=week|month&theme=&format=` — live data, so design can pull a real current week anytime. Layout in `api-server/src/lib/studioCard.ts` (`buildBestTimesCardSvg`).
+
+**Data contract per card:** 4 activities × (week: 3 windows, each `{dow, date, startClock, endClock, why}` · month: 5 day-chips + one lead-day line).
+
+**Design asks specific to this series:**
+- The week card is a *reference object* people screenshot and keep — design for glanceability pinned to a lock screen, not just feed scroll.
+- Distinguish the four activities instantly (accent + glyph is v1; consider iconographic or spatial identity).
+- Month card: the date chips want a calendar-adjacent visual logic (mini month strip? phase-marked chips?).
+- Keep the *why* visible — it's the credibility layer and the teaching layer. Never reduce rows to bare times.
+- Same constraints as above: SVG-flat, four themes, real-type glyphs, primary facts only.

@@ -174,3 +174,171 @@ export function buildDayCardSvg(opts: {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
   return { svg, width: W, height: H };
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Best-times cards — "when to do X" for the week / the month (owner 2026-07-15:
+// focused utility cards beat generic day posters). Four everyday activities,
+// each mapped to REAL engine signals — lens curves, planetary days, moon phase,
+// void-of-course — so every listed window is defensible:
+//
+//   Deep study   → air lens crests   · boosted on Mercury/Saturn days
+//   Training     → fire lens crests  · boosted on Mars/Sun days
+//   Dates & play → overall crests    · boosted on Venus/Moon days, evenings,
+//                                      and the waxing→full half of the month
+//   Deep rest    → water lens crests · boosted when waning and on void-of-
+//                                      course days (slack water = real rest)
+// ═════════════════════════════════════════════════════════════════════════════
+
+import { findPeakWindows } from "./dayarc.js";
+
+interface Activity {
+  key: string; label: string; planet: string; lens: string;
+  dayBoost: Record<string, number>;
+  eveningBias?: boolean;  // prefer windows overlapping 17:00–24:00
+  waxingBias?: boolean;   // prefer the building half of the lunation
+  waningBias?: boolean;   // prefer the releasing half
+  vocBonus?: boolean;     // void-of-course helps (rest), not hurts
+}
+const ACTIVITIES: Activity[] = [
+  { key: "study", label: "Deep study", planet: "Mercury", lens: "air", dayBoost: { Mercury: 1.25, Saturn: 1.15 } },
+  { key: "train", label: "Training", planet: "Mars", lens: "fire", dayBoost: { Mars: 1.25, Sun: 1.15 } },
+  { key: "love", label: "Dates & play", planet: "Venus", lens: "overall", dayBoost: { Venus: 1.3, Moon: 1.1 }, eveningBias: true, waxingBias: true },
+  { key: "rest", label: "Deep rest", planet: "Moon", lens: "water", dayBoost: { Moon: 1.2, Saturn: 1.05 }, waningBias: true, vocBonus: true },
+];
+
+interface DayPick {
+  date: string; dow: string; startClock: string; endClock: string;
+  score: number; why: string;
+}
+
+function clockOf(ms: number, tzOffsetMin: number): string {
+  const s = new Date(ms - tzOffsetMin * 60000);
+  let h = s.getUTCHours();
+  const m = s.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return m === 0 ? `${h} ${ampm}` : `${h}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// Best window per activity per day, scored with the activity's biases.
+function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number): Record<string, DayPick[]> {
+  const out: Record<string, DayPick[]> = Object.fromEntries(ACTIVITIES.map(a => [a.key, []]));
+  const start = new Date();
+  for (let d = 0; d < days; d++) {
+    const instant = new Date(start.getTime() + d * 86400000);
+    const arc = computeDayArc(instant, lat, lon, tzOffsetMin);
+    const dayStartMs = new Date(arc.dayStart).getTime();
+    const local = new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000); // local noon
+    const jdNoon = julianDay(new Date(dayStartMs + 12 * 3600000));
+    const phase = moonPhase(jdNoon);
+    const waxing = /new|waxing|first/i.test(phase.name);
+    const moonSign = SIGNS[Math.floor((((moonLongitude(jdNoon) % 360) + 360) % 360) / 30) % 12];
+    const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
+    const hasVoc = (arc.vocWindows ?? []).length > 0;
+    const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+    const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+    for (const a of ACTIVITIES) {
+      const curve = arc.curves[a.lens] ?? arc.curve;
+      // A sky-perfect 3 AM window is a taunt, not a suggestion (same rule as
+      // ScheduleSuggest): consider more peaks, clamp each to waking hours
+      // (7:00–23:00), and drop any that barely survive the clamp.
+      const peaks = findPeakWindows(curve, 4, 3)
+        .map(p => ({ ...p, startHour: Math.max(p.startHour, 7), endHour: Math.min(p.endHour, 23) }))
+        .filter(p => p.endHour - p.startHour >= 1.5 && p.peakHour >= 6 && p.peakHour <= 23.5);
+      let best: DayPick | null = null;
+      for (const p of peaks) {
+        let score = p.peakE;
+        score *= a.dayBoost[dayRuler] ?? 1;
+        if (a.eveningBias) {
+          const overlapsEvening = p.endHour >= 17 && p.startHour <= 24;
+          score *= overlapsEvening ? 1.2 : 0.85;
+        }
+        if (a.waxingBias) score *= waxing ? 1.15 : 0.9;
+        if (a.waningBias) score *= waxing ? 0.9 : 1.15;
+        if (a.vocBonus && hasVoc) score *= 1.15;
+        if (!best || score > best.score) {
+          const whyBits: string[] = [];
+          if ((a.dayBoost[dayRuler] ?? 1) > 1) whyBits.push(`${dayRuler}'s day`);
+          whyBits.push(`${moonSign} moon`);
+          if (a.waningBias && !waxing) whyBits.push("waning");
+          if (a.waxingBias && waxing) whyBits.push("building");
+          if (a.vocBonus && hasVoc) whyBits.push("slack water");
+          best = {
+            date: dateLabel, dow,
+            startClock: clockOf(dayStartMs + p.startHour * 3600000, tzOffsetMin),
+            endClock: clockOf(dayStartMs + p.endHour * 3600000, tzOffsetMin),
+            score, why: whyBits.slice(0, 3).join(" · "),
+          };
+        }
+      }
+      if (best) out[a.key].push(best);
+    }
+  }
+  return out;
+}
+
+export function buildBestTimesCardSvg(opts: {
+  span: "week" | "month"; lat: number; lon: number; tzOffsetMin: number;
+  theme?: CardTheme; format?: CardFormat;
+}): { svg: string; width: number; height: number } {
+  const { span, lat, lon, tzOffsetMin } = opts;
+  const theme = opts.theme ?? "tide";
+  const format = opts.format ?? "story";
+  const W = 1080, H = format === "story" ? 1920 : 1350;
+  const s = SURFACE[theme];
+  const days = span === "week" ? 7 : 30;
+  const picks = scanDays(days, lat, lon, tzOffsetMin);
+
+  const start = new Date(Date.now() - tzOffsetMin * 60000);
+  const end = new Date(start.getTime() + (days - 1) * 86400000);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const kicker = span === "week" ? `best times · ${fmt(start)} – ${fmt(end)}` : `best days · ${fmt(start)} – ${fmt(end)}`;
+  const title = span === "week" ? "The week's best times" : "The month's best days";
+
+  const parts: string[] = [];
+  parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
+  parts.push(`<text x="${W / 2}" y="110" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="162" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
+  parts.push(`<text x="${W / 2}" y="${format === "story" ? 280 : 250}" text-anchor="middle" font-family="${SERIF}" font-size="58" font-weight="700" fill="${s.ink}">${esc(title)}</text>`);
+
+  const secY0 = format === "story" ? 400 : 340;
+  const secH = format === "story" ? 350 : 240;
+  const left = 110;
+
+  ACTIVITIES.forEach((a, i) => {
+    const y = secY0 + i * secH;
+    const accent = ELEMENT_COLORS[theme][(PLANET_GLYPH[a.planet] ?? { element: "water" }).element];
+    parts.push(glyphText(a.planet, left + 26, y + 14, 46, theme));
+    parts.push(`<text x="${left + 70}" y="${y + 12}" font-family="${SERIF}" font-size="42" font-weight="700" fill="${s.ink}">${esc(a.label)}</text>`);
+    parts.push(`<line x1="${left}" y1="${y + 44}" x2="${W - left}" y2="${y + 44}" stroke="${accent}" stroke-width="2.5" opacity="0.5"/>`);
+
+    if (span === "week") {
+      // Top three distinct days, listed chronologically.
+      const top = [...picks[a.key]].sort((x, z) => z.score - x.score).slice(0, 3)
+        .sort((x, z) => x.date.localeCompare(z.date));
+      top.forEach((p, ri) => {
+        const ry = y + 100 + ri * 62;
+        parts.push(`<text x="${left + 10}" y="${ry}" font-family="${SERIF}" font-size="33" font-weight="600" fill="${s.ink}">${esc(`${p.dow} · ${p.startClock}–${p.endClock}`)}</text>`);
+        parts.push(`<text x="${W - left - 10}" y="${ry}" text-anchor="end" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(p.why)}</text>`);
+      });
+    } else {
+      // Month: five best dates as chips + why the top one leads.
+      const ranked = [...picks[a.key]].sort((x, z) => z.score - x.score);
+      const top5 = ranked.slice(0, 5).sort((x, z) => Date.parse(x.date + " 2026") - Date.parse(z.date + " 2026"));
+      let cx = left;
+      top5.forEach(p => {
+        const label = `${p.dow} ${p.date}`;
+        const wCh = label.length * 12.5 + 32;
+        parts.push(`<rect x="${cx}" y="${y + 70}" width="${wCh}" height="50" rx="25" fill="${accent}" opacity="0.14"/>`);
+        parts.push(`<text x="${cx + wCh / 2}" y="${y + 103}" text-anchor="middle" font-family="${SERIF}" font-size="25" font-weight="600" fill="${s.ink}">${esc(label)}</text>`);
+        cx += wCh + 12;
+      });
+      if (ranked[0]) parts.push(`<text x="${left + 10}" y="${y + 168}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(`lead day: ${ranked[0].dow} ${ranked[0].date} · ${ranked[0].why}`)}</text>`);
+    }
+  });
+
+  parts.push(`<text x="${W / 2}" y="${H - 70}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
+  return { svg, width: W, height: H };
+}

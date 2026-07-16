@@ -14,7 +14,7 @@ import { Router, type IRouter } from "express";
 import path from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { buildDayCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
+import { buildDayCardSvg, buildBestTimesCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
 
 const router: IRouter = Router();
 
@@ -33,6 +33,32 @@ function parseOpts(req: any) {
 router.get("/studio/day.svg", (req, res) => {
   const { svg } = buildDayCardSvg(parseOpts(req));
   res.type("image/svg+xml").send(svg);
+});
+
+// Best-times cards — "when to do X" for the week (windows) / month (days).
+function parseSpan(req: any): "week" | "month" {
+  return req.query.span === "month" ? "month" : "week";
+}
+
+router.get("/studio/best.svg", (req, res) => {
+  const { svg } = buildBestTimesCardSvg({ ...parseOpts(req), span: parseSpan(req) });
+  res.type("image/svg+xml").send(svg);
+});
+
+router.get("/studio/best.png", async (req, res) => {
+  try {
+    const span = parseSpan(req);
+    const { svg, width } = buildBestTimesCardSvg({ ...parseOpts(req), span });
+    const { Resvg } = await import("@resvg/resvg-js");
+    const r = new Resvg(svg, {
+      fitTo: { mode: "width", value: width },
+      font: { fontBuffers: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
+    });
+    const png = r.render().asPng();
+    res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-best-${span}.png"`).send(Buffer.from(png));
+  } catch (e: any) {
+    res.status(501).json({ error: "PNG rendering unavailable", detail: String(e?.message ?? e) });
+  }
 });
 
 // Font buffers loaded once — everything in assets/fonts rides along.
