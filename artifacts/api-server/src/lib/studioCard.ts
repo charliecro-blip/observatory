@@ -175,49 +175,128 @@ export function buildDayCardSvg(opts: {
   return { svg, width: W, height: H };
 }
 
+
 // ═════════════════════════════════════════════════════════════════════════════
-// Best-times cards — "when to do X" for the week / the month (owner 2026-07-15,
-// revised same day: the times must be a SELECTION OF ASPECTS, electional-style,
-// not curve crests). Every listed window is anchored to a real timed sky event:
+// Best-times cards — weekly (and monthly) elections for four everyday needs
+// (owner 2026-07-17): effort/workouts, rest, connection/pleasure, deep study.
 //
-//   Deep study   → Moon conj/trine/sextile Mercury or Saturn
-//   Training     → Moon conj/trine/sextile Mars or Sun
-//   Dates & play → Moon conj/trine/sextile Venus or Jupiter · evenings ·
-//                  waxing half · Venus–Jupiter sky aspects boost the day
-//   Deep rest    → Moon trine/sextile Neptune (the low-arousal voice) ·
-//                  void-of-course stretches count as windows ("slack water") ·
-//                  waning half
-//
-// A window is the aspect's swell: exact ± 2.5h, clamped to waking hours
-// (7:00–23:00); an exactness whose swell can't give 1.5 waking hours is
-// dropped. The 'why' IS the aspect — "Moon trine Venus · exact 8:05 PM".
-// Only supportive geometry (conjunction/trine/sextile) is published; squares
-// and oppositions are energy too, but a public card elects clean windows.
+// Signal vocabulary (all UNIVERSAL instants — safe on a shareable card; only
+// the clock label is a timezone, stamped in the kicker. Planetary hours and
+// angle crossings are location-bound, so they stay OFF these cards):
+//   · Moon aspects to the important planets — majors AND minors (semi-sextile,
+//     semi-square, quintile, sesquiquadrate, biquintile, quincunx)
+//   · per-activity aspect palettes: effort gets Moon–Mars/Sun SQUARES too —
+//     hard aspects are high-charge fuel when the job is exertion
+//   · the Moon's SIGN as an all-day quality entry (fallback when timed
+//     elections are scarce — a Virgo moon is a study day even with no aspect)
+//   · void-of-course stretches (rest windows: "slack water")
+//   · the week's standing planet-planet aspect as a headline
 // ═════════════════════════════════════════════════════════════════════════════
 
-import { getMajorAspects } from "./astro.js";
+import { getMajorAspects, getPlanetPositions } from "./astro.js";
+
+const norm360 = (d: number) => ((d % 360) + 360) % 360;
+const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; };
+
+// Full aspect set for the Moon scan. Weights are the aspect's base voltage for
+// election purposes; per-activity palettes then say which ones qualify.
+const MOON_ANGLES: { deg: number; name: string }[] = [
+  { deg: 0, name: "conjunction" }, { deg: 30, name: "semi-sextile" }, { deg: 45, name: "semi-square" },
+  { deg: 60, name: "sextile" }, { deg: 72, name: "quintile" }, { deg: 90, name: "square" },
+  { deg: 120, name: "trine" }, { deg: 135, name: "sesquiquadrate" }, { deg: 144, name: "biquintile" },
+  { deg: 150, name: "quincunx" }, { deg: 180, name: "opposition" },
+];
+const MOON_TARGETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+
+interface MoonPerfection { timeMs: number; planet: string; aspect: string }
+
+// Scan one local day for Moon-aspect perfections across the full angle set —
+// the day-arc engine only tracks majors (they feed the app's tide curve), so
+// the cards do their own sweep. 10-minute steps, crossing detection.
+function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
+  const out: MoonPerfection[] = [];
+  const STEP = 10 * 60000;
+  let prevJd = julianDay(new Date(dayStartMs));
+  let prevMoon = norm360(moonLongitude(prevJd));
+  const lonOf = (jd: number): Record<string, number> => {
+    const pos = getPlanetPositions(jd);
+    const m: Record<string, number> = {};
+    for (const p of pos) m[p.planet] = SIGNS.indexOf(p.sign) * 30 + p.degree;
+    return m;
+  };
+  let prevLons = lonOf(prevJd);
+  const prevSep: Record<string, number> = {};
+  for (const t of MOON_TARGETS) prevSep[t] = sep180(prevMoon, prevLons[t] ?? 0);
+
+  for (let t = dayStartMs + STEP; t <= dayStartMs + 24 * 3600000; t += STEP) {
+    const jd = julianDay(new Date(t));
+    const mLon = norm360(moonLongitude(jd));
+    const lons = lonOf(jd);
+    for (const p of MOON_TARGETS) {
+      const s = sep180(mLon, lons[p] ?? 0);
+      for (const A of MOON_ANGLES) {
+        if ((prevSep[p] - A.deg) * (s - A.deg) <= 0 && Math.abs(prevSep[p] - s) < 4) {
+          out.push({ timeMs: t, planet: p, aspect: A.name });
+          break;
+        }
+      }
+      prevSep[p] = s;
+    }
+    prevMoon = mLon; prevLons = lons; prevJd = jd;
+  }
+  return out;
+}
 
 interface Activity {
-  key: string; label: string; planet: string;      // display glyph
-  aspectPlanets: Record<string, number>;           // Moon-to-X target → weight
-  pairPlanets?: string[];                          // planet-planet pairs worth flagging (month)
-  eveningBias?: boolean;   // prefer windows overlapping 17:00–24:00
-  waxingBias?: boolean;    // prefer the building half of the lunation
-  waningBias?: boolean;    // prefer the releasing half
-  vocAsWindow?: boolean;   // void-of-course stretches ARE windows (rest only)
+  key: string; label: string; planet: string;
+  planetW: Record<string, number>;         // Moon-to-X target → weight
+  aspectW: Record<string, number>;         // which geometry qualifies → weight
+  signAffinity: Record<string, string>;    // moon SIGN → gloss (all-day entries)
+  pairPlanets?: string[];
+  maxRows: number;
+  eveningBias?: boolean; waxingBias?: boolean; waningBias?: boolean; vocAsWindow?: boolean;
 }
+
+const SOFT = { conjunction: 1.0, trine: 0.85, sextile: 0.65, quintile: 0.5, "semi-sextile": 0.35 };
+
 const ACTIVITIES: Activity[] = [
-  { key: "study", label: "Deep study", planet: "Mercury", aspectPlanets: { Mercury: 1.0, Saturn: 0.8 }, pairPlanets: ["Mercury", "Saturn"] },
-  { key: "train", label: "Training", planet: "Mars", aspectPlanets: { Mars: 1.0, Sun: 0.8 }, pairPlanets: ["Mars", "Sun"] },
-  { key: "love", label: "Dates & play", planet: "Venus", aspectPlanets: { Venus: 1.0, Jupiter: 0.7 }, pairPlanets: ["Venus", "Jupiter"], eveningBias: true, waxingBias: true },
-  { key: "rest", label: "Deep rest", planet: "Moon", aspectPlanets: { Neptune: 1.0, Venus: 0.5 }, waningBias: true, vocAsWindow: true },
+  {
+    key: "effort", label: "Effort & training", planet: "Mars",
+    planetW: { Mars: 1.0, Sun: 0.8 },
+    // Squares are FUEL for exertion — high-charge geometry pointed at a body.
+    aspectW: { ...SOFT, square: 0.7, "semi-square": 0.4, sesquiquadrate: 0.4 },
+    signAffinity: { Aries: "fast fire", Leo: "proud fire", Sagittarius: "far-ranging fire", Capricorn: "endurance earth" },
+    pairPlanets: ["Mars", "Sun"], maxRows: 4,
+  },
+  {
+    key: "rest", label: "Deep rest", planet: "Moon",
+    planetW: { Neptune: 1.0, Venus: 0.5 },
+    aspectW: SOFT,
+    signAffinity: { Cancer: "home water", Pisces: "open-sea water", Taurus: "slow settled earth" },
+    maxRows: 3, waningBias: true, vocAsWindow: true,
+  },
+  {
+    key: "connection", label: "Connection & pleasure", planet: "Venus",
+    planetW: { Venus: 1.0, Jupiter: 0.7, Moon: 0 },
+    aspectW: SOFT,
+    signAffinity: { Libra: "partnered air", Leo: "warm stage-light", Taurus: "sensual earth", Pisces: "boundless water" },
+    pairPlanets: ["Venus", "Jupiter"], maxRows: 3, eveningBias: true, waxingBias: true,
+  },
+  {
+    key: "study", label: "Deep study", planet: "Mercury",
+    planetW: { Mercury: 1.0, Saturn: 0.8 },
+    aspectW: SOFT,
+    signAffinity: { Gemini: "quick air", Virgo: "orderly earth", Aquarius: "systems air", Capricorn: "long-haul earth" },
+    pairPlanets: ["Mercury", "Saturn"], maxRows: 3,
+  },
 ];
-// Supportive geometry only, conjunction leading.
-const ASPECT_W: Record<string, number> = { conjunction: 1.0, trine: 0.85, sextile: 0.65 };
+// Sign-quality all-day entries sit below real timed elections but above the
+// weakest minors — a Virgo moon beats a Moon semi-sextile Saturn.
+const SIGN_DAY_SCORE = 0.45;
 
 interface DayPick {
   date: string; dow: string; startClock: string; endClock: string;
-  score: number; why: string;
+  score: number; why: string; allDay?: boolean;
 }
 
 function clockOf(ms: number, tzOffsetMin: number): string {
@@ -229,54 +308,48 @@ function clockOf(ms: number, tzOffsetMin: number): string {
   return m === 0 ? `${h} ${ampm}` : `${h}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-// Best window per activity per day, scored with the activity's biases.
-function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number): Record<string, DayPick[]> {
+function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, startAt?: Date): Record<string, DayPick[]> {
   const out: Record<string, DayPick[]> = Object.fromEntries(ACTIVITIES.map(a => [a.key, []]));
-  const start = new Date();
+  const start = startAt ?? new Date();
   for (let d = 0; d < days; d++) {
     const instant = new Date(start.getTime() + d * 86400000);
     const arc = computeDayArc(instant, lat, lon, tzOffsetMin);
     const dayStartMs = new Date(arc.dayStart).getTime();
-    const local = new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000); // local noon
+    const local = new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000);
     const jdNoon = julianDay(new Date(dayStartMs + 12 * 3600000));
     const phase = moonPhase(jdNoon);
     const waxing = /new|waxing|first/i.test(phase.name);
-    const moonSign = SIGNS[Math.floor((((moonLongitude(jdNoon) % 360) + 360) % 360) / 30) % 12];
+    const moonSign = SIGNS[Math.floor(norm360(moonLongitude(jdNoon)) / 30) % 12];
     const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
-    const hasVoc = (arc.vocWindows ?? []).length > 0;
     const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
     const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
-    // Tight supportive planet-planet aspects standing today (checked at local
-    // noon, ≤3° orb) — a Venus–Jupiter trine makes the whole day better for
-    // dates, and deserves a mention on the month card's lead line.
-    const skyAspects = getMajorAspects(jdNoon).filter(pa =>
-      (ASPECT_W[pa.aspect] ?? 0) > 0 && pa.orb <= 3);
+    const perfections = scanMoonPerfections(dayStartMs);
+    const skyAspects = getMajorAspects(jdNoon).filter(pa => (SOFT as any)[pa.aspect] > 0 && pa.orb <= 3);
 
     for (const a of ACTIVITIES) {
       const candidates: DayPick[] = [];
 
-      // ── Aspect-anchored windows: the swell around each perfection ─────────
-      for (const ev of arc.events) {
-        if (ev.kind !== "aspect" || !ev.planet || !ev.aspect) continue;
-        const aw = ASPECT_W[ev.aspect] ?? 0;
-        const pw = a.aspectPlanets[ev.planet] ?? 0;
+      // ── Timed elections: the swell around each qualifying perfection ──────
+      for (const ev of perfections) {
+        const aw = a.aspectW[ev.aspect] ?? 0;
+        const pw = a.planetW[ev.planet] ?? 0;
         if (aw === 0 || pw === 0) continue;
-        const exactH = (Date.parse(ev.time) - dayStartMs) / 3600000;
-        // The swell: exact ± 2.5h, clamped to waking hours. A 3 AM exactness
-        // whose swell can't give 1.5 waking hours is dropped, not shifted.
+        const exactH = (ev.timeMs - dayStartMs) / 3600000;
         const startH = Math.max(exactH - 2.5, 7);
         const endH = Math.min(exactH + 2.5, 23);
         if (endH - startH < 1.5) continue;
 
         let score = aw * pw;
-        const dayMatch = (a.aspectPlanets[dayRuler] ?? 0) > 0 || a.planet === dayRuler;
+        const dayMatch = (a.planetW[dayRuler] ?? 0) > 0 || a.planet === dayRuler;
         if (dayMatch) score *= 1.15;
         if (a.eveningBias) score *= endH >= 17 ? 1.2 : 0.85;
         if (a.waxingBias) score *= waxing ? 1.12 : 0.9;
         if (a.waningBias) score *= waxing ? 0.9 : 1.12;
 
-        const whyBits = [`${ev.label} · exact ${ev.clock}`];
+        const hard = ev.aspect === "square" || ev.aspect === "semi-square" || ev.aspect === "sesquiquadrate";
+        const whyBits = [`Moon ${ev.aspect} ${ev.planet} · exact ${clockOf(ev.timeMs, tzOffsetMin)}`];
+        if (hard) whyBits.push("raw fuel");
         if (dayMatch) whyBits.push(`${dayRuler}'s day`);
         candidates.push({
           date: dateLabel, dow,
@@ -286,27 +359,36 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number): 
         });
       }
 
-      // ── Rest only: void-of-course stretches ARE windows — slack water ─────
+      // ── The Moon's sign as an all-day quality entry ───────────────────────
+      const gloss = a.signAffinity[moonSign];
+      if (gloss) {
+        let score = SIGN_DAY_SCORE;
+        if (a.waningBias) score *= waxing ? 0.95 : 1.1;
+        if (a.waxingBias) score *= waxing ? 1.1 : 0.95;
+        candidates.push({
+          date: dateLabel, dow, startClock: "", endClock: "",
+          score, why: `Moon in ${moonSign} · ${gloss}`, allDay: true,
+        });
+      }
+
+      // ── Rest: void-of-course stretches are windows ────────────────────────
       if (a.vocAsWindow) {
         for (const v of arc.vocWindows ?? []) {
           let startH = Math.max((Date.parse(v.start) - dayStartMs) / 3600000, 7);
           const endH = Math.min((Date.parse(v.end) - dayStartMs) / 3600000, 23);
-          // An all-day void isn't a 13-hour nap: show the final stretch before
-          // the ingress, capped at 4 hours.
           startH = Math.max(startH, endH - 4);
           if (endH - startH < 1.5) continue;
-          const score = 0.6 * (waxing ? 0.95 : 1.15);
           candidates.push({
             date: dateLabel, dow,
             startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
             endClock: clockOf(dayStartMs + endH * 3600000, tzOffsetMin),
-            score, why: `void of course · slack water${waxing ? "" : " · waning"}`,
+            score: 0.6 * (waxing ? 0.95 : 1.15),
+            why: `void of course · slack water${waxing ? "" : " · waning"}`,
           });
         }
       }
 
-      // Standing sky-aspect boost (e.g. Venus trine Jupiter for dates): lifts
-      // the whole day and rides along in the why.
+      // ── Standing planet-planet aspect lifts the whole day ─────────────────
       if (a.pairPlanets && candidates.length) {
         const pair = skyAspects.find(pa =>
           a.pairPlanets!.includes(pa.planet1) && a.pairPlanets!.includes(pa.planet2) && pa.planet1 !== pa.planet2);
@@ -316,17 +398,27 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number): 
         }
       }
 
-      // Best window per day per activity.
-      const best = candidates.sort((x, z) => z.score - x.score)[0];
-      if (best) out[a.key].push(best);
+      // Keep the best TWO per day — effort wants multiple windows, and one
+      // strong day shouldn't monopolize an activity's whole section.
+      candidates.sort((x, z) => z.score - x.score);
+      out[a.key].push(...candidates.slice(0, 2));
     }
   }
   return out;
 }
 
+// The week's defining planet-planet aspect (classical planets, tightest orb).
+function weekHeadline(midJd: number): string | null {
+  const CLASSICAL = new Set(["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]);
+  const named = getMajorAspects(midJd)
+    .filter(pa => CLASSICAL.has(pa.planet1) && CLASSICAL.has(pa.planet2) && pa.orb <= 3.5)
+    .sort((x, z) => x.orb - z.orb)[0];
+  return named ? `the week's sky: ${named.planet1} ${named.aspect} ${named.planet2} (${named.orb.toFixed(1)}°)` : null;
+}
+
 export function buildBestTimesCardSvg(opts: {
   span: "week" | "month"; lat: number; lon: number; tzOffsetMin: number;
-  theme?: CardTheme; format?: CardFormat;
+  theme?: CardTheme; format?: CardFormat; startAt?: Date; tzLabel?: string;
 }): { svg: string; width: number; height: number } {
   const { span, lat, lon, tzOffsetMin } = opts;
   const theme = opts.theme ?? "tide";
@@ -334,72 +426,119 @@ export function buildBestTimesCardSvg(opts: {
   const W = 1080, H = format === "story" ? 1920 : 1350;
   const s = SURFACE[theme];
   const days = span === "week" ? 7 : 30;
-  const picks = scanDays(days, lat, lon, tzOffsetMin);
+  const picks = scanDays(days, lat, lon, tzOffsetMin, opts.startAt);
 
-  const start = new Date(Date.now() - tzOffsetMin * 60000);
-  const end = new Date(start.getTime() + (days - 1) * 86400000);
+  const start = opts.startAt ?? new Date();
+  const startLocal = new Date(start.getTime() - tzOffsetMin * 60000);
+  const end = new Date(startLocal.getTime() + (days - 1) * 86400000);
   const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-  const kicker = span === "week" ? `best times · ${fmt(start)} – ${fmt(end)}` : `best days · ${fmt(start)} – ${fmt(end)}`;
+  const tzNote = opts.tzLabel ? ` · times in ${opts.tzLabel}` : "";
+  const kicker = `${span === "week" ? "best times" : "best days"} · ${fmt(startLocal)} – ${fmt(end)}${tzNote}`;
   const title = span === "week" ? "The week's best times" : "The month's best days";
+  const midJd = julianDay(new Date(start.getTime() + (days / 2) * 86400000));
+  const headline = span === "week" ? weekHeadline(midJd) : null;
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
-  parts.push(`<text x="${W / 2}" y="110" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
-  parts.push(`<text x="${W / 2}" y="162" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
-  parts.push(`<text x="${W / 2}" y="${format === "story" ? 280 : 250}" text-anchor="middle" font-family="${SERIF}" font-size="58" font-weight="700" fill="${s.ink}">${esc(title)}</text>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
+  parts.push(`<text x="${W / 2}" y="${format === "story" ? 250 : 230}" text-anchor="middle" font-family="${SERIF}" font-size="56" font-weight="700" fill="${s.ink}">${esc(title)}</text>`);
+  if (headline) parts.push(`<text x="${W / 2}" y="${format === "story" ? 300 : 276}" text-anchor="middle" font-family="${SERIF}" font-size="25" font-style="italic" fill="${s.sub}">${esc(headline)}</text>`);
 
-  const secY0 = format === "story" ? 400 : 340;
-  const secH = format === "story" ? 350 : 240;
   const left = 110;
+  // Dynamic stacking: each section takes only the height its rows need, so a
+  // 4-row effort block and a 2-row study block share the card honestly.
+  let y = format === "story" ? (headline ? 380 : 350) : 330;
+  const ROW_H = format === "story" ? 80 : 66;
+  const HEAD_H = format === "story" ? 104 : 88;
 
-  // One window, one home: if two activities share a window (Venus serves both
-  // dates and rest), it appears only under the activity that scored it higher.
-  const claimed = new Set<string>();
+  // ── Week selection: GLOBAL greedy by score ──────────────────────────────────
+  // A shared window (Moon sextile Venus serves both rest and connection) must
+  // go to whichever activity scores it HIGHER — section order must not claim it
+  // first. Then trim lowest-score rows until everything fits above the footer.
+  const chosen: Record<string, DayPick[]> = Object.fromEntries(ACTIVITIES.map(a => [a.key, []]));
+  if (span === "week") {
+    const all: { act: Activity; p: DayPick }[] = [];
+    for (const a of ACTIVITIES) for (const p of picks[a.key]) all.push({ act: a, p });
+    all.sort((x, z) => z.p.score - x.p.score);
+    const claimed = new Set<string>();
+    for (const { act, p } of all) {
+      const key = p.allDay ? `${p.dow}|allday|${act.key}` : `${p.dow}|${p.startClock}`;
+      if (claimed.has(key)) continue;
+      if (chosen[act.key].length >= act.maxRows) continue;
+      if (p.allDay && chosen[act.key].some(t => t.allDay)) continue; // sign-days are seasoning
+      claimed.add(key);
+      chosen[act.key].push(p);
+    }
+    // Height budget: trim the globally weakest row (from sections that keep ≥1)
+    // until the stack clears the footer.
+    const budget = H - 150 - y;
+    const heightOf = () => ACTIVITIES.reduce((h, a) => {
+      const n = chosen[a.key].length;
+      return h + (n === 0 ? HEAD_H + 30 : HEAD_H + n * ROW_H + 26);
+    }, 0);
+    while (heightOf() > budget) {
+      let worst: { key: string; idx: number; score: number } | null = null;
+      for (const a of ACTIVITIES) {
+        if (chosen[a.key].length <= 1) continue;
+        chosen[a.key].forEach((p, idx) => {
+          if (!worst || p.score < worst.score) worst = { key: a.key, idx, score: p.score };
+        });
+      }
+      if (!worst) break;
+      chosen[worst.key].splice(worst.idx, 1);
+    }
+    for (const a of ACTIVITIES) {
+      chosen[a.key].sort((x, z) => Date.parse(`${x.date} 2000`) - Date.parse(`${z.date} 2000`));
+    }
+  }
 
-  ACTIVITIES.forEach((a, i) => {
-    const y = secY0 + i * secH;
+  ACTIVITIES.forEach(a => {
     const accent = ELEMENT_COLORS[theme][(PLANET_GLYPH[a.planet] ?? { element: "water" }).element];
     parts.push(glyphText(a.planet, left + 26, y + 14, 46, theme));
     parts.push(`<text x="${left + 70}" y="${y + 12}" font-family="${SERIF}" font-size="42" font-weight="700" fill="${s.ink}">${esc(a.label)}</text>`);
-    parts.push(`<line x1="${left}" y1="${y + 44}" x2="${W - left}" y2="${y + 44}" stroke="${accent}" stroke-width="2.5" opacity="0.5"/>`);
+    parts.push(`<line x1="${left}" y1="${y + 42}" x2="${W - left}" y2="${y + 42}" stroke="${accent}" stroke-width="2.5" opacity="0.5"/>`);
 
     if (span === "week") {
-      // Top three distinct days, listed chronologically; the aspect IS the
-      // why, so each entry is two lines: the window, then its anchor.
-      const top: DayPick[] = [];
-      for (const p of [...picks[a.key]].sort((x, z) => z.score - x.score)) {
-        const key = `${p.dow}|${p.startClock}`;
-        if (claimed.has(key)) continue;
-        claimed.add(key);
-        top.push(p);
-        if (top.length >= 3) break;
-      }
-      top.sort((x, z) => x.date.localeCompare(z.date));
+      const top = chosen[a.key];
       if (top.length === 0) {
-        parts.push(`<text x="${left + 10}" y="${y + 104}" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">no clean window this week — a quiet stretch for this</text>`);
+        parts.push(`<text x="${left + 10}" y="${y + HEAD_H}" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">no clean window this week — a quiet stretch for this</text>`);
+        y += HEAD_H + 30;
+      } else {
+        top.forEach((p, ri) => {
+          const ry = y + HEAD_H + ri * ROW_H;
+          const when = p.allDay ? `${p.dow} · all day` : `${p.dow} · ${p.startClock}–${p.endClock}`;
+          parts.push(`<text x="${left + 10}" y="${ry}" font-family="${SERIF}" font-size="32" font-weight="600" fill="${s.ink}">${esc(when)}</text>`);
+          parts.push(`<text x="${left + 10}" y="${ry + 32}" font-family="${SERIF}" font-size="22.5" fill="${s.sub}">${esc(p.why)}</text>`);
+        });
+        y += HEAD_H + top.length * ROW_H + 26;
       }
-      top.forEach((p, ri) => {
-        const ry = y + 96 + ri * 84;
-        parts.push(`<text x="${left + 10}" y="${ry}" font-family="${SERIF}" font-size="33" font-weight="600" fill="${s.ink}">${esc(`${p.dow} · ${p.startClock}–${p.endClock}`)}</text>`);
-        parts.push(`<text x="${left + 10}" y="${ry + 34}" font-family="${SERIF}" font-size="23" fill="${s.sub}">${esc(p.why)}</text>`);
-      });
     } else {
-      // Month: five best dates as chips + why the top one leads.
       const ranked = [...picks[a.key]].sort((x, z) => z.score - x.score);
-      const top5 = ranked.slice(0, 5).sort((x, z) => Date.parse(x.date + " 2026") - Date.parse(z.date + " 2026"));
-      let cx = left;
-      top5.forEach(p => {
+      const seen = new Set<string>();
+      const topDays: DayPick[] = [];
+      for (const p of ranked) {
+        if (seen.has(p.date)) continue;
+        seen.add(p.date);
+        topDays.push(p);
+        if (topDays.length >= 5) break;
+      }
+      topDays.sort((x, z) => Date.parse(`${x.date} 2000`) - Date.parse(`${z.date} 2000`));
+      let cx = left + 10;
+      for (const p of topDays) {
         const label = `${p.dow} ${p.date}`;
-        const wCh = label.length * 12.5 + 32;
-        parts.push(`<rect x="${cx}" y="${y + 70}" width="${wCh}" height="50" rx="25" fill="${accent}" opacity="0.14"/>`);
-        parts.push(`<text x="${cx + wCh / 2}" y="${y + 103}" text-anchor="middle" font-family="${SERIF}" font-size="25" font-weight="600" fill="${s.ink}">${esc(label)}</text>`);
-        cx += wCh + 12;
-      });
-      if (ranked[0]) parts.push(`<text x="${left + 10}" y="${y + 168}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(`lead day: ${ranked[0].dow} ${ranked[0].date} · ${ranked[0].why}`)}</text>`);
+        const wCh = label.length * 14 + 40;
+        if (cx + wCh > W - left) break; // never clip a chip off the card edge
+        parts.push(`<rect x="${cx}" y="${y + 66}" width="${wCh}" height="52" rx="26" fill="${accent}" opacity="0.14"/>`);
+        parts.push(`<text x="${cx + wCh / 2}" y="${y + 100}" text-anchor="middle" font-family="${SERIF}" font-size="27" font-weight="600" fill="${s.ink}">${esc(label)}</text>`);
+        cx += wCh + 16;
+      }
+      if (ranked[0]) parts.push(`<text x="${left + 10}" y="${y + 162}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(`lead: ${ranked[0].dow} ${ranked[0].date} · ${ranked[0].why}`)}</text>`);
+      y += 220;
     }
   });
 
-  parts.push(`<text x="${W / 2}" y="${H - 70}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
+  parts.push(`<text x="${W / 2}" y="${H - 64}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
   return { svg, width: W, height: H };
 }

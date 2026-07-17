@@ -48,16 +48,20 @@ Same as the glyphs handoff: a `.dc.html` visual reference showing every card × 
 
 Owner direction after seeing the v1 mocks: generic day posters are fine but not amazing; **focused utility cards are the priority.** "The week's best times" / "The month's best days" for four everyday activities:
 
-**Every window is anchored to a real timed sky event, electional-style** (owner revision: a *selection of aspects*, not curve crests). The window is the aspect's swell — exact ± 2.5h, clamped to waking hours 7:00–23:00 — and the *why* IS the aspect: "Moon trine Mercury · exact 5:10 PM · Mercury's day".
+**Every window is anchored to a real timed sky event, electional-style.** The window is the aspect's swell — exact ± 2.5h, clamped to waking hours 7:00–23:00 — and the *why* IS the anchor: "Moon trine Mercury · exact 5:10 PM · Mercury's day". Times are universal instants; the card stamps its timezone in the kicker ("times in ET"). Planetary hours and angle crossings are location-bound and stay OFF shareable cards.
 
-| Activity | Glyph | Which aspects qualify |
+The signal vocabulary (v3, owner 2026-07-17) is wide — majors AND minors, sign-days, VoC, and a week-headline planet aspect:
+
+| Activity | Glyph | Signals |
 |---|---|---|
-| **Deep study** | Mercury ☿ | Moon conj/trine/sextile **Mercury** or **Saturn** |
-| **Training** | Mars ♂ | Moon conj/trine/sextile **Mars** or **Sun** |
-| **Dates & play** | Venus ♀ | Moon conj/trine/sextile **Venus** or **Jupiter** · evenings & waxing half preferred · a standing Venus–Jupiter sky aspect lifts the day |
-| **Deep rest** | Moon ☽ | Moon trine/sextile **Neptune** · **void-of-course stretches count as windows** ("slack water", capped at 4h) · waning half preferred |
+| **Effort & training** (up to 4 rows) | Mars ♂ | Moon–**Mars/Sun**: conj/trine/sextile + **squares & minor-hards as "raw fuel"** (hard aspects are high-charge when the job is exertion) · Moon in Aries/Leo/Sag/Cap as all-day entries |
+| **Deep rest** | Moon ☽ | Moon–**Neptune** softs · **VoC stretches as windows** ("slack water", ≤4h) · Moon in Cancer/Pisces/Taurus · waning half |
+| **Connection & pleasure** | Venus ♀ | Moon–**Venus/Jupiter** softs + quintiles · Moon in Libra/Leo/Taurus/Pisces · evenings · waxing half · standing Venus–Jupiter aspects lift the day |
+| **Deep study** | Mercury ☿ | Moon–**Mercury/Saturn** softs + quintiles · Moon in Gemini/Virgo/Aquarius/Cap |
 
-Only supportive geometry (conjunction/trine/sextile) is published — squares are energy too, but a public card elects clean windows. Each window appears once, under the activity that scored it highest. **Sections can legitimately have 1–3 entries — real elections are scarce, and the scarcity is the credibility. Design for variable density; never pad.**
+Row kinds design must handle: **timed window** ("Fri · 3:50–8:50 PM"), **all-day sign entry** ("Sun · all day — Moon in Libra · partnered air", max one per section), and the week-headline line under the title ("the week's sky: Mars sextile Saturn (1.3°)"). Minor aspects appear by name (quintile, semi-sextile…) — they're teaching moments.
+
+Selection is a global greedy by score (a shared window goes to whichever activity values it more, never duplicated) with a height budget that trims the weakest rows to fit. **Sections legitimately vary 1–4 rows — scarcity is the credibility. Design for variable density; never pad.** Render endpoints take `?start=YYYY-MM-DD` so a month of weekly cards can be batched ahead.
 
 **Working reference renders** (the template to elevate): `GET /api/studio/best.png?span=week|month&theme=&format=` — live data, so design can pull a real current week anytime. Layout in `api-server/src/lib/studioCard.ts` (`buildBestTimesCardSvg`).
 

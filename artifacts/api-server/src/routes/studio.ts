@@ -36,19 +36,38 @@ router.get("/studio/day.svg", (req, res) => {
 });
 
 // Best-times cards — "when to do X" for the week (windows) / month (days).
+// ?start=YYYY-MM-DD renders a future span (batch a month of weekly cards);
+// ?tzLabel=ET stamps the card's clock timezone (times are universal instants).
 function parseSpan(req: any): "week" | "month" {
   return req.query.span === "month" ? "month" : "week";
 }
+function parseStart(req: any, tzOffsetMin: number): Date | undefined {
+  const s = req.query.start as string;
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
+  const [y, m, d] = s.split("-").map(Number);
+  // Local noon of the requested date, expressed as a UTC instant.
+  return new Date(Date.UTC(y, m - 1, d, 12) + tzOffsetMin * 60000);
+}
 
 router.get("/studio/best.svg", (req, res) => {
-  const { svg } = buildBestTimesCardSvg({ ...parseOpts(req), span: parseSpan(req) });
+  const base = parseOpts(req);
+  const { svg } = buildBestTimesCardSvg({
+    ...base, span: parseSpan(req),
+    startAt: parseStart(req, base.tzOffsetMin),
+    tzLabel: (req.query.tzLabel as string) || undefined,
+  });
   res.type("image/svg+xml").send(svg);
 });
 
 router.get("/studio/best.png", async (req, res) => {
   try {
     const span = parseSpan(req);
-    const { svg, width } = buildBestTimesCardSvg({ ...parseOpts(req), span });
+    const base = parseOpts(req);
+    const { svg, width } = buildBestTimesCardSvg({
+      ...base, span,
+      startAt: parseStart(req, base.tzOffsetMin),
+      tzLabel: (req.query.tzLabel as string) || undefined,
+    });
     const { Resvg } = await import("@resvg/resvg-js");
     const r = new Resvg(svg, {
       fitTo: { mode: "width", value: width },
