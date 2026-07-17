@@ -14,7 +14,13 @@
  * handoff values ever change.
  */
 
-import { julianDay, moonLongitude, moonPhase, getSunriseSunset, SIGNS } from "./astro.js";
+import { julianDay, moonLongitude, sunLongitude, moonPhase, getSunriseSunset, SIGNS } from "./astro.js";
+
+// Waxing = the Moon is AHEAD of the Sun by <180° of elongation. Phase-NAME
+// regexes get this wrong at the edges (the "Full Moon" bucket starts a day
+// early, mislabeling a still-waxing day as waning) — geometry doesn't.
+const isWaxingAt = (jd: number): boolean =>
+  (((moonLongitude(jd) - sunLongitude(jd)) % 360) + 360) % 360 < 180;
 import { computeDayArc } from "./dayarc.js";
 
 export type CardTheme = "tide" | "almanac" | "observatory" | "minimal";
@@ -120,7 +126,7 @@ export function buildDayCardSvg(opts: {
   const moonLon = ((moonLongitude(jd) % 360) + 360) % 360;
   const moonSign = SIGNS[Math.floor(moonLon / 30) % 12];
   const phase = moonPhase(jd);
-  const waxing = /new|waxing|first/i.test(phase.name);
+  const waxing = isWaxingAt(jd);
   // Day ruler: weekday ruler, switching at local sunrise (before sunrise the
   // previous day still rules) — same convention as /api/tides/now.
   const local = new Date(now.getTime() - tzOffsetMin * 60000);
@@ -332,7 +338,7 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
     const local = new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000);
     const jdNoon = julianDay(new Date(dayStartMs + 12 * 3600000));
     const phase = moonPhase(jdNoon);
-    const waxing = /new|waxing|first/i.test(phase.name);
+    const waxing = isWaxingAt(jdNoon);
     const moonSign = SIGNS[Math.floor(norm360(moonLongitude(jdNoon)) / 30) % 12];
     const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
     const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
@@ -561,7 +567,17 @@ export function buildBestTimesCardSvg(opts: {
         parts.push(`<text x="${cx + wCh / 2}" y="${y + 100}" text-anchor="middle" font-family="${SERIF}" font-size="27" font-weight="600" fill="${s.ink}">${esc(label)}</text>`);
         cx += wCh + 16;
       }
-      if (ranked[0]) parts.push(`<text x="${left + 10}" y="${y + 162}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(`lead: ${ranked[0].dow} ${ranked[0].date} · ${ranked[0].why}`)}</text>`);
+      if (ranked[0]) {
+        // Cap the lead line to the card's text column; trim at a clean "·"
+        // boundary rather than mid-word (the pair-aspect suffix can overflow).
+        let lead = `lead: ${ranked[0].dow} ${ranked[0].date} · ${ranked[0].why}`;
+        const MAX = 74;
+        if (lead.length > MAX) {
+          const cut = lead.lastIndexOf(" · ", MAX);
+          lead = cut > 30 ? lead.slice(0, cut) : lead.slice(0, MAX - 1) + "…";
+        }
+        parts.push(`<text x="${left + 10}" y="${y + 162}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(lead)}</text>`);
+      }
       y += 220;
     }
   });
