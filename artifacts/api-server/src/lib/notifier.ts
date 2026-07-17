@@ -4,6 +4,40 @@ import { julianDay, getPlanetaryHour, voidOfCourse, moonPhase, getDailyElementEm
 import { sendPushToTester } from "../routes/push";
 import { logger } from "./logger";
 
+// ── Subscription cache ───────────────────────────────────────────────────────
+// The 60s tick used to SELECT push_subscriptions on every beat, which kept the
+// Neon endpoint awake 24/7 — ~180 CU-hours/month against a 100 CU-hour free
+// allowance (the 2026-07 "compute at risk of suspension" email). The tick still
+// runs every 60s (minute-precision ritual pings need it), but it reads this
+// in-memory cache; the database is touched at most once an hour, or when a
+// subscription actually changes (routes/push busts the cache), so Neon can
+// scale to zero in between.
+let subsCache: Awaited<ReturnType<typeof fetchSubs>> | null = null;
+let subsCacheAt = 0;
+const SUBS_TTL_MS = 60 * 60 * 1000;
+
+function fetchSubs() {
+  return db.select().from(pushSubscriptions);
+}
+
+export function bustSubscriptionCache() {
+  subsCache = null;
+  subsCacheAt = 0;
+}
+
+async function getSubs() {
+  if (subsCache && Date.now() - subsCacheAt < SUBS_TTL_MS) return subsCache;
+  try {
+    subsCache = await fetchSubs();
+    subsCacheAt = Date.now();
+    return subsCache;
+  } catch {
+    // DB hiccup (or suspended endpoint): serve stale rather than dropping
+    // pings; retry on the next tick.
+    return subsCache ?? [];
+  }
+}
+
 // Track what we've already notified this session to avoid duplicates
 const notified = new Set<string>();
 
@@ -41,7 +75,7 @@ async function tick() {
   const vapidPublic = process.env["VAPID_PUBLIC_KEY"];
   if (!vapidPublic) return; // Push not configured
 
-  const subs = await db.select().from(pushSubscriptions).catch(() => []);
+  const subs = await getSubs();
   if (subs.length === 0) return;
 
   const now = new Date();
@@ -165,5 +199,5 @@ export function startNotifier() {
   }
   // Run every 60 seconds
   setInterval(() => { tick().catch(e => logger.warn({ e }, "notifier tick error")); }, 60_000);
-  logger.info("Notifier: started (60s interval) — ritual pings 8am/8pm local, VOC + phases in waking hours");
+  logger.info("Notifier: started (60s tick, hourly DB cache) — ritual pings 8am/8pm local, VOC + phases in waking hours");
 }

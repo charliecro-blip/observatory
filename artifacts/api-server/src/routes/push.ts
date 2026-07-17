@@ -3,6 +3,9 @@ import webpush from "web-push";
 import { db } from "@workspace/db";
 import { pushSubscriptions } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+// Module cycle with lib/notifier (it imports sendPushToTester from here) is
+// benign: both sides only call the other's functions at runtime, never at load.
+import { bustSubscriptionCache } from "../lib/notifier";
 
 const router = Router();
 
@@ -39,6 +42,8 @@ router.post("/api/push/subscribe", async (req, res) => {
     lat: lat != null ? String(lat) : null,
     lon: lon != null ? String(lon) : null,
   });
+  // New subscriber gets pings on the next tick, not after the hourly refresh.
+  bustSubscriptionCache();
 
   res.json({ ok: true });
 });
@@ -48,6 +53,7 @@ router.post("/api/push/unsubscribe", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
   await db.delete(pushSubscriptions).where(eq(pushSubscriptions.testerId, testerId));
+  bustSubscriptionCache();
   res.json({ ok: true });
 });
 
@@ -86,6 +92,7 @@ export async function sendPushToTester(testerId: string, payload: object) {
       // 410 Gone = subscription expired, clean it up
       if (e.statusCode === 410) {
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+        bustSubscriptionCache();
       }
     }
   }
