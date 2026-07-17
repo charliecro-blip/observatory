@@ -48,14 +48,16 @@ Same as the glyphs handoff: a `.dc.html` visual reference showing every card × 
 
 Owner direction after seeing the v1 mocks: generic day posters are fine but not amazing; **focused utility cards are the priority.** "The week's best times" / "The month's best days" for four everyday activities:
 
-| Activity | Glyph | Engine signals behind every listed window |
-|---|---|---|
-| **Deep study** | Mercury ☿ | air-lens crests · boosted on Mercury/Saturn days |
-| **Training** | Mars ♂ | fire-lens crests · boosted on Mars/Sun days |
-| **Dates & play** | Venus ♀ | overall crests · Venus/Moon days · evenings · waxing half |
-| **Deep rest** | Moon ☽ | water-lens crests · waning half · void-of-course = "slack water" bonus |
+**Every window is anchored to a real timed sky event, electional-style** (owner revision: a *selection of aspects*, not curve crests). The window is the aspect's swell — exact ± 2.5h, clamped to waking hours 7:00–23:00 — and the *why* IS the aspect: "Moon trine Mercury · exact 5:10 PM · Mercury's day".
 
-All windows are clamped to waking hours (7:00–23:00). Each row carries a plain-language *why* built only from primary facts ("Venus's day · Virgo moon · building").
+| Activity | Glyph | Which aspects qualify |
+|---|---|---|
+| **Deep study** | Mercury ☿ | Moon conj/trine/sextile **Mercury** or **Saturn** |
+| **Training** | Mars ♂ | Moon conj/trine/sextile **Mars** or **Sun** |
+| **Dates & play** | Venus ♀ | Moon conj/trine/sextile **Venus** or **Jupiter** · evenings & waxing half preferred · a standing Venus–Jupiter sky aspect lifts the day |
+| **Deep rest** | Moon ☽ | Moon trine/sextile **Neptune** · **void-of-course stretches count as windows** ("slack water", capped at 4h) · waning half preferred |
+
+Only supportive geometry (conjunction/trine/sextile) is published — squares are energy too, but a public card elects clean windows. Each window appears once, under the activity that scored it highest. **Sections can legitimately have 1–3 entries — real elections are scarce, and the scarcity is the credibility. Design for variable density; never pad.**
 
 **Working reference renders** (the template to elevate): `GET /api/studio/best.png?span=week|month&theme=&format=` — live data, so design can pull a real current week anytime. Layout in `api-server/src/lib/studioCard.ts` (`buildBestTimesCardSvg`).
 

@@ -176,35 +176,44 @@ export function buildDayCardSvg(opts: {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Best-times cards — "when to do X" for the week / the month (owner 2026-07-15:
-// focused utility cards beat generic day posters). Four everyday activities,
-// each mapped to REAL engine signals — lens curves, planetary days, moon phase,
-// void-of-course — so every listed window is defensible:
+// Best-times cards — "when to do X" for the week / the month (owner 2026-07-15,
+// revised same day: the times must be a SELECTION OF ASPECTS, electional-style,
+// not curve crests). Every listed window is anchored to a real timed sky event:
 //
-//   Deep study   → air lens crests   · boosted on Mercury/Saturn days
-//   Training     → fire lens crests  · boosted on Mars/Sun days
-//   Dates & play → overall crests    · boosted on Venus/Moon days, evenings,
-//                                      and the waxing→full half of the month
-//   Deep rest    → water lens crests · boosted when waning and on void-of-
-//                                      course days (slack water = real rest)
+//   Deep study   → Moon conj/trine/sextile Mercury or Saturn
+//   Training     → Moon conj/trine/sextile Mars or Sun
+//   Dates & play → Moon conj/trine/sextile Venus or Jupiter · evenings ·
+//                  waxing half · Venus–Jupiter sky aspects boost the day
+//   Deep rest    → Moon trine/sextile Neptune (the low-arousal voice) ·
+//                  void-of-course stretches count as windows ("slack water") ·
+//                  waning half
+//
+// A window is the aspect's swell: exact ± 2.5h, clamped to waking hours
+// (7:00–23:00); an exactness whose swell can't give 1.5 waking hours is
+// dropped. The 'why' IS the aspect — "Moon trine Venus · exact 8:05 PM".
+// Only supportive geometry (conjunction/trine/sextile) is published; squares
+// and oppositions are energy too, but a public card elects clean windows.
 // ═════════════════════════════════════════════════════════════════════════════
 
-import { findPeakWindows } from "./dayarc.js";
+import { getMajorAspects } from "./astro.js";
 
 interface Activity {
-  key: string; label: string; planet: string; lens: string;
-  dayBoost: Record<string, number>;
-  eveningBias?: boolean;  // prefer windows overlapping 17:00–24:00
-  waxingBias?: boolean;   // prefer the building half of the lunation
-  waningBias?: boolean;   // prefer the releasing half
-  vocBonus?: boolean;     // void-of-course helps (rest), not hurts
+  key: string; label: string; planet: string;      // display glyph
+  aspectPlanets: Record<string, number>;           // Moon-to-X target → weight
+  pairPlanets?: string[];                          // planet-planet pairs worth flagging (month)
+  eveningBias?: boolean;   // prefer windows overlapping 17:00–24:00
+  waxingBias?: boolean;    // prefer the building half of the lunation
+  waningBias?: boolean;    // prefer the releasing half
+  vocAsWindow?: boolean;   // void-of-course stretches ARE windows (rest only)
 }
 const ACTIVITIES: Activity[] = [
-  { key: "study", label: "Deep study", planet: "Mercury", lens: "air", dayBoost: { Mercury: 1.25, Saturn: 1.15 } },
-  { key: "train", label: "Training", planet: "Mars", lens: "fire", dayBoost: { Mars: 1.25, Sun: 1.15 } },
-  { key: "love", label: "Dates & play", planet: "Venus", lens: "overall", dayBoost: { Venus: 1.3, Moon: 1.1 }, eveningBias: true, waxingBias: true },
-  { key: "rest", label: "Deep rest", planet: "Moon", lens: "water", dayBoost: { Moon: 1.2, Saturn: 1.05 }, waningBias: true, vocBonus: true },
+  { key: "study", label: "Deep study", planet: "Mercury", aspectPlanets: { Mercury: 1.0, Saturn: 0.8 }, pairPlanets: ["Mercury", "Saturn"] },
+  { key: "train", label: "Training", planet: "Mars", aspectPlanets: { Mars: 1.0, Sun: 0.8 }, pairPlanets: ["Mars", "Sun"] },
+  { key: "love", label: "Dates & play", planet: "Venus", aspectPlanets: { Venus: 1.0, Jupiter: 0.7 }, pairPlanets: ["Venus", "Jupiter"], eveningBias: true, waxingBias: true },
+  { key: "rest", label: "Deep rest", planet: "Moon", aspectPlanets: { Neptune: 1.0, Venus: 0.5 }, waningBias: true, vocAsWindow: true },
 ];
+// Supportive geometry only, conjunction leading.
+const ASPECT_W: Record<string, number> = { conjunction: 1.0, trine: 0.85, sextile: 0.65 };
 
 interface DayPick {
   date: string; dow: string; startClock: string; endClock: string;
@@ -238,40 +247,77 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number): 
     const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
     const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
+    // Tight supportive planet-planet aspects standing today (checked at local
+    // noon, ≤3° orb) — a Venus–Jupiter trine makes the whole day better for
+    // dates, and deserves a mention on the month card's lead line.
+    const skyAspects = getMajorAspects(jdNoon).filter(pa =>
+      (ASPECT_W[pa.aspect] ?? 0) > 0 && pa.orb <= 3);
+
     for (const a of ACTIVITIES) {
-      const curve = arc.curves[a.lens] ?? arc.curve;
-      // A sky-perfect 3 AM window is a taunt, not a suggestion (same rule as
-      // ScheduleSuggest): consider more peaks, clamp each to waking hours
-      // (7:00–23:00), and drop any that barely survive the clamp.
-      const peaks = findPeakWindows(curve, 4, 3)
-        .map(p => ({ ...p, startHour: Math.max(p.startHour, 7), endHour: Math.min(p.endHour, 23) }))
-        .filter(p => p.endHour - p.startHour >= 1.5 && p.peakHour >= 6 && p.peakHour <= 23.5);
-      let best: DayPick | null = null;
-      for (const p of peaks) {
-        let score = p.peakE;
-        score *= a.dayBoost[dayRuler] ?? 1;
-        if (a.eveningBias) {
-          const overlapsEvening = p.endHour >= 17 && p.startHour <= 24;
-          score *= overlapsEvening ? 1.2 : 0.85;
-        }
-        if (a.waxingBias) score *= waxing ? 1.15 : 0.9;
-        if (a.waningBias) score *= waxing ? 0.9 : 1.15;
-        if (a.vocBonus && hasVoc) score *= 1.15;
-        if (!best || score > best.score) {
-          const whyBits: string[] = [];
-          if ((a.dayBoost[dayRuler] ?? 1) > 1) whyBits.push(`${dayRuler}'s day`);
-          whyBits.push(`${moonSign} moon`);
-          if (a.waningBias && !waxing) whyBits.push("waning");
-          if (a.waxingBias && waxing) whyBits.push("building");
-          if (a.vocBonus && hasVoc) whyBits.push("slack water");
-          best = {
+      const candidates: DayPick[] = [];
+
+      // ── Aspect-anchored windows: the swell around each perfection ─────────
+      for (const ev of arc.events) {
+        if (ev.kind !== "aspect" || !ev.planet || !ev.aspect) continue;
+        const aw = ASPECT_W[ev.aspect] ?? 0;
+        const pw = a.aspectPlanets[ev.planet] ?? 0;
+        if (aw === 0 || pw === 0) continue;
+        const exactH = (Date.parse(ev.time) - dayStartMs) / 3600000;
+        // The swell: exact ± 2.5h, clamped to waking hours. A 3 AM exactness
+        // whose swell can't give 1.5 waking hours is dropped, not shifted.
+        const startH = Math.max(exactH - 2.5, 7);
+        const endH = Math.min(exactH + 2.5, 23);
+        if (endH - startH < 1.5) continue;
+
+        let score = aw * pw;
+        const dayMatch = (a.aspectPlanets[dayRuler] ?? 0) > 0 || a.planet === dayRuler;
+        if (dayMatch) score *= 1.15;
+        if (a.eveningBias) score *= endH >= 17 ? 1.2 : 0.85;
+        if (a.waxingBias) score *= waxing ? 1.12 : 0.9;
+        if (a.waningBias) score *= waxing ? 0.9 : 1.12;
+
+        const whyBits = [`${ev.label} · exact ${ev.clock}`];
+        if (dayMatch) whyBits.push(`${dayRuler}'s day`);
+        candidates.push({
+          date: dateLabel, dow,
+          startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
+          endClock: clockOf(dayStartMs + endH * 3600000, tzOffsetMin),
+          score, why: whyBits.join(" · "),
+        });
+      }
+
+      // ── Rest only: void-of-course stretches ARE windows — slack water ─────
+      if (a.vocAsWindow) {
+        for (const v of arc.vocWindows ?? []) {
+          let startH = Math.max((Date.parse(v.start) - dayStartMs) / 3600000, 7);
+          const endH = Math.min((Date.parse(v.end) - dayStartMs) / 3600000, 23);
+          // An all-day void isn't a 13-hour nap: show the final stretch before
+          // the ingress, capped at 4 hours.
+          startH = Math.max(startH, endH - 4);
+          if (endH - startH < 1.5) continue;
+          const score = 0.6 * (waxing ? 0.95 : 1.15);
+          candidates.push({
             date: dateLabel, dow,
-            startClock: clockOf(dayStartMs + p.startHour * 3600000, tzOffsetMin),
-            endClock: clockOf(dayStartMs + p.endHour * 3600000, tzOffsetMin),
-            score, why: whyBits.slice(0, 3).join(" · "),
-          };
+            startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
+            endClock: clockOf(dayStartMs + endH * 3600000, tzOffsetMin),
+            score, why: `void of course · slack water${waxing ? "" : " · waning"}`,
+          });
         }
       }
+
+      // Standing sky-aspect boost (e.g. Venus trine Jupiter for dates): lifts
+      // the whole day and rides along in the why.
+      if (a.pairPlanets && candidates.length) {
+        const pair = skyAspects.find(pa =>
+          a.pairPlanets!.includes(pa.planet1) && a.pairPlanets!.includes(pa.planet2) && pa.planet1 !== pa.planet2);
+        if (pair) for (const c of candidates) {
+          c.score *= 1.2;
+          c.why += ` · ${pair.planet1}–${pair.planet2} ${pair.aspect}`;
+        }
+      }
+
+      // Best window per day per activity.
+      const best = candidates.sort((x, z) => z.score - x.score)[0];
       if (best) out[a.key].push(best);
     }
   }
@@ -306,6 +352,10 @@ export function buildBestTimesCardSvg(opts: {
   const secH = format === "story" ? 350 : 240;
   const left = 110;
 
+  // One window, one home: if two activities share a window (Venus serves both
+  // dates and rest), it appears only under the activity that scored it higher.
+  const claimed = new Set<string>();
+
   ACTIVITIES.forEach((a, i) => {
     const y = secY0 + i * secH;
     const accent = ELEMENT_COLORS[theme][(PLANET_GLYPH[a.planet] ?? { element: "water" }).element];
@@ -314,13 +364,24 @@ export function buildBestTimesCardSvg(opts: {
     parts.push(`<line x1="${left}" y1="${y + 44}" x2="${W - left}" y2="${y + 44}" stroke="${accent}" stroke-width="2.5" opacity="0.5"/>`);
 
     if (span === "week") {
-      // Top three distinct days, listed chronologically.
-      const top = [...picks[a.key]].sort((x, z) => z.score - x.score).slice(0, 3)
-        .sort((x, z) => x.date.localeCompare(z.date));
+      // Top three distinct days, listed chronologically; the aspect IS the
+      // why, so each entry is two lines: the window, then its anchor.
+      const top: DayPick[] = [];
+      for (const p of [...picks[a.key]].sort((x, z) => z.score - x.score)) {
+        const key = `${p.dow}|${p.startClock}`;
+        if (claimed.has(key)) continue;
+        claimed.add(key);
+        top.push(p);
+        if (top.length >= 3) break;
+      }
+      top.sort((x, z) => x.date.localeCompare(z.date));
+      if (top.length === 0) {
+        parts.push(`<text x="${left + 10}" y="${y + 104}" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">no clean window this week — a quiet stretch for this</text>`);
+      }
       top.forEach((p, ri) => {
-        const ry = y + 100 + ri * 62;
+        const ry = y + 96 + ri * 84;
         parts.push(`<text x="${left + 10}" y="${ry}" font-family="${SERIF}" font-size="33" font-weight="600" fill="${s.ink}">${esc(`${p.dow} · ${p.startClock}–${p.endClock}`)}</text>`);
-        parts.push(`<text x="${W - left - 10}" y="${ry}" text-anchor="end" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(p.why)}</text>`);
+        parts.push(`<text x="${left + 10}" y="${ry + 34}" font-family="${SERIF}" font-size="23" fill="${s.sub}">${esc(p.why)}</text>`);
       });
     } else {
       // Month: five best dates as chips + why the top one leads.
