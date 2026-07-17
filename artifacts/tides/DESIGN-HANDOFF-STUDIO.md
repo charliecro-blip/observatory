@@ -54,10 +54,10 @@ The signal vocabulary (v3, owner 2026-07-17) is wide — majors AND minors, sign
 
 | Activity | Glyph | Signals |
 |---|---|---|
-| **Effort & training** (up to 4 rows) | Mars ♂ | Moon–**Mars/Sun**: conj/trine/sextile + **squares & minor-hards as "raw fuel"** (hard aspects are high-charge when the job is exertion) · Moon in Aries/Leo/Sag/Cap as all-day entries |
-| **Deep rest** | Moon ☽ | Moon–**Neptune** softs · **VoC stretches as windows** ("slack water", ≤4h) · Moon in Cancer/Pisces/Taurus · waning half |
-| **Connection & pleasure** | Venus ♀ | Moon–**Venus/Jupiter** softs + quintiles · Moon in Libra/Leo/Taurus/Pisces · evenings · waxing half · standing Venus–Jupiter aspects lift the day |
-| **Deep study** | Mercury ☿ | Moon–**Mercury/Saturn** softs + quintiles · Moon in Gemini/Virgo/Aquarius/Cap |
+| **Effort & training** (up to 4 rows) | Mars ♂ | Moon–**Mars/Sun**: conj/trine/sextile + **squares & minor-hards as "raw fuel"** (hard aspects are high-charge when the job is exertion) · Moon–**Jupiter softs** (endurance; Jupiter hards excluded — overreach ≠ fuel) · Moon in Aries/Leo/Sag/Cap/Scorpio |
+| **Deep rest** | Moon ☽ | Moon–**Neptune** softs+conj (dreamy rest) · Moon–**Saturn trine/sextile** (disciplined rest — retreat elections; the conjunction is excluded: heavy, sleepless) · **VoC stretches as windows** ("slack water", ≤4h) · Moon in Cancer/Pisces/Taurus · waning half · **dark-of-the-moon (balsamic) boost** |
+| **Connection & pleasure** | Venus ♀ | Moon–**Venus/Jupiter** softs + quintiles · Moon in Libra/Leo/Taurus/Pisces · evenings · waxing half · **Full Moon boost** · standing Venus–Jupiter aspects lift the day |
+| **Deep study** | Mercury ☿ | Moon–**Mercury/Saturn** softs + quintiles · Moon in Gemini/Virgo/Aquarius/Cap · **Mercury-Rx days carry a "review over new" note** (Rx favors revision — the card teaches it) |
 
 Row kinds design must handle: **timed window** ("Fri · 3:50–8:50 PM"), **all-day sign entry** ("Sun · all day — Moon in Libra · partnered air", max one per section), and the week-headline line under the title ("the week's sky: Mars sextile Saturn (1.3°)"). Minor aspects appear by name (quintile, semi-sextile…) — they're teaching moments.
 

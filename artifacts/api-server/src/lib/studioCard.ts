@@ -193,7 +193,7 @@ export function buildDayCardSvg(opts: {
 //   · the week's standing planet-planet aspect as a headline
 // ═════════════════════════════════════════════════════════════════════════════
 
-import { getMajorAspects, getPlanetPositions } from "./astro.js";
+import { getMajorAspects, getPlanetPositions, isRetrograde } from "./astro.js";
 
 const norm360 = (d: number) => ((d % 360) + 360) % 360;
 const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; };
@@ -251,10 +251,17 @@ interface Activity {
   key: string; label: string; planet: string;
   planetW: Record<string, number>;         // Moon-to-X target → weight
   aspectW: Record<string, number>;         // which geometry qualifies → weight
+  // Per-planet geometry exclusions — e.g. rest takes Saturn's trine/sextile
+  // (disciplined stillness) but never its conjunction (heaviness, insomnia),
+  // and effort takes Jupiter softs but not its squares (overreach ≠ fuel).
+  exclude?: Record<string, string[]>;
   signAffinity: Record<string, string>;    // moon SIGN → gloss (all-day entries)
   pairPlanets?: string[];
   maxRows: number;
   eveningBias?: boolean; waxingBias?: boolean; waningBias?: boolean; vocAsWindow?: boolean;
+  fullMoonBoost?: boolean;                 // peak-light nights (connection)
+  balsamicBoost?: boolean;                 // dark-of-the-moon days (rest)
+  mercuryRxNote?: boolean;                 // study: Rx favors review — say so
 }
 
 const SOFT = { conjunction: 1.0, trine: 0.85, sextile: 0.65, quintile: 0.5, "semi-sextile": 0.35 };
@@ -262,32 +269,39 @@ const SOFT = { conjunction: 1.0, trine: 0.85, sextile: 0.65, quintile: 0.5, "sem
 const ACTIVITIES: Activity[] = [
   {
     key: "effort", label: "Effort & training", planet: "Mars",
-    planetW: { Mars: 1.0, Sun: 0.8 },
+    // Jupiter softs = endurance and the classic sports benefic — but Jupiter's
+    // hard aspects are overreach, not fuel, so they're excluded below.
+    planetW: { Mars: 1.0, Sun: 0.8, Jupiter: 0.5 },
     // Squares are FUEL for exertion — high-charge geometry pointed at a body.
     aspectW: { ...SOFT, square: 0.7, "semi-square": 0.4, sesquiquadrate: 0.4 },
-    signAffinity: { Aries: "fast fire", Leo: "proud fire", Sagittarius: "far-ranging fire", Capricorn: "endurance earth" },
+    exclude: { Jupiter: ["square", "semi-square", "sesquiquadrate"] },
+    signAffinity: { Aries: "fast fire", Leo: "proud fire", Sagittarius: "far-ranging fire", Capricorn: "endurance earth", Scorpio: "Mars-ruled depth" },
     pairPlanets: ["Mars", "Sun"], maxRows: 4,
   },
   {
     key: "rest", label: "Deep rest", planet: "Moon",
-    planetW: { Neptune: 1.0, Venus: 0.5 },
+    // Neptune = dissolving, dreamy rest (conjunction welcome here). Saturn
+    // softs = DISCIPLINED rest — containment, the early night that actually
+    // happens, retreat elections — but never the conjunction (heavy, sleepless).
+    planetW: { Neptune: 1.0, Saturn: 0.6, Venus: 0.5 },
     aspectW: SOFT,
+    exclude: { Saturn: ["conjunction", "semi-sextile", "quintile"] },
     signAffinity: { Cancer: "home water", Pisces: "open-sea water", Taurus: "slow settled earth" },
-    maxRows: 3, waningBias: true, vocAsWindow: true,
+    maxRows: 3, waningBias: true, vocAsWindow: true, balsamicBoost: true,
   },
   {
     key: "connection", label: "Connection & pleasure", planet: "Venus",
     planetW: { Venus: 1.0, Jupiter: 0.7, Moon: 0 },
     aspectW: SOFT,
     signAffinity: { Libra: "partnered air", Leo: "warm stage-light", Taurus: "sensual earth", Pisces: "boundless water" },
-    pairPlanets: ["Venus", "Jupiter"], maxRows: 3, eveningBias: true, waxingBias: true,
+    pairPlanets: ["Venus", "Jupiter"], maxRows: 3, eveningBias: true, waxingBias: true, fullMoonBoost: true,
   },
   {
     key: "study", label: "Deep study", planet: "Mercury",
     planetW: { Mercury: 1.0, Saturn: 0.8 },
     aspectW: SOFT,
     signAffinity: { Gemini: "quick air", Virgo: "orderly earth", Aquarius: "systems air", Capricorn: "long-haul earth" },
-    pairPlanets: ["Mercury", "Saturn"], maxRows: 3,
+    pairPlanets: ["Mercury", "Saturn"], maxRows: 3, mercuryRxNote: true,
   },
 ];
 // Sign-quality all-day entries sit below real timed elections but above the
@@ -325,6 +339,10 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
     const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
     const perfections = scanMoonPerfections(dayStartMs);
+    const phaseName = phase.name;
+    const isFullMoon = phaseName === "Full Moon";
+    const isBalsamic = phaseName === "Waning Crescent";
+    const mercuryRx = isRetrograde("Mercury", jdNoon);
     const skyAspects = getMajorAspects(jdNoon).filter(pa => (SOFT as any)[pa.aspect] > 0 && pa.orb <= 3);
 
     for (const a of ACTIVITIES) {
@@ -335,6 +353,7 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
         const aw = a.aspectW[ev.aspect] ?? 0;
         const pw = a.planetW[ev.planet] ?? 0;
         if (aw === 0 || pw === 0) continue;
+        if (a.exclude?.[ev.planet]?.includes(ev.aspect)) continue;
         const exactH = (ev.timeMs - dayStartMs) / 3600000;
         const startH = Math.max(exactH - 2.5, 7);
         const endH = Math.min(exactH + 2.5, 23);
@@ -346,11 +365,16 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
         if (a.eveningBias) score *= endH >= 17 ? 1.2 : 0.85;
         if (a.waxingBias) score *= waxing ? 1.12 : 0.9;
         if (a.waningBias) score *= waxing ? 0.9 : 1.12;
+        if (a.fullMoonBoost && isFullMoon) score *= 1.15;
+        if (a.balsamicBoost && isBalsamic) score *= 1.12;
 
         const hard = ev.aspect === "square" || ev.aspect === "semi-square" || ev.aspect === "sesquiquadrate";
         const whyBits = [`Moon ${ev.aspect} ${ev.planet} · exact ${clockOf(ev.timeMs, tzOffsetMin)}`];
         if (hard) whyBits.push("raw fuel");
         if (dayMatch) whyBits.push(`${dayRuler}'s day`);
+        if (a.fullMoonBoost && isFullMoon) whyBits.push("full moon");
+        if (a.balsamicBoost && isBalsamic) whyBits.push("dark of the moon");
+        if (a.mercuryRxNote && mercuryRx && (ev.planet === "Mercury" || ev.planet === "Saturn")) whyBits.push("Mercury Rx — review over new");
         candidates.push({
           date: dateLabel, dow,
           startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
@@ -365,9 +389,13 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
         let score = SIGN_DAY_SCORE;
         if (a.waningBias) score *= waxing ? 0.95 : 1.1;
         if (a.waxingBias) score *= waxing ? 1.1 : 0.95;
+        if (a.fullMoonBoost && isFullMoon) score *= 1.15;
+        if (a.balsamicBoost && isBalsamic) score *= 1.12;
         candidates.push({
           date: dateLabel, dow, startClock: "", endClock: "",
-          score, why: `Moon in ${moonSign} · ${gloss}`, allDay: true,
+          score,
+          why: `Moon in ${moonSign} · ${gloss}${a.fullMoonBoost && isFullMoon ? " · full moon" : ""}${a.balsamicBoost && isBalsamic ? " · dark of the moon" : ""}`,
+          allDay: true,
         });
       }
 
