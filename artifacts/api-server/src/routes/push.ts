@@ -17,13 +17,13 @@ if (vapidPublic && vapidPrivate) {
 }
 
 // GET /api/push/vapid-key — return public key so client can subscribe
-router.get("/api/push/vapid-key", (_req, res) => {
+router.get("/push/vapid-key", (_req, res) => {
   if (!vapidPublic) { res.status(503).json({ error: "Push not configured" }); return; }
   res.json({ publicKey: vapidPublic });
 });
 
 // POST /api/push/subscribe — save a push subscription
-router.post("/api/push/subscribe", async (req, res) => {
+router.post("/push/subscribe", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
 
@@ -49,7 +49,7 @@ router.post("/api/push/subscribe", async (req, res) => {
 });
 
 // POST /api/push/unsubscribe
-router.post("/api/push/unsubscribe", async (req, res) => {
+router.post("/push/unsubscribe", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
   await db.delete(pushSubscriptions).where(eq(pushSubscriptions.testerId, testerId));
@@ -58,7 +58,7 @@ router.post("/api/push/unsubscribe", async (req, res) => {
 });
 
 // POST /api/push/test — send a test notification to this tester
-router.post("/api/push/test", async (req, res) => {
+router.post("/push/test", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
   if (!vapidPublic || !vapidPrivate) { res.status(503).json({ error: "Push not configured" }); return; }
