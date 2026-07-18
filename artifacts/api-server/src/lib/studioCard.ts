@@ -317,6 +317,7 @@ const SIGN_DAY_SCORE = 0.45;
 interface DayPick {
   date: string; dow: string; startClock: string; endClock: string;
   score: number; why: string; allDay?: boolean;
+  ord: number;   // day index within the scanned span — chronological sort key
 }
 
 function clockOf(ms: number, tzOffsetMin: number): string {
@@ -382,7 +383,7 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
         if (a.balsamicBoost && isBalsamic) whyBits.push("dark of the moon");
         if (a.mercuryRxNote && mercuryRx && (ev.planet === "Mercury" || ev.planet === "Saturn")) whyBits.push("Mercury Rx — review over new");
         candidates.push({
-          date: dateLabel, dow,
+          date: dateLabel, dow, ord: d,
           startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
           endClock: clockOf(dayStartMs + endH * 3600000, tzOffsetMin),
           score, why: whyBits.join(" · "),
@@ -398,7 +399,7 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
         if (a.fullMoonBoost && isFullMoon) score *= 1.15;
         if (a.balsamicBoost && isBalsamic) score *= 1.12;
         candidates.push({
-          date: dateLabel, dow, startClock: "", endClock: "",
+          date: dateLabel, dow, ord: d, startClock: "", endClock: "",
           score,
           why: `Moon in ${moonSign} · ${gloss}${a.fullMoonBoost && isFullMoon ? " · full moon" : ""}${a.balsamicBoost && isBalsamic ? " · dark of the moon" : ""}`,
           allDay: true,
@@ -413,7 +414,7 @@ function scanDays(days: number, lat: number, lon: number, tzOffsetMin: number, s
           startH = Math.max(startH, endH - 4);
           if (endH - startH < 1.5) continue;
           candidates.push({
-            date: dateLabel, dow,
+            date: dateLabel, dow, ord: d,
             startClock: clockOf(dayStartMs + startH * 3600000, tzOffsetMin),
             endClock: clockOf(dayStartMs + endH * 3600000, tzOffsetMin),
             score: 0.6 * (waxing ? 0.95 : 1.15),
@@ -580,6 +581,96 @@ export function buildBestTimesCardSvg(opts: {
       }
       y += 220;
     }
+  });
+
+  parts.push(`<text x="${W / 2}" y="${H - 64}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
+  return { svg, width: W, height: H };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Single-modality cards — one activity per card, the content workhorse
+// (owner 2026-07-17): "when to train this week" is a clear promise a post can
+// make. Same election engine, roomier layout: hero glyph, one subject, up to
+// 7 entries with their aspect anchors.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const ACTIVITY_TITLES: Record<string, { week: string; month: string; sub: string }> = {
+  effort: { week: "When to train this week", month: "The month's training days", sub: "effort, workouts, the hard push" },
+  rest: { week: "When to rest this week", month: "The month's rest days", sub: "real rest — the kind you elect" },
+  connection: { week: "Connection this week", month: "The month's days for pleasure", sub: "dates, friends, delight" },
+  study: { week: "Deep study this week", month: "The month's study days", sub: "focus, learning, the long read" },
+};
+
+export function buildActivityCardSvg(opts: {
+  span: "week" | "month"; activity: string; lat: number; lon: number; tzOffsetMin: number;
+  theme?: CardTheme; format?: CardFormat; startAt?: Date; tzLabel?: string;
+}): { svg: string; width: number; height: number } {
+  const { span, lat, lon, tzOffsetMin } = opts;
+  const act = ACTIVITIES.find(a => a.key === opts.activity) ?? ACTIVITIES[0];
+  const titles = ACTIVITY_TITLES[act.key] ?? { week: act.label, month: act.label, sub: "" };
+  const theme = opts.theme ?? "tide";
+  const format = opts.format ?? "story";
+  const W = 1080, H = format === "story" ? 1920 : 1350;
+  const s = SURFACE[theme];
+  const days = span === "week" ? 7 : 30;
+  const picks = scanDays(days, lat, lon, tzOffsetMin, opts.startAt)[act.key] ?? [];
+  const accent = ELEMENT_COLORS[theme][(PLANET_GLYPH[act.planet] ?? { element: "water" }).element];
+
+  const start = opts.startAt ?? new Date();
+  const startLocal = new Date(start.getTime() - tzOffsetMin * 60000);
+  const end = new Date(startLocal.getTime() + (days - 1) * 86400000);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const tzNote = opts.tzLabel ? ` · times in ${opts.tzLabel}` : "";
+  const kicker = `${fmt(startLocal)} – ${fmt(end)}${tzNote}`;
+
+  // Selection: top entries by score; at most 2 per day (week) / 1 per day
+  // (month); at most one all-day sign entry — then chronological.
+  const cap = format === "story" ? 7 : 5;
+  const perDayCap = span === "week" ? 2 : 1;
+  const byDay: Record<string, number> = {};
+  const rows: DayPick[] = [];
+  let vocRows = 0;
+  for (const p of [...picks].sort((x, z) => z.score - x.score)) {
+    if (rows.length >= cap) break;
+    if ((byDay[p.date] ?? 0) >= perDayCap) continue;
+    if (p.allDay && rows.some(r => r.allDay)) continue;
+    // A month of rest days shouldn't read 'void of course' seven times —
+    // cap the identical anchor so Neptune windows and sign-days get seats.
+    const isVoc = p.why.startsWith("void of course");
+    if (isVoc && vocRows >= 3) continue;
+    if (isVoc) vocRows++;
+    byDay[p.date] = (byDay[p.date] ?? 0) + 1;
+    rows.push(p);
+  }
+  rows.sort((x, z) => x.ord - z.ord);
+
+  const parts: string[] = [];
+  parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
+
+  // Hero: the activity's planet, large, over a soft accent ring.
+  const heroY = format === "story" ? 340 : 300;
+  parts.push(`<circle cx="${W / 2}" cy="${heroY}" r="96" fill="${accent}" opacity="0.10"/>`);
+  parts.push(`<circle cx="${W / 2}" cy="${heroY}" r="96" fill="none" stroke="${accent}" stroke-width="2" opacity="0.4"/>`);
+  parts.push(glyphText(act.planet, W / 2, heroY + 38, 110, theme));
+  const titleY = heroY + 180;
+  parts.push(`<text x="${W / 2}" y="${titleY}" text-anchor="middle" font-family="${SERIF}" font-size="58" font-weight="700" fill="${s.ink}">${esc(span === "week" ? titles.week : titles.month)}</text>`);
+  parts.push(`<text x="${W / 2}" y="${titleY + 46}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">${esc(titles.sub)}</text>`);
+
+  const rowY0 = titleY + (format === "story" ? 130 : 100);
+  const ROW = format === "story" ? 128 : 108;
+  if (rows.length === 0) {
+    parts.push(`<text x="${W / 2}" y="${rowY0 + 40}" text-anchor="middle" font-family="${SERIF}" font-size="28" font-style="italic" fill="${s.sub}">no clean window in this span — a quiet stretch</text>`);
+  }
+  rows.forEach((p, i) => {
+    const ry = rowY0 + i * ROW;
+    const when = p.allDay ? `${p.dow} ${p.date} · all day` : `${p.dow} ${p.date} · ${p.startClock}–${p.endClock}`;
+    parts.push(`<circle cx="${110 + 7}" cy="${ry - 12}" r="7" fill="${accent}" opacity="0.8"/>`);
+    parts.push(`<text x="${150}" y="${ry}" font-family="${SERIF}" font-size="37" font-weight="600" fill="${s.ink}">${esc(when)}</text>`);
+    parts.push(`<text x="${150}" y="${ry + 40}" font-family="${SERIF}" font-size="24.5" fill="${s.sub}">${esc(p.why)}</text>`);
+    if (i < rows.length - 1) parts.push(`<line x1="150" y1="${ry + 66}" x2="${W - 110}" y2="${ry + 66}" stroke="${s.line}" stroke-width="1.5"/>`);
   });
 
   parts.push(`<text x="${W / 2}" y="${H - 64}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);

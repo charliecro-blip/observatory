@@ -14,7 +14,7 @@ import { Router, type IRouter } from "express";
 import path from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { buildDayCardSvg, buildBestTimesCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
+import { buildDayCardSvg, buildBestTimesCardSvg, buildActivityCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
 
 const router: IRouter = Router();
 
@@ -49,25 +49,29 @@ function parseStart(req: any, tzOffsetMin: number): Date | undefined {
   return new Date(Date.UTC(y, m - 1, d, 12) + tzOffsetMin * 60000);
 }
 
-router.get("/studio/best.svg", (req, res) => {
+// ?activity=effort|rest|connection|study renders a single-modality card.
+const ACTIVITY_KEYS = new Set(["effort", "rest", "connection", "study"]);
+function buildBest(req: any) {
   const base = parseOpts(req);
-  const { svg } = buildBestTimesCardSvg({
+  const common = {
     ...base, span: parseSpan(req),
     startAt: parseStart(req, base.tzOffsetMin),
     tzLabel: (req.query.tzLabel as string) || undefined,
-  });
-  res.type("image/svg+xml").send(svg);
+  };
+  const activity = req.query.activity as string;
+  return ACTIVITY_KEYS.has(activity)
+    ? buildActivityCardSvg({ ...common, activity })
+    : buildBestTimesCardSvg(common);
+}
+
+router.get("/studio/best.svg", (req, res) => {
+  res.type("image/svg+xml").send(buildBest(req).svg);
 });
 
 router.get("/studio/best.png", async (req, res) => {
   try {
     const span = parseSpan(req);
-    const base = parseOpts(req);
-    const { svg, width } = buildBestTimesCardSvg({
-      ...base, span,
-      startAt: parseStart(req, base.tzOffsetMin),
-      tzLabel: (req.query.tzLabel as string) || undefined,
-    });
+    const { svg, width } = buildBest(req);
     const { Resvg } = await import("@resvg/resvg-js");
     const r = new Resvg(svg, {
       fitTo: { mode: "width", value: width },

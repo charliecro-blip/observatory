@@ -61,6 +61,8 @@ The signal vocabulary (v3, owner 2026-07-17) is wide — majors AND minors, sign
 
 Row kinds design must handle: **timed window** ("Fri · 3:50–8:50 PM"), **all-day sign entry** ("Sun · all day — Moon in Libra · partnered air", max one per section), and the week-headline line under the title ("the week's sky: Mars sextile Saturn (1.3°)"). Minor aspects appear by name (quintile, semi-sextile…) — they're teaching moments.
 
+**Single-modality cards (the content workhorse).** Each activity also renders as its own card — `?activity=effort|rest|connection|study` — with a hero planet glyph in an accent ring, a promise title ("When to train this week", "The month's rest days"), and up to 7 dated entries, each with its aspect anchor. Weekly allows 2 windows on a strong day; monthly one per day, with identical anchors (e.g. void-of-course) capped at 3 so the list stays varied. These are the primary IG series; the combined 4-activity card becomes the "week at a glance" companion.
+
 Selection is a global greedy by score (a shared window goes to whichever activity values it more, never duplicated) with a height budget that trims the weakest rows to fit. **Sections legitimately vary 1–4 rows — scarcity is the credibility. Design for variable density; never pad.** Render endpoints take `?start=YYYY-MM-DD` so a month of weekly cards can be batched ahead.
 
 **Working reference renders** (the template to elevate): `GET /api/studio/best.png?span=week|month&theme=&format=` — live data, so design can pull a real current week anytime. Layout in `api-server/src/lib/studioCard.ts` (`buildBestTimesCardSvg`).
