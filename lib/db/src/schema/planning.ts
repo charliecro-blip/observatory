@@ -124,6 +124,20 @@ export const habits = pgTable("habits", {
 });
 
 // Individual habit completions
+// Named wins — the reflective half of the daily loop (owner 2026-07-17):
+// the evening harvest invites one line in your own words per star that moved.
+// AUTO wins (completed tasks/steps/habits/sessions) are DERIVED at read time
+// from their completion timestamps — only the written ones live here, so
+// there's no double-entry and the ledger can never drift from reality.
+export const wins = pgTable("wins", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  date: text("date").notNull(),        // YYYY-MM-DD (viewer-local day)
+  goalId: integer("goal_id"),          // nullable — a win can be general
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const habitLogs = pgTable("habit_logs", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),

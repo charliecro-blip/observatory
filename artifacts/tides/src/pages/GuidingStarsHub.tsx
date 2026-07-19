@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, sortIntentToElement, type ElementMythos } from "@/lib/mythos";
@@ -70,12 +70,14 @@ function authH(tid: string | null) {
  * what season backs it, and breaking it into tasks/habits all happen in this
  * one page — no second "manage in Goals" tab to bounce to.
  */
-export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate, seedElement, onSeedConsumed }: {
+export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate, seedElement, onSeedConsumed, focusStarId, onFocusConsumed }: {
   testerId: string | null;
   lat?: number; lon?: number;
   onNavigate: (tab: "tasks" | "habits") => void;
   seedElement?: string | null;
   onSeedConsumed?: () => void;
+  focusStarId?: number | null;
+  onFocusConsumed?: () => void;
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading } = useNorthStars(testerId);
@@ -93,6 +95,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showSeasons, setShowSeasons] = useState(false);
+
+  // Landed here from the morning glance: scroll that star's card into view and
+  // hold a brief highlight so the eye lands on the game plan it came for.
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusStarId == null || !stars) return;
+    const el = cardRefs.current[focusStarId];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightId(focusStarId);
+      const t = setTimeout(() => setHighlightId(null), 2400);
+      onFocusConsumed?.();
+      return () => clearTimeout(t);
+    }
+  }, [focusStarId, stars]);
 
   // Landed here from "Set a Guiding Star in this element" in the Almanac: open
   // the creation form with the element pre-chosen, then clear the seed so it
@@ -583,7 +601,13 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           const closing = dLeft != null && dLeft >= 0 && dLeft <= 30;
 
           return (
-            <div key={g.id} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${ec}`, borderRadius: 10, overflow: "hidden" }}>
+            <div key={g.id} ref={el => { cardRefs.current[g.id] = el; }} style={{
+              background: "var(--color-card)",
+              border: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderLeft: `3px solid ${ec}`, borderRadius: 10, overflow: "hidden",
+              boxShadow: highlightId === g.id ? `0 0 0 3px ${ec}30` : "none",
+              transition: "box-shadow 0.4s, border-color 0.4s",
+            }}>
               <div style={{ padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                   <div style={{ flex: 1 }}>

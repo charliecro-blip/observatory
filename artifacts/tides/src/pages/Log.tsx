@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { WakeList } from "@/components/Momentum";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -421,19 +422,13 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
         </button>
       )}
       {!selectedDate ? (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#999",
-            fontSize: 14,
-            textAlign: "center",
-            padding: 40,
-          }}
-        >
-          Select a day to view details
+        /* No day selected → the Wake: the continual wins ledger is the Log's
+           default view (owner 2026-07-17: tracking progress, emphasized). */
+        <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}>
+          <WakeList testerId={testerId} />
+          <div style={{ color: "#999", fontSize: 12, textAlign: "center", padding: 20 }}>
+            ← or select a day to read its full log
+          </div>
         </div>
       ) : dayLoading ? (
         <div

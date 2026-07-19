@@ -13,6 +13,7 @@ import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
+import { StarRows, EveningHarvest } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
@@ -473,8 +474,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, onVisitPlanet }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, onVisitPlanet, onOpenStar }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
+  onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
   onVisitPlanet?: (planet: string) => void;
 }) {
@@ -878,6 +880,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             gcalEvents={gcalEvents}
             testerId={testerId}
             displayName={testerProfile?.displayName}
+            onOpenStar={onOpenStar}
+            lat={lat} lon={lon}
           />
         )}
         {ritualMode === "evening" && reflectBlock}
@@ -1857,7 +1861,7 @@ const STREAK_NUDGE = (streak: number) =>
   : streak >= 3 ? `day ${streak + 1} — momentum is real`
   : "small and daily beats big and rare";
 
-function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName }: {
+function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName, onOpenStar, lat, lon }: {
   mode: "morning" | "evening";
   now: any; week: any;
   todayTasks: { id: number; title: string; done: string }[];
@@ -1865,6 +1869,8 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
   testerId: string | null;
   displayName?: string;
+  onOpenStar?: (goalId: number) => void;
+  lat?: number; lon?: number;
 }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
@@ -1968,6 +1974,10 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           </div>
         )}
         {yRated && <div style={{ fontSize: 10, color: "#4a8060", marginBottom: 10 }}>✓ yesterday logged</div>}
+
+        {/* The morning glance: one row per Guiding Star — next move + today's
+            best window for its element; tap → that star's game plan. */}
+        <StarRows testerId={testerId} lat={lat} lon={lon} onOpenStar={onOpenStar} />
 
         {habitList.length > 0 && (
           <div style={{ marginBottom: 10 }}>
@@ -2077,6 +2087,10 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           {(tide?.level === "low" || tide?.level === "ebb") && " The tide was low — resting was reading the water right."}
         </div>
       )}
+
+      {/* The harvest: today's wins (auto + named) and the line in your own
+          words — this is the loop's evening half. */}
+      <EveningHarvest testerId={testerId} lat={lat} lon={lon} />
 
       <div style={{ fontSize: 10.5, color: "#999", paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
         Rate the day below — it lands in the Log, stamped with tonight's sky.

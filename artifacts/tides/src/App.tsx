@@ -28,11 +28,12 @@ import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
-function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void }) {
+function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
   // Arriving with an element seed (from the Almanac reference) always lands on
   // Guiding Stars, where the pre-filled creation form opens.
   useEffect(() => { if (seedElement) setTab("overview"); }, [seedElement]);
+  useEffect(() => { if (focusStarId != null) setTab("overview"); }, [focusStarId]);
   // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
   // habits). Currents (long-cycle context) is now a header at the top.
   const TABS: {id:WorkTab; label:string}[] = [
@@ -60,7 +61,7 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed }: { te
         <CurrentsContextHeader testerId={testerId} collapsed={true} />
 
         {/* Tab content — inherits flex from parent, scrollable together with header */}
-        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed}/>}
+        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed} focusStarId={focusStarId} onFocusConsumed={onFocusConsumed}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
       </div>
@@ -746,6 +747,10 @@ function Shell() {
   // seed the element, jump to Aims, let GuidingStarsHub open its form pre-filled.
   const [starSeedElement, setStarSeedElement] = useState<string | null>(null);
   const startStarInElement = (element: string) => { setStarSeedElement(element); setView("work"); };
+  // Morning glance deep-link: tap a star row on Today → that star's game plan
+  // in Aims, scrolled into view and briefly highlighted.
+  const [focusStarId, setFocusStarId] = useState<number | null>(null);
+  const openStar = (goalId: number) => { setFocusStarId(goalId); setView("work"); };
   // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
   // Planner, which parses and weaves it into good windows.
   const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
@@ -896,7 +901,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} onVisitPlanet={goToPlanet}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
@@ -904,7 +909,7 @@ function Shell() {
               : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
-        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
         {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
