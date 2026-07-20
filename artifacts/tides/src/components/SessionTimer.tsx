@@ -67,7 +67,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
           // Browser notification if permission granted
           if (Notification.permission === "granted") {
             new Notification("Session complete", {
-              body: note ? `"${note}" — time's up.` : "Your Auspice session is complete.",
+              body: note ? `"${note}" — time's up.` : "Your Compass session is complete.",
               icon: "/favicon.svg",
             });
           }

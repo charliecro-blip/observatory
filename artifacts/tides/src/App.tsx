@@ -192,7 +192,7 @@ const INTRO_SLIDES: {
     glyph: "◐",
     glyphColor: "#2a5a80",
     title: "A weather report for time.",
-    body: "Auspice reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
+    body: "Compass reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
   },
   {
     glyph: "◵ ◶ ◷ ◴",
@@ -216,7 +216,7 @@ const INTRO_SLIDES: {
     glyph: "≋",
     glyphColor: "#3f8493",
     title: "The sky is nested rhythms.",
-    body: "The hour sits inside the day, the day inside the month, the month inside the year. Auspice reads them all and tells you where you are — this ladder is the whole map.",
+    body: "The hour sits inside the day, the day inside the month, the month inside the year. Compass reads them all and tells you where you are — this ladder is the whole map.",
     spine: true,
   },
   {
@@ -478,7 +478,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px" }}>
       <div style={cardStyle}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Auspice</div>
+          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Compass</div>
           <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Move with time — lunar cycles, planetary hours, and daily rhythm.</div>
         </div>
         <form onSubmit={handleNameSubmit}>
@@ -646,7 +646,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:24 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your rhythm</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            When you're usually free and how you naturally run helps Auspice suggest timing that actually fits your life, not just the sky.
+            When you're usually free and how you naturally run helps Compass suggest timing that actually fits your life, not just the sky.
           </div>
         </div>
 
@@ -724,7 +724,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </button>
             <button type="submit"
               style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#fff" }}>
-              Enter Auspice
+              Enter Compass
             </button>
           </div>
         </form>
@@ -873,7 +873,7 @@ function Shell() {
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
-        >🧭 Compass</button>
+        >✦ Ask</button>
         {window.matchMedia("(min-width: 769px)").matches && (
           <button onClick={() => setForceMobile(!getForceMobile())}
             title={getForceMobile() ? "Back to desktop layout" : "Preview the mobile layout"} style={{

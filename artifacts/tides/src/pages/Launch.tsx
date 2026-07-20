@@ -54,7 +54,7 @@ function GoalBreakdown({ testerId }: { testerId: string | null }) {
     <div style={{ marginBottom: 30 }}>
       <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Break it down</div>
       <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 18 }}>
-        Pick a Guiding Star that feels too big, and Auspice proposes the steps to get there — each tagged with the
+        Pick a Guiding Star that feels too big, and Compass proposes the steps to get there — each tagged with the
         kind of energy it needs. Edit them, then commit; they become the star's steps, ready to schedule.
       </div>
 

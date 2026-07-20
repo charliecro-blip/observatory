@@ -1,5 +1,5 @@
 /**
- * Auspice timing API.
+ * Compass timing API.
  *
  * GET /api/tides/now      — Current timing snapshot: element, planetary hour, VOC, quality label
  * GET /api/tides/windows  — Upcoming timing windows (next 12 hours in 2-hour blocks)

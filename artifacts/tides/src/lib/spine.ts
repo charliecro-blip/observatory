@@ -72,5 +72,5 @@ export const SPINE: SpineRung[] = [
 export const SPINE_INTRO =
   "Everything in the sky is a rhythm, and the rhythms nest inside each other — " +
   "the hour inside the day, the day inside the month, the month inside the year. " +
-  "Auspice reads all of them at once and tells you where you are. Learn this ladder " +
+  "Compass reads all of them at once and tells you where you are. Learn this ladder " +
   "and the whole app makes sense: each reading is just one rung, spoken plainly.";

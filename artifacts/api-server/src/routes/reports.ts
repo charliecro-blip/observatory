@@ -245,13 +245,13 @@ function renderHtml(title: string, subject: string, blocks: Block[]): string {
   return `<!doctype html><html><body style="margin:0;padding:0;background:#efe9dc;">
   <div style="max-width:560px;margin:0 auto;padding:28px 20px;font-family:Georgia,'Times New Roman',serif;">
     <div style="background:#f7f2e6;border:1px solid #ddd2ba;border-radius:14px;padding:26px 28px;">
-      <div style="font-size:20px;color:#1b1a17;letter-spacing:0.3px;margin-bottom:2px;">Auspice</div>
+      <div style="font-size:20px;color:#1b1a17;letter-spacing:0.3px;margin-bottom:2px;">Compass</div>
       <div style="font-size:12px;color:#8a8278;margin-bottom:18px;">${title}</div>
       <div style="font-size:16px;color:#1b1a17;font-style:italic;border-left:3px solid #c8b06a;padding-left:12px;margin-bottom:6px;">${subject.replace(/^[^—]*— /, "")}</div>
       ${blockHtml}
       <div style="border-top:1px solid #e3d9c2;margin-top:24px;padding-top:12px;font-size:11px;color:#a89a88;line-height:1.6;">
         Conditions, not fate — the sky describes the weather; you steer.<br/>
-        Open Auspice · adjust what lands in this report in Settings.
+        Open Compass · adjust what lands in this report in Settings.
       </div>
     </div>
   </div></body></html>`;

@@ -102,7 +102,7 @@ function Chrome({ W, H, theme, kicker, foot }: { W: number; H: number; theme: Gl
   const s = SURFACE[theme];
   return (
     <g fontFamily={SERIF}>
-      <text x={W / 2} y={110} textAnchor="middle" fontSize={34} letterSpacing={12} fill={s.sub} fontWeight={700}>AUSPICE</text>
+      <text x={W / 2} y={110} textAnchor="middle" fontSize={34} letterSpacing={12} fill={s.sub} fontWeight={700}>COMPASS</text>
       <text x={W / 2} y={162} textAnchor="middle" fontSize={26} fill={s.sub}>{kicker}</text>
       <text x={W / 2} y={H - 70} textAnchor="middle" fontSize={26} fontStyle="italic" fill={s.sub}>
         {foot ?? "move with time"}

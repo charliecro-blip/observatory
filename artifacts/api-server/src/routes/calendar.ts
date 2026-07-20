@@ -135,7 +135,7 @@ router.get("/calendar/:date", requireTesterId, async (req, res) => {
     )
     .orderBy(desc(healthLogs.loggedAt));
 
-  // Auspice context for this date (noon UTC as proxy)
+  // Compass context for this date (noon UTC as proxy)
   const dayDate = new Date(`${dateStr}T12:00:00.000Z`);
   const astro = getAstroSnapshot(dayDate);
   const jdNoon = (dayDate.getTime() / 86400000) + 2440587.5;

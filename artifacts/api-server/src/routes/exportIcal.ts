@@ -39,10 +39,10 @@ router.get("/export/ical", async (req, res) => {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Auspice App//EN",
+    "PRODID:-//Compass App//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Auspice — My Events",
+    "X-WR-CALNAME:Compass — My Events",
     "X-WR-CALDESC:Tasks and planning windows from Tides",
   ];
 

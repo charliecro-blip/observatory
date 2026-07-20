@@ -742,7 +742,7 @@ function PremiumPreviewSection() {
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
           <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · the Compass advisor
+            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · Ask — the "what do I do now" advisor
           </div>
         </div>
       </div>
@@ -1211,7 +1211,7 @@ function AccountSection() {
             }}>{copied ? "Copied ✓" : "Copy"}</button>
           </div>
           <div style={{ fontSize: 10, color: "#999", marginTop: 8, lineHeight: 1.55 }}>
-            On another device: open Auspice → "Been here before?" on the first screen → enter this key.
+            On another device: open Compass → "Been here before?" on the first screen → enter this key.
             Anyone holding the key can restore your data, so treat it like a password.
           </div>
         </div>
@@ -1228,7 +1228,7 @@ function AccountSection() {
           <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Send feedback</div>
           <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
         </div>
-        <a href="mailto:charliecro@gmail.com?subject=Auspice%20feedback"
+        <a href="mailto:charliecro@gmail.com?subject=Compass%20feedback"
           style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 14px", textDecoration: "none", background: "var(--color-card-2)", flexShrink: 0 }}>
           ✉ Email
         </a>

@@ -64,7 +64,7 @@ router.post("/push/test", async (req, res) => {
   if (!vapidPublic || !vapidPrivate) { res.status(503).json({ error: "Push not configured" }); return; }
   try {
     await sendPushToTester(testerId, {
-      title: "✦ Auspice test notification",
+      title: "✦ Compass test notification",
       body: "Push notifications are working. You'll get alerts for planetary hour shifts, VOC, and moon phases.",
       tag: "test",
     });

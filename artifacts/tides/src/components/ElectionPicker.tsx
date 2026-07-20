@@ -72,9 +72,14 @@ export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null
 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)", marginBottom: 2 }}>Find the time for anything</div>
+      {/* The timing/election engine keeps the name Auspice — "under good
+          auspices", the favorable moment — now that Compass is the product. */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 2 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>Find the time for anything</div>
+        <span style={{ fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "#c8a04a", fontFamily: "var(--font-display)" }}>· Auspice</span>
+      </div>
       <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>
-        Pick an activity — get its good and great times, read from the sky{times?.personalized ? " and your chart" : ""}.
+        Pick an activity — Auspice reads its good and great times from the sky{times?.personalized ? " and your chart" : ""}.
       </div>
 
       {/* Categories */}

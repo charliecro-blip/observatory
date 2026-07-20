@@ -156,7 +156,7 @@ export function buildDayCardSvg(opts: {
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
-  parts.push(`<text x="${W / 2}" y="110" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="110" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">COMPASS</text>`);
   parts.push(`<text x="${W / 2}" y="162" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(dateLabel)}</text>`);
   parts.push(phaseDisc(W / 2, discY, discR, phase.fraction, waxing, theme));
   parts.push(glyphText(moonSign, W / 2, signY, 130, theme));
@@ -475,7 +475,7 @@ export function buildBestTimesCardSvg(opts: {
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
-  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">COMPASS</text>`);
   parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
   parts.push(`<text x="${W / 2}" y="${format === "story" ? 250 : 230}" text-anchor="middle" font-family="${SERIF}" font-size="56" font-weight="700" fill="${s.ink}">${esc(title)}</text>`);
   if (headline) parts.push(`<text x="${W / 2}" y="${format === "story" ? 300 : 276}" text-anchor="middle" font-family="${SERIF}" font-size="25" font-style="italic" fill="${s.sub}">${esc(headline)}</text>`);
@@ -647,7 +647,7 @@ export function buildActivityCardSvg(opts: {
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
-  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">COMPASS</text>`);
   parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
 
   // Hero: the activity's planet, large, over a soft accent ring.
@@ -700,7 +700,7 @@ export function buildCycleWinsCardSvg(m: any, opts: {
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
-  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">COMPASS</text>`);
   parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
 
   // Hero: the count, huge — the wake speaks for itself.
