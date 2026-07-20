@@ -9,7 +9,13 @@
  * approxPlanetLongitude() which used only mean longitude — no equation of
  * center and no heliocentric→geocentric conversion.  For Mars this caused a
  * ~21° error (e.g. 26° Pisces instead of 18° Aries on 2026-05-03).
+ *
+ * 2026-07-20: Sun, Moon, and the eight planets now delegate to astronomy-engine
+ * (see ephemeris.ts) — the audit found the old model wrong-sign up to ~6% for
+ * the outers. The Kepler machinery below is retained only for Chiron.
  */
+
+import { accurateLongitude, accurateRetrograde, HAS_ACCURATE } from "./ephemeris.js";
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -121,34 +127,15 @@ export function julianDay(date: Date): number {
   return Math.trunc(365.25 * y) + Math.trunc(30.6001 * (m + 1)) + d + 1720994.5 + B;
 }
 
+// Sun & Moon now come from astronomy-engine (accurate to sub-arcminute); the
+// old polynomial series are retired. The Moon especially: max error dropped
+// from ~31 min of timing to seconds, which the election engine depends on.
 export function sunLongitude(jd: number): number {
-  const T = (jd - 2451545.0) / 36525;
-  const L0 = normalize360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
-  const M = normalize360(357.52911 + 35999.05029 * T - 0.0001537 * T * T) * DEG2RAD;
-  const C =
-    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M) +
-    (0.019993 - 0.000101 * T) * Math.sin(2 * M) +
-    0.000289 * Math.sin(3 * M);
-  return normalize360(L0 + C);
+  return accurateLongitude("Sun", jd);
 }
 
 export function moonLongitude(jd: number): number {
-  const T = (jd - 2451545.0) / 36525;
-  const L1 = normalize360(218.3165 + 481267.8813 * T);
-  const M  = normalize360(357.5291 + 35999.0503 * T)  * DEG2RAD;
-  const M1 = normalize360(134.9634 + 477198.8676 * T) * DEG2RAD;
-  const D  = normalize360(297.8502 + 445267.1115 * T) * DEG2RAD;
-  const F  = normalize360(93.2721  + 483202.0175 * T) * DEG2RAD;
-  return normalize360(
-    L1 +
-    6.2888 * Math.sin(M1) +
-    1.274  * Math.sin(2 * D - M1) +
-    0.6583 * Math.sin(2 * D) +
-    0.2136 * Math.sin(2 * M1) -
-    0.1851 * Math.sin(M) -
-    0.1144 * Math.sin(2 * F) +
-    0.0588 * Math.sin(2 * D - 2 * M1),
-  );
+  return accurateLongitude("Moon", jd);
 }
 
 export function moonPhase(jd: number): { name: string; fraction: number } {
@@ -171,8 +158,12 @@ export function moonPhase(jd: number): { name: string; fraction: number } {
   return { name, fraction };
 }
 
-/** Geocentric longitude of a named planet at a given JD. Used for retrograde detection. */
+/** Geocentric longitude of a named planet at a given JD. Accurate for the eight
+ *  planets via astronomy-engine; Chiron falls back to the calibrated Kepler
+ *  model (astronomy-engine doesn't cover centaurs). */
 function geocentricLongitude(name: string, jd: number): number {
+  if (HAS_ACCURATE(name)) return accurateLongitude(name, jd);
+  // Chiron only — the hand-rolled two-body model, calibrated to ~Taurus 2026.
   const T = (jd - 2451545.0) / 36525;
   const earthLambda = normalize360(sunLongitude(jd) + 180);
   const el = ORBITAL[name];
@@ -181,16 +172,16 @@ function geocentricLongitude(name: string, jd: number): number {
 }
 
 /**
- * Returns true if the planet's geocentric longitude is decreasing (retrograde motion).
- * Compares longitude at jd vs jd+1. Sun and Moon cannot retrograde.
+ * Returns true if the planet's geocentric longitude is decreasing (retrograde).
+ * Sun and Moon cannot retrograde.
  */
 export function isRetrograde(planet: string, jd: number): boolean {
   if (planet === "Sun" || planet === "Moon") return false;
+  if (HAS_ACCURATE(planet)) return accurateRetrograde(planet, jd);
   if (!ORBITAL[planet]) return false;
   const lon1 = geocentricLongitude(planet, jd);
   const lon2 = geocentricLongitude(planet, jd + 1);
-  const diff = normalize360(lon2 - lon1);
-  return diff > 180; // longitude decreased → retrograde
+  return normalize360(lon2 - lon1) > 180;
 }
 
 export function getPlanetPositions(jd: number) {
@@ -210,9 +201,14 @@ export function getPlanetPositions(jd: number) {
   ];
 
   for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"] as const) {
-    const el = ORBITAL[name];
-    const { lambda, r } = heliocentricEcliptic(T, el);
-    const geo = geoFromHelio(lambda, r, earthLambda, earthR);
+    let geo: number;
+    if (HAS_ACCURATE(name)) {
+      geo = accurateLongitude(name, jd);       // astronomy-engine
+    } else {
+      const el = ORBITAL[name];                // Chiron — calibrated Kepler
+      const { lambda, r } = heliocentricEcliptic(T, el);
+      geo = geoFromHelio(lambda, r, earthLambda, earthR);
+    }
     results.push({ planet: name, longitude: geo, retrograde: isRetrograde(name, jd), ...longitudeToSign(geo) });
   }
 
