@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { logEvent } from "@/lib/analytics";
 
 /**
  * Momentum — the daily progress loop's shared UI (owner 2026-07-17):
@@ -107,7 +108,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
         body: JSON.stringify({ text: text.trim(), goalId: starId || undefined, tz: new Date().getTimezoneOffset() }),
       });
     },
-    onSuccess: () => { setText(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+    onSuccess: () => { logEvent("win_named"); setText(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
   });
   if (!data) return null;
   const todayWins = data.ledger.filter(l => l.date === data.today);

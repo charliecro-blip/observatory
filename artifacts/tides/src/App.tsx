@@ -25,6 +25,7 @@ import Planets from "@/pages/Planets";
 import Log from "@/pages/Log";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
+import { logEvent } from "@/lib/analytics";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
@@ -731,6 +732,8 @@ function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
+  // Usage analytics: which surface is being used (owner 2026-07-20).
+  useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
   // Session timer + Advise trigger live in the global top bar so they're always
   // reachable, not just from the Today page. The advisor modal itself still

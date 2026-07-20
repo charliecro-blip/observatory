@@ -15,3 +15,4 @@ export * from "./knowledgeChunks";
 export * from "./planning";
 export * from "./googleCal";
 export * from "./testerProfile";
+export * from "./usageEvents";

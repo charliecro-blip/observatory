@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { logEvent } from "@/lib/analytics";
 
 /**
  * The election picker (owner 2026-07-20): browse the extensive activity list,
@@ -58,7 +59,8 @@ export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null
       });
       return `${w.dow}|${w.startClock}`;
     },
-    onSuccess: (key) => {
+    onSuccess: (key, w) => {
+      logEvent("election_schedule", { activity: activityKey, tier: w.tier });
       setScheduled(key);
       qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
       setTimeout(() => setScheduled(null), 2500);

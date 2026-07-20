@@ -37,6 +37,7 @@ import chartRouter from "./chart";
 import studioRouter from "./studio";
 import momentumRouter from "./momentum";
 import electionsRouter from "./elections";
+import eventsRouter from "./events";
 
 const router: IRouter = Router();
 
@@ -78,5 +79,6 @@ router.use(chartRouter);
 router.use(studioRouter);
 router.use(momentumRouter);
 router.use(electionsRouter);
+router.use(eventsRouter);
 
 export default router;
