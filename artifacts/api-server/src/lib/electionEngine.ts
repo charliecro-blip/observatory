@@ -247,9 +247,16 @@ export function computeElections(opts: {
       if (superseded.has(c)) continue;
       if (act.voc === "avoid" && !c.allDay && inVoc(c.startMs, c.endMs) && !c.sources.includes("voc")) continue;
       const score = c.score * dayBoost;
+      // GREAT requires TWO independent signals (owner 2026-07-20: one wasn't
+      // scarce enough — Venus hours recur daily and a governing house holds
+      // the Moon for days). Signals: an hour×moon stack counts as one; each
+      // natal firing (significator in the matter's house, Moon crossing it,
+      // transit-to-natal return) and a standing sky pair count as one each.
+      // Sign-affinity days stay good — they're ambient quality, not elections.
       const stacked = c.sources.includes("moon") && c.sources.includes("hour");
-      const boosted = daySources.length > 0 && (c.sources.includes("moon") || c.sources.includes("hour"));
-      let tier: "good" | "great" = stacked || boosted ? "great" : "good";
+      const substantive = c.sources.includes("moon") || c.sources.includes("hour");
+      const greatSignals = (stacked ? 1 : 0) + daySources.length;
+      let tier: "good" | "great" = substantive && greatSignals >= 2 ? "great" : "good";
       if (mercRx && act.mercuryRx === "hard") tier = "good"; // blocked matters get no great stamp
       windows.push({
         date: dateLabel, dow,
