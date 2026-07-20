@@ -1,3 +1,4 @@
+import { ElectionPicker } from "@/components/ElectionPicker";
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
@@ -323,6 +324,10 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
           When's a good moment to begin something? The sky's timing describes the shape and early tempo of a
           beginning — not a guaranteed outcome. Perfect windows are rare; this shows the best available one honestly.
         </div>
+
+        {/* The activity election picker — the extensive correspondence list,
+            tiered good/great times, one-tap scheduling (owner 2026-07-20). */}
+        <ElectionPicker testerId={testerId} lat={lat} lon={lon} />
 
         {/* Category picker — one idea at a time: once a category is chosen the
             grid folds away to just the choice + a "change" affordance, so the

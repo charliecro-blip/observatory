@@ -214,12 +214,12 @@ const MOON_ANGLES: { deg: number; name: string }[] = [
 ];
 const MOON_TARGETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
 
-interface MoonPerfection { timeMs: number; planet: string; aspect: string }
+export interface MoonPerfection { timeMs: number; planet: string; aspect: string }
 
 // Scan one local day for Moon-aspect perfections across the full angle set —
 // the day-arc engine only tracks majors (they feed the app's tide curve), so
 // the cards do their own sweep. 10-minute steps, crossing detection.
-function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
+export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
   const out: MoonPerfection[] = [];
   const STEP = 10 * 60000;
   let prevJd = julianDay(new Date(dayStartMs));
