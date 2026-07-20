@@ -17,7 +17,7 @@
 
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { goals, projects, milestones, tasks, habits, habitLogs, planningWindows, wins, dailyCheckIns } from "@workspace/db/schema";
+import { goals, projects, milestones, tasks, habits, habitLogs, planningWindows, wins, intentions, dailyCheckIns } from "@workspace/db/schema";
 import { and, eq, gte, desc } from "drizzle-orm";
 import { julianDay, moonLongitude, sunLongitude } from "../lib/astro.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
@@ -32,21 +32,26 @@ function requireTesterId(req: any, res: any): string | null {
 
 const elongation = (jd: number) => (((moonLongitude(jd) - sunLongitude(jd)) % 360) + 360) % 360;
 
-// Most recent New Moon: walk back day by day until the elongation wraps.
-function lastNewMoonDate(tzOffsetMin: number): string {
+// The two most recent New Moons: walk back day by day; each time the
+// elongation INCREASES going backward we just crossed 0° — a New Moon fell
+// between those days. First hit = current cycle start, second = previous.
+function newMoonDates(tzOffsetMin: number): { cycleStart: string; prevCycleStart: string } {
   const now = Date.now();
+  const found: string[] = [];
   let prev = elongation(julianDay(new Date(now)));
-  for (let d = 1; d <= 31; d++) {
+  for (let d = 1; d <= 62 && found.length < 2; d++) {
     const t = now - d * 86400000;
     const e = elongation(julianDay(new Date(t)));
     if (e > prev) {
-      // elongation increased going BACK in time → we just crossed 0 (new moon
-      // fell between d and d-1 days ago); call the later day the cycle start.
-      return new Date(now - (d - 1) * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10);
+      found.push(new Date(now - (d - 1) * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10));
     }
+    // After a wrap the values resume decreasing on their own — plain tracking
+    // is correct, and anything cleverer invents false crossings.
     prev = e;
   }
-  return new Date(now - 29 * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10);
+  const cycleStart = found[0] ?? new Date(now - 29 * 86400000).toISOString().slice(0, 10);
+  const prevCycleStart = found[1] ?? new Date(Date.parse(cycleStart) - 30 * 86400000).toISOString().slice(0, 10);
+  return { cycleStart, prevCycleStart };
 }
 
 const localDateOf = (dt: Date | string | null, tzOffsetMin: number): string | null => {
@@ -58,18 +63,15 @@ const localDateOf = (dt: Date | string | null, tzOffsetMin: number): string | nu
 
 interface LedgerItem { date: string; goalId: number | null; text: string; source: string; winId?: number }
 
-router.get("/planning/momentum", async (req, res) => {
-  const testerId = requireTesterId(req, res);
-  if (!testerId) return;
-  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
-  const lat = parseFloat((req.query.lat as string) ?? "40.7");
-  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
-  const days = Math.min(120, Math.max(7, parseInt((req.query.days as string) ?? "45", 10)));
+// Exported so the Studio's cycle card can render the same numbers the app
+// shows — one source of truth for the loop.
+export async function computeMomentum(testerId: string, tzOffsetMin: number, lat: number, lon: number, days = 70) {
+  days = Math.min(120, Math.max(7, days));
   const today = localDateOf(new Date(), tzOffsetMin)!;
   const sinceIso = new Date(Date.now() - days * 86400000).toISOString();
   const sinceDate = sinceIso.slice(0, 10);
 
-  const [allGoals, allProjects, allMilestones, allTasks, allHabits, hLogs, named, sessions, checkins] = await Promise.all([
+  const [allGoals, allProjects, allMilestones, allTasks, allHabits, hLogs, named, sessions, checkins, allIntentions] = await Promise.all([
     db.select().from(goals).where(eq(goals.testerId, testerId)),
     db.select().from(projects).where(eq(projects.testerId, testerId)),
     db.select().from(milestones).where(eq(milestones.testerId, testerId)),
@@ -79,6 +81,7 @@ router.get("/planning/momentum", async (req, res) => {
     db.select().from(wins).where(and(eq(wins.testerId, testerId), gte(wins.date, sinceDate))).orderBy(desc(wins.date)),
     db.select().from(planningWindows).where(eq(planningWindows.testerId, testerId)),
     db.select({ date: dailyCheckIns.date }).from(dailyCheckIns).where(and(eq(dailyCheckIns.testerId, testerId), gte(dailyCheckIns.date, sinceDate))),
+    db.select().from(intentions).where(eq(intentions.testerId, testerId)).orderBy(desc(intentions.createdAt)),
   ]);
 
   const goalTitle = new Map(allGoals.map(g => [g.id, g.title]));
@@ -130,7 +133,7 @@ router.get("/planning/momentum", async (req, res) => {
   }
 
   // ── Per-star: next move, today's best window, progress, win counts ─────────
-  const cycleStart = lastNewMoonDate(tzOffsetMin);
+  const { cycleStart, prevCycleStart } = newMoonDates(tzOffsetMin);
   const weekStart = new Date(Date.parse(today + "T12:00:00Z") - 6 * 86400000).toISOString().slice(0, 10);
   const arc = computeDayArc(new Date(), lat, lon, tzOffsetMin);
   const dayStartMs = new Date(arc.dayStart).getTime();
@@ -174,14 +177,27 @@ router.get("/planning/momentum", async (req, res) => {
     };
   });
 
-  res.json({
-    today, streak, cycleStart, weekStart,
+  return {
+    today, streak, cycleStart, prevCycleStart, weekStart,
+    intentions: allIntentions.filter(i => i.cycleStart === cycleStart),
+    prevIntentions: allIntentions.filter(i => i.cycleStart === prevCycleStart),
+    winsPrevCycle: ledger.filter(l => l.date >= prevCycleStart && l.date < cycleStart).length,
     winsToday: ledger.filter(l => l.date === today).length,
     winsWeek: ledger.filter(l => l.date >= weekStart).length,
     winsCycle: ledger.filter(l => l.date >= cycleStart).length,
     stars,
     ledger: ledger.slice(0, 200),
-  });
+  };
+}
+
+router.get("/planning/momentum", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const days = parseInt((req.query.days as string) ?? "70", 10);
+  res.json(await computeMomentum(testerId, tzOffsetMin, lat, lon, days));
 });
 
 // POST /planning/wins — name a win (the evening harvest's written line)
@@ -195,6 +211,20 @@ router.post("/planning/wins", async (req, res) => {
     ? date : localDateOf(new Date(), tzOffsetMin)!;
   const [row] = await db.insert(wins).values({
     testerId, date: day, goalId: goalId ?? null, text: String(text).trim().slice(0, 500),
+  }).returning();
+  res.status(201).json(row);
+});
+
+// POST /planning/intentions — set a New-Moon intention for the current cycle
+router.post("/planning/intentions", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const { text, goalId, tz } = req.body ?? {};
+  if (!text || !String(text).trim()) { res.status(400).json({ error: "text required" }); return; }
+  const tzOffsetMin = parseInt(tz, 10) || 0;
+  const { cycleStart } = newMoonDates(tzOffsetMin);
+  const [row] = await db.insert(intentions).values({
+    testerId, cycleStart, goalId: goalId ?? null, text: String(text).trim().slice(0, 500),
   }).returning();
   res.status(201).json(row);
 });

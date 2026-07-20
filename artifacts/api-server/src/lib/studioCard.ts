@@ -677,3 +677,69 @@ export function buildActivityCardSvg(opts: {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
   return { svg, width: W, height: H };
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The cycle-in-wins card — a personal lunation review (owner 2026-07-18):
+// total wins since the New Moon, per-star counts, the named wins, the
+// intention. Private by default; rendered from the same momentum data the app
+// shows, so the card can't disagree with the Wake.
+// ═════════════════════════════════════════════════════════════════════════════
+
+export function buildCycleWinsCardSvg(m: any, opts: {
+  theme?: CardTheme; format?: CardFormat; tzLabel?: string;
+}): { svg: string; width: number; height: number } {
+  const theme = opts.theme ?? "tide";
+  const format = opts.format ?? "story";
+  const W = 1080, H = format === "story" ? 1920 : 1350;
+  const s = SURFACE[theme];
+  const fmtD = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const kicker = `this lunation · since the ${fmtD(m.cycleStart)} New Moon`;
+  const cycleLedger = (m.ledger ?? []).filter((l: any) => l.date >= m.cycleStart);
+  const namedWins = cycleLedger.filter((l: any) => l.source === "named").slice(0, 5);
+  const starOf = (id: number | null) => (m.stars ?? []).find((x: any) => x.id === id);
+
+  const parts: string[] = [];
+  parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">AUSPICE</text>`);
+  parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
+
+  // Hero: the count, huge — the wake speaks for itself.
+  const heroY = format === "story" ? 400 : 340;
+  parts.push(phaseDisc(W / 2, heroY - 110, 64, 0.0, true, theme));
+  parts.push(`<text x="${W / 2}" y="${heroY + 60}" text-anchor="middle" font-family="${SERIF}" font-size="170" font-weight="700" fill="${s.ink}">${m.winsCycle ?? 0}</text>`);
+  parts.push(`<text x="${W / 2}" y="${heroY + 116}" text-anchor="middle" font-family="${SERIF}" font-size="32" fill="${s.sub}">wins in the wake · ${m.streak} day${m.streak === 1 ? "" : "s"} at the helm</text>`);
+  if ((m.intentions ?? [])[0]) {
+    parts.push(`<text x="${W / 2}" y="${heroY + 168}" text-anchor="middle" font-family="${SERIF}" font-size="27" font-style="italic" fill="${s.ink}">"${esc(m.intentions[0].text.slice(0, 60))}"</text>`);
+  }
+
+  // Per-star counts
+  let y = heroY + (format === "story" ? 250 : 210);
+  const left = 130;
+  for (const st of (m.stars ?? []).filter((x: any) => x.winsCycle > 0)) {
+    const c = ELEMENT_COLORS[theme][st.element ?? "water"] ?? s.sub;
+    parts.push(`<circle cx="${left}" cy="${y - 10}" r="9" fill="${c}"/>`);
+    parts.push(`<text x="${left + 28}" y="${y}" font-family="${SERIF}" font-size="34" font-weight="600" fill="${s.ink}">${esc(st.title)}</text>`);
+    parts.push(`<text x="${W - left}" y="${y}" text-anchor="end" font-family="${SERIF}" font-size="34" font-weight="700" fill="${c}">${st.winsCycle}</text>`);
+    y += 62;
+  }
+
+  // The named wins — the lines with meaning
+  if (namedWins.length) {
+    y += 30;
+    parts.push(`<text x="${left}" y="${y}" font-family="${SERIF}" font-size="24" letter-spacing="4" fill="${s.sub}">NAMED ALONG THE WAY</text>`);
+    y += 48;
+    for (const w of namedWins) {
+      const star = starOf(w.goalId);
+      // The ★ marker gets its own text node — mixed into the sentence it drags
+      // the whole run out of Spectral and into the symbol face.
+      parts.push(`<text x="${left}" y="${y}" font-family="Noto Sans Symbols 2" font-size="24" fill="#C8A04A">★</text>`);
+      parts.push(`<text x="${left + 38}" y="${y}" font-family="${SERIF}" font-size="28" fill="${s.ink}">${esc(w.text.slice(0, 52))}${star ? `  <tspan font-size="21" fill="${s.sub}">· ${esc(star.title)}</tspan>` : ""}</text>`);
+      y += 52;
+      if (y > H - 160) break;
+    }
+  }
+
+  parts.push(`<text x="${W / 2}" y="${H - 64}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
+  return { svg, width: W, height: H };
+}

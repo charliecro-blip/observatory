@@ -14,7 +14,8 @@ import { Router, type IRouter } from "express";
 import path from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { buildDayCardSvg, buildBestTimesCardSvg, buildActivityCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
+import { buildDayCardSvg, buildBestTimesCardSvg, buildActivityCardSvg, buildCycleWinsCardSvg, type CardTheme, type CardFormat } from "../lib/studioCard.js";
+import { computeMomentum } from "./momentum.js";
 
 const router: IRouter = Router();
 
@@ -105,6 +106,27 @@ router.get("/studio/day.png", async (req, res) => {
     });
     const png = r.render().asPng();
     res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-day.png"`).send(Buffer.from(png));
+  } catch (e: any) {
+    res.status(501).json({ error: "PNG rendering unavailable", detail: String(e?.message ?? e) });
+  }
+});
+
+// The personal cycle-in-wins card. Private data → the tester id rides in the
+// query (?tester=) so the link is openable/bookmarkable from the app; ids are
+// the app's existing bearer credential (the recovery-key account model).
+router.get("/studio/cycle.png", async (req, res) => {
+  try {
+    const tester = (req.query.tester as string) || "";
+    if (!tester) { res.status(401).json({ error: "tester required" }); return; }
+    const base = parseOpts(req);
+    const m = await computeMomentum(tester, base.tzOffsetMin, base.lat, base.lon);
+    const { svg, width } = buildCycleWinsCardSvg(m, { theme: base.theme, format: base.format });
+    const { Resvg } = await import("@resvg/resvg-js");
+    const r = new Resvg(svg, {
+      fitTo: { mode: "width", value: width },
+      font: { fontBuffers: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
+    });
+    res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-cycle.png"`).send(Buffer.from(r.render().asPng()));
   } catch (e: any) {
     res.status(501).json({ error: "PNG rendering unavailable", detail: String(e?.message ?? e) });
   }

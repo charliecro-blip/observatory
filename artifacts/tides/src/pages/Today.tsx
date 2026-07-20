@@ -13,7 +13,7 @@ import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
-import { StarRows, EveningHarvest } from "@/components/Momentum";
+import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
@@ -885,6 +885,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           />
         )}
         {ritualMode === "evening" && reflectBlock}
+
+        {/* Review moments — Sundays (the week in the wake) and the New Moon
+            window (cycle review + next intention). Self-gating; absent
+            otherwise. ?review=week|cycle forces either for design work. */}
+        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} />
 
         {/* First-star hint — for users with no Guiding Stars yet, routing them
             to the app's strongest moment. Takes priority over the premium

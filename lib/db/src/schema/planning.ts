@@ -138,6 +138,17 @@ export const wins = pgTable("wins", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// New-Moon intentions — the cycle's opening bookend (owner 2026-07-18):
+// set at (or near) the New Moon, revisited at the next one against the wake.
+export const intentions = pgTable("intentions", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  cycleStart: text("cycle_start").notNull(), // YYYY-MM-DD of the New Moon this belongs to
+  goalId: integer("goal_id"),                // nullable — an intention can be general
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const habitLogs = pgTable("habit_logs", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),

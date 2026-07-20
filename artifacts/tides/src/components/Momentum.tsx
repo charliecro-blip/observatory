@@ -19,8 +19,10 @@ export interface MomentumStar {
   winsWeek: number; winsCycle: number; winsToday: number;
 }
 export interface MomentumData {
-  today: string; streak: number; cycleStart: string; weekStart: string;
-  winsToday: number; winsWeek: number; winsCycle: number;
+  today: string; streak: number; cycleStart: string; prevCycleStart: string; weekStart: string;
+  winsToday: number; winsWeek: number; winsCycle: number; winsPrevCycle: number;
+  intentions: { id: number; text: string; goalId: number | null }[];
+  prevIntentions: { id: number; text: string; goalId: number | null }[];
   stars: MomentumStar[];
   ledger: { date: string; goalId: number | null; text: string; source: string; winId?: number }[];
 }
@@ -174,8 +176,14 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>The wake</div>
-        <div style={{ fontSize: 9.5, color: "#8a7a5e" }}>
-          ⚓ {data.streak}d at the helm · {data.winsWeek} this week · {data.winsCycle} this cycle
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <span style={{ fontSize: 9.5, color: "#8a7a5e" }}>
+            ⚓ {data.streak}d at the helm · {data.winsWeek} this week · {data.winsCycle} this cycle
+          </span>
+          <a href={`/api/studio/cycle.png?tester=${encodeURIComponent(testerId ?? "")}&tz=${new Date().getTimezoneOffset()}`}
+            target="_blank" rel="noreferrer"
+            style={{ fontSize: 9.5, color: "#8a6a20", textDecoration: "none", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
+            title="Your lunation in wins, as a card">↗ cycle card</a>
         </div>
       </div>
       <div style={{ fontSize: 10, color: "#999", marginBottom: 8 }}>
@@ -219,6 +227,127 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── Review moments: Sunday (the week) and the New Moon (the cycle) ───────────
+// The weekly review reads the wake back to you; the cycle review closes the
+// loop the New Moon opened — last cycle's intention vs. what the wake shows —
+// and invites the next intention. ?review=week|cycle forces either for design.
+export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
+  testerId: string | null; lat?: number; lon?: number; onOpenLog?: () => void;
+}) {
+  const qc = useQueryClient();
+  const { data } = useMomentum(testerId, lat, lon);
+  const [intent, setIntent] = useState("");
+  const [intentStar, setIntentStar] = useState<number | "">("");
+  const setIntention = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/planning/intentions", {
+        method: "POST",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ text: intent.trim(), goalId: intentStar || undefined, tz: new Date().getTimezoneOffset() }),
+      });
+    },
+    onSuccess: () => { setIntent(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+  });
+  if (!data) return null;
+
+  const force = new URLSearchParams(window.location.search).get("review");
+  const isSunday = new Date().getDay() === 0;
+  const daysSinceNewMoon = Math.floor((Date.parse(data.today) - Date.parse(data.cycleStart)) / 86400000);
+  const inNewMoonWindow = daysSinceNewMoon >= 0 && daysSinceNewMoon <= 2;
+  const showCycle = force === "cycle" || inNewMoonWindow;
+  const showWeek = !showCycle && (force === "week" || isSunday);
+  if (!showCycle && !showWeek) return null;
+
+  const named = (from: string, to?: string) => data.ledger
+    .filter(l => l.source === "named" && l.date >= from && (!to || l.date < to))
+    .slice(0, 3);
+  const starTitle = (id: number | null) => data.stars.find(s => s.id === id)?.title;
+
+  if (showWeek) {
+    const topNamed = named(data.weekStart);
+    return (
+      <div style={{ background: "linear-gradient(135deg, #8a6a2010, #8a6a2004)", border: "1px solid #c8b06a45", borderRadius: 14, padding: "13px 16px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>⚓ The week in the wake</span>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>Sunday review</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: "#777", marginBottom: 7 }}>
+          {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.streak} day{data.streak === 1 ? "" : "s"} at the helm
+          {data.stars.filter(s => s.winsWeek > 0).map(s => ` · ${s.title}: ${s.winsWeek}`).join("")}
+        </div>
+        {topNamed.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 7 }}>
+            {topNamed.map((w, i) => (
+              <div key={i} style={{ fontSize: 11, color: "var(--color-foreground)" }}>
+                <span style={{ color: "#c8a04a" }}>★</span> {w.text}{starTitle(w.goalId) ? ` · ${starTitle(w.goalId)}` : ""}
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={onOpenLog} style={{ fontSize: 10.5, padding: "4px 12px", borderRadius: 8, border: "1px solid #c8b06a55", background: "var(--color-card)", color: "#8a6a20", cursor: "pointer", fontWeight: 600 }}>
+          Read the whole wake →
+        </button>
+      </div>
+    );
+  }
+
+  // ── Cycle review (New Moon window) ──
+  const prevNamed = named(data.prevCycleStart, data.cycleStart);
+  const hasSetThisCycle = (data.intentions ?? []).length > 0;
+  return (
+    <div style={{ background: "linear-gradient(135deg, #1a2a3a10, #1a2a3a04)", border: "1px solid #1a2a3a30", borderRadius: 14, padding: "13px 16px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>🌑 New Moon — the cycle turns</span>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#667" }}>cycle review</span>
+      </div>
+
+      {/* Last cycle: intention vs. the wake */}
+      <div style={{ fontSize: 11.5, color: "#777", marginBottom: 6 }}>
+        Last cycle: {data.winsPrevCycle} win{data.winsPrevCycle === 1 ? "" : "s"} in the wake.
+      </div>
+      {(data.prevIntentions ?? []).map((i: any, k: number) => (
+        <div key={k} style={{ fontSize: 11, color: "#556", marginBottom: 3, fontStyle: "italic" }}>
+          you set out to: "{i.text}"{starTitle(i.goalId) ? ` · ${starTitle(i.goalId)}` : ""}
+        </div>
+      ))}
+      {prevNamed.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, margin: "4px 0 8px" }}>
+          {prevNamed.map((w, i) => (
+            <div key={i} style={{ fontSize: 11, color: "var(--color-foreground)" }}>
+              <span style={{ color: "#c8a04a" }}>★</span> {w.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* This cycle: set the intention */}
+      {hasSetThisCycle ? (
+        <div style={{ fontSize: 11, color: "#4a8060", marginTop: 4 }}>
+          ✓ intention set: "{data.intentions[0].text}" — the wake will answer at the next New Moon.
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
+          <input value={intent} onChange={e => setIntent(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && intent.trim() && setIntention.mutate()}
+            placeholder="This cycle, I mean to…"
+            style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+          {data.stars.length > 0 && (
+            <select value={intentStar} onChange={e => setIntentStar(e.target.value ? Number(e.target.value) : "")}
+              style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "#777", background: "var(--color-card)", maxWidth: 110 }}>
+              <option value="">no star</option>
+              {data.stars.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          )}
+          <button onClick={() => intent.trim() && setIntention.mutate()} disabled={!intent.trim() || setIntention.isPending}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "#e0dcd6", color: intent.trim() ? "#fff" : "#aaa", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+            🌑 set it
+          </button>
+        </div>
+      )}
     </div>
   );
 }

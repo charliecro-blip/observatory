@@ -603,7 +603,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           return (
             <div key={g.id} ref={el => { cardRefs.current[g.id] = el; }} style={{
               background: "var(--color-card)",
-              border: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              // Longhand sides only — mixing border and borderLeft shorthands
+              // makes React warn on every rerender.
+              borderTop: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderRight: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderBottom: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
               borderLeft: `3px solid ${ec}`, borderRadius: 10, overflow: "hidden",
               boxShadow: highlightId === g.id ? `0 0 0 3px ${ec}30` : "none",
               transition: "box-shadow 0.4s, border-color 0.4s",
