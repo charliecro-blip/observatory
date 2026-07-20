@@ -111,6 +111,14 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"planets",  label:"Planets"},
 ];
 
+// Structured election context handed from Auspice's picker into Ask. The
+// windows are facts from the deterministic engine; the note is the user's own.
+export interface AskElectionContext {
+  activity: string;
+  note?: string;
+  windows: { label: string; tier?: string; why?: string }[];
+}
+
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat",
 ];
@@ -750,7 +758,14 @@ function Shell() {
   // opening it from elsewhere jumps to Today first.
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [advisorSeed, setAdvisorSeed] = useState<string | null>(null);
-  const askCompass = (seed: string) => { setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  // Structured context that rides into Ask alongside the seed message — the
+  // Auspice engine's real candidate windows + the user's own note. Ask treats
+  // the windows as given facts (see /api/advise electionContext).
+  const [askContext, setAskContext] = useState<AskElectionContext | null>(null);
+  const askCompass = (seed: string) => { setAskContext(null); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  const askAboutElection = (ctx: AskElectionContext, seed: string) => {
+    setAskContext(ctx); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true);
+  };
   // Teachable-moment deep link: "today feels saturnine" on Today → Star Base
   // opens on that planet's page.
   const [visitPlanet, setVisitPlanet] = useState<string | null>(null);
@@ -868,7 +883,7 @@ function Shell() {
           <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
         )}
         <button
-          onClick={() => { setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
+          onClick={() => { setAskContext(null); setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
           style={{
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
@@ -913,7 +928,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
@@ -923,7 +938,7 @@ function Shell() {
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
         {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
-        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>

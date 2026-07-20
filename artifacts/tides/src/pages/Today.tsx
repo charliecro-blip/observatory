@@ -131,7 +131,7 @@ const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, now, northStars }: {
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, electionContext, now, northStars }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -140,6 +140,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   weekSummary: string;
   onAddTask: (title: string) => void;
   seedMessage?: string | null;
+  // When opened from Auspice's election picker: the activity + real candidate
+  // windows + the user's note. Rides into /api/advise as given facts.
+  electionContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
   now?: any;
   northStars?: any[] | null;
 }) {
@@ -179,7 +182,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           "Content-Type": "application/json",
           ...(testerId ? { "x-tester-id": testerId } : {}),
         },
-        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary }),
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary, ...(electionContext ? { electionContext } : {}) }),
       });
 
       const reader = res.body?.getReader();
@@ -474,10 +477,11 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, onVisitPlanet, onOpenStar }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onVisitPlanet, onOpenStar }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
   onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
+  askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
   onVisitPlanet?: (planet: string) => void;
 }) {
   const qc = useQueryClient();
@@ -837,6 +841,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           gcalEvents={gcalEvents}
           weekSummary={weekSummary}
           seedMessage={advisorSeed}
+          electionContext={askContext}
           now={now}
           northStars={northStars}
           onAddTask={title => {

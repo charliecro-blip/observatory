@@ -47,13 +47,21 @@ router.post("/advise", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(400).json({ error: "Missing x-tester-id" }); return; }
 
-  const { message, history = [], lat = 40.7, lon = -74.0, gcalEvents = [], weekSummary = "" } = req.body as {
+  const { message, history = [], lat = 40.7, lon = -74.0, gcalEvents = [], weekSummary = "", electionContext } = req.body as {
     message: string;
     history?: { role: "user" | "assistant"; content: string }[];
     lat?: number;
     lon?: number;
     gcalEvents?: { title: string; start: string; end: string; allDay: boolean }[];
     weekSummary?: string;
+    // Optional: the user came from Auspice (the election engine) with a real
+    // activity + candidate windows + their own note about it. The windows are
+    // GIVEN FACTS from the deterministic engine — Ask advises within them.
+    electionContext?: {
+      activity?: string;
+      note?: string;
+      windows?: { label: string; tier?: string; why?: string }[];
+    };
   };
 
   if (!message?.trim()) { res.status(400).json({ error: "message required" }); return; }
@@ -137,6 +145,20 @@ router.post("/advise", async (req, res) => {
       }).join("\n")}`
     : "";
 
+  const electionSection = electionContext?.activity
+    ? `\nTHE USER IS ELECTING A TIME FOR: ${electionContext.activity}\n${
+        electionContext.windows?.length
+          ? `Auspice — the timing engine — already found these candidate windows. Treat them as GIVEN FACTS; do not invent, override, or second-guess the timing:\n${electionContext.windows
+              .map(w => `• ${w.label}${w.tier ? ` [${w.tier} time]` : ""}${w.why ? ` — ${w.why}` : ""}`)
+              .join("\n")}`
+          : "Auspice found no clean window in the span they chose — the sky is quiet for this right now."
+      }${
+        electionContext.note
+          ? `\nWhat they told you about it (their hopes, worries, or constraints): "${electionContext.note}"`
+          : ""
+      }\n\nHelp them choose among these windows and prepare for the one they pick, honoring what they told you and their goals. Do NOT fabricate astrological timings beyond the windows above — if none fits their constraints, say so plainly and offer the closest honest trade-off.\n`
+    : "";
+
   const systemPrompt = `You are a thoughtful astrological advisor. You speak conversationally — like a knowledgeable, warm friend, not a textbook. Keep responses concise: 2–4 sentences usually, never a wall of text.
 
 Your job is to help the user decide what to do *right now*, using the current astrological moment as a lens. Be concrete and specific. When the sky supports something they're actually working on, name it. When the sky is better for rest or reflection, say so plainly.
@@ -154,7 +176,7 @@ ${weekSummary ? `\nWEEK AHEAD QUALITY:\n${weekSummary}` : ""}
 
 ${userSection ? `USER'S CONTEXT:\n${userSection}` : "No tasks, habits, or goals on record yet — work from the astrological moment alone."}
 ${calSection ? `\n${calSection}` : ""}
-${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
+${electionSection}${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
 
 Respond directly, warmly, and practically. Don't summarize the astrology back to them — use it to inform what you say.`;
 

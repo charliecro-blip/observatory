@@ -1,4 +1,5 @@
 import { ElectionPicker } from "@/components/ElectionPicker";
+import type { AskElectionContext } from "@/App";
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
@@ -278,7 +279,7 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
   );
 }
 
-export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void }) {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void; onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
   const [showCrossings, setShowCrossings] = useState(false);
@@ -327,7 +328,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
 
         {/* The activity election picker — the extensive correspondence list,
             tiered good/great times, one-tap scheduling (owner 2026-07-20). */}
-        <ElectionPicker testerId={testerId} lat={lat} lon={lon} />
+        <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
 
         {/* Category picker — one idea at a time: once a category is chosen the
             grid folds away to just the choice + a "change" affordance, so the

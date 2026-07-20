@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
+import type { AskElectionContext } from "@/App";
 
 /**
  * The election picker (owner 2026-07-20): browse the extensive activity list,
@@ -23,12 +24,29 @@ interface ElectionWindowT {
   tier: "good" | "great"; why: string; score: number;
 }
 
-export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null; lat: number; lon: number }) {
+type PartOfDay = "morning" | "afternoon" | "evening";
+const PART_LABEL: Record<PartOfDay, string> = { morning: "mornings", afternoon: "afternoons", evening: "evenings" };
+// Part-of-day from a localized clock string like "7:00 AM" / "6:30 PM".
+function partOfDay(clock: string): PartOfDay {
+  const m = clock.match(/(\d+):\d+\s*(AM|PM)/i);
+  if (!m) return "afternoon";
+  let h = parseInt(m[1], 10) % 12;
+  if (/PM/i.test(m[2])) h += 12;
+  return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+}
+
+export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string | null; lat: number; lon: number; onAsk?: (ctx: AskElectionContext, seed: string) => void }) {
   const qc = useQueryClient();
   const [category, setCategory] = useState<string>("body");
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [span, setSpan] = useState<"day" | "week" | "month">("week");
   const [scheduled, setScheduled] = useState<string | null>(null);
+  // Layer 1 (deterministic): "when you're free" filters the elected windows by
+  // part of day — no astrology invented, just a filter. Layer 2 (subjective):
+  // the note rides into Ask so it can advise within the real windows.
+  const [showDetails, setShowDetails] = useState(false);
+  const [freeParts, setFreeParts] = useState<Set<PartOfDay>>(new Set());
+  const [note, setNote] = useState("");
 
   const { data: list } = useQuery<{ categories: { key: string; label: string; gloss: string }[]; activities: ActivityLite[] }>({
     queryKey: ["election-activities"],
@@ -69,6 +87,30 @@ export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null
 
   const activities = (list?.activities ?? []).filter(a => a.category === category);
   const selected = list?.activities.find(a => a.key === activityKey);
+
+  const allWindows = times?.windows ?? [];
+  const shownWindows = freeParts.size === 0
+    ? allWindows
+    : allWindows.filter(w => w.allDay || freeParts.has(partOfDay(w.startClock)));
+  const filteredOut = allWindows.length - shownWindows.length;
+
+  function togglePart(p: PartOfDay) {
+    setFreeParts(prev => { const n = new Set(prev); n.has(p) ? n.delete(p) : n.add(p); return n; });
+  }
+
+  function askAboutTimes() {
+    if (!onAsk) return;
+    const label = (selected?.label ?? "this").toLowerCase();
+    const when = span === "day" ? "today" : `this ${span}`;
+    const windows = shownWindows.slice(0, 4).map(w => ({
+      label: `${w.dow} ${w.date} · ${w.allDay ? "all day" : `${w.startClock}–${w.endClock}`}`,
+      tier: w.tier, why: w.why,
+    }));
+    const freeNote = freeParts.size ? ` I'm free ${[...freeParts].map(p => PART_LABEL[p]).join(" / ")}.` : "";
+    const seed = `Help me pick the best time for ${label} ${when}.${freeNote}${note.trim() ? ` ${note.trim()}` : ""}`;
+    logEvent("election_ask", { activity: activityKey, span, hasNote: !!note.trim() });
+    onAsk({ activity: selected?.label ?? activityKey!, note: note.trim() || undefined, windows }, seed);
+  }
 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
@@ -137,12 +179,17 @@ export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null
           )}
 
           {isFetching && <div style={{ fontSize: 11, color: "#999", padding: "10px 0" }}>Reading the sky…</div>}
-          {!isFetching && (times?.windows ?? []).length === 0 && (
+          {!isFetching && allWindows.length === 0 && (
             <div style={{ fontSize: 11, color: "#999", padding: "6px 0" }}>No clean window in this span — a quiet stretch for this.</div>
+          )}
+          {!isFetching && allWindows.length > 0 && shownWindows.length === 0 && (
+            <div style={{ fontSize: 11, color: "#999", padding: "6px 0" }}>
+              No window falls in your free times this {span}. <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "#4a5a6a", cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>show all →</button>
+            </div>
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {(times?.windows ?? []).map((w, i) => {
+            {shownWindows.map((w, i) => {
               const key = `${w.dow}|${w.startClock}`;
               const great = w.tier === "great";
               return (
@@ -174,6 +221,53 @@ export function ElectionPicker({ testerId, lat, lon }: { testerId: string | null
                 </div>
               );
             })}
+          </div>
+
+          {filteredOut > 0 && shownWindows.length > 0 && (
+            <div style={{ fontSize: 9, color: "#a09888", marginTop: 5 }}>{filteredOut} more outside your free times · <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "#8a8278", cursor: "pointer", textDecoration: "underline", fontSize: 9, padding: 0 }}>show all</button></div>
+          )}
+
+          {/* Add details — Layer 1 (free-time filter, deterministic) + Layer 2
+              (a note that rides into Ask with these windows as given facts). */}
+          <div style={{ borderTop: "1px dashed var(--color-border)", marginTop: 11, paddingTop: 9 }}>
+            {!showDetails ? (
+              <button onClick={() => setShowDetails(true)} style={{
+                fontSize: 10, background: "none", border: "none", color: "#6a7a8a", cursor: "pointer", padding: 0, fontWeight: 500,
+              }}>＋ Narrow it down · tell Ask more</button>
+            ) : (
+              <div>
+                <div style={{ fontSize: 9.5, color: "#8a8278", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>When are you free?</div>
+                <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+                  {(["morning", "afternoon", "evening"] as PartOfDay[]).map(p => {
+                    const on = freeParts.has(p);
+                    return (
+                      <button key={p} onClick={() => togglePart(p)} style={{
+                        fontSize: 10, padding: "4px 11px", borderRadius: 14, cursor: "pointer", textTransform: "capitalize",
+                        border: on ? "1px solid #3a5a80" : "1px solid var(--color-border)",
+                        background: on ? "#3a5a8014" : "transparent", color: on ? "#3a5a80" : "#888", fontWeight: on ? 600 : 400,
+                      }}>{p}</button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 9.5, color: "#8a8278", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>Anything Ask should know?</div>
+                <textarea
+                  value={note} onChange={e => setNote(e.target.value)} rows={2}
+                  placeholder="what you're hoping for, worried about, or working around…"
+                  style={{
+                    width: "100%", boxSizing: "border-box", fontSize: 11, padding: "7px 9px", borderRadius: 8, resize: "vertical",
+                    border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-foreground)",
+                    fontFamily: "inherit", lineHeight: 1.45,
+                  }}
+                />
+              </div>
+            )}
+
+            {onAsk && (
+              <button onClick={askAboutTimes} style={{
+                marginTop: 10, width: "100%", fontSize: 11.5, padding: "9px 12px", borderRadius: 9, cursor: "pointer", fontWeight: 600,
+                border: "1px solid #c0bab0", background: "var(--color-card)", color: "#4a5a6a",
+              }}>✦ Ask which one — and how to make the most of it</button>
+            )}
           </div>
         </div>
       )}
