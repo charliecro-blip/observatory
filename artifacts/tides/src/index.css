@@ -8,6 +8,24 @@
   font-display: swap;
 }
 
+/* Self-hosted UI + symbol faces (2026-07-20) — were loaded from
+   fonts.googleapis.com, which is blocked in mainland China and slower
+   everywhere. woff2 vendored in static/fonts. */
+@font-face{font-family:'Geist';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/geist-400.woff2') format('woff2');}
+@font-face{font-family:'Geist';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/geist-500.woff2') format('woff2');}
+@font-face{font-family:'Geist';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/geist-600.woff2') format('woff2');}
+@font-face{font-family:'Geist Mono';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/geistmono-400.woff2') format('woff2');}
+@font-face{font-family:'Geist Mono';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/geistmono-500.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/spacegrotesk-400.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/spacegrotesk-500.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/spacegrotesk-700.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:italic;font-weight:400;font-display:swap;src:url('/fonts/spectral-400i.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/spectral-400.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/spectral-500.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/spectral-600.woff2') format('woff2');}
+@font-face{font-family:'Noto Sans Symbols';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/notosanssymbols-400.woff2') format('woff2');}
+@font-face{font-family:'Noto Sans Symbols 2';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/notosanssymbols2-400.woff2') format('woff2');}
+
 @theme {
   /* Noto symbol faces are NOT in this global chain on purpose: when they were,
      any astrological glyph sitting inline in body text fell through to the
