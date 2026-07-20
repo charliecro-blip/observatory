@@ -275,9 +275,11 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
           </button>
         </div>
 
-        {isLast && (
-          <button onClick={onDone} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center" }}>
-            Skip intro
+        {/* Skip is available from slide one — a low-attention/skeptic user
+            (persona study) shouldn't have to tap through five slides first. */}
+        {!isLast && (
+          <button onClick={onDone} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
+            Skip intro →
           </button>
         )}
       </div>
@@ -462,7 +464,9 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   }
 
   function handleSkip() {
-    setStep("chronotype");
+    // "Show me today →" goes straight into the app — no chart, no chronotype
+    // gate (both are addable in Settings). The label promises today; deliver it.
+    onComplete(name.trim() || "Observer");
   }
 
   const cardStyle: React.CSSProperties = {
@@ -528,9 +532,9 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
       <div style={cardStyle}>
         <div style={{ marginBottom:24 }}>
-          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your birth chart</div>
+          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            Auspice uses your birth data to compute personal transits — showing which planetary cycles are active in <em>your</em> chart right now. This stays private on your device.
+            You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, private to your device, and easy to add later.
           </div>
         </div>
 
@@ -615,16 +619,21 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           )}
 
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
+            {/* Explore-first is a co-equal path (persona study: the birth-data
+                wall costs the growth + skeptic audiences before they see value). */}
             <button type="button" onClick={handleSkip}
-              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"#888", fontSize:12, cursor:"pointer", fontWeight:500 }}>
-              Skip for now
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid #1a2a3a", background: "var(--color-card)", color:"#1a2a3a", fontSize:12.5, cursor:"pointer", fontWeight:600 }}>
+              Show me today →
             </button>
             <button type="submit" disabled={!birthDate || birthLat == null || saving}
-              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:13, fontWeight:600,
-                background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#1a2a3a",
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:12.5, fontWeight:600,
+                background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#3a6030",
                 color: (!birthDate || birthLat == null) ? "#aaa" : "#fff" }}>
-              {saving ? "Saving…" : "Continue →"}
+              {saving ? "Saving…" : "Add my chart"}
             </button>
+          </div>
+          <div style={{ fontSize:10, color:"#b0a898", marginTop:8, textAlign:"center" }}>
+            You can add or edit your chart anytime in Settings.
           </div>
         </form>
       </div>
