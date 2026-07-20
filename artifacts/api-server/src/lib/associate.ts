@@ -20,7 +20,11 @@ export interface Association {
   planets: string[];       // strongest first, up to 2
   windowType: WindowType;
   rationale: string;       // one plain sentence, no jargon required to read
-  source: "keywords" | "ai";
+  source: "keywords" | "ai" | "correspondence";
+  // When the activity-correspondence table recognizes the text, its richer
+  // signature rides along — the election engine's natal layer needs these.
+  activityKey?: string;
+  houses?: number[];
 }
 
 interface PlanetProfile {
@@ -90,8 +94,22 @@ function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter(Boolean);
 }
 
-/** Deterministic keyword association — the free, offline, always-available path. */
+import { matchActivity } from "./activityCorrespondences.js";
+
+/** Deterministic keyword association — the free, offline, always-available path.
+ * First pass is the activity-correspondence table (the canonical activity →
+ * astrology list); the older planet-keyword scoring is the fallback beneath it. */
 export function associateDeterministic(text: string): Association {
+  const hit = matchActivity(text);
+  if (hit) {
+    const a = hit.activity;
+    const planets = Object.entries(a.planets).sort((x, z) => z[1] - x[1]).map(([p]) => p).slice(0, 2);
+    return {
+      element: a.element, planets, windowType: a.windowType as WindowType,
+      rationale: a.gloss, source: "correspondence",
+      activityKey: a.key, houses: a.houses,
+    };
+  }
   const tokens = tokenize(text);
   const joined = ` ${tokens.join(" ")} `;
   const scores: Record<string, number> = {};

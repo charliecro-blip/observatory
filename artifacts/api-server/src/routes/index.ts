@@ -36,6 +36,7 @@ import skyLiteracyRouter from "./skyLiteracy";
 import chartRouter from "./chart";
 import studioRouter from "./studio";
 import momentumRouter from "./momentum";
+import electionsRouter from "./elections";
 
 const router: IRouter = Router();
 
@@ -76,5 +77,6 @@ router.use(skyLiteracyRouter);
 router.use(chartRouter);
 router.use(studioRouter);
 router.use(momentumRouter);
+router.use(electionsRouter);
 
 export default router;

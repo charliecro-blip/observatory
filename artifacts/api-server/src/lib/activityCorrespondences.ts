@@ -1,0 +1,372 @@
+/**
+ * Activity correspondences — the canonical activity → astrology table
+ * (owner 2026-07-20). One extensive list, three consumers:
+ *
+ *   1. The election picker: choose an activity → get day/week/month times,
+ *      localized (planetary hours, since this is in-app per-user) and
+ *      personalized (natal houses/planets → the GREAT tier).
+ *   2. Quality tiers: GOOD = the activity's planetary hour, a Moon aspect to
+ *      its significators, its Moon-sign affinity. GREAT = its natal house or
+ *      natal significator is activated, or a standing sky aspect between its
+ *      significators is in play — or GOOD conditions stacked.
+ *   3. Sortage: matching a Guiding Star / step / task title against keywords
+ *      gives it a timing signature (element, window type, significators).
+ *
+ * Intellectual spine: knowledge/electional-astrology-v1 (house governs the
+ * matter; the house ruler and co-significators are the venture's planets;
+ * the Moon times it) extended to everyday, low-stakes activities. Classical
+ * commitments kept: Mercury-Rx readings differ by activity (drafting loves
+ * it, releasing hates it); VoC favors rest/clearing and blocks launches;
+ * waxing builds, waning releases; hard aspects fuel exertion only.
+ */
+
+export type ActivityCategory =
+  | "body" | "mind" | "craft" | "love" | "social" | "home" | "money" | "spirit" | "launch";
+
+export const ACTIVITY_CATEGORIES: { key: ActivityCategory; label: string; gloss: string }[] = [
+  { key: "body", label: "Body", gloss: "training, rest, the animal you live in" },
+  { key: "mind", label: "Mind", gloss: "study, writing, thinking in public" },
+  { key: "craft", label: "Craft & work", gloss: "deep work, finishing, the daily trade" },
+  { key: "love", label: "Love & intimacy", gloss: "dates, bonds, repair" },
+  { key: "social", label: "Social", gloss: "friends, hosting, networks" },
+  { key: "home", label: "Home", gloss: "the rooms and rhythms you live inside" },
+  { key: "money", label: "Money", gloss: "ledger, purchases, commitments" },
+  { key: "spirit", label: "Spirit", gloss: "the inner life and its practices" },
+  { key: "launch", label: "Launches & stakes", gloss: "the high-scrutiny elections" },
+];
+
+export interface ActivityCorrespondence {
+  key: string;
+  label: string;
+  category: ActivityCategory;
+  keywords: string[];               // free-text sortage (stars, steps, tasks)
+  element: "fire" | "earth" | "air" | "water";
+  planets: Record<string, number>;  // significators, weighted — Moon-aspect targets
+  hourRulers: string[];             // planetary hours that make a GOOD time (classical 7 only)
+  aspects: "soft" | "effort";       // geometry palette: soft(+quintile) vs hard-as-fuel
+  signs: Record<string, string>;    // Moon-sign affinity → one-word gloss
+  houses: number[];                 // governing houses — the natal/GREAT layer
+  phase: "waxing" | "waning" | "new" | "full" | null;
+  voc: "avoid" | "neutral" | "favor";
+  mercuryRx: "hard" | "soft" | "favor" | null;
+  windowType: string;               // app WINDOW_TYPES mapping (scheduling)
+  gloss: string;
+}
+
+const A = (a: ActivityCorrespondence) => a;
+
+export const ACTIVITIES: ActivityCorrespondence[] = [
+  // ── BODY ────────────────────────────────────────────────────────────────────
+  A({ key: "train-hard", label: "Hard training", category: "body",
+    keywords: ["workout", "gym", "lift", "train", "hiit", "sprint", "crossfit"],
+    element: "fire", planets: { Mars: 1.0, Sun: 0.8 }, hourRulers: ["Mars", "Sun"],
+    aspects: "effort", signs: { Aries: "fast fire", Leo: "proud fire", Scorpio: "grinding depth", Capricorn: "endurance" },
+    houses: [1, 6], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "deep_work",
+    gloss: "Mars work — give the force a worthy target." }),
+  A({ key: "endurance", label: "Long run / endurance", category: "body",
+    keywords: ["run", "cycle", "swim laps", "long ride", "marathon", "hike hard"],
+    element: "fire", planets: { Mars: 1.0, Saturn: 0.7 }, hourRulers: ["Mars", "Saturn"],
+    aspects: "effort", signs: { Sagittarius: "far-ranging", Capricorn: "the long climb", Aquarius: "steady air" },
+    houses: [1, 6], phase: null, voc: "neutral", mercuryRx: null, windowType: "deep_work",
+    gloss: "Mars pointed down a long road, Saturn keeping the pace." }),
+  A({ key: "gentle-movement", label: "Yoga / stretch / walk", category: "body",
+    keywords: ["yoga", "stretch", "walk", "mobility", "tai chi", "pilates"],
+    element: "water", planets: { Venus: 1.0, Moon: 0.8 }, hourRulers: ["Venus", "Moon"],
+    aspects: "soft", signs: { Taurus: "the body settled", Pisces: "fluid", Libra: "balance" },
+    houses: [1, 6], phase: null, voc: "favor", mercuryRx: null, windowType: "recovery",
+    gloss: "Venus in the body — ease as a practice, not a reward." }),
+  A({ key: "deep-rest", label: "Deep rest / nap", category: "body",
+    keywords: ["rest", "nap", "sleep in", "do nothing", "recover", "lie down"],
+    element: "water", planets: { Neptune: 1.0, Moon: 0.8, Saturn: 0.5 }, hourRulers: ["Moon", "Saturn"],
+    aspects: "soft", signs: { Cancer: "home water", Pisces: "open sea", Taurus: "slow earth" },
+    houses: [4, 12], phase: "waning", voc: "favor", mercuryRx: null, windowType: "recovery",
+    gloss: "Slack water is real rest — the void is for this." }),
+  A({ key: "haircut", label: "Haircut / grooming", category: "body",
+    keywords: ["haircut", "hair", "barber", "salon", "groom", "beard"],
+    element: "earth", planets: { Venus: 1.0 }, hourRulers: ["Venus"],
+    aspects: "soft", signs: { Leo: "the mane itself", Libra: "the look", Taurus: "lasting shape" },
+    houses: [1], phase: "waxing", voc: "avoid", mercuryRx: null, windowType: "admin",
+    gloss: "Classical: cut waxing for growth and body; a Venus hour flatters." }),
+  A({ key: "start-regimen", label: "Start a diet / regimen", category: "body",
+    keywords: ["diet", "cleanse", "quit", "cut out", "fast", "no alcohol", "detox"],
+    element: "earth", planets: { Saturn: 1.0, Moon: 0.6 }, hourRulers: ["Saturn"],
+    aspects: "soft", signs: { Virgo: "the regimen", Capricorn: "the discipline" },
+    houses: [6], phase: "waning", voc: "neutral", mercuryRx: null, windowType: "admin",
+    gloss: "Begin removals on the waning moon — subtraction runs with the tide." }),
+  A({ key: "intimacy", label: "Intimacy & sex", category: "body",
+    keywords: ["sex", "intimacy", "lover", "sensual", "bedroom"],
+    element: "water", planets: { Venus: 1.0, Mars: 0.8 }, hourRulers: ["Venus", "Mars"],
+    aspects: "soft", signs: { Scorpio: "depth", Taurus: "the senses", Libra: "the pair", Leo: "play" },
+    houses: [5, 8], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "relationship",
+    gloss: "Venus and Mars in the same room — evening tides suit them." }),
+
+  // ── MIND ────────────────────────────────────────────────────────────────────
+  A({ key: "deep-study", label: "Deep study", category: "mind",
+    keywords: ["study", "learn", "course", "read deeply", "textbook", "research paper"],
+    element: "air", planets: { Mercury: 1.0, Saturn: 0.8 }, hourRulers: ["Mercury", "Saturn"],
+    aspects: "soft", signs: { Gemini: "quick air", Virgo: "orderly earth", Aquarius: "systems", Capricorn: "the long haul" },
+    houses: [3, 9], phase: null, voc: "neutral", mercuryRx: "favor", windowType: "study",
+    gloss: "Mercury's matter under Saturn's roof; Rx favors review over new." }),
+  A({ key: "first-draft", label: "Write a first draft", category: "mind",
+    keywords: ["draft", "write", "freewrite", "begin the essay", "chapter", "blog"],
+    element: "air", planets: { Mercury: 1.0, Moon: 0.6 }, hourRulers: ["Mercury", "Moon"],
+    aspects: "soft", signs: { Gemini: "the messenger", Pisces: "the image-well", Sagittarius: "the thesis" },
+    houses: [3], phase: "waxing", voc: "neutral", mercuryRx: "favor", windowType: "creative",
+    gloss: "Drafting classically SUITS the retrograde — only the release doesn't." }),
+  A({ key: "edit-revise", label: "Edit & revise", category: "mind",
+    keywords: ["edit", "revise", "proofread", "rewrite", "polish the draft"],
+    element: "earth", planets: { Mercury: 1.0, Saturn: 0.9 }, hourRulers: ["Mercury", "Saturn"],
+    aspects: "soft", signs: { Virgo: "the craftsman's eye", Capricorn: "prune" },
+    houses: [3, 6], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "study",
+    gloss: "The waning moon cuts; Virgo's water shows every pebble." }),
+  A({ key: "learn-skill", label: "Learn a new skill", category: "mind",
+    keywords: ["practice", "tutorial", "language", "instrument", "new skill"],
+    element: "air", planets: { Mercury: 1.0, Jupiter: 0.7 }, hourRulers: ["Mercury", "Jupiter"],
+    aspects: "soft", signs: { Gemini: "beginner's mind", Sagittarius: "the horizon", Aquarius: "the system" },
+    houses: [3, 9], phase: "waxing", voc: "neutral", mercuryRx: "soft", windowType: "study",
+    gloss: "Mercury gathers, Jupiter gives it somewhere to go." }),
+  A({ key: "strategize", label: "Plan & strategize", category: "mind",
+    keywords: ["plan", "strategy", "roadmap", "quarter", "review goals", "vision"],
+    element: "earth", planets: { Saturn: 1.0, Jupiter: 0.8, Mercury: 0.6 }, hourRulers: ["Saturn", "Jupiter"],
+    aspects: "soft", signs: { Capricorn: "the mountain path", Sagittarius: "the far shore", Aquarius: "the pattern" },
+    houses: [9, 10], phase: "new", voc: "neutral", mercuryRx: "soft", windowType: "planning",
+    gloss: "Saturn frames, Jupiter aims — a New-Moon matter by nature." }),
+  A({ key: "investigate", label: "Research & investigate", category: "mind",
+    keywords: ["investigate", "dig", "audit", "due diligence", "deep dive"],
+    element: "water", planets: { Mercury: 1.0, Pluto: 0.7 }, hourRulers: ["Mercury", "Saturn"],
+    aspects: "soft", signs: { Scorpio: "the descent", Virgo: "the fine comb", Capricorn: "the ledger" },
+    houses: [8, 3], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "deep_work",
+    gloss: "What's hidden yields to Scorpio water and a patient Mercury." }),
+  A({ key: "teach-present", label: "Teach / present", category: "mind",
+    keywords: ["teach", "present", "lecture", "workshop", "demo", "talk"],
+    element: "fire", planets: { Mercury: 1.0, Sun: 0.8, Jupiter: 0.7 }, hourRulers: ["Sun", "Mercury", "Jupiter"],
+    aspects: "soft", signs: { Leo: "the stage", Sagittarius: "the teacher", Gemini: "the words" },
+    houses: [9, 10], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "social",
+    gloss: "Sun for presence, Mercury for the words, Jupiter for the room." }),
+
+  // ── CRAFT & WORK ────────────────────────────────────────────────────────────
+  A({ key: "deep-work", label: "Deep work sprint", category: "craft",
+    keywords: ["deep work", "focus", "sprint", "heads down", "build", "code"],
+    element: "earth", planets: { Saturn: 1.0, Mercury: 0.8 }, hourRulers: ["Saturn", "Mercury"],
+    aspects: "soft", signs: { Capricorn: "the long climb", Virgo: "precision", Aquarius: "the system", Scorpio: "sealed focus" },
+    houses: [6, 10], phase: null, voc: "neutral", mercuryRx: null, windowType: "deep_work",
+    gloss: "Close the door; Saturn holds it shut." }),
+  A({ key: "finish-polish", label: "Finish & ship the last 10%", category: "craft",
+    keywords: ["finish", "complete", "ship", "wrap up", "close out", "final touches"],
+    element: "earth", planets: { Saturn: 1.0, Venus: 0.6 }, hourRulers: ["Saturn", "Venus"],
+    aspects: "soft", signs: { Virgo: "the polish", Taurus: "the finish", Capricorn: "done means done" },
+    houses: [6], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "deep_work",
+    gloss: "Endings belong to the waning half — completion runs with the tide." }),
+  A({ key: "organize", label: "Organize / declutter", category: "craft",
+    keywords: ["organize", "declutter", "clean up", "sort", "tidy", "inbox zero", "files"],
+    element: "earth", planets: { Mercury: 1.0, Saturn: 0.8 }, hourRulers: ["Mercury", "Saturn"],
+    aspects: "soft", signs: { Virgo: "everything in place", Capricorn: "prune" },
+    houses: [6, 4], phase: "waning", voc: "favor", mercuryRx: "favor", windowType: "admin",
+    gloss: "Clearing suits the void and the waning moon — removal, not launch." }),
+  A({ key: "repair", label: "Repair & fix", category: "craft",
+    keywords: ["repair", "fix", "patch", "maintenance", "debug", "mend"],
+    element: "earth", planets: { Mars: 0.8, Saturn: 0.8, Mercury: 0.7 }, hourRulers: ["Mars", "Saturn"],
+    aspects: "soft", signs: { Virgo: "the diagnosis", Scorpio: "root cause", Capricorn: "built to last" },
+    houses: [6], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "admin",
+    gloss: "Rx loves re- words: repair, revisit, restore." }),
+  A({ key: "admin-errands", label: "Admin & errands", category: "craft",
+    keywords: ["errands", "admin", "paperwork", "forms", "appointments", "calls"],
+    element: "air", planets: { Mercury: 1.0 }, hourRulers: ["Mercury"],
+    aspects: "soft", signs: { Gemini: "many small currents", Virgo: "the list" },
+    houses: [3, 6], phase: null, voc: "avoid", mercuryRx: "soft", windowType: "admin",
+    gloss: "Mercury's hour moves the paperwork; the void loses it." }),
+  A({ key: "negotiate", label: "Negotiate / ask for more", category: "craft",
+    keywords: ["negotiate", "raise", "salary", "terms", "haggle", "counteroffer"],
+    element: "fire", planets: { Sun: 0.9, Jupiter: 0.9, Venus: 0.7 }, hourRulers: ["Sun", "Jupiter", "Venus"],
+    aspects: "soft", signs: { Leo: "worth, visibly", Libra: "the deal's balance", Capricorn: "the position" },
+    houses: [10, 2, 7], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "social",
+    gloss: "Moon applying to Jupiter is the classic signature for asking big." }),
+  A({ key: "hard-conversation", label: "The hard conversation", category: "craft",
+    keywords: ["confront", "boundary", "difficult talk", "clear the air", "feedback"],
+    element: "air", planets: { Mercury: 1.0, Venus: 0.7, Saturn: 0.5 }, hourRulers: ["Mercury", "Venus"],
+    aspects: "soft", signs: { Libra: "both sides held", Scorpio: "the honest depth", Gemini: "the words come" },
+    houses: [3, 7], phase: null, voc: "avoid", mercuryRx: "favor", windowType: "relationship",
+    gloss: "Rx suits clearing OLD air; avoid Moon–Mars hard hours for it." }),
+  A({ key: "apply-job", label: "Apply / submit", category: "craft",
+    keywords: ["apply", "application", "submit", "proposal", "grant", "cv", "resume"],
+    element: "air", planets: { Mercury: 1.0, Sun: 0.8 }, hourRulers: ["Mercury", "Sun"],
+    aspects: "soft", signs: { Capricorn: "the role", Leo: "be seen", Virgo: "the flawless document" },
+    houses: [10, 6], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "admin",
+    gloss: "The document is Mercury's; your visibility is the Sun's." }),
+
+  // ── LOVE & INTIMACY ─────────────────────────────────────────────────────────
+  A({ key: "first-date", label: "A date", category: "love",
+    keywords: ["date", "date night", "romance", "dinner date", "meet someone"],
+    element: "air", planets: { Venus: 1.0, Moon: 0.6 }, hourRulers: ["Venus"],
+    aspects: "soft", signs: { Libra: "partnered air", Leo: "warm stage-light", Taurus: "the senses", Pisces: "the glow" },
+    houses: [5, 7], phase: "waxing", voc: "avoid", mercuryRx: null, windowType: "relationship",
+    gloss: "Moon applying to Venus, evening tide — the oldest election there is." }),
+  A({ key: "deepen-bond", label: "Deepen a bond", category: "love",
+    keywords: ["quality time", "anniversary", "partner", "connect deeply", "us time"],
+    element: "water", planets: { Venus: 1.0, Moon: 0.8 }, hourRulers: ["Venus", "Moon"],
+    aspects: "soft", signs: { Cancer: "the shared shell", Scorpio: "depth", Taurus: "steady warmth" },
+    houses: [7, 4], phase: null, voc: "neutral", mercuryRx: null, windowType: "relationship",
+    gloss: "The Moon carries the relationship's own weather." }),
+  A({ key: "repair-bond", label: "Repair / reconcile", category: "love",
+    keywords: ["apologize", "reconcile", "make up", "mend the bond", "forgive"],
+    element: "water", planets: { Venus: 1.0, Moon: 0.7, Neptune: 0.5 }, hourRulers: ["Venus", "Moon"],
+    aspects: "soft", signs: { Libra: "the balance restored", Cancer: "the soft approach", Pisces: "grace" },
+    houses: [7, 4], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "relationship",
+    gloss: "Rx and the waning moon both favor going back over old ground gently." }),
+
+  // ── SOCIAL ──────────────────────────────────────────────────────────────────
+  A({ key: "host", label: "Host a gathering", category: "social",
+    keywords: ["host", "dinner party", "gathering", "have people over", "party"],
+    element: "fire", planets: { Jupiter: 1.0, Venus: 0.9, Sun: 0.7 }, hourRulers: ["Jupiter", "Venus", "Sun"],
+    aspects: "soft", signs: { Leo: "the generous table", Libra: "the room in harmony", Sagittarius: "the feast" },
+    houses: [5, 11], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "social",
+    gloss: "Jupiter hosts; Venus arranges the room; the Sun warms it." }),
+  A({ key: "network", label: "Meet new people / network", category: "social",
+    keywords: ["network", "meetup", "mixer", "conference", "introduce", "community event"],
+    element: "air", planets: { Mercury: 0.9, Venus: 0.8, Jupiter: 0.7 }, hourRulers: ["Mercury", "Venus", "Jupiter"],
+    aspects: "soft", signs: { Gemini: "the exchange", Aquarius: "the network", Libra: "the introduction" },
+    houses: [11, 3], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "social",
+    gloss: "Eleventh-house weather: friends you haven't met." }),
+  A({ key: "call-family", label: "Family time / call home", category: "social",
+    keywords: ["family", "call mom", "call home", "parents", "siblings", "kids time"],
+    element: "water", planets: { Moon: 1.0, Venus: 0.5 }, hourRulers: ["Moon", "Venus"],
+    aspects: "soft", signs: { Cancer: "the hearth", Taurus: "the meal", Pisces: "the old tie" },
+    houses: [4, 3], phase: null, voc: "neutral", mercuryRx: null, windowType: "relationship",
+    gloss: "The Moon's own matter — home is wherever it's tended." }),
+
+  // ── HOME ────────────────────────────────────────────────────────────────────
+  A({ key: "cook", label: "Cook & provision", category: "home",
+    keywords: ["cook", "meal prep", "bake", "groceries", "provision", "kitchen"],
+    element: "water", planets: { Moon: 1.0, Venus: 0.7 }, hourRulers: ["Moon", "Venus"],
+    aspects: "soft", signs: { Cancer: "the kitchen's house", Taurus: "abundance", Virgo: "the prep" },
+    houses: [4, 6], phase: null, voc: "favor", mercuryRx: null, windowType: "recovery",
+    gloss: "Nourishment is lunar work — a void afternoon cooks beautifully." }),
+  A({ key: "beautify", label: "Beautify the space", category: "home",
+    keywords: ["decorate", "beautify", "rearrange", "plants", "art up", "make it nice"],
+    element: "earth", planets: { Venus: 1.0 }, hourRulers: ["Venus"],
+    aspects: "soft", signs: { Taurus: "Venus at home", Libra: "the eye", Leo: "the flourish" },
+    houses: [4], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "creative",
+    gloss: "Venus's hour makes the same room land differently." }),
+  A({ key: "garden", label: "Garden / plant", category: "home",
+    keywords: ["garden", "plant", "seeds", "repot", "prune", "weed"],
+    element: "earth", planets: { Moon: 1.0, Venus: 0.7, Saturn: 0.5 }, hourRulers: ["Moon", "Venus"],
+    aspects: "soft", signs: { Taurus: "the fertile field", Cancer: "the watered bed", Capricorn: "the pruning" },
+    houses: [4, 6], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "recovery",
+    gloss: "Oldest election of all: sow waxing, weed and prune waning." }),
+  A({ key: "deep-clean", label: "Deep clean", category: "home",
+    keywords: ["deep clean", "scrub", "purge", "closet", "garage", "spring clean"],
+    element: "earth", planets: { Saturn: 0.9, Mars: 0.7 }, hourRulers: ["Saturn", "Mars"],
+    aspects: "effort", signs: { Virgo: "the standard", Scorpio: "the purge", Aries: "the blitz" },
+    houses: [4, 6], phase: "waning", voc: "favor", mercuryRx: null, windowType: "admin",
+    gloss: "Removal work — the waning moon and even the void carry it." }),
+
+  // ── MONEY ───────────────────────────────────────────────────────────────────
+  A({ key: "budget", label: "Budget & ledger", category: "money",
+    keywords: ["budget", "ledger", "finances", "taxes", "bookkeeping", "expense"],
+    element: "earth", planets: { Saturn: 1.0, Mercury: 0.8 }, hourRulers: ["Saturn", "Mercury"],
+    aspects: "soft", signs: { Capricorn: "the accounting", Virgo: "the reconciliation", Taurus: "what you have" },
+    houses: [2], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "admin",
+    gloss: "Review money under Rx happily; just don't commit it." }),
+  A({ key: "big-purchase", label: "A considered purchase", category: "money",
+    keywords: ["buy", "purchase", "order", "upgrade", "new laptop", "furniture"],
+    element: "earth", planets: { Venus: 1.0, Jupiter: 0.6 }, hourRulers: ["Venus", "Jupiter"],
+    aspects: "soft", signs: { Taurus: "value that lasts", Libra: "the right choice", Capricorn: "the durable" },
+    houses: [2], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "admin",
+    gloss: "Venus governs worth; the void famously mis-buys." }),
+  A({ key: "settle-debts", label: "Settle / restructure debts", category: "money",
+    keywords: ["debt", "pay off", "refinance", "settle", "owed"],
+    element: "water", planets: { Saturn: 1.0, Pluto: 0.6 }, hourRulers: ["Saturn"],
+    aspects: "soft", signs: { Scorpio: "shared ledgers", Capricorn: "the obligation kept" },
+    houses: [8, 2], phase: "waning", voc: "neutral", mercuryRx: "soft", windowType: "admin",
+    gloss: "Eighth-house work: what's entangled gets patiently unwound." }),
+
+  // ── SPIRIT ──────────────────────────────────────────────────────────────────
+  A({ key: "meditate", label: "Meditate / pray", category: "spirit",
+    keywords: ["meditate", "pray", "breathwork", "sit", "silence", "contemplate"],
+    element: "water", planets: { Neptune: 1.0, Moon: 0.7 }, hourRulers: ["Moon", "Saturn"],
+    aspects: "soft", signs: { Pisces: "the open sea", Cancer: "the inner shore", Aquarius: "the witness" },
+    houses: [12, 9], phase: null, voc: "favor", mercuryRx: null, windowType: "retreat",
+    gloss: "The void's slack water is the tradition's gift to this." }),
+  A({ key: "journal", label: "Journal from feeling", category: "spirit",
+    keywords: ["journal", "diary", "morning pages", "process", "write feelings"],
+    element: "water", planets: { Moon: 1.0, Mercury: 0.7 }, hourRulers: ["Moon", "Mercury"],
+    aspects: "soft", signs: { Cancer: "memory's house", Pisces: "the underside", Scorpio: "the true entry" },
+    houses: [4, 12], phase: null, voc: "favor", mercuryRx: "favor", windowType: "retreat",
+    gloss: "Moon writes, Mercury holds the pen." }),
+  A({ key: "divination", label: "Reflection / divination", category: "spirit",
+    keywords: ["tarot", "reading", "divination", "chart", "astrology study", "runes"],
+    element: "water", planets: { Neptune: 0.9, Mercury: 0.8, Moon: 0.7 }, hourRulers: ["Moon", "Mercury", "Saturn"],
+    aspects: "soft", signs: { Scorpio: "the veil thin", Pisces: "the image-stream", Aquarius: "the pattern read" },
+    houses: [12, 8, 9], phase: "new", voc: "favor", mercuryRx: "favor", windowType: "retreat",
+    gloss: "Dark-moon days read deepest; the balsamic hush is the classic window." }),
+  A({ key: "set-intention", label: "Set an intention / begin a cycle", category: "spirit",
+    keywords: ["intention", "new moon ritual", "vision board", "commit to", "resolve"],
+    element: "fire", planets: { Sun: 1.0, Moon: 1.0 }, hourRulers: ["Sun", "Moon"],
+    aspects: "soft", signs: { Aries: "the first spark", Cancer: "rooted in feeling", Capricorn: "vow-grade" },
+    houses: [1], phase: "new", voc: "avoid", mercuryRx: "soft", windowType: "planning",
+    gloss: "Seed at the New Moon; the whole app's cycle rhythm begins here." }),
+  A({ key: "release", label: "Grieve & release", category: "spirit",
+    keywords: ["release", "let go", "grieve", "closure", "burn the list", "end it"],
+    element: "water", planets: { Pluto: 0.8, Moon: 0.8, Neptune: 0.6 }, hourRulers: ["Moon", "Saturn"],
+    aspects: "soft", signs: { Scorpio: "the descent", Pisces: "dissolution", Virgo: "the sorting-through" },
+    houses: [12, 8], phase: "waning", voc: "favor", mercuryRx: null, windowType: "retreat",
+    gloss: "Waning to balsamic — release work rides the emptying tide." }),
+  A({ key: "retreat", label: "Solitude / retreat", category: "spirit",
+    keywords: ["retreat", "solitude", "alone time", "unplug", "off grid", "silence day"],
+    element: "water", planets: { Saturn: 0.9, Neptune: 0.9 }, hourRulers: ["Saturn", "Moon"],
+    aspects: "soft", signs: { Capricorn: "the hermitage", Pisces: "the dissolve", Virgo: "the quiet order" },
+    houses: [12], phase: "waning", voc: "favor", mercuryRx: "favor", windowType: "retreat",
+    gloss: "Saturn's monastic gift — containment as kindness." }),
+
+  // ── LAUNCHES & STAKES (the electional KB's high-scrutiny tier) ──────────────
+  A({ key: "publish", label: "Publish / release", category: "launch",
+    keywords: ["publish", "release", "post it", "go live", "announce", "drop"],
+    element: "fire", planets: { Mercury: 0.9, Jupiter: 0.9, Sun: 0.8 }, hourRulers: ["Sun", "Jupiter", "Mercury"],
+    aspects: "soft", signs: { Leo: "seen", Sagittarius: "carried far", Gemini: "the word out" },
+    houses: [9, 3, 10], phase: "waxing", voc: "avoid", mercuryRx: "hard", windowType: "launch",
+    gloss: "The release is what Rx disrupts — draft under it, ship after it." }),
+  A({ key: "launch-venture", label: "Launch a venture / product", category: "launch",
+    keywords: ["launch", "open doors", "start business", "ship product", "storefront"],
+    element: "fire", planets: { Sun: 1.0, Jupiter: 0.8, Saturn: 0.6 }, hourRulers: ["Sun", "Jupiter"],
+    aspects: "soft", signs: { Leo: "the identity lit", Capricorn: "built to hold", Aries: "first out" },
+    houses: [10, 1], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "launch",
+    gloss: "Tenth-house weather angular and clean — the KB's flagship election." }),
+  A({ key: "sign-contract", label: "Sign a contract", category: "launch",
+    keywords: ["sign", "contract", "agreement", "lease", "close the deal", "paperwork day"],
+    element: "air", planets: { Mercury: 1.0, Saturn: 0.7 }, hourRulers: ["Mercury", "Jupiter"],
+    aspects: "soft", signs: { Libra: "the accord", Capricorn: "the binding", Taurus: "what endures" },
+    houses: [7, 3], phase: "waxing", voc: "avoid", mercuryRx: "hard", windowType: "launch",
+    gloss: "Hard rule inherited from the KB: not under Rx, never in the void." }),
+  A({ key: "move-home", label: "Move / sign for a home", category: "launch",
+    keywords: ["move", "new apartment", "house", "relocate", "move in"],
+    element: "water", planets: { Moon: 1.0, Saturn: 0.7, Venus: 0.5 }, hourRulers: ["Moon", "Venus"],
+    aspects: "soft", signs: { Cancer: "the Moon's own house", Taurus: "settled ground", Capricorn: "the foundation" },
+    houses: [4], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "launch",
+    gloss: "Fourth-house election — the Moon strong and building." }),
+  A({ key: "begin-partnership", label: "Begin a partnership", category: "launch",
+    keywords: ["partnership", "cofounder", "commit", "move in together", "engagement"],
+    element: "air", planets: { Venus: 1.0, Moon: 0.8, Saturn: 0.6 }, hourRulers: ["Venus", "Jupiter"],
+    aspects: "soft", signs: { Libra: "the scales' own matter", Taurus: "lasting Venus", Cancer: "the shared shell" },
+    houses: [7], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "launch",
+    gloss: "The tradition's most scrutinized election — Venus clean, Moon applying soft." }),
+];
+
+// ── Sortage: match free text (a star, a step, a task) to an activity ─────────
+// Deliberately transparent: keyword containment scored by specificity, with
+// label words counting too. Returns null below a confidence floor — the AI
+// layer can take over from there, grounded by this table's vocabulary.
+export function matchActivity(text: string): { activity: ActivityCorrespondence; score: number } | null {
+  const t = ` ${text.toLowerCase()} `;
+  let best: { activity: ActivityCorrespondence; score: number } | null = null;
+  for (const a of ACTIVITIES) {
+    let score = 0;
+    for (const k of a.keywords) {
+      if (t.includes(k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
+    }
+    for (const w of a.label.toLowerCase().split(/[^a-z]+/)) {
+      if (w.length >= 4 && t.includes(w)) score += 0.5;
+    }
+    if (score > 0 && (!best || score > best.score)) best = { activity: a, score };
+  }
+  return best && best.score >= 1 ? best : null;
+}
