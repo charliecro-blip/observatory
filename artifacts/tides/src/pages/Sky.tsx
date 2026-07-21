@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
@@ -352,7 +353,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
         body: JSON.stringify({ title: event.title, windowType, startTime: start, endTime: end, note: detail.meaning.slice(0, 200) }),
       });
-      qc.invalidateQueries({ queryKey: ["planning-windows"] });
+      invalidateWindows(qc);
       setPlanned(true);
     } finally {
       setPlanning(false);

@@ -89,6 +89,7 @@ function ReflectComposer({ testerId, date, dayDetail }: {
   const [note, setNote] = useState(dayDetail.checkIn?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveErr, setSaveErr] = useState(false);
   useEffect(() => {
     setFelt(decodeFelt(dayDetail.checkIn?.behaviorTags).felt);
     setNote(dayDetail.checkIn?.notes ?? "");
@@ -109,15 +110,21 @@ function ReflectComposer({ testerId, date, dayDetail }: {
         if (existing.tideLevel) tags.push(`tideLevel:${existing.tideLevel}`);
         body.behaviorTags = tags;
       }
-      await fetch("/api/check-ins", {
+      const r = await fetch("/api/check-ins", {
         method: "POST",
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      // Don't flash "saved ✓" if the server rejected it — that silently loses
+      // the reflection. Surface the failure instead.
+      if (!r.ok) throw new Error(`check-in failed (${r.status})`);
       qc.invalidateQueries({ queryKey: ["logs-day"] });
       qc.invalidateQueries({ queryKey: ["logs-timeline"] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveErr(true);
+      setTimeout(() => setSaveErr(false), 4000);
     } finally {
       setSaving(false);
     }
@@ -155,6 +162,7 @@ function ReflectComposer({ testerId, date, dayDetail }: {
       />
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
         {saved && <span style={{ fontSize: 10, color: "#4a8060" }}>saved ✓</span>}
+        {saveErr && <span style={{ fontSize: 10, color: "#a03030" }}>couldn't save — try again</span>}
         <button onClick={save} disabled={!dirty || saving} style={{
           padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600,
           cursor: dirty && !saving ? "pointer" : "default",
@@ -205,7 +213,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
   });
 
   // Fetch day detail when selected
-  const { data: dayDetail, isLoading: dayLoading } = useQuery<DayDetail | null>({
+  const { data: dayDetail, isLoading: dayLoading, isError: dayError } = useQuery<DayDetail | null>({
     queryKey: ["logs-day", testerId, selectedDate],
     queryFn: async () => {
       if (!testerId || !selectedDate) return null;
@@ -441,6 +449,14 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           }}
         >
           Loading…
+        </div>
+      ) : dayError ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "#999", padding: 24, textAlign: "center" }}>
+          <div style={{ fontSize: 13, color: "#a03030" }}>Couldn't load this day</div>
+          <button onClick={() => qc.invalidateQueries({ queryKey: ["logs-day", testerId, selectedDate] })}
+            style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#556", cursor: "pointer" }}>
+            Try again
+          </button>
         </div>
       ) : dayDetail ? (
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 16px" : "20px 28px" }}>

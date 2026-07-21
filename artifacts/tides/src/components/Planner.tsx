@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
@@ -107,8 +108,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       return r.json();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["windows"] });
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      invalidateWindows(qc);
       qc.invalidateQueries({ queryKey: ["tasks"] });
       setCommitted(true);
     },

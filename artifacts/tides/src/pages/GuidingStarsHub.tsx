@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, sortIntentToElement, type ElementMythos } from "@/lib/mythos";
@@ -238,7 +239,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       if (planned.length) await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: planned }) });
       return { placed: planned.length, unplaced: (data.unplaced ?? []).length };
     },
-    onSuccess: (r, vars) => { refreshPM(); qc.invalidateQueries({ queryKey: ["windows"] }); qc.invalidateQueries({ queryKey: ["planning-windows-all"] }); setWeaveResult({ starId: vars.starId, ...r }); },
+    onSuccess: (r, vars) => { refreshPM(); invalidateWindows(qc); setWeaveResult({ starId: vars.starId, ...r }); },
   });
   const addStep = useMutation({
     mutationFn: async ({ starId, starTitle, title }: { starId: number; starTitle: string; title: string }) => {

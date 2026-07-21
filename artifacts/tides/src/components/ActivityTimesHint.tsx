@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 /**
@@ -50,7 +51,7 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
     },
     onSuccess: (key) => {
       setScheduled(key);
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      invalidateWindows(qc);
       setTimeout(() => setScheduled(null), 2200);
     },
   });

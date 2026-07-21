@@ -185,6 +185,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
         body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary, ...(electionContext ? { electionContext } : {}) }),
       });
 
+      if (!res.ok) throw new Error(`advise ${res.status}`);
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
@@ -203,19 +204,28 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
+            // The backend emits {error} on a model/key failure; the stream
+            // still closes cleanly, so we must surface it — otherwise Ask
+            // silently shows nothing (empty spinner, no answer, no error).
+            if (parsed.error) throw new Error(String(parsed.error));
             if (parsed.delta) {
               accumulated += parsed.delta;
               setStreamBuffer(accumulated);
             }
-          } catch { /* skip malformed */ }
+          } catch (e) {
+            if (e instanceof Error && e.message && !/JSON|Unexpected/.test(e.message)) throw e;
+            /* else: skip a malformed SSE chunk */
+          }
         }
       }
 
       if (accumulated) {
         setHistory(h => [...h, { role: "assistant", content: accumulated }]);
+      } else {
+        setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
       }
     } catch {
-      setHistory(h => [...h, { role: "assistant", content: "Something went wrong. Try again." }]);
+      setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
     } finally {
       setStreaming(false);
       setStreamBuffer("");

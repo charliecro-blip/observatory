@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
 import type { AskElectionContext } from "@/App";
@@ -80,7 +81,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
     onSuccess: (key, w) => {
       logEvent("election_schedule", { activity: activityKey, tier: w.tier });
       setScheduled(key);
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      invalidateWindows(qc);
       setTimeout(() => setScheduled(null), 2500);
     },
   });

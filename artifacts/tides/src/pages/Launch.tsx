@@ -1,4 +1,5 @@
 import { ElectionPicker } from "@/components/ElectionPicker";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import type { AskElectionContext } from "@/App";
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -177,8 +178,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["windows"] });
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      invalidateWindows(qc);
       setAdded(true);
     },
   });

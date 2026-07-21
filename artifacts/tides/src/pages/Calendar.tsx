@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
 import { useTimeFormat } from "@/contexts/preferences-context";
@@ -265,7 +266,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
     mutationFn: async () => {
       const start = new Date(`${dateStr}T${form.startTime}:00`);
       const end   = new Date(`${dateStr}T${form.endTime}:00`);
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method:"POST",
         headers: { ...(testerId ? {"x-tester-id":testerId} : {}), "Content-Type":"application/json" },
         body: JSON.stringify({
@@ -276,8 +277,9 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
           notes: form.notes || undefined,
         }),
       });
+      if (!r.ok) throw new Error(`save failed (${r.status})`);
     },
-    onSuccess: () => { qc.invalidateQueries({queryKey:["windows"]}); onClose(); },
+    onSuccess: () => { invalidateWindows(qc); onClose(); },
   });
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100 }}
@@ -309,6 +311,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
             placeholder="Notes (optional)" rows={2}
             style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",resize:"vertical",outline:"none" }}/>
         </div>
+        {save.isError && <div style={{ marginTop:10,fontSize:11.5,color:"#a03030" }}>Couldn't save — the event wasn't added. Check your connection and try again.</div>}
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
           <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"#888",fontSize:12,cursor:"pointer" }}>Cancel</button>
           <button onClick={()=>save.mutate()} disabled={save.isPending}
@@ -961,7 +964,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
   });
   const del = useMutation({
     mutationFn: async(id:number)=>{await fetch(`/api/planning/windows/${id}`,{method:"DELETE",headers:testerId?{"x-tester-id":testerId}:{}});},
-    onSuccess:()=>qc.invalidateQueries({queryKey:["windows"]}),
+    onSuccess:()=>invalidateWindows(qc),
   });
 
   return (
@@ -1247,7 +1250,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
   const delWindow = useMutation({
     mutationFn: async(id:number)=>{await fetch(`/api/planning/windows/${id}`,{method:"DELETE",headers:testerId?{"x-tester-id":testerId}:{}});},
-    onSuccess:()=>qc.invalidateQueries({queryKey:["windows-all"]}),
+    onSuccess:()=>invalidateWindows(qc),
   });
 
   const dataMap = useMemo(()=>{

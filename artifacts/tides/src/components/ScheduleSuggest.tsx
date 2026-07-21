@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePremium } from "@/contexts/premium-context";
@@ -101,7 +102,7 @@ export function ScheduleSuggest({
           projectId: projectId ?? undefined,
         }),
       });
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      invalidateWindows(qc);
       qc.invalidateQueries({ queryKey: ["tides-week"] });
       onClose(true);
     } finally {
