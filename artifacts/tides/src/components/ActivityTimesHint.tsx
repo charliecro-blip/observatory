@@ -42,11 +42,12 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
 
   const schedule = useMutation({
     mutationFn: async (w: ElectionWindowT) => {
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-tester-id": testerId ?? "" },
         body: JSON.stringify({ title, windowType: windowType ?? "deep_work", startTime: w.startAt, endTime: w.endAt }),
       });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
       return `${w.dow}|${w.startClock}`;
     },
     onSuccess: (key) => {

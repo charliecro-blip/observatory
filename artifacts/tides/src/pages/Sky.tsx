@@ -333,6 +333,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
   const qc = useQueryClient();
   const [planned, setPlanned] = useState(false);
   const [planning, setPlanning] = useState(false);
+  const [planErr, setPlanErr] = useState(false);
 
   async function planSession() {
     if (!testerId || planned) return;
@@ -348,13 +349,17 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         : event.type === "moon_phase" ? "planning"
         : event.type === "ingress" ? "planning"
         : "creative";
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
         body: JSON.stringify({ title: event.title, windowType, startTime: start, endTime: end, note: detail.meaning.slice(0, 200) }),
       });
+      if (!r.ok) throw new Error(`plan failed (${r.status})`);
       invalidateWindows(qc);
       setPlanned(true);
+    } catch {
+      setPlanErr(true);
+      setTimeout(() => setPlanErr(false), 4000);
     } finally {
       setPlanning(false);
     }
@@ -378,11 +383,11 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:6 }}>What this means</div>
-          <div style={{ fontSize:11.5, color:"#333", lineHeight:1.7 }}>{detail.meaning}</div>
+          <div style={{ fontSize:11.5, color:"var(--color-foreground)", lineHeight:1.7 }}>{detail.meaning}</div>
         </div>
-        <div style={{ marginBottom:14, padding:"11px 13px", borderRadius:8, background:"#f7f4ef", border:"1px solid #e8e2d8" }}>
+        <div style={{ marginBottom:14, padding:"11px 13px", borderRadius:8, background:"var(--color-card-2)", border:"1px solid var(--color-border)" }}>
           <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:5 }}>How to use it</div>
-          <div style={{ fontSize:11.5, color:"#555", lineHeight:1.7 }}>{detail.practical}</div>
+          <div style={{ fontSize:11.5, color:"var(--color-muted)", lineHeight:1.7 }}>{detail.practical}</div>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
           {detail.domains.map(d => (
@@ -391,6 +396,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         </div>
       </div>
       <div style={{ padding:"12px 16px", borderTop:"1px solid var(--color-border)" }}>
+        {planErr && <div style={{ fontSize:10.5, color:"#c05030", marginBottom:6 }}>Couldn't add it — try again.</div>}
         <button onClick={planSession} disabled={planned || planning || !testerId} style={{
           width:"100%", padding:"9px 0", borderRadius:8, border:"none", cursor: planned ? "default" : "pointer",
           background: planned ? "#e8f5e0" : (detail.planetColor ?? "#1a2a3a"),

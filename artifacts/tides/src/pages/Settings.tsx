@@ -7,6 +7,7 @@ import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
+import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
 
 function authH(tid: string | null) {
@@ -150,36 +151,13 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
   async function enableNotifications() {
     setSubscribing(true);
     setSubMsg("");
-    try {
-      const perm = await Notification.requestPermission();
-      setPermState(perm);
-      if (perm !== "granted") { setSubMsg("Permission denied by browser."); setSubscribing(false); return; }
-
-      // Register service worker
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-
-      // Get VAPID key
-      const keyRes = await fetch("/api/push/vapid-key");
-      if (!keyRes.ok) { setSubMsg("Push not configured on server yet."); setSubscribing(false); return; }
-      const { publicKey } = await keyRes.json();
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKey,
-      });
-
-      const testerId = localStorage.getItem("obs_tester_id");
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { ...authH(testerId), "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sub.toJSON(), lat, lon }),
-      });
-
+    const res = await enablePush({ lat, lon });
+    if ("Notification" in window) setPermState(Notification.permission);
+    if (res.ok) {
       updateNotifications({ enabled: true });
       setSubMsg("Notifications enabled ✓");
-    } catch (e: any) {
-      setSubMsg(e.message ?? "Failed to subscribe.");
+    } else {
+      setSubMsg(res.reason);
     }
     setSubscribing(false);
   }

@@ -37,6 +37,7 @@ export function ScheduleSuggest({
   const { profile } = useTester();
   const { unlocked } = usePremium();
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
   // Free users go straight to picking their own time (manual scheduling is
   // free); the app's best-time intelligence is the premium layer.
   const [customOpen, setCustomOpen] = useState(!unlocked);
@@ -90,7 +91,7 @@ export function ScheduleSuggest({
     if (!testerId || busy) return;
     setBusy(true);
     try {
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-tester-id": testerId },
         body: JSON.stringify({
@@ -102,9 +103,13 @@ export function ScheduleSuggest({
           projectId: projectId ?? undefined,
         }),
       });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
       invalidateWindows(qc);
       qc.invalidateQueries({ queryKey: ["tides-week"] });
       onClose(true);
+    } catch {
+      setErr(true);
+      setTimeout(() => setErr(false), 4000);
     } finally {
       setBusy(false);
     }
@@ -144,6 +149,7 @@ export function ScheduleSuggest({
         )}
 
         {unlocked && !bestData && <div style={{ fontSize: 12, color: "#999", padding: "12px 0" }}>Reading the week…</div>}
+        {err && <div style={{ fontSize: 11, color: "#c05030", padding: "6px 0" }}>Couldn't schedule that — try again.</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           {unlocked && ranked.map((w, i) => {

@@ -90,7 +90,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
   const addHabit = useMutation({
     mutationFn: async () => {
-      await fetch("/api/habits", {
+      const r = await fetch("/api/habits", {
         method: "POST", headers: authH(testerId),
         body: JSON.stringify({
           name: form.name.trim(), emoji: form.emoji || undefined,
@@ -103,6 +103,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           projectId: newProjectId || undefined,
         }),
       });
+      if (!r.ok) throw new Error(`create habit failed (${r.status})`);
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);

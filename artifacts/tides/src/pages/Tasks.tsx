@@ -122,7 +122,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   const addTask = useMutation({
     mutationFn: async () => {
-      await fetch("/api/tasks", {
+      const r = await fetch("/api/tasks", {
         method:"POST", headers: authH(testerId),
         body: JSON.stringify({
           title: newTitle.trim(),
@@ -135,6 +135,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
           projectId: newProjectId || undefined,
         }),
       });
+      if (!r.ok) throw new Error(`create task failed (${r.status})`);
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["tasks"]});

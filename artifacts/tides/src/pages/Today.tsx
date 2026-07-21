@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
+import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -905,6 +906,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             window (cycle review + next intention). Self-gating; absent
             otherwise. ?review=week|cycle forces either for design work. */}
         <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} />
+
+        {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
+            pushes. Self-gating — hidden once enabled, dismissed, or blocked. */}
+        <NotificationOptIn lat={lat} lon={lon} />
 
         {/* First-star hint — for users with no Guiding Stars yet, routing them
             to the app's strongest moment. Takes priority over the premium

@@ -68,7 +68,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
   const schedule = useMutation({
     mutationFn: async (w: ElectionWindowT) => {
       const act = list?.activities.find(a => a.key === activityKey);
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-tester-id": testerId ?? "" },
         body: JSON.stringify({
@@ -76,6 +76,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           startTime: w.startAt, endTime: w.endAt,
         }),
       });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
       return `${w.dow}|${w.startClock}`;
     },
     onSuccess: (key, w) => {

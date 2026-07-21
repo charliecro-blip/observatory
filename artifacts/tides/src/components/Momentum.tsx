@@ -102,11 +102,12 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
   const [starId, setStarId] = useState<number | "">("");
   const nameWin = useMutation({
     mutationFn: async () => {
-      await fetch("/api/planning/wins", {
+      const r = await fetch("/api/planning/wins", {
         method: "POST",
         headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({ text: text.trim(), goalId: starId || undefined, tz: new Date().getTimezoneOffset() }),
       });
+      if (!r.ok) throw new Error(`win save failed (${r.status})`);
     },
     onSuccess: () => { logEvent("win_named"); setText(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
   });
@@ -245,11 +246,12 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
   const [intentStar, setIntentStar] = useState<number | "">("");
   const setIntention = useMutation({
     mutationFn: async () => {
-      await fetch("/api/planning/intentions", {
+      const r = await fetch("/api/planning/intentions", {
         method: "POST",
         headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({ text: intent.trim(), goalId: intentStar || undefined, tz: new Date().getTimezoneOffset() }),
       });
+      if (!r.ok) throw new Error(`intention save failed (${r.status})`);
     },
     onSuccess: () => { setIntent(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
   });

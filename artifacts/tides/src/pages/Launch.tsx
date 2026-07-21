@@ -166,7 +166,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
   // it writes a planning window at that time so Launch stops dead-ending.
   const addToCalendar = useMutation({
     mutationFn: async () => {
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) },
         body: JSON.stringify({
@@ -176,6 +176,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
           endTime: result.windowEnd,
         }),
       });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
     },
     onSuccess: () => {
       invalidateWindows(qc);
