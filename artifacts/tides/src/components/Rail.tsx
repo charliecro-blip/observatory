@@ -93,6 +93,19 @@ const ASPECT_COLORS: Record<string, string> = {
   "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
 };
 
+// Order Moon aspects chronologically — the one that perfects soonest first —
+// so the rail reads in the order they actually happen. Applying aspects (still
+// closing) come first by time-to-exact; separating ones (already past) follow
+// by how far past. Fixes "Mercury listed before Venus even though Venus is
+// exact first."
+function aspectTimeKey(a: { applying?: boolean; hoursToExact?: number | null; orb: number }): number {
+  if (a.applying) return a.hoursToExact != null ? a.hoursToExact : a.orb;
+  return 1000 + a.orb;
+}
+function sortMoonAspects<T extends { applying?: boolean; hoursToExact?: number | null; orb: number }>(list: T[]): T[] {
+  return [...list].sort((x, y) => aspectTimeKey(x) - aspectTimeKey(y));
+}
+
 // Tap-to-cycle suggestion line — each tap turns up another way the same voice
 // could play out ("plan the expansion" → "say yes bigger" → …). The ⟳ n/m
 // affordance says there are more behind the one showing. `seed` keeps the
@@ -189,7 +202,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "aspects") {
-      const asps = ((now as any).moonAspects ?? []) as any[];
+      const asps = sortMoonAspects(((now as any).moonAspects ?? []) as any[]);
       return <>
         <b>Moon aspects</b>
         {asps.length === 0 && <div style={{ marginTop: 3, color: "#8a8278" }}>None in orb right now — open water.</div>}
@@ -648,7 +661,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
-          {now.moonAspects.slice(0, 5).map((a, i) => {
+          {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
             const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };

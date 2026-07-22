@@ -804,27 +804,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* One vocabulary, not two: the chip speaks tide (character × level)
-              instead of the legacy good/workable favorability labels, which
-              contradicted the coherence model (and carried a fire/air bias). */}
-          <Tooltip content={
-            <div>
-              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>
-                {now?.tide ? `${now.tide.characterLabel} tide — ${now.tide.levelLabel.toLowerCase()}` : `An ${el} day`}
-              </div>
-              <div style={{ fontSize: 10, color: "#b0aaa4" }}>
-                The Moon in {now?.moonSign} sets the day's character ({el}); the level is how charged the water is and which way it's moving.
-                {/* One state at a time — listing "rising: X, ebbing: Y" here read
-                    as the tide being both at once. */}
-                {now?.tide?.trend === "rising" ? " Rising — lean in."
-                  : now?.tide?.trend === "ebbing" ? " Ebbing — finish and rest."
-                  : " Steady — work as usual."}
-              </div>
-            </div>
-          }>
-            <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
-              {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
-            </div>
-          </Tooltip>
+              instead of the legacy good/workable favorability labels. The hover
+              tooltip was removed (owner 2026-07-21) — it overflowed off-screen
+              in the top-right corner and the chip reads clearly on its own. */}
+          <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40` }}>
+            {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
+          </div>
           {/* Crossings on/off moved to Settings → Today page — the topbar
               stays for status (location), not tuning knobs. */}
           {!hasSavedLocation(testerProfile) && (
