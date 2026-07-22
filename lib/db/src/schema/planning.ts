@@ -116,6 +116,7 @@ export const habits = pgTable("habits", {
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
   goalId: integer("goal_id"), // nullable FK to goals — a habit can serve a Guiding Star
   projectId: integer("project_id"), // nullable FK to projects — a habit can also serve a project
+  milestoneId: integer("milestone_id"), // nullable FK to milestones — a recurring STEP becomes a habit
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),

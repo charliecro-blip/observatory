@@ -37,6 +37,11 @@ const PLANET_PICK_COLOR: Record<string, string> = {
   Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060",
 };
 
+// A step whose wording implies "do this over and over" is really a habit, not a
+// one-off task — used to pre-highlight "make it a habit" on the step.
+const RECURRING_STEP_RE = /\b(consistent(ly)?|regularly|routine|daily|weekly|monthly|every ?day|each ?day|keep (up|going)|ongoing|maintain|practice|show up|stay|habitual)\b/i;
+const looksRecurring = (title: string) => RECURRING_STEP_RE.test(title);
+
 function houseSystemPref(): string {
   return localStorage.getItem("obs_house_system") ?? "whole-sign";
 }
@@ -217,6 +222,19 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId: starId, milestoneId, bestWindowType: windowType }) });
     },
     onSuccess: () => { refreshPM(); setStepTaskAdd(null); setStepTaskTitle(""); },
+  });
+  // A recurring-sounding step ("post consistently", "practice daily") is really
+  // a habit, not a one-off task — so we offer to turn it into one, pre-selected
+  // when the wording gives it away.
+  const addHabitFromStep = useMutation({
+    mutationFn: async ({ milestoneId, starId, title, element, planet }: { milestoneId: number; starId: number; title: string; element?: string; planet?: string }) => {
+      const r = await fetch("/api/habits", { method: "POST", headers: authHeaders, body: JSON.stringify({
+        name: title, goalId: starId, milestoneId,
+        favoredElements: element || undefined, favoredPlanets: planet || undefined,
+      }) });
+      if (!r.ok) throw new Error("habit failed");
+    },
+    onSuccess: () => { refreshPM(); qc.invalidateQueries({ queryKey: ["habits"] }); qc.invalidateQueries({ queryKey: ["star-progress"] }); },
   });
   const toggleStepTask = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
@@ -686,6 +704,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{g.title}</span>
+                      {(g as any).planet && (() => {
+                        const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
+                        return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}>{PLANET_GLYPH[(g as any).planet]} {(g as any).planet}</span>;
+                      })()}
                       {info && <span style={{ fontSize: 9, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
                     </div>
                     {g.description && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{g.description}</div>}
@@ -791,6 +813,21 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                               <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
                               {m.status !== "completed" && <ActivityTimesHint title={m.title} testerId={testerId} lat={lat} lon={lon} />}
                               {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "#bbb" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
+                              {(() => {
+                                const stepHabits = (allHabits as any[]).filter((h) => h.milestoneId === m.id);
+                                const already = stepHabits.length > 0;
+                                const recur = looksRecurring(m.title);
+                                return already ? (
+                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "#7a8a9a" }}>↻ habit</span>
+                                ) : (
+                                  <button
+                                    onClick={() => addHabitFromStep.mutate({ milestoneId: m.id, starId: g.id, title: m.title, element: g.element ?? undefined, planet: (g as any).planet ?? undefined })}
+                                    disabled={addHabitFromStep.isPending}
+                                    title={recur ? "This reads like a recurring practice — make it a habit" : "Make this step a recurring habit"}
+                                    style={{ fontSize: 9, color: recur ? "#7a6cae" : "#c0b8aa", background: recur ? "#7a6cae12" : "none", border: "none", borderRadius: 5, cursor: "pointer", padding: recur ? "1px 6px" : "0 2px", fontWeight: recur ? 600 : 400, lineHeight: 1 }}
+                                  >↻ habit</button>
+                                );
+                              })()}
                               <button onClick={() => { setStepTaskAdd(m.id); setStepTaskTitle(""); }} title="Add a task to this step"
                                 style={{ fontSize: 11, color: "#c0b8aa", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>+</button>
                             </div>

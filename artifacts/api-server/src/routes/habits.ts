@@ -119,14 +119,14 @@ router.get("/habits", async (req, res) => {
 // POST /habits
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId } = req.body;
   if (!name) return res.status(400).json({ error: "name required" });
   // Client may send arrays (the merged model) or comma-strings — store as CSV.
   const asCsv = (v: unknown) => Array.isArray(v) ? v.join(",") : (v ?? null);
   const [row] = await db.insert(habits).values({
     testerId, name, description, emoji,
     favoredElements: asCsv(favoredElements), favoredPhases: asCsv(favoredPhases), favoredPlanets: asCsv(favoredPlanets),
-    bestWindowType, minimumViable, goalId: goalId ?? null, projectId: projectId ?? null,
+    bestWindowType, minimumViable, goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
   }).returning();
   res.status(201).json(row);
 });
