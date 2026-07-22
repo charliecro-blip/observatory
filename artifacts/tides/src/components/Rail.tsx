@@ -9,6 +9,7 @@ import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
+import { CompassMark } from "@/components/CompassMark";
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -540,11 +541,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     }}>
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
-          {/* Rebrand (owner 2026-07-15): back to the project's original name.
-              "Tides"/"tide" stays as FEATURE vocabulary (the tide reading is
-              one instrument); Compass is the product. */}
+        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 7 }}>
+          {/* The Compass mark (Claude Design brand kit 2026-07-22) — replaces the
+              placeholder bullet. Inherits ink; nudges to Meridian on hover. */}
+          <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
           Compass
         </div>
         <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
