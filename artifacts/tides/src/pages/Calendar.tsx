@@ -1021,6 +1021,33 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
               {ELEMENT_NOTE[elem] ?? ""} {QUALITY_NOTE[dayData.quality ?? ""] ? `Overall: ${QUALITY_NOTE[dayData.quality ?? ""]}.` : ""}
             </div>
           </div>
+          {/* The day's Moon aspects — the fast, personal weather. Sorted so the
+              one that perfects soonest reads first (same order as the rail). */}
+          {(() => {
+            const ma = ((dayData as any)?.moonAspects ?? []) as any[];
+            if (!ma.length) return null;
+            const ASP_SYM: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const ASP_COL: Record<string,string> = { conjunction:"#c8992e", opposition:"#c05050", square:"#c05050", trine:"#4a9060", sextile:"#4a7ab0" };
+            const sorted = [...ma].sort((a,b)=> (a.applying?0:1)-(b.applying?0:1) || (a.orb??9)-(b.orb??9)).slice(0,5);
+            return (
+              <div style={{ background:"var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+                <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:5 }}>Moon aspects</div>
+                {sorted.map((a:any,i:number)=>{
+                  const other = a.planet ?? (a.planet1==="Moon" ? a.planet2 : a.planet1);
+                  const col = ASP_COL[a.aspect] ?? "#888";
+                  return (
+                    <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
+                      <span style={{ color:"#7080a0" }}>☽</span>
+                      <span style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
+                      <span style={{ color:PLANET_COLORS[other]??"#555" }}>{PLANET_ICONS[other]??""}</span>
+                      <span style={{ flex:1,color:"#555" }}>{other}</span>
+                      <span style={{ fontSize:8.5,color:a.applying?col:"#bbb" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:2 }}>Angle crossings</div>
@@ -1044,18 +1071,18 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
           )}
           {(wins as PlanningWindow[]).length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:6 }}>Events</div>
+              <div style={{ fontSize:11,fontWeight:600,color:"var(--color-primary)",marginBottom:6 }}>Your schedule</div>
               {(wins as PlanningWindow[]).map(w=>{
                 const col = WINDOW_COLORS[w.type as string]??"#888";
                 const s = new Date(w.startTime), e = new Date(w.endTime);
                 return (
-                  <div key={w.id} style={{ display:"flex",alignItems:"center",gap:5,marginBottom:4,padding:"4px 6px",borderRadius:5,background:`${col}10`,border:`1px solid ${col}25` }}>
-                    <div style={{ width:3,height:22,borderRadius:2,background:col,flexShrink:0 }}/>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:10,fontWeight:500,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{w.title}</div>
-                      <div style={{ fontSize:8,color:"#aaa" }}>{fmtTime(s)} – {fmtTime(e)}</div>
+                  <div key={w.id} style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5,padding:"5px 7px",borderRadius:6,background:`${col}10`,border:`1px solid ${col}25` }}>
+                    <div style={{ width:3,height:26,borderRadius:2,background:col,flexShrink:0 }}/>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:12,fontWeight:600,color:"var(--color-foreground)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{w.title}</div>
+                      <div style={{ fontSize:10.5,color:"#8a8278" }}>{fmtTime(s)} – {fmtTime(e)}</div>
                     </div>
-                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:10 }}>✕</button>
+                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"#bbb",cursor:"pointer",fontSize:12 }}>✕</button>
                   </div>
                 );
               })}
