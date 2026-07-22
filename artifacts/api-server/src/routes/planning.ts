@@ -148,7 +148,7 @@ const MAX_ACTIVE_GUIDING_STARS = 5;
 
 router.post("/planning/goals", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
+  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
   if ((status ?? "active") === "active") {
     const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
@@ -163,6 +163,8 @@ router.post("/planning/goals", requireTesterId, async (req, res) => {
     horizon: horizon ?? null,
     status: status ?? "active",
     element: element ?? null,
+    planet: planet ?? null,
+    activityKey: activityKey ?? null,
     anchorKind: anchorKind ?? null,
     anchorPlanet: anchorPlanet ?? null,
     anchorHouse: anchorHouse ?? null,
@@ -176,7 +178,7 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
-  const { title, description, horizon, status, element, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
+  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
   if (status === "active" && existing.status !== "active") {
     const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
     if (active.length >= MAX_ACTIVE_GUIDING_STARS) {
@@ -190,6 +192,8 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   if (horizon !== undefined) updates.horizon = horizon;
   if (status !== undefined) updates.status = status;
   if (element !== undefined) updates.element = element;
+  if (planet !== undefined) updates.planet = planet;
+  if (activityKey !== undefined) updates.activityKey = activityKey;
   if (anchorKind !== undefined) updates.anchorKind = anchorKind;
   if (anchorPlanet !== undefined) updates.anchorPlanet = anchorPlanet;
   if (anchorHouse !== undefined) updates.anchorHouse = anchorHouse;

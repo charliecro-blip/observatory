@@ -24,6 +24,13 @@ export const goals = pgTable("goals", {
   horizon: text("horizon"), // near | mid | long
   status: text("status").notNull().default("active"), // active | paused | completed | archived
   element: text("element"), // fire | earth | air | water — the domain this goal lives in
+  // The star's ruling planet — auto-diagnosed from the title (associateDeterministic)
+  // with user override. Planets drive scheduling more precisely than elements
+  // (Mars for training, Mercury for study), so this is what best-window timing
+  // keys off when present. activityKey is the matched correspondence, if any,
+  // which unlocks the precise election engine for the star's windows.
+  planet: text("planet"), // Sun | Moon | Mercury | Venus | Mars | Jupiter | Saturn
+  activityKey: text("activity_key"), // e.g. "train-hard" — the matched activity correspondence
   // Cycle anchor — ties a goal to the long-cycle context that suggested/supports
   // it, giving it a natural season instead of an invented deadline (cyclical
   // nesting: goals ride chapters — an outer planet moving through a natal house —

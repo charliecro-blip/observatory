@@ -157,16 +157,19 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     const nextMove = nextTask ? { kind: "task", id: nextTask.id, title: nextTask.title }
       : nextStep ? { kind: "step", id: nextStep.id, title: nextStep.title }
       : null;
-    // Today's best window for the star's element — waking hours, from the same
-    // lens curves the tide chart uses.
-    const curve = arc.curves[g.element ?? "overall"] ?? arc.curve;
+    // Today's best window — from the star's ruling PLANET curve when it has one
+    // (Mars-activated hours for a training star), else its element curve, else
+    // overall. Planets time more precisely than elements.
+    const curve = (g.planet && arc.curves[`planet:${g.planet}`])
+      ?? arc.curves[g.element ?? "overall"]
+      ?? arc.curve;
     const peak = findPeakWindows(curve, 3, 3)
       .map(p => ({ ...p, startHour: Math.max(p.startHour, 7), endHour: Math.min(p.endHour, 23) }))
       .filter(p => p.endHour - p.startHour >= 1)
       .sort((a, b) => b.peakE - a.peakE)[0] ?? null;
     const gWins = ledger.filter(l => l.goalId === g.id);
     return {
-      id: g.id, title: g.title, element: g.element,
+      id: g.id, title: g.title, element: g.element, planet: g.planet ?? null,
       stepsDone, stepsTotal: stepsAll.length,
       openTasks: gTasks.length,
       nextMove,

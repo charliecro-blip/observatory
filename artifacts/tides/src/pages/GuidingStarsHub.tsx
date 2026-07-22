@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
-import { ELEMENT_MYTHOS, sortIntentToElement, type ElementMythos } from "@/lib/mythos";
+import { ELEMENT_MYTHOS, type ElementMythos } from "@/lib/mythos";
 import { ActivityTimesHint } from "@/components/ActivityTimesHint";
 import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
@@ -27,6 +27,14 @@ const HORIZON_COLORS: Record<string, { bg: string; color: string }> = {
   near: { bg: "#dbeafe", color: "#2a5a90" },
   mid:  { bg: "#f0e8d8", color: "#8a5020" },
   long: { bg: "#e8d8f0", color: "#c19a3a" },
+};
+
+// The seven classical rulers a Guiding Star can be diagnosed to — planets drive
+// scheduling more precisely than elements (Mars→training, Mercury→study).
+const STAR_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
+const PLANET_PICK_COLOR: Record<string, string> = {
+  Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#a06080",
+  Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060",
 };
 
 function houseSystemPref(): string {
@@ -93,10 +101,30 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const [showForm, setShowForm] = useState(false);
   const [expandedWeather, setExpandedWeather] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "" });
+  const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "", planet: "" });
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showSeasons, setShowSeasons] = useState(false);
+  // The sky's reading of the aim — auto-diagnosed from the title as you type.
+  // We suggest an element + planet from it but never force them; form.element /
+  // form.planet hold only an EXPLICIT override (empty = "use the reading").
+  const [diagnosis, setDiagnosis] = useState<{ element: string; planets: string[]; rationale: string; windowType?: string; activityKey?: string; houses?: number[]; source?: string } | null>(null);
+  useEffect(() => {
+    const text = `${form.title} ${form.description}`.trim();
+    if (text.length < 3) { setDiagnosis(null); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/associate", { method: "POST", headers: authH(testerId), body: JSON.stringify({ text }) });
+        if (!r.ok || cancelled) return;
+        setDiagnosis(await r.json());
+      } catch { /* the reading is optional — creation works without it */ }
+    }, 450);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.title, form.description, testerId]);
+  // What we'll actually save: the user's pick if they made one, else the reading.
+  const effElement = form.element || diagnosis?.element || "";
+  const effPlanet = form.planet || diagnosis?.planets?.[0] || "";
 
   // Landed here from the morning glance: scroll that star's card into view and
   // hold a brief highlight so the eye lands on the game plan it came for.
@@ -283,23 +311,28 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const addGoal = useMutation({
     mutationFn: async () => {
-      const body = {
-        ...form,
-        ...(pendingAnchor ? {
-          element: pendingAnchor.element,
-          anchorKind: pendingAnchor.kind,
-          anchorPlanet: pendingAnchor.planet ?? null,
-          anchorHouse: pendingAnchor.house,
-          anchorUntil: pendingAnchor.until,
-        } : {}),
+      const body: Record<string, unknown> = {
+        title: form.title, description: form.description, horizon: form.horizon,
+        // The reading's element/planet unless the anchor season overrides element,
+        // plus the matched activity key (unlocks the precise election engine).
+        element: pendingAnchor ? pendingAnchor.element : (effElement || null),
+        planet: effPlanet || null,
+        activityKey: diagnosis?.activityKey ?? null,
       };
+      if (pendingAnchor) {
+        body.anchorKind = pendingAnchor.kind;
+        body.anchorPlanet = pendingAnchor.planet ?? null;
+        body.anchorHouse = pendingAnchor.house;
+        body.anchorUntil = pendingAnchor.until;
+      }
       const r = await fetch("/api/planning/goals", { method: "POST", headers: authH(testerId), body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json(); throw new Error(e.message ?? "Failed"); }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["goals"] });
       qc.invalidateQueries({ queryKey: ["north-stars"] });
-      setForm({ title: "", description: "", horizon: "near", element: "" });
+      setForm({ title: "", description: "", horizon: "near", element: "", planet: "" });
+      setDiagnosis(null);
       setPendingAnchor(null); setShowForm(false); setFormError(null);
     },
     onError: (e: any) => setFormError(e.message),
@@ -461,7 +494,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 people a shape to copy. Owner #4: 'setting up a new guiding
                 star needs encouragement / walking people through it.' */}
             <div style={{ fontSize: 11.5, color: "#8a8278", lineHeight: 1.55 }}>
-              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, place it in an element, and set a horizon. You'll break it into tasks and habits next, right below.
+              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, and the sky reads its nature — a ruling planet and element that set its best timing. Adjust either if you like, set a horizon, then break it into tasks and habits below.
             </div>
             {!form.title && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -479,21 +512,55 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Why does it matter? (optional — a line to your future self)"
               style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none" }} />
 
+            {/* The sky's reading — auto-diagnosed from the words as you type.
+                It suggests a ruling planet + element; you can override either. */}
+            {diagnosis && (form.title.trim().length >= 3) && (
+              <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "9px 11px" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#b0a898", marginBottom: 4 }}>The sky reads this as</div>
+                <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
+                {diagnosis.houses && diagnosis.houses.length > 0 && (
+                  <div style={{ fontSize: 9.5, color: "#999", marginTop: 3 }}>
+                    Lives in your {diagnosis.houses.map(ordinal).join(" & ")} house{diagnosis.houses.length > 1 ? "s" : ""}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Its ruling planet <span style={{ color: "#c8a04a" }}>— what drives its timing</span></div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {STAR_PLANETS.map(p => {
+                  const on = effPlanet === p;
+                  const suggested = !form.planet && diagnosis?.planets?.[0] === p;
+                  const col = PLANET_PICK_COLOR[p] ?? "#8a8278";
+                  return (
+                    <button key={p} onClick={() => setForm(f => ({ ...f, planet: p }))} title={`${p}${suggested ? " — read from your words" : ""}`} style={{
+                      fontSize: 10.5, padding: "4px 10px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                      border: on ? `1px solid ${col}` : "1px solid #e0dad0",
+                      background: on ? `${col}18` : "var(--color-card-2)",
+                      color: on ? col : "#999", fontWeight: on ? 600 : 400,
+                    }}>{PLANET_GLYPH[p] ?? ""} {p}{suggested ? " ·" : ""}</button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div>
               <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Which element does this live in?</div>
               <div style={{ display: "flex", gap: 4 }}>
-                {(() => {
-                  const suggested = !form.element ? sortIntentToElement(`${form.title} ${form.description}`) : null;
-                  return Object.entries(ELEMENT_INFO).map(([key, info]) => (
+                {Object.entries(ELEMENT_INFO).map(([key, info]) => {
+                  const on = effElement === key;
+                  const suggested = !form.element && diagnosis?.element === key;
+                  return (
                     <button key={key} onClick={() => setForm(f => ({ ...f, element: key }))} style={{
                       fontSize: 10, padding: "4px 11px", borderRadius: 10, cursor: "pointer", flex: 1,
-                      border: form.element === key ? `1px solid ${info.color}` : suggested === key ? `1px dashed ${info.color}` : "1px solid #e0dad0",
-                      background: form.element === key ? `${info.color}18` : "var(--color-card-2)",
-                      color: form.element === key ? info.color : suggested === key ? info.color : "#999",
-                      fontWeight: form.element === key ? 600 : 400,
-                    }}>{info.label}{suggested === key ? " ?" : ""}</button>
-                  ));
-                })()}
+                      border: on ? `1px solid ${info.color}` : suggested ? `1px dashed ${info.color}` : "1px solid #e0dad0",
+                      background: on ? `${info.color}18` : "var(--color-card-2)",
+                      color: on ? info.color : suggested ? info.color : "#999",
+                      fontWeight: on ? 600 : 400,
+                    }}>{info.label}</button>
+                  );
+                })}
               </div>
             </div>
 

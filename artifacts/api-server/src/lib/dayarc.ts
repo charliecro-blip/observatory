@@ -388,6 +388,17 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   const curves: Record<string, DayArcCurvePoint[]> = {};
   for (const L of LENSES) curves[L.key] = buildCurve(L.w, L.key === "overall", L.key === "overall" ? undefined : L.key);
 
+  // Planet-keyed curves ("planet:Mars", …) — a Guiding Star diagnosed to a
+  // ruling planet gets timing from when the Moon activates THAT planet, which
+  // is sharper than its element (Mars for training, not just "fire"). Each
+  // planet borrows its own element for the Moon-sign baseline lift.
+  const PLANET_LENS_ELEMENT: Record<string, string> = {
+    Sun: "fire", Moon: "water", Mercury: "air", Venus: "earth", Mars: "fire", Jupiter: "fire", Saturn: "earth",
+  };
+  for (const [p, el] of Object.entries(PLANET_LENS_ELEMENT)) {
+    curves[`planet:${p}`] = buildCurve({ [p]: 2.2 }, false, el);
+  }
+
   return {
     dayStart: dayStart.toISOString(), dayEnd: dayEnd.toISOString(),
     segments, events, vocWindows,
