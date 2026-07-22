@@ -95,6 +95,10 @@ export const tasks = pgTable("tasks", {
   done: text("done").notNull().default("false"), // "true" | "false"
   dueDate: text("due_date"), // ISO date YYYY-MM-DD, nullable
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
+  // A task's own ruling planet — auto-diagnosed from its title, so specific
+  // tasks under a star can each time to a different planet (the star may be
+  // Mars, but its "write the plan" step reads Mercury). Drives its timing.
+  planet: text("planet"),                    // Sun | Moon | Mercury | … | Saturn, nullable
   // How long it needs and how much you'll have to bring — both feed the
   // scheduler (fit a block of the right length into a window whose energy the
   // sky supports) and let the list surface "quick + low" things on flat days.
