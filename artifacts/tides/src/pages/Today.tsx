@@ -38,6 +38,18 @@ const PLANET_SIGNIFICATION: Record<string, string> = {
   Uranus: "disruption · surprise · liberation · shake-up",
 };
 
+// A planet crossing a chart angle is a ~20-min peak for that planet's kind of
+// action — so we name the schedulable thing it favors (Mars → training).
+const CROSSING_ACTIVITY: Record<string, string> = {
+  Mars: "a hard workout or a decisive push",
+  Venus: "a date, a connection, or making something beautiful",
+  Mercury: "writing, calls, errands, a quick pitch",
+  Sun: "being seen — present, lead, put yourself forward",
+  Jupiter: "the big ask, teaching, or reaching wider",
+  Saturn: "focused, structural work — the unglamorous right thing",
+  Moon: "rest, home, food, tending someone",
+};
+
 
 const QUALITY_COLORS: Record<string, string> = {
   good: "#60a060", supported: "#60a060", challenging: "#c04040", caution: "#d0a040", neutral: "#888",
@@ -728,6 +740,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
                 {cr.time} · {whenLabel}{sig ? ` — ${sig}` : ""}
               </div>
+              {CROSSING_ACTIVITY[cr.planet] && (
+                <div style={{ fontSize: 10, color: pCol, marginTop: 3, fontWeight: 500 }}>
+                  ◷ A ~20-min window for {CROSSING_ACTIVITY[cr.planet]}.
+                </div>
+              )}
             </div>
             <div style={{ fontSize: 8, background: `${pCol}22`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
               ● {isBenefic ? "↑" : ""} {cr.angle}
