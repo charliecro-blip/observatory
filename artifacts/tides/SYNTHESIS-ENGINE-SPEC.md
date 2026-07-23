@@ -215,7 +215,26 @@ assembling ad-hoc lists. One synthesis, many surfaces.
 
 ---
 
-## 8. Open decisions — need your call before we build
+## 8. Decisions — RESOLVED (owner, 2026-07-23)
+
+1. **Zodiac / tradition weighting → MODERN SYNTHESIS.** Tropical throughout; run
+   the yoga *geometry* (kendra-from-Moon, own-sign, exaltation) on our tropical
+   positions. Respect the tradition, but **include the modern planets**
+   (Uranus/Neptune/Pluto, + Chiron/nodes/asteroids) and a **psychological**
+   register, not a fatalistic one. (Precedent: Surya-Siddhanta runs a *solar/tropical*
+   calendar while keeping sidereal nakshatras — tropical-frame + traditional-content
+   is a real lineage.) **Nakshatras deferred** — a future build.
+2. **Houses → FLEXIBLE.** Honor the existing pluggable house system (whole-sign
+   default; quadrant available). Angularity/accidental-dignity house scores read
+   from whatever system is selected.
+3. **Dignity → YES**, it's the foundation.
+4. **Terms / triplicity → builder's call, with practitioner-level OPTIONALITY.**
+   v1 default: Dorothean triplicities + Chaldean faces (both implemented);
+   **Egyptian terms pluggable, filled from a verified source** (owner is gathering
+   books). A future setting exposes system choice (Egyptian vs Ptolemaic terms,
+   etc.) for deeper practitioners.
+
+### Original open questions (for the record)
 
 1. **Zodiac for the yogas.** The Vedic patterns are **sidereal**-native; the rest of
    Compass is **tropical**. Options: (a) compute yogas in sidereal (a ~24° ayanamsa
