@@ -6,10 +6,13 @@
 
 const KEY = "obs_text_scale";
 
+// Bumped the whole ladder up a notch (owner 2026-07-22 — the app read too
+// small). "Default" is now what "Large" used to be.
 export const TEXT_SCALES: { key: string; label: string; scale: number }[] = [
-  { key: "default", label: "Default", scale: 1.08 },
-  { key: "large",   label: "Large",   scale: 1.2 },
-  { key: "larger",  label: "Larger",  scale: 1.32 },
+  { key: "compact", label: "Compact", scale: 1.08 },
+  { key: "default", label: "Default", scale: 1.2 },
+  { key: "large",   label: "Large",   scale: 1.32 },
+  { key: "larger",  label: "Larger",  scale: 1.44 },
 ];
 
 export function getTextScale(): string {

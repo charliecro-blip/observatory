@@ -215,6 +215,24 @@ export function getPlanetPositions(jd: number) {
   return results;
 }
 
+// Mean lunar nodes — the Moon's orbital nodes: the ascending North Node (☊) and
+// the opposite South Node (☋). The eclipse axis; a core natal placement in most
+// traditions. Standard mean-node formula (retrograde by nature, ~-0.053°/day).
+// Kept out of getPlanetPositions on purpose so nodes don't silently enter every
+// daily aspect/transit calc; callers add them where they're actually wanted.
+export function lunarNodes(jd: number): {
+  north: { longitude: number; sign: string; degree: number };
+  south: { longitude: number; sign: string; degree: number };
+} {
+  const d = jd - 2451545.0;
+  const north = normalize360(125.0445479 - 0.0529537222 * d);
+  const south = normalize360(north + 180);
+  return {
+    north: { longitude: north, ...longitudeToSign(north) },
+    south: { longitude: south, ...longitudeToSign(south) },
+  };
+}
+
 export function getActiveTransits(planets: ReturnType<typeof getPlanetPositions>): string[] {
   const transits: string[] = [];
   const sun     = planets.find((p) => p.planet === "Sun")!;
