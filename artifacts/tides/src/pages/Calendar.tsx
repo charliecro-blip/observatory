@@ -481,6 +481,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   const now = new Date();
   const nowH = now.getHours() + now.getMinutes() / 60;
   const realLocation = hasRealLocation(lat, lon);
+  // Immediate hover info for angle crossings — the native title tooltip only
+  // appears after a ~1s delay ("takes a minute to populate"); this shows the
+  // read instantly at the cursor.
+  const [hoverCross, setHoverCross] = useState<{ x: number; y: number; text: string; color: string } | null>(null);
 
   const planetaryHoursMap = useMemo(() => {
     const m = new Map<string, PlanetHour[]>();
@@ -710,9 +714,12 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
                     if (topPx<0||topPx>HOURS*ROW_H) return null;
                     const pCol = PLANET_COLORS[c.planet] ?? "#c8b870";
+                    const crossText = `${c.planet} ${c.angle==="ASC"?"rises":c.angle==="MC"?"culminates":c.angle==="DSC"?"sets":"reaches the low point"} at ${c.time?.slice(0,5)} — a strong ~20-minute window for ${CROSSING_MEANING[c.planet] ?? "this planet's themes"}.`;
                     return (
                       <div key={ci}
-                        title={`${c.planet} ${c.angle==="ASC"?"rises":c.angle==="MC"?"culminates":c.angle==="DSC"?"sets":"reaches the low point"} at ${c.time?.slice(0,5)} — a strong ~20-minute window for ${CROSSING_MEANING[c.planet] ?? "this planet's themes"}.`}
+                        onMouseEnter={(e)=>setHoverCross({ x:e.clientX, y:e.clientY, text:crossText, color:pCol })}
+                        onMouseMove={(e)=>setHoverCross(h=>h?{ ...h, x:e.clientX, y:e.clientY }:h)}
+                        onMouseLeave={()=>setHoverCross(null)}
                         style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,
                         top:topPx-18,height:36,zIndex:4,cursor:"help",
@@ -785,6 +792,15 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           );
         })}
       </div>
+      {hoverCross && (
+        <div style={{
+          position:"fixed", left:Math.min(hoverCross.x+14, window.innerWidth-236), top:hoverCross.y+14,
+          zIndex:9999, width:220, pointerEvents:"none",
+          background:"var(--color-card)", border:`1px solid ${hoverCross.color}55`, borderLeft:`3px solid ${hoverCross.color}`,
+          borderRadius:8, padding:"8px 10px", fontSize:11, lineHeight:1.5, color:"var(--color-foreground)",
+          boxShadow:"0 6px 20px rgba(0,0,0,0.18)",
+        }}>{hoverCross.text}</div>
+      )}
     </div>
   );
 }
