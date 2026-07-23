@@ -70,7 +70,7 @@ const PLANET_COLORS: Record<string, string> = {
   Uranus:"#3090a0",Neptune:"#5060b0",Pluto:"#703060",
 };
 const ASPECT_SYM: Record<string, string> = {
-  conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹",
+  conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹",
 };
 const PLANET_QUALITY: Record<string, string> = {
   Sun:"Clarity, leadership, vitality",
@@ -1042,7 +1042,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
           {(() => {
             const ma = ((dayData as any)?.moonAspects ?? []) as any[];
             if (!ma.length) return null;
-            const ASP_SYM: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const ASP_SYM: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const ASP_COL: Record<string,string> = { conjunction:"#c8992e", opposition:"#c05050", square:"#c05050", trine:"#4a9060", sextile:"#4a7ab0" };
             const sorted = [...ma].sort((a,b)=> (a.applying?0:1)-(b.applying?0:1) || (a.orb??9)-(b.orb??9)).slice(0,5);
             return (
@@ -1139,7 +1139,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
     if ((ev.type === "moon_aspect" || ev.type === "aspect") && ev.at) {
       const d = new Date(ev.at);
       moments.push({
-        min: minOf(d), time: fmtTime(d), glyph: ev.icon || (ev.type === "aspect" ? "✦" : "☽"),
+        min: minOf(d), time: fmtTime(d), glyph: ev.icon || (ev.type === "aspect" ? "✦" : "☽︎"),
         label: ev.title, sub: ev.subtitle, color: ev.type === "aspect" ? "#6f6a90" : "#60708a",
       });
     }
@@ -1194,7 +1194,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
       <div style={{ maxWidth: 620, margin: "0 auto" }}>
         {/* The day's character */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: `${accent}0e`, border: `1px solid ${accent}33`, marginBottom: 16 }}>
-          <div style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽"}</div>
+          <div style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽︎"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-primary)" }}>
               {dayData?.tide?.character ? `${dayData.tide.character.charAt(0).toUpperCase()}${dayData.tide.character.slice(1)} Tide` : "The day"}

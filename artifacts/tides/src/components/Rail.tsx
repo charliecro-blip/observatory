@@ -97,7 +97,7 @@ function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?:
 }
 
 const ASPECT_COLORS: Record<string, string> = {
-  "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
+  "☌︎": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍︎": "#e06060",
 };
 
 // Order Moon aspects chronologically — the one that perfects soonest first —
@@ -215,7 +215,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         {asps.length === 0 && <div style={{ marginTop: 3, color: "#8a8278" }}>None in orb right now — open water.</div>}
         {asps.slice(0, 4).map((a: any, i: number) => {
           const partner = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-          const glyph = { conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[a.aspect as string] ?? "·";
+          const glyph = { conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[a.aspect as string] ?? "·";
           return (
             <div key={i} style={{ marginTop: 3, color: "#8a8278" }}>
               ☽ {glyph} <PG p={partner} /> <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
@@ -253,7 +253,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         )}
         {((now as any).moonAspects ?? []).length > 0 && (
           <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", "#7080a0")}>
-            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
+            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
             <span style={{ color: "#666" }}>{(now as any).moonAspects.length}</span>
           </button>
         )}
@@ -302,11 +302,11 @@ const ARCHETYPE_QUALITY: Record<string, string> = {
 };
 
 const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: string }> = {
-  conjunction: { name:"Conjunction ☌", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
+  conjunction: { name:"Conjunction ☌︎", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
   trine:       { name:"Trine △", nature:"Harmonious", desc:"120° apart — energy flows easily and supportively between these planetary themes. A natural, gifting aspect." },
   sextile:     { name:"Sextile ⚹", nature:"Supportive", desc:"60° apart — a gentle, helpful connection. Opportunities and ease, though less effortless than a trine." },
   square:      { name:"Square □", nature:"Tension", desc:"90° apart — friction and challenge between these themes. Productive tension if channeled; frustration if resisted." },
-  opposition:  { name:"Opposition ☍", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
+  opposition:  { name:"Opposition ☍︎", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
 };
 
 const PLANET_MEANING: Record<string, string> = {
@@ -569,7 +569,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="season">Season</SectionHeader>
-          <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
+          <SignChip glyph="☉︎" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
             return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
@@ -616,7 +616,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             </div>
           </div>
           <div style={{ marginTop: 6 }}>
-            <SignChip glyph="☽" label="Moon in" sign={moonSign} />
+            <SignChip glyph="☽︎" label="Moon in" sign={moonSign} />
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
             {isVOC && (
@@ -670,7 +670,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
           {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const sym = aspSym[a.aspect] ?? a.aspect;
             const col = aspColor[a.aspect] ?? "#888";
@@ -862,7 +862,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             </span>
           </button>
           {showNonMoonAspects && (() => {
-            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
             return (

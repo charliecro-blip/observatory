@@ -1494,7 +1494,7 @@ const PLANET_COLORS_TL: Record<string,string> = {
 };
 
 const ASPECT_ICON: Record<string,string> = {
-  conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍",
+  conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎",
 };
 
 const EVENT_COLORS: Record<string,string> = {
@@ -1610,7 +1610,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
                 {ph && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <div style={{ fontSize: 9, color: pColor, fontWeight: 600 }}>{ph.ruler}</div>
-                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉" : "☽"}</div>
+                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉︎" : "☽︎"}</div>
                   </div>
                 )}
               </div>
@@ -1653,7 +1653,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
 const MODULE_META: Record<string, { label: string; icon: string; view: string }> = {
   health:        { label: "Health",        icon: "◎", view: "work" },
   creative:      { label: "Creative",      icon: "✦", view: "work" },
-  spiritual:     { label: "Spiritual",     icon: "☽", view: "work" },
+  spiritual:     { label: "Spiritual",     icon: "☽︎", view: "work" },
   home:          { label: "Home",          icon: "⌂", view: "work" },
   financial:     { label: "Financial",     icon: "◇", view: "work" },
   relationships: { label: "Relationships", icon: "◈", view: "work" },
@@ -2246,16 +2246,16 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
 // ── PlanetaryPulse ─────────────────────────────────────────────────────────────
 
 const PLANET_THEMES: Record<string, { themes: string; icon: string; color: string }> = {
-  Sun:     { icon:"☉", color:"#c08020", themes:"visibility · authority · vitality · identity" },
-  Moon:    { icon:"☽", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
-  Mercury: { icon:"☿", color:"#608060", themes:"communication · writing · analysis · ideas" },
-  Venus:   { icon:"♀", color:"#c06090", themes:"connection · beauty · pleasure · values" },
-  Mars:    { icon:"♂", color:"#c04040", themes:"drive · action · courage · physical energy" },
-  Jupiter: { icon:"♃", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
-  Saturn:  { icon:"♄", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
-  Uranus:  { icon:"♅", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
-  Neptune: { icon:"♆", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
-  Pluto:   { icon:"♇", color:"#703060", themes:"transformation · depth · power · shadow" },
+  Sun:     { icon:"☉︎", color:"#c08020", themes:"visibility · authority · vitality · identity" },
+  Moon:    { icon:"☽︎", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
+  Mercury: { icon:"☿︎", color:"#608060", themes:"communication · writing · analysis · ideas" },
+  Venus:   { icon:"♀︎", color:"#c06090", themes:"connection · beauty · pleasure · values" },
+  Mars:    { icon:"♂︎", color:"#c04040", themes:"drive · action · courage · physical energy" },
+  Jupiter: { icon:"♃︎", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
+  Saturn:  { icon:"♄︎", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
+  Uranus:  { icon:"♅︎", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
+  Neptune: { icon:"♆︎", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
+  Pluto:   { icon:"♇︎", color:"#703060", themes:"transformation · depth · power · shadow" },
 };
 
 const ASPECT_STRENGTH: Record<string, number> = {
@@ -3011,7 +3011,7 @@ function TideChart({
 
         const WEEK_W = 700, WAVE_H2 = 100;
         const DAY_W = WEEK_W / 7;
-        const ASPECT_GLYPHS: Record<string, string> = { conjunction:"☌", opposition:"☍", trine:"△", square:"□", sextile:"⚹" };
+        const ASPECT_GLYPHS: Record<string, string> = { conjunction:"☌︎", opposition:"☍︎", trine:"△", square:"□", sextile:"⚹" };
         const MOON_PHASE_GLYPHS: Record<string, string> = {
           new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
           full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
@@ -3244,7 +3244,7 @@ const MOON_GLYPHS: Record<string, string> = {
   new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
   full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
 };
-const ASP_SYM: Record<string, string> = { conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍" };
+const ASP_SYM: Record<string, string> = { conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎" };
 const ASP_COLOR: Record<string, string> = { trine:"#60a060", sextile:"#6090d0", conjunction:"#f0b060", square:"#e06060", opposition:"#e06060" };
 
 const ASP_MEANING_SHORT: Record<string, string> = {

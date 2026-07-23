@@ -20,7 +20,7 @@ import type { WeekDay } from "@/lib/types";
 //  - Lens switches morph the same water instead of swapping charts.
 
 const ASPECT_GLYPH: Record<string, string> = {
-  conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍",
+  conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎",
 };
 
 const CHARACTER_WORD: Record<string, string> = {

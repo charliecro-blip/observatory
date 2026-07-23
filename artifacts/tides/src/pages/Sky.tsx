@@ -103,7 +103,7 @@ function interpretEvent(event: SkyEvent): EventDetail {
   // ── Aspect interpretation (moon_aspect + general aspect events) ───────────
   if (event.type === "moon_aspect" || event.type === ("aspect" as string)) {
     const ASPECT_NAMES: Record<string, string> = {
-      "☌":"conjunction", "△":"trine", "⚹":"sextile", "□":"square", "☍":"opposition",
+      "☌︎":"conjunction", "△":"trine", "⚹":"sextile", "□":"square", "☍︎":"opposition",
     };
     // Parse title like "Moon △ Jupiter" or "Sun □ Mars"
     const titleMatch = title.match(/^(\w+)\s*(☌|△|⚹|□|☍)\s*(\w+)$/);
@@ -112,9 +112,9 @@ function interpretEvent(event: SkyEvent): EventDetail {
       const sym = titleMatch[2];
       const p2 = titleMatch[3];
       const aspectName = ASPECT_NAMES[sym] ?? sym;
-      const isHard = sym === "□" || sym === "☍";
+      const isHard = sym === "□" || sym === "☍︎";
       const isSoft = sym === "△" || sym === "⚹";
-      const isConj = sym === "☌";
+      const isConj = sym === "☌︎";
       const color = PLANET_COLORS[p2] ?? PLANET_COLORS[p1] ?? "#557";
 
       // Planet-pair descriptions keyed as "P1|P2" (canonical order: smaller body first if Moon involved)
@@ -312,7 +312,7 @@ function interpretEvent(event: SkyEvent): EventDetail {
       }
     }
     // Generic fallback for unparsed aspects
-    const aspectIsHard = title.includes("□") || title.includes("☍");
+    const aspectIsHard = title.includes("□") || title.includes("☍︎");
     return {
       meaning: `${title} — two planetary archetypes make contact, blending their themes.`,
       practical: aspectIsHard ? "Tension aspects invite integration. Work with the friction." : "Supportive aspects open doors. Take the opening.",
@@ -413,7 +413,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
 // ── Event row (compact) ───────────────────────────────────────────────────────
 
 const ASPECT_COLORS: Record<string, string> = {
-  "☌":"#f0b060", "□":"#e06060", "△":"#60a060", "⚹":"#6090d0", "☍":"#e06060",
+  "☌︎":"#f0b060", "□":"#e06060", "△":"#60a060", "⚹":"#6090d0", "☍︎":"#e06060",
 };
 
 function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: boolean; onSelect: () => void }) {
@@ -639,7 +639,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
               defaultOpen={true}
             >
               {(() => {
-                const ASP_SYM2: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+                const ASP_SYM2: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
                 const ASP_COL2: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
                 const ASP_NAT: Record<string,string> = { trine:"Harmonious", sextile:"Supportive", conjunction:"Amplifying", square:"Tension", opposition:"Polarity" };
                 const ASP_DESC: Record<string,string> = {
@@ -698,7 +698,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
           {!isLoading && (
             <Section
               label="Lunar stream"
-              icon="☽"
+              icon="☽︎"
               accent="#5a7090"
               desc="Moon aspects, sign changes, phases, and void periods"
               defaultOpen={true}

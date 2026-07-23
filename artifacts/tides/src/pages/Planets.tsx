@@ -389,7 +389,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
 }
 
 // ── ChartView — the practitioner astro clock (premium) ──────────────────────
-const ASP_GLYPH: Record<string, string> = { Conjunction: "☌", Sextile: "⚹", Square: "□", Trine: "△", Opposition: "☍" };
+const ASP_GLYPH: Record<string, string> = { Conjunction: "☌︎", Sextile: "⚹", Square: "□", Trine: "△", Opposition: "☍︎" };
 const ASP_TONE: Record<string, string> = { Conjunction: "#a8862e", Sextile: "#5a8fb0", Square: "#c05a4a", Trine: "#5a9a6a", Opposition: "#c05a4a" };
 const SEV_ORDER: Record<string, number> = { major: 0, strong: 1, moderate: 2, mild: 3 };
 

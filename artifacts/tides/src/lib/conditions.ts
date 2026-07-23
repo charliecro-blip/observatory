@@ -45,7 +45,7 @@ export const RETRO_NOTES: Record<string, string> = {
 };
 
 export const ASPECT_GLYPH: Record<string, string> = {
-  conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍",
+  conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎",
 };
 
 export { PLANET_GLYPH } from "@/lib/glyphs";
