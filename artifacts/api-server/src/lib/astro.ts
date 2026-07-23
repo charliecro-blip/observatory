@@ -278,11 +278,14 @@ function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
   return normalize360(Math.atan2(yg, xg) / DEG2RAD);
 }
 
-// The four asteroid goddesses with sign/degree. EXPERIMENTAL — see note above.
-export function getAsteroids(jd: number): Array<{ planet: string; sign: string; degree: number; longitude: number }> {
+// The four asteroid goddesses with sign/degree + retrograde (from the sign of
+// the day-to-day geocentric motion). EXPERIMENTAL — see note above.
+export function getAsteroids(jd: number): Array<{ planet: string; sign: string; degree: number; longitude: number; retrograde: boolean }> {
   return Object.entries(ASTEROIDS).map(([name, el]) => {
     const lon = asteroidGeoLongitude(jd, el);
-    return { planet: name, longitude: lon, ...longitudeToSign(lon) };
+    const lonNext = asteroidGeoLongitude(jd + 1, el);
+    const retrograde = normalize360(lonNext - lon) > 180; // moving backward through the zodiac
+    return { planet: name, longitude: lon, retrograde, ...longitudeToSign(lon) };
   });
 }
 

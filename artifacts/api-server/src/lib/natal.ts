@@ -107,10 +107,6 @@ export interface ComputedNatalChart {
   midheaven: { sign: string; degree: number; longitude: number };
   planets: NatalPlanet[];
   houses: HouseData[];
-  // The four asteroid goddesses — EXPERIMENTAL (see astro.ts getAsteroids).
-  // Kept separate from `planets` so they don't enter transit/aspect/wheel calcs
-  // while we test their accuracy.
-  asteroids?: Array<{ planet: string; sign: string; degree: number; longitude: number; houseNumber: number }>;
 }
 
 export function computeNatalChart(
@@ -172,6 +168,15 @@ export function computeNatalChart(
     });
   }
 
+  // Asteroid goddesses — first-class natal placements now (Ceres/Pallas/Juno/
+  // Vesta): they get a house, land in the chart wheel, and can be aspected.
+  for (const a of getAsteroids(jd)) {
+    natalPlanets.push({
+      planet: a.planet, sign: a.sign, degree: a.degree, retrograde: a.retrograde,
+      longitude: a.longitude, houseNumber: assignHouse(a.longitude, cuspLongitudes),
+    });
+  }
+
   // Populate house planet lists
   for (const planet of natalPlanets) {
     houses[planet.houseNumber - 1].planets.push(planet.planet);
@@ -182,7 +187,6 @@ export function computeNatalChart(
     midheaven: { sign: mcSign.sign, degree: mcSign.degree, longitude: mcLon },
     planets: natalPlanets,
     houses,
-    asteroids: getAsteroids(jd).map((a) => ({ ...a, houseNumber: assignHouse(a.longitude, cuspLongitudes) })),
   };
 }
 
