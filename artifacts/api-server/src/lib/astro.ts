@@ -233,6 +233,54 @@ export function lunarNodes(jd: number): {
   };
 }
 
+// ── Asteroid goddesses (Ceres, Pallas, Juno, Vesta) — EXPERIMENTAL ──────────
+// The main-belt asteroids aren't in astronomy-engine, so we solve them from
+// J2000 osculating elements with a full 3D Kepler (inclination + node — needed
+// because Pallas is inclined ~35°, which the flat 2D model used for the planets
+// would get badly wrong). Accuracy is approximate (elements are mean, not
+// perturbed) — verify against a known position and calibrate M0 if it drifts,
+// the same way Chiron and the nodes were dialed in.
+interface AsteroidElements {
+  a: number; e: number; i: number; om: number; w: number; M0: number; // deg, J2000 epoch
+}
+const ASTEROIDS: Record<string, AsteroidElements> = {
+  Ceres:  { a: 2.7658, e: 0.0785, i: 10.607, om: 80.328,  w: 73.115,  M0: 95.989 },
+  Pallas: { a: 2.7724, e: 0.2313, i: 34.843, om: 173.128, w: 309.965, M0: 59.690 },
+  Juno:   { a: 2.6693, e: 0.2579, i: 12.999, om: 169.913, w: 247.717, M0: 32.970 },
+  Vesta:  { a: 2.3615, e: 0.0887, i: 7.141,  om: 103.917, w: 150.735, M0: 169.309 },
+};
+
+function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
+  const d = jd - 2451545.0;                          // days since J2000
+  const n = 0.9856076686 / Math.pow(el.a, 1.5);      // mean motion, deg/day
+  const M = normalize360(el.M0 + n * d) * DEG2RAD;
+  // Kepler's equation for eccentric anomaly E
+  let E = M;
+  for (let k = 0; k < 12; k++) E = E - (E - el.e * Math.sin(E) - M) / (1 - el.e * Math.cos(E));
+  // position in the orbital plane
+  const xv = el.a * (Math.cos(E) - el.e);
+  const yv = el.a * (Math.sqrt(1 - el.e * el.e) * Math.sin(E));
+  const v = Math.atan2(yv, xv);                      // true anomaly
+  const r = Math.sqrt(xv * xv + yv * yv);
+  // rotate orbital plane → heliocentric ecliptic (Ω, i, ω)
+  const O = el.om * DEG2RAD, w = el.w * DEG2RAD, inc = el.i * DEG2RAD;
+  const u = v + w;
+  const xh = r * (Math.cos(O) * Math.cos(u) - Math.sin(O) * Math.sin(u) * Math.cos(inc));
+  const yh = r * (Math.sin(O) * Math.cos(u) + Math.cos(O) * Math.sin(u) * Math.cos(inc));
+  // Earth heliocentric (ecliptic plane, r≈1)
+  const earthLambda = normalize360(sunLongitude(jd) + 180) * DEG2RAD;
+  const xg = xh - Math.cos(earthLambda), yg = yh - Math.sin(earthLambda);
+  return normalize360(Math.atan2(yg, xg) / DEG2RAD);
+}
+
+// The four asteroid goddesses with sign/degree. EXPERIMENTAL — see note above.
+export function getAsteroids(jd: number): Array<{ planet: string; sign: string; degree: number; longitude: number }> {
+  return Object.entries(ASTEROIDS).map(([name, el]) => {
+    const lon = asteroidGeoLongitude(jd, el);
+    return { planet: name, longitude: lon, ...longitudeToSign(lon) };
+  });
+}
+
 export function getActiveTransits(planets: ReturnType<typeof getPlanetPositions>): string[] {
   const transits: string[] = [];
   const sun     = planets.find((p) => p.planet === "Sun")!;

@@ -3,7 +3,7 @@
  * transit aspects, and health insights.
  */
 
-import { julianDay, getPlanetPositions, lunarNodes, sunLongitude, moonLongitude } from "./astro.js";
+import { julianDay, getPlanetPositions, lunarNodes, getAsteroids, sunLongitude, moonLongitude } from "./astro.js";
 import { computeCusps, assignHouse, type HouseSystem } from "./houses.js";
 
 const DEG2RAD = Math.PI / 180;
@@ -107,6 +107,10 @@ export interface ComputedNatalChart {
   midheaven: { sign: string; degree: number; longitude: number };
   planets: NatalPlanet[];
   houses: HouseData[];
+  // The four asteroid goddesses — EXPERIMENTAL (see astro.ts getAsteroids).
+  // Kept separate from `planets` so they don't enter transit/aspect/wheel calcs
+  // while we test their accuracy.
+  asteroids?: Array<{ planet: string; sign: string; degree: number; longitude: number; houseNumber: number }>;
 }
 
 export function computeNatalChart(
@@ -178,6 +182,7 @@ export function computeNatalChart(
     midheaven: { sign: mcSign.sign, degree: mcSign.degree, longitude: mcLon },
     planets: natalPlanets,
     houses,
+    asteroids: getAsteroids(jd).map((a) => ({ ...a, houseNumber: assignHouse(a.longitude, cuspLongitudes) })),
   };
 }
 
