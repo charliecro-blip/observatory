@@ -11,6 +11,7 @@ import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import Glyph from "@/components/Glyph";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -706,7 +707,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{g.title}</span>
                       {(g as any).planet && (() => {
                         const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
-                        return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}>{PLANET_GLYPH[(g as any).planet]} {(g as any).planet}</span>;
+                        return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;
                       })()}
                       {info && <span style={{ fontSize: 9, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
                     </div>

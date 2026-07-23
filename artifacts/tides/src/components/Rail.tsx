@@ -8,8 +8,14 @@ import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
-import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { CompassMark } from "@/components/CompassMark";
+import Glyph from "@/components/Glyph";
+
+// Rail planet glyph — the design-system glyph (Noto symbol face, optically
+// thinned), inheriting the surrounding span's color (tint=false) so the rail's
+// per-planet colouring is preserved. bg defaults to the rail surface.
+const PG = ({ p, size = 12, bg = "var(--color-rail)" }: { p: string; size?: number; bg?: string }) =>
+  <Glyph name={p} size={size} tint={false} bg={bg} />;
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -212,7 +218,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
           const glyph = { conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[a.aspect as string] ?? "·";
           return (
             <div key={i} style={{ marginTop: 3, color: "#8a8278" }}>
-              ☽ {glyph} {PLANET_ICONS[partner] ?? ""} <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
+              ☽ {glyph} <PG p={partner} /> <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
               <span style={{ color: "#aaa", marginLeft: 5 }}>
                 {a.applying && a.hoursToExact != null ? `exact in ~${Math.round(a.hoursToExact)}h` : !a.applying ? `${a.orb.toFixed(1)}° past` : `${a.orb.toFixed(1)}° orb`}
               </span>
@@ -241,7 +247,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         </button>
         {dayRuler && (
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
-            <span style={{ color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+            <span style={{ color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
             <span style={{ color: "#666" }}>day</span>
           </button>
         )}
@@ -252,7 +258,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
           </button>
         )}
         <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
-          <span style={{ color: planetColor(planetaryHour.planet) }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ color: planetColor(planetaryHour.planet) }}><PG p={planetaryHour.planet} /></span>
           <span style={{ color: "#666" }}>hr</span>
         </button>
       </div>
@@ -677,7 +683,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
                     <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
                     <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
-                    <span style={{ color:pCol, fontWeight:600 }}>{PLANET_ICONS[other] ?? other[0]}</span>
+                    <span style={{ color:pCol, fontWeight:600 }}><PG p={other} /></span>
                     <span style={{ color:"#555", fontSize:10 }}>{other}</span>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
@@ -723,7 +729,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           hour; a whole day has one keynote. */}
       {reveal.planetaryHours && dayRuler && railSections.includes("hour") && !isOpen("day") && (
         <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
-          <span style={{ fontSize: 12, color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+          <span style={{ fontSize: 12, color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
           <span style={{ fontSize: 10, color: "#999" }}>{dayRuler}'s day</span>
         </GlyphRow>
       )}
@@ -732,7 +738,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <SectionHeader id="day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
-              {PLANET_ICONS[dayRuler] ?? "○"}
+              <PG p={dayRuler} />
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 12.5 }}>
@@ -759,7 +765,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Planetary Hour */}
       {reveal.planetaryHours && railSections.includes("hour") && !isOpen("hour") && (
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
-          <span style={{ fontSize: 12, color: pColor }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ fontSize: 12, color: pColor }}><PG p={planetaryHour.planet} /></span>
           <span style={{ fontSize: 10, color: "#999" }}>{planetaryHour.planet}</span>
           <span style={{ fontSize: 9, color: "#bbb", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
         </GlyphRow>
@@ -774,7 +780,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               background: `${pColor}22`, color: pColor,
               outline: watchPlanets.includes(planetaryHour.planet) ? `2px solid ${pColor}` : "none",
             }}>
-              {PLANET_ICONS[planetaryHour.planet] ?? "○"}
+              <PG p={planetaryHour.planet} />
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 13 }}>
@@ -821,7 +827,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     }}
                   >
                     <span style={{ fontSize: 11, color: hCol, width: 14, textAlign: "center", flexShrink: 0 }}>
-                      {PLANET_ICONS[h.planet] ?? "○"}
+                      <PG p={h.planet} />
                     </span>
                     <span style={{ flex: 1, fontSize: 10, color: isWatched ? "#222" : "#777", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
                       {h.planet}
@@ -870,9 +876,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   return (
                     <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid var(--color-border)" : "none" }}>
                       <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
-                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
+                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
                         <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
-                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
+                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
                         <span style={{ flex:1, fontSize:9, color:"#777", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
                         <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }} title={
                           a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
