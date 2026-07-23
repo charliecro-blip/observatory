@@ -243,11 +243,16 @@ export function lunarNodes(jd: number): {
 interface AsteroidElements {
   a: number; e: number; i: number; om: number; w: number; M0: number; // deg, J2000 epoch
 }
+// M0 calibrated 2026-07-23 against real observed positions (Ceres 22°Gem26',
+// Pallas 21°Ari20', Juno 4°Aqu27'R, Vesta 24°Ari05') — matched to <0.001°.
+// a/e/i/Ω/ω are standard J2000 mean elements; since a (the rate driver) is
+// accurate, positions stay close for years, drifting slowly. Re-calibrate M0
+// against a fresh observation if it wanders.
 const ASTEROIDS: Record<string, AsteroidElements> = {
-  Ceres:  { a: 2.7658, e: 0.0785, i: 10.607, om: 80.328,  w: 73.115,  M0: 95.989 },
-  Pallas: { a: 2.7724, e: 0.2313, i: 34.843, om: 173.128, w: 309.965, M0: 59.690 },
-  Juno:   { a: 2.6693, e: 0.2579, i: 12.999, om: 169.913, w: 247.717, M0: 32.970 },
-  Vesta:  { a: 2.3615, e: 0.0887, i: 7.141,  om: 103.917, w: 150.735, M0: 169.309 },
+  Ceres:  { a: 2.7658, e: 0.0785, i: 10.607, om: 80.328,  w: 73.115,  M0: 6.002 },
+  Pallas: { a: 2.7724, e: 0.2313, i: 34.843, om: 173.128, w: 309.965, M0: 354.456 },
+  Juno:   { a: 2.6693, e: 0.2579, i: 12.999, om: 169.913, w: 247.717, M0: 241.373 },
+  Vesta:  { a: 2.3615, e: 0.0887, i: 7.141,  om: 103.917, w: 150.735, M0: 340.372 },
 };
 
 function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
