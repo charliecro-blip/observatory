@@ -6,6 +6,7 @@ import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider } from "@/contexts/preferences-context";
+import { setAstroDetail } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -307,6 +308,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const { updateChronotype, restoreFromCode } = useTester();
   const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
   const [name, setName] = useState("");
+  // How much astrology to show — the intake question (owner 2026-07-22). Writes
+  // straight to preferences so the provider (mounted after onboarding) picks it
+  // up. Default "medium" is the friendlier middle for the glaze-over majority.
+  const [astroDetail, setAstroDetailState] = useState<"minimal" | "medium" | "full">("medium");
+  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { setAstroDetailState(lvl); setAstroDetail(lvl); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
   const [showRestore, setShowRestore] = useState(false);
@@ -539,10 +545,34 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   if (step === "birth") return (
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
       <div style={cardStyle}>
-        <div style={{ marginBottom:24 }}>
+        <div style={{ marginBottom:18 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
             You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, private to your device, and easy to add later.
+          </div>
+        </div>
+
+        {/* Astro-detail intake — how much astrology to show. Same engine at every
+            level; only what's on screen changes (owner: reduce the jargon that
+            makes most people's eyes glaze over). */}
+        <div style={{ marginBottom:18 }}>
+          <div style={{ fontSize:10.5, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>How much astrology do you want to see?</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:7 }}>
+            {([
+              { key: "minimal", label: "Just the guidance", desc: "Plain language. What to do and when — no jargon." },
+              { key: "medium",  label: "A little sky",       desc: "The moon and the day's character, kept simple." },
+              { key: "full",    label: "The full chart",     desc: "Everything — glyphs, aspects, transits." },
+            ] as const).map(o => (
+              <button key={o.key} type="button" onClick={() => chooseAstroDetail(o.key)}
+                style={{
+                  padding:"9px 9px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                  border: astroDetail === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
+                  background: astroDetail === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
+                }}>
+                <div style={{ fontSize:11.5, fontWeight:600, color: astroDetail === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
+                <div style={{ fontSize:9, color:"#999", marginTop:2, lineHeight:1.4 }}>{o.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
 

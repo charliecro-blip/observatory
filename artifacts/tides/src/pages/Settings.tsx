@@ -375,7 +375,20 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
-      <Row label="Sky language" sub="Plain keeps the app's own words (Deep, Surge). Bilingual adds the sky's words next to them (Moon in Pisces) — fluency by exposure.">
+      <Row label="How much astrology" sub="Same engine underneath — this only changes what's shown. Minimal: plain guidance, no jargon. Medium: the moon and the day. Full: glyphs, aspects, transits.">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["minimal", "medium", "full"] as const).map(lvl => (
+            <button key={lvl} onClick={() => updateDisplay({ astroDetail: lvl })} style={{
+              fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
+              background: d.astroDetail === lvl ? "#fff" : "transparent",
+              color: d.astroDetail === lvl ? "#1a2a3a" : "#999",
+              fontWeight: d.astroDetail === lvl ? 600 : 400,
+            }}>{lvl}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
+      <Row label="Sky language" sub="At the full level: plain keeps the app's own words (Deep, Surge); bilingual adds the sky's words next to them (Moon in Pisces).">
         <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["plain", "bilingual"] as const).map(mode => (
             <button key={mode} onClick={() => updateDisplay({ skyLanguage: mode })} style={{

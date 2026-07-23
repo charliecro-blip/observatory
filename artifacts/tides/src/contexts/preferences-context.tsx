@@ -6,6 +6,7 @@ import {
   TimingPrefs,
   loadPreferences,
   savePreferences,
+  astroReveal,
 } from "@/lib/preferences";
 
 interface PreferencesContextValue {
@@ -63,6 +64,14 @@ export function usePreferences() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("usePreferences outside PreferencesProvider");
   return ctx;
+}
+
+// How much astrology to show, and what that reveals — one hook every surface
+// reads so "minimal / medium / full" gates identically everywhere.
+export function useAstroDetail() {
+  const { prefs } = usePreferences();
+  const level = prefs.display.astroDetail ?? "full";
+  return { level, ...astroReveal(level) };
 }
 
 export function useTimeFormat() {

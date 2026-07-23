@@ -8,7 +8,7 @@ import Dashboard from "@/components/Dashboard";
 import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
-import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
+import { usePreferences, useTimeFormat, useAstroDetail } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
@@ -509,6 +509,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
+  const astro = useAstroDetail();
   const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
@@ -1117,8 +1118,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             the app's foundation: chronotype↔solar, menstrual↔lunar). */}
         {now && <RhythmCard now={now} />}
 
-        {/* The big sky — the moment's defining aspects, explored */}
-        {now && <BigSky now={now} />}
+        {/* The big sky — the moment's defining aspects, explored. Full detail
+            only: at minimal/medium this planet-to-planet aspect read-out is
+            exactly the jargon we're hiding. */}
+        {now && astro.aspects && <BigSky now={now} />}
 
         {/* (North Stars card absorbed into the dashboard's Guiding stars card —
             it duplicated the same list right below it.) */}

@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
-import { usePreferences } from "@/contexts/preferences-context";
+import { usePreferences, useAstroDetail } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
@@ -407,6 +407,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
+  const reveal = useAstroDetail();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
@@ -652,13 +653,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Moon Aspects */}
-      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
+      {reveal.aspects && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
         <GlyphRow label="Moon aspects" onClick={() => toggleOpen("aspects")}>
           <span style={{ fontSize: 12, color: "#888" }}>☽</span>
           <span style={{ fontSize: 10, color: "#999" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
         </GlyphRow>
       )}
-      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
+      {reveal.aspects && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
           {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
@@ -720,13 +721,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
       {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
           hour; a whole day has one keynote. */}
-      {dayRuler && railSections.includes("hour") && !isOpen("day") && (
+      {reveal.planetaryHours && dayRuler && railSections.includes("hour") && !isOpen("day") && (
         <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
           <span style={{ fontSize: 12, color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
           <span style={{ fontSize: 10, color: "#999" }}>{dayRuler}'s day</span>
         </GlyphRow>
       )}
-      {dayRuler && railSections.includes("hour") && isOpen("day") && (
+      {reveal.planetaryHours && dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -756,14 +757,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Planetary Hour */}
-      {railSections.includes("hour") && !isOpen("hour") && (
+      {reveal.planetaryHours && railSections.includes("hour") && !isOpen("hour") && (
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
           <span style={{ fontSize: 12, color: pColor }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
           <span style={{ fontSize: 10, color: "#999" }}>{planetaryHour.planet}</span>
           <span style={{ fontSize: 9, color: "#bbb", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
         </GlyphRow>
       )}
-      {railSections.includes("hour") && isOpen("hour") && (
+      {reveal.planetaryHours && railSections.includes("hour") && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -841,7 +842,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Non-moon aspects — expand toggle */}
-      {railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
+      {reveal.aspects && railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
         <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <button onClick={() => setShowNonMoonAspects(v => !v)} style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
@@ -939,7 +940,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Personal transits — collapsible, grouped fast → slow. Fast movers
           (Sun/Mercury/Venus/Mars) are this week's weather; slow ones
           (Jupiter → Pluto) are the chapter you're living in. */}
-      {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (() => {
+      {reveal.aspects && railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (() => {
         const FAST = new Set(["Sun", "Mercury", "Venus", "Mars", "Moon"]);
         const fast = now.personalTransits!.filter((t: any) => FAST.has(t.transitPlanet));
         const slow = now.personalTransits!.filter((t: any) => !FAST.has(t.transitPlanet));
