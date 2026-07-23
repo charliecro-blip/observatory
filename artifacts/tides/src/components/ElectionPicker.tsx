@@ -120,7 +120,9 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           auspices", the favorable moment — now that Compass is the product. */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 2 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>Find the time for anything</div>
-        <span style={{ fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "#c8a04a", fontFamily: "var(--font-display)" }}>· Auspice</span>
+        {/* Sub-brand tag (Compass brand kit): small-caps after a hairline dot,
+            air-gold — Auspice is the timing engine, a feature of Compass. */}
+        <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "#cba13c", fontFamily: "var(--font-display)" }}>· Auspice</span>
       </div>
       <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>
         Pick an activity — Auspice reads its good and great times from the sky{times?.personalized ? " and your chart" : ""}.
