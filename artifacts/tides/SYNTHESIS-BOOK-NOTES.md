@@ -485,6 +485,54 @@ dispositor-rescue) transcribed in the agent digest — the template voice for ho
 constructive debility copy, each: name it plainly → reframe psychologically → end with
 the rescue/hope clause if the chart gives one.
 
+### Grant Lewi (*Heaven Knows What*) — the voice masterclass + a scoring rubric
+- **The aspect-census rubric (¶249-250):** "trines make ease, contentment, happiness,
+  luck; squares give energy, drive, success, ambition. Conjunctions bring both… If both
+  squares and conjunctions, the top!" Squares-only = "great energy… but little luck."
+  **Hard aspects are ENGINES, soft are LUBRICANT; the best chart has both** — ideal
+  logic + copy frame for Tide-Level (coherence-not-favorability confirmed by a third
+  source). (PDF pp.221-222)
+- **The reusable voice pattern** (8 verbatim samples in the agent digest): open with
+  the gift → name the shadow mechanism SPECIFICALLY → give the developmental arc
+  (youth struggles → maturity integrates) → end with concrete, doable advice. Direct
+  "you," aphorisms, zero jargon, zero doom, humor as trust-builder ("IGNORE this. It
+  can't happen here!").
+- **Method:** trine+sextile collapse to one symbol (harmony), square+opposition to
+  another (tension→"conflict or power, depending on the uses"); aspect fidelity beats
+  sign fidelity; asterisked majors first = manual salience tiering; every paragraph
+  branches on the chart's Sun-Moon temperament (two-register conditional copy) and
+  cross-references combinations ("If with 163…") — convergence-as-recipe, 1935.
+- Sun△Saturn honesty: "The tendency of this aspect is to smugness… you don't seem to
+  get very far" — independent confirmation of the curse-of-the-trines.
+- **Acquisition target: Lewi's *Astrology for the Millions*** — the Saturn/Jupiter
+  transit "life clock" is THERE, not in HKW.
+
+### Frawley (*Ayurvedic Astrology*) + Raphael (*Medical Astrology*) — bodyWeather base
+- **Planet↔dosha:** Vata = Saturn/Mercury/Rahu (Mercury the young healthy Vata, Saturn
+  the old) · Pitta = Sun/Mars/Ketu (Sun vitality, Mars the disease-maker) · Kapha =
+  Moon/Venus/Jupiter (Jupiter "the planet of positive health"). Rule: "the nature of
+  the planets is more important than that of the signs."
+- **Daily arc hook (dinacharya skeleton):** Kapha=morning/spring/childhood ·
+  Pitta=noon/summer/midlife · Vata=sunset/fall/old-age — a body-weather day-curve.
+- **Key disease rule:** *weak* planets (benefic or malefic) cause Vata disorders;
+  strong malefics cause their own dosha's issues only when afflicting Asc/lord.
+- **Remediation ladder (the MODEL for a remediation feature):** diagnose excess vs
+  deficiency → pacify or strengthen via media subtle→gross (color → aroma → taste →
+  gem), with each planet having an increase-kit and a counter-kit; precious remedy +
+  accessible substitute maps to premium-ritual + free-practice. Tables (tastes, aromas,
+  colors, gems) transcribed in the agent digest.
+- **Raphael sign→body (threefold: external/internal/structural) + planet→physiology
+  tables transcribed verbatim** (agent digest) — cross-checkable against Frawley's
+  sign+house→region table (both agree on the classic zodiacal man).
+- **Moon-sign body-sensitivity rule (Raphael Ch.VII, echoed by Tobey):** the body part
+  ruled by the Moon's current sign is tender today — a ready daily body-note, and the
+  basis of the surgery avoid-rule already captured from Hampar/George.
+- **Frawley planetary-type diagnosis model (Ch.4):** nine constitutional types with
+  explicit placement rules per planet — a structural template for the Guiding-Star
+  planet-diagnosis feature.
+- Popular four (Niles, de Jersey, Bachelder, Hazen): skip — one idea each (casebook
+  story format for Studio; per-sign quotation as daily garnish).
+
 ### Lot formulas (George Ch.33; Döser) — QUEUED
 - **Fortune** (body/health/wealth): day `Asc + Moon − Sun`, night reversed. **Sect-reversed.**
 - **Spirit** (reverse of Fortune): day `Asc + Sun − Moon`, night reversed. **Sect-reversed.**
