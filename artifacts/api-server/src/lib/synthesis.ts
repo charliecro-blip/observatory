@@ -15,7 +15,7 @@
  *   • Every voice carries two roads — a GIFT to spend and a SHADOW to watch;
  *     the counterpoint and caution-windows draw on the shadow.        [Arroyo/Forrest]
  */
-import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidOfCourse, julianDay } from "./astro.js";
+import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidOfCourse, julianDay, getSunriseSunset } from "./astro.js";
 import type { PlanetAspect } from "./astro.js";
 import { dignity } from "./dignity.js";
 import { matchPatterns, type NamedPattern } from "./patterns.js";
@@ -99,7 +99,11 @@ function sectOf(isDay: boolean): Sect {
     ? { chart: "day",   luminary: "Sun",  team: ["Sun", "Jupiter", "Saturn"], benefic: "Jupiter", malefic: "Mars"  }
     : { chart: "night", luminary: "Moon", team: ["Moon", "Venus", "Mars"],    benefic: "Venus",   malefic: "Saturn" };
 }
-function isDaytime(localHour: number): boolean { return localHour >= 6 && localHour < 18; }
+/** Options threaded from the caller (route): viewer timezone for the day-of-week
+ *  ruler, the natal ascendant ruler for chart-aware patterns, and scope —
+ *  "moment" includes the rotating planetary hour; "day" (reports, spanning the
+ *  whole day) drops hour-bound voices so the reading stays true till evening. */
+export interface ReadingOptions { tzOffsetMin?: number; ascRuler?: string; scope?: "moment" | "day"; }
 
 // One gather of the sky, shared by the testimony collectors and the pattern matcher.
 interface Moment {
@@ -111,19 +115,24 @@ interface Moment {
   moonSign: string; moonAspects: PlanetAspect[];
   dig: (name: string) => number;
 }
-function gather(date: Date, lat: number, lon: number): Moment {
+function gather(date: Date, lat: number, lon: number, opts: ReadingOptions = {}): Moment {
   const jd = julianDay(date);
   const positions = getPlanetPositions(jd);
   const lonOf = (name: string) => positions.find(p => p.planet === name)?.longitude ?? 0;
   const retroOf = (name: string) => positions.find(p => p.planet === name)?.retrograde ?? false;
   const sunLon = lonOf("Sun");
-  const isDay = isDaytime(date.getHours());
+  // Sect from the REAL horizon — day iff the Sun is between sunrise and sunset
+  // at this place. (The classical definition, not a clock proxy.)
+  const { sunrise, sunset } = getSunriseSunset(jd, lat, lon);
+  const isDay = date >= sunrise && date < sunset;
   const dig = (name: string) => dignity(name, lonOf(name), { retrograde: retroOf(name), sunLongitude: sunLon, isDay }).weight;
   const aspects = getMajorAspects(jd);
+  // Day-of-week ruler in the VIEWER's calendar (matches the /tides/now convention).
+  const tz = opts.tzOffsetMin ?? 0;
   return {
     positions, aspects, sunLon, isDay,
     hour: getPlanetaryHour(date, lat, lon),
-    dayRuler: ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"][new Date(date).getUTCDay()],
+    dayRuler: ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"][new Date(date.getTime() - tz * 60000).getUTCDay()],
     phaseName: moonPhase(jd).name,
     voc: voidOfCourse(jd).voc,
     moonSign: positions.find(p => p.planet === "Moon")!.sign,
@@ -132,11 +141,11 @@ function gather(date: Date, lat: number, lon: number): Moment {
   };
 }
 
-export function collectTestimonies(date: Date, lat: number, lon: number): Testimony[] {
-  return collectFrom(gather(date, lat, lon));
+export function collectTestimonies(date: Date, lat: number, lon: number, opts: ReadingOptions = {}): Testimony[] {
+  return collectFrom(gather(date, lat, lon, opts), opts);
 }
 
-function collectFrom(m: Moment): Testimony[] {
+function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   const { dig } = m;
   const T: Testimony[] = [];
   const push = (t: Omit<Testimony, "score">) => T.push({ ...t, score: t.weight * t.salience * t.polarity });
@@ -155,8 +164,9 @@ function collectFrom(m: Moment): Testimony[] {
     note: `${sect.malefic} is out of sect in a ${sect.chart} chart — its edge runs unchecked; the day's sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}` });
 
   // Planetary hour — the rotating sub-mood, weighted by the hour ruler's dignity.
+  // Skipped at day scope: an hour-bound voice would go stale over a whole day.
   const hourW = dig(m.hour.ruler), ht = PLANET_THEME[m.hour.ruler];
-  if (ht) push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: 0.6, polarity: 1,
+  if (ht && opts.scope !== "day") push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: 0.6, polarity: 1,
     gift: PLANET_ROADS[m.hour.ruler].gift, shadow: PLANET_ROADS[m.hour.ruler].shadow,
     note: `the ${m.hour.ruler} hour (${hourW >= 1.2 ? "dignified — trust it" : hourW <= 0.6 ? "weak — a faint voice" : "middling"}) leans toward ${ht.verb}` });
 
@@ -237,21 +247,24 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   // polarity, or a strong voice in a different element) — named with its shadow.
   const counter = [...T].filter(t => t.polarity < 0 || (t.element && t.element !== topElement[0]))
     .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+  const addShadow = counter?.shadow && !counter.note.includes(counter.shadow);
   const counterpoint = counter && counter.weight * counter.salience > 0.5
-    ? `— though ${counter.note}${counter.shadow ? ` (watch ${counter.shadow})` : ""}. Hold the day's shape loosely there.`
+    ? `— though ${counter.note}${addShadow ? ` (watch ${counter.shadow})` : ""}. Hold the day's shape loosely there.`
     : undefined;
 
   return { flavour, foci, watch, counterpoint, patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)) };
 }
 
 /** Convenience: the woven reading for a moment. */
-export function dayReading(date: Date, lat: number, lon: number, chart?: { ascRuler?: string }): DayReading {
-  const m = gather(date, lat, lon);
-  const T = collectFrom(m);
+export function dayReading(date: Date, lat: number, lon: number, opts: ReadingOptions = {}): DayReading {
+  const m = gather(date, lat, lon, opts);
+  const T = collectFrom(m, opts);
   const patterns = matchPatterns({
     positions: m.positions.map(p => ({ planet: p.planet, longitude: p.longitude, sign: p.sign, retrograde: p.retrograde })),
     aspects: m.aspects, sunLongitude: m.sunLon, voc: m.voc,
-    hourRuler: m.hour.ruler, ascRuler: chart?.ascRuler,
+    // The hour-bound pattern (doubled day) only makes sense at moment scope.
+    hourRuler: opts.scope === "day" ? undefined : m.hour.ruler,
+    ascRuler: opts.ascRuler,
   });
   return synthesize(T, patterns);
 }

@@ -20,6 +20,7 @@ import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
+import WovenReading from "@/components/WovenReading";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 
 const PLANET_COLORS: Record<string, string> = {
@@ -981,7 +982,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const energyPct = Math.round((tide?.energy ?? 0.5) * 100);
 
           return (
-            <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            // flexShrink 0: this is the page's only overflow-hidden card, so
+            // inside the fixed-height flex column it absorbed ALL the flex
+            // shrinkage and collapsed to its 2px borders (invisible hero).
+            <div style={{ borderRadius: 14, overflow: "hidden", flexShrink: 0, border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               {/* Tide banner */}
               <div style={{ background: `linear-gradient(135deg, ${elColor}, ${elColor}cc)`, padding: "24px 28px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -1027,6 +1031,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 {confNote && (
                   <div style={{ fontSize: 11, color: "#907040", fontStyle: "italic", marginBottom: 12 }}>{confNote}</div>
                 )}
+
+                {/* The woven reading — the synthesis engine's judgment of the
+                    moment, gated by astro-detail (minimal = one sentence + one
+                    watch; full = the testimony table). */}
+                <WovenReading reading={now?.reading} level={astro.level} accent={elColor} />
+
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4 }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />

@@ -17,6 +17,8 @@ import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
+import { dayReading } from "../lib/synthesis.js";
+import { domicileLord } from "../lib/dignity.js";
 
 const router: IRouter = Router();
 
@@ -85,12 +87,15 @@ router.get("/tides/now", async (req, res) => {
     summary: string;
   }> = [];
 
+  let ascRuler: string | undefined; // natal chart ruler — feeds the "doubled day" pattern
   if (testerId) {
     try {
       const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
       if (stored) {
         const timeKnown = stored.timeKnown !== false;
         const natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset);
+        // Without a birth time the Ascendant is unknowable — leave ascRuler unset.
+        if (timeKnown) ascRuler = domicileLord(natal.ascendant.longitude);
         const transits = computeTransitAspects(natal);
         personalTransits = transits
           .filter((t) => t.severity === "strong" || t.severity === "major" || (t.severity === "moderate" && t.exact))
@@ -316,6 +321,9 @@ router.get("/tides/now", async (req, res) => {
     rhythmRiskFactors,
     tide,
     dayArc: computeDayArc(date, lat, lon, tzOffset),
+    // The woven reading — flavour/foci/watch/counterpoint/patterns/testimonies.
+    // The client gates how much of it to show by astro-detail level.
+    reading: dayReading(date, lat, lon, { tzOffsetMin: tzOffset, ascRuler }),
   });
 });
 

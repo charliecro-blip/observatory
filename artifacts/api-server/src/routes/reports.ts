@@ -22,6 +22,8 @@ import {
 } from "../lib/astro.js";
 import { computeNatalChart, computeTransitAspects, computeTransitForecast } from "../lib/natal.js";
 import { computeElections } from "../lib/electionEngine.js";
+import { dayReading } from "../lib/synthesis.js";
+import { domicileLord } from "../lib/dignity.js";
 import {
   SIGN_GUIDE, PHASE_GUIDE, DAY_RULER, DAY_RULER_GIFT, favoredActivities, bestFor,
   easeOff, transitMeaning, rankTransits, type DaySky,
@@ -88,12 +90,24 @@ async function composeDay(testerId: string, tz: number, lat: number, lon: number
 
   const blocks: Block[] = [];
 
-  // 1) The day in plain language — the Moon leads (fast, personal, today).
-  const lead = [`A ${moonSign} Moon on ${weekday} — ${sg?.feel ?? `an ${elem.element} day`}.`];
-  lead.push(`It's a ${dayRuler} day — the hours favor ${DAY_RULER_GIFT[dayRuler]}.`);
+  // The woven reading (synthesis engine) — day scope, so the rotating hour
+  // doesn't carry an all-day email. Natal fetched early for the asc-ruler.
+  const natal = await natalFor(testerId);
+  const ascRuler = natal?.timeKnown ? domicileLord(natal.computed.ascendant.longitude) : undefined;
+  const reading = dayReading(now, lat, lon, { tzOffsetMin: tz, ascRuler, scope: "day" });
+
+  // 1) The day in plain language — the woven flavour leads; then the parts.
+  const lead = [cap(reading.flavour)];
+  lead.push(`A ${moonSign} Moon on ${weekday} — ${sg?.feel ?? `an ${elem.element} day`}. It's a ${dayRuler} day — the hours favor ${DAY_RULER_GIFT[dayRuler]}.`);
   const pg = PHASE_GUIDE[phaseName];
   if (pg) lead.push(`Moon ${phaseName.toLowerCase()} (${Math.round(fraction * 100)}% lit) — ${pg.thrust}: ${pg.do}.`);
+  if (reading.counterpoint) lead.push(cap(reading.counterpoint.replace(/^—\s*/, "")));
   blocks.push({ lines: lead });
+
+  // 1b) Named shapes in the sky — plain-language readings, no jargon.
+  if (reading.patterns.length) {
+    blocks.push({ heading: "In the sky's shape", lines: reading.patterns.slice(0, 3).map((p) => p.reading) });
+  }
 
   // 2) Lean into / ease off — concrete activities from the correspondence table.
   const fav = favoredActivities(sky, 3);
@@ -102,7 +116,6 @@ async function composeDay(testerId: string, tz: number, lat: number, lon: number
   if (ease.length) blocks.push({ heading: "Ease off", lines: ease });
 
   // 3) Key moments — scheduled windows + the best clock window for today's top activity.
-  const natal = await natalFor(testerId);
   const moments: string[] = [];
   const dayStart = new Date(local.toISOString().slice(0, 10) + "T00:00:00Z");
   const wins = await db.select().from(planningWindows).where(and(

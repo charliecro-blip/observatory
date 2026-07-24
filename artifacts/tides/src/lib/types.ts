@@ -51,6 +51,9 @@ export interface TidesNow {
   rhythmRiskFactors?: string[];
   tide?: TideState;
   dayArc?: DayArc;
+  /** The synthesis engine's woven reading (flavour/foci/watch/counterpoint/
+   *  patterns/testimonies) — client gates depth by astro-detail level. */
+  reading?: import("@/components/WovenReading").DayReadingData;
 }
 
 export interface DayArcEvent {
