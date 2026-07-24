@@ -362,6 +362,129 @@ extrapolations — encode with lower confidence than the maltreatment side.)
 Mercury-1 · Moon-3 · Venus-5 · Mars-6 · Sun-9 · Jupiter-11 · Saturn-12. A planet in its
 joy gets a weight + salience bonus.
 
+### Hand — planet-pair polarity (Ch.1, pp.11-13) — QUEUED for the transit layer
+Difficulty/ease is the PAIR, aspect-scoped (encode with a `scope` field, not flat):
+- **Difficult (all aspects):** Sun–Sat/Nep · Moon–Mars/Sat/Ur/Nep/Pl · Merc–Nep ·
+  Mars–Sat/Ur/Nep/Pl · Sat–Ur/Nep/Pl. **Difficult (square/opp only):** Sun–Ur ·
+  Ven–Nep · Jup–Sat · Ur–Nep.
+- **Easy (ALL aspects):** Sun–Ven/Jup · Moon–Ven/Jup · Ven–Jup. **Easy (sextile/trine
+  only):** Sun–Moon/Merc · Ven–Mars · Mars–Jup. Everything else = neutral ("either way").
+- Conjunction polarity resolves FROM this table ("some conjunctions are more like
+  trines, others like squares"). Easy transits' hazard: equilibrium → drift ("can do
+  even more damage"). Sextile demands initiative; trine permits passivity.
+- **Hand's timing rules:** R2 — "strictly speaking there is NO orb"; duration comes
+  from the surrounding factors. R3 — event peaks when the **average signed orb of all
+  transiting factors → 0** (the day-intensity formula). R1 — outer transit timed by a
+  coincident inner trigger (Sun/Mars; Mercury = when it becomes known). R4 — natal
+  midpoints of aspected pairs act like conjunctions. R6 — several minor transits ≈ one
+  major. Stations on natal points = a month-long major.
+- **8-stage cycle labels** (conj=begin · sep-sextile=adjust · sep-square="crisis in
+  building" · sep-trine=ease-danger · opposition=culmination-or-collapse · app-trine=
+  transform · app-square="crisis in letting go" · app-sextile=fit the new order).
+
+### Ebertin — polarity grid, durations, orbs (verbatim; PDF p.21-22, 72-73) — QUEUED
+- **Pair polarity grid decoded** (use primarily for squares/oppositions): benefic
+  cross-pairs (Sun/Moon/Merc/Ven × Ven/Jup, Jup×Ur/Node/angles, Mars×Jup, Node×angles)
+  = "+"; everything × Sat/Ur/Nep/Pl (except Jup) = "−"; Sun/Moon/Merc/Ven–Node and
+  Sun/Moon/Ven–Mars = "?" ambivalent. Full grid in the pass-3 agent digest.
+- **Natal orbs:** 5° personal points (MC/Asc/Sun/Moon) · 4° Merc/Ven/Mars · 3°
+  Jup→Pluto + Node. **Transit rule: influential only while the mover crosses 1°;
+  the due date is the END of the effect, not the middle.**
+- **Transit-influence durations:** Moon 2-3h · Sun 1-2d · Merc/Ven 1-3d · Mars 2-3d
+  (fires 1-2 days EARLY) · Jup 3-10d (30d stationary) · Sat 8-14d (8w stationary) ·
+  Ur 2-10w · Nep 4-8w (3mo stationary) · Pl months. The weight ladder, quantified.
+- **Planet keyword cores + per-planet +/− psychological columns** transcribed (agent
+  digest) — ready vocab for drill-downs; full 143-entry pair catalog extracted to
+  scratchpad/ebertin.txt if ever wanted.
+
+### DeLuce (Horary) — judgment procedure + new gates — QUEUED
+- **Radicality pre-flight gates:** Asc in first/last 3° of a sign · Moon in last 3° ·
+  Via Combusta · VoC (**exception: Moon in Tau/Can/Sag/Pis with strong significators**
+  — the classic Lilly mitigation, new to us) · and the big one: **"contradictory
+  indications → set it aside, defer judgment"** — the tradition's explicit sanction for
+  our honest-null/low-confidence output. Never force a synthesis.
+- **Aspect difficulty ladder (horary):** conj "easily" · trine "easily, satisfying" ·
+  sextile "done, more care" · square "diligent labor, lesser result" · opposition
+  "mostly denial." Square=achievable-at-cost, opp=denial — matches Hampar.
+- **Two-channel AND-gate:** the Moon (desire) and Asc-ruler (capacity) must BOTH be
+  non-cadent; either one cadent → the matter fails differently (wants-but-can't vs
+  can-but-vacillates). Clean initiator-side gate.
+- **Horary orbs:** conj/opp 10° · trine/square 8° · sextile 6° — a per-aspect orb set
+  distinct from the transit set. Moon first, Mercury second; the Sun functions as a
+  malefic (absorbs); Pluto on a significator = disappointment.
+- **Universal Moon election:** "For everyday affairs the Moon can BY ITSELF decide
+  whether an election time is fortunate" — Moon applying to Sun/benefics = good for
+  ordinary matters. Plus: malefics OK in the matter's house when they RULE its nature
+  (Mars for engineering, Saturn for mining) — a codeable exception.
+- **Planetary hours = the fallback layer when the Moon offers nothing** (his activity
+  strings per hour transcribed in the agent digest — Saturn hour = "finishing what's
+  been left uncompleted" etc.).
+- **Timing matrix:** degrees-to-perfection × (angular/succedent/cadent × cardinal/
+  mutable/fixed) → days/weeks/months/years; cadent = don't judge timing at all.
+
+### Horary mechanics — now precisely codeable (DeLuce + deVore agree)
+- **Translation of light:** T separates from A, applies to B, A-B not in aspect, T
+  faster than both → a third party carries the matter.
+- **Collection of light:** A and B (no aspect) both apply to a SLOWER C that is in an
+  essential dignity of BOTH (reception gate — keeps it rare) → a broker collects.
+- **Refranation, two triggers, one pattern ("the deal that doesn't close"):**
+  by-station (applying planet turns Rx before perfection — DeLuce/deVore) and
+  by-sign-exit (Hampar).
+- **Frustration/prohibition:** A applies to B, but a swifter C perfects to B first →
+  the matter is cut off; the culprit is named by the house C rules.
+- **deVore's "Testimony" definition** — "the synthesis of several testimonies
+  constitutes a judgment" (Ptolemy) — epigraph for the spec.
+
+### deVore cross-check — every shipped table SURVIVES
+Egyptian terms: agree 10/12; the 2 mismatches are deVore's own misprints (Libra
+Venus/Mercury swap; Capricorn row duplicated from Aquarius) — our rows are canonical.
+Dignity points 5/4/3/2/1 + detriment −5/fall −4/peregrine −5: confirmed. Faces
+(Chaldean): confirmed (say "decan" in user copy — "face" is ambiguous). Combust
+8°30′/cazimi 0°17′/beams 17°: within his stated bounds (note: ≤3° = core combustion,
+could deepen the penalty; **Mars combust intensifies, not weakens** — per-planet
+exception; cazimi's +5 is the Lilly choice, some authorities dissent — low confidence).
+Triplicity: keep Dorothean (his water variant noted). **Wilson's accidental table adds:
+mutual reception +5/+4 (priced like domicile/exaltation!), besieged by benefics +6 /
+malefics −6, increasing light +2/decreasing −2, hayz +1.** Plus a Fortuna
+dignity-by-sign table for the Lots brick.
+
+### March — marriage / moving-in / property rules (complete, verbatim-condensed) — QUEUED
+Deltas beyond Hampar already captured: **never a retrograde Venus in a marriage
+chart** · Sun/Moon applying square/opp Uranus = separation risk when exact · rising-
+sign mode by goal (fixed=lasting, cardinal=speed; Aries/mutable rising = short-lived
+marriage) · Saturn not angular + no applying hard aspects TO Saturn incl. conjunction ·
+luminaries+benefics ABOVE the horizon ("elevated") bonus · Pluto joins the
+angle-avoid set · quincunx counts for moving-day Moons · **Rx scope split: Merc/Ven Rx
+bars BUYING but not MOVING IN** · Moon signs: marriage avoid Scorpio, favor Libra/Leo;
+property favor Cancer/Taurus.
+
+### Hampar — per-activity checklists (verbatim, Ch.5) + the daily tier — QUEUED
+Full per-activity extraction (audition/surgery/valuables/car/exam/travel/home/move/
+gambling/pet/physical/marriage/tax/insurance/legal/air-travel/business/group/rehab)
+lives in the pass-3 agent digest — each with houses, significators, Moon rules, and
+avoid-clauses; load into activityCorrespondences when that brick lands. Highest-value
+deltas: **decreasing Moon lowers price when buying, increasing raises it when
+selling** · per-activity Moon signs (Taurus=business, Cancer=food/real-estate,
+Leo=audition, Libra=settlement) · "moment of finality" definitions per activity ·
+gambling needs 3+ natal activations (hard gate) · Saturn out of 2/5/8/11 for wins ·
+**the no-chart daily election (Ch.4): for ordinary daily acts drop houses entirely —
+elect on the Moon's next applying aspect (how it starts) + her last in-sign aspect
+(how it ends).** That's Compass's operating altitude, sanctioned in print.
+NOTE: Hampar's Appendices A/B (alphabetical activity→house tables) are page images —
+`brew install poppler` would unlock them for a future pass.
+
+### George (*Authentic Self*) — the natal-report procedure — QUEUED for reports
+Session order: lunation phase (jargon-free opener) → Ascendant (persona/motivating
+need) → **Asc-ruler as steersman** (who/how/where + 8 condition questions) → Sun
+(content of purpose: occupies/rules/filter) → Moon (application in daily life) →
+**the 100-word distillation** → topics via house rulers. Everything else enters ONLY
+through connection to these majors (anti-spice-rack, stated). Weighting: condition
+modulates CAPACITY, never CONTENT. Descriptive→prescriptive ("advise how to use it").
+**Dual-register rewording examples** (retrograde, cadent Sun, combust, detriment-with-
+dispositor-rescue) transcribed in the agent digest — the template voice for honest+
+constructive debility copy, each: name it plainly → reframe psychologically → end with
+the rescue/hope clause if the chart gives one.
+
 ### Lot formulas (George Ch.33; Döser) — QUEUED
 - **Fortune** (body/health/wealth): day `Asc + Moon − Sun`, night reversed. **Sect-reversed.**
 - **Spirit** (reverse of Fortune): day `Asc + Sun − Moon`, night reversed. **Sect-reversed.**
