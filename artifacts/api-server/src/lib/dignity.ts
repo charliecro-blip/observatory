@@ -6,13 +6,12 @@
  * the CURRENT sky is what turns "Mars hour" into "a strong, dignified Mars hour
  * worth trusting" — the difference between a list and a judgment.
  *
- * Scoring per Lilly's Christian Astrology (verified). Essential dignities that
- * are canonical and unambiguous are implemented in full: domicile (+5),
- * exaltation (+4), triplicity (+3, Dorothean by sect), face (+1, Chaldean
- * decans), detriment (-5), fall (-4). Egyptian TERMS (+2) are pluggable — only
- * the (verified) Aries row is filled; the rest await a verified table (see
- * EGYPTIAN_TERMS), so peregrine here means "no domicile/exaltation/triplicity/
- * face" (terms excluded until the table is complete — a documented v1 gap).
+ * Scoring per Lilly's Christian Astrology (verified). All essential dignities
+ * are implemented in full: domicile (+5), exaltation (+4), triplicity (+3,
+ * Dorothean by sect), Egyptian term (+2), face (+1, Chaldean decans),
+ * detriment (-5), fall (-4). The Egyptian bounds are the canonical set (Ptolemy/
+ * Valens/George Table 17, cross-checked), so peregrine correctly means "no
+ * domicile/exaltation/triplicity/term/face" of its own.
  *
  * Modern synthesis (owner 2026-07-23): tropical zodiac; the modern planets
  * (Uranus/Neptune/Pluto) and Chiron/nodes/asteroids sit OUTSIDE the classical
@@ -60,20 +59,38 @@ const SIGN_ELEMENT: Record<Sign, "fire"|"earth"|"air"|"water"> = {
 const FACE_SEQ: Classical[] = ["Mars","Sun","Venus","Mercury","Moon","Saturn","Jupiter"];
 const faceRuler = (lon: number): Classical => FACE_SEQ[Math.floor(((lon % 360) + 360) % 360 / 10) % 7];
 
-// ── Egyptian terms (bounds) — PLUGGABLE. Only Aries verified; fill the rest
-// from a verified source, then peregrine will account for terms too. Each row:
-// [upToDegree, ruler] cumulative within the sign. ──────────────────────────
-const EGYPTIAN_TERMS: Partial<Record<Sign, Array<[number, Classical]>>> = {
-  Aries: [[6, "Jupiter"], [12, "Venus"], [20, "Mercury"], [25, "Mars"], [30, "Saturn"]],
-  // TODO: Taurus … Pisces from a verified table (owner's books).
+// ── Egyptian terms (bounds) — the canonical Egyptian set (Ptolemy / Valens /
+// George Table 17, cross-checked verbatim). Each row: [upToDegree, ruler]
+// cumulative within the sign. Complete for all 12 signs, so peregrine now
+// accounts for terms too. ───────────────────────────────────────────────────
+const EGYPTIAN_TERMS: Record<Sign, Array<[number, Classical]>> = {
+  Aries:       [[6, "Jupiter"], [12, "Venus"],   [20, "Mercury"], [25, "Mars"],    [30, "Saturn"]],
+  Taurus:      [[8, "Venus"],   [14, "Mercury"], [22, "Jupiter"], [27, "Saturn"],  [30, "Mars"]],
+  Gemini:      [[6, "Mercury"], [12, "Jupiter"], [17, "Venus"],   [24, "Mars"],    [30, "Saturn"]],
+  Cancer:      [[7, "Mars"],    [13, "Venus"],   [19, "Mercury"], [26, "Jupiter"], [30, "Saturn"]],
+  Leo:         [[6, "Jupiter"], [11, "Venus"],   [18, "Saturn"],  [24, "Mercury"], [30, "Mars"]],
+  Virgo:       [[7, "Mercury"], [17, "Venus"],   [21, "Jupiter"], [28, "Mars"],    [30, "Saturn"]],
+  Libra:       [[6, "Saturn"],  [14, "Mercury"], [21, "Jupiter"], [28, "Venus"],   [30, "Mars"]],
+  Scorpio:     [[7, "Mars"],    [11, "Venus"],   [19, "Mercury"], [24, "Jupiter"], [30, "Saturn"]],
+  Sagittarius: [[12, "Jupiter"],[17, "Venus"],   [21, "Mercury"], [26, "Saturn"],  [30, "Mars"]],
+  Capricorn:   [[7, "Mercury"], [14, "Jupiter"], [22, "Venus"],   [26, "Saturn"],  [30, "Mars"]],
+  Aquarius:    [[7, "Mercury"], [13, "Venus"],   [20, "Jupiter"], [25, "Mars"],    [30, "Saturn"]],
+  Pisces:      [[12, "Venus"],  [16, "Jupiter"], [19, "Mercury"], [28, "Mars"],    [30, "Saturn"]],
 };
 function termRuler(lon: number): Classical | null {
   const rows = EGYPTIAN_TERMS[signOf(lon)];
-  if (!rows) return null;
   const d = degInSign(lon);
   for (const [upTo, ruler] of rows) if (d < upTo) return ruler;
   return null;
 }
+
+// ── Small lookups shared with the pattern library (patterns.ts) ─────────────
+/** The traditional (7-planet) domicile lord of the sign a longitude falls in. */
+export function domicileLord(longitude: number): string { return DOMICILE[signOf(longitude)]; }
+/** The sign name a longitude falls in. */
+export function signName(longitude: number): string { return signOf(longitude); }
+/** The element of the sign a longitude falls in. */
+export function signElement(longitude: number): "fire"|"earth"|"air"|"water" { return SIGN_ELEMENT[signOf(longitude)]; }
 
 export interface EssentialDignity {
   score: number;
@@ -110,7 +127,6 @@ export function essentialDignity(planet: string, longitude: number, isDay: boole
 
   // Peregrine: NO essential dignity of its own AND not in detriment/fall (a
   // debilitated planet is debilitated, not peregrine — never double-penalize).
-  // Terms excluded until the table is complete — documented v1 gap.
   const hasDignity = dignities.some(d => ["domicile","exaltation","triplicity","term","face"].includes(d));
   const debilitated = dignities.includes("detriment") || dignities.includes("fall");
   const peregrine = !hasDignity && !debilitated;

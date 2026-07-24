@@ -294,3 +294,79 @@ significator(s), avoid-clauses}:
   completeness.** Surface the testimonies relevant to what they're trying to do. (Arroyo)
 
 _(Arroyo extract cached at scratchpad/arroyo.txt; George/Döser/Hampar extracts at scratchpad/txt/ — transcription targets flagged inline for verbatim tables.)_
+
+---
+
+# Appendix — VERIFIED reference tables (transcribed, cross-checked)
+
+Verbatim from the books (George *Ancient Astrology*, Döser), for the engine to
+encode exactly. **Shipped:** Egyptian terms → `dignity.ts`; sect teams + aspect
+natures → `synthesis.ts`; a simplified besiegement → `patterns.ts`. **Queued:**
+the full maltreatment/bonification matcher, the Lots, the overcoming rule.
+
+### Egyptian terms (bounds) — SHIPPED in dignity.ts
+Canonical Egyptian set (Ptolemy/Valens/George Table 17), all 12 signs. See
+`EGYPTIAN_TERMS` in `artifacts/api-server/src/lib/dignity.ts`. Triplicities
+(Dorothean) and Chaldean faces confirmed correct as-was.
+
+### Sect + rejoicing grid (George Ch.7) — teams SHIPPED, rejoicing QUEUED
+- **Diurnal chart** (Sun above horizon): in-sect = Sun, Jupiter, Saturn,
+  morning-star Mercury. Greater benefic **Jupiter**; dangerous (out-of-sect)
+  malefic **Mars**; in-sect malefic Saturn = "less bad."
+- **Nocturnal chart:** in-sect = Moon, Venus, Mars, evening-star Mercury. Greater
+  benefic **Venus**; dangerous malefic **Saturn**; in-sect malefic Mars = "less bad."
+- **Mercury's sect** = its solar phase (morning star → diurnal, evening → nocturnal).
+- **Rejoicing (0–3 bonus, QUEUED):** (a) hemisphere — diurnal planet in the Sun's
+  hemisphere, nocturnal opposite (boundary = ASC/DSC axis; needs houses); (b) sign —
+  diurnal planet in a **masculine** sign (fire+air: Ari/Gem/Leo/Lib/Sag/Aqu),
+  nocturnal in a **feminine** sign (earth+water: Tau/Can/Vir/Sco/Cap/Pis) — Mars
+  flagged inconsistent, judge case-by-case; (c) solar phase — Saturn/Jupiter rejoice
+  as morning stars, Venus/Mars as evening stars (~15°–120° from Sun). **Moon:** waxing
+  rejoices by day, waning by night.
+
+### Whole-sign aspect natures (George Chs.38–39) — SHIPPED in synthesis.ts
+- **Conjunction** commingling (variable) · **sextile** sympathetic-but-weak/ineffective
+  (affinity Venus; weakest) · **square** harsh, harms even a benefic (affinity Mars) ·
+  **trine** sympathetic, softens even a malefic (affinity Jupiter; strongest/best) ·
+  **opposition** adversarial, worse with a malefic (affinity Saturn).
+- **Aversions give NO testimony:** semisextile (30°) + quincunx (150°) — planets "cannot
+  see" each other. (getMajorAspects already omits them.)
+- **Overcoming (QUEUED):** the planet in the *earlier/right (dexter)* sign is superior and
+  imposes its nature on the inferior; strongest at the **superior square** (overcomer in
+  the 10th sign from the other). Benefic overcoming by square = eminence; malefic
+  overcoming by square (in a bad house) = the maltreatment trigger. No opposition-overcoming.
+
+### Maltreatment ↔ Bonification (George Chs.42–50) — QUEUED for patterns.ts
+Orbs: **3° applying (Moon 13°)** for adherence/connection/striking · **7°** for
+enclosure intervening-ray · **whole-sign, no orb** for overcoming/opposition/domicile-lord.
+Malefics = Mars/Saturn; benefics = Venus/Jupiter. Bad houses = **2,3,6,8,12**;
+good houses = 1,4,5,7,9,10,11. (George marks the bonification mirrors as her
+extrapolations — encode with lower confidence than the maltreatment side.)
+1. **Adherence** — faster planet applies bodily within 3° (Moon 13°) to a malefic → injured
+   (benefic → graced). Direct Saturn can't be maltreated; Jupiter only if Rx.
+2. **Connection (by ray)** — applies within 3°/13° to a **square/opposition** ray of a
+   malefic (malefic in any house). Benefic mirror = **sextile/trine** ray of a benefic.
+   *(Only hard rays maltreat; only soft rays bonify.)*
+3. **Overcoming** — malefic (1) in a bad house (2) in whole-sign **superior square** (3)
+   over another planet (4). Benefic mirror: benefic in a good house, superior sextile/trine.
+4. **Opposition** — whole-sign opposition from a malefic **while it is in a bad house**.
+5. **Striking with a ray** — a malefic in any house hurls a backward ray within 3° (square/opp
+   destructive, trine can protect).
+6. **Enclosure/besiegement** — **both** malefics hem the planet (body and/or ray) on both
+   sides, **no intervening ray within 7°**. Benefic mirror = both benefics. (Single-planet
+   flanking rays = "containment.")
+7. **Domicile-lord** — planet in a malefic's domicile (Ari/Sco→Mars, Cap/Aqu→Saturn) while
+   that lord is in a bad house (Porphyry narrows to 6 & 12 only). No aspect needed.
+
+### Planetary joys by house (George Fig.35) — QUEUED (needs a chart)
+Mercury-1 · Moon-3 · Venus-5 · Mars-6 · Sun-9 · Jupiter-11 · Saturn-12. A planet in its
+joy gets a weight + salience bonus.
+
+### Lot formulas (George Ch.33; Döser) — QUEUED
+- **Fortune** (body/health/wealth): day `Asc + Moon − Sun`, night reversed. **Sect-reversed.**
+- **Spirit** (reverse of Fortune): day `Asc + Sun − Moon`, night reversed. **Sect-reversed.**
+- **Profession** (Döser, not sect-reversed): Bonatti `Asc + Moon − Saturn` (preferred), or
+  Valens `Asc + MC − Sun`.
+- **Assets** (2nd-house wealth, not sect-reversed): `Asc + cusp2 − lord-of-2`.
+- **Basis** (foundation) — NOT in the verified extracts; transcribe from Valens/Brennan
+  before encoding (it's the shorter Fortune–Spirit arc from the Asc).
