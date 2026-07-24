@@ -10,7 +10,7 @@
  * afternoon trines" instead of collapsing the day into one reading.
  */
 
-import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour } from "./astro.js";
+import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour, getNextAngularCrossings } from "./astro.js";
 import { SIGN_TO_ELEMENT } from "./tide.js";
 
 const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -69,7 +69,7 @@ function bodyLon(name: string, jd: number): number {
 export interface DayArcEvent {
   time: string;      // ISO
   clock: string;     // "5:45 PM"
-  kind: "ingress" | "aspect";
+  kind: "ingress" | "aspect" | "crossing";
   label: string;
   planet?: string;
   aspect?: string;
@@ -207,6 +207,24 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     if (lastPerf.getTime() < e.getTime()) vocWindows.push({ start: lastPerf.toISOString(), end: e.toISOString() });
   }
 
+  // Angle crossings — the day's peak MOMENTS (a planet on the Ascendant or
+  // Midheaven, ~20 min each). Luminaries + benefics/malefics only, and only
+  // the two culminating angles, so the chart marks moments, not the full
+  // 36-crossing diurnal churn. (Owner 2026-07-23: the tide chart should
+  // include planetary angle crossings.)
+  const CROSSING_PLANETS = new Set(["Sun", "Moon", "Venus", "Jupiter", "Mars", "Saturn"]);
+  const ANGLE_WORD: Record<string, string> = { ASC: "rising", MC: "at the Midheaven" };
+  const crossings = getNextAngularCrossings(julianDay(dayStart), _lat, _lon, 3, 24)
+    .filter(c => CROSSING_PLANETS.has(c.planet) && (c.angle === "ASC" || c.angle === "MC"))
+    .map(c => {
+      const t = new Date(c.crossingTime);
+      return {
+        time: t.toISOString(), clock: clock(t, tzOffsetMin), kind: "crossing" as const,
+        label: `${c.planet} ${ANGLE_WORD[c.angle]}`, planet: c.planet, past: t < now,
+      };
+    })
+    .filter(c => c.time >= dayStart.toISOString() && c.time < dayEnd.toISOString());
+
   const events: DayArcEvent[] = [
     ...ingresses.map(i => ({
       time: i.t.toISOString(), clock: clock(i.t, tzOffsetMin), kind: "ingress" as const,
@@ -220,6 +238,7 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
         weight: parseFloat(w.toFixed(3)), charge: (w >= 0.14 ? "high" : "low") as "high" | "low",
       };
     }),
+    ...crossings,
   ].sort((a, b) => a.time.localeCompare(b.time));
 
   // ── HEIGHT: where the whole day's tide floats (one value for the day) ────────

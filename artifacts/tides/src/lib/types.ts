@@ -57,7 +57,7 @@ export interface TidesNow {
 }
 
 export interface DayArcEvent {
-  time: string; clock: string; kind: "ingress" | "aspect";
+  time: string; clock: string; kind: "ingress" | "aspect" | "crossing";
   label: string; planet?: string; aspect?: string; past?: boolean;
 }
 export interface DayArcSegment {

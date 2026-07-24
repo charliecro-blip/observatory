@@ -647,7 +647,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: northStars } = useNorthStars(testerId);
 
-  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; }
+  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
@@ -1013,13 +1013,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     </div>
                   </div>
                 </div>
-                {/* Tide curve */}
+                {/* Tide curve — ONE swell: low → high → low, so the shape agrees
+                    with the labels (the old two-hump path peaked over RISING/EBB
+                    and dipped at HIGH). The marker's y comes from the same curve
+                    function, so it always sits on the line. */}
                 <div style={{ marginTop: 20, position: "relative", height: 30 }}>
-                  <svg viewBox="0 0 300 22" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
-                    <path d="M0,20 C40,20 55,4 75,4 C110,4 105,20 150,20 C195,20 190,4 225,4 C245,4 260,20 300,20"
-                      fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
-                    <circle cx={curvePos * 300} cy={curvePos < 0.5 ? (curvePos < 0.2 ? 20 : 4) : (curvePos > 0.6 ? 12 : 4)} r="4.5" fill="#fff" />
-                  </svg>
+                  {(() => {
+                    const yAt = (x: number) => 20 - 16 * Math.sin(Math.PI * x / 300);
+                    const pts = Array.from({ length: 31 }, (_, i) => `${i * 10},${yAt(i * 10).toFixed(1)}`).join(" L");
+                    return (
+                      <svg viewBox="0 0 300 24" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
+                        <path d={`M${pts}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                        <circle cx={curvePos * 300} cy={yAt(curvePos * 300)} r="4.5" fill="#fff" />
+                      </svg>
+                    );
+                  })()}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 3, letterSpacing: "0.6px" }}>
                     <span>LOW</span><span>RISING</span><span>HIGH</span><span>EBB</span><span>LOW</span>
                   </div>
@@ -1061,15 +1069,24 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   )}
                 </div>
 
-                {/* Personal modifier line — the moat, shown when a hard transit is active */}
-                {tide?.personal && (now?.personalTransits?.length ?? 0) > 0 && (
-                  <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
-                    <span style={{ fontSize: 10.5, color: "#8a4040" }}>
-                      World tide is {levelLabel.toLowerCase()}, but yours is choppy — {now!.personalTransits![0].summary}
-                    </span>
-                  </div>
-                )}
+                {/* Personal modifier line — the moat, shown when a hard transit is
+                    active. Day-scale movers only: a Pluto/Neptune/Uranus transit is
+                    a months-long chapter and doesn't belong on a single day's card
+                    (owner 2026-07-23) — those live in Currents. */}
+                {(() => {
+                  if (!tide?.personal) return null;
+                  const LONG_CYCLE = new Set(["Uranus", "Neptune", "Pluto"]);
+                  const dayScale = (now?.personalTransits ?? []).find((t: any) => !LONG_CYCLE.has(t.transitPlanet));
+                  if (!dayScale) return null;
+                  return (
+                    <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
+                      <span style={{ fontSize: 10.5, color: "#8a4040" }}>
+                        World tide is {levelLabel.toLowerCase()}, but yours is choppy — {dayScale.summary}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
@@ -1132,9 +1149,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             2026-07-15): the day view stays about today; the month lives in the
             Calendar/Almanac. MonthBars is still defined for that surface. */}
 
-        {/* Your rhythm today — body cycles read against the sky's (rhythm as
-            the app's foundation: chronotype↔solar, menstrual↔lunar). */}
-        {!essential && now && <RhythmCard now={now} />}
+        {/* (RhythmCard removed from Today — owner 2026-07-23 "not sure why
+            'your rhythm today' is there." The rhythm framing lives in
+            Settings/chronotype + the cycle banner below, which stays because
+            it's personal and self-gating.) */}
 
         {/* The big sky — the moment's defining aspects, explored. Full detail
             only: at minimal/medium this planet-to-planet aspect read-out is
@@ -1160,11 +1178,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Standing conditions */}
         {!essential && now && <ConditionsStrip now={now} today={today} />}
 
-        {/* Logbook — the reflect loop, in its usual quiet spot midday only:
-            evenings it rides up under "Log the day", and mornings it stands
-            down entirely ("how did today feel?" is a nonsense question at 8am
-            — the morning card asks about yesterday instead). */}
-        {ritualMode === null && reflectBlock}
+        {/* Logbook — evenings ONLY (owner 2026-07-23): "how did today feel?"
+            belongs to the day's close. It renders under "Log the day" during
+            evening ritual hours (see reflectBlock above); midday and morning
+            it stands down entirely. */}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
@@ -1261,6 +1278,42 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <WaveRow key={`g-${g.id}`} type="goal" label={g.title}
                 sub={g.horizon} />
             ))}
+            {/* Moments ahead — the planetary hours coming up, matched to the
+                task or star that runs on that planet (owner 2026-07-23: "the
+                sun hour ahead could relate to a to do or task or goal"). Tasks
+                and stars carry an auto-diagnosed ruling planet; when an
+                upcoming hour's ruler matches, that hour IS the moment. */}
+            {(() => {
+              const openTasks = todayTasks.filter(t => t.done !== "true");
+              const moments = (now?.upcomingHours ?? []).map((h: any) => {
+                const task = openTasks.find(t => t.planet === h.planet);
+                const star = (northStars ?? []).find((g: any) => g.planet === h.planet && g.status !== "done");
+                return { ...h, task, star };
+              }).filter((m: any) => m.task || m.star).slice(0, 3);
+              // Nothing matched: still name the next hour's opening, generically.
+              const next = (now?.upcomingHours ?? [])[0];
+              const generic = !moments.length && next && PLANET_ACTIVITIES[next.planet]?.length
+                ? [{ ...next, generic: PLANET_ACTIVITIES[next.planet][0] }] : [];
+              const rows = moments.length ? moments : generic;
+              if (!rows.length) return null;
+              return (
+                <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
+                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 5 }}>
+                    moments ahead
+                  </div>
+                  {rows.map((m: any, i: number) => (
+                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
+                      <span style={{ color: "#998a76", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
+                      <span style={{ color: "var(--color-foreground)" }}>
+                        {m.planet} hour — {m.task ? <>a window for “<b>{m.task.title}</b>”</>
+                          : m.star ? <>moves “<b>{m.star.title}</b>”</>
+                          : <>{m.generic}</>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             {/* Add task */}
             <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
               {showAddTask ? (
@@ -1282,11 +1335,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           </div>
         </div>
 
-        {/* Elemental balance */}
-        {!essential && habits.length > 0 && <ElementalBalance habits={habits} tasks={todayTasks} />}
-
-        {/* Planetary pulse */}
-        {!essential && now && <PlanetaryPulse now={now} />}
+        {/* (ElementalBalance + PlanetaryPulse removed from Today — owner
+            2026-07-23. Pulse's "active sky emphasis" reads belong with the
+            planet surfaces; balance was habit-bookkeeping on the wrong page.) */}
 
         {/* The density toggle — the add-ons are one tap away, and the tap
             persists. This is the whole "core by default, add-ons available"
@@ -1367,17 +1418,33 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
 // actually changes your week. They collapse to one muted line at the bottom.
 const FAST_RETRO = new Set(["Mercury", "Venus", "Mars"]);
 
+// The slow sky as an era: each outer planet's sign is a years-long backdrop
+// worth naming even when it isn't retrograde (owner 2026-07-23 — "standing
+// conditions should be fleshed out").
+const ERA_GLOSS: Record<string, string> = {
+  Saturn:  "where the work is structural",
+  Uranus:  "where the old pattern breaks",
+  Neptune: "where the dream dissolves and re-forms",
+  Pluto:   "where power is being renegotiated",
+};
+
 function ConditionsStrip({ now, today }: { now: any; today: string }) {
   const retros: string[] = now?.retrogrades ?? [];
   const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
-  const slowRetros = retros.filter((p) => !FAST_RETRO.has(p));
   const ecl = activeEclipse(today, 5);
   // Planet-planet aspects moved OUT of this strip — they're the moment's
   // headline now (BigSky, up top), not a background condition. This strip is
-  // for the genuinely standing weather: retrogrades and eclipse windows.
+  // for the genuinely standing weather: retrogrades, eclipse windows, and the
+  // slow outer backdrop (the era lines).
   const signOf = (p: string) => (now?.planets ?? []).find((x: any) => x.planet === p)?.sign ?? "";
+  const eras = ["Saturn", "Uranus", "Neptune", "Pluto"]
+    .map((p) => ({ p, sign: signOf(p), rx: retros.includes(p) }))
+    .filter((e) => e.sign);
+  // The day's standing caution — the rough-edged planet's shadow, in plain
+  // language (from the synthesis engine's testimony, already de-jargoned).
+  const caution = (now?.reading?.testimonies ?? []).find((t: any) => t.source === "sectMalefic");
 
-  const hasAny = retros.length > 0 || ecl;
+  const hasAny = retros.length > 0 || ecl || eras.length > 0 || caution;
   if (!hasAny) return null;
 
   return (
@@ -1407,9 +1474,18 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
             </div>
           </div>
         ))}
-        {slowRetros.length > 0 && (
-          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.5 }}>
-            background · {slowRetros.map((p) => `${p} ℞${signOf(p) ? ` in ${signOf(p)}` : ""}`).join(" · ")} — slow inner revisions, in effect for months
+        {caution && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0, color: "#907040" }}>◆</span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
+              <b style={{ color: "#8a6a30" }}>Today's edge</b> — {caution.note}
+            </div>
+          </div>
+        )}
+        {eras.length > 0 && (
+          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.6 }}>
+            the era · {eras.map((e) => `${e.p}${e.rx ? " ℞" : ""} in ${e.sign} — ${ERA_GLOSS[e.p]}`).join(" · ")}
+            <span style={{ color: "#c0b8ac" }}> · in effect for months to years</span>
           </div>
         )}
       </div>
@@ -1769,7 +1845,8 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
                 <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
-                <span style={{ fontSize: 8.5, color: "#c0b8ac", flexShrink: 0 }}>⟳ {idx + 1}/{n}</span>
+                {/* explicit invitation — the muted counter alone read as decoration */}
+                <span style={{ fontSize: 9, color: "#9a9088", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>
             </button>
           );

@@ -1,8 +1,6 @@
 import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
-import { PLANET_GLYPH } from "@/lib/glyphs";
 import { usePreferences } from "@/contexts/preferences-context";
-import { FourTidesBadge } from "@/components/FourTides";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 
 // The daily report — the home as a navigation console. Weather + calendar +
@@ -12,7 +10,6 @@ import { PLANET_LITERACY } from "@/lib/sky-literacy";
 
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80", spirit: "#6f6a90" };
 const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌︎", opposition: "☍︎", square: "□", trine: "△", sextile: "⚹" };
-const MOON_EMOJI: Record<string, string> = { new: "🌑", waxing_crescent: "🌒", first_quarter: "🌓", waxing_gibbous: "🌔", full: "🌕", waning_gibbous: "🌖", last_quarter: "🌗", waning_crescent: "🌘" };
 
 function Card({ title, icon, onOpen, children }: { title: string; icon: string; onOpen?: () => void; children: React.ReactNode }) {
   return (
@@ -42,11 +39,8 @@ export default function Dashboard({
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
   const { data: anglesData } = useNatalAngles(testerId, lat, lon);
   const { prefs } = usePreferences();
-  const bilingual = prefs.display.skyLanguage === "bilingual";
 
   const el = now?.tide?.element ?? now?.element?.element ?? "water";
-  const elCol = ELEMENT_COLOR[el] ?? "#888";
-  const phase = now?.moonPhase ?? "";
   const stars = (northStars ?? []).slice(0, 3);
   const todayWindows = (windows ?? []).slice(0, 4);
   const aspects = (now?.aspects ?? []).slice(0, 2);
@@ -57,36 +51,9 @@ export default function Dashboard({
 
   return (
     <div style={{ marginBottom: 22 }}>
-      {/* Hero — today's weather (skipped at essential density: it duplicated
-          the tide hero rendered directly above this component) */}
-      {!essential && <div style={{
-        background: `linear-gradient(180deg, ${elCol}14, ${elCol}06)`, border: "1px solid var(--color-border)",
-        borderRadius: 14, padding: "15px 18px", marginBottom: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: elCol, fontWeight: 600 }}>Today's weather</span>
-            <FourTidesBadge current={now?.tide?.character} />
-          </span>
-          <span style={{ fontSize: 11, color: "#999" }}>{phase && MOON_EMOJI[phase]} {phase.replace(/_/g, " ")} · {Math.round((now?.moonIllumination ?? 0) * 100)}%</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          {/* The one big word on the screen — the tide, in the display face */}
-          <span style={{ fontSize: 30, fontWeight: 400, fontFamily: "var(--font-display)", color: "var(--color-primary)", letterSpacing: "0.01em", lineHeight: 1.1 }}>{now?.tide?.headline ?? "—"}</span>
-          <span style={{ fontSize: 13, color: elCol, fontWeight: 600 }}>{now?.tide?.levelLabel ?? ""}</span>
-          <span style={{ fontSize: 12.5, color: "#888", textTransform: "capitalize" }}>· {el}</span>
-        </div>
-        {/* Bilingual sky language — show the mechanism behind the label so
-            fluency grows by exposure (Settings → Sky language). */}
-        {bilingual && now?.moonSign && (() => {
-          const hourPlanet = now?.planetaryHour?.planet ?? now?.planetaryHour?.ruler;
-          return (
-            <div style={{ fontSize: 11, color: "#998a76", marginTop: 5 }}>
-              ☽ Moon in {now.moonSign} sets the character{hourPlanet ? <> · {PLANET_GLYPH[hourPlanet]} {hourPlanet} hour colors this stretch</> : null}
-            </div>
-          );
-        })()}
-      </div>}
+      {/* (The weather hero was removed entirely — owner 2026-07-23: it was
+          the page's second "today's weather / Surge tide" mention; the tide
+          hero directly above this component is the one voice.) */}
 
       {/* Instrument bento */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>

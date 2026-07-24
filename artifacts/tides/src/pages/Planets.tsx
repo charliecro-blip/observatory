@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCurrents, useNatalAngles } from "@/hooks/useTides";
+import { useCurrents, useNatalAngles, useTidesNow } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
 import { PLANET_LITERACY, CONTACT_TONE } from "@/lib/sky-literacy";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
@@ -105,6 +105,15 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
   const house = natalPos?.houseNumber as number | null | undefined;
   const houseMeaning = house ? HOUSE_MEANINGS[house] : null;
   const activations = ((currents?.majorTransits ?? []) as any[]).filter((t) => t.natalPlanet === selected);
+  // The planet's weather TODAY — both directions (owner 2026-07-23: check-ins
+  // "should also speak about ongoing transits to/from those planets"):
+  // sky-to-sky aspects the transiting planet is making now, and its hits on
+  // the natal chart (transiting X → natal Y).
+  const { data: nowSky } = useTidesNow(testerId, lat, lon);
+  const skyAspectsNow = ((nowSky?.aspects ?? []) as any[])
+    .filter((a) => a.planet1 === selected || a.planet2 === selected).slice(0, 3);
+  const actingOnChart = ((nowSky?.personalTransits ?? []) as any[])
+    .filter((t) => t.transitPlanet === selected).slice(0, 3);
 
   // Your work under this planet — the stars/habits/tasks that live in its
   // domain (by explicit planet link, season anchor, or element kinship).
@@ -313,6 +322,27 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           </>
         ) : <div style={{ fontSize: 12.5, color: "#aaa" }}>Add your birth details in Settings to see where {core.name} sits in your chart.</div>}
       </SectionCard>
+
+      {/* Its weather today — the planet as AGENT: what it's doing in the sky
+          right now and where it's pressing on your chart. */}
+      {(skyAspectsNow.length > 0 || actingOnChart.length > 0) && (
+        <SectionCard label={`${core.name}'s weather today`} accent={col}>
+          {skyAspectsNow.map((a: any, i: number) => {
+            const partner = a.planet1 === selected ? a.planet2 : a.planet1;
+            return (
+              <div key={`s${i}`} style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.7 }}>
+                {core.name} {a.aspect} {partner}{a.applying ? " — building now" : " — easing off"}
+                <span style={{ color: "#a09888" }}> · {a.orb}°</span>
+              </div>
+            );
+          })}
+          {actingOnChart.map((t: any, i: number) => (
+            <div key={`p${i}`} style={{ fontSize: 12.5, color: "#8a6a40", lineHeight: 1.7 }}>
+              …and it's touching <b>your natal {t.natalPlanet}</b> ({String(t.aspect).toLowerCase()}{t.exact ? ", exact now" : `, ${t.orb}°`}) — the {core.name} check-in below will land close to home today.
+            </div>
+          ))}
+        </SectionCard>
+      )}
 
       <div style={{ background: activations.length ? "#8a6a2008" : "var(--color-card)", border: `1px solid ${activations.length ? "#c8a84040" : "var(--color-border)"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: activations.length ? "#a8862e" : "#aaa", marginBottom: 8 }}>Being activated now</div>

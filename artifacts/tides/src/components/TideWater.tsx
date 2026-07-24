@@ -264,7 +264,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const hiX = Math.max(46, Math.min(W - 46, x(hours[hiIdx])));
   const loX = Math.max(46, Math.min(W - 46, x(hours[loIdx])));
 
-  const events: any[] = (arc.events ?? []).filter((e: any) => e.kind === "aspect" || e.kind === "ingress");
+  const events: any[] = (arc.events ?? []).filter((e: any) => e.kind === "aspect" || e.kind === "ingress" || e.kind === "crossing");
   const nextEvent = events.find((e: any) => !e.past);
   const nowSeg = segByHour(Math.max(0, Math.min(24, nowH)));
   const nowChar = (nowSeg?.character ?? "water") as string;
@@ -473,7 +473,18 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             const h = hourOf(e.time);
             if (h < 0 || h > 24) return null;
             const isNext = e === nextEvent;
-            const col = e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            const col = e.kind === "crossing" ? "#c8a84a" : e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            // Crossings are ~20-minute PEAK moments — a small diamond above the
+            // surface, distinct from the round aspect/ingress dots on it.
+            if (e.kind === "crossing") {
+              const cx = x(h), cy = y(energyAt(h)) - 6;
+              return (
+                <g key={i} opacity={e.past ? 0.35 : 1}>
+                  <rect x={cx - 2.6} y={cy - 2.6} width={5.2} height={5.2} transform={`rotate(45 ${cx} ${cy})`}
+                    fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.2" />
+                </g>
+              );
+            }
             return (
               <g key={i} opacity={e.past ? 0.35 : 1}>
                 <circle cx={x(h)} cy={y(energyAt(h))} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
@@ -486,7 +497,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             const h = hourOf(nextEvent.time);
             if (h < 0 || h > 24) return null;
             const ex = x(h), ey = y(energyAt(h));
-            const glyph = nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
+            const glyph = nextEvent.kind === "crossing" ? "◆" : nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
             const label = `${glyph} ${nextEvent.label} · ${nextEvent.clock}`;
             const wEst = label.length * 4.6 + 14;
             const bx = Math.max(4, Math.min(W - wEst - 4, ex - wEst / 2));
@@ -672,7 +683,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             {upcoming.map((e: any, i: number) => (
               <div key={i} style={{ fontSize: 10, color: labelCol, display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ color: "#aaa" }}>{e.clock}</span>
-                <span>{e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·")}</span>
+                <span>{e.kind === "crossing" ? "◆" : e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·")}</span>
                 <span>{e.label}</span>
               </div>
             ))}

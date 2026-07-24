@@ -75,6 +75,7 @@ export interface Testimony {
   salience: number;            // loudness now
   polarity: 1 | -1;
   note: string;                // plain-language, for the drill-down
+  carriedBy?: string;          // fragment that reads after "carried by …" in the flavour
   gift?: string;               // the high road — what this voice offers
   shadow?: string;             // the low road — what to watch (feeds caution-windows)
   score: number;               // weight × salience × polarity (signed)
@@ -152,34 +153,41 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
 
   // Sect — the day's baseline. The best-conditioned in-sect planet is the voice
   // to trust; the out-of-sect malefic is the loudest caution.
+  // Plain-language notes — "sect" stays under the hood (owner 2026-07-23: no
+  // sect jargon on the card); the source key still names the mechanic for the
+  // full-detail working table.
   const sect = sectOf(m.isDay);
   const hero = sect.team.slice().sort((a, b) => dig(b) - dig(a))[0];
   const hw = dig(hero), hTheme = PLANET_THEME[hero];
   push({ source: "sect", element: PLANET_ELEMENT[hero], activities: hTheme.activities, weight: hw, salience: 0.55, polarity: 1,
     gift: PLANET_ROADS[hero].gift, shadow: PLANET_ROADS[hero].shadow,
-    note: `a ${sect.chart} chart led by ${hero}${hw >= 1.2 ? ", well-conditioned" : hw <= 0.7 ? ", though weakly placed" : ""} — ${hTheme.verb} carries best through it` });
+    carriedBy: `${hero}, the ${m.isDay ? "day" : "night"}'s steadiest voice — ${hTheme.verb}`,
+    note: `${hero} is the ${m.isDay ? "day" : "night"}'s steadiest voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best` });
   const mw = dig(sect.malefic);
   push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
     shadow: PLANET_ROADS[sect.malefic].shadow,
-    note: `${sect.malefic} is out of sect in a ${sect.chart} chart — its edge runs unchecked; the day's sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}` });
+    note: `${sect.malefic} runs with a rougher edge ${m.isDay ? "by day" : "at night"} — the sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}` });
 
   // Planetary hour — the rotating sub-mood, weighted by the hour ruler's dignity.
   // Skipped at day scope: an hour-bound voice would go stale over a whole day.
   const hourW = dig(m.hour.ruler), ht = PLANET_THEME[m.hour.ruler];
   if (ht && opts.scope !== "day") push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: 0.6, polarity: 1,
     gift: PLANET_ROADS[m.hour.ruler].gift, shadow: PLANET_ROADS[m.hour.ruler].shadow,
+    carriedBy: `the ${m.hour.ruler} hour, leaning toward ${ht.verb}`,
     note: `the ${m.hour.ruler} hour (${hourW >= 1.2 ? "dignified — trust it" : hourW <= 0.6 ? "weak — a faint voice" : "middling"}) leans toward ${ht.verb}` });
 
   // The planetary day — a whole day has one keynote.
   const dw = dig(m.dayRuler), dt = PLANET_THEME[m.dayRuler];
   if (dt) push({ source: "dayRuler", element: PLANET_ELEMENT[m.dayRuler], activities: dt.activities, weight: dw, salience: 0.5, polarity: 1,
     gift: PLANET_ROADS[m.dayRuler].gift, shadow: PLANET_ROADS[m.dayRuler].shadow,
+    carriedBy: `${m.dayRuler}'s day — ${dt.verb}`,
     note: `${m.dayRuler}'s day — ${dt.verb}` });
 
   // The Moon's sign — the day's felt character (weighted by the Moon's dignity).
   const sg = SIGN_GUIDE[m.moonSign];
   if (sg) push({ source: "moonSign", element: sg.element as Element, activities: sg.favors.slice(0, 3), weight: dig("Moon"), salience: 0.45, polarity: 1,
     gift: ELEMENT_ROADS[sg.element as Element].gift, shadow: ELEMENT_ROADS[sg.element as Element].shadow,
+    carriedBy: `a ${m.moonSign} Moon — ${sg.feel}`,
     note: `a ${m.moonSign} Moon — ${sg.feel}` });
 
   // Applying Moon aspects — the day's engine. Nature sets polarity + strength;
@@ -197,6 +205,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     push({ source: `moonAspect:${other}`, element: PLANET_ELEMENT[other], activities: th.activities,
       weight: dig(other), salience: 0.9 * (0.4 + 0.6 * exact) * nat.strength, polarity,
       gift: PLANET_ROADS[other].gift, shadow: PLANET_ROADS[other].shadow,
+      carriedBy: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
       note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
   }
 
@@ -225,12 +234,8 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   const topElement = (Object.entries(elementScore).sort((a, b) => b[1] - a[1])[0] ?? ["water", 0]) as [Element, number];
   const foci = [...activityScore.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a);
 
-  // Salience ranking — "what to watch now" — merging the loudest testimonies and
-  // the loudest named patterns into one list.
-  const watch = [
-    ...T.map(t => ({ note: t.note, salience: t.salience })),
-    ...patterns.map(p => ({ note: p.reading, salience: p.salience })),
-  ].sort((a, b) => b.salience - a.salience).slice(0, 3);
+  // Counterpoint first (computed below from the strongest dissenting voice) so
+  // the watch list can avoid repeating the same sentence on the card.
 
   // Convergence: the loudest supportive testimony carrying the top element. The
   // flavour names the element as a resource to spend (Forrest's "treasure"), then
@@ -241,7 +246,7 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
     fire: "a fire day", earth: "an earth day", air: "an air day", water: "a water day",
   };
   const gift = ELEMENT_ROADS[topElement[0]]?.gift;
-  const flavour = `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, carried by ${lead.note}` : ""}.`;
+  const flavour = `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, carried by ${lead.carriedBy ?? lead.note}` : ""}.`;
 
   // Counterpoint: the strongest testimony that cuts against the grain (opposite
   // polarity, or a strong voice in a different element) — named with its shadow.
@@ -251,6 +256,14 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   const counterpoint = counter && counter.weight * counter.salience > 0.5
     ? `— though ${counter.note}${addShadow ? ` (watch ${counter.shadow})` : ""}. Hold the day's shape loosely there.`
     : undefined;
+
+  // Salience ranking — "what to watch now" — the loudest testimonies + named
+  // patterns, minus whatever the counterpoint already says (no repeating the
+  // same sentence twice on one card).
+  const watch = [
+    ...T.filter(t => !(counterpoint && t === counter)).map(t => ({ note: t.note, salience: t.salience })),
+    ...patterns.map(p => ({ note: p.reading, salience: p.salience })),
+  ].sort((a, b) => b.salience - a.salience).slice(0, 3);
 
   return { flavour, foci, watch, counterpoint, patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)) };
 }
