@@ -74,6 +74,19 @@ export function useAstroDetail() {
   return { level, ...astroReveal(level) };
 }
 
+// How much is on screen — "essential" (the core journey: compass, plan, aims)
+// vs "expanded" (the full instrument panel). One hook so every surface gates
+// identically; `essential` reads as "hide the add-ons".
+export function useUiDensity() {
+  const { prefs, updateDisplay } = usePreferences();
+  const density = prefs.display.uiDensity ?? "essential";
+  return {
+    density,
+    essential: density === "essential",
+    setDensity: (d: "essential" | "expanded") => updateDisplay({ uiDensity: d }),
+  };
+}
+
 export function useTimeFormat() {
   const { prefs } = usePreferences();
   const is24 = prefs.display.timeFormat === "24h";

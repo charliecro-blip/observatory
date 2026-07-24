@@ -30,10 +30,14 @@ function Card({ title, icon, onOpen, children }: { title: string; icon: string; 
 }
 
 export default function Dashboard({
-  now, week, northStars, windows, testerId, today, onNavigate, lat = 40.7, lon = -74.0,
+  now, week, northStars, windows, testerId, today, onNavigate, lat = 40.7, lon = -74.0, essential = false,
 }: {
   now: any; week: any; northStars: any[] | undefined; windows: any[] | undefined;
   testerId: string | null; today: string; onNavigate?: (v: string) => void; lat?: number; lon?: number;
+  /** Essential density: skip this component's weather hero — the tide hero
+   *  directly above it already carries the day (it was a duplicate). Keep the
+   *  two core cards (Guiding stars, On deck): they ARE the journey. */
+  essential?: boolean;
 }) {
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
   const { data: anglesData } = useNatalAngles(testerId, lat, lon);
@@ -53,8 +57,9 @@ export default function Dashboard({
 
   return (
     <div style={{ marginBottom: 22 }}>
-      {/* Hero — today's weather */}
-      <div style={{
+      {/* Hero — today's weather (skipped at essential density: it duplicated
+          the tide hero rendered directly above this component) */}
+      {!essential && <div style={{
         background: `linear-gradient(180deg, ${elCol}14, ${elCol}06)`, border: "1px solid var(--color-border)",
         borderRadius: 14, padding: "15px 18px", marginBottom: 12,
       }}>
@@ -81,7 +86,7 @@ export default function Dashboard({
             </div>
           );
         })()}
-      </div>
+      </div>}
 
       {/* Instrument bento */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>

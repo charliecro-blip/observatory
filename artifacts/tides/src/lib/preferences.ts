@@ -40,9 +40,19 @@ export interface DisplayPrefs {
   //             but no dense aspect tables or transit read-outs.
   //   full    — everything, bilingual: the sky's own words and glyphs.
   astroDetail: "minimal" | "medium" | "full";
+  // How MUCH is on screen (owner 2026-07-23 — "still unruly; too many moving
+  // pieces on the dashboard... cut to the core functions by default, other
+  // features available as add-ons"). Orthogonal to astroDetail (which gates
+  // jargon): uiDensity gates MODULES.
+  //   essential — the core journey only: the tide (compass), today's plan,
+  //               your aims, the daily ritual loop. Default.
+  //   expanded  — the full instrument panel (rhythm, big sky, pulse,
+  //               conditions, elemental balance, teachable moments…).
+  uiDensity: "essential" | "expanded";
 }
 
 export type AstroDetail = DisplayPrefs["astroDetail"];
+export type UiDensity = DisplayPrefs["uiDensity"];
 
 // One place that decides what each level reveals, so every surface gates the
 // same way. Booleans read as "show this?".
@@ -98,6 +108,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     todayShowCrossings: true,
     skyLanguage: "plain",
     astroDetail: "medium",
+    uiDensity: "essential",
   },
   timing: {
     watchPlanets: [],
@@ -137,6 +148,16 @@ export function savePreferences(prefs: TidesPreferences): void {
 export function setAstroDetail(level: AstroDetail): void {
   const prefs = loadPreferences();
   prefs.display.astroDetail = level;
+  savePreferences(prefs);
+}
+
+// Set just the ui density — used by the Today page's "show everything /
+// simplify" affordance. NOTE: no migration override for existing users — the
+// decluttered default applies to everyone (owner 2026-07-23); expanding is one
+// tap and persists.
+export function setUiDensity(level: UiDensity): void {
+  const prefs = loadPreferences();
+  prefs.display.uiDensity = level;
   savePreferences(prefs);
 }
 

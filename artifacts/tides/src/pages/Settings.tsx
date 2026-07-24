@@ -388,6 +388,19 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
+      <Row label="How much on screen" sub="Essential: the core journey — the tide, today's plan, your aims. Expanded: the full instrument panel (rhythm, big sky, pulse, conditions…).">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["essential", "expanded"] as const).map(lvl => (
+            <button key={lvl} onClick={() => updateDisplay({ uiDensity: lvl })} style={{
+              fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
+              background: (d.uiDensity ?? "essential") === lvl ? "#fff" : "transparent",
+              color: (d.uiDensity ?? "essential") === lvl ? "#1a2a3a" : "#999",
+              fontWeight: (d.uiDensity ?? "essential") === lvl ? 600 : 400,
+            }}>{lvl}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
       <Row label="Sky language" sub="At the full level: plain keeps the app's own words (Deep, Surge); bilingual adds the sky's words next to them (Moon in Pisces).">
         <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["plain", "bilingual"] as const).map(mode => (

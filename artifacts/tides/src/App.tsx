@@ -5,7 +5,7 @@ import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
-import { PreferencesProvider } from "@/contexts/preferences-context";
+import { PreferencesProvider, useUiDensity } from "@/contexts/preferences-context";
 import { setAstroDetail } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
@@ -779,6 +779,16 @@ function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
+  // Essential density: the nav leads with the core journey (Today · Calendar ·
+  // Aims · Plan); Log and Planets wait behind "⋯" (owner 2026-07-23 — condense
+  // around compass/calendar/planning). The active view's tab always shows.
+  const { essential } = useUiDensity();
+  const [showAllTabs, setShowAllTabs] = useState(false);
+  const CORE_TABS = new Set<View>(["today", "calendar", "work", "launch"]);
+  const navTabs = (essential && !showAllTabs)
+    ? TOP_TABS.filter(t => CORE_TABS.has(t.id) || t.id === view)
+    : TOP_TABS;
+  const tabsCollapsed = essential && !showAllTabs && navTabs.length < TOP_TABS.length;
   // Usage analytics: which surface is being used (owner 2026-07-20).
   useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
@@ -884,10 +894,10 @@ function Shell() {
         display:"flex", alignItems:"center", background:"var(--color-rail)",
         borderBottom:"1px solid var(--color-border)", flexShrink:0, padding: isMobile ? "0 10px" : "0 16px",
       }}>
-        {!isMobile && TOP_TABS.map((t, i) => {
+        {!isMobile && navTabs.map((t, i) => {
           // Divider after the last zoom tab (Now/Ahead/Currents) to separate the
           // time-ladder from the depth (Sky) and content (Life) tabs.
-          const prev = TOP_TABS[i - 1];
+          const prev = navTabs[i - 1];
           const showDivider = prev?.zoom && !t.zoom;
           return (
             <React.Fragment key={t.id}>
@@ -902,6 +912,12 @@ function Shell() {
             </React.Fragment>
           );
         })}
+        {!isMobile && tabsCollapsed && (
+          <button onClick={() => setShowAllTabs(true)} title="More — Log, Planets" style={{
+            padding:"11px 10px", border:"none", background:"none", cursor:"pointer",
+            fontSize:12, color:"var(--color-muted)",
+          }}>⋯</button>
+        )}
         {isMobile && (
           <span style={{ fontSize:13, fontWeight:700, color:"var(--color-primary)", padding:"10px 6px", letterSpacing:"-0.3px" }}>
             {TOP_TABS.find(t => t.id === view)?.label ?? "Settings"}
@@ -980,7 +996,7 @@ function Shell() {
           borderTop:"1px solid var(--color-border)",
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
-          {TOP_TABS.map(t => (
+          {navTabs.map(t => (
             <button key={t.id} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
@@ -990,6 +1006,15 @@ function Shell() {
               <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
           ))}
+          {tabsCollapsed && (
+            <button onClick={() => setShowAllTabs(true)} style={{
+              flex:0.6, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
+              display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:"var(--color-muted)",
+            }}>
+              <span style={{ fontSize:16, lineHeight:1 }}>⋯</span>
+              <span style={{ fontSize:9 }}>More</span>
+            </button>
+          )}
         </div>
       )}
     </div>

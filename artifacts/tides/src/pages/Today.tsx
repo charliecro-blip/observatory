@@ -8,7 +8,7 @@ import Dashboard from "@/components/Dashboard";
 import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
-import { usePreferences, useTimeFormat, useAstroDetail } from "@/contexts/preferences-context";
+import { usePreferences, useTimeFormat, useAstroDetail, useUiDensity } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
@@ -515,6 +515,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const qc = useQueryClient();
   const { prefs } = usePreferences();
   const astro = useAstroDetail();
+  // Essential density (default): the core journey only — the tide, today's
+  // plan, your aims, the ritual loop. The instrument add-ons are one tap away.
+  const { essential, setDensity } = useUiDensity();
   const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
@@ -940,7 +943,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Deeper-currents discovery banner — dismissible, shown once until closed.
             Not part of onboarding (kept lean); this is the low-key invitation to
             explore premium features once someone's had a moment with the core loop. */}
-        {(!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
+        {!essential && (!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
@@ -1078,6 +1081,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             flavor in feeling-language and offer the door into Star Base. The
             sky schedules the lesson; we just point at it. */}
         {(() => {
+          if (essential) return null; // add-on: education layer waits for the expanded panel
           if (!now?.moonAspects?.length) return null;
           const HARD = new Set(["conjunction", "square", "opposition"]);
           // Slow/social planets carry the distinct, learnable flavors; skip
@@ -1122,7 +1126,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           );
         })()}
 
-        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
+        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} essential={essential} />}
 
         {/* The month's water (30-day view) was removed from Today (owner
             2026-07-15): the day view stays about today; the month lives in the
@@ -1130,12 +1134,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* Your rhythm today — body cycles read against the sky's (rhythm as
             the app's foundation: chronotype↔solar, menstrual↔lunar). */}
-        {now && <RhythmCard now={now} />}
+        {!essential && now && <RhythmCard now={now} />}
 
         {/* The big sky — the moment's defining aspects, explored. Full detail
             only: at minimal/medium this planet-to-planet aspect read-out is
             exactly the jargon we're hiding. */}
-        {now && astro.aspects && <BigSky now={now} />}
+        {!essential && now && astro.aspects && <BigSky now={now} />}
 
         {/* (North Stars card absorbed into the dashboard's Guiding stars card —
             it duplicated the same list right below it.) */}
@@ -1144,17 +1148,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             (glance → act → check off) closes without a trip into Helm.
             During ritual hours the RitualCard carries the habit chips, so
             this card stands down to keep the page lean. */}
-        {testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
+        {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
 
         {/* The tide — one coherent chart for the whole day */}
-        {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
+        {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
         {/* Module recommendations — "what fits right now" moved up near the tide
             chart, since it was previously the very last thing on the page. */}
-        {now && <ModulePulse now={now} onNavigate={onNavigate} />}
+        {!essential && now && <ModulePulse now={now} onNavigate={onNavigate} />}
 
         {/* Standing conditions */}
-        {now && <ConditionsStrip now={now} today={today} />}
+        {!essential && now && <ConditionsStrip now={now} today={today} />}
 
         {/* Logbook — the reflect loop, in its usual quiet spot midday only:
             evenings it rides up under "Log the day", and mornings it stands
@@ -1279,10 +1283,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         </div>
 
         {/* Elemental balance */}
-        {habits.length > 0 && <ElementalBalance habits={habits} tasks={todayTasks} />}
+        {!essential && habits.length > 0 && <ElementalBalance habits={habits} tasks={todayTasks} />}
 
         {/* Planetary pulse */}
-        {now && <PlanetaryPulse now={now} />}
+        {!essential && now && <PlanetaryPulse now={now} />}
+
+        {/* The density toggle — the add-ons are one tap away, and the tap
+            persists. This is the whole "core by default, add-ons available"
+            contract (owner 2026-07-23). */}
+        <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
+          alignSelf: "center", margin: "6px 0 10px", padding: "7px 18px", borderRadius: 18,
+          border: "1px solid var(--color-border)", background: "var(--color-card)",
+          fontSize: 11, color: "#8a8278", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0,
+        }}>
+          {essential ? "Show the full instrument panel ↓" : "Simplify to the essentials ↑"}
+        </button>
 
       </div>
     </div>
