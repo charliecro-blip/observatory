@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
+import { logEvent } from "@/lib/analytics";
 import { usePremium } from "@/contexts/premium-context";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
@@ -84,32 +85,107 @@ function ThemeSection() {
   );
 }
 
-// Email reports — Phase 1 is the CONTENT, previewable here so the voice can be
-// tuned before a sender exists (see EMAIL-REPORTS.md). Opt-in + sending is Phase 2.
+// Email reports — the morning bulletin, actually delivered. Save an address +
+// which reports; the server's cron sends them at your chosen hour (needs
+// RESEND_API_KEY on the server — until then "send test" reports honestly).
 function EmailReportsSection({ testerId }: { testerId: string | null }) {
   const tz = new Date().getTimezoneOffset();
+  const { lat, lon } = useTester();
+  const [email, setEmail] = useState("");
+  const [spans, setSpans] = useState<string[]>(["day"]);
+  const [sendHour, setSendHour] = useState(7);
+  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [senderConfigured, setSenderConfigured] = useState<boolean | null>(null);
+  const authH: Record<string, string> = testerId ? { "x-tester-id": testerId } : {};
+
+  useEffect(() => {
+    if (!testerId) return;
+    fetch("/api/reports/email-subscription", { headers: authH })
+      .then(r => r.json())
+      .then(d => {
+        setSenderConfigured(d.senderConfigured ?? null);
+        if (d.subscription) {
+          setEmail(d.subscription.email ?? "");
+          setSpans(d.subscription.spans ?? ["day"]);
+          setSendHour(d.subscription.sendHour ?? 7);
+          setSaved(true);
+        }
+      }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testerId]);
+
+  const save = async () => {
+    setStatus(null);
+    const r = await fetch("/api/reports/email-subscription", {
+      method: "POST", headers: { ...authH, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon }),
+    });
+    if (r.ok) { logEvent("email_subscribe", { spans, sendHour }); setSaved(true); setStatus("Saved — reports will arrive at your chosen hour."); }
+    else setStatus((await r.json().catch(() => null))?.error ?? "Couldn't save — check the address.");
+  };
+  const sendTest = async () => {
+    setStatus("Sending…");
+    const r = await fetch(`/api/reports/email-test?tz=${tz}`, { method: "POST", headers: authH });
+    const d = await r.json().catch(() => null);
+    setStatus(d?.sent ? "Test sent — check your inbox."
+      : d?.senderConfigured === false ? "Saved, but the server has no email key yet (RESEND_API_KEY) — nothing can send until it's set."
+      : "Couldn't send — save your address first.");
+  };
+  const toggleSpan = (s: string) => setSpans(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
   const open = (span: string) => {
-    // The preview endpoint authenticates via header normally; for a browser tab
-    // we pass the tester id as a query param the middleware also accepts — if it
-    // doesn't, the fetch-and-open fallback below still works.
-    fetch(`/api/reports/preview?span=${span}&tz=${tz}`, { headers: testerId ? { "x-tester-id": testerId } : {} })
+    fetch(`/api/reports/preview?span=${span}&tz=${tz}`, { headers: authH })
       .then(r => r.text())
       .then(html => { const w = window.open("", "_blank"); if (w) { w.document.write(html); w.document.close(); } });
   };
+  const SPAN_LABELS: Record<string, string> = { day: "The day · every morning", week: "The week · Sundays", newmoon: "New Moon mornings" };
+
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>Email reports <span style={{ fontSize: 9, fontWeight: 600, color: "#8a6a30", background: "#8a6a3026", padding: "1px 6px", borderRadius: 6, marginLeft: 4 }}>PREVIEW</span></div>
-      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
-        A short weather bulletin for your life — the day each morning, the week on Sundays, the month at the New Moon.
-        Sending isn't wired yet; preview how they'd read:
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>
+        Email reports
+        {saved && <span style={{ fontSize: 9, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {(["day", "week", "month"] as const).map(s => (
-          <button key={s} onClick={() => open(s)} style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
-            The {s} ahead ↗
+      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+        A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
+          style={{ flex: 1, minWidth: 190, padding: "7px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
+        <select value={sendHour} onChange={e => setSendHour(parseInt(e.target.value, 10))} style={{ padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>
+          {[5, 6, 7, 8, 9, 10].map(h => <option key={h} value={h}>{h} AM</option>)}
+        </select>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {(["day", "week", "newmoon"] as const).map(s => (
+          <button key={s} onClick={() => toggleSpan(s)} style={{
+            fontSize: 10.5, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
+            border: spans.includes(s) ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+            background: spans.includes(s) ? "#1a2a3a10" : "var(--color-card-2)",
+            color: spans.includes(s) ? "#1a2a3a" : "#999", fontWeight: spans.includes(s) ? 600 : 400,
+          }}>{SPAN_LABELS[s]}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <button onClick={save} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#fff" }}>
+          {saved ? "Update" : "Turn on"}
+        </button>
+        {saved && (
+          <button onClick={sendTest} style={{ fontSize: 11, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
+            Send me a test
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        {(["day", "week"] as const).map(s => (
+          <button key={s} onClick={() => open(s)} style={{ fontSize: 10, padding: "5px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "none", color: "#998a76" }}>
+            preview the {s} ↗
           </button>
         ))}
       </div>
+      {status && <div style={{ fontSize: 10.5, color: status.startsWith("Saved") || status.startsWith("Test") ? "#4a7a52" : "#8a6a30", marginTop: 8, lineHeight: 1.5 }}>{status}</div>}
+      {senderConfigured === false && !status && (
+        <div style={{ fontSize: 10, color: "#a89a88", marginTop: 8 }}>Server note: RESEND_API_KEY isn't set yet — subscriptions save, sends wait for the key.</div>
+      )}
     </div>
   );
 }

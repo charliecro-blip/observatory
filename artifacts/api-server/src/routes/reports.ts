@@ -14,9 +14,11 @@
  * kitchen counter; the reader's own aims lead, the sky supports.
  */
 import { Router, type IRouter } from "express";
-import { db, natalCharts, planningWindows, goals } from "@workspace/db";
+import { db, natalCharts, planningWindows, goals, emailSubscriptions } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
+import { sendEmail, emailConfigured } from "../lib/email.js";
+import { bustEmailSubscriptionCache } from "../lib/notifier.js";
 import {
   julianDay, moonPhase, voidOfCourse, getDailyElementEmphasis, getPlanetPositions,
 } from "../lib/astro.js";
@@ -72,8 +74,9 @@ async function natalFor(testerId: string) {
 }
 
 // ── Span composers ────────────────────────────────────────────────────────────
+// Exported so the notifier can compose + send the same reports on its cron.
 
-async function composeDay(testerId: string, tz: number, lat: number, lon: number) {
+export async function composeDay(testerId: string, tz: number, lat: number, lon: number) {
   const now = new Date();
   const jd = julianDay(now);
   const local = localDate(tz);
@@ -166,7 +169,7 @@ async function composeDay(testerId: string, tz: number, lat: number, lon: number
   return { title: fmtDay(local), subject, blocks };
 }
 
-async function composeWeek(testerId: string, tz: number, _lat: number, _lon: number) {
+export async function composeWeek(testerId: string, tz: number, _lat: number, _lon: number) {
   const blocks: Block[] = [];
   const dname = (d: number) => fmtShort(localDate(tz, d)).replace(/,.*$/, "");
 
@@ -283,7 +286,7 @@ async function composeMonth(testerId: string, tz: number, _lat: number, _lon: nu
   return { title: `The month from ${fmtDay(localDate(tz))}`, subject, blocks };
 }
 
-async function composeNewMoon(testerId: string, tz: number, _lat: number, _lon: number) {
+export async function composeNewMoon(testerId: string, tz: number, _lat: number, _lon: number) {
   const blocks: Block[] = [];
 
   // The next New Moon (or today's, if we're on it). Scan by phase name.
@@ -344,7 +347,7 @@ async function composeNewMoon(testerId: string, tz: number, _lat: number, _lon: 
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
-function renderHtml(title: string, subject: string, blocks: Block[]): string {
+export function renderHtml(title: string, subject: string, blocks: Block[]): string {
   const blockHtml = blocks.map((b) => `
     ${b.heading ? `<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#a89a88;margin:22px 0 8px;">${b.heading}</div>` : `<div style="height:14px"></div>`}
     ${b.lines.map((l) => `<div style="font-size:14px;line-height:1.7;color:#2b2820;margin-bottom:4px;">${l}</div>`).join("")}
@@ -389,6 +392,49 @@ router.get("/reports/preview", requireTesterId, async (req, res) => {
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(renderHtml(composed.title, composed.subject, composed.blocks));
+});
+
+// ── Email subscription (the Settings opt-in) ─────────────────────────────────
+
+router.get("/reports/email-subscription", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select().from(emailSubscriptions).where(eq(emailSubscriptions.testerId, testerId)).limit(1))[0] ?? null;
+  res.json({ subscription: row, senderConfigured: emailConfigured() });
+});
+
+router.post("/reports/email-subscription", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const { email, spans, sendHour, enabled, lat, lon } = req.body ?? {};
+  if (!email || typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    res.status(400).json({ error: "a valid email is required" });
+    return;
+  }
+  const clean = {
+    email: email.trim(),
+    spans: Array.isArray(spans) && spans.length ? spans.filter((s: string) => ["day", "week", "newmoon"].includes(s)) : ["day"],
+    sendHour: Number.isInteger(sendHour) && sendHour >= 4 && sendHour <= 12 ? sendHour : 7,
+    enabled: enabled === false ? "false" : "true",
+    lat: lat != null ? String(lat) : null,
+    lon: lon != null ? String(lon) : null,
+    updatedAt: new Date(),
+  };
+  const existing = (await db.select().from(emailSubscriptions).where(eq(emailSubscriptions.testerId, testerId)).limit(1))[0];
+  if (existing) await db.update(emailSubscriptions).set(clean).where(eq(emailSubscriptions.testerId, testerId));
+  else await db.insert(emailSubscriptions).values({ testerId, ...clean });
+  bustEmailSubscriptionCache(); // the notifier's hourly cache shouldn't delay a new opt-in
+  res.json({ ok: true });
+});
+
+// Send the day report NOW to the stored address — the "send me a test" button.
+router.post("/reports/email-test", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const sub = (await db.select().from(emailSubscriptions).where(eq(emailSubscriptions.testerId, testerId)).limit(1))[0];
+  if (!sub) { res.status(404).json({ error: "no subscription saved yet" }); return; }
+  const tz = Number.isFinite(parseInt(String(req.query.tz), 10)) ? parseInt(String(req.query.tz), 10) : 0;
+  const lat = parseFloat(sub.lat ?? "40.7"), lon = parseFloat(sub.lon ?? "-74.0");
+  const d = await composeDay(testerId, tz, lat, lon);
+  const sent = await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks));
+  res.json({ sent, senderConfigured: emailConfigured() });
 });
 
 export default router;

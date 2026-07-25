@@ -10,6 +10,7 @@
  */
 import { useState } from "react";
 import type { AstroDetail } from "@/lib/preferences";
+import { logEvent } from "@/lib/analytics";
 
 export interface ReadingTestimony {
   source: string;
@@ -84,7 +85,7 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
       {/* Full: the reading's working — the ranked testimony table. */}
       {full && reading.testimonies?.length > 0 && (
         <div style={{ marginTop: 9 }}>
-          <button onClick={() => setShowWorking(!showWorking)} style={{
+          <button onClick={() => { if (!showWorking) logEvent("reading_working_opened"); setShowWorking(!showWorking); }} style={{
             fontSize: 10, color: "#8a8278", background: "none", border: "none", cursor: "pointer", padding: 0,
             letterSpacing: "0.5px",
           }}>

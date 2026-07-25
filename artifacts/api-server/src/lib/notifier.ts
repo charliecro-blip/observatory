@@ -1,7 +1,9 @@
 import { db } from "@workspace/db";
-import { pushSubscriptions } from "@workspace/db/schema";
+import { pushSubscriptions, emailSubscriptions } from "@workspace/db/schema";
 import { julianDay, getPlanetaryHour, voidOfCourse, moonPhase, getDailyElementEmphasis } from "../lib/astro.js";
 import { sendPushToTester } from "../routes/push";
+import { sendEmail, emailConfigured } from "./email.js";
+import { composeDay, composeWeek, composeNewMoon, renderHtml } from "../routes/reports.js";
 import { logger } from "./logger";
 
 // ── Subscription cache ───────────────────────────────────────────────────────
@@ -192,12 +194,66 @@ async function tick() {
   }
 }
 
+// ── Email reports cron ───────────────────────────────────────────────────────
+// Same shape as push: 60s tick, subscriber-local clock from longitude,
+// 2-minute window + daily dedupe, hourly DB cache. Sends the composed reports
+// (routes/reports.ts) at each subscriber's chosen morning hour:
+//   day — every morning · week — Sunday mornings · newmoon — New Moon mornings.
+let emailSubsCache: Awaited<ReturnType<typeof fetchEmailSubs>> | null = null;
+let emailSubsCacheAt = 0;
+function fetchEmailSubs() { return db.select().from(emailSubscriptions); }
+export function bustEmailSubscriptionCache() { emailSubsCache = null; emailSubsCacheAt = 0; }
+async function getEmailSubs() {
+  if (emailSubsCache && Date.now() - emailSubsCacheAt < SUBS_TTL_MS) return emailSubsCache;
+  try { emailSubsCache = await fetchEmailSubs(); emailSubsCacheAt = Date.now(); return emailSubsCache; }
+  catch { return emailSubsCache ?? []; }
+}
+// getTimezoneOffset-style minutes from a stored longitude (matches localParts).
+function tzFromLon(lonRaw: string | null): number {
+  const lon = lonRaw != null ? parseFloat(lonRaw) : -74.0;
+  return -Math.round((Number.isFinite(lon) ? lon : -74.0) / 15) * 60;
+}
+
+async function emailTick() {
+  if (!emailConfigured()) return; // no RESEND_API_KEY — nothing to do, no DB touch
+  const now = new Date();
+  const subs = await getEmailSubs();
+  for (const sub of subs) {
+    if (sub.enabled !== "true") continue;
+    const t = localParts(now, sub.lon);
+    if (t.hour !== (sub.sendHour ?? 7) || t.minute >= 2) continue;
+    const tz = tzFromLon(sub.lon);
+    const lat = parseFloat(sub.lat ?? "40.7"), lonN = parseFloat(sub.lon ?? "-74.0");
+    const spans = (sub.spans as string[] | null) ?? ["day"];
+    const localDow = new Date(now.getTime() - tz * 60000).getUTCDay();
+    try {
+      if (spans.includes("day") && dedup(`email-day-${sub.testerId}-${t.date}`)) {
+        const d = await composeDay(sub.testerId, tz, lat, lonN);
+        await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks));
+      }
+      if (spans.includes("week") && localDow === 0 && dedup(`email-week-${sub.testerId}-${t.date}`)) {
+        const w = await composeWeek(sub.testerId, tz, lat, lonN);
+        await sendEmail(sub.email, w.subject, renderHtml(w.title, w.subject, w.blocks));
+      }
+      if (spans.includes("newmoon") && moonPhase(julianDay(now)).name === "New Moon" && dedup(`email-nm-${sub.testerId}-${t.date}`)) {
+        const n = await composeNewMoon(sub.testerId, tz, lat, lonN);
+        await sendEmail(sub.email, n.subject, renderHtml(n.title, n.subject, n.blocks));
+      }
+    } catch (e) {
+      logger.warn({ e, testerId: sub.testerId }, "notifier: email report failed");
+    }
+  }
+}
+
 export function startNotifier() {
+  // Email cron runs regardless of push config (no-ops without RESEND_API_KEY).
+  setInterval(() => { emailTick().catch(e => logger.warn({ e }, "notifier email tick error")); }, 60_000);
+
   if (!process.env["VAPID_PUBLIC_KEY"]) {
-    logger.info("Notifier: VAPID keys not set, push notifications disabled");
+    logger.info("Notifier: VAPID keys not set, push disabled — email cron active");
     return;
   }
   // Run every 60 seconds
   setInterval(() => { tick().catch(e => logger.warn({ e }, "notifier tick error")); }, 60_000);
-  logger.info("Notifier: started (60s tick, hourly DB cache) — ritual pings 8am/8pm local, VOC + phases in waking hours");
+  logger.info("Notifier: started (60s tick, hourly DB cache) — ritual pings 8am/8pm local, VOC + phases in waking hours, email reports at subscriber hour");
 }

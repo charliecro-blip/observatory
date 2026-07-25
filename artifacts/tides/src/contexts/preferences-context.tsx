@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { logEvent } from "@/lib/analytics";
 import {
   TidesPreferences,
   NotificationPrefs,
@@ -83,7 +84,10 @@ export function useUiDensity() {
   return {
     density,
     essential: density === "essential",
-    setDensity: (d: "essential" | "expanded") => updateDisplay({ uiDensity: d }),
+    setDensity: (d: "essential" | "expanded") => {
+      logEvent("density_toggle", { to: d }); // one hook = every toggle surface logged
+      updateDisplay({ uiDensity: d });
+    },
   };
 }
 

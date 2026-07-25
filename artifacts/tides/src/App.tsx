@@ -287,7 +287,7 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
         {/* Skip is available from slide one — a low-attention/skeptic user
             (persona study) shouldn't have to tap through five slides first. */}
         {!isLast && (
-          <button onClick={onDone} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
+          <button onClick={() => { logEvent("onboard_intro_skipped"); onDone(); }} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
             Skip intro →
           </button>
         )}
@@ -312,7 +312,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   // straight to preferences so the provider (mounted after onboarding) picks it
   // up. Default "medium" is the friendlier middle for the glaze-over majority.
   const [astroDetail, setAstroDetailState] = useState<"minimal" | "medium" | "full">("medium");
-  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { setAstroDetailState(lvl); setAstroDetail(lvl); };
+  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { logEvent("onboard_astro_detail", { level: lvl }); setAstroDetailState(lvl); setAstroDetail(lvl); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
   const [showRestore, setShowRestore] = useState(false);
@@ -473,6 +473,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
 
   async function handleBirthSubmit(e: React.FormEvent) {
     e.preventDefault();
+    logEvent("onboard_chart_added");
     if (birthDate && birthLat != null) await saveBirthData();
     setStep("chronotype");
   }
@@ -480,6 +481,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   function handleSkip() {
     // "Show me today →" goes straight into the app — no chart, no chronotype
     // gate (both are addable in Settings). The label promises today; deliver it.
+    logEvent("onboard_chart_skipped");
     onComplete(name.trim() || "Observer");
   }
 
@@ -913,7 +915,7 @@ function Shell() {
           );
         })}
         {!isMobile && tabsCollapsed && (
-          <button onClick={() => setShowAllTabs(true)} title="More — Log, Planets" style={{
+          <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} title="More — Log, Planets" style={{
             padding:"11px 10px", border:"none", background:"none", cursor:"pointer",
             fontSize:12, color:"var(--color-muted)",
           }}>⋯</button>
@@ -1007,7 +1009,7 @@ function Shell() {
             </button>
           ))}
           {tabsCollapsed && (
-            <button onClick={() => setShowAllTabs(true)} style={{
+            <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} style={{
               flex:0.6, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:"var(--color-muted)",
             }}>

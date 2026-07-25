@@ -11,6 +11,7 @@ export * from "./natalBlueprint";
 export * from "./cultivation";
 export * from "./cultivationCheckIn";
 export * from "./supportPreferences";
+export * from "./emailSubscriptions";
 export * from "./knowledgeChunks";
 export * from "./planning";
 export * from "./googleCal";
