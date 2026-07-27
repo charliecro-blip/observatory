@@ -215,6 +215,15 @@ function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
       else if (softAspect) polarity = 1;
       else polarity = (VALENCE[t.planet] ?? 0) < 0 ? -1 : 1; // neutral conjunction leans with the transiting planet
 
+      // Verb register follows the judged polarity: a square between a friendly
+      // pair (Hand: e.g. Moon-Venus, easy in ALL aspects) is energizing
+      // friction, not harm — and a trine in a difficult pair still drags.
+      const word = polarity > 0
+        ? (hardAspect ? "strikes sparks with" : nat.word)
+        : (softAspect ? "tugs at" : nat.word);
+      const wordIng = polarity > 0
+        ? (hardAspect ? "striking sparks with" : nat.ing)
+        : (softAspect ? "tugging at" : nat.ing);
       const exact = Math.max(0, 1 - best.orb / natalOrb(target.name));
       const salience = transitSalienceBase(t.planet) * (0.4 + 0.6 * exact) * nat.strength
         * (PERSONAL_POINTS.has(target.name) ? 1.25 : 1);
@@ -235,10 +244,10 @@ function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
         gift: roads?.gift, shadow: roads?.shadow,
         carriedBy: isReturn
           ? `your ${t.planet} return — a cycle begins again`
-          : `${t.planet} ${nat.ing} ${targetWord}`,
+          : `${t.planet} ${wordIng} ${targetWord}`,
         note: isReturn
           ? `your ${t.planet} return (${best.orb.toFixed(1)}°) — its cycle starts a new lap; ${verb} is renewed`
-          : `${t.planet} ${nat.word} ${targetWord} (${best.orb.toFixed(1)}°) — ${polarity > 0 ? "support for" : "pressure on"} ${targetWord}${polarity < 0 && roads ? `; watch ${roads.shadow}` : ""}`,
+          : `${t.planet} ${word} ${targetWord} (${best.orb.toFixed(1)}°) — ${polarity > 0 ? "support for" : "pressure on"} ${targetWord}${polarity < 0 && roads ? `; watch ${roads.shadow}` : ""}`,
         score: 0, // filled by caller
       });
     }
