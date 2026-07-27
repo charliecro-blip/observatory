@@ -15,13 +15,15 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db } from "@workspace/db";
-import { tasks, habits, goals, daemonMemory } from "@workspace/db/schema";
+import { tasks, habits, goals, daemonMemory, natalCharts } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects,
 } from "../lib/astro.js";
+import { dayReading } from "../lib/synthesis.js";
+import { computeNatalChart } from "../lib/natal.js";
 
 const router: IRouter = Router();
 
@@ -81,6 +83,30 @@ router.post("/advise", async (req, res) => {
   const moonAspects = aspects.filter(a => a.planet1 === "Moon" || a.planet2 === "Moon");
   const hourSupports = PLANETARY_HOUR_SUPPORTS[planHour.ruler] ?? [];
   const elemQuality = ELEMENT_QUALITIES[elemEmph.element] ?? "";
+
+  // ── The woven reading — the SAME judgment the user sees on Today. Ask
+  // receives it instead of re-deriving the day, so advisor and hero agree
+  // (one brain). With a stored chart the personal layer rides along. ────────
+  let readingSection = "";
+  try {
+    const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+    const natal = stored ? computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset) : null;
+    const timeKnown = stored?.timeKnown !== false;
+    const reading = dayReading(now, lat, lon, { natal: natal ? {
+      planets: natal.planets.map(p => ({ planet: p.planet, longitude: p.longitude })),
+      asc: timeKnown ? natal.ascendant.longitude : undefined,
+      mc: timeKnown ? natal.midheaven.longitude : undefined,
+    } : undefined });
+    readingSection = [
+      `THE DAY'S READING (the app's own synthesis — the same judgment on the user's Today page; treat as given, don't re-derive):`,
+      `• ${reading.flavour}`,
+      reading.watch[0] ? `• Watch: ${reading.watch[0].note}` : "",
+      reading.counterpoint ? `• ${reading.counterpoint.replace(/^—\s*/, "But: ")}` : "",
+      ...reading.patterns.slice(0, 2).map(pt => `• ${pt.reading}`),
+      ...reading.testimonies.filter(t => t.source.startsWith("transit:")).slice(0, 3)
+        .map(t => `• Personal: ${t.note}`),
+    ].filter(Boolean).join("\n");
+  } catch { /* reading is enrichment — never block the advisor on it */ }
 
   // ── Gather user context (non-blocking) ───────────────────────────────────
   let userTasks: string[] = [];
@@ -172,7 +198,7 @@ CURRENT MOMENT (${now.toLocaleString("en-US", { weekday:"short", month:"short", 
 ${moonAspectLines ? `• Moon aspects: ${moonAspectLines}` : ""}
 ${vocNote}
 ${retroNote}
-${weekSummary ? `\nWEEK AHEAD QUALITY:\n${weekSummary}` : ""}
+${readingSection ? `\n${readingSection}\n` : ""}${weekSummary ? `\nWEEK AHEAD QUALITY:\n${weekSummary}` : ""}
 
 ${userSection ? `USER'S CONTEXT:\n${userSection}` : "No tasks, habits, or goals on record yet — work from the astrological moment alone."}
 ${calSection ? `\n${calSection}` : ""}
