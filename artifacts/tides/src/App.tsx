@@ -5,7 +5,8 @@ import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
-import { PreferencesProvider } from "@/contexts/preferences-context";
+import { PreferencesProvider, useUiDensity } from "@/contexts/preferences-context";
+import { setAstroDetail } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -25,11 +26,16 @@ import Planets from "@/pages/Planets";
 import Log from "@/pages/Log";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
+import { logEvent } from "@/lib/analytics";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
-function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any; lat: number; lon: number }) {
+function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
+  // Arriving with an element seed (from the Almanac reference) always lands on
+  // Guiding Stars, where the pre-filled creation form opens.
+  useEffect(() => { if (seedElement) setTab("overview"); }, [seedElement]);
+  useEffect(() => { if (focusStarId != null) setTab("overview"); }, [focusStarId]);
   // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
   // habits). Currents (long-cycle context) is now a header at the top.
   const TABS: {id:WorkTab; label:string}[] = [
@@ -57,7 +63,7 @@ function WorkPage({ testerId, now, lat, lon }: { testerId: string|null; now: any
         <CurrentsContextHeader testerId={testerId} collapsed={true} />
 
         {/* Tab content — inherits flex from parent, scrollable together with header */}
-        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab}/>}
+        {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed} focusStarId={focusStarId} onFocusConsumed={onFocusConsumed}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon}/>}
       </div>
@@ -106,6 +112,14 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"planets",  label:"Planets"},
 ];
 
+// Structured election context handed from Auspice's picker into Ask. The
+// windows are facts from the deterministic engine; the note is the user's own.
+export interface AskElectionContext {
+  activity: string;
+  note?: string;
+  windows: { label: string; tier?: string; why?: string }[];
+}
+
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat",
 ];
@@ -114,21 +128,24 @@ const WINDOW_LABELS: Record<string,string> = {
   social:"Social",relationship:"Relationship",recovery:"Recovery",study:"Study",launch:"Launch",retreat:"Retreat",
 };
 
-function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: () => void }) {
+function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string|null; onClose: () => void; onDumpToPlanner: (text: string) => void }) {
   const qc = useQueryClient();
-  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [windowType, setWindowType] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  async function submit() {
-    if (!title.trim() || !testerId) return;
-    await fetch("/api/tasks", {
+  // One task per non-empty line, so a single capture can be a whole brain-dump.
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  async function addAll() {
+    if (lines.length === 0 || !testerId) return;
+    await Promise.all(lines.map(title => fetch("/api/tasks", {
       method: "POST",
       headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), bestWindowType: windowType || undefined }),
-    });
+      body: JSON.stringify({ title, bestWindowType: windowType || undefined }),
+    })));
     qc.invalidateQueries({ queryKey: ["tasks"] });
     onClose();
   }
@@ -139,24 +156,33 @@ function QuickCapture({ testerId, onClose }: { testerId: string|null; onClose: (
       display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 420,
+        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440,
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
-        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 10 }}>Quick capture</div>
-        <input ref={inputRef} value={title} onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
-          placeholder="What needs to get done?"
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 14, outline: "none", background: "var(--color-card-2)", marginBottom: 10 }}
+        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>Quick capture</div>
+        <div style={{ fontSize: 10.5, color: "#bbb", marginBottom: 10 }}>One thing per line — dump as many as you like.</div>
+        <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addAll(); if (e.key === "Escape") onClose(); }}
+          placeholder={"reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"}
+          rows={4}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <select value={windowType} onChange={e => setWindowType(e.target.value)}
             style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "#555", background: "var(--color-card-2)" }}>
             <option value="">Best time: any</option>
             {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
-          <button onClick={submit} disabled={!title.trim()}
-            style={{ padding: "7px 18px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", background: title.trim() ? "#1a2a3a" : "#e0dcd6", color: title.trim() ? "#fff" : "#aaa" }}>
-            Add
+          {/* Weave capture into scheduling (#15): hand the dump to the Planner,
+              which reads each item's nature and finds it a good window. */}
+          <button onClick={() => { if (lines.length) { onDumpToPlanner(text); } }} disabled={lines.length === 0}
+            title="Send these to the Planner to schedule"
+            style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "#1a2a3a" : "#bbb", fontWeight: 500 }}>
+            ✦ Dump &amp; schedule →
+          </button>
+          <button onClick={addAll} disabled={lines.length === 0}
+            style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "#e0dcd6", color: lines.length ? "#fff" : "#aaa" }}>
+            {lines.length > 1 ? `Add ${lines.length}` : "Add"}
           </button>
         </div>
       </div>
@@ -175,7 +201,7 @@ const INTRO_SLIDES: {
     glyph: "◐",
     glyphColor: "#2a5a80",
     title: "A weather report for time.",
-    body: "Tides reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
+    body: "Compass reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
   },
   {
     glyph: "◵ ◶ ◷ ◴",
@@ -199,7 +225,7 @@ const INTRO_SLIDES: {
     glyph: "≋",
     glyphColor: "#3f8493",
     title: "The sky is nested rhythms.",
-    body: "The hour sits inside the day, the day inside the month, the month inside the year. Tides reads them all and tells you where you are — this ladder is the whole map.",
+    body: "The hour sits inside the day, the day inside the month, the month inside the year. Compass reads them all and tells you where you are — this ladder is the whole map.",
     spine: true,
   },
   {
@@ -258,9 +284,11 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
           </button>
         </div>
 
-        {isLast && (
-          <button onClick={onDone} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center" }}>
-            Skip intro
+        {/* Skip is available from slide one — a low-attention/skeptic user
+            (persona study) shouldn't have to tap through five slides first. */}
+        {!isLast && (
+          <button onClick={() => { logEvent("onboard_intro_skipped"); onDone(); }} style={{ marginTop:10, fontSize:11, color:"#bbb", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
+            Skip intro →
           </button>
         )}
       </div>
@@ -280,6 +308,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const { updateChronotype, restoreFromCode } = useTester();
   const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
   const [name, setName] = useState("");
+  // How much astrology to show — the intake question (owner 2026-07-22). Writes
+  // straight to preferences so the provider (mounted after onboarding) picks it
+  // up. Default "medium" is the friendlier middle for the glaze-over majority.
+  const [astroDetail, setAstroDetailState] = useState<"minimal" | "medium" | "full">("medium");
+  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { logEvent("onboard_astro_detail", { level: lvl }); setAstroDetailState(lvl); setAstroDetail(lvl); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
   const [showRestore, setShowRestore] = useState(false);
@@ -440,12 +473,16 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
 
   async function handleBirthSubmit(e: React.FormEvent) {
     e.preventDefault();
+    logEvent("onboard_chart_added");
     if (birthDate && birthLat != null) await saveBirthData();
     setStep("chronotype");
   }
 
   function handleSkip() {
-    setStep("chronotype");
+    // "Show me today →" goes straight into the app — no chart, no chronotype
+    // gate (both are addable in Settings). The label promises today; deliver it.
+    logEvent("onboard_chart_skipped");
+    onComplete(name.trim() || "Observer");
   }
 
   const cardStyle: React.CSSProperties = {
@@ -457,8 +494,8 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px" }}>
       <div style={cardStyle}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Tides</div>
-          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Your personal timing companion — lunar cycles, planetary hours, and daily rhythm.</div>
+          <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Compass</div>
+          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Move with time — lunar cycles, planetary hours, and daily rhythm.</div>
         </div>
         <form onSubmit={handleNameSubmit}>
           <div style={{ fontSize:11, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Your name</div>
@@ -510,10 +547,34 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   if (step === "birth") return (
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
       <div style={cardStyle}>
-        <div style={{ marginBottom:24 }}>
-          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your birth chart</div>
+        <div style={{ marginBottom:18 }}>
+          <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            Tides uses your birth data to compute personal transits — showing which planetary cycles are active in <em>your</em> chart right now. This stays private on your device.
+            You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, private to your device, and easy to add later.
+          </div>
+        </div>
+
+        {/* Astro-detail intake — how much astrology to show. Same engine at every
+            level; only what's on screen changes (owner: reduce the jargon that
+            makes most people's eyes glaze over). */}
+        <div style={{ marginBottom:18 }}>
+          <div style={{ fontSize:10.5, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>How much astrology do you want to see?</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:7 }}>
+            {([
+              { key: "minimal", label: "Just the guidance", desc: "Plain language. What to do and when — no jargon." },
+              { key: "medium",  label: "A little sky",       desc: "The moon and the day's character, kept simple." },
+              { key: "full",    label: "The full chart",     desc: "Everything — glyphs, aspects, transits." },
+            ] as const).map(o => (
+              <button key={o.key} type="button" onClick={() => chooseAstroDetail(o.key)}
+                style={{
+                  padding:"9px 9px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                  border: astroDetail === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
+                  background: astroDetail === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
+                }}>
+                <div style={{ fontSize:11.5, fontWeight:600, color: astroDetail === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
+                <div style={{ fontSize:9, color:"#999", marginTop:2, lineHeight:1.4 }}>{o.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -598,16 +659,21 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           )}
 
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
+            {/* Explore-first is a co-equal path (persona study: the birth-data
+                wall costs the growth + skeptic audiences before they see value). */}
             <button type="button" onClick={handleSkip}
-              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"#888", fontSize:12, cursor:"pointer", fontWeight:500 }}>
-              Skip for now
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid #1a2a3a", background: "var(--color-card)", color:"#1a2a3a", fontSize:12.5, cursor:"pointer", fontWeight:600 }}>
+              Show me today →
             </button>
             <button type="submit" disabled={!birthDate || birthLat == null || saving}
-              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:13, fontWeight:600,
-                background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#1a2a3a",
+              style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:12.5, fontWeight:600,
+                background: (!birthDate || birthLat == null) ? "#e0dcd6" : "#3a6030",
                 color: (!birthDate || birthLat == null) ? "#aaa" : "#fff" }}>
-              {saving ? "Saving…" : "Continue →"}
+              {saving ? "Saving…" : "Add my chart"}
             </button>
+          </div>
+          <div style={{ fontSize:10, color:"#b0a898", marginTop:8, textAlign:"center" }}>
+            You can add or edit your chart anytime in Settings.
           </div>
         </form>
       </div>
@@ -620,7 +686,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:24 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your rhythm</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            When you're usually free and how you naturally run helps Tides suggest timing that actually fits your life, not just the sky.
+            When you're usually free and how you naturally run helps Compass suggest timing that actually fits your life, not just the sky.
           </div>
         </div>
 
@@ -698,7 +764,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </button>
             <button type="submit"
               style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#fff" }}>
-              Enter Tides
+              Enter Compass
             </button>
           </div>
         </form>
@@ -715,6 +781,18 @@ function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
+  // Essential density: the nav leads with the core journey (Today · Calendar ·
+  // Aims · Plan); Log and Planets wait behind "⋯" (owner 2026-07-23 — condense
+  // around compass/calendar/planning). The active view's tab always shows.
+  const { essential } = useUiDensity();
+  const [showAllTabs, setShowAllTabs] = useState(false);
+  const CORE_TABS = new Set<View>(["today", "calendar", "work", "launch"]);
+  const navTabs = (essential && !showAllTabs)
+    ? TOP_TABS.filter(t => CORE_TABS.has(t.id) || t.id === view)
+    : TOP_TABS;
+  const tabsCollapsed = essential && !showAllTabs && navTabs.length < TOP_TABS.length;
+  // Usage analytics: which surface is being used (owner 2026-07-20).
+  useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
   // Session timer + Advise trigger live in the global top bar so they're always
   // reachable, not just from the Today page. The advisor modal itself still
@@ -722,11 +800,30 @@ function Shell() {
   // opening it from elsewhere jumps to Today first.
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [advisorSeed, setAdvisorSeed] = useState<string | null>(null);
-  const askCompass = (seed: string) => { setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  // Structured context that rides into Ask alongside the seed message — the
+  // Auspice engine's real candidate windows + the user's own note. Ask treats
+  // the windows as given facts (see /api/advise electionContext).
+  const [askContext, setAskContext] = useState<AskElectionContext | null>(null);
+  const askCompass = (seed: string) => { setAskContext(null); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  const askAboutElection = (ctx: AskElectionContext, seed: string) => {
+    setAskContext(ctx); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true);
+  };
   // Teachable-moment deep link: "today feels saturnine" on Today → Star Base
   // opens on that planet's page.
   const [visitPlanet, setVisitPlanet] = useState<string | null>(null);
   const goToPlanet = (planet: string) => { setVisitPlanet(planet); setView("planets"); };
+  // "Set a Guiding Star in this element" from the Almanac reference (#25):
+  // seed the element, jump to Aims, let GuidingStarsHub open its form pre-filled.
+  const [starSeedElement, setStarSeedElement] = useState<string | null>(null);
+  const startStarInElement = (element: string) => { setStarSeedElement(element); setView("work"); };
+  // Morning glance deep-link: tap a star row on Today → that star's game plan
+  // in Aims, scrolled into view and briefly highlighted.
+  const [focusStarId, setFocusStarId] = useState<number | null>(null);
+  const openStar = (goalId: number) => { setFocusStarId(goalId); setView("work"); };
+  // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
+  // Planner, which parses and weaves it into good windows.
+  const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+  const dumpToPlanner = (text: string) => { setPlannerSeed(text); setCapture(false); setView("launch"); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
@@ -792,17 +889,17 @@ function Shell() {
       boxShadow: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? "0 0 0 1px var(--color-border), 0 12px 48px rgba(0,0,0,0.25)" : undefined,
       background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
-      {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} />}
+      {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} onDumpToPlanner={dumpToPlanner} />}
 
       {/* ── Top bar ── */}
       <div style={{
         display:"flex", alignItems:"center", background:"var(--color-rail)",
         borderBottom:"1px solid var(--color-border)", flexShrink:0, padding: isMobile ? "0 10px" : "0 16px",
       }}>
-        {!isMobile && TOP_TABS.map((t, i) => {
+        {!isMobile && navTabs.map((t, i) => {
           // Divider after the last zoom tab (Now/Ahead/Currents) to separate the
           // time-ladder from the depth (Sky) and content (Life) tabs.
-          const prev = TOP_TABS[i - 1];
+          const prev = navTabs[i - 1];
           const showDivider = prev?.zoom && !t.zoom;
           return (
             <React.Fragment key={t.id}>
@@ -817,6 +914,12 @@ function Shell() {
             </React.Fragment>
           );
         })}
+        {!isMobile && tabsCollapsed && (
+          <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} title="More — Log, Planets" style={{
+            padding:"11px 10px", border:"none", background:"none", cursor:"pointer",
+            fontSize:12, color:"var(--color-muted)",
+          }}>⋯</button>
+        )}
         {isMobile && (
           <span style={{ fontSize:13, fontWeight:700, color:"var(--color-primary)", padding:"10px 6px", letterSpacing:"-0.3px" }}>
             {TOP_TABS.find(t => t.id === view)?.label ?? "Settings"}
@@ -828,12 +931,12 @@ function Shell() {
           <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
         )}
         <button
-          onClick={() => { setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
+          onClick={() => { setAskContext(null); setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
           style={{
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
-        >🧭 Compass</button>
+        >✦ Ask</button>
         {window.matchMedia("(min-width: 769px)").matches && (
           <button onClick={() => setForceMobile(!getForceMobile())}
             title={getForceMobile() ? "Back to desktop layout" : "Preview the mobile layout"} style={{
@@ -873,17 +976,17 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} onVisitPlanet={goToPlanet}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
         {view==="calendar" && (
           <SubTabbed tabs={["Calendar","Almanac"]}>
             {(a) => a==="Almanac"
-              ? <Sky testerId={testerId} lat={lat} lon={lon}/>
+              ? <Sky testerId={testerId} lat={lat} lon={lon} onStartStar={startStarInElement} onVisitPlanet={goToPlanet}/>
               : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
-        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
         {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
-        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
@@ -895,7 +998,7 @@ function Shell() {
           borderTop:"1px solid var(--color-border)",
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
-          {TOP_TABS.map(t => (
+          {navTabs.map(t => (
             <button key={t.id} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
@@ -905,6 +1008,15 @@ function Shell() {
               <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
           ))}
+          {tabsCollapsed && (
+            <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} style={{
+              flex:0.6, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
+              display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:"var(--color-muted)",
+            }}>
+              <span style={{ fontSize:16, lineHeight:1 }}>⋯</span>
+              <span style={{ fontSize:9 }}>More</span>
+            </button>
+          )}
         </div>
       )}
     </div>

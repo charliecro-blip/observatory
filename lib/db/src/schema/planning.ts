@@ -24,6 +24,13 @@ export const goals = pgTable("goals", {
   horizon: text("horizon"), // near | mid | long
   status: text("status").notNull().default("active"), // active | paused | completed | archived
   element: text("element"), // fire | earth | air | water — the domain this goal lives in
+  // The star's ruling planet — auto-diagnosed from the title (associateDeterministic)
+  // with user override. Planets drive scheduling more precisely than elements
+  // (Mars for training, Mercury for study), so this is what best-window timing
+  // keys off when present. activityKey is the matched correspondence, if any,
+  // which unlocks the precise election engine for the star's windows.
+  planet: text("planet"), // Sun | Moon | Mercury | Venus | Mars | Jupiter | Saturn
+  activityKey: text("activity_key"), // e.g. "train-hard" — the matched activity correspondence
   // Cycle anchor — ties a goal to the long-cycle context that suggested/supports
   // it, giving it a natural season instead of an invented deadline (cyclical
   // nesting: goals ride chapters — an outer planet moving through a natal house —
@@ -88,6 +95,15 @@ export const tasks = pgTable("tasks", {
   done: text("done").notNull().default("false"), // "true" | "false"
   dueDate: text("due_date"), // ISO date YYYY-MM-DD, nullable
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
+  // A task's own ruling planet — auto-diagnosed from its title, so specific
+  // tasks under a star can each time to a different planet (the star may be
+  // Mars, but its "write the plan" step reads Mercury). Drives its timing.
+  planet: text("planet"),                    // Sun | Moon | Mercury | … | Saturn, nullable
+  // How long it needs and how much you'll have to bring — both feed the
+  // scheduler (fit a block of the right length into a window whose energy the
+  // sky supports) and let the list surface "quick + low" things on flat days.
+  estMinutes: integer("est_minutes"),        // rough duration, nullable
+  energy: text("energy"),                    // low | medium | high, nullable
   goalId: integer("goal_id"),
   projectId: integer("project_id"),
   // The missing join for project facilitation: a task can belong to a step
@@ -104,6 +120,7 @@ export const habits = pgTable("habits", {
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
   goalId: integer("goal_id"), // nullable FK to goals — a habit can serve a Guiding Star
   projectId: integer("project_id"), // nullable FK to projects — a habit can also serve a project
+  milestoneId: integer("milestone_id"), // nullable FK to milestones — a recurring STEP becomes a habit
   name: text("name").notNull(),
   description: text("description"),
   emoji: text("emoji"),
@@ -119,6 +136,31 @@ export const habits = pgTable("habits", {
 });
 
 // Individual habit completions
+// Named wins — the reflective half of the daily loop (owner 2026-07-17):
+// the evening harvest invites one line in your own words per star that moved.
+// AUTO wins (completed tasks/steps/habits/sessions) are DERIVED at read time
+// from their completion timestamps — only the written ones live here, so
+// there's no double-entry and the ledger can never drift from reality.
+export const wins = pgTable("wins", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  date: text("date").notNull(),        // YYYY-MM-DD (viewer-local day)
+  goalId: integer("goal_id"),          // nullable — a win can be general
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// New-Moon intentions — the cycle's opening bookend (owner 2026-07-18):
+// set at (or near) the New Moon, revisited at the next one against the wake.
+export const intentions = pgTable("intentions", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  cycleStart: text("cycle_start").notNull(), // YYYY-MM-DD of the New Moon this belongs to
+  goalId: integer("goal_id"),                // nullable — an intention can be general
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const habitLogs = pgTable("habit_logs", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),

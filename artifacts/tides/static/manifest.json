@@ -1,6 +1,6 @@
 {
-  "name": "Tides",
-  "short_name": "Tides",
+  "name": "Compass",
+  "short_name": "Compass",
   "description": "Your personal timing companion — lunar cycles, planetary hours, and daily rhythm.",
   "start_url": "/",
   "display": "standalone",

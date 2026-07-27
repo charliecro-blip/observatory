@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1a2a3a"/>
-  <path d="M 64 320 Q 128 280 192 320 Q 256 360 320 320 Q 384 280 448 320" stroke="#7080a0" stroke-width="12" fill="none" opacity="0.6"/>
-  <path d="M 64 356 Q 128 316 192 356 Q 256 396 320 356 Q 384 316 448 356" stroke="#7080a0" stroke-width="9" fill="none" opacity="0.4"/>
-  <circle cx="248" cy="196" r="88" fill="#c0b090"/>
-  <circle cx="286" cy="168" r="72" fill="#1a2a3a"/>
-  <circle cx="356" cy="120" r="7" fill="#c0b090" opacity="0.85"/>
-  <circle cx="168" cy="140" r="4" fill="#c0b090" opacity="0.6"/>
+  <rect width="512" height="512" rx="112" fill="#22303e"/>
+  <g transform="translate(64 64) scale(6)">
+    <circle cx="32" cy="32" r="29" fill="none" stroke="#f0ede8" stroke-width="1.4" opacity="0.4"/>
+    <g stroke="#f0ede8" stroke-width="1.4" stroke-linecap="round" opacity="0.55">
+      <line x1="32" y1="3" x2="32" y2="6"/><line x1="46.5" y1="6.9" x2="45" y2="9.5"/>
+      <line x1="57.1" y1="17.5" x2="54.5" y2="19"/><line x1="61" y1="32" x2="58" y2="32"/>
+      <line x1="57.1" y1="46.5" x2="54.5" y2="45"/><line x1="46.5" y1="57.1" x2="45" y2="54.5"/>
+      <line x1="32" y1="61" x2="32" y2="58"/><line x1="17.5" y1="57.1" x2="19" y2="54.5"/>
+      <line x1="6.9" y1="46.5" x2="9.5" y2="45"/><line x1="3" y1="32" x2="6" y2="32"/>
+      <line x1="6.9" y1="17.5" x2="9.5" y2="19"/><line x1="17.5" y1="6.9" x2="19" y2="9.5"/>
+    </g>
+    <path d="M32 8 L33.7 27.6 L41 22.9 L36.2 30.3 L56 32 L36.2 33.7 L41 41 L33.7 36.4 L32 56 L30.3 36.4 L23 41 L27.8 33.7 L8 32 L27.8 30.3 L23 22.9 L30.3 27.6 Z" fill="#f0ede8"/>
+  </g>
 </svg>

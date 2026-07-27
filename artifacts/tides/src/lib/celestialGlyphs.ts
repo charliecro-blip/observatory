@@ -35,6 +35,9 @@ export const PLANETS: [string, number, GlyphElement][] = [
   ["Saturn", 0x2644, "earth"], ["Uranus", 0x2645, "air"], ["Neptune", 0x2646, "water"],
   // NB: Pluto is U+2BD3 (circle-in-crescent over cross), NOT U+2647 (the "PL" monogram).
   ["Pluto", 0x2bd3, "earth"],
+  ["Chiron", 0x26b7, "water"], // ⚷ — the wounded healer; element by convention
+  ["North Node", 0x260a, "air"], ["South Node", 0x260b, "air"], // ☊ ☋ — nodes; neutral tint
+  ["Ceres", 0x26b3, "earth"], ["Pallas", 0x26b4, "air"], ["Juno", 0x26b5, "water"], ["Vesta", 0x26b6, "fire"],
 ];
 
 export const ASPECTS: [string, number, GlyphElement][] = [

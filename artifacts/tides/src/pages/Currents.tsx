@@ -10,7 +10,7 @@ import { PLANET_GLYPH } from "@/lib/glyphs";
 
 
 const ASPECT_SYM: Record<string, string> = {
-  conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹",
+  conjunction: "☌︎", opposition: "☍︎", square: "□", trine: "△", sextile: "⚹",
 };
 
 const SEVERITY_COLOR: Record<string, string> = {

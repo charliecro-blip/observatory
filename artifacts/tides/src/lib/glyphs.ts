@@ -15,6 +15,9 @@ export const PLANET_GLYPH: Record<string, string> = {
   Sun: "☉" + T, Moon: "☽" + T, Mercury: "☿" + T, Venus: "♀" + T, Mars: "♂" + T,
   Jupiter: "♃" + T, Saturn: "♄" + T, Uranus: "♅" + T, Neptune: "♆" + T,
   Pluto: String.fromCodePoint(0x2bd3) + T,
+  Chiron: String.fromCodePoint(0x26b7) + T, // ⚷ — the centaur's key
+  "North Node": "☊" + T, "South Node": "☋" + T, // the lunar nodes / eclipse axis
+  Ceres: String.fromCodePoint(0x26b3) + T, Pallas: String.fromCodePoint(0x26b4) + T, Juno: String.fromCodePoint(0x26b5) + T, Vesta: String.fromCodePoint(0x26b6) + T,
 };
 
 export const SIGN_GLYPH: Record<string, string> = {

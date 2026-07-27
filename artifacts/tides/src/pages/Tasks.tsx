@@ -28,8 +28,16 @@ const HOUR_WINDOW: Record<string,string> = {
 interface Task {
   id:number; title:string; notes?:string; done:string;
   dueDate?:string; bestWindowType?:string; planningWindowId?:number;
+  estMinutes?:number; energy?:string;
   goalId?:number; projectId?:number;
 }
+
+const ENERGY_META: Record<string,{label:string;bg:string;fg:string}> = {
+  low:    { label:"low",    bg:"#e8efe6", fg:"#4a7040" },
+  medium: { label:"med",    bg:"#f2ecdd", fg:"#9a7a2a" },
+  high:   { label:"high",   bg:"#f3e4de", fg:"#b0502e" },
+};
+function fmtEst(m:number){ return m >= 120 ? `${Math.round(m/60)}h` : m >= 60 ? "1h" : `${m}m`; }
 
 interface GoalLite { id:number; title:string; element?:string|null; }
 interface ProjectLite { id:number; title:string; goalId?:number|null; }
@@ -50,6 +58,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const [newWindow, setNewWindow] = useState("");
   const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
   const [newDueDate, setNewDueDate] = useState(today);
+  const [newEstMinutes, setNewEstMinutes] = useState<number|"">("");
+  const [newEnergy, setNewEnergy] = useState<""|"low"|"medium"|"high">("");
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
 
@@ -112,17 +122,20 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   const addTask = useMutation({
     mutationFn: async () => {
-      await fetch("/api/tasks", {
+      const r = await fetch("/api/tasks", {
         method:"POST", headers: authH(testerId),
         body: JSON.stringify({
           title: newTitle.trim(),
           dueDate: newDueDate || undefined,
           bestWindowType: newWindow || undefined,
+          estMinutes: newEstMinutes || undefined,
+          energy: newEnergy || undefined,
           planningWindowId: newPlanWindow || undefined,
           goalId: newGoalId || undefined,
           projectId: newProjectId || undefined,
         }),
       });
+      if (!r.ok) throw new Error(`create task failed (${r.status})`);
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["tasks"]});
@@ -132,6 +145,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
         setSuggestFor({ title: newTitle.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       }
       setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setNewGoalId(""); setNewProjectId("");
+      setNewEstMinutes(""); setNewEnergy("");
       setNewDueDate(today);
       setShowAdd(false);
     },
@@ -143,6 +157,25 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     },
     onSuccess: () => qc.invalidateQueries({queryKey:["tasks"]}),
   });
+
+  // Woven-in Log (#27): finishing something is the moment reflection lands, so
+  // completing a task quietly offers a one-line note straight into the logbook —
+  // no separate tab to remember to visit.
+  const [reflectOn, setReflectOn] = useState<{ title: string } | null>(null);
+  const [reflectText, setReflectText] = useState("");
+  const saveReflection = useMutation({
+    mutationFn: async (text: string) => {
+      await fetch("/api/logs", {
+        method: "POST", headers: authH(testerId),
+        body: JSON.stringify({ type: "note", notes: text, logDate: today, loggedAt: new Date().toISOString() }),
+      });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["logs"] }); setReflectOn(null); setReflectText(""); },
+  });
+  function completeTask(id: number, title: string, wasDone: boolean) {
+    toggle.mutate({ id, done: !wasDone });
+    if (!wasDone) { setReflectOn({ title }); setReflectText(""); } // just marked done
+  }
 
   const remove = useMutation({
     mutationFn: async (id:number) => {
@@ -177,6 +210,22 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
 
+        {/* Post-completion reflection — the woven-in logbook moment (#27) */}
+        {reflectOn && (
+          <div style={{background:"#f3f6ee",border:"1px solid #c8d8b8",borderRadius:10,padding:"11px 13px"}}>
+            <div style={{fontSize:11,color:"#5a7040",fontWeight:600,marginBottom:6}}>✓ {reflectOn.title} — note what shifted? <span style={{color:"#9ab088",fontWeight:400}}>(optional, goes to your logbook)</span></div>
+            <div style={{display:"flex",gap:8}}>
+              <input autoFocus value={reflectText} onChange={e=>setReflectText(e.target.value)}
+                onKeyDown={e=>{ if(e.key==="Enter"&&reflectText.trim()) saveReflection.mutate(reflectText.trim()); if(e.key==="Escape"){setReflectOn(null);setReflectText("");} }}
+                placeholder="how it went, what you noticed…"
+                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,outline:"none",background:"var(--color-card)"}} />
+              <button onClick={()=>reflectText.trim()&&saveReflection.mutate(reflectText.trim())} disabled={!reflectText.trim()||saveReflection.isPending}
+                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"#aaa"}}>Log it</button>
+              <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"#a0b090",cursor:"pointer",fontSize:11}}>skip</button>
+            </div>
+          </div>
+        )}
+
         {showAdd && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"14px 16px"}}>
             {newDueDate === today && activeCautionMatches.length > 0 && (
@@ -199,6 +248,26 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
                 <option value="">Best time: any</option>
                 {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
+              </select>
+            </div>
+            {/* How long + how much energy — the scheduler fits a block of this
+                length into a window, and "quick + low" tasks surface on flat days. */}
+            <div style={{display:"flex",gap:8,marginBottom:6}}>
+              <select value={newEstMinutes} onChange={e => setNewEstMinutes(e.target.value ? Number(e.target.value) : "")}
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                <option value="">Takes: any length</option>
+                <option value={15}>~15 min</option>
+                <option value={30}>~30 min</option>
+                <option value={60}>~1 hour</option>
+                <option value={120}>~2 hours</option>
+                <option value={240}>half a day</option>
+              </select>
+              <select value={newEnergy} onChange={e => setNewEnergy(e.target.value as ""|"low"|"medium"|"high")}
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                <option value="">Energy: any</option>
+                <option value="low">Low energy</option>
+                <option value="medium">Medium energy</option>
+                <option value="high">High energy</option>
               </select>
             </div>
             {(goalsList.length > 0 || projectsList.length > 0) && (
@@ -247,8 +316,9 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 goal={t.goalId ? goalsById[t.goalId] : undefined}
                 project={t.projectId ? projectsById[t.projectId] : undefined}
                 today={today}
-                onToggle={() => toggle.mutate({id:t.id,done:t.done!=="true"})}
+                onToggle={() => completeTask(t.id, t.title, t.done==="true")}
                 onDelete={() => remove.mutate(t.id)}
+                onSchedule={() => setSuggestFor({ title: t.title, goalId: t.goalId, projectId: t.projectId })}
                 highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
               />
             ))}
@@ -290,9 +360,9 @@ function Sect({ label, children, accent, color, muted }: any) {
   );
 }
 
-function Row({ task, goal, project, today, onToggle, onDelete, highlight, dim }: {
+function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highlight, dim }: {
   task:Task; goal?:GoalLite; project?:ProjectLite; today:string;
-  onToggle:()=>void; onDelete:()=>void; highlight?:boolean; dim?:boolean;
+  onToggle:()=>void; onDelete:()=>void; onSchedule?:()=>void; highlight?:boolean; dim?:boolean;
 }) {
   const isDone = task.done === "true";
   const wc = task.bestWindowType ? WINDOW_COLORS[task.bestWindowType] : undefined;
@@ -306,15 +376,25 @@ function Row({ task, goal, project, today, onToggle, onDelete, highlight, dim }:
       {task.dueDate && task.dueDate !== today && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#f0ede8",color:"#999",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
       )}
+      {task.estMinutes && !isDone && (
+        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"#6a7684",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
+      )}
+      {task.energy && ENERGY_META[task.energy] && !isDone && (
+        <div title={`${task.energy} energy`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
+      )}
       {goal && !isDone && (
         <div title={`Goal: ${goal.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "#8a8278",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
       )}
       {project && !isDone && (
         <div title={`Project: ${project.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:"#3a5a80",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
       )}
-      {task.planningWindowId && !isDone && (
+      {task.planningWindowId && !isDone ? (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:"#3a5a80",fontWeight:600,flexShrink:0}}>▦ block</div>
-      )}
+      ) : (!isDone && onSchedule && (
+        // Schedule an EXISTING task — the sky picks a good time (owner: 'if a
+        // task exists, I should be encouraged to schedule it').
+        <button onClick={onSchedule} title="Find a good time for this" style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+      ))}
       {task.bestWindowType && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}

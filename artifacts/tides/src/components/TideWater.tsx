@@ -20,7 +20,7 @@ import type { WeekDay } from "@/lib/types";
 //  - Lens switches morph the same water instead of swapping charts.
 
 const ASPECT_GLYPH: Record<string, string> = {
-  conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍",
+  conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎",
 };
 
 const CHARACTER_WORD: Record<string, string> = {
@@ -128,15 +128,26 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   // fills the canvas (dramatic); off = true 0..1 height (honest/even). Only
   // relevant to the "water" style — the other styles have their own fixed look.
   const [showOpts, setShowOpts] = useState(false);
+  // fill:false → absolute energy column (the honest default: a quiet day reads
+  // quiet). fill:true → the old min-max stretch that fills the frame.
   const [opts, setOptsState] = useState<{ sky: boolean; motion: boolean; fill: boolean }>(() => {
-    try { return { sky: true, motion: true, fill: true, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
-    catch { return { sky: true, motion: true, fill: true }; }
+    try { return { sky: true, motion: true, fill: false, ...JSON.parse(localStorage.getItem("tw_options") ?? "{}") }; }
+    catch { return { sky: true, motion: true, fill: false }; }
   });
   const setOpt = (k: "sky" | "motion" | "fill", v: boolean) =>
     setOptsState(o => { const n = { ...o, [k]: v }; localStorage.setItem("tw_options", JSON.stringify(n)); return n; });
   const lenses: { key: string; label: string }[] = arc.lenses ?? [{ key: "overall", label: "Overall" }];
   const dark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
   const reduceMotion = useRef(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches).current;
+
+  // Hover-to-inspect (#tide-chart): scrub the day and read what's driving the
+  // water at that moment — the level, the character, and any aspect/ingress/void.
+  const [hoverH, setHoverH] = useState<number | null>(null);
+  const onScrub = (e: React.MouseEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const vx = ((e.clientX - r.left) / r.width) * W;
+    setHoverH(Math.max(0, Math.min(24, (vx / W) * 24)));
+  };
 
   const { data: bestTimes } = useQuery<any>({
     queryKey: ["best-times", lens, lat, lon],
@@ -177,14 +188,23 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
 
   if (timeframe === "day" && (target.length < 2 || dispE.length < 2)) return null;
 
-  // ── Normalization: the day's own range fills the water column, floored so a
-  // near-flat day amplifies at most ~5x instead of turning noise into cliffs.
+  // ── Vertical scale ──────────────────────────────────────────────────────────
+  // ABSOLUTE by default: the y-axis is a true 0..1 energy column, so a quiet day
+  // (new moon, no hard aspects) sits low in the frame and a charged day rides
+  // high — you can see at a glance that "approaching the top of today's curve"
+  // is NOT the same as a high-energy day. To keep the day's rhythm legible
+  // without faking its level, the SHAPE is gently amplified around the day's own
+  // mean (the band's center stays at the true absolute height; only the ripples
+  // are magnified). "Fill" mode (the old min-max stretch) remains as a toggle.
   const minE = Math.min(...dispE), maxE = Math.max(...dispE);
+  const meanE = dispE.reduce((s, e) => s + e, 0) / dispE.length;
+  const SHAPE_GAIN = 2.4;              // magnify ripples so quiet days still read as a shape
+  const absOf = (e: number) => Math.max(0, Math.min(1, meanE + (e - meanE) * SHAPE_GAIN));
   const mid = (minE + maxE) / 2;
   const span = Math.max(maxE - minE, 0.16);
   const lo = opts.fill ? mid - span / 2 : 0, hi = opts.fill ? mid + span / 2 : 1;
   const x = (h: number) => (h / 24) * W;
-  const y = (e: number) => WATER_BOT - ((e - lo) / (hi - lo)) * (WATER_BOT - WATER_TOP);
+  const y = (e: number) => WATER_BOT - ((( opts.fill ? e : absOf(e)) - lo) / (hi - lo)) * (WATER_BOT - WATER_TOP);
 
   const hours = target.map((p: any) => p.hour as number);
   const pts = dispE.map((e, i) => ({ x: x(hours[i]), y: y(e) }));
@@ -244,7 +264,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const hiX = Math.max(46, Math.min(W - 46, x(hours[hiIdx])));
   const loX = Math.max(46, Math.min(W - 46, x(hours[loIdx])));
 
-  const events: any[] = (arc.events ?? []).filter((e: any) => e.kind === "aspect" || e.kind === "ingress");
+  const events: any[] = (arc.events ?? []).filter((e: any) => e.kind === "aspect" || e.kind === "ingress" || e.kind === "crossing");
   const nextEvent = events.find((e: any) => !e.past);
   const nowSeg = segByHour(Math.max(0, Math.min(24, nowH)));
   const nowChar = (nowSeg?.character ?? "water") as string;
@@ -383,7 +403,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         );
       })()}
 
-      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden" }}>
+      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} onMouseMove={onScrub} onMouseLeave={() => setHoverH(null)} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden", cursor: "crosshair" }}>
         <defs>
           <linearGradient id="twSky" x1="0" y1="0" x2="1" y2="0">
             {skyStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.c} />)}
@@ -453,7 +473,18 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             const h = hourOf(e.time);
             if (h < 0 || h > 24) return null;
             const isNext = e === nextEvent;
-            const col = e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            const col = e.kind === "crossing" ? "#c8a84a" : e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            // Crossings are ~20-minute PEAK moments — a small diamond above the
+            // surface, distinct from the round aspect/ingress dots on it.
+            if (e.kind === "crossing") {
+              const cx = x(h), cy = y(energyAt(h)) - 6;
+              return (
+                <g key={i} opacity={e.past ? 0.35 : 1}>
+                  <rect x={cx - 2.6} y={cy - 2.6} width={5.2} height={5.2} transform={`rotate(45 ${cx} ${cy})`}
+                    fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.2" />
+                </g>
+              );
+            }
             return (
               <g key={i} opacity={e.past ? 0.35 : 1}>
                 <circle cx={x(h)} cy={y(energyAt(h))} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
@@ -466,7 +497,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             const h = hourOf(nextEvent.time);
             if (h < 0 || h > 24) return null;
             const ex = x(h), ey = y(energyAt(h));
-            const glyph = nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
+            const glyph = nextEvent.kind === "crossing" ? "◆" : nextEvent.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[nextEvent.aspect] ?? "·");
             const label = `${glyph} ${nextEvent.label} · ${nextEvent.clock}`;
             const wEst = label.length * 4.6 + 14;
             const bx = Math.max(4, Math.min(W - wEst - 4, ex - wEst / 2));
@@ -577,6 +608,55 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             {h === 0 || h === 24 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
           </text>
         ))}
+
+        {/* ── Hover inspector — a scrub line + a read-out of what's shaping the
+            water at the pointer: level, character, and the nearest sky event. ── */}
+        {hoverH != null && style !== "bars" && (() => {
+          const eH = energyAt(hoverH);
+          const px = x(hoverH), py = y(eH);
+          const seg = segByHour(hoverH);
+          const charLabel = seg?.characterLabel ?? "—";
+          const inVoc = (arc.vocWindows ?? []).some((v: any) => hoverH >= hourOf(v.start) && hoverH < hourOf(v.end));
+          const floor = arc.height ?? 0.3;
+          // What's driving the charge here: every aspect still within its swell
+          // (σ≈3.6h), ranked by how much it's lifting the tide *right now*.
+          const SIGMA = 3.6;
+          const drivers = (arc.events ?? [])
+            .filter((ev: any) => ev.kind === "aspect")
+            .map((ev: any) => {
+              const dh = hourOf(ev.time) - hoverH;
+              const env = Math.exp(-0.5 * (dh / SIGMA) ** 2);
+              return { ev, contrib: (ev.weight ?? 0) * env };
+            })
+            .filter((d: any) => d.contrib > 0.004)
+            .sort((a: any, b: any) => b.contrib - a.contrib)
+            .slice(0, 2);
+          const aboveFloor = eH - floor;
+          const floorLine = Math.abs(aboveFloor) < 0.02 ? "at the day's still-water floor"
+            : `${Math.round(Math.abs(aboveFloor) * 100)}% ${aboveFloor > 0 ? "above" : "below"} the floor`;
+          const driverLines: string[] = inVoc ? ["slack water · void of course"]
+            : drivers.map((d: any) => `${d.ev.label} · ${d.ev.charge === "high" ? "strong charge" : "barely lifts"}`);
+          const lines = [`${charLabel} water · ${floorLine}`, ...driverLines];
+          const boxW = Math.max(128, ...lines.map(l => l.length * 5.0 + 20));
+          const flip = px > W - boxW - 12;
+          const bx = flip ? px - boxW - 8 : px + 8;
+          const tc = dark ? "#e8ecf4" : "#f4f6fb";
+          const boxH = 22 + lines.length * 12;
+          return (
+            <g pointerEvents="none">
+              <line x1={px} y1={WATER_TOP - 8} x2={px} y2={H - PAD_B} stroke={dark ? "rgba(220,228,245,0.5)" : "rgba(40,50,70,0.4)"} strokeWidth="1" strokeDasharray="3 3" />
+              <circle cx={px} cy={py} r="3.6" fill={dark ? "#0d1120" : "#fff"} stroke={dark ? "#c9d4ee" : "#2a3a52"} strokeWidth="1.6" />
+              <rect x={bx} y={WATER_TOP - 6} width={boxW} height={boxH} rx="6" fill={dark ? "rgba(16,20,30,0.94)" : "rgba(26,34,52,0.94)"} />
+              <text x={bx + 9} y={WATER_TOP + 8} fontSize="9.5" fontWeight="700" fill={tc}>
+                {clockAt(dayStartMs, hoverH)} · charge {Math.round(eH * 100)}%
+              </text>
+              {lines.map((l, li) => (
+                <text key={li} x={bx + 9} y={WATER_TOP + 21 + li * 12} fontSize="8.5"
+                  fill={li > 0 && inVoc ? "#c8b06a" : (dark ? "#aeb8cc" : "#c2ccde")}>{l}</text>
+              ))}
+            </g>
+          );
+        })()}
       </svg>}
 
       {timeframe !== "day" && (
@@ -603,7 +683,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             {upcoming.map((e: any, i: number) => (
               <div key={i} style={{ fontSize: 10, color: labelCol, display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ color: "#aaa" }}>{e.clock}</span>
-                <span>{e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·")}</span>
+                <span>{e.kind === "crossing" ? "◆" : e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·")}</span>
                 <span>{e.label}</span>
               </div>
             ))}

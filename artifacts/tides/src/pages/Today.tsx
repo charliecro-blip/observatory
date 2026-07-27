@@ -1,23 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
+import { logEvent } from "@/lib/analytics";
+import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
 import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
-import { usePreferences, useTimeFormat } from "@/contexts/preferences-context";
+import { usePreferences, useTimeFormat, useAstroDetail, useUiDensity } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
-import { TideCardModal } from "@/components/TideCard";
+import { Studio } from "@/components/Studio";
+import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
+import WovenReading from "@/components/WovenReading";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 
 const PLANET_COLORS: Record<string, string> = {
@@ -34,6 +38,18 @@ const PLANET_SIGNIFICATION: Record<string, string> = {
   Sun: "visibility · leadership · vitality · clarity",
   Mercury: "communication · ideas · movement · craft",
   Uranus: "disruption · surprise · liberation · shake-up",
+};
+
+// A planet crossing a chart angle is a ~20-min peak for that planet's kind of
+// action — so we name the schedulable thing it favors (Mars → training).
+const CROSSING_ACTIVITY: Record<string, string> = {
+  Mars: "a hard workout or a decisive push",
+  Venus: "a date, a connection, or making something beautiful",
+  Mercury: "writing, calls, errands, a quick pitch",
+  Sun: "being seen — present, lead, put yourself forward",
+  Jupiter: "the big ask, teaching, or reaching wider",
+  Saturn: "focused, structural work — the unglamorous right thing",
+  Moon: "rest, home, food, tending someone",
 };
 
 
@@ -130,7 +146,7 @@ const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, now, northStars }: {
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, electionContext, now, northStars }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -139,6 +155,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   weekSummary: string;
   onAddTask: (title: string) => void;
   seedMessage?: string | null;
+  // When opened from Auspice's election picker: the activity + real candidate
+  // windows + the user's note. Rides into /api/advise as given facts.
+  electionContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
   now?: any;
   northStars?: any[] | null;
 }) {
@@ -178,9 +197,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           "Content-Type": "application/json",
           ...(testerId ? { "x-tester-id": testerId } : {}),
         },
-        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary }),
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary, ...(electionContext ? { electionContext } : {}) }),
       });
 
+      if (!res.ok) throw new Error(`advise ${res.status}`);
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
@@ -199,19 +219,28 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
+            // The backend emits {error} on a model/key failure; the stream
+            // still closes cleanly, so we must surface it — otherwise Ask
+            // silently shows nothing (empty spinner, no answer, no error).
+            if (parsed.error) throw new Error(String(parsed.error));
             if (parsed.delta) {
               accumulated += parsed.delta;
               setStreamBuffer(accumulated);
             }
-          } catch { /* skip malformed */ }
+          } catch (e) {
+            if (e instanceof Error && e.message && !/JSON|Unexpected/.test(e.message)) throw e;
+            /* else: skip a malformed SSE chunk */
+          }
         }
       }
 
       if (accumulated) {
         setHistory(h => [...h, { role: "assistant", content: accumulated }]);
+      } else {
+        setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
       }
     } catch {
-      setHistory(h => [...h, { role: "assistant", content: "Something went wrong. Try again." }]);
+      setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
     } finally {
       setStreaming(false);
       setStreamBuffer("");
@@ -258,7 +287,11 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           padding: "16px 20px 14px", borderBottom: "1px solid var(--color-border)", flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>🧭 Compass</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 6 }}>
+              ✦ Ask
+              {/* Sub-brand tag (brand kit): Ask signs in Meridian small-caps. */}
+              <span style={{ fontSize: 8.5, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
+            </div>
             <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -473,13 +506,19 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, onVisitPlanet }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onVisitPlanet, onOpenStar }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
+  onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
+  askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
   onVisitPlanet?: (planet: string) => void;
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
+  const astro = useAstroDetail();
+  // Essential density (default): the core journey only — the tide, today's
+  // plan, your aims, the ritual loop. The instrument add-ons are one tap away.
+  const { essential, setDensity } = useUiDensity();
   const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
   const today = new Date().toISOString().slice(0, 10);
@@ -609,7 +648,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: northStars } = useNorthStars(testerId);
 
-  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; }
+  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
@@ -640,7 +679,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         body: JSON.stringify({ title, dueDate: today }),
       });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
+    onSuccess: () => { logEvent("task_add", { from: "waves" }); qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
   });
 
   const gcalEvents = (gcalData?.events ?? []).map(e => ({ title: e.title, start: e.start, end: e.end, allDay: e.allDay }));
@@ -668,15 +707,63 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // (e.g. Jupiter AND Pluto both at an angle) was silently concealed behind it.
   const todayData = week?.days?.find(d => d.date === today);
   const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
+  // A chart angle sweeps the ecliptic at ~14°/hr (the ~15°/hr diurnal rate,
+  // minus the Moon's own ~0.5°/hr drift), so a 3° orb is ~13 minutes either
+  // side of exact — the window an angle crossing is genuinely "active" for.
+  // Owner: give any crossing a 3° orb and treat it as live, not past.
+  const CROSS_DEG_PER_MIN = 14 / 60;      // ≈0.233°/min
+  const CROSS_ORB_DEG = 3;
+  const CROSS_WINDOW_MIN = CROSS_ORB_DEG / CROSS_DEG_PER_MIN; // ≈12.9 min
   const activeCrossings = (todayData?.crossings ?? [])
     .map(c => {
       if (!c.time) return null;
       const [ch, cm] = c.time.split(":").map(Number);
       const crossMin = ch * 60 + (cm ?? 0);
-      return { c, diff: crossMin - nowMinutesForCross };
+      const diff = crossMin - nowMinutesForCross;
+      return { c, diff, orbDeg: Math.abs(diff) * CROSS_DEG_PER_MIN };
     })
-    .filter((x): x is { c: Crossing; diff: number } => x !== null && x.diff >= -15 && x.diff <= 15)
+    .filter((x): x is { c: Crossing; diff: number; orbDeg: number } => x !== null && Math.abs(x.diff) <= CROSS_WINDOW_MIN)
     .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+
+  // An active crossing is a peak moment — it rides at the very TOP of the page
+  // (owner: "when that's active, this banner should come to the top of the
+  // screen"), and reads as live, not "N min ago".
+  const crossingBanner = crossingsOn && activeCrossings.length > 0 ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {activeCrossings.map(({ c: cr, diff, orbDeg }, i) => {
+        const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
+        const sig = PLANET_SIGNIFICATION[cr.planet];
+        const isBenefic = ["Venus", "Jupiter", "Sun"].includes(cr.planet);
+        const whenLabel = Math.abs(diff) < 2 ? "peaking now"
+          : diff < 0 ? `exact ${Math.round(-diff)}m ago · ${orbDeg.toFixed(1)}° orb`
+          : `exact in ${Math.round(diff)}m · ${orbDeg.toFixed(1)}° orb`;
+        return (
+          <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
+            background: `${pCol}14`, border: `1px solid ${pCol}55`, borderLeft: `3px solid ${pCol}`,
+            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <span className="phrase-in" style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
+                {cr.planet} crosses {cr.angle} · active now
+              </div>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                {cr.time} · {whenLabel}{sig ? ` — ${sig}` : ""}
+              </div>
+              {CROSSING_ACTIVITY[cr.planet] && (
+                <div style={{ fontSize: 10, color: pCol, marginTop: 3, fontWeight: 500 }}>
+                  ◷ A ~20-min window for {CROSSING_ACTIVITY[cr.planet]}.
+                </div>
+              )}
+            </div>
+            <div style={{ fontSize: 8, background: `${pCol}22`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
+              ● {isBenefic ? "↑" : ""} {cr.angle}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
 
   // Ritual mode — Today reads the clock. Morning opens the day's loop,
   // evening closes it; midday the page is its usual self.
@@ -744,27 +831,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* One vocabulary, not two: the chip speaks tide (character × level)
-              instead of the legacy good/workable favorability labels, which
-              contradicted the coherence model (and carried a fire/air bias). */}
-          <Tooltip content={
-            <div>
-              <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>
-                {now?.tide ? `${now.tide.characterLabel} tide — ${now.tide.levelLabel.toLowerCase()}` : `An ${el} day`}
-              </div>
-              <div style={{ fontSize: 10, color: "#b0aaa4" }}>
-                The Moon in {now?.moonSign} sets the day's character ({el}); the level is how charged the water is and which way it's moving.
-                {/* One state at a time — listing "rising: X, ebbing: Y" here read
-                    as the tide being both at once. */}
-                {now?.tide?.trend === "rising" ? " Rising — lean in."
-                  : now?.tide?.trend === "ebbing" ? " Ebbing — finish and rest."
-                  : " Steady — work as usual."}
-              </div>
-            </div>
-          }>
-            <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40`, cursor: "help" }}>
-              {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
-            </div>
-          </Tooltip>
+              instead of the legacy good/workable favorability labels. The hover
+              tooltip was removed (owner 2026-07-21) — it overflowed off-screen
+              in the top-right corner and the chip reads clearly on its own. */}
+          <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40` }}>
+            {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
+          </div>
           {/* Crossings on/off moved to Settings → Today page — the topbar
               stays for status (location), not tuning knobs. */}
           {!hasSavedLocation(testerProfile) && (
@@ -792,6 +864,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           gcalEvents={gcalEvents}
           weekSummary={weekSummary}
           seedMessage={advisorSeed}
+          electionContext={askContext}
           now={now}
           northStars={northStars}
           onAddTask={title => {
@@ -802,7 +875,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         />
       )}
 
-      {showTideCard && now && <TideCardModal now={now} week={week} northStars={northStars ?? []} testerId={testerId} onClose={() => setShowTideCard(false)} />}
+      {/* The Studio replaced the old share-card modal (owner 2026-07-15):
+          IG-shareable day/week/lunation cards, primary sky facts only. */}
+      {showTideCard && now && <Studio now={now} lat={lat} lon={lon} onClose={() => setShowTideCard(false)} />}
 
       <div style={{
         flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14,
@@ -817,6 +892,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               : undefined,                                              // midday — plain light
       }}>
 
+        {/* Active angle crossing(s) ride at the very top — a peak moment the
+            day is passing through right now, above even the ritual card. */}
+        {crossingBanner}
+
         {/* The ritual anchor — morning "Cast off" / evening "Log the day".
             First thing on the page during ritual hours, absent midday. */}
         {ritualMode && now && (
@@ -829,9 +908,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             gcalEvents={gcalEvents}
             testerId={testerId}
             displayName={testerProfile?.displayName}
+            onOpenStar={onOpenStar}
+            lat={lat} lon={lon}
           />
         )}
         {ritualMode === "evening" && reflectBlock}
+
+        {/* Review moments — Sundays (the week in the wake) and the New Moon
+            window (cycle review + next intention). Self-gating; absent
+            otherwise. ?review=week|cycle forces either for design work. */}
+        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} />
+
+        {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
+            pushes. Self-gating — hidden once enabled, dismissed, or blocked. */}
+        <NotificationOptIn lat={lat} lon={lon} />
 
         {/* First-star hint — for users with no Guiding Stars yet, routing them
             to the app's strongest moment. Takes priority over the premium
@@ -854,7 +944,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Deeper-currents discovery banner — dismissible, shown once until closed.
             Not part of onboarding (kept lean); this is the low-key invitation to
             explore premium features once someone's had a moment with the core loop. */}
-        {(!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
+        {!essential && (!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
@@ -896,7 +986,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const energyPct = Math.round((tide?.energy ?? 0.5) * 100);
 
           return (
-            <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            // flexShrink 0: this is the page's only overflow-hidden card, so
+            // inside the fixed-height flex column it absorbed ALL the flex
+            // shrinkage and collapsed to its 2px borders (invisible hero).
+            <div style={{ borderRadius: 14, overflow: "hidden", flexShrink: 0, border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               {/* Tide banner */}
               <div style={{ background: `linear-gradient(135deg, ${elColor}, ${elColor}cc)`, padding: "24px 28px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -921,13 +1014,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     </div>
                   </div>
                 </div>
-                {/* Tide curve */}
+                {/* Tide curve — ONE swell: low → high → low, so the shape agrees
+                    with the labels (the old two-hump path peaked over RISING/EBB
+                    and dipped at HIGH). The marker's y comes from the same curve
+                    function, so it always sits on the line. */}
                 <div style={{ marginTop: 20, position: "relative", height: 30 }}>
-                  <svg viewBox="0 0 300 22" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
-                    <path d="M0,20 C40,20 55,4 75,4 C110,4 105,20 150,20 C195,20 190,4 225,4 C245,4 260,20 300,20"
-                      fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
-                    <circle cx={curvePos * 300} cy={curvePos < 0.5 ? (curvePos < 0.2 ? 20 : 4) : (curvePos > 0.6 ? 12 : 4)} r="4.5" fill="#fff" />
-                  </svg>
+                  {(() => {
+                    const yAt = (x: number) => 20 - 16 * Math.sin(Math.PI * x / 300);
+                    const pts = Array.from({ length: 31 }, (_, i) => `${i * 10},${yAt(i * 10).toFixed(1)}`).join(" L");
+                    return (
+                      <svg viewBox="0 0 300 24" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
+                        <path d={`M${pts}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                        <circle cx={curvePos * 300} cy={yAt(curvePos * 300)} r="4.5" fill="#fff" />
+                      </svg>
+                    );
+                  })()}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 3, letterSpacing: "0.6px" }}>
                     <span>LOW</span><span>RISING</span><span>HIGH</span><span>EBB</span><span>LOW</span>
                   </div>
@@ -942,6 +1043,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 {confNote && (
                   <div style={{ fontSize: 11, color: "#907040", fontStyle: "italic", marginBottom: 12 }}>{confNote}</div>
                 )}
+
+                {/* The woven reading — the synthesis engine's judgment of the
+                    moment, gated by astro-detail (minimal = one sentence + one
+                    watch; full = the testimony table). */}
+                <WovenReading reading={now?.reading} level={astro.level} accent={elColor} />
+
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4 }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
@@ -963,15 +1070,24 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   )}
                 </div>
 
-                {/* Personal modifier line — the moat, shown when a hard transit is active */}
-                {tide?.personal && (now?.personalTransits?.length ?? 0) > 0 && (
-                  <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
-                    <span style={{ fontSize: 10.5, color: "#8a4040" }}>
-                      World tide is {levelLabel.toLowerCase()}, but yours is choppy — {now!.personalTransits![0].summary}
-                    </span>
-                  </div>
-                )}
+                {/* Personal modifier line — the moat, shown when a hard transit is
+                    active. Day-scale movers only: a Pluto/Neptune/Uranus transit is
+                    a months-long chapter and doesn't belong on a single day's card
+                    (owner 2026-07-23) — those live in Currents. */}
+                {(() => {
+                  if (!tide?.personal) return null;
+                  const LONG_CYCLE = new Set(["Uranus", "Neptune", "Pluto"]);
+                  const dayScale = (now?.personalTransits ?? []).find((t: any) => !LONG_CYCLE.has(t.transitPlanet));
+                  if (!dayScale) return null;
+                  return (
+                    <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
+                      <span style={{ fontSize: 10.5, color: "#8a4040" }}>
+                        World tide is {levelLabel.toLowerCase()}, but yours is choppy — {dayScale.summary}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
@@ -983,6 +1099,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             flavor in feeling-language and offer the door into Star Base. The
             sky schedules the lesson; we just point at it. */}
         {(() => {
+          if (essential) return null; // add-on: education layer waits for the expanded panel
           if (!now?.moonAspects?.length) return null;
           const HARD = new Set(["conjunction", "square", "opposition"]);
           // Slow/social planets carry the distinct, learnable flavors; skip
@@ -1027,17 +1144,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           );
         })()}
 
-        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} />}
+        {now && <Dashboard now={now} week={week} northStars={northStars} windows={windows} testerId={testerId} today={today} onNavigate={onNavigate} lat={lat} lon={lon} essential={essential} />}
 
-        {/* The month's water — the Almanac's 30-day view, tappable per day */}
-        {todayShow14Day && <MonthBars testerId={testerId} lat={lat} lon={lon} today={today} />}
+        {/* The month's water (30-day view) was removed from Today (owner
+            2026-07-15): the day view stays about today; the month lives in the
+            Calendar/Almanac. MonthBars is still defined for that surface. */}
 
-        {/* Your rhythm today — body cycles read against the sky's (rhythm as
-            the app's foundation: chronotype↔solar, menstrual↔lunar). */}
-        {now && <RhythmCard now={now} />}
+        {/* (RhythmCard removed from Today — owner 2026-07-23 "not sure why
+            'your rhythm today' is there." The rhythm framing lives in
+            Settings/chronotype + the cycle banner below, which stays because
+            it's personal and self-gating.) */}
 
-        {/* The big sky — the moment's defining aspects, explored */}
-        {now && <BigSky now={now} />}
+        {/* The big sky — the moment's defining aspects, explored. Full detail
+            only: at minimal/medium this planet-to-planet aspect read-out is
+            exactly the jargon we're hiding. */}
+        {!essential && now && astro.aspects && <BigSky now={now} />}
 
         {/* (North Stars card absorbed into the dashboard's Guiding stars card —
             it duplicated the same list right below it.) */}
@@ -1046,23 +1167,22 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             (glance → act → check off) closes without a trip into Helm.
             During ritual hours the RitualCard carries the habit chips, so
             this card stands down to keep the page lean. */}
-        {testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
+        {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
 
         {/* The tide — one coherent chart for the whole day */}
-        {now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
+        {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
         {/* Module recommendations — "what fits right now" moved up near the tide
             chart, since it was previously the very last thing on the page. */}
-        {now && <ModulePulse now={now} onNavigate={onNavigate} />}
+        {!essential && now && <ModulePulse now={now} onNavigate={onNavigate} />}
 
         {/* Standing conditions */}
-        {now && <ConditionsStrip now={now} today={today} />}
+        {!essential && now && <ConditionsStrip now={now} today={today} />}
 
-        {/* Logbook — the reflect loop, in its usual quiet spot midday only:
-            evenings it rides up under "Log the day", and mornings it stands
-            down entirely ("how did today feel?" is a nonsense question at 8am
-            — the morning card asks about yesterday instead). */}
-        {ritualMode === null && reflectBlock}
+        {/* Logbook — evenings ONLY (owner 2026-07-23): "how did today feel?"
+            belongs to the day's close. It renders under "Log the day" during
+            evening ritual hours (see reflectBlock above); midday and morning
+            it stands down entirely. */}
 
         {/* VOC banner */}
         {todayShowVOC && now?.voc?.isVOC && (
@@ -1135,40 +1255,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           </div>
         )}
 
-        {/* Angle crossing alerts — one per active crossing, so simultaneous crossings
-            (e.g. Jupiter and Pluto both at an angle) don't hide each other. */}
-        {crossingsOn && activeCrossings.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {activeCrossings.map(({ c: cr, diff }, i) => {
-              const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
-              const sig = PLANET_SIGNIFICATION[cr.planet];
-              const isBenefic = ["Venus","Jupiter","Sun"].includes(cr.planet);
-              const whenLabel = Math.abs(diff) < 2 ? "now"
-                : diff < 0 ? `${Math.round(-diff)} min ago`
-                : `in ${Math.round(diff)} min`;
-              return (
-                <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
-                  background: `${pCol}10`, border: `1px solid ${pCol}40`, borderLeft: `3px solid ${pCol}`,
-                  borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
-                      {cr.planet} crosses {cr.angle} · {cr.time} ({whenLabel})
-                    </div>
-                    {sig && (
-                      <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{sig}</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 8, background: `${pCol}20`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
-                    {isBenefic ? "↑" : "—"} {cr.angle}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         {/* Waves — flat unified list: practices + tasks + goals */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
           <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1193,6 +1279,42 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <WaveRow key={`g-${g.id}`} type="goal" label={g.title}
                 sub={g.horizon} />
             ))}
+            {/* Moments ahead — the planetary hours coming up, matched to the
+                task or star that runs on that planet (owner 2026-07-23: "the
+                sun hour ahead could relate to a to do or task or goal"). Tasks
+                and stars carry an auto-diagnosed ruling planet; when an
+                upcoming hour's ruler matches, that hour IS the moment. */}
+            {(() => {
+              const openTasks = todayTasks.filter(t => t.done !== "true");
+              const moments = (now?.upcomingHours ?? []).map((h: any) => {
+                const task = openTasks.find(t => t.planet === h.planet);
+                const star = (northStars ?? []).find((g: any) => g.planet === h.planet && g.status !== "done");
+                return { ...h, task, star };
+              }).filter((m: any) => m.task || m.star).slice(0, 3);
+              // Nothing matched: still name the next hour's opening, generically.
+              const next = (now?.upcomingHours ?? [])[0];
+              const generic = !moments.length && next && PLANET_ACTIVITIES[next.planet]?.length
+                ? [{ ...next, generic: PLANET_ACTIVITIES[next.planet][0] }] : [];
+              const rows = moments.length ? moments : generic;
+              if (!rows.length) return null;
+              return (
+                <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
+                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 5 }}>
+                    moments ahead
+                  </div>
+                  {rows.map((m: any, i: number) => (
+                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
+                      <span style={{ color: "#998a76", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
+                      <span style={{ color: "var(--color-foreground)" }}>
+                        {m.planet} hour — {m.task ? <>a window for “<b>{m.task.title}</b>”</>
+                          : m.star ? <>moves “<b>{m.star.title}</b>”</>
+                          : <>{m.generic}</>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             {/* Add task */}
             <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
               {showAddTask ? (
@@ -1214,11 +1336,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           </div>
         </div>
 
-        {/* Elemental balance */}
-        {habits.length > 0 && <ElementalBalance habits={habits} tasks={todayTasks} />}
+        {/* (ElementalBalance + PlanetaryPulse removed from Today — owner
+            2026-07-23. Pulse's "active sky emphasis" reads belong with the
+            planet surfaces; balance was habit-bookkeeping on the wrong page.) */}
 
-        {/* Planetary pulse */}
-        {now && <PlanetaryPulse now={now} />}
+        {/* The density toggle — the add-ons are one tap away, and the tap
+            persists. This is the whole "core by default, add-ons available"
+            contract (owner 2026-07-23). */}
+        <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
+          alignSelf: "center", margin: "6px 0 10px", padding: "7px 18px", borderRadius: 18,
+          border: "1px solid var(--color-border)", background: "var(--color-card)",
+          fontSize: 11, color: "#8a8278", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0,
+        }}>
+          {essential ? "Show the full instrument panel ↓" : "Simplify to the essentials ↑"}
+        </button>
 
       </div>
     </div>
@@ -1288,17 +1419,33 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
 // actually changes your week. They collapse to one muted line at the bottom.
 const FAST_RETRO = new Set(["Mercury", "Venus", "Mars"]);
 
+// The slow sky as an era: each outer planet's sign is a years-long backdrop
+// worth naming even when it isn't retrograde (owner 2026-07-23 — "standing
+// conditions should be fleshed out").
+const ERA_GLOSS: Record<string, string> = {
+  Saturn:  "where the work is structural",
+  Uranus:  "where the old pattern breaks",
+  Neptune: "where the dream dissolves and re-forms",
+  Pluto:   "where power is being renegotiated",
+};
+
 function ConditionsStrip({ now, today }: { now: any; today: string }) {
   const retros: string[] = now?.retrogrades ?? [];
   const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
-  const slowRetros = retros.filter((p) => !FAST_RETRO.has(p));
   const ecl = activeEclipse(today, 5);
   // Planet-planet aspects moved OUT of this strip — they're the moment's
   // headline now (BigSky, up top), not a background condition. This strip is
-  // for the genuinely standing weather: retrogrades and eclipse windows.
+  // for the genuinely standing weather: retrogrades, eclipse windows, and the
+  // slow outer backdrop (the era lines).
   const signOf = (p: string) => (now?.planets ?? []).find((x: any) => x.planet === p)?.sign ?? "";
+  const eras = ["Saturn", "Uranus", "Neptune", "Pluto"]
+    .map((p) => ({ p, sign: signOf(p), rx: retros.includes(p) }))
+    .filter((e) => e.sign);
+  // The day's standing caution — the rough-edged planet's shadow, in plain
+  // language (from the synthesis engine's testimony, already de-jargoned).
+  const caution = (now?.reading?.testimonies ?? []).find((t: any) => t.source === "sectMalefic");
 
-  const hasAny = retros.length > 0 || ecl;
+  const hasAny = retros.length > 0 || ecl || eras.length > 0 || caution;
   if (!hasAny) return null;
 
   return (
@@ -1328,9 +1475,18 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
             </div>
           </div>
         ))}
-        {slowRetros.length > 0 && (
-          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.5 }}>
-            background · {slowRetros.map((p) => `${p} ℞${signOf(p) ? ` in ${signOf(p)}` : ""}`).join(" · ")} — slow inner revisions, in effect for months
+        {caution && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0, color: "#907040" }}>◆</span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
+              <b style={{ color: "#8a6a30" }}>Today's edge</b> — {caution.note}
+            </div>
+          </div>
+        )}
+        {eras.length > 0 && (
+          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.6 }}>
+            the era · {eras.map((e) => `${e.p}${e.rx ? " ℞" : ""} in ${e.sign} — ${ERA_GLOSS[e.p]}`).join(" · ")}
+            <span style={{ color: "#c0b8ac" }}> · in effect for months to years</span>
           </div>
         )}
       </div>
@@ -1440,7 +1596,7 @@ const PLANET_COLORS_TL: Record<string,string> = {
 };
 
 const ASPECT_ICON: Record<string,string> = {
-  conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍",
+  conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎",
 };
 
 const EVENT_COLORS: Record<string,string> = {
@@ -1556,7 +1712,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
                 {ph && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <div style={{ fontSize: 9, color: pColor, fontWeight: 600 }}>{ph.ruler}</div>
-                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉" : "☽"}</div>
+                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉︎" : "☽︎"}</div>
                   </div>
                 )}
               </div>
@@ -1599,7 +1755,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
 const MODULE_META: Record<string, { label: string; icon: string; view: string }> = {
   health:        { label: "Health",        icon: "◎", view: "work" },
   creative:      { label: "Creative",      icon: "✦", view: "work" },
-  spiritual:     { label: "Spiritual",     icon: "☽", view: "work" },
+  spiritual:     { label: "Spiritual",     icon: "☽︎", view: "work" },
   home:          { label: "Home",          icon: "⌂", view: "work" },
   financial:     { label: "Financial",     icon: "◇", view: "work" },
   relationships: { label: "Relationships", icon: "◈", view: "work" },
@@ -1690,7 +1846,8 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
                 <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
-                <span style={{ fontSize: 8.5, color: "#c0b8ac", flexShrink: 0 }}>⟳ {idx + 1}/{n}</span>
+                {/* explicit invitation — the muted counter alone read as decoration */}
+                <span style={{ fontSize: 9, color: "#9a9088", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>
             </button>
           );
@@ -1841,7 +1998,7 @@ const STREAK_NUDGE = (streak: number) =>
   : streak >= 3 ? `day ${streak + 1} — momentum is real`
   : "small and daily beats big and rare";
 
-function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName }: {
+function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName, onOpenStar, lat, lon }: {
   mode: "morning" | "evening";
   now: any; week: any;
   todayTasks: { id: number; title: string; done: string }[];
@@ -1849,6 +2006,8 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
   testerId: string | null;
   displayName?: string;
+  onOpenStar?: (goalId: number) => void;
+  lat?: number; lon?: number;
 }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
@@ -1952,6 +2111,10 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           </div>
         )}
         {yRated && <div style={{ fontSize: 10, color: "#4a8060", marginBottom: 10 }}>✓ yesterday logged</div>}
+
+        {/* The morning glance: one row per Guiding Star — next move + today's
+            best window for its element; tap → that star's game plan. */}
+        <StarRows testerId={testerId} lat={lat} lon={lon} onOpenStar={onOpenStar} />
 
         {habitList.length > 0 && (
           <div style={{ marginBottom: 10 }}>
@@ -2061,6 +2224,10 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           {(tide?.level === "low" || tide?.level === "ebb") && " The tide was low — resting was reading the water right."}
         </div>
       )}
+
+      {/* The harvest: today's wins (auto + named) and the line in your own
+          words — this is the loop's evening half. */}
+      <EveningHarvest testerId={testerId} lat={lat} lon={lon} />
 
       <div style={{ fontSize: 10.5, color: "#999", paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
         Rate the day below — it lands in the Log, stamped with tonight's sky.
@@ -2182,16 +2349,16 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
 // ── PlanetaryPulse ─────────────────────────────────────────────────────────────
 
 const PLANET_THEMES: Record<string, { themes: string; icon: string; color: string }> = {
-  Sun:     { icon:"☉", color:"#c08020", themes:"visibility · authority · vitality · identity" },
-  Moon:    { icon:"☽", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
-  Mercury: { icon:"☿", color:"#608060", themes:"communication · writing · analysis · ideas" },
-  Venus:   { icon:"♀", color:"#c06090", themes:"connection · beauty · pleasure · values" },
-  Mars:    { icon:"♂", color:"#c04040", themes:"drive · action · courage · physical energy" },
-  Jupiter: { icon:"♃", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
-  Saturn:  { icon:"♄", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
-  Uranus:  { icon:"♅", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
-  Neptune: { icon:"♆", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
-  Pluto:   { icon:"♇", color:"#703060", themes:"transformation · depth · power · shadow" },
+  Sun:     { icon:"☉︎", color:"#c08020", themes:"visibility · authority · vitality · identity" },
+  Moon:    { icon:"☽︎", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
+  Mercury: { icon:"☿︎", color:"#608060", themes:"communication · writing · analysis · ideas" },
+  Venus:   { icon:"♀︎", color:"#c06090", themes:"connection · beauty · pleasure · values" },
+  Mars:    { icon:"♂︎", color:"#c04040", themes:"drive · action · courage · physical energy" },
+  Jupiter: { icon:"♃︎", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
+  Saturn:  { icon:"♄︎", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
+  Uranus:  { icon:"♅︎", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
+  Neptune: { icon:"♆︎", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
+  Pluto:   { icon:"♇︎", color:"#703060", themes:"transformation · depth · power · shadow" },
 };
 
 const ASPECT_STRENGTH: Record<string, number> = {
@@ -2947,7 +3114,7 @@ function TideChart({
 
         const WEEK_W = 700, WAVE_H2 = 100;
         const DAY_W = WEEK_W / 7;
-        const ASPECT_GLYPHS: Record<string, string> = { conjunction:"☌", opposition:"☍", trine:"△", square:"□", sextile:"⚹" };
+        const ASPECT_GLYPHS: Record<string, string> = { conjunction:"☌︎", opposition:"☍︎", trine:"△", square:"□", sextile:"⚹" };
         const MOON_PHASE_GLYPHS: Record<string, string> = {
           new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
           full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
@@ -3180,7 +3347,7 @@ const MOON_GLYPHS: Record<string, string> = {
   new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
   full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
 };
-const ASP_SYM: Record<string, string> = { conjunction:"☌", trine:"△", sextile:"⚹", square:"□", opposition:"☍" };
+const ASP_SYM: Record<string, string> = { conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎" };
 const ASP_COLOR: Record<string, string> = { trine:"#60a060", sextile:"#6090d0", conjunction:"#f0b060", square:"#e06060", opposition:"#e06060" };
 
 const ASP_MEANING_SHORT: Record<string, string> = {

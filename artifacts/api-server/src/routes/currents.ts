@@ -39,7 +39,7 @@ router.get("/currents", async (req, res) => {
     const transitsByHouse = computeTransitsByHouse(now, cusps);
 
     const transitAspects = computeTransitAspects(natal);
-    const SLOW_PLANETS = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
+    const SLOW_PLANETS = new Set(["Jupiter", "Saturn", "Chiron", "Uranus", "Neptune", "Pluto"]);
     const HARD_ASPECTS = new Set(["Conjunction", "Square", "Opposition"]);
 
     // Major transits — significant aspects the slow (chapter-defining) planets are

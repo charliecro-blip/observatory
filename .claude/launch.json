@@ -8,6 +8,12 @@
       "port": 5174
     },
     {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
+      "port": 3000
+    },
+    {
       "name": "daemon",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "cd /Users/charlescross/Desktop/daemon && pnpm dev"],

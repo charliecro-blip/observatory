@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { logEvent } from "@/lib/analytics";
 import {
   TidesPreferences,
   NotificationPrefs,
@@ -6,6 +7,7 @@ import {
   TimingPrefs,
   loadPreferences,
   savePreferences,
+  astroReveal,
 } from "@/lib/preferences";
 
 interface PreferencesContextValue {
@@ -63,6 +65,30 @@ export function usePreferences() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("usePreferences outside PreferencesProvider");
   return ctx;
+}
+
+// How much astrology to show, and what that reveals — one hook every surface
+// reads so "minimal / medium / full" gates identically everywhere.
+export function useAstroDetail() {
+  const { prefs } = usePreferences();
+  const level = prefs.display.astroDetail ?? "full";
+  return { level, ...astroReveal(level) };
+}
+
+// How much is on screen — "essential" (the core journey: compass, plan, aims)
+// vs "expanded" (the full instrument panel). One hook so every surface gates
+// identically; `essential` reads as "hide the add-ons".
+export function useUiDensity() {
+  const { prefs, updateDisplay } = usePreferences();
+  const density = prefs.display.uiDensity ?? "essential";
+  return {
+    density,
+    essential: density === "essential",
+    setDensity: (d: "essential" | "expanded") => {
+      logEvent("density_toggle", { to: d }); // one hook = every toggle surface logged
+      updateDisplay({ uiDensity: d });
+    },
+  };
 }
 
 export function useTimeFormat() {

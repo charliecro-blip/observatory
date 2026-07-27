@@ -3,7 +3,7 @@
  * transit aspects, and health insights.
  */
 
-import { julianDay, getPlanetPositions, sunLongitude, moonLongitude } from "./astro.js";
+import { julianDay, getPlanetPositions, lunarNodes, getAsteroids, sunLongitude, moonLongitude } from "./astro.js";
 import { computeCusps, assignHouse, type HouseSystem } from "./houses.js";
 
 const DEG2RAD = Math.PI / 180;
@@ -158,6 +158,24 @@ export function computeNatalChart(
       houseNumber,
     };
   });
+
+  // Lunar nodes — the eclipse/karmic axis, a core natal placement (☊ / ☋).
+  const nodes = lunarNodes(jd);
+  for (const [name, n] of [["North Node", nodes.north], ["South Node", nodes.south]] as const) {
+    natalPlanets.push({
+      planet: name, sign: n.sign, degree: n.degree, retrograde: true,
+      longitude: n.longitude, houseNumber: assignHouse(n.longitude, cuspLongitudes),
+    });
+  }
+
+  // Asteroid goddesses — first-class natal placements now (Ceres/Pallas/Juno/
+  // Vesta): they get a house, land in the chart wheel, and can be aspected.
+  for (const a of getAsteroids(jd)) {
+    natalPlanets.push({
+      planet: a.planet, sign: a.sign, degree: a.degree, retrograde: a.retrograde,
+      longitude: a.longitude, houseNumber: assignHouse(a.longitude, cuspLongitudes),
+    });
+  }
 
   // Populate house planet lists
   for (const planet of natalPlanets) {

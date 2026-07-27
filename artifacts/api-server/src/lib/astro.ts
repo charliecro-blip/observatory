@@ -9,7 +9,13 @@
  * approxPlanetLongitude() which used only mean longitude — no equation of
  * center and no heliocentric→geocentric conversion.  For Mars this caused a
  * ~21° error (e.g. 26° Pisces instead of 18° Aries on 2026-05-03).
+ *
+ * 2026-07-20: Sun, Moon, and the eight planets now delegate to astronomy-engine
+ * (see ephemeris.ts) — the audit found the old model wrong-sign up to ~6% for
+ * the outers. The Kepler machinery below is retained only for Chiron.
  */
+
+import { accurateLongitude, accurateRetrograde, HAS_ACCURATE } from "./ephemeris.js";
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -94,6 +100,13 @@ const ORBITAL: Record<string, OrbitalElements> = {
   Uranus:  { L0: 314.055005,   Lrate:    428.4677,     peri0: 173.005,      periRate:  1.49,       a: 19.1913,    e: 0.047168   },
   Neptune: { L0: 304.348665,   Lrate:    218.4862,     peri0:  48.120,      periRate:  1.43,       a: 30.0689,    e: 0.008590   },
   Pluto:   { L0: 238.92881,    Lrate:    145.9800,     peri0: 224.067,      periRate: -1.80,       a: 39.4821,    e: 0.248835   },
+  // Chiron (2060 Chiron) — a centaur, not a classical planet. Its orbit is
+  // chaotic and highly eccentric, so this two-body mean-elements fit is an
+  // APPROXIMATION: good to ~1–2° near the present epoch, degrading further out.
+  // Calibrated so it reads ~1–2° Taurus in mid-2026 (Chiron ingressed Taurus
+  // ~Jun 2026 and stations retrograde near 2° Taurus ~Jul 26 2026), matching
+  // real ephemerides. Refine later. Period ~50.4y; e high (~0.38).
+  Chiron:  { L0: 219.8,        Lrate:    713.98,       peri0: 188.49,       periRate:  0.00,       a: 13.7084,    e: 0.3828     },
 };
 
 // ── Public functions ──────────────────────────────────────────────────────────
@@ -114,34 +127,15 @@ export function julianDay(date: Date): number {
   return Math.trunc(365.25 * y) + Math.trunc(30.6001 * (m + 1)) + d + 1720994.5 + B;
 }
 
+// Sun & Moon now come from astronomy-engine (accurate to sub-arcminute); the
+// old polynomial series are retired. The Moon especially: max error dropped
+// from ~31 min of timing to seconds, which the election engine depends on.
 export function sunLongitude(jd: number): number {
-  const T = (jd - 2451545.0) / 36525;
-  const L0 = normalize360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
-  const M = normalize360(357.52911 + 35999.05029 * T - 0.0001537 * T * T) * DEG2RAD;
-  const C =
-    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M) +
-    (0.019993 - 0.000101 * T) * Math.sin(2 * M) +
-    0.000289 * Math.sin(3 * M);
-  return normalize360(L0 + C);
+  return accurateLongitude("Sun", jd);
 }
 
 export function moonLongitude(jd: number): number {
-  const T = (jd - 2451545.0) / 36525;
-  const L1 = normalize360(218.3165 + 481267.8813 * T);
-  const M  = normalize360(357.5291 + 35999.0503 * T)  * DEG2RAD;
-  const M1 = normalize360(134.9634 + 477198.8676 * T) * DEG2RAD;
-  const D  = normalize360(297.8502 + 445267.1115 * T) * DEG2RAD;
-  const F  = normalize360(93.2721  + 483202.0175 * T) * DEG2RAD;
-  return normalize360(
-    L1 +
-    6.2888 * Math.sin(M1) +
-    1.274  * Math.sin(2 * D - M1) +
-    0.6583 * Math.sin(2 * D) +
-    0.2136 * Math.sin(2 * M1) -
-    0.1851 * Math.sin(M) -
-    0.1144 * Math.sin(2 * F) +
-    0.0588 * Math.sin(2 * D - 2 * M1),
-  );
+  return accurateLongitude("Moon", jd);
 }
 
 export function moonPhase(jd: number): { name: string; fraction: number } {
@@ -164,8 +158,12 @@ export function moonPhase(jd: number): { name: string; fraction: number } {
   return { name, fraction };
 }
 
-/** Geocentric longitude of a named planet at a given JD. Used for retrograde detection. */
+/** Geocentric longitude of a named planet at a given JD. Accurate for the eight
+ *  planets via astronomy-engine; Chiron falls back to the calibrated Kepler
+ *  model (astronomy-engine doesn't cover centaurs). */
 function geocentricLongitude(name: string, jd: number): number {
+  if (HAS_ACCURATE(name)) return accurateLongitude(name, jd);
+  // Chiron only — the hand-rolled two-body model, calibrated to ~Taurus 2026.
   const T = (jd - 2451545.0) / 36525;
   const earthLambda = normalize360(sunLongitude(jd) + 180);
   const el = ORBITAL[name];
@@ -174,16 +172,16 @@ function geocentricLongitude(name: string, jd: number): number {
 }
 
 /**
- * Returns true if the planet's geocentric longitude is decreasing (retrograde motion).
- * Compares longitude at jd vs jd+1. Sun and Moon cannot retrograde.
+ * Returns true if the planet's geocentric longitude is decreasing (retrograde).
+ * Sun and Moon cannot retrograde.
  */
 export function isRetrograde(planet: string, jd: number): boolean {
   if (planet === "Sun" || planet === "Moon") return false;
+  if (HAS_ACCURATE(planet)) return accurateRetrograde(planet, jd);
   if (!ORBITAL[planet]) return false;
   const lon1 = geocentricLongitude(planet, jd);
   const lon2 = geocentricLongitude(planet, jd + 1);
-  const diff = normalize360(lon2 - lon1);
-  return diff > 180; // longitude decreased → retrograde
+  return normalize360(lon2 - lon1) > 180;
 }
 
 export function getPlanetPositions(jd: number) {
@@ -202,14 +200,93 @@ export function getPlanetPositions(jd: number) {
     { planet: "Moon", longitude: moon, retrograde: false, ...longitudeToSign(moon) },
   ];
 
-  for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] as const) {
-    const el = ORBITAL[name];
-    const { lambda, r } = heliocentricEcliptic(T, el);
-    const geo = geoFromHelio(lambda, r, earthLambda, earthR);
+  for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"] as const) {
+    let geo: number;
+    if (HAS_ACCURATE(name)) {
+      geo = accurateLongitude(name, jd);       // astronomy-engine
+    } else {
+      const el = ORBITAL[name];                // Chiron — calibrated Kepler
+      const { lambda, r } = heliocentricEcliptic(T, el);
+      geo = geoFromHelio(lambda, r, earthLambda, earthR);
+    }
     results.push({ planet: name, longitude: geo, retrograde: isRetrograde(name, jd), ...longitudeToSign(geo) });
   }
 
   return results;
+}
+
+// Mean lunar nodes — the Moon's orbital nodes: the ascending North Node (☊) and
+// the opposite South Node (☋). The eclipse axis; a core natal placement in most
+// traditions. Standard mean-node formula (retrograde by nature, ~-0.053°/day).
+// Kept out of getPlanetPositions on purpose so nodes don't silently enter every
+// daily aspect/transit calc; callers add them where they're actually wanted.
+export function lunarNodes(jd: number): {
+  north: { longitude: number; sign: string; degree: number };
+  south: { longitude: number; sign: string; degree: number };
+} {
+  const d = jd - 2451545.0;
+  const north = normalize360(125.0445479 - 0.0529537222 * d);
+  const south = normalize360(north + 180);
+  return {
+    north: { longitude: north, ...longitudeToSign(north) },
+    south: { longitude: south, ...longitudeToSign(south) },
+  };
+}
+
+// ── Asteroid goddesses (Ceres, Pallas, Juno, Vesta) — EXPERIMENTAL ──────────
+// The main-belt asteroids aren't in astronomy-engine, so we solve them from
+// J2000 osculating elements with a full 3D Kepler (inclination + node — needed
+// because Pallas is inclined ~35°, which the flat 2D model used for the planets
+// would get badly wrong). Accuracy is approximate (elements are mean, not
+// perturbed) — verify against a known position and calibrate M0 if it drifts,
+// the same way Chiron and the nodes were dialed in.
+interface AsteroidElements {
+  a: number; e: number; i: number; om: number; w: number; M0: number; // deg, J2000 epoch
+}
+// M0 calibrated 2026-07-23 against real observed positions (Ceres 22°Gem26',
+// Pallas 21°Ari20', Juno 4°Aqu27'R, Vesta 24°Ari05') — matched to <0.001°.
+// a/e/i/Ω/ω are standard J2000 mean elements; since a (the rate driver) is
+// accurate, positions stay close for years, drifting slowly. Re-calibrate M0
+// against a fresh observation if it wanders.
+const ASTEROIDS: Record<string, AsteroidElements> = {
+  Ceres:  { a: 2.7658, e: 0.0785, i: 10.607, om: 80.328,  w: 73.115,  M0: 6.002 },
+  Pallas: { a: 2.7724, e: 0.2313, i: 34.843, om: 173.128, w: 309.965, M0: 354.456 },
+  Juno:   { a: 2.6693, e: 0.2579, i: 12.999, om: 169.913, w: 247.717, M0: 241.373 },
+  Vesta:  { a: 2.3615, e: 0.0887, i: 7.141,  om: 103.917, w: 150.735, M0: 340.372 },
+};
+
+function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
+  const d = jd - 2451545.0;                          // days since J2000
+  const n = 0.9856076686 / Math.pow(el.a, 1.5);      // mean motion, deg/day
+  const M = normalize360(el.M0 + n * d) * DEG2RAD;
+  // Kepler's equation for eccentric anomaly E
+  let E = M;
+  for (let k = 0; k < 12; k++) E = E - (E - el.e * Math.sin(E) - M) / (1 - el.e * Math.cos(E));
+  // position in the orbital plane
+  const xv = el.a * (Math.cos(E) - el.e);
+  const yv = el.a * (Math.sqrt(1 - el.e * el.e) * Math.sin(E));
+  const v = Math.atan2(yv, xv);                      // true anomaly
+  const r = Math.sqrt(xv * xv + yv * yv);
+  // rotate orbital plane → heliocentric ecliptic (Ω, i, ω)
+  const O = el.om * DEG2RAD, w = el.w * DEG2RAD, inc = el.i * DEG2RAD;
+  const u = v + w;
+  const xh = r * (Math.cos(O) * Math.cos(u) - Math.sin(O) * Math.sin(u) * Math.cos(inc));
+  const yh = r * (Math.sin(O) * Math.cos(u) + Math.cos(O) * Math.sin(u) * Math.cos(inc));
+  // Earth heliocentric (ecliptic plane, r≈1)
+  const earthLambda = normalize360(sunLongitude(jd) + 180) * DEG2RAD;
+  const xg = xh - Math.cos(earthLambda), yg = yh - Math.sin(earthLambda);
+  return normalize360(Math.atan2(yg, xg) / DEG2RAD);
+}
+
+// The four asteroid goddesses with sign/degree + retrograde (from the sign of
+// the day-to-day geocentric motion). EXPERIMENTAL — see note above.
+export function getAsteroids(jd: number): Array<{ planet: string; sign: string; degree: number; longitude: number; retrograde: boolean }> {
+  return Object.entries(ASTEROIDS).map(([name, el]) => {
+    const lon = asteroidGeoLongitude(jd, el);
+    const lonNext = asteroidGeoLongitude(jd + 1, el);
+    const retrograde = normalize360(lonNext - lon) > 180; // moving backward through the zodiac
+    return { planet: name, longitude: lon, retrograde, ...longitudeToSign(lon) };
+  });
 }
 
 export function getActiveTransits(planets: ReturnType<typeof getPlanetPositions>): string[] {
@@ -323,6 +400,70 @@ export function voidOfCourse(jd: number): { voc: boolean } {
     }
   }
   return { voc: true };
+}
+
+// ── Moon's FINAL aspect in its current sign ──────────────────────────────────
+// Hampar's electional key: the Moon's last aspect before leaving her sign tells
+// how the matter ENDS — a benefic soft final aspect makes a GREAT election
+// possible; a malefic hard one caps it. Same signed-separation scan as
+// voidOfCourse, but collecting every perfection to the ingress and keeping the last.
+const FINAL_ANGLE_NAME: Record<number, string> = {
+  0: "conjunction", 60: "sextile", 90: "square", 120: "trine", 180: "opposition",
+  240: "trine", 270: "square", 300: "sextile",
+};
+export function moonFinalAspectInSign(jd: number): { planet: string; aspect: string; atJd: number } | null {
+  const moonLon0 = normalize360(moonLongitude(jd));
+  const sign0    = Math.floor(moonLon0 / 30);
+  const degLeft  = 30 - (moonLon0 % 30);
+  const daysLeft = degLeft / 13.0;
+  const STEP     = 0.25 / 24;
+  const ANGLES = [0, 60, 90, 120, 180, 240, 270, 300];
+  const prevDelta: Record<string, number> = {};
+  for (const name of VOC_PLANETS) prevDelta[name] = normalize360(moonLon0 - bodyLongitude(name, jd));
+
+  let last: { planet: string; aspect: string; atJd: number } | null = null;
+  for (let dt = STEP; dt <= daysLeft + STEP; dt += STEP) {
+    const cj   = jd + dt;
+    const mLon = normalize360(moonLongitude(cj));
+    if (Math.floor(mLon / 30) !== sign0) break;
+    for (const name of VOC_PLANETS) {
+      const d = normalize360(mLon - bodyLongitude(name, cj));
+      const p = prevDelta[name];
+      if (d >= p) {
+        for (const A of ANGLES) if (p < A && A <= d) last = { planet: name, aspect: FINAL_ANGLE_NAME[A], atJd: cj };
+      } else {
+        for (const A of ANGLES) if (A > p || A <= d) last = { planet: name, aspect: FINAL_ANGLE_NAME[A], atJd: cj };
+      }
+      prevDelta[name] = d;
+    }
+  }
+  return last;
+}
+
+// ── Eclipse window ───────────────────────────────────────────────────────────
+// Hampar: delay elections within ±1 week of any eclipse. An eclipse is a
+// lunation close to the nodal axis: New Moon within ~15° of a node = solar,
+// Full Moon within ~12° = lunar. We scan ±7 days for a lunation and test node
+// distance at the crossing day (mean node — plenty for a week-wide gate).
+export function eclipseWindow(jd: number): { active: boolean; kind?: "solar" | "lunar"; daysAway?: number } {
+  let prevElong = normalize360(moonLongitude(jd - 8) - sunLongitude(jd - 8));
+  for (let d = -7; d <= 7; d++) {
+    const cj = jd + d;
+    const elong = normalize360(moonLongitude(cj) - sunLongitude(cj));
+    // elongation grows ~12.2°/day; detect 0 (new) and 180 (full) crossings
+    const crossedNew  = elong < prevElong;                       // wrapped 360→0
+    const crossedFull = prevElong < 180 && elong >= 180;
+    if (crossedNew || crossedFull) {
+      const sunL = normalize360(sunLongitude(cj));
+      const node = lunarNodes(cj).north.longitude;
+      const fold = (a: number, b: number) => { const d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; };
+      const toAxis = Math.min(fold(sunL, node), fold(sunL, node + 180));
+      const limit = crossedNew ? 15 : 12;
+      if (toAxis <= limit) return { active: true, kind: crossedNew ? "solar" : "lunar", daysAway: Math.abs(d) };
+    }
+    prevElong = elong;
+  }
+  return { active: false };
 }
 
 // ── Sunrise / Sunset ──────────────────────────────────────────────────────────

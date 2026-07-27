@@ -37,6 +37,11 @@ export const SPINE: SpineRung[] = [
     feel: "The tide on Today: the one word for what kind of day it is.",
   },
   {
+    key: "planetary-day", name: "The planetary day", period: "1 of 7 days", kind: "cycle",
+    line: "Each weekday has its own planetary ruler — Sun's day, Moon's day, Mars' day — cycling through the seven in Chaldean order.",
+    feel: "The rail's 'This day' instrument: whose day it is and what it's good for.",
+  },
+  {
     key: "planet-aspect", name: "Planetary aspects", period: "days to weeks", kind: "aspect",
     line: "Two planets meeting each other — the sky's weather fronts, holding for days rather than hours.",
     feel: "The Big Sky cards; the practitioner Chart's aspect lines.",
@@ -67,5 +72,5 @@ export const SPINE: SpineRung[] = [
 export const SPINE_INTRO =
   "Everything in the sky is a rhythm, and the rhythms nest inside each other — " +
   "the hour inside the day, the day inside the month, the month inside the year. " +
-  "Tides reads all of them at once and tells you where you are. Learn this ladder " +
+  "Compass reads all of them at once and tells you where you are. Learn this ladder " +
   "and the whole app makes sense: each reading is just one rung, spoken plainly.";

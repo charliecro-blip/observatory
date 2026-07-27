@@ -77,7 +77,7 @@ export function TideCard({ now }: { now: any }) {
         <rect width={W} height={H} rx="18" fill="url(#bg)" />
 
         {/* Header */}
-        <text x="40" y="52" fill="#c0b090" fontSize="14" fontWeight="700" letterSpacing="4" fontFamily="Georgia, serif">TIDES</text>
+        <text x="40" y="52" fill="#c0b090" fontSize="14" fontWeight="700" letterSpacing="4" fontFamily="Georgia, serif">COMPASS</text>
         <text x={W - 40} y="52" textAnchor="end" fill="#8a97a4" fontSize="13" fontFamily="Georgia, serif">{fmtDate()}</text>
 
         {/* Moon */}
@@ -193,7 +193,7 @@ export function WeeklyCard({ week, northStars, testerId }: { week: any; northSta
         </defs>
         <rect width="520" height="680" rx="18" fill="url(#wbg)" />
 
-        <text x="40" y="52" fill="#c0b090" fontSize="14" fontWeight="700" letterSpacing="4" fontFamily="Georgia, serif">TIDES</text>
+        <text x="40" y="52" fill="#c0b090" fontSize="14" fontWeight="700" letterSpacing="4" fontFamily="Georgia, serif">COMPASS</text>
         <text x="480" y="52" textAnchor="end" fill="#8a97a4" fontSize="13" fontFamily="Georgia, serif">{rangeLabel}</text>
 
         <text x="260" y="110" textAnchor="middle" fill="#e8e2d6" fontSize="26" fontWeight="700" fontFamily="Georgia, serif">The week's tides</text>

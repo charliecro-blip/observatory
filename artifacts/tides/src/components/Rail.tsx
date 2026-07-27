@@ -2,13 +2,20 @@ import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
-import { usePreferences } from "@/contexts/preferences-context";
+import { usePreferences, useAstroDetail } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
-import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
+import { CompassMark } from "@/components/CompassMark";
+import Glyph from "@/components/Glyph";
+
+// Rail planet glyph — the design-system glyph (Noto symbol face, optically
+// thinned), inheriting the surrounding span's color (tint=false) so the rail's
+// per-planet colouring is preserved. bg defaults to the rail surface.
+const PG = ({ p, size = 12, bg = "var(--color-rail)" }: { p: string; size?: number; bg?: string }) =>
+  <Glyph name={p} size={size} tint={false} bg={bg} />;
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -90,8 +97,21 @@ function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?:
 }
 
 const ASPECT_COLORS: Record<string, string> = {
-  "☌": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍": "#e06060",
+  "☌︎": "#f0b060", "□": "#e06060", "△": "#60a060", "⚹": "#6090d0", "☍︎": "#e06060",
 };
+
+// Order Moon aspects chronologically — the one that perfects soonest first —
+// so the rail reads in the order they actually happen. Applying aspects (still
+// closing) come first by time-to-exact; separating ones (already past) follow
+// by how far past. Fixes "Mercury listed before Venus even though Venus is
+// exact first."
+function aspectTimeKey(a: { applying?: boolean; hoursToExact?: number | null; orb: number }): number {
+  if (a.applying) return a.hoursToExact != null ? a.hoursToExact : a.orb;
+  return 1000 + a.orb;
+}
+function sortMoonAspects<T extends { applying?: boolean; hoursToExact?: number | null; orb: number }>(list: T[]): T[] {
+  return [...list].sort((x, y) => aspectTimeKey(x) - aspectTimeKey(y));
+}
 
 // Tap-to-cycle suggestion line — each tap turns up another way the same voice
 // could play out ("plan the expansion" → "say yes bigger" → …). The ⟳ n/m
@@ -189,16 +209,16 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "aspects") {
-      const asps = ((now as any).moonAspects ?? []) as any[];
+      const asps = sortMoonAspects(((now as any).moonAspects ?? []) as any[]);
       return <>
         <b>Moon aspects</b>
         {asps.length === 0 && <div style={{ marginTop: 3, color: "#8a8278" }}>None in orb right now — open water.</div>}
         {asps.slice(0, 4).map((a: any, i: number) => {
           const partner = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-          const glyph = { conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[a.aspect as string] ?? "·";
+          const glyph = { conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[a.aspect as string] ?? "·";
           return (
             <div key={i} style={{ marginTop: 3, color: "#8a8278" }}>
-              ☽ {glyph} {PLANET_ICONS[partner] ?? ""} <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
+              ☽ {glyph} <PG p={partner} /> <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
               <span style={{ color: "#aaa", marginLeft: 5 }}>
                 {a.applying && a.hoursToExact != null ? `exact in ~${Math.round(a.hoursToExact)}h` : !a.applying ? `${a.orb.toFixed(1)}° past` : `${a.orb.toFixed(1)}° orb`}
               </span>
@@ -227,18 +247,18 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         </button>
         {dayRuler && (
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
-            <span style={{ color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+            <span style={{ color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
             <span style={{ color: "#666" }}>day</span>
           </button>
         )}
         {((now as any).moonAspects ?? []).length > 0 && (
           <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", "#7080a0")}>
-            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌", sextile: "⚹", square: "□", trine: "△", opposition: "☍" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
+            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
             <span style={{ color: "#666" }}>{(now as any).moonAspects.length}</span>
           </button>
         )}
         <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
-          <span style={{ color: planetColor(planetaryHour.planet) }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ color: planetColor(planetaryHour.planet) }}><PG p={planetaryHour.planet} /></span>
           <span style={{ color: "#666" }}>hr</span>
         </button>
       </div>
@@ -282,11 +302,11 @@ const ARCHETYPE_QUALITY: Record<string, string> = {
 };
 
 const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: string }> = {
-  conjunction: { name:"Conjunction ☌", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
+  conjunction: { name:"Conjunction ☌︎", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
   trine:       { name:"Trine △", nature:"Harmonious", desc:"120° apart — energy flows easily and supportively between these planetary themes. A natural, gifting aspect." },
   sextile:     { name:"Sextile ⚹", nature:"Supportive", desc:"60° apart — a gentle, helpful connection. Opportunities and ease, though less effortless than a trine." },
   square:      { name:"Square □", nature:"Tension", desc:"90° apart — friction and challenge between these themes. Productive tension if channeled; frustration if resisted." },
-  opposition:  { name:"Opposition ☍", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
+  opposition:  { name:"Opposition ☍︎", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
 };
 
 const PLANET_MEANING: Record<string, string> = {
@@ -393,6 +413,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
+  const reveal = useAstroDetail();
   const { railSections } = prefs.display;
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
@@ -527,9 +548,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     }}>
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c8b89a" }} />
-          Tides
+        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 7 }}>
+          {/* The Compass mark (Claude Design brand kit 2026-07-22) — replaces the
+              placeholder bullet. Inherits ink; nudges to Meridian on hover. */}
+          <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
+          Compass
         </div>
         <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
           fontSize: 12, lineHeight: 1, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 2,
@@ -546,7 +569,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="season">Season</SectionHeader>
-          <SignChip glyph="☉" label={`${sunSign} season`} sign={sunSign} />
+          <SignChip glyph="☉︎" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
             return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
@@ -593,7 +616,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             </div>
           </div>
           <div style={{ marginTop: 6 }}>
-            <SignChip glyph="☽" label="Moon in" sign={moonSign} />
+            <SignChip glyph="☽︎" label="Moon in" sign={moonSign} />
           </div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
             {isVOC && (
@@ -645,9 +668,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
-          {now.moonAspects.slice(0, 5).map((a, i) => {
+          {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const sym = aspSym[a.aspect] ?? a.aspect;
             const col = aspColor[a.aspect] ?? "#888";
@@ -660,7 +683,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
                     <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
                     <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
-                    <span style={{ color:pCol, fontWeight:600 }}>{PLANET_ICONS[other] ?? other[0]}</span>
+                    <span style={{ color:pCol, fontWeight:600 }}><PG p={other} /></span>
                     <span style={{ color:"#555", fontSize:10 }}>{other}</span>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
@@ -706,7 +729,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           hour; a whole day has one keynote. */}
       {dayRuler && railSections.includes("hour") && !isOpen("day") && (
         <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
-          <span style={{ fontSize: 12, color: planetColor(dayRuler) }}>{PLANET_ICONS[dayRuler] ?? "○"}</span>
+          <span style={{ fontSize: 12, color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
           <span style={{ fontSize: 10, color: "#999" }}>{dayRuler}'s day</span>
         </GlyphRow>
       )}
@@ -715,7 +738,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <SectionHeader id="day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
-              {PLANET_ICONS[dayRuler] ?? "○"}
+              <PG p={dayRuler} />
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 12.5 }}>
@@ -742,7 +765,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Planetary Hour */}
       {railSections.includes("hour") && !isOpen("hour") && (
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
-          <span style={{ fontSize: 12, color: pColor }}>{PLANET_ICONS[planetaryHour.planet] ?? "○"}</span>
+          <span style={{ fontSize: 12, color: pColor }}><PG p={planetaryHour.planet} /></span>
           <span style={{ fontSize: 10, color: "#999" }}>{planetaryHour.planet}</span>
           <span style={{ fontSize: 9, color: "#bbb", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
         </GlyphRow>
@@ -757,7 +780,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               background: `${pColor}22`, color: pColor,
               outline: watchPlanets.includes(planetaryHour.planet) ? `2px solid ${pColor}` : "none",
             }}>
-              {PLANET_ICONS[planetaryHour.planet] ?? "○"}
+              <PG p={planetaryHour.planet} />
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 13 }}>
@@ -804,7 +827,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     }}
                   >
                     <span style={{ fontSize: 11, color: hCol, width: 14, textAlign: "center", flexShrink: 0 }}>
-                      {PLANET_ICONS[h.planet] ?? "○"}
+                      <PG p={h.planet} />
                     </span>
                     <span style={{ flex: 1, fontSize: 10, color: isWatched ? "#222" : "#777", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
                       {h.planet}
@@ -839,7 +862,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             </span>
           </button>
           {showNonMoonAspects && (() => {
-            const aspSym: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
             return (
@@ -853,9 +876,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   return (
                     <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid var(--color-border)" : "none" }}>
                       <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
-                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet1] ?? a.planet1[0]}</span>
+                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
                         <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
-                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}>{PLANET_ICONS[a.planet2] ?? a.planet2[0]}</span>
+                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
                         <span style={{ flex:1, fontSize:9, color:"#777", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
                         <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }} title={
                           a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
@@ -893,7 +916,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize:9, color:"#b07030" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+            <span style={{ fontSize:9, color:"#8a8278" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
             <Tooltip content={
               <div>
                 <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>

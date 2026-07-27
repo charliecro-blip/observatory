@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
+import { logEvent } from "@/lib/analytics";
 import { usePremium } from "@/contexts/premium-context";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
+import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
 
 function authH(tid: string | null) {
@@ -83,32 +85,107 @@ function ThemeSection() {
   );
 }
 
-// Email reports — Phase 1 is the CONTENT, previewable here so the voice can be
-// tuned before a sender exists (see EMAIL-REPORTS.md). Opt-in + sending is Phase 2.
+// Email reports — the morning bulletin, actually delivered. Save an address +
+// which reports; the server's cron sends them at your chosen hour (needs
+// RESEND_API_KEY on the server — until then "send test" reports honestly).
 function EmailReportsSection({ testerId }: { testerId: string | null }) {
   const tz = new Date().getTimezoneOffset();
+  const { lat, lon } = useTester();
+  const [email, setEmail] = useState("");
+  const [spans, setSpans] = useState<string[]>(["day"]);
+  const [sendHour, setSendHour] = useState(7);
+  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [senderConfigured, setSenderConfigured] = useState<boolean | null>(null);
+  const authH: Record<string, string> = testerId ? { "x-tester-id": testerId } : {};
+
+  useEffect(() => {
+    if (!testerId) return;
+    fetch("/api/reports/email-subscription", { headers: authH })
+      .then(r => r.json())
+      .then(d => {
+        setSenderConfigured(d.senderConfigured ?? null);
+        if (d.subscription) {
+          setEmail(d.subscription.email ?? "");
+          setSpans(d.subscription.spans ?? ["day"]);
+          setSendHour(d.subscription.sendHour ?? 7);
+          setSaved(true);
+        }
+      }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testerId]);
+
+  const save = async () => {
+    setStatus(null);
+    const r = await fetch("/api/reports/email-subscription", {
+      method: "POST", headers: { ...authH, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon }),
+    });
+    if (r.ok) { logEvent("email_subscribe", { spans, sendHour }); setSaved(true); setStatus("Saved — reports will arrive at your chosen hour."); }
+    else setStatus((await r.json().catch(() => null))?.error ?? "Couldn't save — check the address.");
+  };
+  const sendTest = async () => {
+    setStatus("Sending…");
+    const r = await fetch(`/api/reports/email-test?tz=${tz}`, { method: "POST", headers: authH });
+    const d = await r.json().catch(() => null);
+    setStatus(d?.sent ? "Test sent — check your inbox."
+      : d?.senderConfigured === false ? "Saved, but the server has no email key yet (RESEND_API_KEY) — nothing can send until it's set."
+      : "Couldn't send — save your address first.");
+  };
+  const toggleSpan = (s: string) => setSpans(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
   const open = (span: string) => {
-    // The preview endpoint authenticates via header normally; for a browser tab
-    // we pass the tester id as a query param the middleware also accepts — if it
-    // doesn't, the fetch-and-open fallback below still works.
-    fetch(`/api/reports/preview?span=${span}&tz=${tz}`, { headers: testerId ? { "x-tester-id": testerId } : {} })
+    fetch(`/api/reports/preview?span=${span}&tz=${tz}`, { headers: authH })
       .then(r => r.text())
       .then(html => { const w = window.open("", "_blank"); if (w) { w.document.write(html); w.document.close(); } });
   };
+  const SPAN_LABELS: Record<string, string> = { day: "The day · every morning", week: "The week · Sundays", newmoon: "New Moon mornings" };
+
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>Email reports <span style={{ fontSize: 9, fontWeight: 600, color: "#8a6a30", background: "#8a6a3026", padding: "1px 6px", borderRadius: 6, marginLeft: 4 }}>PREVIEW</span></div>
-      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
-        A short weather bulletin for your life — the day each morning, the week on Sundays, the month at the New Moon.
-        Sending isn't wired yet; preview how they'd read:
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>
+        Email reports
+        {saved && <span style={{ fontSize: 9, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {(["day", "week", "month"] as const).map(s => (
-          <button key={s} onClick={() => open(s)} style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
-            The {s} ahead ↗
+      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+        A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
+          style={{ flex: 1, minWidth: 190, padding: "7px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
+        <select value={sendHour} onChange={e => setSendHour(parseInt(e.target.value, 10))} style={{ padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>
+          {[5, 6, 7, 8, 9, 10].map(h => <option key={h} value={h}>{h} AM</option>)}
+        </select>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {(["day", "week", "newmoon"] as const).map(s => (
+          <button key={s} onClick={() => toggleSpan(s)} style={{
+            fontSize: 10.5, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
+            border: spans.includes(s) ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+            background: spans.includes(s) ? "#1a2a3a10" : "var(--color-card-2)",
+            color: spans.includes(s) ? "#1a2a3a" : "#999", fontWeight: spans.includes(s) ? 600 : 400,
+          }}>{SPAN_LABELS[s]}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <button onClick={save} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#fff" }}>
+          {saved ? "Update" : "Turn on"}
+        </button>
+        {saved && (
+          <button onClick={sendTest} style={{ fontSize: 11, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
+            Send me a test
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        {(["day", "week"] as const).map(s => (
+          <button key={s} onClick={() => open(s)} style={{ fontSize: 10, padding: "5px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "none", color: "#998a76" }}>
+            preview the {s} ↗
           </button>
         ))}
       </div>
+      {status && <div style={{ fontSize: 10.5, color: status.startsWith("Saved") || status.startsWith("Test") ? "#4a7a52" : "#8a6a30", marginTop: 8, lineHeight: 1.5 }}>{status}</div>}
+      {senderConfigured === false && !status && (
+        <div style={{ fontSize: 10, color: "#a89a88", marginTop: 8 }}>Server note: RESEND_API_KEY isn't set yet — subscriptions save, sends wait for the key.</div>
+      )}
     </div>
   );
 }
@@ -150,36 +227,13 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
   async function enableNotifications() {
     setSubscribing(true);
     setSubMsg("");
-    try {
-      const perm = await Notification.requestPermission();
-      setPermState(perm);
-      if (perm !== "granted") { setSubMsg("Permission denied by browser."); setSubscribing(false); return; }
-
-      // Register service worker
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-
-      // Get VAPID key
-      const keyRes = await fetch("/api/push/vapid-key");
-      if (!keyRes.ok) { setSubMsg("Push not configured on server yet."); setSubscribing(false); return; }
-      const { publicKey } = await keyRes.json();
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKey,
-      });
-
-      const testerId = localStorage.getItem("obs_tester_id");
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { ...authH(testerId), "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sub.toJSON(), lat, lon }),
-      });
-
+    const res = await enablePush({ lat, lon });
+    if ("Notification" in window) setPermState(Notification.permission);
+    if (res.ok) {
       updateNotifications({ enabled: true });
       setSubMsg("Notifications enabled ✓");
-    } catch (e: any) {
-      setSubMsg(e.message ?? "Failed to subscribe.");
+    } else {
+      setSubMsg(res.reason);
     }
     setSubscribing(false);
   }
@@ -397,7 +451,33 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
-      <Row label="Sky language" sub="Plain keeps the app's own words (Deep, Surge). Bilingual adds the sky's words next to them (Moon in Pisces) — fluency by exposure.">
+      <Row label="How much astrology" sub="Same engine underneath — this only changes what's shown. Minimal: plain guidance, no jargon. Medium: the moon and the day. Full: glyphs, aspects, transits.">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["minimal", "medium", "full"] as const).map(lvl => (
+            <button key={lvl} onClick={() => updateDisplay({ astroDetail: lvl })} style={{
+              fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
+              background: d.astroDetail === lvl ? "#fff" : "transparent",
+              color: d.astroDetail === lvl ? "#1a2a3a" : "#999",
+              fontWeight: d.astroDetail === lvl ? 600 : 400,
+            }}>{lvl}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
+      <Row label="How much on screen" sub="Essential: the core journey — the tide, today's plan, your aims. Expanded: the full instrument panel (rhythm, big sky, pulse, conditions…).">
+        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+          {(["essential", "expanded"] as const).map(lvl => (
+            <button key={lvl} onClick={() => updateDisplay({ uiDensity: lvl })} style={{
+              fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
+              background: (d.uiDensity ?? "essential") === lvl ? "#fff" : "transparent",
+              color: (d.uiDensity ?? "essential") === lvl ? "#1a2a3a" : "#999",
+              fontWeight: (d.uiDensity ?? "essential") === lvl ? 600 : 400,
+            }}>{lvl}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
+      <Row label="Sky language" sub="At the full level: plain keeps the app's own words (Deep, Surge); bilingual adds the sky's words next to them (Moon in Pisces).">
         <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["plain", "bilingual"] as const).map(mode => (
             <button key={mode} onClick={() => updateDisplay({ skyLanguage: mode })} style={{
@@ -742,7 +822,7 @@ function PremiumPreviewSection() {
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
           <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · the Compass advisor
+            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · Ask — the "what do I do now" advisor
           </div>
         </div>
       </div>
@@ -1211,7 +1291,7 @@ function AccountSection() {
             }}>{copied ? "Copied ✓" : "Copy"}</button>
           </div>
           <div style={{ fontSize: 10, color: "#999", marginTop: 8, lineHeight: 1.55 }}>
-            On another device: open Tides → "Been here before?" on the first screen → enter this key.
+            On another device: open Compass → "Been here before?" on the first screen → enter this key.
             Anyone holding the key can restore your data, so treat it like a password.
           </div>
         </div>
@@ -1228,7 +1308,7 @@ function AccountSection() {
           <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Send feedback</div>
           <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
         </div>
-        <a href="mailto:charliecro@gmail.com?subject=Tides%20feedback"
+        <a href="mailto:charliecro@gmail.com?subject=Compass%20feedback"
           style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 14px", textDecoration: "none", background: "var(--color-card-2)", flexShrink: 0 }}>
           ✉ Email
         </a>

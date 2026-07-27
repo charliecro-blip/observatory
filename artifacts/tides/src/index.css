@@ -8,6 +8,24 @@
   font-display: swap;
 }
 
+/* Self-hosted UI + symbol faces (2026-07-20) — were loaded from
+   fonts.googleapis.com, which is blocked in mainland China and slower
+   everywhere. woff2 vendored in static/fonts. */
+@font-face{font-family:'Geist';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/geist-400.woff2') format('woff2');}
+@font-face{font-family:'Geist';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/geist-500.woff2') format('woff2');}
+@font-face{font-family:'Geist';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/geist-600.woff2') format('woff2');}
+@font-face{font-family:'Geist Mono';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/geistmono-400.woff2') format('woff2');}
+@font-face{font-family:'Geist Mono';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/geistmono-500.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/spacegrotesk-400.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/spacegrotesk-500.woff2') format('woff2');}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/spacegrotesk-700.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:italic;font-weight:400;font-display:swap;src:url('/fonts/spectral-400i.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/spectral-400.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/spectral-500.woff2') format('woff2');}
+@font-face{font-family:'Spectral';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/spectral-600.woff2') format('woff2');}
+@font-face{font-family:'Noto Sans Symbols';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/notosanssymbols-400.woff2') format('woff2');}
+@font-face{font-family:'Noto Sans Symbols 2';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/notosanssymbols2-400.woff2') format('woff2');}
+
 @theme {
   /* Noto symbol faces are NOT in this global chain on purpose: when they were,
      any astrological glyph sitting inline in body text fell through to the
@@ -20,15 +38,28 @@
   --font-display: 'Baar Sophia', 'Spectral', 'Georgia', serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 
-  --color-background: #f0ede8;
-  --color-rail: #e8e4de;
+  /* Tide (light) — the warm nautical-chart register (Compass brand kit
+     2026-07-22). Chart-paper ground, sea-navy ink. */
+  --color-background: #e7dcc4;
+  --color-rail: #f0ede8;
   --color-border: #d0cbc3;
-  --color-card: #ffffff;
+  --color-card: #fbf7ee;
   --color-card-2: #faf8f5;
-  --color-foreground: #1a1a1a;
-  --color-muted: #888888;
-  --color-primary: #1a2a3a;
+  --color-foreground: #22303e;
+  --color-muted: #8a7f68;
+  --color-primary: #22303e;
 
+  /* Meridian — the ONE ownable brand accent. A twilight indigo pushed toward
+     violet specifically so it is NONE of the four element colours and never
+     competes with element meaning. Use for primary actions, the mark on hero
+     surfaces, the · ASK sub-brand tag. */
+  --color-meridian: #3b3f8f;        /* accent on light paper */
+  --color-meridian-core: #565cd0;   /* brand core */
+  /* Brass — decorative rules/eyebrows/watermark only, NEVER body text; kept
+     warmer/darker than Air (#CBA13C) so it never poses as the air element. */
+  --color-brass: #a9772a;
+
+  /* Elements — the semantic palette (LOAD-BEARING, unchanged). */
   --color-water: #3a5a80;
   --color-fire: #8a3a20;
   --color-earth: #3a6030;
@@ -53,6 +84,10 @@
   --color-foreground: #e8e6e0;
   --color-muted: #8890a0;
   --color-primary: #dce4f0;
+  /* Meridian glows on the dark ink; brass lifts a touch for contrast. */
+  --color-meridian: #7a80e6;
+  --color-meridian-core: #7a80e6;
+  --color-brass: #c8992e;
 }
 
 * { box-sizing: border-box; }

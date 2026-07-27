@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
-import { ELEMENT_MYTHOS, sortIntentToElement, type ElementMythos } from "@/lib/mythos";
+import { ELEMENT_MYTHOS, type ElementMythos } from "@/lib/mythos";
+import { ActivityTimesHint } from "@/components/ActivityTimesHint";
 import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
@@ -9,6 +11,7 @@ import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import Glyph from "@/components/Glyph";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -26,6 +29,19 @@ const HORIZON_COLORS: Record<string, { bg: string; color: string }> = {
   mid:  { bg: "#f0e8d8", color: "#8a5020" },
   long: { bg: "#e8d8f0", color: "#c19a3a" },
 };
+
+// The seven classical rulers a Guiding Star can be diagnosed to — planets drive
+// scheduling more precisely than elements (Mars→training, Mercury→study).
+const STAR_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
+const PLANET_PICK_COLOR: Record<string, string> = {
+  Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#a06080",
+  Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060",
+};
+
+// A step whose wording implies "do this over and over" is really a habit, not a
+// one-off task — used to pre-highlight "make it a habit" on the step.
+const RECURRING_STEP_RE = /\b(consistent(ly)?|regularly|routine|daily|weekly|monthly|every ?day|each ?day|keep (up|going)|ongoing|maintain|practice|show up|stay|habitual)\b/i;
+const looksRecurring = (title: string) => RECURRING_STEP_RE.test(title);
 
 function houseSystemPref(): string {
   return localStorage.getItem("obs_house_system") ?? "whole-sign";
@@ -70,10 +86,14 @@ function authH(tid: string | null) {
  * what season backs it, and breaking it into tasks/habits all happen in this
  * one page — no second "manage in Goals" tab to bounce to.
  */
-export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate }: {
+export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onNavigate, seedElement, onSeedConsumed, focusStarId, onFocusConsumed }: {
   testerId: string | null;
   lat?: number; lon?: number;
   onNavigate: (tab: "tasks" | "habits") => void;
+  seedElement?: string | null;
+  onSeedConsumed?: () => void;
+  focusStarId?: number | null;
+  onFocusConsumed?: () => void;
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading } = useNorthStars(testerId);
@@ -87,10 +107,56 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const [showForm, setShowForm] = useState(false);
   const [expandedWeather, setExpandedWeather] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "" });
+  const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "", planet: "" });
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showSeasons, setShowSeasons] = useState(false);
+  // The sky's reading of the aim — auto-diagnosed from the title as you type.
+  // We suggest an element + planet from it but never force them; form.element /
+  // form.planet hold only an EXPLICIT override (empty = "use the reading").
+  const [diagnosis, setDiagnosis] = useState<{ element: string; planets: string[]; rationale: string; windowType?: string; activityKey?: string; houses?: number[]; source?: string } | null>(null);
+  useEffect(() => {
+    const text = `${form.title} ${form.description}`.trim();
+    if (text.length < 3) { setDiagnosis(null); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/associate", { method: "POST", headers: authH(testerId), body: JSON.stringify({ text }) });
+        if (!r.ok || cancelled) return;
+        setDiagnosis(await r.json());
+      } catch { /* the reading is optional — creation works without it */ }
+    }, 450);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.title, form.description, testerId]);
+  // What we'll actually save: the user's pick if they made one, else the reading.
+  const effElement = form.element || diagnosis?.element || "";
+  const effPlanet = form.planet || diagnosis?.planets?.[0] || "";
+
+  // Landed here from the morning glance: scroll that star's card into view and
+  // hold a brief highlight so the eye lands on the game plan it came for.
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusStarId == null || !stars) return;
+    const el = cardRefs.current[focusStarId];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightId(focusStarId);
+      const t = setTimeout(() => setHighlightId(null), 2400);
+      onFocusConsumed?.();
+      return () => clearTimeout(t);
+    }
+  }, [focusStarId, stars]);
+
+  // Landed here from "Set a Guiding Star in this element" in the Almanac: open
+  // the creation form with the element pre-chosen, then clear the seed so it
+  // doesn't re-fire on the next render (#25).
+  useEffect(() => {
+    if (!seedElement) return;
+    setForm(f => ({ ...f, element: seedElement }));
+    setShowForm(true);
+    onSeedConsumed?.();
+  }, [seedElement]);
 
   const list: any[] = stars ?? [];
   // useNorthStars only returns active goals server-side today — fetch all so
@@ -158,6 +224,19 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     },
     onSuccess: () => { refreshPM(); setStepTaskAdd(null); setStepTaskTitle(""); },
   });
+  // A recurring-sounding step ("post consistently", "practice daily") is really
+  // a habit, not a one-off task — so we offer to turn it into one, pre-selected
+  // when the wording gives it away.
+  const addHabitFromStep = useMutation({
+    mutationFn: async ({ milestoneId, starId, title, element, planet }: { milestoneId: number; starId: number; title: string; element?: string; planet?: string }) => {
+      const r = await fetch("/api/habits", { method: "POST", headers: authHeaders, body: JSON.stringify({
+        name: title, goalId: starId, milestoneId,
+        favoredElements: element || undefined, favoredPlanets: planet || undefined,
+      }) });
+      if (!r.ok) throw new Error("habit failed");
+    },
+    onSuccess: () => { refreshPM(); qc.invalidateQueries({ queryKey: ["habits"] }); qc.invalidateQueries({ queryKey: ["star-progress"] }); },
+  });
   const toggleStepTask = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
       await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: !done }) });
@@ -207,7 +286,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       if (planned.length) await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: planned }) });
       return { placed: planned.length, unplaced: (data.unplaced ?? []).length };
     },
-    onSuccess: (r, vars) => { refreshPM(); qc.invalidateQueries({ queryKey: ["windows"] }); qc.invalidateQueries({ queryKey: ["planning-windows-all"] }); setWeaveResult({ starId: vars.starId, ...r }); },
+    onSuccess: (r, vars) => { refreshPM(); invalidateWindows(qc); setWeaveResult({ starId: vars.starId, ...r }); },
   });
   const addStep = useMutation({
     mutationFn: async ({ starId, starTitle, title }: { starId: number; starTitle: string; title: string }) => {
@@ -251,23 +330,28 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const addGoal = useMutation({
     mutationFn: async () => {
-      const body = {
-        ...form,
-        ...(pendingAnchor ? {
-          element: pendingAnchor.element,
-          anchorKind: pendingAnchor.kind,
-          anchorPlanet: pendingAnchor.planet ?? null,
-          anchorHouse: pendingAnchor.house,
-          anchorUntil: pendingAnchor.until,
-        } : {}),
+      const body: Record<string, unknown> = {
+        title: form.title, description: form.description, horizon: form.horizon,
+        // The reading's element/planet unless the anchor season overrides element,
+        // plus the matched activity key (unlocks the precise election engine).
+        element: pendingAnchor ? pendingAnchor.element : (effElement || null),
+        planet: effPlanet || null,
+        activityKey: diagnosis?.activityKey ?? null,
       };
+      if (pendingAnchor) {
+        body.anchorKind = pendingAnchor.kind;
+        body.anchorPlanet = pendingAnchor.planet ?? null;
+        body.anchorHouse = pendingAnchor.house;
+        body.anchorUntil = pendingAnchor.until;
+      }
       const r = await fetch("/api/planning/goals", { method: "POST", headers: authH(testerId), body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json(); throw new Error(e.message ?? "Failed"); }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["goals"] });
       qc.invalidateQueries({ queryKey: ["north-stars"] });
-      setForm({ title: "", description: "", horizon: "near", element: "" });
+      setForm({ title: "", description: "", horizon: "near", element: "", planet: "" });
+      setDiagnosis(null);
       setPendingAnchor(null); setShowForm(false); setFormError(null);
     },
     onError: (e: any) => setFormError(e.message),
@@ -424,26 +508,78 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               );
             })()}
 
+            {/* A short walk-through so the blank field isn't intimidating — a
+                Guiding Star is a direction, not a to-do, and examples give
+                people a shape to copy. Owner #4: 'setting up a new guiding
+                star needs encouragement / walking people through it.' */}
+            <div style={{ fontSize: 11.5, color: "#8a8278", lineHeight: 1.55 }}>
+              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, and the sky reads its nature — a ruling planet and element that set its best timing. Adjust either if you like, set a horizon, then break it into tasks and habits below.
+            </div>
+            {!form.title && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                <span style={{ fontSize: 9.5, color: "#b0a898", alignSelf: "center", marginRight: 2 }}>e.g.</span>
+                {["Finish the book", "Grow the business", "Get strong & steady", "Deepen my closest bonds"].map(ex => (
+                  <button key={ex} onClick={() => setForm(f => ({ ...f, title: ex }))} style={{
+                    fontSize: 10, padding: "3px 10px", borderRadius: 10, border: "1px dashed #d0c8bc",
+                    background: "var(--color-card-2)", color: "#8a8278", cursor: "pointer",
+                  }}>{ex}</button>
+                ))}
+              </div>
+            )}
             <input autoFocus value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="What are you steering toward?"
               style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none" }} />
-            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Description (optional)"
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Why does it matter? (optional — a line to your future self)"
               style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none" }} />
+
+            {/* The sky's reading — auto-diagnosed from the words as you type.
+                It suggests a ruling planet + element; you can override either. */}
+            {diagnosis && (form.title.trim().length >= 3) && (
+              <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "9px 11px" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#b0a898", marginBottom: 4 }}>The sky reads this as</div>
+                <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
+                {diagnosis.houses && diagnosis.houses.length > 0 && (
+                  <div style={{ fontSize: 9.5, color: "#999", marginTop: 3 }}>
+                    Lives in your {diagnosis.houses.map(ordinal).join(" & ")} house{diagnosis.houses.length > 1 ? "s" : ""}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Its ruling planet <span style={{ color: "#c8a04a" }}>— what drives its timing</span></div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {STAR_PLANETS.map(p => {
+                  const on = effPlanet === p;
+                  const suggested = !form.planet && diagnosis?.planets?.[0] === p;
+                  const col = PLANET_PICK_COLOR[p] ?? "#8a8278";
+                  return (
+                    <button key={p} onClick={() => setForm(f => ({ ...f, planet: p }))} title={`${p}${suggested ? " — read from your words" : ""}`} style={{
+                      fontSize: 10.5, padding: "4px 10px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                      border: on ? `1px solid ${col}` : "1px solid #e0dad0",
+                      background: on ? `${col}18` : "var(--color-card-2)",
+                      color: on ? col : "#999", fontWeight: on ? 600 : 400,
+                    }}>{PLANET_GLYPH[p] ?? ""} {p}{suggested ? " ·" : ""}</button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div>
               <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Which element does this live in?</div>
               <div style={{ display: "flex", gap: 4 }}>
-                {(() => {
-                  const suggested = !form.element ? sortIntentToElement(`${form.title} ${form.description}`) : null;
-                  return Object.entries(ELEMENT_INFO).map(([key, info]) => (
+                {Object.entries(ELEMENT_INFO).map(([key, info]) => {
+                  const on = effElement === key;
+                  const suggested = !form.element && diagnosis?.element === key;
+                  return (
                     <button key={key} onClick={() => setForm(f => ({ ...f, element: key }))} style={{
                       fontSize: 10, padding: "4px 11px", borderRadius: 10, cursor: "pointer", flex: 1,
-                      border: form.element === key ? `1px solid ${info.color}` : suggested === key ? `1px dashed ${info.color}` : "1px solid #e0dad0",
-                      background: form.element === key ? `${info.color}18` : "var(--color-card-2)",
-                      color: form.element === key ? info.color : suggested === key ? info.color : "#999",
-                      fontWeight: form.element === key ? 600 : 400,
-                    }}>{info.label}{suggested === key ? " ?" : ""}</button>
-                  ));
-                })()}
+                      border: on ? `1px solid ${info.color}` : suggested ? `1px dashed ${info.color}` : "1px solid #e0dad0",
+                      background: on ? `${info.color}18` : "var(--color-card-2)",
+                      color: on ? info.color : suggested ? info.color : "#999",
+                      fontWeight: on ? 600 : 400,
+                    }}>{info.label}</button>
+                  );
+                })}
               </div>
             </div>
 
@@ -528,8 +664,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
         {/* Active Guiding Stars — each with explicit task/habit breakdown right here */}
         {list.length === 0 && !showForm && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb", fontSize: 13, lineHeight: 1.6 }}>
-            No Guiding Stars yet. Set one above — a long-term ideal, then break it into tasks and habits right on this page.
+          <div style={{ textAlign: "center", padding: "44px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>
+            <div style={{ fontSize: 12.5, color: "#8a8278", lineHeight: 1.6, maxWidth: 380 }}>
+              A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Compass helps you time them to the sky.
+            </div>
+            <button onClick={() => setShowForm(true)} style={{
+              marginTop: 4, padding: "8px 20px", borderRadius: 9, border: "none",
+              background: "#1a2a3a", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            }}>✦ Name your first star</button>
           </div>
         )}
 
@@ -545,12 +689,26 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           const closing = dLeft != null && dLeft >= 0 && dLeft <= 30;
 
           return (
-            <div key={g.id} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${ec}`, borderRadius: 10, overflow: "hidden" }}>
+            <div key={g.id} ref={el => { cardRefs.current[g.id] = el; }} style={{
+              background: "var(--color-card)",
+              // Longhand sides only — mixing border and borderLeft shorthands
+              // makes React warn on every rerender.
+              borderTop: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderRight: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderBottom: highlightId === g.id ? `1px solid ${ec}` : "1px solid var(--color-border)",
+              borderLeft: `3px solid ${ec}`, borderRadius: 10, overflow: "hidden",
+              boxShadow: highlightId === g.id ? `0 0 0 3px ${ec}30` : "none",
+              transition: "box-shadow 0.4s, border-color 0.4s",
+            }}>
               <div style={{ padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{g.title}</span>
+                      {(g as any).planet && (() => {
+                        const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
+                        return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;
+                      })()}
                       {info && <span style={{ fontSize: 9, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
                     </div>
                     {g.description && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{g.description}</div>}
@@ -654,7 +812,23 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                               <span onClick={() => cycleStep.mutate({ id: m.id, status: m.status })} title="Cycle step status"
                                 style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "#ccc", flexShrink: 0, cursor: "pointer" }} />
                               <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
+                              {m.status !== "completed" && <ActivityTimesHint title={m.title} testerId={testerId} lat={lat} lon={lon} />}
                               {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "#bbb" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
+                              {(() => {
+                                const stepHabits = (allHabits as any[]).filter((h) => h.milestoneId === m.id);
+                                const already = stepHabits.length > 0;
+                                const recur = looksRecurring(m.title);
+                                return already ? (
+                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "#7a8a9a" }}>↻ habit</span>
+                                ) : (
+                                  <button
+                                    onClick={() => addHabitFromStep.mutate({ milestoneId: m.id, starId: g.id, title: m.title, element: g.element ?? undefined, planet: (g as any).planet ?? undefined })}
+                                    disabled={addHabitFromStep.isPending}
+                                    title={recur ? "This reads like a recurring practice — make it a habit" : "Make this step a recurring habit"}
+                                    style={{ fontSize: 9, color: recur ? "#7a6cae" : "#c0b8aa", background: recur ? "#7a6cae12" : "none", border: "none", borderRadius: 5, cursor: "pointer", padding: recur ? "1px 6px" : "0 2px", fontWeight: recur ? 600 : 400, lineHeight: 1 }}
+                                  >↻ habit</button>
+                                );
+                              })()}
                               <button onClick={() => { setStepTaskAdd(m.id); setStepTaskTitle(""); }} title="Add a task to this step"
                                 style={{ fontSize: 11, color: "#c0b8aa", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>+</button>
                             </div>

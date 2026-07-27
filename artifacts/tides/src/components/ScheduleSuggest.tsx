@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { usePremium } from "@/contexts/premium-context";
@@ -36,6 +37,7 @@ export function ScheduleSuggest({
   const { profile } = useTester();
   const { unlocked } = usePremium();
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
   // Free users go straight to picking their own time (manual scheduling is
   // free); the app's best-time intelligence is the premium layer.
   const [customOpen, setCustomOpen] = useState(!unlocked);
@@ -89,7 +91,7 @@ export function ScheduleSuggest({
     if (!testerId || busy) return;
     setBusy(true);
     try {
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-tester-id": testerId },
         body: JSON.stringify({
@@ -101,9 +103,13 @@ export function ScheduleSuggest({
           projectId: projectId ?? undefined,
         }),
       });
-      qc.invalidateQueries({ queryKey: ["planning-windows-all"] });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
+      invalidateWindows(qc);
       qc.invalidateQueries({ queryKey: ["tides-week"] });
       onClose(true);
+    } catch {
+      setErr(true);
+      setTimeout(() => setErr(false), 4000);
     } finally {
       setBusy(false);
     }
@@ -127,7 +133,7 @@ export function ScheduleSuggest({
         {!unlocked && (
           <div style={{ background: `${ec}0c`, border: `1px solid ${ec}33`, borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
             <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55 }}>
-              <b style={{ color: "var(--color-primary)" }}>✦ Let Tides find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
+              <b style={{ color: "var(--color-primary)" }}>✦ Let Compass find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
             </div>
             <button onClick={() => setShowPremium(true)} style={{ marginTop: 7, fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${ec}55`, background: "var(--color-card)", color: ec, cursor: "pointer", fontWeight: 600 }}>
               Explore premium
@@ -143,6 +149,7 @@ export function ScheduleSuggest({
         )}
 
         {unlocked && !bestData && <div style={{ fontSize: 12, color: "#999", padding: "12px 0" }}>Reading the week…</div>}
+        {err && <div style={{ fontSize: 11, color: "#c05030", padding: "6px 0" }}>Couldn't schedule that — try again.</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           {unlocked && ranked.map((w, i) => {

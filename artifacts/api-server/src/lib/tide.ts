@@ -56,6 +56,11 @@ export interface TideInput {
   angularCount: number;   // planets on an angle (activity)
   hourElement: string;    // element of the current planetary-hour ruler
   personalHardTransit?: boolean;
+  // The synthesis engine's verdict — when present, ONE BRAIN: the tide's
+  // character follows the reading's convergent element (so the headline can
+  // never contradict the woven sentence beneath it), and confidence follows
+  // testimony agreement (support vs caution magnitude).
+  reading?: { element: string; support: number; caution: number };
 }
 
 export interface TideState {
@@ -77,7 +82,10 @@ export interface TideState {
 function clamp(n: number, lo = 0, hi = 1) { return Math.max(lo, Math.min(hi, n)); }
 
 export function computeTide(input: TideInput): TideState {
-  const element = SIGN_TO_ELEMENT[input.moonSign] ?? "water";
+  // The reading's convergent element leads when available (it already weighs
+  // the Moon's sign as one voice among many); the Moon-sign element remains
+  // the no-reading fallback.
+  const element = input.reading?.element ?? SIGN_TO_ELEMENT[input.moonSign] ?? "water";
   const character = ELEMENT_TO_CHARACTER[element] ?? "deep";
 
   // ── Energy (element-neutral): illumination dominates, activity adds ──────────
@@ -132,6 +140,13 @@ export function computeTide(input: TideInput): TideState {
   if (hard > 0 && soft > 0) coherence -= 0.2;        // mixed signals
   else if (soft > 0 && hard === 0) coherence += 0.1; // clean & supportive
   if (input.voc) coherence -= 0.15;                  // ambiguous / between statements
+  // Testimony agreement: when the reading's voices pull the same way,
+  // confidence rises; a strong counter-chorus drops it. ±0.25 swing.
+  if (input.reading) {
+    const { support, caution } = input.reading;
+    const total = support + caution;
+    if (total > 0.5) coherence += (support / total - 0.5) * 0.5;
+  }
   coherence = clamp(coherence);
   const confidence: TideConfidence = coherence >= 0.72 ? "high" : coherence <= 0.45 ? "low" : "medium";
 

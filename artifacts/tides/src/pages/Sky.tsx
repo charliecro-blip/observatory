@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
 import type { SkyEvent } from "@/lib/types";
@@ -102,7 +103,7 @@ function interpretEvent(event: SkyEvent): EventDetail {
   // ── Aspect interpretation (moon_aspect + general aspect events) ───────────
   if (event.type === "moon_aspect" || event.type === ("aspect" as string)) {
     const ASPECT_NAMES: Record<string, string> = {
-      "☌":"conjunction", "△":"trine", "⚹":"sextile", "□":"square", "☍":"opposition",
+      "☌︎":"conjunction", "△":"trine", "⚹":"sextile", "□":"square", "☍︎":"opposition",
     };
     // Parse title like "Moon △ Jupiter" or "Sun □ Mars"
     const titleMatch = title.match(/^(\w+)\s*(☌|△|⚹|□|☍)\s*(\w+)$/);
@@ -111,9 +112,9 @@ function interpretEvent(event: SkyEvent): EventDetail {
       const sym = titleMatch[2];
       const p2 = titleMatch[3];
       const aspectName = ASPECT_NAMES[sym] ?? sym;
-      const isHard = sym === "□" || sym === "☍";
+      const isHard = sym === "□" || sym === "☍︎";
       const isSoft = sym === "△" || sym === "⚹";
-      const isConj = sym === "☌";
+      const isConj = sym === "☌︎";
       const color = PLANET_COLORS[p2] ?? PLANET_COLORS[p1] ?? "#557";
 
       // Planet-pair descriptions keyed as "P1|P2" (canonical order: smaller body first if Moon involved)
@@ -311,7 +312,7 @@ function interpretEvent(event: SkyEvent): EventDetail {
       }
     }
     // Generic fallback for unparsed aspects
-    const aspectIsHard = title.includes("□") || title.includes("☍");
+    const aspectIsHard = title.includes("□") || title.includes("☍︎");
     return {
       meaning: `${title} — two planetary archetypes make contact, blending their themes.`,
       practical: aspectIsHard ? "Tension aspects invite integration. Work with the friction." : "Supportive aspects open doors. Take the opening.",
@@ -332,6 +333,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
   const qc = useQueryClient();
   const [planned, setPlanned] = useState(false);
   const [planning, setPlanning] = useState(false);
+  const [planErr, setPlanErr] = useState(false);
 
   async function planSession() {
     if (!testerId || planned) return;
@@ -347,13 +349,17 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         : event.type === "moon_phase" ? "planning"
         : event.type === "ingress" ? "planning"
         : "creative";
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST",
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
         body: JSON.stringify({ title: event.title, windowType, startTime: start, endTime: end, note: detail.meaning.slice(0, 200) }),
       });
-      qc.invalidateQueries({ queryKey: ["planning-windows"] });
+      if (!r.ok) throw new Error(`plan failed (${r.status})`);
+      invalidateWindows(qc);
       setPlanned(true);
+    } catch {
+      setPlanErr(true);
+      setTimeout(() => setPlanErr(false), 4000);
     } finally {
       setPlanning(false);
     }
@@ -377,11 +383,11 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:6 }}>What this means</div>
-          <div style={{ fontSize:11.5, color:"#333", lineHeight:1.7 }}>{detail.meaning}</div>
+          <div style={{ fontSize:11.5, color:"var(--color-foreground)", lineHeight:1.7 }}>{detail.meaning}</div>
         </div>
-        <div style={{ marginBottom:14, padding:"11px 13px", borderRadius:8, background:"#f7f4ef", border:"1px solid #e8e2d8" }}>
+        <div style={{ marginBottom:14, padding:"11px 13px", borderRadius:8, background:"var(--color-card-2)", border:"1px solid var(--color-border)" }}>
           <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:5 }}>How to use it</div>
-          <div style={{ fontSize:11.5, color:"#555", lineHeight:1.7 }}>{detail.practical}</div>
+          <div style={{ fontSize:11.5, color:"var(--color-muted)", lineHeight:1.7 }}>{detail.practical}</div>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
           {detail.domains.map(d => (
@@ -390,6 +396,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         </div>
       </div>
       <div style={{ padding:"12px 16px", borderTop:"1px solid var(--color-border)" }}>
+        {planErr && <div style={{ fontSize:10.5, color:"#c05030", marginBottom:6 }}>Couldn't add it — try again.</div>}
         <button onClick={planSession} disabled={planned || planning || !testerId} style={{
           width:"100%", padding:"9px 0", borderRadius:8, border:"none", cursor: planned ? "default" : "pointer",
           background: planned ? "#e8f5e0" : (detail.planetColor ?? "#1a2a3a"),
@@ -406,7 +413,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
 // ── Event row (compact) ───────────────────────────────────────────────────────
 
 const ASPECT_COLORS: Record<string, string> = {
-  "☌":"#f0b060", "□":"#e06060", "△":"#60a060", "⚹":"#6090d0", "☍":"#e06060",
+  "☌︎":"#f0b060", "□":"#e06060", "△":"#60a060", "⚹":"#6090d0", "☍︎":"#e06060",
 };
 
 function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: boolean; onSelect: () => void }) {
@@ -480,7 +487,7 @@ function QualityStrip({ week, days }: { week: any; days: number }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: string | null; lat?: number; lon?: number }) {
+export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, onVisitPlanet }: { testerId: string | null; lat?: number; lon?: number; onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
   const [days, setDays] = useState(30);
   const [selectedEvent, setSelectedEvent] = useState<SkyEvent | null>(null);
   const [showAllCrossings, setShowAllCrossings] = useState(false);
@@ -553,7 +560,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
         <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10, maxWidth:760, margin:"0 auto", width:"100%" }}>
           {/* Reference / learning — the Almanac's identity as "the book you look
               things up in," distinct from Ahead's "your calendar." */}
-          <ReferenceSection />
+          <ReferenceSection onStartStar={onStartStar} onVisitPlanet={onVisitPlanet} />
 
           {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
 
@@ -632,7 +639,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
               defaultOpen={true}
             >
               {(() => {
-                const ASP_SYM2: Record<string,string> = { conjunction:"☌", opposition:"☍", square:"□", trine:"△", sextile:"⚹" };
+                const ASP_SYM2: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
                 const ASP_COL2: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
                 const ASP_NAT: Record<string,string> = { trine:"Harmonious", sextile:"Supportive", conjunction:"Amplifying", square:"Tension", opposition:"Polarity" };
                 const ASP_DESC: Record<string,string> = {
@@ -691,7 +698,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
           {!isLoading && (
             <Section
               label="Lunar stream"
-              icon="☽"
+              icon="☽︎"
               accent="#5a7090"
               desc="Moon aspects, sign changes, phases, and void periods"
               defaultOpen={true}
@@ -741,13 +748,16 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0 }: { testerId: s
 // language "what does this mean" layer (elements, planets, signs) so the app is
 // legible to someone who knows no astrology. Distinct from Ahead (your time):
 // this is the sky's meanings, not its schedule.
-function ReferenceSection() {
+function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
   const { theme } = useTheme();
   const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
+  // The whole reference is a big block; let people fold it away when they're
+  // here for the day's sky, not the textbook (owner #23: needs expand/contract).
+  const [sectionOpen, setSectionOpen] = useState(false);
   const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
-  const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string }[] =
+  const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string; element?: string; planet?: string }[] =
     tab === "learn"
       // The sequenced primer — the curriculum ladder, rung by rung. Reading
       // ahead is allowed; living it is the actual course.
@@ -756,20 +766,41 @@ function ReferenceSection() {
           body: `${l.body}\n\nPractice: ${l.practice}`,
         }))
       : tab === "elements"
+      // Fuller read (#24): the myth, the life-domains it governs, and concrete
+      // things you'd plan or log under it — all already in ELEMENT_MYTHOS, just
+      // wasn't being surfaced here.
       ? (["fire", "earth", "air", "water"] as const).map((el) => {
           const m = ELEMENT_MYTHOS[el];
-          return { key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, body: `${m.essence} ${(m.domains ?? []).join(" · ")}` };
+          return {
+            key: el, glyph: "●", name: m.name, sub: m.essence, color: m.color, element: el,
+            body: `${m.myth}\n\nGoverns: ${(m.domains ?? []).join(" · ")}\n\nPlan or log here: ${(m.activities ?? []).join(" · ")}`,
+          };
         })
       : tab === "planets"
-      ? Object.values(PLANET_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, body: m.myth }))
-      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.` }));
+      // Fuller read (#24): the myth, what the voice speaks for, and what to do
+      // when it's loud.
+      ? Object.values(PLANET_MYTHOS).map((m) => ({
+          key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, planet: m.name,
+          body: `${m.myth}\n\nSpeaks for: ${(m.speaksFor ?? []).join(" · ")}\n\nWhen it's loud: ${m.whenLoud}`,
+        }))
+      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.`, element: m.element }));
 
   return (
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
-      <div style={{ padding: "11px 14px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
-        <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
-        <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+      <button onClick={() => setSectionOpen(v => !v)} style={{
+        width: "100%", textAlign: "left", padding: "11px 14px", background: "var(--color-card-2)",
+        border: "none", borderBottom: sectionOpen ? "1px solid var(--color-border)" : "none", cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
+          <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
+        </div>
+        <span style={{ fontSize: 10, color: "#bbb", transform: sectionOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>›</span>
+      </button>
+      {sectionOpen && (
+      <div style={{ padding: "0 14px 11px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", gap: 5, marginTop: 10 }}>
           {(["learn", "elements", "planets", "signs"] as const).map((t) => (
             <button key={t} onClick={() => { setTab(t); setOpen(null); }} style={{
               fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
@@ -779,13 +810,15 @@ function ReferenceSection() {
           ))}
         </div>
       </div>
+      )}
       {/* The spine — the nested-rhythm ladder leads the primer, since it's the
           map every other lesson is a rung of. */}
-      {tab === "learn" && (
+      {sectionOpen && tab === "learn" && (
         <div style={{ padding: "14px 14px 4px" }}>
           <SpineGauge dark={theme === "dark"} />
         </div>
       )}
+      {sectionOpen && (
       <div style={{ display: tab === "signs" ? "grid" : "flex", gridTemplateColumns: tab === "signs" ? "1fr 1fr" : undefined, flexDirection: tab === "signs" ? undefined : "column" }}>
         {items.map((it) => (
           <div key={it.key} style={{ borderBottom: "1px solid var(--color-border)", borderRight: tab === "signs" ? "1px solid var(--color-border)" : "none" }}>
@@ -801,11 +834,32 @@ function ReferenceSection() {
               <span style={{ fontSize: 9, color: "#ccc", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
             </button>
             {open === it.key && (
-              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>{it.body}</div>
+              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                {it.body}
+                {/* Turn a meaning into an intention (#25): steer a Guiding Star
+                    into this element, or open the full planet page (#24). */}
+                {(it.element || it.planet) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                    {it.element && onStartStar && (
+                      <button onClick={() => onStartStar(it.element!)} style={{
+                        fontSize: 10, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${it.color}55`, background: `${it.color}12`, color: it.color, fontWeight: 600,
+                      }}>✦ Set a Guiding Star in {ELEMENT_MYTHOS[it.element]?.name ?? it.element}</button>
+                    )}
+                    {it.planet && onVisitPlanet && (
+                      <button onClick={() => onVisitPlanet(it.planet!)} style={{
+                        fontSize: 10, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${it.color}55`, background: `${it.color}12`, color: it.color, fontWeight: 600,
+                      }}>Open {it.planet} in Planets →</button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
-import { PLANET_GLYPH } from "@/lib/glyphs";
 import { usePreferences } from "@/contexts/preferences-context";
-import { FourTidesBadge } from "@/components/FourTides";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 
 // The daily report — the home as a navigation console. Weather + calendar +
@@ -11,8 +9,7 @@ import { PLANET_LITERACY } from "@/lib/sky-literacy";
 // entirely from data the home already fetches (plus currents).
 
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80", spirit: "#6f6a90" };
-const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹" };
-const MOON_EMOJI: Record<string, string> = { new: "🌑", waxing_crescent: "🌒", first_quarter: "🌓", waxing_gibbous: "🌔", full: "🌕", waning_gibbous: "🌖", last_quarter: "🌗", waning_crescent: "🌘" };
+const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌︎", opposition: "☍︎", square: "□", trine: "△", sextile: "⚹" };
 
 function Card({ title, icon, onOpen, children }: { title: string; icon: string; onOpen?: () => void; children: React.ReactNode }) {
   return (
@@ -30,19 +27,20 @@ function Card({ title, icon, onOpen, children }: { title: string; icon: string; 
 }
 
 export default function Dashboard({
-  now, week, northStars, windows, testerId, today, onNavigate, lat = 40.7, lon = -74.0,
+  now, week, northStars, windows, testerId, today, onNavigate, lat = 40.7, lon = -74.0, essential = false,
 }: {
   now: any; week: any; northStars: any[] | undefined; windows: any[] | undefined;
   testerId: string | null; today: string; onNavigate?: (v: string) => void; lat?: number; lon?: number;
+  /** Essential density: skip this component's weather hero — the tide hero
+   *  directly above it already carries the day (it was a duplicate). Keep the
+   *  two core cards (Guiding stars, On deck): they ARE the journey. */
+  essential?: boolean;
 }) {
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
   const { data: anglesData } = useNatalAngles(testerId, lat, lon);
   const { prefs } = usePreferences();
-  const bilingual = prefs.display.skyLanguage === "bilingual";
 
   const el = now?.tide?.element ?? now?.element?.element ?? "water";
-  const elCol = ELEMENT_COLOR[el] ?? "#888";
-  const phase = now?.moonPhase ?? "";
   const stars = (northStars ?? []).slice(0, 3);
   const todayWindows = (windows ?? []).slice(0, 4);
   const aspects = (now?.aspects ?? []).slice(0, 2);
@@ -53,35 +51,9 @@ export default function Dashboard({
 
   return (
     <div style={{ marginBottom: 22 }}>
-      {/* Hero — today's weather */}
-      <div style={{
-        background: `linear-gradient(180deg, ${elCol}14, ${elCol}06)`, border: "1px solid var(--color-border)",
-        borderRadius: 14, padding: "15px 18px", marginBottom: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: elCol, fontWeight: 600 }}>Today's weather</span>
-            <FourTidesBadge current={now?.tide?.character} />
-          </span>
-          <span style={{ fontSize: 11, color: "#999" }}>{phase && MOON_EMOJI[phase]} {phase.replace(/_/g, " ")} · {Math.round((now?.moonIllumination ?? 0) * 100)}%</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          {/* The one big word on the screen — the tide, in the display face */}
-          <span style={{ fontSize: 30, fontWeight: 400, fontFamily: "var(--font-display)", color: "var(--color-primary)", letterSpacing: "0.01em", lineHeight: 1.1 }}>{now?.tide?.headline ?? "—"}</span>
-          <span style={{ fontSize: 13, color: elCol, fontWeight: 600 }}>{now?.tide?.levelLabel ?? ""}</span>
-          <span style={{ fontSize: 12.5, color: "#888", textTransform: "capitalize" }}>· {el}</span>
-        </div>
-        {/* Bilingual sky language — show the mechanism behind the label so
-            fluency grows by exposure (Settings → Sky language). */}
-        {bilingual && now?.moonSign && (() => {
-          const hourPlanet = now?.planetaryHour?.planet ?? now?.planetaryHour?.ruler;
-          return (
-            <div style={{ fontSize: 11, color: "#998a76", marginTop: 5 }}>
-              ☽ Moon in {now.moonSign} sets the character{hourPlanet ? <> · {PLANET_GLYPH[hourPlanet]} {hourPlanet} hour colors this stretch</> : null}
-            </div>
-          );
-        })()}
-      </div>
+      {/* (The weather hero was removed entirely — owner 2026-07-23: it was
+          the page's second "today's weather / Surge tide" mention; the tide
+          hero directly above this component is the one voice.) */}
 
       {/* Instrument bento */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
@@ -112,27 +84,10 @@ export default function Dashboard({
         {/* (The big-sky card was dropped — the full explorable BigSky section
             renders directly below the dashboard, so it only echoed it.) */}
 
-        <Card title="The week ahead" icon="↝" onOpen={onNavigate ? () => onNavigate("calendar") : undefined}>
-          <div style={{ display: "flex", gap: 5, alignItems: "flex-end", height: 44 }}>
-            {weekDays.map((d: any, i: number) => {
-              const col = ELEMENT_COLOR[d.element ?? ""] ?? "#ccc";
-              const h = 12 + Math.round(((d.qualityScore ?? 3) / 7) * 30);
-              const dd = new Date((d.date ?? today) + "T12:00:00");
-              return (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: "100%", height: h, background: `${col}55`, borderTop: `2px solid ${col}`, borderRadius: 2 }} />
-                  <span style={{ fontSize: 8.5, color: i === 0 ? "var(--color-primary)" : "#aaa", fontWeight: i === 0 ? 700 : 400 }}>{dd.toLocaleDateString("en-US", { weekday: "narrow" })}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Currents, Sky Clock, and Inner Sky cards were removed from the home
-            (owner 2026-07-11): the home shows only your aims (Guiding Stars),
-            what's on deck, and the week. The long-cycle Currents lives in Aims;
-            the sky clock and personal crossings are moving into the Calendar
-            day view where the day's timing belongs. */}
+        {/* Week-ahead and month's-water were removed from Today (owner
+            2026-07-15): the day view should stay about today. The week and
+            month live in the Calendar/Ahead views where the longer horizons
+            belong. Home now shows only your aims and what's on deck. */}
       </div>
     </div>
   );
