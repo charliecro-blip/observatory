@@ -23,7 +23,7 @@
 import { ACTIVITIES, type ActivityCorrespondence } from "./activityCorrespondences.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
-  getMajorAspects, isRetrograde, SIGNS,
+  getMajorAspects, isRetrograde, SIGNS, moonFinalAspectInSign, eclipseWindow,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
 import { scanMoonPerfections } from "./studioCard.js";
@@ -96,12 +96,26 @@ export function computeElections(opts: {
   const natalLonOf = (p: string) => natal?.planets.find(x => x.planet === p)?.longitude ?? null;
 
   const cautions: string[] = [];
-  const mercRx = isRetrograde("Mercury", julianDay(start));
+  const startJd = julianDay(start);
+  const mercRx = isRetrograde("Mercury", startJd);
+
+  // ── Verified electional gates (Hampar / DeLuce / March — see
+  // SYNTHESIS-BOOK-NOTES.md) ─────────────────────────────────────────────────
+  // 1. Eclipse window: delay elections within ±1 week of any eclipse — an
+  //    unstable sky to launch in. GREAT is suppressed; the caution says why.
+  const ecl = eclipseWindow(startJd);
+  if (ecl.active) cautions.push(`A ${ecl.kind} eclipse falls within a week — the tradition delays elections near eclipses. Windows stay usable, but nothing gets the GREAT stamp.`);
+  // 2. Retrograde significators: the matter's own planets should be direct.
+  //    A retrograde significator caps the tier (success-with-revision, not GREAT).
+  const sigPlanets = Object.entries(act.planets).filter(([, w]) => w >= 0.8).map(([p]) => p);
+  const rxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, startJd));
+  if (rxSigs.length) cautions.push(`${rxSigs.join(" and ")} — this activity's significator${rxSigs.length > 1 ? "s are" : " is"} retrograde: doable, but expect re-work; the tradition withholds the best stamp.`);
   if (mercRx && act.mercuryRx === "hard") cautions.push("Mercury is retrograde — the tradition blocks this outright; wait for the direct station, or use the time to prepare.");
   if (mercRx && act.mercuryRx === "soft") cautions.push("Mercury is retrograde — doable, but expect revisions and follow-ups; leave slack.");
   if (mercRx && act.mercuryRx === "favor") cautions.push("Mercury is retrograde — which actually suits this: re- work runs well under it.");
 
   const windows: ElectionWindow[] = [];
+  const finalAspectMemo = new Map<string, ReturnType<typeof moonFinalAspectInSign>>();
 
   for (let d = 0; d < days; d++) {
     const instant = new Date(start.getTime() + d * 86400000);
@@ -258,6 +272,20 @@ export function computeElections(opts: {
       const greatSignals = (stacked ? 1 : 0) + daySources.length;
       let tier: "good" | "great" = substantive && greatSignals >= 2 ? "great" : "good";
       if (mercRx && act.mercuryRx === "hard") tier = "good"; // blocked matters get no great stamp
+      // Verified gates: eclipse week, retrograde significators, and the Moon's
+      // FINAL aspect in this window's sign (how the matter ends) each cap GREAT.
+      if (tier === "great" && (ecl.active || rxSigs.length > 0)) tier = "good";
+      if (tier === "great" && !c.allDay) {
+        // Memoized per sign occupancy — every window in the same Moon sign
+        // shares one final aspect, and the scan isn't free.
+        const cJd = julianDay(new Date(c.startMs));
+        const signKey = Math.floor(norm360(moonLongitude(cJd)) / 30) + ":" + Math.floor(cJd);
+        if (!finalAspectMemo.has(signKey)) finalAspectMemo.set(signKey, moonFinalAspectInSign(cJd));
+        const fin = finalAspectMemo.get(signKey)!;
+        if (fin && (fin.aspect === "square" || fin.aspect === "opposition") && (fin.planet === "Mars" || fin.planet === "Saturn")) {
+          tier = "good"; // Hampar: a malefic hard final aspect — the ending sours; no GREAT
+        }
+      }
       windows.push({
         date: dateLabel, dow,
         startAt: new Date(c.startMs).toISOString(), endAt: new Date(c.endMs).toISOString(),

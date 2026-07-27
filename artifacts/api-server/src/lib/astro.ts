@@ -402,6 +402,70 @@ export function voidOfCourse(jd: number): { voc: boolean } {
   return { voc: true };
 }
 
+// ── Moon's FINAL aspect in its current sign ──────────────────────────────────
+// Hampar's electional key: the Moon's last aspect before leaving her sign tells
+// how the matter ENDS — a benefic soft final aspect makes a GREAT election
+// possible; a malefic hard one caps it. Same signed-separation scan as
+// voidOfCourse, but collecting every perfection to the ingress and keeping the last.
+const FINAL_ANGLE_NAME: Record<number, string> = {
+  0: "conjunction", 60: "sextile", 90: "square", 120: "trine", 180: "opposition",
+  240: "trine", 270: "square", 300: "sextile",
+};
+export function moonFinalAspectInSign(jd: number): { planet: string; aspect: string; atJd: number } | null {
+  const moonLon0 = normalize360(moonLongitude(jd));
+  const sign0    = Math.floor(moonLon0 / 30);
+  const degLeft  = 30 - (moonLon0 % 30);
+  const daysLeft = degLeft / 13.0;
+  const STEP     = 0.25 / 24;
+  const ANGLES = [0, 60, 90, 120, 180, 240, 270, 300];
+  const prevDelta: Record<string, number> = {};
+  for (const name of VOC_PLANETS) prevDelta[name] = normalize360(moonLon0 - bodyLongitude(name, jd));
+
+  let last: { planet: string; aspect: string; atJd: number } | null = null;
+  for (let dt = STEP; dt <= daysLeft + STEP; dt += STEP) {
+    const cj   = jd + dt;
+    const mLon = normalize360(moonLongitude(cj));
+    if (Math.floor(mLon / 30) !== sign0) break;
+    for (const name of VOC_PLANETS) {
+      const d = normalize360(mLon - bodyLongitude(name, cj));
+      const p = prevDelta[name];
+      if (d >= p) {
+        for (const A of ANGLES) if (p < A && A <= d) last = { planet: name, aspect: FINAL_ANGLE_NAME[A], atJd: cj };
+      } else {
+        for (const A of ANGLES) if (A > p || A <= d) last = { planet: name, aspect: FINAL_ANGLE_NAME[A], atJd: cj };
+      }
+      prevDelta[name] = d;
+    }
+  }
+  return last;
+}
+
+// ── Eclipse window ───────────────────────────────────────────────────────────
+// Hampar: delay elections within ±1 week of any eclipse. An eclipse is a
+// lunation close to the nodal axis: New Moon within ~15° of a node = solar,
+// Full Moon within ~12° = lunar. We scan ±7 days for a lunation and test node
+// distance at the crossing day (mean node — plenty for a week-wide gate).
+export function eclipseWindow(jd: number): { active: boolean; kind?: "solar" | "lunar"; daysAway?: number } {
+  let prevElong = normalize360(moonLongitude(jd - 8) - sunLongitude(jd - 8));
+  for (let d = -7; d <= 7; d++) {
+    const cj = jd + d;
+    const elong = normalize360(moonLongitude(cj) - sunLongitude(cj));
+    // elongation grows ~12.2°/day; detect 0 (new) and 180 (full) crossings
+    const crossedNew  = elong < prevElong;                       // wrapped 360→0
+    const crossedFull = prevElong < 180 && elong >= 180;
+    if (crossedNew || crossedFull) {
+      const sunL = normalize360(sunLongitude(cj));
+      const node = lunarNodes(cj).north.longitude;
+      const fold = (a: number, b: number) => { const d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; };
+      const toAxis = Math.min(fold(sunL, node), fold(sunL, node + 180));
+      const limit = crossedNew ? 15 : 12;
+      if (toAxis <= limit) return { active: true, kind: crossedNew ? "solar" : "lunar", daysAway: Math.abs(d) };
+    }
+    prevElong = elong;
+  }
+  return { active: false };
+}
+
 // ── Sunrise / Sunset ──────────────────────────────────────────────────────────
 
 /**
