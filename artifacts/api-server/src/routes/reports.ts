@@ -97,7 +97,11 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
   // doesn't carry an all-day email. Natal fetched early for the asc-ruler.
   const natal = await natalFor(testerId);
   const ascRuler = natal?.timeKnown ? domicileLord(natal.computed.ascendant.longitude) : undefined;
-  const reading = dayReading(now, lat, lon, { tzOffsetMin: tz, ascRuler, scope: "day" });
+  const reading = dayReading(now, lat, lon, { tzOffsetMin: tz, ascRuler, scope: "day", natal: natal ? {
+    planets: natal.computed.planets.map((p) => ({ planet: p.planet, longitude: p.longitude })),
+    asc: natal.timeKnown ? natal.computed.ascendant.longitude : undefined,
+    mc: natal.timeKnown ? natal.computed.midheaven.longitude : undefined,
+  } : undefined });
 
   // 1) The day in plain language — the woven flavour leads; then the parts.
   const lead = [cap(reading.flavour)];

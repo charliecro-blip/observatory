@@ -59,12 +59,12 @@ const VALENCE: Record<string, number> = { Venus: 1, Jupiter: 1, Mars: -1, Saturn
 // (×0.5); a square outweighs a benefic, a trine softens a malefic. Aversions
 // (semisextile/quincunx) never reach here — getMajorAspects omits them — but the
 // synthesis skips them defensively.
-const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; word: string }> = {
-  conjunction: { harmony: 0, strength: 1.0, word: "meets" },
-  sextile:     { harmony: 1, strength: 0.5, word: "reaches easily to" },
-  square:      { harmony: -1, strength: 1.0, word: "grinds against" },
-  trine:       { harmony: 1, strength: 1.0, word: "flows to" },
-  opposition:  { harmony: -1, strength: 0.9, word: "faces off with" },
+const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; word: string; ing: string }> = {
+  conjunction: { harmony: 0, strength: 1.0, word: "meets", ing: "meeting" },
+  sextile:     { harmony: 1, strength: 0.5, word: "reaches easily to", ing: "reaching easily to" },
+  square:      { harmony: -1, strength: 1.0, word: "grinds against", ing: "grinding against" },
+  trine:       { harmony: 1, strength: 1.0, word: "flows to", ing: "flowing to" },
+  opposition:  { harmony: -1, strength: 0.9, word: "faces off with", ing: "facing off with" },
 };
 
 export interface Testimony {
@@ -100,11 +100,154 @@ function sectOf(isDay: boolean): Sect {
     ? { chart: "day",   luminary: "Sun",  team: ["Sun", "Jupiter", "Saturn"], benefic: "Jupiter", malefic: "Mars"  }
     : { chart: "night", luminary: "Moon", team: ["Moon", "Venus", "Mars"],    benefic: "Venus",   malefic: "Saturn" };
 }
+/** The natal chart, reduced to what the personal testimony layer needs.
+ *  asc/mc only when the birth time is known. */
+export interface NatalForReading {
+  planets: { planet: string; longitude: number }[];
+  asc?: number;
+  mc?: number;
+}
+
 /** Options threaded from the caller (route): viewer timezone for the day-of-week
- *  ruler, the natal ascendant ruler for chart-aware patterns, and scope —
+ *  ruler, the natal ascendant ruler for chart-aware patterns, scope —
  *  "moment" includes the rotating planetary hour; "day" (reports, spanning the
- *  whole day) drops hour-bound voices so the reading stays true till evening. */
-export interface ReadingOptions { tzOffsetMin?: number; ascRuler?: string; scope?: "moment" | "day"; }
+ *  whole day) drops hour-bound voices — and the natal chart, which unlocks the
+ *  personal testimony layer (transits-to-natal join the convergence). */
+export interface ReadingOptions { tzOffsetMin?: number; ascRuler?: string; scope?: "moment" | "day"; natal?: NatalForReading; }
+
+// ── Personal testimony layer — transits to the natal chart ───────────────────
+// The mundane sky speaks to everyone; these voices speak to YOU. Each
+// transiting planet within orb of a natal planet/angle becomes a Testimony,
+// so personal weather joins the same convergence/counterpoint/salience
+// machinery instead of living in a side list. Grounded in the book digests:
+//   • Hand's pair table — difficulty/ease is the PLANET PAIR, aspect-scoped;
+//     conjunctions resolve their polarity FROM the pair, not from the aspect.
+//   • Ebertin — outer transits set the THEME (strong, slow → high weight, low
+//     day-salience); fast bodies TIME it (fleeting → high salience). Personal
+//     points (natal Sun/Moon/Asc/MC) outrank generic hits. Natal orbs: 5°
+//     personal points · 4° Mercury/Venus/Mars · 3° Jupiter→Pluto.
+
+// Hand, Planets in Transit pp.11-13 (verbatim-transcribed). Scope limits when
+// the pair's polarity applies; outside its scope a pair is neutral.
+type PairScope = "all" | "hardOnly" | "softOnly";
+const pairKey = (a: string, b: string) => [a, b].sort().join("-");
+const HAND_DIFFICULT = new Map<string, PairScope>([
+  [pairKey("Sun", "Saturn"), "all"], [pairKey("Sun", "Uranus"), "hardOnly"], [pairKey("Sun", "Neptune"), "all"],
+  [pairKey("Moon", "Mars"), "all"], [pairKey("Moon", "Saturn"), "all"], [pairKey("Moon", "Uranus"), "all"],
+  [pairKey("Moon", "Neptune"), "all"], [pairKey("Moon", "Pluto"), "all"],
+  [pairKey("Mercury", "Neptune"), "all"], [pairKey("Venus", "Neptune"), "hardOnly"],
+  [pairKey("Mars", "Saturn"), "all"], [pairKey("Mars", "Uranus"), "all"], [pairKey("Mars", "Neptune"), "all"], [pairKey("Mars", "Pluto"), "all"],
+  [pairKey("Jupiter", "Saturn"), "hardOnly"], [pairKey("Saturn", "Uranus"), "all"], [pairKey("Saturn", "Neptune"), "all"], [pairKey("Saturn", "Pluto"), "all"],
+  [pairKey("Uranus", "Neptune"), "hardOnly"],
+]);
+const HAND_EASY = new Map<string, PairScope>([
+  [pairKey("Sun", "Moon"), "softOnly"], [pairKey("Sun", "Mercury"), "softOnly"],
+  [pairKey("Sun", "Venus"), "all"], [pairKey("Sun", "Jupiter"), "all"],
+  [pairKey("Moon", "Venus"), "all"], [pairKey("Moon", "Jupiter"), "all"],
+  [pairKey("Venus", "Mars"), "softOnly"], [pairKey("Venus", "Jupiter"), "all"], [pairKey("Mars", "Jupiter"), "softOnly"],
+]);
+
+// Themes for transiting bodies the mundane collectors don't cover.
+const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string }> = {
+  Uranus:  { verb: "breaking the old pattern", gift: "fresh air and honest change", shadow: "restlessness, rupture for its own sake" },
+  Neptune: { verb: "dissolving and imagining", gift: "imagination and compassion", shadow: "fog, drift, self-deception" },
+  Pluto:   { verb: "deep renovation", gift: "depth and renewal", shadow: "control, obsession" },
+};
+// What a natal point MEANS when something lands on it.
+const NATAL_POINT_WORD: Record<string, string> = {
+  Sun: "your core self", Moon: "your inner life", Mercury: "your thinking", Venus: "your relating",
+  Mars: "your drive", Jupiter: "your growth", Saturn: "your foundations",
+  Uranus: "your independence", Neptune: "your imagination", Pluto: "your depths",
+  ASC: "how you meet the world", MC: "your work in the world",
+};
+const PERSONAL_POINTS = new Set(["Sun", "Moon", "ASC", "MC"]);
+// Ebertin's natal orb ladder, by the NATAL target.
+function natalOrb(target: string): number {
+  if (PERSONAL_POINTS.has(target)) return 5;
+  if (["Mercury", "Venus", "Mars"].includes(target)) return 4;
+  return 3;
+}
+// Day-salience by transiting speed class: fast = today's spike, slow = the
+// chapter you're in (still a voice, but a background one on a DAY card).
+function transitSalienceBase(p: string): number {
+  if (p === "Moon") return 0.85;
+  if (["Sun", "Mercury", "Venus", "Mars"].includes(p)) return 0.7;
+  if (["Jupiter", "Saturn"].includes(p)) return 0.55;
+  return 0.45; // Uranus/Neptune/Pluto — theme, not event
+}
+const ASPECT_ANGLES: [string, number][] = [["conjunction", 0], ["sextile", 60], ["square", 90], ["trine", 120], ["opposition", 180]];
+function sepDeg(a: number, b: number): number { const d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
+
+function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
+  const out: Testimony[] = [];
+  const targets: { name: string; lon: number }[] = [
+    ...natal.planets
+      .filter(p => Object.prototype.hasOwnProperty.call(NATAL_POINT_WORD, p.planet))
+      .map(p => ({ name: p.planet, lon: p.longitude })),
+    ...(natal.asc != null ? [{ name: "ASC", lon: natal.asc }] : []),
+    ...(natal.mc != null ? [{ name: "MC", lon: natal.mc }] : []),
+  ];
+  for (const t of m.positions) {
+    for (const target of targets) {
+      // A planet transiting its own natal place (returns) is real but reads
+      // oddly as "Sun grinds against your Sun" — keep conjunction-returns only.
+      const sep = sepDeg(t.longitude, target.lon);
+      let best: { name: string; orb: number } | null = null;
+      for (const [name, angle] of ASPECT_ANGLES) {
+        const orb = Math.abs(sep - angle);
+        if (orb <= natalOrb(target.name) && (best == null || orb < best.orb)) best = { name, orb };
+      }
+      if (!best) continue;
+      if (t.planet === target.name && best.name !== "conjunction") continue;
+
+      const nat = ASPECT_NATURE[best.name];
+      // Polarity — the PAIR first (Hand), then the aspect's nature.
+      const key = pairKey(t.planet, target.name === "ASC" || target.name === "MC" ? t.planet : target.name);
+      const hardAspect = best.name === "square" || best.name === "opposition";
+      const softAspect = best.name === "sextile" || best.name === "trine";
+      const diffScope = target.name === "ASC" || target.name === "MC" ? undefined : HAND_DIFFICULT.get(key);
+      const easyScope = target.name === "ASC" || target.name === "MC" ? undefined : HAND_EASY.get(key);
+      let polarity: 1 | -1;
+      if (diffScope && (diffScope === "all" || (diffScope === "hardOnly" && (hardAspect || best.name === "conjunction")))) polarity = -1;
+      else if (easyScope && (easyScope === "all" || (easyScope === "softOnly" && softAspect))) polarity = 1;
+      else if (hardAspect) polarity = -1;
+      else if (softAspect) polarity = 1;
+      else polarity = (VALENCE[t.planet] ?? 0) < 0 ? -1 : 1; // neutral conjunction leans with the transiting planet
+
+      const exact = Math.max(0, 1 - best.orb / natalOrb(target.name));
+      const salience = transitSalienceBase(t.planet) * (0.4 + 0.6 * exact) * nat.strength
+        * (PERSONAL_POINTS.has(target.name) ? 1.25 : 1);
+      const theme = PLANET_THEME[t.planet] ?? null;
+      const outer = OUTER_THEME[t.planet];
+      const verb = theme?.verb ?? outer?.verb ?? "its work";
+      const roads = PLANET_ROADS[t.planet] ?? (outer ? { gift: outer.gift, shadow: outer.shadow } : undefined);
+      const isReturn = t.planet === target.name;
+      const targetWord = NATAL_POINT_WORD[target.name] ?? `your ${target.name}`;
+      out.push({
+        source: `transit:${t.planet}→${target.name}`,
+        element: PLANET_ELEMENT[t.planet],
+        // The ACTIVATED area is the natal point — its themes are what the day favours.
+        activities: polarity > 0 ? (PLANET_THEME[target.name]?.activities ?? theme?.activities ?? []) : [],
+        weight: m.dig(t.planet),
+        salience,
+        polarity,
+        gift: roads?.gift, shadow: roads?.shadow,
+        carriedBy: isReturn
+          ? `your ${t.planet} return — a cycle begins again`
+          : `${t.planet} ${nat.ing} ${targetWord}`,
+        note: isReturn
+          ? `your ${t.planet} return (${best.orb.toFixed(1)}°) — its cycle starts a new lap; ${verb} is renewed`
+          : `${t.planet} ${nat.word} ${targetWord} (${best.orb.toFixed(1)}°) — ${polarity > 0 ? "support for" : "pressure on"} ${targetWord}${polarity < 0 && roads ? `; watch ${roads.shadow}` : ""}`,
+        score: 0, // filled by caller
+      });
+    }
+  }
+  // The loudest few join the reading — enrich the convergence, don't drown the sky.
+  return out
+    .sort((a, b) => b.salience * b.weight - a.salience * a.weight)
+    .slice(0, 4)
+    .map(t => ({ ...t, score: t.weight * t.salience * t.polarity }));
+}
 
 // One gather of the sky, shared by the testimony collectors and the pattern matcher.
 interface Moment {
@@ -205,7 +348,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     push({ source: `moonAspect:${other}`, element: PLANET_ELEMENT[other], activities: th.activities,
       weight: dig(other), salience: 0.9 * (0.4 + 0.6 * exact) * nat.strength, polarity,
       gift: PLANET_ROADS[other].gift, shadow: PLANET_ROADS[other].shadow,
-      carriedBy: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
+      carriedBy: `the Moon ${nat.ing} ${other} — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
       note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
   }
 
@@ -218,6 +361,9 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   if (m.voc) push({ source: "voc", activities: ["finish", "rest", "tidy"], weight: 1.3, salience: 0.7, polarity: -1,
     shadow: "beginning something you want to last",
     note: "the Moon is void of course — slack water; begin nothing you want to last" });
+
+  // Personal layer — transits to the natal chart, when a chart is present.
+  if (opts.natal) T.push(...collectPersonal(m, opts.natal));
 
   return T;
 }
@@ -250,7 +396,7 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
 
   // Counterpoint: the strongest testimony that cuts against the grain (opposite
   // polarity, or a strong voice in a different element) — named with its shadow.
-  const counter = [...T].filter(t => t.polarity < 0 || (t.element && t.element !== topElement[0]))
+  const counter = [...T].filter(t => t.polarity < 0)
     .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
   const addShadow = counter?.shadow && !counter.note.includes(counter.shadow);
   const counterpoint = counter && counter.weight * counter.salience > 0.5
