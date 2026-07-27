@@ -83,6 +83,7 @@ export interface Testimony {
 
 export interface DayReading {
   flavour: string;             // the woven whole, one sentence
+  element: string;             // the convergent element (the flavour's key)
   foci: string[];              // concrete things it favours
   watch: { note: string; salience: number }[];  // top salience — "focus on this"
   counterpoint?: string;       // the honest "but…"
@@ -411,7 +412,7 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
     ...patterns.map(p => ({ note: p.reading, salience: p.salience })),
   ].sort((a, b) => b.salience - a.salience).slice(0, 3);
 
-  return { flavour, foci, watch, counterpoint, patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)) };
+  return { flavour, element: topElement[0], foci, watch, counterpoint, patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)) };
 }
 
 /** Convenience: the woven reading for a moment. */

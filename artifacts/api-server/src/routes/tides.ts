@@ -207,6 +207,11 @@ router.get("/tides/now", async (req, res) => {
     (t) => (t.aspect === "square" || t.aspect === "opposition") &&
            (t.severity === "strong" || t.severity === "major"),
   );
+  // The woven reading first — the tide's headline derives FROM it (one brain).
+  const reading = dayReading(date, lat, lon, { tzOffsetMin: tzOffset, ascRuler, natal: natalForReading });
+  const support = reading.testimonies.filter(t => t.score > 0).reduce((a, t) => a + t.score, 0);
+  const caution = reading.testimonies.filter(t => t.score < 0).reduce((a, t) => a - t.score, 0);
+
   const tide = computeTide({
     moonSign,
     illumination: fraction,
@@ -216,6 +221,7 @@ router.get("/tides/now", async (req, res) => {
     angularCount: angularPlanets.length,
     hourElement: PLANET_TO_ELEMENT[planHour.ruler] ?? "air",
     personalHardTransit,
+    reading: { element: reading.element, support, caution },
   });
 
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
@@ -328,9 +334,9 @@ router.get("/tides/now", async (req, res) => {
     tide,
     dayArc: computeDayArc(date, lat, lon, tzOffset),
     // The woven reading — flavour/foci/watch/counterpoint/patterns/testimonies.
-    // The client gates how much of it to show by astro-detail level. With a
-    // stored chart, the personal testimony layer joins the convergence.
-    reading: dayReading(date, lat, lon, { tzOffsetMin: tzOffset, ascRuler, natal: natalForReading }),
+    // Computed above (the tide derives from it); the client gates depth by
+    // astro-detail level.
+    reading,
   });
 });
 
