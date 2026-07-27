@@ -160,6 +160,7 @@ const NATAL_POINT_WORD: Record<string, string> = {
   Mars: "your drive", Jupiter: "your growth", Saturn: "your foundations",
   Uranus: "your independence", Neptune: "your imagination", Pluto: "your depths",
   ASC: "how you meet the world", MC: "your work in the world",
+  Fortune: "your fortune", // the Lot — body, resources, ease
 };
 const PERSONAL_POINTS = new Set(["Sun", "Moon", "ASC", "MC"]);
 // Ebertin's natal orb ladder, by the NATAL target.
@@ -181,12 +182,25 @@ function sepDeg(a: number, b: number): number { const d = Math.abs(((a - b) % 36
 
 function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
   const out: Testimony[] = [];
+  // Natal Lot of Fortune (George Ch.33, sect-reversed: day Asc+Moon−Sun,
+  // night Asc+Sun−Moon). Needs the Ascendant, so birth time must be known.
+  // Day birth = natal Sun above the horizon = in the Desc→MC→Asc semicircle.
+  let fortune: number | null = null;
+  if (natal.asc != null) {
+    const nSun = natal.planets.find(p => p.planet === "Sun")?.longitude;
+    const nMoon = natal.planets.find(p => p.planet === "Moon")?.longitude;
+    if (nSun != null && nMoon != null) {
+      const dayBirth = (((nSun - natal.asc) % 360) + 360) % 360 > 180;
+      fortune = (((dayBirth ? natal.asc + nMoon - nSun : natal.asc + nSun - nMoon) % 360) + 360) % 360;
+    }
+  }
   const targets: { name: string; lon: number }[] = [
     ...natal.planets
       .filter(p => Object.prototype.hasOwnProperty.call(NATAL_POINT_WORD, p.planet))
       .map(p => ({ name: p.planet, lon: p.longitude })),
     ...(natal.asc != null ? [{ name: "ASC", lon: natal.asc }] : []),
     ...(natal.mc != null ? [{ name: "MC", lon: natal.mc }] : []),
+    ...(fortune != null ? [{ name: "Fortune", lon: fortune }] : []),
   ];
   for (const t of m.positions) {
     for (const target of targets) {
