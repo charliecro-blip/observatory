@@ -194,7 +194,11 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
     // per-day activity fit differ even when the Moon holds the same sign.
     const fav = favoredActivities(sky, 2);
     const favText = fav.length ? fav.map((f) => f.label.toLowerCase()).join(", ") : (sg?.favors ?? []).slice(0, 2).join(", ");
-    dayLines.push(`${fmtShort(local)} — ${moonSign} Moon, ${dayRuler} day: ${favText}.${vocDay ? " Void spell — keep it light." : ""}`);
+    // The woven flavour's keynote (before "carried by") leads each day line —
+    // the same synthesis the daily card runs, at local noon, day scope.
+    const noonDate = new Date((localNoonJd(tz, d) - 2440587.5) * 86400000);
+    const keynote = dayReading(noonDate, _lat, _lon, { tzOffsetMin: tz, scope: "day" }).flavour.split(", carried by")[0];
+    dayLines.push(`${fmtShort(local)} — ${cap(keynote)}. ${moonSign} Moon, ${dayRuler} day: ${favText}.${vocDay ? " Void spell — keep it light." : ""}`);
     perDay.push({ d, voc: vocDay, sky });
   }
   blocks.push({ heading: "Day by day", lines: dayLines });

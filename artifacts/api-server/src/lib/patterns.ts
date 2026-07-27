@@ -167,7 +167,76 @@ const PATTERNS: Record<string, Matcher> = {
     ? { name: "Doubled day", polarity: 1, salience: 0.7,
         reading: `${ctx.hourRuler} rules both this hour and your ascendant — the day narrows to a single, focused thread; lean into it.` }
     : null,
+
+  // Translation of light (DeLuce/deVore, verbatim-sourced): a swifter planet
+  // separates from one planet and applies to another that the first isn't in
+  // aspect with — a carrier bridges two disconnected themes. "A third party
+  // accomplishes the matter": introductions, brokers, hand-offs.
+  // Scoped to stay MEANINGFUL on a day card: the horary form applies to a
+  // question's significators; unscoped, the Moon "translates" almost daily
+  // (107/120 days in test). Here: a personal carrier (Moon/Mercury/Venus)
+  // bridging two SLOW planets (Jupiter+), both legs tight (≤4°).
+  translationOfLight: (ctx) => {
+    const CARRIERS = new Set(["Moon", "Mercury", "Venus"]);
+    const SLOW = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
+    for (const t of ctx.aspects) {
+      if (t.applying || t.orb > 4) continue;        // t = the separating leg (T departing A)
+      const [T, A] = fasterFirst(t.planet1, t.planet2);
+      if (!T || !CARRIERS.has(T) || !SLOW.has(A)) continue;
+      for (const u of ctx.aspects) {
+        if (!u.applying || u.orb > 4) continue;     // u = the applying leg (T approaching B)
+        const other: string | null = u.planet1 === T ? u.planet2 : u.planet2 === T ? u.planet1 : null;
+        if (!other || other === A || !SLOW.has(other)) continue;
+        const linked = ctx.aspects.some(x =>
+          (x.planet1 === A && x.planet2 === other) || (x.planet1 === other && x.planet2 === A));
+        if (linked) continue;                       // A and B already speak — nothing to translate
+        return { name: `Translation of light (${T}: ${A}→${other})`, polarity: 1, salience: 0.55,
+          reading: `${T} is carrying light from ${A} to ${other} — a go-between day: the introduction, the forwarded note, the broker moves things that couldn't move directly.` };
+      }
+    }
+    return null;
+  },
+
+  // Collection of light (DeLuce/deVore): two planets not in aspect both apply
+  // to a SLOWER third that holds essential dignity over both (the reception
+  // gate that keeps this rare) — a senior figure gathers the threads.
+  collectionOfLight: (ctx) => {
+    const applying = ctx.aspects.filter(a => a.applying);
+    for (let i = 0; i < applying.length; i++) {
+      for (let j = i + 1; j < applying.length; j++) {
+        const shared = [applying[i].planet1, applying[i].planet2]
+          .find(p => p === applying[j].planet1 || p === applying[j].planet2);
+        if (!shared) continue;
+        const a = applying[i].planet1 === shared ? applying[i].planet2 : applying[i].planet1;
+        const b = applying[j].planet1 === shared ? applying[j].planet2 : applying[j].planet1;
+        if (a === b) continue;
+        // Collector must be the slowest of the three…
+        const si = SPEED_ORDER.indexOf(shared);
+        if (si === -1 || si < SPEED_ORDER.indexOf(a) || si < SPEED_ORDER.indexOf(b)) continue;
+        // …a and b must not be in aspect with each other…
+        const linked = ctx.aspects.some(x =>
+          (x.planet1 === a && x.planet2 === b) || (x.planet1 === b && x.planet2 === a));
+        if (linked) continue;
+        // …and it must receive both in its domicile (DeLuce's dignity gate).
+        const lonA = ctx.positions.find(p => p.planet === a)?.longitude;
+        const lonB = ctx.positions.find(p => p.planet === b)?.longitude;
+        if (lonA == null || lonB == null) continue;
+        if (domicileLord(lonA) !== shared || domicileLord(lonB) !== shared) continue;
+        return { name: `Collection of light (${shared} ← ${a}+${b})`, polarity: 1, salience: 0.55,
+          reading: `${a} and ${b} both reach toward ${shared}, which hosts them both — a senior hand gathers separate threads; escalate to the person who holds the whole picture.` };
+      }
+    }
+    return null;
+  },
 };
+
+// Chaldean speed order, fastest first — translation/collection need "swifter than".
+const SPEED_ORDER = ["Moon", "Mercury", "Venus", "Sun", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+function fasterFirst(a: string, b: string): [string, string] | [null, null] {
+  const ia = SPEED_ORDER.indexOf(a), ib = SPEED_ORDER.indexOf(b);
+  if (ia === -1 || ib === -1) return [null, null];
+  return ia < ib ? [a, b] : [b, a];
+}
 
 /** Run every matcher against the moment; return the patterns that fired. */
 export function matchPatterns(ctx: PatternContext): NamedPattern[] {
