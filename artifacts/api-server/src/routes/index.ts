@@ -39,6 +39,7 @@ import momentumRouter from "./momentum";
 import electionsRouter from "./elections";
 import eventsRouter from "./events";
 import engineRouter from "./engine";
+import positionFixRouter from "./positionFix";
 
 const router: IRouter = Router();
 
@@ -82,5 +83,6 @@ router.use(momentumRouter);
 router.use(electionsRouter);
 router.use(eventsRouter);
 router.use(engineRouter);
+router.use(positionFixRouter);
 
 export default router;
