@@ -166,7 +166,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     queryFn: async () => { const r = await fetch("/api/planning/goals", { headers: authH(testerId) }); const j = await r.json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
-  const pausedGoals = allGoals.filter((g: any) => g.status !== "active");
+  const pausedGoals = allGoals.filter((g: any) => g.status === "paused");
 
   const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) } as Record<string, string>;
   const { data: allTasks = [] } = useQuery<any[]>({
@@ -360,6 +360,20 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const clearAnchor = useMutation({
     mutationFn: async (id: number) => {
       await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ anchorKind: null, anchorPlanet: null, anchorHouse: null, anchorUntil: null }) });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
+  });
+
+  const retireStar = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ status: "done" }) });
+      if (!r.ok) throw new Error("Failed");
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
+  });
+  const deleteStar = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/planning/goals/${id}`, { method: "DELETE", headers: authH(testerId) });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });
@@ -735,7 +749,14 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "var(--color-card-2)", color: "#6a6258", cursor: "pointer",
                     }}>+ log</button>
-                    <button onClick={() => cycleStatus.mutate({ id: g.id, status: g.status })} style={{ fontSize: 10, color: "#bbb", background: "none", border: "none", cursor: "pointer" }}>pause</button>
+                    <button onClick={() => cycleStatus.mutate({ id: g.id, status: g.status })} title="Set this star down for a while — it keeps its history" style={{
+                      fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
+                      background: "none", color: "#998", cursor: "pointer",
+                    }}>pause</button>
+                    <button onClick={() => { if (confirm(`Retire “${g.title}”? It ends the journey — history stays in the Log.`)) retireStar.mutate(g.id); }} title="End this star — reached, outgrown, or done with" style={{
+                      fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
+                      background: "none", color: "#998", cursor: "pointer",
+                    }}>retire</button>
                   </div>
                 </div>
 
@@ -1054,6 +1075,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, opacity: 0.6 }}>
                 <div style={{ fontSize: 12, color: "#888", flex: 1 }}>{g.title}</div>
                 <button onClick={() => cycleStatus.mutate({ id: g.id, status: g.status })} style={{ fontSize: 10, color: "#6090c0", background: "none", border: "none", cursor: "pointer" }}>resume</button>
+                <button onClick={() => { if (confirm(`Retire “${g.title}”?`)) retireStar.mutate(g.id); }} style={{ fontSize: 10, color: "#998", background: "none", border: "none", cursor: "pointer" }}>retire</button>
+                <button onClick={() => { if (confirm(`Delete “${g.title}” completely? For test stars — real journeys deserve retirement.`)) deleteStar.mutate(g.id); }} style={{ fontSize: 10, color: "#c08080", background: "none", border: "none", cursor: "pointer" }}>delete</button>
               </div>
             ))}
           </div>

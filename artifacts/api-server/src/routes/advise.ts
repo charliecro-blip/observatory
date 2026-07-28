@@ -34,7 +34,7 @@ const PLANETARY_HOUR_SUPPORTS: Record<string, string[]> = {
   Mars:    ["movement", "action", "exercise", "boundary work", "errands", "hard edits", "decisive action"],
   Jupiter: ["teaching", "publishing", "big-picture planning", "outreach", "generosity", "launches"],
   Saturn:  ["structure", "discipline", "planning", "accounting", "cleanup", "commitments", "finishing"],
-  Sun:     ["visibility", "presenting", "leadership", "self-expression", "creative confidence"],
+  Sun:     ["vitality", "creative work", "clear decisions", "wholehearted effort", "warmth"],
 };
 
 const ELEMENT_QUALITIES: Record<string, string> = {

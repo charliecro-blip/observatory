@@ -7,9 +7,11 @@
 const KEY = "obs_text_scale";
 
 // Bumped the whole ladder up a notch (owner 2026-07-22 — the app read too
-// small). "Default" is now what "Large" used to be.
+// small). "Default" is now what "Large" used to be. Compact, however, must
+// actually be compact (owner 2026-07-28: 1.08 read "comically large") — it
+// sits below 1.0 so dense-screen lovers get a genuinely smaller UI.
 export const TEXT_SCALES: { key: string; label: string; scale: number }[] = [
-  { key: "compact", label: "Compact", scale: 1.08 },
+  { key: "compact", label: "Compact", scale: 0.95 },
   { key: "default", label: "Default", scale: 1.2 },
   { key: "large",   label: "Large",   scale: 1.32 },
   { key: "larger",  label: "Larger",  scale: 1.44 },

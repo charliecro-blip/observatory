@@ -76,7 +76,7 @@ export const PHASE_GUIDE: Record<string, { thrust: string; do: string }> = {
 // ── Planetary day: what the weekday's ruler underwrites ──────────────────────
 export const DAY_RULER = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
 export const DAY_RULER_GIFT: Record<string, string> = {
-  Sun: "visibility, leadership, and being seen",
+  Sun: "vitality, creative work, and wholehearted decisions",
   Moon: "tending, feeling, and the domestic rhythms",
   Mars: "effort, training, and the decisive cut",
   Mercury: "writing, sorting, errands, and conversation",

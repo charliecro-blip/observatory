@@ -526,6 +526,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const crossingsOn = prefs.display.todayShowCrossings;
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  // Travel hint dismissal is per-day: dismissing today shouldn't hide a real
+  // move next month.
+  const [dismissedTravelHint, setDismissedTravelHint] = useState(() =>
+    localStorage.getItem("obs_travel_hint_dismissed") === new Date().toISOString().slice(0, 10));
 
   function useCurrentLocation() {
     if (!navigator.geolocation) { setLocationError(true); return; }
@@ -852,6 +856,27 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               {locating ? "Locating…" : locationError ? "⚠ Couldn't get location — set it in Settings" : "⚠ Set location — hours & sun times are estimated"}
             </button>
           )}
+          {/* Travel detector (owner 2026-07-28: "the location hasn't reset" after
+              travelling): the saved longitude implies a solar timezone; when the
+              DEVICE's timezone disagrees by ≥2 hours, you've probably moved — one
+              tap re-fixes. Heuristic on purpose: no background geolocation. */}
+          {hasSavedLocation(testerProfile) && !dismissedTravelHint && (() => {
+            const deviceTzH = -new Date().getTimezoneOffset() / 60;
+            const savedTzH = Math.round((lon ?? -74) / 15);
+            if (Math.abs(deviceTzH - savedTzH) < 2) return null;
+            return (
+              <span style={{ display: "inline-flex", gap: 4 }}>
+                <button onClick={useCurrentLocation} disabled={locating} style={{
+                  fontSize: 9, color: "#4a6a8a", background: "#eef4fa", border: "1px solid #b0c8dc",
+                  borderRadius: 6, padding: "3px 9px", cursor: locating ? "default" : "pointer",
+                }}>
+                  {locating ? "Locating…" : "📍 In a new place? Tap to update your sky"}
+                </button>
+                <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", new Date().toISOString().slice(0, 10)); setDismissedTravelHint(true); }}
+                  style={{ fontSize: 9, color: "#aab", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>✕</button>
+              </span>
+            );
+          })()}
         </div>
       </div>
 

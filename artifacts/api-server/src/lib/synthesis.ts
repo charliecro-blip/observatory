@@ -26,7 +26,7 @@ const PLANET_ELEMENT: Record<string, Element> = {
   Sun: "fire", Moon: "water", Mercury: "air", Venus: "earth", Mars: "fire", Jupiter: "fire", Saturn: "earth",
 };
 const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = {
-  Sun:     { verb: "being seen and leading", activities: ["present", "decide", "put yourself forward"] },
+  Sun:     { verb: "vitality and wholehearted action", activities: ["decide", "creative work", "the essential task"] },
   Moon:    { verb: "tending and feeling", activities: ["rest", "tend home", "care for someone"] },
   Mercury: { verb: "thinking and exchanging", activities: ["write", "sort", "learn", "run errands"] },
   Venus:   { verb: "relating and refining", activities: ["connect", "make something beautiful", "money"] },

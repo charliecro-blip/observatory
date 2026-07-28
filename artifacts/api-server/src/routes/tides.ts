@@ -45,7 +45,7 @@ const PLANETARY_HOUR_RULES: Record<string, {
   Mars:    { prompt: "What needs courage, movement, or a clean cut?", supports: ["movement", "action", "exercise", "boundary work", "errands", "hard edits", "decisive problem-solving"] },
   Jupiter: { prompt: "What wants to grow, be shared, or be understood in a larger frame?", supports: ["teaching", "publishing", "big-picture planning", "outreach", "generosity", "study", "launches"] },
   Saturn:  { prompt: "What needs structure, patience, or maintenance?", supports: ["structure", "discipline", "planning", "accounting", "cleanup", "commitments", "maintenance", "finishing"] },
-  Sun:     { prompt: "What needs to be seen, clarified, or led?", supports: ["visibility", "presenting", "leadership", "self-expression", "creative confidence", "direction"] },
+  Sun:     { prompt: "What would restore your vitality — or deserves your whole heart?", supports: ["vitality", "creative work", "a clear decision", "integrity", "warmth", "the essential task"] },
 };
 
 const VOC_SUPPORTS = ["rest", "cleanup", "review", "finishing", "routine", "spiritual practice", "reflection", "maintenance"];
