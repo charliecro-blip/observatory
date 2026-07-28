@@ -548,12 +548,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     }}>
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 7 }}>
-          {/* The Compass mark (Claude Design brand kit 2026-07-22) — replaces the
-              placeholder bullet. Inherits ink; nudges to Meridian on hover. */}
+        {/* The wordmark is a way home (owner 2026-07-28): click → Today. */}
+        <button onClick={() => onNavigate?.("today")} title="Back to Today" style={{
+          fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em",
+          display: "flex", alignItems: "center", gap: 7, background: "none", border: "none",
+          cursor: "pointer", padding: 0, color: "var(--color-foreground)",
+        }}>
           <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
           Compass
-        </div>
+        </button>
         <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
           fontSize: 12, lineHeight: 1, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 2,
         }}>{compact ? "⊞" : "⊟"}</button>
