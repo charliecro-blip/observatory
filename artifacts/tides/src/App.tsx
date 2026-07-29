@@ -501,7 +501,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
       <div style={cardStyle}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <div style={{ fontSize:36, fontWeight:400, fontFamily:"var(--font-display)", letterSpacing:"0.01em", color: "var(--color-primary)", marginBottom:6 }}>Compass</div>
-          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Move with time — lunar cycles, planetary hours, and daily rhythm.</div>
+          <div style={{ fontSize:13, color:"#888", lineHeight:1.6 }}>Move with time — sky-timed planning that reads the day before you plan it.</div>
         </div>
         <form onSubmit={handleNameSubmit}>
           <div style={{ fontSize:11, color:"#aaa", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Your name</div>
