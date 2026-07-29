@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
+import { QualityStrip } from "@/pages/Sky";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
 function hasRealLocation(lat: number, lon: number): boolean {
@@ -1410,6 +1411,13 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
+
+      {/* The water ahead — the 30-day wave chart, inherited from the retired
+          Almanac tab. Tap a bar to jump the calendar to that day. */}
+      <QualityStrip week={weekData} days={30} onPick={(d)=>{
+        setSelectedDate(d);
+        if (calView==="month") { setYear(parseInt(d.slice(0,4))); setMonth(parseInt(d.slice(5,7))-1); }
+      }}/>
 
       {/* On phones the detail panel stacks below the grid instead of crushing it */}
       <div style={{ flex:1,display:"flex",overflow:isMobile?"auto":"hidden",flexDirection:isMobile?"column":"row" }}>

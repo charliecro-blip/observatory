@@ -20,7 +20,6 @@ import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
-import Sky from "@/pages/Sky";
 import Launch from "@/pages/Launch";
 import Planets from "@/pages/Planets";
 import Log from "@/pages/Log";
@@ -72,9 +71,8 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
   );
 }
 
-// Ahead (Calendar) and Almanac each get a slim sub-tab that folds Currents in,
-// so the long-cycle personal view lives with the time surfaces it belongs to
-// rather than as its own top-level tab.
+// Calendar's slim sub-tab bar — the course ahead (Calendar) and the wake
+// behind (Log) share time's home rather than holding top-level tabs.
 function SubTabbed({ tabs, children, initial }: { tabs: string[]; children: (active: string) => React.ReactNode; initial?: string }) {
   const [active, setActive] = useState(initial && tabs.includes(initial) ? initial : tabs[0]);
   return (
@@ -100,11 +98,13 @@ type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 
 // Primary tabs = the loop (owner 2026-07-29: Compass is an enchanted
 // productivity app — the nav carries only the daily journey). Today is the
-// tide you're in; Calendar is time's whole home (grid + Almanac + Log as
-// sub-tabs); Aims is where you steer (Guiding Stars → Tasks + Habits); Plan
-// is scheduling/electional. Everything else is enchantment content reached in
-// context, not by tab: Planets (like Settings) is a destination you land on
-// from teachable moments, Log flavor stamps, and Almanac reference links.
+// tide you're in; Calendar is time's whole home (grid + 30-day water strip +
+// Log as sub-tab); Aims is where you steer (Guiding Stars → Tasks + Habits);
+// Plan is scheduling/electional. Everything else is enchantment content
+// reached in context, not by tab: Planets (like Settings) is a destination
+// you land on from teachable moments, Log flavor stamps, and the reference
+// that lives on it (the Almanac tab is retired; its wave chart moved to
+// Calendar, its reference moved to Planets).
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
@@ -974,17 +974,15 @@ function Shell() {
         {/* Main content */}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
         {view==="calendar" && (
-          <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Almanac","Log"]} initial={calendarSeed ?? undefined}>
-            {(a) => a==="Almanac"
-              ? <Sky testerId={testerId} lat={lat} lon={lon} onStartStar={startStarInElement} onVisitPlanet={goToPlanet}/>
-              : a==="Log"
-                ? <Log testerId={testerId} onVisitPlanet={goToPlanet}/>
-                : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
+          <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
+            {(a) => a==="Log"
+              ? <Log testerId={testerId} onVisitPlanet={goToPlanet}/>
+              : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection}/>}
-        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
+        {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
 

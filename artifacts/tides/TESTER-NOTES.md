@@ -19,9 +19,9 @@ astrology to use it.
 
 - **Today** — the day's weather: what kind of energy is running and what it
   favors. At the bottom, rate how the day felt and jot a one-line log entry.
-- **Calendar** — your week, the sky's own schedule (Almanac), and your Log
-  (every rating and journal line, stamped with that day's sky) — all live
-  here as sub-tabs, so past/present/ahead sit together in one place.
+- **Calendar** — your week with a 30-day forecast strip across the top (tap
+  a bar to jump to that day), plus your Log (every rating and journal line,
+  stamped with that day's sky) — ahead and behind in one place.
 - **Aims** — your Guiding Stars (long-term aims), tasks, and habits — with
   your long seasons shown up top.
 - **Plan** — paste in a to-do list and let the Planner weave it into your

@@ -456,28 +456,32 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
 }
 
 // ── Quality strip ─────────────────────────────────────────────────────────────
+// The 30-day wave chart — exported: it lives at the top of Calendar now that
+// the Almanac tab is retired (owner 2026-07-29: "the wave chart is money").
 
-function QualityStrip({ week, days }: { week: any; days: number }) {
+export function QualityStrip({ week, days, onPick }: { week: any; days: number; onPick?: (date: string) => void }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <div style={{ padding:"12px 20px 14px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
-      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:8 }}>Quality — next {days} days</div>
+      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:8 }}>The water ahead — next {days} days</div>
       <div style={{ display:"flex", gap:2.5, overflowX:"auto" }}>
-        {(week?.days ?? []).map((day: any) => {
+        {(week?.days ?? []).slice(0, days).map((day: any) => {
           const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
           const isToday = day.date === today;
           const q = day.qualityScore ?? 5;
           const barH = Math.max(8, (q / 7) * 44);
           return (
-            <div key={day.date} title={`${day.label} — ${day.quality} · ${day.moonSign}`}
-              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2.5, minWidth:24, flexShrink:0 }}>
+            <button key={day.date} title={`${day.label} — ${day.quality} · ${day.moonSign}`}
+              onClick={onPick ? () => onPick(day.date) : undefined}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2.5, minWidth:24, flexShrink:0,
+                background:"none", border:"none", padding:0, cursor: onPick ? "pointer" : "default" }}>
               <div style={{ fontSize:8, color:isToday?"#b07030":"#999", fontWeight:isToday?700:400 }}>
                 {new Date(day.date+"T12:00:00").getDate()}
               </div>
               <div style={{ width:16, height:44, display:"flex", alignItems:"flex-end" }}>
                 <div style={{ width:16, height:barH, borderRadius:3, background:ec, opacity:0.6+(q/28) }}/>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -744,11 +748,11 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
 
 // ── Reusable collapsible section ──────────────────────────────────────────────
 
-// The Almanac's reference identity — the book you look things up in. A plain-
-// language "what does this mean" layer (elements, planets, signs) so the app is
-// legible to someone who knows no astrology. Distinct from Ahead (your time):
-// this is the sky's meanings, not its schedule.
-function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
+// The reference — the book you look things up in. A plain-language "what does
+// this mean" layer (elements, planets, signs, the curriculum) so the app is
+// legible to someone who knows no astrology. Exported: it lives on the Planets
+// page now that the Almanac tab is retired — one home for the sky's meanings.
+export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?: (element: string) => void; onVisitPlanet?: (planet: string) => void }) {
   const { theme } = useTheme();
   const [tab, setTab] = useState<"learn" | "elements" | "planets" | "signs">("learn");
   const [open, setOpen] = useState<string | null>(null);
@@ -850,7 +854,7 @@ function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?: (eleme
                       <button onClick={() => onVisitPlanet(it.planet!)} style={{
                         fontSize: 10, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
                         border: `1px solid ${it.color}55`, background: `${it.color}12`, color: it.color, fontWeight: 600,
-                      }}>Open {it.planet} in Planets →</button>
+                      }}>Open {it.planet} →</button>
                     )}
                   </div>
                 )}

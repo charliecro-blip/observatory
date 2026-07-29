@@ -816,7 +816,7 @@ function PremiumPreviewSection() {
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#6a8a5a", marginBottom: 5 }}>Free</div>
           <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
-            The daily tide & Big Sky · the Ahead calendar · scheduling tasks & habits yourself · the Almanac reference · Guiding Stars, tasks & habits as a plain planner
+            The daily tide & Big Sky · the calendar & forecast · scheduling tasks & habits yourself · the sky reference · Guiding Stars, tasks & habits as a plain planner
           </div>
         </div>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>

@@ -8,6 +8,7 @@ import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
 import ChartWheel from "@/components/ChartWheel";
 import { PremiumGate } from "@/components/PremiumGate";
+import { ReferenceSection } from "@/pages/Sky";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -525,11 +526,15 @@ function ChartView({ testerId }: { testerId: string | null }) {
   );
 }
 
-export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect, initialPlanet }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void; initialPlanet?: string | null }) {
+export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect, initialPlanet, onStartStar }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void; initialPlanet?: string | null; onStartStar?: (element: string) => void }) {
   const [mode, setMode] = useState<"planets" | "houses" | "chart">("planets");
   // Arriving via a teachable-moment link ("today feels saturnine → visit
   // Saturn") lands directly on that planet's page.
   useEffect(() => { if (initialPlanet) setMode("planets"); }, [initialPlanet]);
+  // The reference below can also open a planet — jump selects it in place and
+  // scrolls back up to the dossier.
+  const [refJump, setRefJump] = useState<string | null>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
   // FILED AWAY (owner, 2026-07-11): Houses and the practitioner Chart are
   // hidden for now — too much surface too soon. The views and their routes
   // stay fully built; flip this to re-reveal (Chart stays premium-gated).
@@ -547,7 +552,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
   const { data: currents } = useCurrents(testerId, (typeof localStorage !== "undefined" && localStorage.getItem("obs_house_system")) || "whole-sign");
 
   return (
-    <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
+    <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: "24px 28px 60px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px", marginBottom: 12 }}>Planets</div>
         {/* Console toggle — hidden while Houses/Chart are filed away */}
@@ -563,13 +568,23 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
         </div>
         )}
 
-        {mode === "planets" && <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={initialPlanet} />}
+        {mode === "planets" && <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={refJump ?? initialPlanet} />}
         {mode === "houses" && <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
         {mode === "chart" && (
           <PremiumGate feature="practitioner">
             <ChartView testerId={testerId} />
           </PremiumGate>
         )}
+
+        {/* The reference library — elements, planets, signs, and the learn-the-
+            sky curriculum. Moved here from the retired Almanac tab: Planets is
+            the one home for the sky's meanings. */}
+        <div style={{ marginTop: 28 }}>
+          <ReferenceSection
+            onStartStar={onStartStar}
+            onVisitPlanet={(p) => { setRefJump(p); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }}
+          />
+        </div>
       </div>
     </div>
   );
