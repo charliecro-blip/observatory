@@ -1,19 +1,12 @@
-# Tides Privacy Policy — DRAFT for owner review
+# Compass Privacy Policy
 
-> **Status: draft, not published.** Review, fill in the bracketed fields, and
-> host it at a public URL (needed for Google OAuth verification, and the right
-> thing to have regardless — we collect birth data). Plain-language on purpose;
-> have it sanity-checked before any public launch.
+**Effective date:** July 29, 2026 · **Contact:** charliecro@gmail.com
 
----
+## What Compass is
 
-**Effective date:** [date]
-**Contact:** [your email]
-
-## What Tides is
-
-Tides is a personal timing companion. It reads planetary positions and, if you
-choose, your birth chart, to describe the quality of a moment and help you plan.
+Compass is a personal timing companion. It reads planetary positions and, if
+you choose, your birth chart, to describe the quality of a moment and help you
+plan.
 
 ## What we collect
 
@@ -47,20 +40,20 @@ including the Limited Use requirements.
 
 ## AI features
 
-Some features (the Compass advisor, task parsing) send the text you type and
-relevant timing context to an AI provider ([provider name]) to generate a
+Some features (the ✦ Ask advisor, task parsing, natural-language planning)
+send the text you type and relevant timing context to OpenAI to generate a
 response. Don't include anything in those boxes you wouldn't want processed by
 a third-party AI service.
 
 ## Where your data lives
 
-Your data is stored in a database hosted on [Railway, region], and locally in
-your browser. [Confirm backup/retention setup.]
+Your data is stored in a Postgres database hosted on Railway, and locally in
+your browser.
 
 ## Your choices
 
-- **Export / deletion**: contact [email] and we'll export or delete your data.
-  [Future: self-serve deletion in Settings.]
+- **Export / deletion**: email charliecro@gmail.com and we'll export or delete
+  your data.
 - **Account key**: your data is tied to your account key. Anyone with the key
   can restore your account, so treat it like a password.
 

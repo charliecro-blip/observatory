@@ -5,6 +5,7 @@ import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { privacyHandler } from "./routes/privacy";
 
 const app: Express = express();
 
@@ -65,6 +66,8 @@ app.use("/api/advise", aiLimiter);
 app.use("/api/daemon-memory", aiLimiter);
 app.use("/api", generalLimiter);
 app.use("/api", router);
+
+app.get("/privacy", privacyHandler);
 
 // Serve Tides frontend as static files
 const publicDir = path.join(process.cwd(), "artifacts/tides/public");

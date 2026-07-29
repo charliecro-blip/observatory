@@ -1551,6 +1551,9 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           )}
         </SectionCard>
 
+        <div style={{ textAlign: "center", padding: "8px 0 4px", fontSize: 11 }}>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#aaa" }}>Privacy policy</a>
+        </div>
 
       </div>
     </div>

@@ -1,9 +1,13 @@
-# Deploying Tides
+# Deploying Compass
 
 **One service: Railway.** The Railway server is a single server — it builds the
 frontend *and* the API, then serves both at one URL (static frontend +
-`/api/*`, see `railway.toml` and `artifacts/api-server/src/app.ts`). Share the
-Railway URL as the app.
+`/api/*`, see `railway.toml` and `artifacts/api-server/src/app.ts`).
+
+**Production domain: [compass.day](https://compass.day)**, pointed at Railway
+via CNAME (DNS: Cloudflare, grey-clouded/DNS-only — orange-cloud proxying
+breaks Railway's TLS cert issuance). The Railway-issued `*.up.railway.app` URL
+still works as a fallback but isn't what's shared with users anymore.
 
 > Vercel is retired. It was the original frontend host back when the API server
 > didn't serve static files; that role now lives on Railway. Auto-deploys are
@@ -44,8 +48,9 @@ PORT=3000
 ```
 
 5. Deploy. Wait for health check at `/api/healthz` to pass (green).
-6. Copy your Railway public URL — **this is your app URL.** Open it in a browser
-   and you get the Tides frontend; the same server answers `/api/*`.
+6. Copy your Railway public URL, then point your domain at it (Networking →
+   Custom Domain) — that domain is your app URL. Open it in a browser and you
+   get the Compass frontend; the same server answers `/api/*`.
 
 ---
 
@@ -96,7 +101,8 @@ npx web-push generate-vapid-keys
 
 ## Sharing with users
 
-Once deployed, users just open the Railway URL. Each person gets a unique `testerId`
-generated in their browser on first visit. No sign-up required.
+Once deployed, users just open [compass.day](https://compass.day). Each person
+gets a unique `testerId` generated in their browser on first visit. No sign-up
+required.
 
-To share: send the Railway URL. That's it.
+To share: send the compass.day link. That's it.

@@ -1600,7 +1600,7 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
           <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
             Your most aligned days have been{" "}
             <b style={{ color: "#4a8060" }}>
-              {retro[0].character.charAt(0).toUpperCase() + retro[0].character.slice(1)} Tides
+              {retro[0].character.charAt(0).toUpperCase() + retro[0].character.slice(1)} Tide
             </b>{" "}
             ({Math.round(retro[0].rate * 100)}% aligned, {retro[0].total} logged).
           </div>
