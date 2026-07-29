@@ -75,8 +75,8 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
 // Ahead (Calendar) and Almanac each get a slim sub-tab that folds Currents in,
 // so the long-cycle personal view lives with the time surfaces it belongs to
 // rather than as its own top-level tab.
-function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: string) => React.ReactNode }) {
-  const [active, setActive] = useState(tabs[0]);
+function SubTabbed({ tabs, children, initial }: { tabs: string[]; children: (active: string) => React.ReactNode; initial?: string }) {
+  const [active, setActive] = useState(initial && tabs.includes(initial) ? initial : tabs[0]);
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <div style={{ display:"flex", borderBottom:"1px solid var(--color-border)", background:"var(--color-rail)", flexShrink:0, padding:"0 20px" }}>
@@ -96,7 +96,7 @@ function SubTabbed({ tabs, children }: { tabs: string[]; children: (active: stri
 
 const queryClient = new QueryClient();
 
-type View = "today"|"calendar"|"work"|"launch"|"planets"|"log"|"settings";
+type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 
 // Primary tabs (2026-07-03): Today is the tide you're in; Calendar is the whole
 // "time & sky" home — your grid, the Almanac (sky events + reference/meanings),
@@ -108,7 +108,6 @@ const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
-  {id:"log",      label:"Log"},
   {id:"launch",   label:"Plan"},
   {id:"planets",  label:"Planets"},
 ];
@@ -787,6 +786,9 @@ function Shell() {
   // around compass/calendar/planning). The active view's tab always shows.
   const { essential } = useUiDensity();
   const [showAllTabs, setShowAllTabs] = useState(false);
+  // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
+  // directions — the course ahead, the wake behind. This seed deep-links it.
+  const [calendarSeed, setCalendarSeed] = useState<string | null>(null);
   const CORE_TABS = new Set<View>(["today", "calendar", "work", "launch"]);
   const navTabs = (essential && !showAllTabs)
     ? TOP_TABS.filter(t => CORE_TABS.has(t.id) || t.id === view)
@@ -905,7 +907,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button onClick={() => setView(t.id)} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -977,16 +979,17 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>setView(v as any)} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
         {view==="calendar" && (
-          <SubTabbed tabs={["Calendar","Almanac"]}>
+          <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Almanac","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Almanac"
               ? <Sky testerId={testerId} lat={lat} lon={lon} onStartStar={startStarInElement} onVisitPlanet={goToPlanet}/>
-              : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
+              : a==="Log"
+                ? <Log testerId={testerId} onVisitPlanet={goToPlanet}/>
+                : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
-        {view==="log"      && <Log      testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
