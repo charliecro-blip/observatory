@@ -146,6 +146,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       onFocusConsumed?.();
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [focusStarId, stars]);
 
   // Landed here from "Set a Guiding Star in this element" in the Almanac: open

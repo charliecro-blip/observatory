@@ -156,7 +156,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             style={{ width: "100%", padding: "11px 13px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", outline: "none", fontFamily: "inherit" }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-            <button onClick={() => parse.mutate()} disabled={parse.isPending || !rawList.trim()} style={{
+            <button onClick={() => parse.mutate(undefined)} disabled={parse.isPending || !rawList.trim()} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
               cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "#e0dcd6", color: rawList.trim() ? "#fff" : "#aaa",
             }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>

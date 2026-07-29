@@ -5,7 +5,7 @@ import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
-import { PreferencesProvider, useUiDensity } from "@/contexts/preferences-context";
+import { PreferencesProvider } from "@/contexts/preferences-context";
 import { setAstroDetail } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
@@ -98,18 +98,18 @@ const queryClient = new QueryClient();
 
 type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 
-// Primary tabs (2026-07-03): Today is the tide you're in; Calendar is the whole
-// "time & sky" home — your grid, the Almanac (sky events + reference/meanings),
-// and Currents (your long cycles) as sub-tabs, since they all answer "when /
-// what's in the sky" and separating them just confused people; Helm is where
-// you steer (Guiding Stars -> Tasks + Habits); Launch is electional; Compass
-// (the advisor) is in the global bar.
+// Primary tabs = the loop (owner 2026-07-29: Compass is an enchanted
+// productivity app — the nav carries only the daily journey). Today is the
+// tide you're in; Calendar is time's whole home (grid + Almanac + Log as
+// sub-tabs); Aims is where you steer (Guiding Stars → Tasks + Habits); Plan
+// is scheduling/electional. Everything else is enchantment content reached in
+// context, not by tab: Planets (like Settings) is a destination you land on
+// from teachable moments, Log flavor stamps, and Almanac reference links.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
   {id:"calendar", label:"Calendar", zoom:true},
   {id:"work",     label:"Aims"},
   {id:"launch",   label:"Plan"},
-  {id:"planets",  label:"Planets"},
 ];
 
 // Structured election context handed from Auspice's picker into Ask. The
@@ -600,7 +600,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                 onChange={e => setTimeUnknown(e.target.checked)}
                 style={{ marginTop:2, accentColor:"#1a2a3a" }} />
               <span style={{ fontSize:11, color:"#777", lineHeight:1.5 }}>
-                I don't know my birth time <span style={{ color:"#aaa" }}>— you'll get a chart from your planets and signs; your rising sign, houses, and long-cycle Currents stay locked until you add a time.</span>
+                I don't know my birth time <span style={{ color:"#aaa" }}>— you'll get a chart from your planets and signs; your rising sign, houses, and long cycles stay locked until you add a time.</span>
               </span>
             </label>
           </div>
@@ -781,19 +781,12 @@ function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("today");
-  // Essential density: the nav leads with the core journey (Today · Calendar ·
-  // Aims · Plan); Log and Planets wait behind "⋯" (owner 2026-07-23 — condense
-  // around compass/calendar/planning). The active view's tab always shows.
-  const { essential } = useUiDensity();
-  const [showAllTabs, setShowAllTabs] = useState(false);
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
   const [calendarSeed, setCalendarSeed] = useState<string | null>(null);
-  const CORE_TABS = new Set<View>(["today", "calendar", "work", "launch"]);
-  const navTabs = (essential && !showAllTabs)
-    ? TOP_TABS.filter(t => CORE_TABS.has(t.id) || t.id === view)
-    : TOP_TABS;
-  const tabsCollapsed = essential && !showAllTabs && navTabs.length < TOP_TABS.length;
+  // The nav is just the loop — TOP_TABS carries all four core tabs, so the
+  // old essential-density "⋯" reveal (which held Log and Planets) is gone.
+  const navTabs = TOP_TABS;
   // Usage analytics: which surface is being used (owner 2026-07-20).
   useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
@@ -878,8 +871,8 @@ function Shell() {
     );
   }
 
-  // Bottom-bar glyphs for the phone layout — the same five views, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"✦", log:"📖", launch:"▲" };
+  // Bottom-bar glyphs for the phone layout — the four loop tabs, thumb-reachable.
+  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"✦", launch:"▲" };
 
   return (
     <div style={{
@@ -917,15 +910,9 @@ function Shell() {
             </React.Fragment>
           );
         })}
-        {!isMobile && tabsCollapsed && (
-          <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} title="More — Log, Planets" style={{
-            padding:"11px 10px", border:"none", background:"none", cursor:"pointer",
-            fontSize:12, color:"var(--color-muted)",
-          }}>⋯</button>
-        )}
         {isMobile && (
           <span style={{ fontSize:13, fontWeight:700, color:"var(--color-primary)", padding:"10px 6px", letterSpacing:"-0.3px" }}>
-            {TOP_TABS.find(t => t.id === view)?.label ?? "Settings"}
+            {TOP_TABS.find(t => t.id === view)?.label ?? (view === "planets" ? "Planets" : "Settings")}
           </span>
         )}
         <div style={{flex:1}}/>
@@ -1012,15 +999,6 @@ function Shell() {
               <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
           ))}
-          {tabsCollapsed && (
-            <button onClick={() => { logEvent("nav_more_tabs"); setShowAllTabs(true); }} style={{
-              flex:0.6, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
-              display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:"var(--color-muted)",
-            }}>
-              <span style={{ fontSize:16, lineHeight:1 }}>⋯</span>
-              <span style={{ fontSize:9 }}>More</span>
-            </button>
-          )}
         </div>
       )}
     </div>

@@ -26,8 +26,10 @@ astrology to use it.
   your long seasons shown up top.
 - **Plan** — paste in a to-do list and let the Planner weave it into your
   week; or pick a good moment to begin something.
-- **Planets** — your chart as a place: visit your planets and houses.
 - **✦ Ask** (top bar) — ask "what should I do with this moment?"
+
+You'll also find doors that open as you go — when a day has a strong flavor,
+Today offers to introduce you to the planet behind it.
 
 ## Two things worth knowing
 

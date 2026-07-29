@@ -1137,7 +1137,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           if (!best) return null;
           const lit = PLANET_LITERACY[best.partner];
           if (!lit) return null;
-          const pc = { Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" }[best.partner] ?? "#888";
+          const pc = ({ Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" } as Record<string, string>)[best.partner] ?? "#888";
           // Say WHEN, not just what: perfection time → a part-of-day phrase.
           const partOfDay = (d: Date) => {
             const h = d.getHours();

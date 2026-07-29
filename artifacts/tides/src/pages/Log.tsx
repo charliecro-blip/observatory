@@ -213,7 +213,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
   });
 
   // Fetch day detail when selected
-  const { data: dayDetail, isLoading: dayLoading, isError: dayError } = useQuery<DayDetail | null>({
+  const { data: dayDetail, isLoading: dayLoading, isError: dayError, refetch: refetchDay } = useQuery<DayDetail | null>({
     queryKey: ["logs-day", testerId, selectedDate],
     queryFn: async () => {
       if (!testerId || !selectedDate) return null;
@@ -453,7 +453,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
       ) : dayError ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "#999", padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 13, color: "#a03030" }}>Couldn't load this day</div>
-          <button onClick={() => qc.invalidateQueries({ queryKey: ["logs-day", testerId, selectedDate] })}
+          <button onClick={() => refetchDay()}
             style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#556", cursor: "pointer" }}>
             Try again
           </button>
