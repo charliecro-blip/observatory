@@ -229,6 +229,12 @@ const INTRO_SLIDES: {
     spine: true,
   },
   {
+    glyph: "▲",
+    glyphColor: "#5a5248",
+    title: "Plan with it, not against it.",
+    body: "Dump your to-dos and Compass weaves them into windows that suit them. Pick good moments to begin things. Log how days actually felt — it learns what fits you.",
+  },
+  {
     glyph: "✦",
     glyphColor: "#c19a3a",
     title: "Then make it yours.",
