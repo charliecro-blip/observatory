@@ -15,7 +15,7 @@ plus three code audits run 2026-07-29 (structural, election-engine, second-pass)
 
 | | Item | Why it's blocking | Source |
 |---|---|---|---|
-| 👤 | **Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` on Railway** | Push is built and wired; without keys nothing ever fires. The month study's #1 finding is that the return loop is dead in beta conditions, and this is most of it. | month §1 |
+| ⛔ | **~~Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`~~ — HOLD** | Was "a five-minute owner action." It isn't: the notifier infers the local clock from **longitude**, which is not a timezone (no DST, no half-hour zones, already ~1h wrong in US DST). Turning keys on now means the first thing notifications ever do is arrive at the wrong hour. Blocked on the P0-A timezone fix. | 2026-07-30 review |
 | 👤 | **Set `RESEND_API_KEY` + `EMAIL_FROM` on Railway** | Same for email reports. Composer, cron, opt-in all shipped. | month §1 |
 | 👤 | **Confirm `GOOGLE_CAL_REDIRECT_URI` = `https://compass.day/api/integrations/google-cal/callback`** | Only ONE redirect URI is live at a time — registering both in Google Cloud doesn't make both work. | GCAL-SETUP |
 | 👤 | **Decide: publish the Google OAuth app (unverified) vs keep in Testing** | Testing = 7-day token expiry, silent weekly disconnects. Console reportedly says "In production" — verify under Google Auth Platform → Audience. | month §9 |
@@ -45,28 +45,49 @@ plus three code audits run 2026-07-29 (structural, election-engine, second-pass)
 
 ---
 
-## 2. P0 — before the beta widens past friends
+## 2. P0-A — the trust & authorization sprint (freeze feature work)
 
-| | Item | Detail | Source |
+*Added 2026-07-30 after an external review. Verdict I agree with: the risk has
+shifted from "dangerous integrity bugs" to "shipping clever improvements faster
+than the trust/testing/authorization architecture can hold them." **Freeze
+competitive borrowing until this block closes.***
+
+| | Item | Detail | Status |
 |---|---|---|---|
-| ☐ | **Felt-pattern must survive a device change** | It's localStorage-only, so account-key restore loses the app's core promise ("your most aligned days have been…"). The data to recompute it is already server-side in `dailyCheckIns.behaviorTags`. **Also the evidence under our best marketing hook** — without it, "You're not lazy, you're on the wrong schedule" is a claim we can't back. | month §5, pricing §3 |
-| ☐ | **TideWater scrub is mouse-only** | `onMouseMove`/`onMouseLeave`, no touch/pointer binding. The hero tide chart's entire inspect interaction is dead on phones — and phones are most of the cohort. | 2nd audit |
-| ☐ | **Ritual loop is wall-clock, not chronotype** | RitualCard gates on `<12`/`>=18` local while the app *collects* wake/sleep in onboarding. Night-shift and late-rising users get the morning glance while asleep. Blocks the queued morning-reflection change. | month §3 |
-| ☐ | **No account-deletion path** | Only "export or email us". Needed before strangers, and it's a privacy-policy promise. | month Part C |
-| ☐ | **Dark mode — the 15 worst daily-driver surfaces** | Calendar month-grid date numbers `#333` (nearly every date unreadable), Rail task titles `#333` on dark rail, Today's 14-day list + task chips, the new-event modal `<select>`, VoC banner at ~1.7:1 contrast, and several fixed cream/pastel blocks that sit as bright slabs on a dark Today. | 2nd audit |
+| ☑ | **Calendar feed leaked the account credential** | The webcal URL carried `?testerId=`, which IS the credential — and `middlewares/testerId.ts` accepts it as a **query param**. Verified live: that string alone returns the personal logbook, and `POST /account/sync` returns the **recovery code** = full account takeover. Withdrawn both surfaces 2026-07-30. | **fixed** |
+| ☐ | **`testerId` is a bearer token with no ownership check** | The root cause of the above. The middleware trusts any supplied id, header *or query param*. At minimum: drop the query-param fallback (check what actually needs it — comment claims streaming voice endpoints), and stop `/account/sync` returning the recovery code to a bare id. | **P0** |
+| ☐ | **Revocable read-only feed token** | Restores the subscribe feed: random secret, stored hashed, scoped to the iCal route only, never usable as `x-tester-id`, with regenerate / revoke / last-accessed. | P0 |
+| ☐ | **Notifier infers timezone from longitude** | Longitude is not a timezone: no DST, no half-hour zones, no political boundaries, no travel. Already ~1h wrong in US DST. **Do NOT set the VAPID keys until this is fixed** — otherwise the first thing notifications do is arrive at the wrong hour. Store IANA `timeZone` + real per-device prefs at subscription time. | P0 |
+| ☐ | **Google Calendar correctness** | Verified: `Today.tsx:623` sends `2026-07-30T00:00:00` — no offset — while `Calendar.tsx:1292` correctly sends `.toISOString()`. Google requires RFC 3339 *with* offset, so Today's query is malformed. Failure returns HTTP 200 + empty list, indistinguishable from "no events". Also: sign+expire OAuth `state`, validate the `postMessage` origin (currently `*`), make `/status` verify refreshability, add a visible Reconnect state. | P0 |
+| ☐ | **Remaining write-status + query-key bugs** | Verified: `Today.tsx:673` keys the visible query `["tasks-today", testerId, today]` but `:691`/`:703` invalidate `["tasks"]` — **not a prefix**, so the invalidation silently misses and the UI waits for the 30s poll. Plus: Today's task-toggle skips `r.ok`; advisor memory-save reports success on any resolved response; GCal disconnect unchecked; the GuidingStars set below. | P0 |
+| ☐ | **`jsonArray()` turns outages into false emptiness** | My own fix, correctly criticised: it prevents the app-wide crash but makes a failed load look like "you have no tasks." Needs three distinct states — empty / unavailable / stale — keeping last-good data via React Query rather than substituting `[]`. | P0 |
+| ☐ | **No tests, no CI** | The largest omission. Only typecheck+build exist. Given how many real bugs surfaced in 24h, the repo is not learning not to recreate them. Lock in: local dates across UTC midnight + DST, habits/check-ins across local midnight, every write under 400/429/500/offline, election golden cases (conj/opp perfection, VoC across midnight, Tokyo/India/Newfoundland/Australia), notifier delivery in IANA zones, feed-token scope, GCal bounds, mobile pointer + glossary, dark mode, restore + Switch Profile. Plus one Playwright path: onboarding → task/habit → reflection → next local day. | P0 |
+| ☐ | **`drizzle-kit push` runs against prod on every build** | Schema can change before the build fails; no versioned history; hard rollback; code and schema can briefly disagree. Move to versioned migrations + backup + two-phase backward-compatible changes. | P0 |
+| ☐ | **Privacy policy understates collection** | I wrote it; it omits or understates menstrual-cycle data, chronotype/preferences, usage analytics (auto-sent with the tester id + arbitrary props), notification/email subscriptions, advisor memory, and OAuth tokens. It also says location is "approximate" while exact coordinates may be stored. | P0 |
+| ☐ | **`/check-ins` still falls back to server UTC** when a write omits `date` | The local-day fix landed in the callers; the dangerous default remains for the next new caller. Make `date` mandatory for daily writes. | P0 |
 
-## 3. P1 — during the first weeks
+## 3. P0-B — product integrity (after the sprint above)
 
-| | Item | Source |
+| | Item | Detail |
 |---|---|---|
-| ☐ | **Account restore loses**: uiDensity, astroDetail, all display/notification/timing prefs, `obs_house_system` (readings silently change meaning), text scale, theme/palette, Ask conversation pins. Needs a `/api/preferences` blob. (Felt history + journal *do* survive — they're server-side.) | 2nd audit |
-| ☐ | **Tooltip is hover-only** — the whole education layer (HelpBadge glossary) is unreachable on mobile. No click/touch/focus handler anywhere. | 2nd audit |
-| ☐ | **Calendar "+ add" reveal is `onMouseEnter`** — tapping the cell *does* work, but the affordance is invisible on touch. | 2nd audit |
-| ☐ | **Notification preferences are client-side theater** — quiet hours + per-planet hour shifts live in localStorage; the server notifier ignores them and pings at fixed hours. Either sync them or remove the dead knobs. | 1st audit |
-| ☐ | **Reviews are ambush-gated** — Sunday/New Moon cards render only on the day. 7/12 personas never saw a Sunday review; 8/12 never saw the New Moon one. | month §4 |
-| ☐ | **Ask history is in-memory** — closing the modal destroys the conversation; pins silently capped at 20. **Planner drafts** (parsed + hand-edited cards) die on refresh. | 1st + 2nd audit |
-| ☐ | **GuidingStarsHub mutations skip `r.ok`** (toggleTask, toggleHabitToday, cycleStep, clearAnchor, deleteStar, setStarElement, logSession) — UI self-corrects on refetch so nothing persists a lie, but a failed tap is silent. | 2nd audit |
-| ☐ | **Chartless/no-birth-time users**: the paid layer is honestly closed to them, which is correct, but it means they can never convert. Needs a path — even a "timeless chart" premium story. | month, paying |
+| ☐ | **Felt-pattern must survive a device change** | localStorage-only today, so restore loses the app's core promise — and it's the evidence under our best marketing hook. **Add epistemic safeguards with it**: minimum sample threshold, visible sample count and date range, uncertainty language, comparison against the user's own baseline, and no causal phrasing. Say *"you reported feeling aligned on 7 of 10 Building days, vs 4 of 11 others"* — never *"Building days make you productive."* Early copy should be *"maybe your schedule is fighting your rhythm"*, since the evidence is correlational and self-reported. |
+| ☐ | **TideWater scrub is mouse-only** | Use **pointer events** (not parallel mouse/touch paths). Support tap + horizontal drag without hijacking vertical page scroll, and add a textual next/high/low summary so the chart isn't the only way to reach its information. |
+| ☐ | **Ritual loop is wall-clock, not chronotype** | Define morning as wake → wake+4h, evening as the last 3h before sleep, wall-clock only as fallback. **Blocks the morning-reflection redesign.** |
+| ☐ | **No account-deletion path** | Must remove/revoke *everything*: account tables, Google OAuth tokens, push subscriptions, email subscriptions, advisor memory, analytics association, feed tokens, recovery key — and state backup retention honestly. |
+| ☐ | **Dark mode — 15 worst daily-driver surfaces** | Then semantic tokens + a lint/review rule, or every new feature reintroduces hardcoded creams and dark text. |
+
+## 3b. P1 — during the first weeks
+
+| | Item |
+|---|---|
+| ☐ | **Conversion + outcome instrumentation** — 11 events, none a conversion event. Cheapest high-value item; everything in pricing depends on it. |
+| ☐ | **Preference sync, scoped by ownership** — *account*: house system, astro detail, density, timing defaults, caution planets · *device*: theme, text size, reduced motion · *subscription*: quiet hours, schedule, event filters. A single blob would push a phone preference onto the desktop. |
+| ☐ | **One "no hover-only interactions" pass** — HelpBadge glossary (dismissible popover/bottom sheet + keyboard focus), Calendar's `onMouseEnter` "+ add" reveal, TideWater. |
+| ☐ | **Reviews available, not compulsory** — keep a completed period's review for several days, show a subtle pending item in Next/Log, allow dismissal, preserve access in the Log afterwards. |
+| ☐ | **Ask history is in-memory**; Planner drafts die on refresh; the journal claims "will retry" with **no retry queue** — statuses should be *Saved on this device / Syncing / Synced / Couldn't sync — Retry*. |
+| ☐ | **GuidingStarsHub mutations skip `r.ok`** (toggleTask, toggleHabitToday, cycleStep, clearAnchor, deleteStar, setStarElement, logSession). |
+| ☐ | **Chartless users CAN convert** — reclassified. Two legitimate personalization paths: *chart-personalized* (transits, houses, profections) and **behaviour-personalized** (chronotype, free windows, felt history, completed work, calendar constraints). A user with no birth time can still pay for electional timing, chronotype-aware scheduling, rhythm reports, and Ask. Promise: *"personalized by your chart, your lived patterns, or both."* |
+| ☐ | **The Wake needs a decision now** — the don't-copy rule says no streaks, but Momentum *already* ships streaks in the morning card, evening card, Wake, and weekly review. It is already a streak product. Keep the record, change the framing: "9 days recorded this cycle", "you returned 4 times this week" — never "streak broken", never reset to zero, no tallest-bar-is-best-day. Reveal patterns, don't score obedience. |
 
 ---
 
@@ -81,9 +102,9 @@ Effort estimates from the competitive study. Items marked ★ are mostly-already
 | ☑ | ★ **Quiet auto-rollover — tasks only, never windows** (Tweek) | 4–6h | **done** — `original_due_date` preserved, row reads "↻ carried from Mon"; windows structurally untouchable |
 | ☑ | ★ **Single-key calendar view switching** (Notion Cal) | 2–3h | **done** — D/W/M/A + T + ←/→, guarded against typing, keys named in tooltips |
 | ☑ | ★ **Surface the feed at the point of need** | 2–3h | **done** — the "Google Cal · coming soon" dead end now offers the feed |
-| ☐ | **Place habits on the calendar from their cadence** (Reclaim) | 2–3d | The engine-spread half of the owner's habits idea. Everything needed exists: `best-times`, `POST /planning/windows`, chronotype filtering, and now cadence + solar anchors. **Highest-value unbuilt item.** |
+| ☐ | **Place habits on the calendar from their cadence** (Reclaim) | 2–3d | **DEMOTED 2026-07-30** — was ranked highest-value; placing habits automatically *before* the Planner can move/compress/skip/re-home them would manufacture exactly the calendar anxiety this product rejects. Build the verbs first (move → reject/skip → compress → explain-why-here), *then* this. |
 | ☐ | **Planner review: move, not just drop** (Sunsama/Akiflow) | 1–1.5d | The weaver already computes runner-up windows and discards them; nothing persists until commit. |
-| ☐ | **`Cmd+K` command bar** (Akiflow) | 1–1.5d | `cmdk@1.1.1` is already a dependency and never imported. Also fixes Planets/Settings having no nav entry. Split like Akiflow: global vs in-app. |
+| ☐ | **`Cmd+K` command bar** (Akiflow) | 1–1.5d | **DEMOTED** — useful for power users but doesn't test the thesis or the retention loop, and a command bar can paper over unresolved information architecture. Ranks below felt-pattern persistence, morning reflection, review availability, keepable artifacts, and conversion instrumentation. |
 | ☐ | **Deliberate re-homing of undone work** in the evening ritual (Sunsama shutdown) | 1.5–2d | Finally uses the built-but-never-called `PATCH /planning/windows/:id`. |
 | ☐ | **Live NL parse preview in Quick Capture** (Todoist/Fantastical) | 1–2d | `date-fns` already a dep; capture currently parses no dates at all. **Design the rejection affordance with it** — Todoist ships Backspace-immediately-after, Fantastical ships a quoting escape. |
 | ☐ | **Graceful degradation: compress · skip-today · log-past-work** (Reclaim) | 1d | `POST /planning/windows/:id/complete` exists, never called. |
@@ -113,10 +134,10 @@ Effort estimates from the competitive study. Items marked ★ are mostly-already
 **"Free gives you today. Paid gives you the rhythm."**
 - **Free** — full daily reading incl. personal layer, planner, calendar, habits+cadence, Log; 1 election/wk, 3 Ask/mo
 - **Compass $9/mo · $79/yr** — unlimited elections+Ask, push+email, calendar feed, Currents, long horizon
-- **Practitioner $59/mo · $540/yr** — multi-chart, per-client elections, client handout (benchmark SimplePractice/Practice Better $69–99, *not* astrology apps)
-- **Studio $25/mo** — branding, batch, 1:1
-- **"Elect a date" $49 one-time** — the episodic SKU nobody else sells
+- **Professional $59/mo · $540/yr** — multi-chart, per-client elections, client handout, **plus** branding/batch/1:1 (Studio folds in as a feature bundle, not a separate customer identity, until demand proves otherwise — the two tiers overlapped). Benchmark SimplePractice/Practice Better $69–99, *not* astrology apps
+- **"Elect a date" $49 one-time** — the episodic SKU nobody else sells. **Deliver it manually first** (existing engine + a polished report) to validate willingness to pay before threading billing through the app
 
+⚠️ **Morning notifications probably belong in free/beta** — they *are* the daily habit; paid reports can be deeper, personalized, longer-horizon.
 ⚠️ **Habit cadence must never move behind the wall** — recurrence-behind-paywall is the #1 one-star generator for both Structured and Tweek.
 ⚠️ **Don't split the beta cohort** into free/paid arms (n=6 proves nothing, friends compare notes, confounded with plain disengagement). Instead mark paid surfaces **"✦ included for you — beta"** — a gift received, not a bill arriving. Fantastical grandfathered generously and was review-bombed anyway because the UI only showed locks.
 
