@@ -1201,7 +1201,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             (glance → act → check off) closes without a trip into Helm.
             During ritual hours the RitualCard carries the habit chips, so
             this card stands down to keep the page lean. */}
-        {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} />}
+        {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} lat={lat} lon={lon} />}
 
         {/* The tide — one coherent chart for the whole day */}
         {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
@@ -2283,7 +2283,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   );
 }
 
-function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
+function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; lat: number; lon: number }) {
   const qc = useQueryClient();
   const today = localToday();
   const { data: habits = [] } = useQuery<any[]>({
@@ -2303,7 +2303,10 @@ function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
   // Practices fold in here — habits and practices are ONE daily-doing card
   // now, with practice timing expressed in the app's FIT language instead of
   // its own resonant/supported/soften dialect.
-  const { data: practicesData } = usePractices(testerId, 40.7, -74.0);
+  // Was hardcoded to New York regardless of the viewer's real location — every
+  // practice's timing (sun/moon-hour anchors) was computed for the wrong
+  // place for anyone not in NYC (audit finding).
+  const { data: practicesData } = usePractices(testerId, lat, lon);
   const practiceRows = (practicesData?.practices ?? []).filter((p: any) => p.timing !== "neutral").slice(0, 4);
   const FIT_LABEL: Record<string, { text: string; color: string }> = {
     resonant: { text: "✦ a great time for this", color: "#3a7040" },
