@@ -1181,20 +1181,55 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
 }
 
 function ExportSection({ testerId }: { testerId: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const tid = testerId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("obs_tester_id") : null);
+  const icalPath = `/api/export/ical?testerId=${encodeURIComponent(tid ?? "")}`;
+
   function downloadIcal() {
-    const tid = testerId ?? localStorage.getItem("obs_tester_id");
-    const url = `/api/export/ical?testerId=${encodeURIComponent(tid ?? "")}`;
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "tides-events.ics";
+    a.href = icalPath;
+    a.download = "compass-events.ics";
     a.click();
   }
 
+  // The download is a SNAPSHOT — it goes stale the moment you schedule
+  // anything else. A webcal:// subscription is the same route, but the
+  // calendar app re-polls it, so Compass's blocks stay live in Apple/Google
+  // Calendar. Calendar clients can't send auth headers, so the tester id
+  // rides in the URL (it already does for the download) — hence the
+  // "treat it like a password" note rather than a share button.
+  const subscribeUrl = typeof window !== "undefined"
+    ? `webcal://${window.location.host}${icalPath}`
+    : "";
+
+  async function copySubscribe() {
+    try {
+      await navigator.clipboard.writeText(subscribeUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch { /* clipboard blocked — the field is selectable */ }
+  }
+
   return (
-    <SectionCard title="Export" sub="Download your tasks and planning windows. Planetary hours and astrological events are not included.">
-      <Row label="Tasks + planning windows" sub="Calendar-compatible .ics file">
+    <SectionCard title="Your calendar feed" sub="Your scheduled blocks and tasks, in any calendar app. Planetary hours and sky events aren't included.">
+      <Row label="Subscribe (stays up to date)" sub="Apple Calendar, Google Calendar, Outlook">
+        <button onClick={copySubscribe} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
+          {copied ? "Copied ✓" : "Copy feed link"}
+        </button>
+      </Row>
+      <div style={{
+        fontSize: 9.5, fontFamily: "monospace", color: "#8a8278", userSelect: "all",
+        background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+        borderRadius: 6, padding: "6px 9px", margin: "2px 0 8px", overflowWrap: "anywhere",
+      }}>{subscribeUrl}</div>
+      <div style={{ fontSize: 10, color: "#a09888", lineHeight: 1.55, marginBottom: 10 }}>
+        Paste it into your calendar app's "add calendar by URL". It refreshes on its
+        own, so anything you schedule in Compass shows up there. Anyone with this
+        link can read your schedule — keep it to yourself.
+      </div>
+      <Row label="One-time download" sub="A snapshot — won't update later">
         <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer" }}>
-          ↓ Download .ics
+          ↓ .ics
         </button>
       </Row>
     </SectionCard>

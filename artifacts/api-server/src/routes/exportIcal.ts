@@ -43,7 +43,7 @@ router.get("/export/ical", async (req, res) => {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "X-WR-CALNAME:Compass — My Events",
-    "X-WR-CALDESC:Tasks and planning windows from Tides",
+    "X-WR-CALDESC:Tasks and planning windows from Compass",
   ];
 
   const now = icalDate(new Date());
@@ -57,7 +57,12 @@ router.get("/export/ical", async (req, res) => {
     nextDay.setDate(nextDay.getDate() + 1);
     const dtEnd = icalDateOnly(nextDay.toISOString().slice(0, 10));
     const status = t.done === "true" ? "COMPLETED" : "NEEDS-ACTION";
-    lines.push(
+    // The filter has to happen BEFORE the push: Array.push() returns the new
+    // length, so `.push(...).filter()` was calling .filter on a number and
+    // throwing — the whole route 500'd on every request, which meant the
+    // calendar export has never once worked. (Both TS errors flagging this
+    // were sitting in the baseline being ignored as noise.)
+    lines.push(...[
       "BEGIN:VEVENT",
       `UID:${uid("task", t.id)}`,
       `DTSTAMP:${now}`,
@@ -68,12 +73,12 @@ router.get("/export/ical", async (req, res) => {
       t.bestWindowType ? `CATEGORIES:${esc(t.bestWindowType.replace("_", " "))}` : "",
       t.notes ? `DESCRIPTION:${esc(t.notes)}` : "",
       "END:VEVENT",
-    ).filter(Boolean);
+    ].filter(Boolean));
   }
 
   // Planning windows as timed events
   for (const w of windowRows) {
-    lines.push(
+    lines.push(...[
       "BEGIN:VEVENT",
       `UID:${uid("window", w.id)}`,
       `DTSTAMP:${now}`,
@@ -83,13 +88,13 @@ router.get("/export/ical", async (req, res) => {
       `CATEGORIES:${esc(w.windowType.replace("_", " "))}`,
       w.notes ? `DESCRIPTION:${esc(w.notes)}` : "",
       "END:VEVENT",
-    ).filter(Boolean);
+    ].filter(Boolean));
   }
 
   lines.push("END:VCALENDAR");
 
   res.setHeader("Content-Type", "text/calendar; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="tides-events.ics"`);
+  res.setHeader("Content-Disposition", `attachment; filename="compass-events.ics"`);
   res.send(lines.join("\r\n"));
 });
 
