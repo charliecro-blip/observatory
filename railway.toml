@@ -1,6 +1,23 @@
 [build]
-builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @workspace/db run push && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build"
+# ORDER MATTERS. The schema push used to run FIRST, so a build that then failed
+# still left production's schema mutated — code and schema could disagree with
+# nothing to roll back to. Now: install → regression tests → build both apps →
+# and only then touch the database. A broken build or a failed invariant can no
+# longer reach the schema.
+#
+# The root `pnpm run typecheck` is deliberately NOT in here: it currently fails
+# on pre-existing errors in lib/integrations-openai-ai-{react,server}, which
+# belong to the legacy health-tracker app and nothing in Compass imports. Adding
+# it today would break every deploy. Both app typechecks DO run — each app's own
+# build script includes one — so Compass itself is still covered.
+#
+# NOTE: this is still `drizzle-kit push`, which diffs and applies directly with
+# no versioned history and no rollback. Moving to generated, versioned
+# migrations is the real fix and is tracked in BACKLOG §2 — it needs a
+# supervised baseline against the live database (the tables already exist, so
+# the first generated migration has to be marked applied rather than run), and
+# that is not something to attempt unattended.
+buildCommand = "pnpm install --frozen-lockfile && pnpm test && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push"
 
 [deploy]
 startCommand = "node --enable-source-maps artifacts/api-server/dist/index.mjs"
