@@ -1,4 +1,5 @@
 # Compass — the master backlog
+> **New session? Read `HANDOFF.md` first**, then this file.
 *Consolidated 2026-07-30. Every actionable item from the four studies and three
 audits of 2026-07-29, in one place, deduplicated, with its source.*
 
@@ -72,7 +73,7 @@ competitive borrowing until this block closes.***
 | | Item | Detail |
 |---|---|---|
 | ☑ | **Felt-pattern survives a device change** | New `GET /check-ins/felt-pattern` reads it from the server rows that already held it (behaviorTags), so a restore keeps the evidence. **Epistemic safeguards shipped with it**: silent below 10 rated days and 4 per character, always shows counts + date range, and always gives the comparison ("aligned on 5 of 6 Building days — against 2 of 8 other days"). Copy states what was *reported*, never what a day *causes*; a test bans the causal words. Also shows progress toward the threshold so rating feels like it accrues. | **done** |
-| ☐ | **TideWater scrub is mouse-only** | Use **pointer events** (not parallel mouse/touch paths). Support tap + horizontal drag without hijacking vertical page scroll, and add a textual next/high/low summary so the chart isn't the only way to reach its information. |
+| ☑ | **Tide chart scrub works on touch** | Moved to pointer events (one path for mouse/touch/pen). A touch drag is only captured once clearly horizontal, so it never eats vertical page scroll; `touchAction: pan-y` backs that up. Tap reads a moment; on touch the readout persists rather than vanishing with the finger. | **done** |
 | ☐ | **Ritual loop is wall-clock, not chronotype** | Define morning as wake → wake+4h, evening as the last 3h before sleep, wall-clock only as fallback. **Blocks the morning-reflection redesign.** |
 | ☐ | **No account-deletion path** | Must remove/revoke *everything*: account tables, Google OAuth tokens, push subscriptions, email subscriptions, advisor memory, analytics association, feed tokens, recovery key — and state backup retention honestly. |
 | ☐ | **Dark mode — 15 worst daily-driver surfaces** | Then semantic tokens + a lint/review rule, or every new feature reintroduces hardcoded creams and dark text. |
