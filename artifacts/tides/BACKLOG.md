@@ -77,10 +77,10 @@ Effort estimates from the competitive study. Items marked ★ are mostly-already
 | # | Item | Effort | Note |
 |---|---|---|---|
 | ☑ | Live `webcal://` subscribe feed | 3–4h | **done** — and the export it depends on had never worked |
-| ☐ | ★ **Capacity honesty before commit** (Sunsama) | 4–6h | Sum the Planner's existing `byDay` map against chronotype waking hours minus GCal busy; warn *before* commit. **In progress.** |
-| ☐ | ★ **Quiet auto-rollover — tasks only, never windows** (Tweek) | 4–6h | Undone tasks roll forward; a *scheduled window* must never move silently (that's Motion's "AI calendar anxiety"). **In progress.** |
-| ☐ | ★ **Single-key calendar view switching** (Notion Cal) | 2–3h | `D`/`W`/`M`/`A`. **In progress.** |
-| ☐ | ★ **Surface the feed at the point of need** | 2–3h | Currently only in Settings; belongs where GCal says "not configured". **In progress.** |
+| ☑ | ★ **Capacity honesty before commit** (Sunsama) | 4–6h | **done** — names an overcommitted day before anything is written; a statement, not a blocker |
+| ☑ | ★ **Quiet auto-rollover — tasks only, never windows** (Tweek) | 4–6h | **done** — `original_due_date` preserved, row reads "↻ carried from Mon"; windows structurally untouchable |
+| ☑ | ★ **Single-key calendar view switching** (Notion Cal) | 2–3h | **done** — D/W/M/A + T + ←/→, guarded against typing, keys named in tooltips |
+| ☑ | ★ **Surface the feed at the point of need** | 2–3h | **done** — the "Google Cal · coming soon" dead end now offers the feed |
 | ☐ | **Place habits on the calendar from their cadence** (Reclaim) | 2–3d | The engine-spread half of the owner's habits idea. Everything needed exists: `best-times`, `POST /planning/windows`, chronotype filtering, and now cadence + solar anchors. **Highest-value unbuilt item.** |
 | ☐ | **Planner review: move, not just drop** (Sunsama/Akiflow) | 1–1.5d | The weaver already computes runner-up windows and discards them; nothing persists until commit. |
 | ☐ | **`Cmd+K` command bar** (Akiflow) | 1–1.5d | `cmdk@1.1.1` is already a dependency and never imported. Also fixes Planets/Settings having no nav entry. Split like Akiflow: global vs in-app. |
