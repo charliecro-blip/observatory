@@ -10,7 +10,7 @@
  * afternoon trines" instead of collapsing the day into one reading.
  */
 
-import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour, getNextAngularCrossings } from "./astro.js";
+import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour, getNextAngularCrossings, voidOfCourse } from "./astro.js";
 import { SIGN_TO_ELEMENT } from "./tide.js";
 
 const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -20,6 +20,11 @@ const ASPECTS: { angle: number; name: string }[] = [
   { angle: 0, name: "conjunction" }, { angle: 60, name: "sextile" },
   { angle: 90, name: "square" }, { angle: 120, name: "trine" }, { angle: 180, name: "opposition" },
 ];
+// Signed-separation form of ASPECTS (see the perfection-scan comment below) —
+// every non-self-symmetric angle appears on both sides of the circle.
+const SIGNED_ASPECTS: { angle: number; name: string }[] = ASPECTS.flatMap(({ angle, name }) =>
+  angle === 0 || angle === 180 ? [{ angle, name }] : [{ angle, name }, { angle: 360 - angle, name }],
+);
 const ASPECT_PLANETS = ["Sun","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"];
 
 // Aspect crest by NATURE (hardness), not by ease: hard aspects are high-charge,
@@ -64,6 +69,26 @@ function bodyLon(name: string, jd: number): number {
   if (name === "Sun") return norm360(sunLongitude(jd));
   const p = getPlanetPositions(jd).find(x => x.planet === name);
   return p ? SIGNS.indexOf(p.sign) * 30 + p.degree : 0;
+}
+
+// The Moon's next sign ingress after `fromMs` — coarse 3h steps (the Moon
+// spends ~2.5 days per sign, so this is cheap) then a 10-min refine. Used
+// only to close out a void-of-course window that runs past midnight.
+function nextIngressAfterMs(fromMs: number): number {
+  const startSign = signOf(moonLongitude(julianDay(new Date(fromMs))));
+  const COARSE = 3 * 3600000;
+  let t = fromMs;
+  for (let i = 0; i < 32; i++) { // up to 4 days ahead
+    t += COARSE;
+    if (signOf(moonLongitude(julianDay(new Date(t)))) !== startSign) break;
+  }
+  // Refine backward to the actual crossing.
+  let hi = t, lo = t - COARSE;
+  for (let i = 0; i < 8; i++) {
+    const mid = (lo + hi) / 2;
+    if (signOf(moonLongitude(julianDay(new Date(mid)))) !== startSign) hi = mid; else lo = mid;
+  }
+  return hi;
 }
 
 export interface DayArcEvent {
@@ -155,8 +180,15 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   let prevJd = julianDay(dayStart);
   let prevMoon = norm360(moonLongitude(prevJd));
   let prevSign = signOf(prevMoon);
-  const prevSep: Record<string, number> = {};
-  for (const p of ASPECT_PLANETS) prevSep[p] = sep180(prevMoon, bodyLon(p, prevJd));
+  // SIGNED separation (Moon minus target, 0..360), not the folded 0..180 one:
+  // the folded distance only *touches* 0 at a conjunction and 180 at an
+  // opposition without a sign change, so the old product-sign crossing test
+  // silently missed both, and any void-of-course whose defining perfection
+  // was a conjunction/opposition started up to hours early (audit F2/F3b).
+  // The signed delta increases monotonically (the Moon outruns every
+  // classical planet), so every angle is a clean crossing — see voidOfCourse.
+  const prevDelta: Record<string, number> = {};
+  for (const p of ASPECT_PLANETS) prevDelta[p] = norm360(prevMoon - bodyLon(p, prevJd));
 
   for (let t = dayStart.getTime() + STEP_MS; t <= dayEnd.getTime(); t += STEP_MS) {
     const d = new Date(t);
@@ -165,14 +197,14 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     const sign = signOf(mLon);
     if (sign !== prevSign) ingresses.push({ t: d, sign });
     for (const p of ASPECT_PLANETS) {
-      const s = sep180(mLon, bodyLon(p, jd));
-      for (const A of ASPECTS) {
-        if ((prevSep[p] - A.angle) * (s - A.angle) <= 0 && Math.abs(prevSep[p] - s) < 4) {
-          perfections.push({ t: d, planet: p, aspect: A.name });
-          break;
-        }
+      const del = norm360(mLon - bodyLon(p, jd));
+      const prev = prevDelta[p];
+      if (del >= prev) {
+        for (const A of SIGNED_ASPECTS) if (prev < A.angle && A.angle <= del) { perfections.push({ t: d, planet: p, aspect: A.name }); break; }
+      } else {
+        for (const A of SIGNED_ASPECTS) if (A.angle > prev || A.angle <= del) { perfections.push({ t: d, planet: p, aspect: A.name }); break; }
       }
-      prevSep[p] = s;
+      prevDelta[p] = del;
     }
     prevSign = sign; prevMoon = mLon; prevJd = jd;
   }
@@ -188,23 +220,41 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     // VOC within this segment: from the last perfection inside it to the segment end (ingress).
     const inSeg = perfections.filter(p => p.t >= s && p.t < e);
     const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
-    // The whole tail from lastPerf → e (next ingress) is void, but only meaningful
-    // when the segment ends at a real ingress (not the day boundary).
+    // The trailing segment ends at midnight, not a real ingress, so it never
+    // had an ingress of its own to check the void tail against — a void that
+    // starts today and runs past midnight was invisible here (audit F3a).
+    // voidOfCourse scans forward to the REAL next ingress regardless of the
+    // day boundary, so it answers this case correctly.
     const endsAtIngress = i < boundaries.length - 2;
+    const voc = endsAtIngress
+      ? lastPerf.getTime() < e.getTime()
+      : voidOfCourse(julianDay(lastPerf)).voc;
     segments.push({
       start: s.toISOString(), end: e.toISOString(),
       sign, character, characterLabel: CHAR_LABEL[character] ?? character,
-      voc: endsAtIngress && lastPerf.getTime() < e.getTime(),
+      voc,
     });
   }
 
-  // VOC windows (only where a segment ends at an ingress)
+  // VOC windows — includes a trailing cross-midnight window when the last
+  // segment is void (audit F3a); its end is the real next ingress, found via
+  // a short forward scan rather than assumed to fall within today.
   const vocWindows: { start: string; end: string }[] = [];
   for (let i = 0; i < boundaries.length - 2; i++) {
     const s = boundaries[i], e = boundaries[i + 1];
     const inSeg = perfections.filter(p => p.t >= s && p.t < e);
     const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
     if (lastPerf.getTime() < e.getTime()) vocWindows.push({ start: lastPerf.toISOString(), end: e.toISOString() });
+  }
+  {
+    const lastSeg = segments[segments.length - 1];
+    if (lastSeg?.voc) {
+      const s = boundaries[boundaries.length - 2], e = boundaries[boundaries.length - 1];
+      const inSeg = perfections.filter(p => p.t >= s && p.t < e);
+      const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
+      const ingressMs = nextIngressAfterMs(e.getTime());
+      vocWindows.push({ start: lastPerf.toISOString(), end: new Date(ingressMs).toISOString() });
+    }
   }
 
   // Angle crossings — the day's peak MOMENTS (a planet on the Ascendant or

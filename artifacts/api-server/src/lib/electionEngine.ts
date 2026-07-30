@@ -125,6 +125,14 @@ export function computeElections(opts: {
     const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
     const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
     const jdNoon = julianDay(new Date(dayStartMs + 12 * 3600000));
+    // Was: mercRx/ecl/rxSigs computed once at the SCAN's start date and reused
+    // for every day's tier gating below — a week/month scan spanning a real
+    // eclipse or a Mercury station saw it on day 0 only, so e.g. a month scan
+    // crossing a total solar eclipse mid-month stamped GREAT windows straight
+    // through it (audit F5). Evaluate them per-day, at this day's own jdNoon.
+    const dayMercRx = isRetrograde("Mercury", jdNoon);
+    const dayEcl = eclipseWindow(jdNoon);
+    const dayRxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, jdNoon));
     const moonSign = SIGNS[Math.floor(norm360(moonLongitude(jdNoon)) / 30) % 12];
     const waxing = norm360(moonLongitude(jdNoon) - sunLongitude(jdNoon)) < 180;
     const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
@@ -271,10 +279,10 @@ export function computeElections(opts: {
       const substantive = c.sources.includes("moon") || c.sources.includes("hour");
       const greatSignals = (stacked ? 1 : 0) + daySources.length;
       let tier: "good" | "great" = substantive && greatSignals >= 2 ? "great" : "good";
-      if (mercRx && act.mercuryRx === "hard") tier = "good"; // blocked matters get no great stamp
+      if (dayMercRx && act.mercuryRx === "hard") tier = "good"; // blocked matters get no great stamp
       // Verified gates: eclipse week, retrograde significators, and the Moon's
       // FINAL aspect in this window's sign (how the matter ends) each cap GREAT.
-      if (tier === "great" && (ecl.active || rxSigs.length > 0)) tier = "good";
+      if (tier === "great" && (dayEcl.active || dayRxSigs.length > 0)) tier = "good";
       if (tier === "great" && !c.allDay) {
         // Memoized per sign occupancy — every window in the same Moon sign
         // shares one final aspect, and the scan isn't free.

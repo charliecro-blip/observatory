@@ -202,7 +202,6 @@ export function buildDayCardSvg(opts: {
 import { getMajorAspects, getPlanetPositions, isRetrograde } from "./astro.js";
 
 const norm360 = (d: number) => ((d % 360) + 360) % 360;
-const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; };
 
 // Full aspect set for the Moon scan. Weights are the aspect's base voltage for
 // election purposes; per-activity palettes then say which ones qualify.
@@ -212,13 +211,26 @@ const MOON_ANGLES: { deg: number; name: string }[] = [
   { deg: 120, name: "trine" }, { deg: 135, name: "sesquiquadrate" }, { deg: 144, name: "biquintile" },
   { deg: 150, name: "quincunx" }, { deg: 180, name: "opposition" },
 ];
+// Every aspect angle expressed as a SIGNED separation (0..360), the same trick
+// voidOfCourse uses: sep180's folded 0..180 distance only *touches* 0 and 180
+// without a sign change crossing them, so a product-sign crossing test never
+// fires for a conjunction or opposition — the app's Moon-conjunction and
+// Moon-opposition perfections were never detected at all (audit finding F2).
+// A non-symmetric angle (everything but 0/180) appears on both sides of the
+// circle (e.g. sextile at 60° widening AND 300° = 360-60° narrowing).
+const SIGNED_MOON_ANGLES: { deg: number; name: string }[] = MOON_ANGLES.flatMap(({ deg, name }) =>
+  deg === 0 || deg === 180 ? [{ deg, name }] : [{ deg, name }, { deg: 360 - deg, name }]
+);
 const MOON_TARGETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
 
 export interface MoonPerfection { timeMs: number; planet: string; aspect: string }
 
 // Scan one local day for Moon-aspect perfections across the full angle set —
 // the day-arc engine only tracks majors (they feed the app's tide curve), so
-// the cards do their own sweep. 10-minute steps, crossing detection.
+// the cards do their own sweep. 10-minute steps, crossing detection via the
+// SIGNED separation (Moon longitude minus target longitude), which increases
+// monotonically because the Moon outruns every classical planet — so every
+// angle, including 0 and 180, is a clean crossing (see voidOfCourse).
 export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
   const out: MoonPerfection[] = [];
   const STEP = 10 * 60000;
@@ -231,22 +243,23 @@ export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
     return m;
   };
   let prevLons = lonOf(prevJd);
-  const prevSep: Record<string, number> = {};
-  for (const t of MOON_TARGETS) prevSep[t] = sep180(prevMoon, prevLons[t] ?? 0);
+  const prevDelta: Record<string, number> = {};
+  for (const t of MOON_TARGETS) prevDelta[t] = norm360(prevMoon - (prevLons[t] ?? 0));
 
   for (let t = dayStartMs + STEP; t <= dayStartMs + 24 * 3600000; t += STEP) {
     const jd = julianDay(new Date(t));
     const mLon = norm360(moonLongitude(jd));
     const lons = lonOf(jd);
     for (const p of MOON_TARGETS) {
-      const s = sep180(mLon, lons[p] ?? 0);
-      for (const A of MOON_ANGLES) {
-        if ((prevSep[p] - A.deg) * (s - A.deg) <= 0 && Math.abs(prevSep[p] - s) < 4) {
-          out.push({ timeMs: t, planet: p, aspect: A.name });
-          break;
-        }
+      const d = norm360(mLon - (lons[p] ?? 0));
+      const prev = prevDelta[p];
+      if (d >= prev) {
+        for (const A of SIGNED_MOON_ANGLES) if (prev < A.deg && A.deg <= d) { out.push({ timeMs: t, planet: p, aspect: A.name }); break; }
+      } else {
+        // Wrapped past 360 → 0.
+        for (const A of SIGNED_MOON_ANGLES) if (A.deg > prev || A.deg <= d) { out.push({ timeMs: t, planet: p, aspect: A.name }); break; }
       }
-      prevSep[p] = s;
+      prevDelta[p] = d;
     }
     prevMoon = mLon; prevLons = lons; prevJd = jd;
   }

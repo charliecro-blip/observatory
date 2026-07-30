@@ -345,18 +345,28 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
       : "No applying Moon aspect found in the near term.",
   });
 
-  // 10. Relevant house ruler well-placed (direct, not combust) — support
-  const primaryHouse = category.houses[0];
-  const houseSign = wholeSignHouseSign(angles.ascSign, primaryHouse);
-  const ruler = SIGN_RULERS[houseSign];
-  const rulerPlanet = planets.find((p) => p.planet === ruler);
-  let rulerGood = true;
-  let rulerDetail = "No ruler data available.";
-  if (rulerPlanet) {
+  // 10. Relevant house ruler(s) well-placed (direct, not combust) — support.
+  // Was: only category.houses[0] — a contract's 3rd house (communication)
+  // never got checked alongside its 7th (the other party), and any category
+  // with a secondary house was silently graded on one signal instead of the
+  // full matter (audit F8). Now checks every relevant house; passes if any
+  // one ruler is well-placed, same traditional logic as a single house.
+  const ordinal = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"}`;
+  const houseRulerReports = category.houses.map((house) => {
+    const sign = wholeSignHouseSign(angles.ascSign, house);
+    const ruler = SIGN_RULERS[sign];
+    const rulerPlanet = planets.find((p) => p.planet === ruler);
+    if (!rulerPlanet) return { house, sign, ruler, good: null as boolean | null, detail: `${ruler} rules the ${ordinal(house)} house — no ruler data available.` };
     const combust = ruler !== "Sun" && angularDiff(rulerPlanet.longitude, sunLon) <= 8;
-    rulerGood = !rulerPlanet.retrograde && !combust;
-    rulerDetail = `${ruler} rules the ${primaryHouse}${primaryHouse === 1 ? "st" : primaryHouse === 2 ? "nd" : primaryHouse === 3 ? "rd" : "th"} house (${houseSign} on the cusp) and is ${rulerPlanet.retrograde ? "retrograde" : "direct"}${combust ? ", combust (too close to the Sun)" : ""}.`;
-  }
+    const good = !rulerPlanet.retrograde && !combust;
+    return {
+      house, sign, ruler, good,
+      detail: `${ruler} rules the ${ordinal(house)} house (${sign} on the cusp) and is ${rulerPlanet.retrograde ? "retrograde" : "direct"}${combust ? ", combust (too close to the Sun)" : ""}.`,
+    };
+  });
+  const rulersWithData = houseRulerReports.filter((r) => r.good !== null);
+  const rulerGood = rulersWithData.length === 0 || rulersWithData.some((r) => r.good === true);
+  const rulerDetail = houseRulerReports.length ? houseRulerReports.map((r) => r.detail).join(" ") : "No ruler data available.";
   rules.push({
     key: "house_ruler", label: "House ruler well-placed", severity: "support", passed: rulerGood, detail: rulerDetail,
   });
@@ -426,7 +436,15 @@ export function scanElection(
       const mid = new Date((planHour.startTime.getTime() + planHour.endTime.getTime()) / 2);
       results.push(scoreElection(mid, latDeg, lonDeg, categoryKey));
     }
-    cursor = new Date(planHour.endTime.getTime() + 60000);
+    // Guard against a corrupted/stale planetary-hour boundary ever sending the
+    // cursor backward or nowhere — without this, a bad endTime turned a scan
+    // into a spin that could return windows dated over a year in the past
+    // (audit F1, empirically observed at eastern longitudes before the
+    // getPlanetaryHour local-date fix). Only intervenes when the natural
+    // next boundary fails to advance; a real (variable-length) hour is left
+    // as-is so the scan doesn't skip legitimately short hours.
+    const next = planHour.endTime.getTime() + 60000;
+    cursor = next > cursor.getTime() ? new Date(next) : new Date(cursor.getTime() + 3600000);
   }
 
   results.sort((a, b) => {

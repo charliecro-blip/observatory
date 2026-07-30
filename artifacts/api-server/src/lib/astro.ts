@@ -548,7 +548,23 @@ export interface PlanetaryHour {
  * @param lon    Observer longitude (default −74.0°E).
  */
 export function getPlanetaryHour(date: Date, lat = 40.7, lon = -74.0): PlanetaryHour {
-  const jd = julianDay(date);
+  // getSunriseSunset anchors to the UTC CALENDAR date of the jd it's given —
+  // correct for lon≈0, but for eastern longitudes (roughly ≥ UTC+7: Tokyo,
+  // Sydney, most of Asia-Pacific) the local calendar date is often already a
+  // day ahead of the UTC date at the query instant. julianDay(date) then
+  // fetches sunrise/sunset for YESTERDAY's local day, both branches below
+  // land in the past relative to `now`, and every query for several morning
+  // hours fell through to the stale "last night" branch — wrong ruler, wrong
+  // sect (audit F1, empirically: Tokyo 05:30–08:30 all returned "Jupiter,
+  // hour 12, night" instead of Mercury's actual day hours). Anchor jd to the
+  // LOCAL calendar date instead, the same longitude-shift trick localDow (a
+  // few lines down) already uses for the day-ruler weekday.
+  const localMidnightJd = (d: Date): number => {
+    const shifted = new Date(d.getTime() + (lon / 15) * 3600000);
+    const localMidnightUTC = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
+    return julianDay(new Date(localMidnightUTC + 12 * 3600000)); // noon, to sit clear of julianDay's own date-line convention
+  };
+  const jd = localMidnightJd(date);
   const { sunrise, sunset } = getSunriseSunset(jd, lat, lon);
   const { sunrise: prevSunrise, sunset: prevSunset } = getSunriseSunset(jd - 1, lat, lon);
   const { sunrise: nextSunrise } = getSunriseSunset(jd + 1, lat, lon);
