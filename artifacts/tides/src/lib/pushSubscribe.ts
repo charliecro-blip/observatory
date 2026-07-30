@@ -47,7 +47,7 @@ export async function enablePush(opts: { lat?: number; lon?: number } = {}): Pro
     const r = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { ...(testerId ? { "x-tester-id": testerId } : {}), "Content-Type": "application/json" },
-      body: JSON.stringify({ ...sub.toJSON(), lat: opts.lat, lon: opts.lon }),
+      body: JSON.stringify({ ...sub.toJSON(), lat: opts.lat, lon: opts.lon, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
     if (!r.ok) return { ok: false, reason: "Couldn't save the subscription." };
 

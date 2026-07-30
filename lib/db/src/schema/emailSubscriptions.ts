@@ -20,6 +20,12 @@ export const emailSubscriptions = pgTable("email_subscriptions", {
   // degrees, hour rulers and sign glyphs. Mirrored here at subscribe time so
   // the server can gate its own register. minimal | medium | full.
   detail: text("detail").notNull().default("medium"),
+  // The subscriber's real IANA zone (e.g. "America/Chicago"). The notifier
+  // used to infer a whole-hour offset from LONGITUDE, which is not a timezone:
+  // it has no DST (already ~1h wrong across a US summer), no half-hour or
+  // quarter-hour zones, and no political boundaries. Captured from the browser
+  // at opt-in; longitude remains the fallback for rows saved before this.
+  timeZone: text("time_zone"),
   lat: text("lat"),
   lon: text("lon"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

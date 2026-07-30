@@ -122,7 +122,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
     setStatus(null);
     const r = await fetch("/api/reports/email-subscription", {
       method: "POST", headers: { ...authH, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon, detail: prefsForEmail.display.astroDetail ?? "medium" }),
+      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon, detail: prefsForEmail.display.astroDetail ?? "medium", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
     if (r.ok) {
       logEvent("email_subscribe", { spans, sendHour });

@@ -27,7 +27,7 @@ router.post("/push/subscribe", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string;
   if (!testerId) { res.status(401).json({ error: "Missing tester id" }); return; }
 
-  const { endpoint, keys, lat, lon } = req.body ?? {};
+  const { endpoint, keys, lat, lon, timeZone } = req.body ?? {};
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     res.status(400).json({ error: "Invalid subscription object" }); return;
   }
@@ -39,6 +39,12 @@ router.post("/push/subscribe", async (req, res) => {
     endpoint,
     p256dh: keys.p256dh,
     auth: keys.auth,
+    // Validate before storing — a bad zone string would make every later
+    // Intl call throw inside the notifier tick.
+    timeZone: (() => {
+      if (typeof timeZone !== "string" || !timeZone) return null;
+      try { new Intl.DateTimeFormat("en-US", { timeZone }); return timeZone; } catch { return null; }
+    })(),
     lat: lat != null ? String(lat) : null,
     lon: lon != null ? String(lon) : null,
   });

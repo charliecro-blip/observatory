@@ -53,7 +53,39 @@ function dedup(key: string): boolean {
 
 // Subscriber-local clock, derived from stored longitude (15° ≈ 1 hour).
 // ±1h around DST — fine for a "morning" ping, honest about its precision.
-function localParts(now: Date, lonRaw: string | null): { hour: number; minute: number; date: string } {
+// Wall-clock parts in a real IANA zone. Longitude stays as the fallback for
+// subscriptions saved before we captured the zone, but it is only ever an
+// approximation — it cannot know DST, half-hour zones, or where a border runs.
+function partsInZone(now: Date, timeZone: string): { hour: number; minute: number; date: string } {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+    }).formatToParts(now).map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  return { hour: parseInt(p.hour!, 10) % 24, minute: parseInt(p.minute!, 10), date: `${p.year}-${p.month}-${p.day}` };
+}
+
+/** getTimezoneOffset convention: minutes to ADD to local to reach UTC. */
+function offsetMinInZone(now: Date, timeZone: string): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(now).map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  const asUtc = Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour! % 24, +p.minute!, +p.second!);
+  return -Math.round((asUtc - now.getTime()) / 60000);
+}
+
+function validZone(z: string | null | undefined): string | null {
+  if (!z) return null;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: z }); return z; } catch { return null; }
+}
+
+function localParts(now: Date, lonRaw: string | null, timeZone?: string | null): { hour: number; minute: number; date: string } {
+  const zone = validZone(timeZone);
+  if (zone) return partsInZone(now, zone);
   const lon = lonRaw != null ? parseFloat(lonRaw) : -74.0;
   const offsetH = Math.round((Number.isFinite(lon) ? lon : -74.0) / 15);
   const local = new Date(now.getTime() + offsetH * 3600000);
@@ -89,7 +121,7 @@ async function tick() {
     const ch = CHARACTER[elem.element] ?? CHARACTER.water;
     const phase = moonPhase(jd);
     for (const sub of subs) {
-      const t = localParts(now, sub.lon);
+      const t = localParts(now, sub.lon, (sub as any).timeZone);
       // 60s tick + 2-minute window + daily dedupe = fires exactly once
       if (t.hour === MORNING_HOUR && t.minute < 2 && dedup(`morning-${sub.testerId}-${t.date}`)) {
         await sendPushToTester(sub.testerId, {
@@ -134,7 +166,7 @@ async function tick() {
           };
           for (const sub of subs) {
             // Quiet hours: no hour-shift pings in the subscriber's night
-            const t = localParts(now, sub.lon);
+            const t = localParts(now, sub.lon, (sub as any).timeZone);
             if (t.hour >= 22 || t.hour < 8) continue;
             await sendPushToTester(sub.testerId, payload);
           }
@@ -157,7 +189,7 @@ async function tick() {
           tag: "voc",
         };
         for (const sub of subs) {
-          const t = localParts(now, sub.lon);
+          const t = localParts(now, sub.lon, (sub as any).timeZone);
           if (t.hour >= 22 || t.hour < 8) continue; // don't wake anyone for a void
           await sendPushToTester(sub.testerId, payload);
         }
@@ -183,7 +215,7 @@ async function tick() {
           tag: "moon-phase",
         };
         for (const sub of subs) {
-          const t = localParts(now, sub.lon);
+          const t = localParts(now, sub.lon, (sub as any).timeZone);
           if (t.hour >= 22 || t.hour < 8) continue;
           await sendPushToTester(sub.testerId, payload);
         }
@@ -209,7 +241,9 @@ async function getEmailSubs() {
   catch { return emailSubsCache ?? []; }
 }
 // getTimezoneOffset-style minutes from a stored longitude (matches localParts).
-function tzFromLon(lonRaw: string | null): number {
+function tzFromLon(lonRaw: string | null, timeZone?: string | null, now: Date = new Date()): number {
+  const zone = validZone(timeZone);
+  if (zone) return offsetMinInZone(now, zone);
   const lon = lonRaw != null ? parseFloat(lonRaw) : -74.0;
   return -Math.round((Number.isFinite(lon) ? lon : -74.0) / 15) * 60;
 }
@@ -220,9 +254,9 @@ async function emailTick() {
   const subs = await getEmailSubs();
   for (const sub of subs) {
     if (sub.enabled !== "true") continue;
-    const t = localParts(now, sub.lon);
+    const t = localParts(now, sub.lon, (sub as any).timeZone);
     if (t.hour !== (sub.sendHour ?? 7) || t.minute >= 2) continue;
-    const tz = tzFromLon(sub.lon);
+    const tz = tzFromLon(sub.lon, (sub as any).timeZone, now);
     const lat = parseFloat(sub.lat ?? "40.7"), lonN = parseFloat(sub.lon ?? "-74.0");
     const spans = (sub.spans as string[] | null) ?? ["day"];
     const localDow = new Date(now.getTime() - tz * 60000).getUTCDay();

@@ -194,6 +194,11 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   endpoint: text("endpoint").notNull(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
+  // Real IANA zone for this DEVICE. Push timing was derived from longitude,
+  // which is not a timezone — no DST, no half-hour zones, no borders — so the
+  // morning ping could already be an hour off across a US summer. Captured at
+  // subscribe; longitude stays the fallback for older rows.
+  timeZone: text("time_zone"),
   lat: text("lat"),
   lon: text("lon"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

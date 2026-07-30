@@ -565,7 +565,7 @@ router.get("/reports/email-subscription", requireTesterId, async (_req, res) => 
 
 router.post("/reports/email-subscription", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { email, spans, sendHour, enabled, lat, lon, detail } = req.body ?? {};
+  const { email, spans, sendHour, enabled, lat, lon, detail, timeZone } = req.body ?? {};
   if (!email || typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     res.status(400).json({ error: "a valid email is required" });
     return;
@@ -578,6 +578,10 @@ router.post("/reports/email-subscription", requireTesterId, async (req, res) => 
     // Mirror the client's astroDetail so the composer can speak the register
     // the reader actually chose (it previously had no way to know).
     detail: (DETAILS as readonly string[]).includes(String(detail)) ? String(detail) : "medium",
+    timeZone: (() => {
+      if (typeof timeZone !== "string" || !timeZone) return null;
+      try { new Intl.DateTimeFormat("en-US", { timeZone }); return timeZone; } catch { return null; }
+    })(),
     lat: lat != null ? String(lat) : null,
     lon: lon != null ? String(lon) : null,
     updatedAt: new Date(),
