@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/tides-app]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Regressions first: they're pure, they run in under a second, and every
+      # case in them is a bug that actually shipped.
+      - name: Regression suite
+        run: pnpm test
+        env:
+          TZ: America/Chicago   # exercise a DST zone, not UTC
+
+      # Same suite from a half-hour zone and from UTC — the local-day and
+      # notifier bugs were both invisible when the runner happened to sit on UTC.
+      - name: Regression suite (Asia/Kolkata)
+        run: pnpm test
+        env:
+          TZ: Asia/Kolkata
+      - name: Regression suite (UTC)
+        run: pnpm test
+        env:
+          TZ: UTC
+
+      - name: Typecheck
+        run: pnpm run typecheck
