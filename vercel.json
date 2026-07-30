@@ -1,27 +1,50 @@
 {
-  "//": "Vercel is retired — Railway serves both the frontend and the API as a single server (see railway.toml + api-server/src/app.ts static serving). This flag stops Vercel from auto-building on every push. Flip to true (or delete this file and reconnect the project) to bring Vercel back.",
-  "git": { "deploymentEnabled": { "main": false } },
+  "//": "Vercel is retired \u2014 Railway serves both the frontend and the API as a single server (see railway.toml + api-server/src/app.ts static serving). deploymentEnabled:false disables ALL branches: scoping it to {main:false} still let every push to a feature branch fire a PREVIEW build, which failed and emailed on each one. Flip to true (or delete this file and reconnect the project) to bring Vercel back.",
+  "git": {
+    "deploymentEnabled": false
+  },
   "buildCommand": "pnpm --filter @workspace/tides run build && mkdir -p public && cp -r artifacts/tides/public/* public/",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://workspaceapi-server-production-69e7.up.railway.app/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://workspaceapi-server-production-69e7.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]
