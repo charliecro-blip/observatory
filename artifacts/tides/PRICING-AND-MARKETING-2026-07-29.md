@@ -70,6 +70,18 @@ feature and each has real marginal cost:
 
 Everything else can be free without hurting us.
 
+### ⚠️ One thing that must NEVER move behind the wall: habit cadence
+Both Structured and Tweek gate recurring tasks, and in **both** cases it is the
+single loudest complaint in their review corpus — *"Why do I need to pay to
+repeat a task?"*, *"this isn't an app with an optional upgrade, it's a
+downloadable ad for a paid app."* Structured's version has a genuine trap: a
+free user who deletes their seeded routines can't recreate them without Pro.
+
+A daily planner whose *routines* are paid reads as extortionate. Cadence is the
+product's thesis, not an upsell. It's already free under "free gives you today"
+— writing it down here so it doesn't get quietly reconsidered later.
+(Source: `COMPETITIVE-UX-APPENDIX-onboarding-and-capture.md` §3.)
+
 ---
 
 ## 2. The beta cohort — I'd argue against splitting it
@@ -91,8 +103,24 @@ instrument:
 ### What to do instead — mark it, don't gate it
 
 Keep all beta users on full access, but **make the paid surfaces visibly paid
-while still working**. A small `✦` marker and a one-line "this will be part of
-Compass premium" note. Nothing is taken away; the line simply becomes legible.
+while still working**. A small `✦` marker. Nothing is taken away; the line
+simply becomes legible.
+
+**Word the marker as a gift, not a future bill.** Fantastical 3 grandfathered
+existing owners *completely* — kept every feature they'd paid for, permanently —
+and got review-bombed anyway, because the UI only ever showed them locks. The
+diagnosis from that fallout applies exactly here:
+
+> *"there's no in-app indication of 'you're getting X for free because you
+> bought the app'. So existing users only see the places they're being asked to
+> pay more… if they'd swapped some of the 'you need pro' stars into **'loyal
+> customer'** icons, we'd all have a better sense of what we're getting."*
+
+So: **"✦ included for you — beta"**, not "✦ premium". Identical information,
+opposite emotional valence — one reads as a bill arriving, the other as a gift
+being received. With a cohort of friends and clients who did us a favor, that
+distinction is the whole difference between the marker building goodwill and
+building dread. (Source: `COMPETITIVE-UX-APPENDIX-onboarding-and-capture.md` §4.)
 
 Why this is better:
 - **Usage of a marked feature IS the willingness-to-pay signal.** Someone who
