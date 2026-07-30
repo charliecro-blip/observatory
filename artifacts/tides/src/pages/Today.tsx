@@ -685,11 +685,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const addTask = useMutation({
     mutationFn: async (title: string) => {
-      await fetch("/api/tasks", {
+      const r = await fetch("/api/tasks", {
         method: "POST",
         headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({ title, dueDate: today }),
       });
+      if (!r.ok) throw new Error("add task failed"); // was silent — the typed title vanished on failure
     },
     onSuccess: () => { logEvent("task_add", { from: "waves" }); qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
   });
@@ -1357,8 +1358,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     placeholder="Add task for today…"
                     style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)" }}
                   />
-                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)}
-                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Add</button>
+                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} disabled={addTask.isPending}
+                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>{addTask.isPending ? "…" : "Add"}</button>
+                  {addTask.isError && <span style={{ fontSize: 10, color: "#a03030", alignSelf: "center" }}>failed — retry</span>}
                 </div>
               ) : (
                 <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#ccc", background: "none", border: "none", cursor: "pointer", padding: 0 }}>

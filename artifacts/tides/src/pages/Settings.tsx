@@ -11,6 +11,7 @@ import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
+import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
 
 function authH(tid: string | null) {
   return { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" };
@@ -122,7 +123,15 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
       method: "POST", headers: { ...authH, "Content-Type": "application/json" },
       body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon }),
     });
-    if (r.ok) { logEvent("email_subscribe", { spans, sendHour }); setSaved(true); setStatus("Saved — reports will arrive at your chosen hour."); }
+    if (r.ok) {
+      logEvent("email_subscribe", { spans, sendHour });
+      setSaved(true);
+      // Was unconditional — promised delivery even when senderConfigured was
+      // already known false, i.e. sends can't actually happen yet.
+      setStatus(senderConfigured === false
+        ? "Saved, but the server has no email key yet (RESEND_API_KEY) — nothing can send until it's set."
+        : "Saved — reports will arrive at your chosen hour.");
+    }
     else setStatus((await r.json().catch(() => null))?.error ?? "Couldn't save — check the address.");
   };
   const sendTest = async () => {
@@ -834,6 +843,34 @@ function PremiumPreviewSection() {
   );
 }
 
+// ---- Caution planets section ----
+
+// Was orphaned: the only surface that could open this questionnaire was the
+// dead pages/Currents.tsx, so nobody could set or edit their caution planets
+// even though Tasks, Calendar, and Guiding Stars all still read and display
+// them (audit finding — a feature with consumers but no producer). This
+// restores just the producer; the sensitivity-based suggestions Currents.tsx
+// used to compute aren't re-plumbed here, so the questionnaire opens with
+// plain manual picking instead of pre-suggested planets.
+const CAUTION_PLANET_NAMES: Record<string, string> = { Uranus: "Uranus", Neptune: "Neptune", Pluto: "Pluto", Saturn: "Saturn", Mars: "Mars" };
+
+function CautionPlanetsSection() {
+  const { profile } = useTester();
+  const [open, setOpen] = useState(false);
+  const picked = profile?.cautionPlanets ?? [];
+  return (
+    <SectionCard title="Caution planets" sub="Which outer-planet transits you want flagged as advisories, on Tasks, Calendar, and your Guiding Stars.">
+      <div style={{ fontSize: 11.5, color: "#777", marginBottom: 10 }}>
+        {picked.length === 0 ? "None set — advisories are off." : `Watching: ${picked.map(p => CAUTION_PLANET_NAMES[p] ?? p).join(", ")}`}
+      </div>
+      <button onClick={() => setOpen(true)} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer" }}>
+        {picked.length === 0 ? "Set caution planets" : "Edit caution planets"}
+      </button>
+      {open && <CautionQuestionnaireModal onClose={() => setOpen(false)} />}
+    </SectionCard>
+  );
+}
+
 // ---- Chronotype section ----
 
 function ChronotypeSection() {
@@ -1416,6 +1453,10 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Premium — near the top so it's easy to find and toggle */}
         <PremiumPreviewSection />
+
+        {/* Caution planets — the questionnaire lost its only door when Currents
+            was retired; Tasks/Calendar/Aims still read cautionPlanets. */}
+        <CautionPlanetsSection />
 
         {/* Notifications */}
         <NotificationSection lat={lat} lon={lon} />

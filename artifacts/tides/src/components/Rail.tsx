@@ -507,11 +507,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
   const addTask = useMutation({
     mutationFn: async (title: string) => {
-      await fetch("/api/tasks", {
+      const r = await fetch("/api/tasks", {
         method: "POST",
         headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({ title, dueDate: today }),
       });
+      if (!r.ok) throw new Error("add task failed"); // was silent — the typed title vanished on failure
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks-today"] }); setNewTaskTitle(""); setShowAddTask(false); },
   });
@@ -1101,6 +1102,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   placeholder="Add task…"
                   style={{ flex: 1, padding: "4px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10.5, outline: "none", background: "var(--color-card-2)" }}
                 />
+                {addTask.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
               </div>
             ) : (
               <button onClick={() => setShowAddTask(true)} style={{

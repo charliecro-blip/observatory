@@ -8,20 +8,38 @@
  */
 export type EnablePushResult = { ok: true } | { ok: false; reason: string };
 
+// Cache the one config fetch — every opt-in surface can check this before
+// even rendering its prompt (audit: the OS permission dialog used to fire
+// BEFORE this check, so a tester granted browser permission and then got a
+// tail-swallowed "not configured" failure — asking for something real and
+// getting nothing in return, exactly backwards).
+let configuredCache: boolean | null = null;
+export async function isPushConfigured(): Promise<boolean> {
+  if (configuredCache != null) return configuredCache;
+  try {
+    const r = await fetch("/api/push/vapid-key");
+    configuredCache = r.ok;
+  } catch {
+    configuredCache = false;
+  }
+  return configuredCache;
+}
+
 export async function enablePush(opts: { lat?: number; lon?: number } = {}): Promise<EnablePushResult> {
   try {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       return { ok: false, reason: "This browser doesn't support notifications." };
     }
+    const keyRes = await fetch("/api/push/vapid-key");
+    if (!keyRes.ok) { configuredCache = false; return { ok: false, reason: "Push isn't configured on the server yet." }; }
+    configuredCache = true;
+    const { publicKey } = await keyRes.json();
+
     const perm = await Notification.requestPermission();
     if (perm !== "granted") return { ok: false, reason: "Permission wasn't granted." };
 
     const reg = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
-
-    const keyRes = await fetch("/api/push/vapid-key");
-    if (!keyRes.ok) return { ok: false, reason: "Push isn't configured on the server yet." };
-    const { publicKey } = await keyRes.json();
 
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey });
 

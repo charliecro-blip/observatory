@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePreferences } from "@/contexts/preferences-context";
-import { enablePush } from "@/lib/pushSubscribe";
+import { enablePush, isPushConfigured } from "@/lib/pushSubscribe";
 
 /**
  * The morning "⛵ Cast off" and evening "🌙 Log the day" pushes are the app's
  * daily-return heartbeat — but they default off and used to live only in
  * Settings, so for most testers they never fired. This is a tasteful,
  * dismissible Today banner that turns them on in one tap. Shown only when
- * notifications aren't already on, the browser hasn't blocked them, and the
- * tester hasn't dismissed it.
+ * notifications aren't already on, the browser hasn't blocked them, the
+ * tester hasn't dismissed it, and the server actually has VAPID keys set —
+ * without that last check, this walked people through granting OS-level
+ * permission for something that then silently failed to ever fire
+ * (persona study's #1 finding: the return loop is dead in beta conditions).
  */
 const DISMISS_KEY = "compass-notif-optin-dismissed";
 
@@ -17,11 +20,14 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [serverReady, setServerReady] = useState<boolean | null>(null);
+
+  useEffect(() => { isPushConfigured().then(setServerReady); }, []);
 
   const unsupported = typeof window === "undefined" || !("Notification" in window);
   const blocked = !unsupported && Notification.permission === "denied";
 
-  if (unsupported || blocked || dismissed || prefs.notifications?.enabled) return null;
+  if (unsupported || blocked || dismissed || prefs.notifications?.enabled || serverReady !== true) return null;
 
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, "1");

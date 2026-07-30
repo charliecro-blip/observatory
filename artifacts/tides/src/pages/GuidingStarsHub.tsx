@@ -222,7 +222,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const addTaskToStep = useMutation({
     mutationFn: async ({ milestoneId, starId, title, element }: { milestoneId: number; starId: number; title: string; element?: string }) => {
       const windowType = element === "fire" ? "creative" : element === "earth" ? "deep_work" : element === "air" ? "planning" : element === "water" ? "recovery" : undefined;
-      await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId: starId, milestoneId, bestWindowType: windowType }) });
+      const r = await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId: starId, milestoneId, bestWindowType: windowType }) });
+      if (!r.ok) throw new Error("add task failed"); // was silent — the form closed and the task vanished on failure
     },
     onSuccess: () => { refreshPM(); setStepTaskAdd(null); setStepTaskTitle(""); },
   });
@@ -414,11 +415,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId: number; kind: "task" | "habit" } | null>(null);
   const createLinked = useMutation({
     mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
-      if (kind === "task") {
-        await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId }) });
-      } else {
-        await fetch("/api/habits", { method: "POST", headers: authHeaders, body: JSON.stringify({ name: title, goalId, favoredElements: element || undefined }) });
-      }
+      const r = kind === "task"
+        ? await fetch("/api/tasks", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, goalId }) })
+        : await fetch("/api/habits", { method: "POST", headers: authHeaders, body: JSON.stringify({ name: title, goalId, favoredElements: element || undefined }) });
+      // Was silent — this then opened ScheduleSuggest for an item that was
+      // never actually created (audit P0 #4).
+      if (!r.ok) throw new Error("create linked item failed");
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: [v.kind === "task" ? "tasks" : "habits"] });
@@ -873,7 +875,9 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                                   placeholder="Task for this step…"
                                   style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10, outline: "none", background: "var(--color-card)" }} />
                                 <button onClick={() => stepTaskTitle.trim() && addTaskToStep.mutate({ milestoneId: m.id, starId: g.id, title: stepTaskTitle.trim(), element: g.element ?? undefined })}
-                                  style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                                  disabled={addTaskToStep.isPending}
+                                  style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{addTaskToStep.isPending ? "…" : "Add"}</button>
+                                {addTaskToStep.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
                               </div>
                             )}
                           </div>
@@ -954,9 +958,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         style={{ flex: 1, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }}
                       />
                       <button onClick={() => quickTitle.trim() && createLinked.mutate({ goalId: g.id, kind: adding, title: quickTitle.trim(), element: g.element ?? undefined })}
-                        style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                        disabled={createLinked.isPending}
+                        style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{createLinked.isPending ? "…" : "Add"}</button>
                       <button onClick={() => { setQuickAdd(null); setQuickTitle(""); }}
                         style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>✕</button>
+                      {createLinked.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>

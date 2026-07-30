@@ -132,6 +132,8 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [windowType, setWindowType] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -141,13 +143,24 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
 
   async function addAll() {
     if (lines.length === 0 || !testerId) return;
-    await Promise.all(lines.map(title => fetch("/api/tasks", {
-      method: "POST",
-      headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-      body: JSON.stringify({ title, bestWindowType: windowType || undefined }),
-    })));
-    qc.invalidateQueries({ queryKey: ["tasks"] });
-    onClose();
+    setAdding(true);
+    setAddError(false);
+    try {
+      const results = await Promise.all(lines.map(title => fetch("/api/tasks", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ title, bestWindowType: windowType || undefined }),
+      })));
+      // Was unconditional — a mid-list failure silently dropped that task
+      // while the modal still closed on "success" (audit P0 #4).
+      if (results.some(r => !r.ok)) { setAddError(true); return; }
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      onClose();
+    } catch {
+      setAddError(true);
+    } finally {
+      setAdding(false);
+    }
   }
 
   return (
@@ -183,11 +196,12 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "#1a2a3a" : "#bbb", fontWeight: 500 }}>
             ✦ Dump &amp; schedule →
           </button>
-          <button onClick={addAll} disabled={lines.length === 0}
+          <button onClick={addAll} disabled={lines.length === 0 || adding}
             style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "#e0dcd6", color: lines.length ? "#fff" : "#aaa" }}>
-            {lines.length > 1 ? `Add ${lines.length}` : "Add"}
+            {adding ? "Adding…" : lines.length > 1 ? `Add ${lines.length}` : "Add"}
           </button>
         </div>
+        {addError && <div style={{ fontSize: 11, color: "#a03030", marginTop: 8 }}>Some of these didn't save — try again.</div>}
       </div>
     </div>
   );
