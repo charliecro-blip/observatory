@@ -184,22 +184,45 @@ describe("ical line assembly", () => {
 // ErrorBoundary, a transient 429 blanked the entire app.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function jsonArray<T>(r: { json: () => Promise<unknown> }): Promise<T[]> {
-  try { const j = await r.json(); return Array.isArray(j) ? (j as T[]) : []; } catch { return []; }
+async function jsonArray<T>(r: { ok: boolean; status: number; json: () => Promise<unknown> }): Promise<T[]> {
+  if (!r.ok) throw new Error(`list failed (${r.status})`);
+  const j = await r.json().catch(() => null);
+  if (!Array.isArray(j)) throw new Error("unexpected shape");
+  return j as T[];
+}
+type ListState = "ok" | "empty" | "stale" | "unavailable";
+function listState(o: { data: unknown[] | undefined; isError: boolean }): ListState {
+  const has = !!o.data && o.data.length > 0;
+  if (o.isError) return has ? "stale" : "unavailable";
+  return has ? "ok" : "empty";
 }
 
 describe("jsonArray guard", () => {
-  it("returns an array when the server sends an error object", async () => {
-    const r = { json: async () => ({ error: "Too many requests" }) };
-    await expect(jsonArray(r)).resolves.toEqual([]);
-  });
   it("passes a real list through untouched", async () => {
-    const r = { json: async () => [{ id: 1 }] };
-    await expect(jsonArray(r)).resolves.toEqual([{ id: 1 }]);
+    await expect(jsonArray({ ok: true, status: 200, json: async () => [{ id: 1 }] })).resolves.toEqual([{ id: 1 }]);
   });
-  it("survives a malformed body", async () => {
-    const r = { json: async () => { throw new SyntaxError("Unexpected token <"); } };
-    await expect(jsonArray(r)).resolves.toEqual([]);
+  it("throws on an error response instead of pretending the list is empty", async () => {
+    await expect(jsonArray({ ok: false, status: 429, json: async () => ({ error: "Too many requests" }) })).rejects.toThrow();
+  });
+  it("throws on a 200 that isn't a list — a server bug is not an empty list", async () => {
+    await expect(jsonArray({ ok: true, status: 200, json: async () => ({ error: "x" }) })).rejects.toThrow();
+  });
+  it("still never lets a non-array reach .filter", async () => {
+    const out = await jsonArray({ ok: true, status: 200, json: async () => [] }).catch(() => []);
+    expect(Array.isArray(out)).toBe(true);
+  });
+});
+
+describe("empty vs unavailable vs stale", () => {
+  it("a genuinely empty list is 'empty', not an error", () => {
+    expect(listState({ data: [], isError: false })).toBe("empty");
+  });
+  it("a failure with nothing cached is 'unavailable', NOT empty", () => {
+    expect(listState({ data: [], isError: true })).toBe("unavailable");
+    expect(listState({ data: undefined, isError: true })).toBe("unavailable");
+  });
+  it("a failure with cached data is 'stale' — keep showing the last good list", () => {
+    expect(listState({ data: [{ id: 1 }], isError: true })).toBe("stale");
   });
 });
 

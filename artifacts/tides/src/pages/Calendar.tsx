@@ -402,10 +402,11 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
 
   const disconnect = useMutation({
     mutationFn: async () => {
-      await fetch("/api/integrations/google-cal/disconnect", {
+      const r = await fetch("/api/integrations/google-cal/disconnect", {
         method: "DELETE",
         headers: testerId ? { "x-tester-id": testerId } : {},
       });
+      if (!r.ok) throw new Error("Couldn't disconnect — try again.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["gcal-status"] });

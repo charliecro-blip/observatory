@@ -243,7 +243,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   });
   const toggleStepTask = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
-      await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: !done }) });
+      { const _r = await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: !done }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: refreshPM,
   });
@@ -311,7 +311,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         const r = await fetch("/api/planning/projects", { method: "POST", headers: authHeaders, body: JSON.stringify({ title: starTitle, goalId: starId }) });
         proj = await r.json();
       }
-      await fetch("/api/planning/milestones", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, projectId: proj.id }) });
+      { const _r = await fetch("/api/planning/milestones", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, projectId: proj.id }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -324,7 +324,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // so the review loop closes here instead of requiring a trip to Tasks/Habits.
   const completeTask = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: true }) });
+      { const _r = await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ done: true }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });
@@ -339,7 +339,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const cycleStep = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const next = status === "pending" ? "in_progress" : status === "in_progress" ? "completed" : "pending";
-      await fetch(`/api/planning/milestones/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ status: next }) });
+      { const _r = await fetch(`/api/planning/milestones/${id}`, { method: "PATCH", headers: authHeaders, body: JSON.stringify({ status: next }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["milestones"] }); qc.invalidateQueries({ queryKey: ["star-progress"] }); },
   });
@@ -375,7 +375,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const clearAnchor = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ anchorKind: null, anchorPlanet: null, anchorHouse: null, anchorUntil: null }) });
+      { const _r = await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ anchorKind: null, anchorPlanet: null, anchorHouse: null, anchorUntil: null }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });
@@ -389,7 +389,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   });
   const deleteStar = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/planning/goals/${id}`, { method: "DELETE", headers: authH(testerId) });
+      { const _r = await fetch(`/api/planning/goals/${id}`, { method: "DELETE", headers: authH(testerId) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });
@@ -406,7 +406,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
   const setElement = useMutation({
     mutationFn: async ({ id, element }: { id: number; element: string }) => {
-      await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ element }) });
+      { const _r = await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ element }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });

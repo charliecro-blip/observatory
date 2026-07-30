@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { jsonArray } from "@/lib/jsonArray";
+import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
@@ -127,7 +127,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   // Always fetch ALL tasks — this is one page grouped by timeframe, so nothing
   // ever lives on a hidden "All" tab. A task with no due date (e.g. one spun
   // off a Guiding Star) lands in "Someday", always visible, never lost.
-  const { data: tasks = [] } = useQuery<Task[]>({
+  const { data: tasks = [], isError: tasksError, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["tasks", testerId],
     queryFn: async () => {
       const r = await fetch("/api/tasks", { headers: authH(testerId) });
@@ -246,7 +246,18 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
-        <div style={{fontSize:12,color:"#888"}}>Tasks · everything, by when</div>
+        <div style={{fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:8}}>
+          <span>Tasks · everything, by when</span>
+          {/* empty / unavailable / stale are three different things. Showing
+              "nothing here" for a failed load is a lie, and this app's whole
+              claim is that it's paying attention. */}
+          {(() => {
+            const st = listState({ data: tasks, isError: tasksError, isLoading: tasksLoading });
+            if (st === "stale") return <span title="Showing the last list we loaded" style={{fontSize:10,padding:"1px 7px",borderRadius:10,background:"#c0802014",color:"#a07830",fontWeight:600}}>· offline — showing last known</span>;
+            if (st === "unavailable") return <span style={{fontSize:10,padding:"1px 7px",borderRadius:10,background:"#a0303014",color:"#a05050",fontWeight:600}}>· couldn't load your tasks</span>;
+            return null;
+          })()}
+        </div>
         <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
           + New task
         </button>

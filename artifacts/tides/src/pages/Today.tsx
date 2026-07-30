@@ -270,14 +270,15 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   async function saveToMemory(content: string, idx: number) {
     if (!testerId) return;
     try {
-      await fetch("/api/daemon-memory", {
+      const _mr = await fetch("/api/daemon-memory", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-tester-id": testerId },
         body: JSON.stringify({ content: content.slice(0, 300) }),
       });
+      if (!_mr.ok) throw new Error("Couldn't save that to memory — try again.");
       setMemSaved(idx);
       setTimeout(() => setMemSaved(null), 2000);
-    } catch { /* silent */ }
+    } catch { /* no ✓ shown — better silent than a false confirmation */ }
   }
 
   return (
@@ -686,11 +687,14 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const toggleTask = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
-      await fetch(`/api/tasks/${id}`, {
+      const r = await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({ done: String(done) }),
       });
+      // Was unchecked: a failed tick still ran onSuccess, so the refetch simply
+      // put the box back and the user couldn't tell a failure from a misclick.
+      if (!r.ok) throw new Error(`couldn't update that task (${r.status})`);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); },
   });
