@@ -36,6 +36,44 @@ interface Habit {
   bestWindowType?: string; minimumViable?: string; streak: number; doneToday: boolean;
   days: HabitDay[]; goalId?: number; projectId?: number;
   resonance?: "resonant"|"supported"|"neutral"|"soften"|"protect"; resonanceNote?: string;
+  // Cadence: the rhythm this habit actually wants, and how it's doing against
+  // THAT rather than against a universal every-day standard.
+  cadence?: Cadence; windowDone?: number; windowTarget?: number; cadenceMet?: boolean;
+  solarAnchor?: "sunrise"|"noon"|"sunset"|null; solarAnchorAt?: string|null;
+}
+
+type Cadence = "daily"|"most_days"|"weekly"|"occasional";
+const CADENCE_OPTIONS: { key: Cadence; label: string; hint: string }[] = [
+  { key: "daily",      label: "Every day",   hint: "a true daily — the streak counts" },
+  { key: "most_days",  label: "Most days",   hint: "about 5 of 7, missing one is fine" },
+  { key: "weekly",     label: "A few times", hint: "you pick how many per week" },
+  { key: "occasional", label: "When it fits", hint: "tracked, never scored" },
+];
+const SOLAR_ANCHOR_OPTIONS: { key: "sunrise"|"noon"|"sunset"; label: string; glyph: string }[] = [
+  { key: "sunrise", label: "At sunrise",  glyph: "☀︎" },
+  { key: "noon",    label: "Sun overhead", glyph: "☉" },
+  { key: "sunset",  label: "At sunset",   glyph: "☾" },
+];
+
+// How a habit is doing, in its OWN terms. A 3×/week practice that's done 3
+// times is complete — not a broken 7-day streak. `occasional` never reports a
+// shortfall at all, which is the whole point of having it.
+function cadenceLabel(h: Habit): { text: string; tone: "met"|"progress"|"quiet" } {
+  const cadence = h.cadence ?? "daily";
+  const done = h.windowDone ?? 0;
+  const target = h.windowTarget ?? 0;
+  if (cadence === "occasional") {
+    return { text: done > 0 ? `${done}× in the last week` : "whenever it fits", tone: "quiet" };
+  }
+  if (cadence === "daily") {
+    return h.streak > 0
+      ? { text: `${h.streak}-day run`, tone: h.doneToday ? "met" : "progress" }
+      : { text: h.doneToday ? "begun again" : "every day", tone: h.doneToday ? "met" : "progress" };
+  }
+  return {
+    text: done >= target ? `${done} of ${target} this week ✓` : `${done} of ${target} this week`,
+    tone: done >= target ? "met" : "progress",
+  };
 }
 const asArr = (v: unknown): string[] => Array.isArray(v) ? v : String(v ?? "").split(",").map(s=>s.trim()).filter(Boolean);
 interface GoalLite { id: number; title: string; }
@@ -62,7 +100,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   const qc = useQueryClient();
   const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"" });
+  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset" });
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
@@ -79,9 +117,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   });
 
   const { data: habits = [] } = useQuery<Habit[]>({
-    queryKey: ["habits", testerId],
+    queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => {
-      const r = await fetch("/api/habits", { headers: authH(testerId) });
+      // ?today= is the viewer's LOCAL date — without it the server falls back
+      // to its own UTC day and the whole streak/cadence window shifts for
+      // evening users (the 8pm-ET rollover).
+      const r = await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: authH(testerId) });
       const j = await r.json();
       return Array.isArray(j) ? j : []; // 429/500 error bodies must not crash .map
     },
@@ -102,6 +143,9 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
           minimumViable: form.minimumViable.trim() || undefined,
           goalId: newGoalId || undefined,
           projectId: newProjectId || undefined,
+          cadence: form.cadence,
+          targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
+          solarAnchor: form.cadence === "daily" && form.solarAnchor ? form.solarAnchor : undefined,
         }),
       });
       if (!r.ok) throw new Error(`create habit failed (${r.status})`);
@@ -109,15 +153,18 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
-      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:""});
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:""});
       setNewGoalId(""); setNewProjectId("");
     },
   });
 
   const toggleLog = useMutation({
     mutationFn: async ({ id, done }: { id:number; done:boolean }) => {
+      // Both directions must name the viewer's LOCAL date — the DELETE was
+      // falling back to the server's UTC day, so an evening un-check removed
+      // TOMORROW's log and left today's in place.
       if (done) {
-        await fetch(`/api/habits/${id}/log`, { method:"DELETE", headers: authH(testerId) });
+        await fetch(`/api/habits/${id}/log?date=${today}`, { method:"DELETE", headers: authH(testerId) });
       } else {
         await fetch(`/api/habits/${id}/log`, { method:"POST", headers: authH(testerId), body: JSON.stringify({ date: today }) });
       }
@@ -165,10 +212,30 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
-        <div style={{fontSize:12,color:"#888"}}>
-          {now ? `${now.element?.element} · ${now.moonPhase?.replace(/_/g," ")}` : "Loading…"}
+        <div style={{fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <span>{now ? `${now.element?.element} · ${now.moonPhase?.replace(/_/g," ")}` : "Loading…"}</span>
+          {/* Dailies done today — the count is its own satisfying metric when
+              you keep more practices than any one day can hold (owner
+              2026-07-29). Only counts true dailies, so a 2×/week habit not
+              done today never reads as a miss. */}
+          {(() => {
+            const dailies = habits.filter(h => (h.cadence ?? "daily") === "daily");
+            if (dailies.length === 0) return null;
+            const done = dailies.filter(h => h.doneToday).length;
+            const all = done === dailies.length;
+            return (
+              <span style={{
+                fontSize:10.5,padding:"2px 9px",borderRadius:12,fontWeight:600,
+                background: all ? "#60a05018" : "var(--color-card-2)",
+                color: all ? "#4a8040" : "#999",
+                border: `1px solid ${all ? "#60a05040" : "var(--color-border)"}`,
+              }}>
+                {all ? `all ${dailies.length} dailies ✓` : `${done} of ${dailies.length} dailies today`}
+              </span>
+            );
+          })()}
         </div>
-        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
+        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
           + New habit
         </button>
       </div>
@@ -208,6 +275,60 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                 onKeyDown={e=>e.key==="Enter"&&form.name.trim()&&addHabit.mutate()}
                 placeholder="Habit name…"
                 style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)",outline:"none"}}/>
+            </div>
+
+            {/* Cadence leads the form — the rhythm a practice wants is more
+                fundamental than which element suits it, and choosing it here
+                is what keeps a 3×/week habit from being scored as a failed
+                daily (owner 2026-07-29). */}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"#aaa",marginBottom:5}}>How often does this want to happen?</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                {CADENCE_OPTIONS.map(c => {
+                  const on = form.cadence === c.key;
+                  return (
+                    <button key={c.key} type="button" onClick={()=>setForm(f=>({...f,cadence:c.key}))} style={{
+                      textAlign:"left",padding:"7px 10px",borderRadius:8,cursor:"pointer",
+                      border:on?"1.5px solid #1a2a3a":"1px solid var(--color-border)",
+                      background:on?"#1a2a3a10":"var(--color-card-2)",
+                    }}>
+                      <div style={{fontSize:11.5,fontWeight:on?600:500,color:on?"var(--color-primary)":"var(--color-foreground)"}}>{c.label}</div>
+                      <div style={{fontSize:9,color:"#999",marginTop:1,lineHeight:1.35}}>{c.hint}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {form.cadence === "weekly" && (
+                <div style={{display:"flex",alignItems:"center",gap:6,marginTop:7}}>
+                  <span style={{fontSize:10.5,color:"#888"}}>How many times a week?</span>
+                  {[2,3,4,5].map(n => (
+                    <button key={n} type="button" onClick={()=>setForm(f=>({...f,targetPerWeek:n}))} style={{
+                      width:26,height:26,borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:600,
+                      border:form.targetPerWeek===n?"1.5px solid #1a2a3a":"1px solid var(--color-border)",
+                      background:form.targetPerWeek===n?"#1a2a3a10":"var(--color-card-2)",
+                      color:form.targetPerWeek===n?"var(--color-primary)":"#888",
+                    }}>{n}</button>
+                  ))}
+                </div>
+              )}
+              {form.cadence === "daily" && (
+                <div style={{marginTop:7}}>
+                  <div style={{fontSize:10.5,color:"#888",marginBottom:4}}>Hang it on the sun? <span style={{color:"#bbb"}}>(optional)</span></div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {SOLAR_ANCHOR_OPTIONS.map(s => {
+                      const on = form.solarAnchor === s.key;
+                      return (
+                        <button key={s.key} type="button" onClick={()=>setForm(f=>({...f,solarAnchor: on ? "" : s.key}))} style={{
+                          display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:14,cursor:"pointer",fontSize:10.5,
+                          border:on?"1.5px solid #c08020":"1px solid var(--color-border)",
+                          background:on?"#c0802015":"var(--color-card-2)",
+                          color:on?"#a06818":"#888",
+                        }}><span>{s.glyph}</span>{s.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{marginBottom:8}}>
@@ -309,8 +430,23 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
                 {h.emoji && <span style={{fontSize:18,lineHeight:1}}>{h.emoji}</span>}
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"#bbb":"#222",textDecoration:h.doneToday?"line-through":"none"}}>{h.name}</div>
-                  {h.streak > 0 && <div style={{fontSize:9,color:"#aaa",marginTop:1}}>{h.streak}d streak</div>}
+                  <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"#bbb":"var(--color-foreground)",textDecoration:h.doneToday?"line-through":"none"}}>{h.name}</div>
+                  {/* Progress in the habit's OWN cadence — a 3×/week practice
+                      reads "2 of 3 this week", not a broken daily streak. */}
+                  {(() => {
+                    const c = cadenceLabel(h);
+                    const anchor = h.solarAnchor ? SOLAR_ANCHOR_OPTIONS.find(s => s.key === h.solarAnchor) : null;
+                    return (
+                      <div style={{fontSize:9,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                        <span style={{color:c.tone==="met"?"#60a050":c.tone==="quiet"?"#bbb":"#aaa"}}>{c.text}</span>
+                        {anchor && h.solarAnchorAt && (
+                          <span style={{color:"#a08850"}} title={`${anchor.label} today`}>
+                            {anchor.glyph} {new Date(h.solarAnchorAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {asArr(h.favoredElements).length > 0 && (

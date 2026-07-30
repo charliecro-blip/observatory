@@ -131,6 +131,19 @@ export const habits = pgTable("habits", {
   favoredPlanets: text("favored_planets"),   // comma-separated: Mars,Sun — the planet(s) this supports
   bestWindowType: text("best_window_type"),  // deep_work | social | etc.
   minimumViable: text("minimum_viable"),     // smallest version on a hard day
+  // Cadence (owner 2026-07-29): "too many habits… doing everything every day
+  // feels pressured and cramped." Not every practice wants to be a daily. A
+  // habit declares the rhythm it actually wants, and progress is judged
+  // against THAT — so a 3×/week practice is never rendered as a broken streak.
+  //   daily      — every day; the streak game applies
+  //   most_days  — ~5 of 7, forgiving by design
+  //   weekly     — targetPerWeek times in a rolling week
+  //   occasional — tracked, never scored (no target, no guilt)
+  cadence: text("cadence").notNull().default("daily"),
+  targetPerWeek: integer("target_per_week"), // only meaningful for cadence=weekly
+  // Dailies can hang off a solar event rather than a clock time — the body's
+  // own schedule. sunrise | noon | sunset (null = no anchor).
+  solarAnchor: text("solar_anchor"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

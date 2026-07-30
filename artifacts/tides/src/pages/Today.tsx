@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { jsonArray } from "@/lib/jsonArray";
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal } from "@/lib/dates";
+import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
@@ -201,7 +203,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
         body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary, ...(electionContext ? { electionContext } : {}) }),
       });
 
-      if (!res.ok) throw new Error(`advise ${res.status}`);
+      // A 429 here is a quota, not an outage — surfacing it as "couldn't
+      // reach the sky" told users to retry, which just burns another attempt
+      // against the same cap.
+      if (!res.ok) throw new Error(await aiErrorMessage(res));
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No stream");
       const decoder = new TextDecoder();
@@ -240,8 +245,11 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
       } else {
         setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
       }
-    } catch {
-      setHistory(h => [...h, { role: "assistant", content: "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment." }]);
+    } catch (e) {
+      const msg = e instanceof Error && e.message && !/^advise |No stream/.test(e.message)
+        ? e.message
+        : "Ask couldn't reach the sky just now — the advisor service didn't respond. Give it another try in a moment.";
+      setHistory(h => [...h, { role: "assistant", content: msg }]);
     } finally {
       setStreaming(false);
       setStreamBuffer("");
@@ -642,7 +650,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     queryKey: ["habits", testerId],
     queryFn: async () => {
       const r = await fetch(`/api/habits?today=${localToday()}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
-      return r.json();
+      return jsonArray(r);
     },
     enabled: !!testerId,
     staleTime: 120_000,
@@ -2162,18 +2170,31 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
             best window for its element; tap → that star's game plan. */}
         <StarRows testerId={testerId} lat={lat} lon={lon} onOpenStar={onOpenStar} />
 
-        {habitList.length > 0 && (
+        {/* Morning chips: every daily, plus any looser practice that's actually
+            BEHIND its own cadence. An "whenever it fits" habit never appears
+            here unprompted — the morning glance shouldn't manufacture a
+            to-do out of something that declared it has no schedule. */}
+        {(() => {
+          const morningHabits = habitList.filter((h: any) => {
+            const cad = h.cadence ?? "daily";
+            if (cad === "daily") return true;
+            if (cad === "occasional") return false;
+            return h.cadenceMet === false;
+          });
+          return morningHabits.length > 0 && (
           <div style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {habitList.map((h: any) => {
+              {morningHabits.map((h: any) => {
                 const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
-                // Daily sun/moon anchor — fire rides sunrise, air the high sun,
-                // earth lands by sunset, water takes the Moon's own hour.
+                // An explicit solar anchor wins; otherwise fall back to the
+                // element's implied rhythm — fire rides sunrise, air the high
+                // sun, earth lands by sunset, water takes the Moon's own hour.
                 const dl = (now as any)?.daylight;
                 const moonHr = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
                 const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
                 const fe = h.favoredElements?.[0];
                 const anchor = h.doneToday ? null
+                  : h.solarAnchorAt ? `${h.solarAnchor === "sunset" ? "☾" : "☉"} ${h.solarAnchor === "sunset" ? "by " : ""}${fmtT(h.solarAnchorAt)}`
                   : fe === "fire" && dl?.sunrise ? `☉ ${fmtT(dl.sunrise)}`
                   : fe === "air" && dl?.sunrise && dl?.sunset ? `☉ ${fmtT(new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2).toISOString())}`
                   : fe === "earth" && dl?.sunset ? `☉ by ${fmtT(dl.sunset)}`
@@ -2190,14 +2211,22 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
                     <span style={{ fontSize: 11, color: h.doneToday ? "#4a8060" : "#999" }}>{h.doneToday ? "✓" : "○"}</span>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: h.doneToday ? "#4a8060" : "var(--color-foreground)" }}>{h.name}</span>
                     {resonant && <span style={{ fontSize: 10, color: elColor }}>✦</span>}
-                    <span style={{ fontSize: 9, color: "#aaa" }}>{h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}</span>
+                    {/* A streak reads as encouragement on a daily and as
+                        nonsense on a 3×/week — so non-dailies show their
+                        cadence position instead. */}
+                    <span style={{ fontSize: 9, color: "#aaa" }}>
+                      {(h.cadence ?? "daily") !== "daily"
+                        ? `${h.windowDone ?? 0}/${h.windowTarget ?? 0} this week`
+                        : h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}
+                    </span>
                     {anchor && <span style={{ fontSize: 8.5, color: "#998a76" }}>{anchor}</span>}
                   </button>
                 );
               })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {three.length > 0 ? (
           <div>
@@ -2221,11 +2250,20 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
   // ── Evening: Log the day ──
   const keptHabits = habitList.filter((h: any) => h.doneToday);
+  // The denominator is DAILIES only. Counting a 3×/week or "whenever it fits"
+  // practice as a miss every day it isn't done is exactly the cramped feeling
+  // the cadence model exists to remove (owner 2026-07-29) — a day with two
+  // dailies kept should read as two of two, not two of nine.
+  const dailyHabits = habitList.filter((h: any) => (h.cadence ?? "daily") === "daily");
+  const keptDailies = dailyHabits.filter((h: any) => h.doneToday);
   const doneBlocks = wins.filter((w: any) => w.completedAt);
   const closedTasks = tasks.filter((t) => t.done === "true");
   const didAnything = keptHabits.length + doneBlocks.length + closedTasks.length > 0;
   const parts: string[] = [];
-  if (habitList.length) parts.push(`kept ${keptHabits.length} of ${habitList.length} habit${habitList.length === 1 ? "" : "s"}`);
+  if (dailyHabits.length) parts.push(`kept ${keptDailies.length} of ${dailyHabits.length} dail${dailyHabits.length === 1 ? "y" : "ies"}`);
+  // Non-daily practices are pure credit when they happen, never a shortfall.
+  const keptOther = keptHabits.length - keptDailies.length;
+  if (keptOther > 0) parts.push(`${keptOther} other practice${keptOther === 1 ? "" : "s"}`);
   if (closedTasks.length) parts.push(`closed ${closedTasks.length} task${closedTasks.length === 1 ? "" : "s"}`);
   if (doneBlocks.length) parts.push(`completed ${doneBlocks.length} block${doneBlocks.length === 1 ? "" : "s"}`);
   const tomorrow = (week?.days ?? [])[1];
@@ -2288,7 +2326,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
   const today = localToday();
   const { data: habits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => (await fetch(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId } })).json(),
+    queryFn: async () => jsonArray(await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: { "x-tester-id": testerId } })),
   });
 
   const toggleLog = useMutation({
