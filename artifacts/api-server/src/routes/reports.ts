@@ -14,8 +14,8 @@
  * kitchen counter; the reader's own aims lead, the sky supports.
  */
 import { Router, type IRouter } from "express";
-import { db, natalCharts, planningWindows, goals, emailSubscriptions } from "@workspace/db";
-import { and, eq, gte, lte } from "drizzle-orm";
+import { db, natalCharts, planningWindows, goals, emailSubscriptions, tasks, habits, habitLogs, usageEvents } from "@workspace/db";
+import { and, eq, gte, lte, lt, inArray } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { sendEmail, emailConfigured } from "../lib/email.js";
 import { bustEmailSubscriptionCache } from "../lib/notifier.js";
@@ -50,6 +50,76 @@ async function activeStars(testerId: string) {
   return db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
 }
 
+// ── The reader's own day ─────────────────────────────────────────────────────
+// The composer used to import only natalCharts/planningWindows/goals, so it
+// could describe the sky in fine detail and knew nothing about what the person
+// actually had to do — 0 of 30 simulated emails named a single task or due
+// date. These are the joins that let the email be about the reader.
+
+const DETAILS = ["minimal", "medium", "full"] as const;
+type Detail = (typeof DETAILS)[number];
+
+/** An/a, so we stop emailing "A Aquarius Moon" (7 of 30 days). */
+const artcl = (w: string) => (/^[aeiou]/i.test(w) ? "An" : "A");
+
+interface OwnedRow { text: string; planet: string | null; sort: number; title: string; overdueDays: number }
+
+async function ownedToday(testerId: string, todayStr: string, tomorrowStr: string) {
+  const open = await db.select().from(tasks).where(and(
+    eq(tasks.testerId, testerId), eq(tasks.done, "false"),
+  ));
+  const rows: OwnedRow[] = [];
+  for (const t of open) {
+    if (!t.dueDate) continue;
+    // How long this has actually been hanging around — from the ORIGINAL due
+    // date where auto-rollover has been carrying it, else the due date itself.
+    const from = t.originalDueDate ?? t.dueDate;
+    const ageDays = Math.max(0, Math.round(
+      (Date.parse(todayStr + "T12:00:00Z") - Date.parse(String(from) + "T12:00:00Z")) / 86400000));
+    const carried = !!(t.originalDueDate && t.originalDueDate < (t.dueDate ?? ""));
+    if (t.dueDate === todayStr) {
+      rows.push({
+        title: t.title, overdueDays: carried ? ageDays : 0,
+        text: `${t.title}${carried ? ` · carried ${ageDays} day${ageDays === 1 ? "" : "s"}` : ""}`,
+        planet: t.planet ?? null, sort: carried ? 0 : 1,
+      });
+    } else if (t.dueDate === tomorrowStr) {
+      rows.push({ title: t.title, overdueDays: 0, text: `${t.title} · due tomorrow`, planet: t.planet ?? null, sort: 3 });
+    } else if (t.dueDate < todayStr) {
+      rows.push({
+        title: t.title, overdueDays: ageDays,
+        text: `${t.title} · ${ageDays} day${ageDays === 1 ? "" : "s"} overdue`,
+        planet: t.planet ?? null, sort: 0,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.sort - b.sort);
+}
+
+/** Dailies not yet logged today — the habit half of "what's mine today". */
+async function openDailies(testerId: string, todayStr: string) {
+  const rows = await db.select().from(habits).where(and(
+    eq(habits.testerId, testerId), eq(habits.status, "active"), eq(habits.cadence, "daily"),
+  ));
+  if (!rows.length) return [] as string[];
+  const logged = await db.select().from(habitLogs).where(and(
+    eq(habitLogs.testerId, testerId), eq(habitLogs.date, todayStr),
+    inArray(habitLogs.habitId, rows.map((h) => h.id)),
+  ));
+  const doneIds = new Set(logged.map((l) => l.habitId));
+  return rows.filter((h) => !doneIds.has(h.id)).map((h) => h.name);
+}
+
+/** One line of yesterday — the only block that proves the app is watching. */
+async function yesterdayLine(testerId: string, yStr: string): Promise<string | null> {
+  const closed = await db.select().from(tasks).where(and(
+    eq(tasks.testerId, testerId), eq(tasks.done, "true"),
+  ));
+  const n = closed.filter((t) => t.dueDate === yStr).length;
+  if (n > 0) return `Yesterday you closed ${n}.`;
+  return "Yesterday was quiet — that's a day in the log too.";
+}
+
 function localDate(tz: number, offsetDays = 0): Date {
   return new Date(Date.now() - tz * 60000 + offsetDays * 86400000);
 }
@@ -73,10 +143,23 @@ async function natalFor(testerId: string) {
   };
 }
 
+// ── Email instrumentation ────────────────────────────────────────────────────
+// There was NO email telemetry at all: no sent, no open, no click. Which meant
+// the one surface that reaches people who never open the app was also the one
+// surface we could not measure — a subscriber could quietly stop reading for a
+// month and nothing would record it.
+
+export async function logEmailEvent(testerId: string, event: string, props: Record<string, unknown> = {}) {
+  try { await db.insert(usageEvents).values({ testerId, event, props }); } catch { /* telemetry must never break a send */ }
+}
+
+/** 1×1 transparent GIF — the open beacon. */
+const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
+
 // ── Span composers ────────────────────────────────────────────────────────────
 // Exported so the notifier can compose + send the same reports on its cron.
 
-export async function composeDay(testerId: string, tz: number, lat: number, lon: number) {
+export async function composeDay(testerId: string, tz: number, lat: number, lon: number, detail: Detail = "medium") {
   const now = new Date();
   const jd = julianDay(now);
   const local = localDate(tz);
@@ -103,73 +186,135 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
     mc: natal.timeKnown ? natal.computed.midheaven.longitude : undefined,
   } : undefined });
 
-  // 1) The day in plain language — the woven flavour leads; then the parts.
-  const lead = [cap(reading.flavour)];
-  lead.push(`A ${moonSign} Moon on ${weekday} — ${sg?.feel ?? `an ${elem.element} day`}. It's a ${dayRuler} day — the hours favor ${DAY_RULER_GIFT[dayRuler]}.`);
-  const pg = PHASE_GUIDE[phaseName];
-  if (pg) lead.push(`Moon ${phaseName.toLowerCase()} (${Math.round(fraction * 100)}% lit) — ${pg.thrust}: ${pg.do}.`);
-  if (reading.counterpoint) lead.push(cap(reading.counterpoint.replace(/^—\s*/, "")));
-  blocks.push({ lines: lead });
-
-  // 1b) Named shapes in the sky — plain-language readings, no jargon.
-  if (reading.patterns.length) {
-    blocks.push({ heading: "In the sky's shape", lines: reading.patterns.slice(0, 3).map((p) => p.reading) });
-  }
-
-  // 2) Lean into / ease off — concrete activities from the correspondence table.
+  // ── The reader's own day, fetched first because it now leads ──────────────
+  const todayStr = local.toISOString().slice(0, 10);
+  const tomorrowStr = localDate(tz, 1).toISOString().slice(0, 10);
+  const yStr = localDate(tz, -1).toISOString().slice(0, 10);
+  const owned = await ownedToday(testerId, todayStr, tomorrowStr);
+  const dailies = await openDailies(testerId, todayStr);
   const fav = favoredActivities(sky, 3);
-  if (fav.length) blocks.push({ heading: "Lean into", lines: fav.map((f) => `${f.label} — ${f.gloss}`) });
-  const ease = easeOff(sky);
-  if (ease.length) blocks.push({ heading: "Ease off", lines: ease });
 
-  // 3) Key moments — scheduled windows + the best clock window for today's top activity.
-  const moments: string[] = [];
-  const dayStart = new Date(local.toISOString().slice(0, 10) + "T00:00:00Z");
+  const dayStart = new Date(todayStr + "T00:00:00Z");
   const wins = await db.select().from(planningWindows).where(and(
     eq(planningWindows.testerId, testerId),
     gte(planningWindows.startTime, new Date(dayStart.getTime() + tz * 60000)),
     lte(planningWindows.startTime, new Date(dayStart.getTime() + tz * 60000 + 86400000)),
   )).orderBy(planningWindows.startTime);
-  for (const w of wins.slice(0, 3)) {
-    const t = new Date(new Date(w.startTime).getTime() - tz * 60000);
-    moments.push(`${t.toISOString().slice(11, 16)} — ${w.title} (on your calendar).`);
-  }
-  if (fav[0]) {
-    const el = computeElections({ activityKey: fav[0].key, span: "day", lat, lon, tzOffsetMin: tz, natal: natal?.computed ?? null, startAt: now });
-    const w = el?.windows?.find((x) => !x.allDay);
-    if (w) moments.push(`Best window — ${w.startClock}–${w.endClock} for ${fav[0].label.toLowerCase()} (${w.why.split(" · ")[0]}).`);
-  }
-  if (voc) moments.push("The Moon goes void of course today — slack water. Finish and tidy; save what you want to last for tomorrow.");
-  if (moments.length) blocks.push({ heading: "Key moments today", lines: moments });
 
-  // 4) Toward your stars — match an active star's element to the day's current.
-  const stars = await activeStars(testerId);
-  if (stars.length) {
-    const dayEl = sg?.element;
-    const match = stars.find((s) => s.element === dayEl);
-    if (match) {
-      blocks.push({ heading: "Toward your stars", lines: [
-        `Today's ${dayEl} current suits “${match.title}.”${fav[0] ? ` A window for ${fav[0].label.toLowerCase()} moves it forward — one step counts double.` : " One step toward it counts double today."}`,
-      ] });
-    } else {
-      blocks.push({ heading: "Toward your stars", lines: [
-        `“${stars[0].title}” runs on ${stars[0].element ?? "its own"} energy; today leans ${dayEl}. A lighter supporting step fits better than a hard push.`,
+  // 1) HEADLINE — their obligation first, the day's shape second. For a
+  // lock-screen reader this single line IS the email, so it must stand alone.
+  const dueCount = owned.filter((o) => o.sort <= 1).length;
+  // The shape phrase MUST come from the same place as the footer's sky line,
+  // or a 50-word email contradicts itself: the woven flavour weights the day
+  // ruler and Sun, so it printed "A fire day" directly above "A Gemini Moon"
+  // on 21 of 30 days. The Moon's own element is what the reader is told.
+  const shape = cap(`${sg?.element ?? elem.element} day`);
+  const headline = dueCount > 0
+    ? `${dueCount} thing${dueCount === 1 ? "" : "s"} of yours today. ${shape}.`
+    : wins.length > 0
+      ? `${wins.length} block${wins.length === 1 ? "" : "s"} on your calendar. ${shape}.`
+      : `Nothing due today. ${shape}.`;
+  blocks.push({ lines: [headline] });
+
+  // 2) TODAY — the reader's actual rows. Capped at three: a list you can't
+  // finish is a list you stop reading.
+  const todayLines = [...owned.slice(0, 3).map((o) => o.text)];
+  if (dailies.length) todayLines.push(`Dailies not yet logged: ${dailies.slice(0, 3).join(" · ")}`);
+  for (const w of wins.slice(0, 2)) {
+    const t = new Date(new Date(w.startTime).getTime() - tz * 60000);
+    todayLines.push(`${t.toISOString().slice(11, 16)} — ${w.title} (on your calendar)`);
+  }
+  if (todayLines.length) blocks.push({ heading: "Yours today", lines: todayLines });
+
+  // 3) THE ONE WINDOW — pointed at the reader's OWN first item, not at the
+  // sky's favourite activity. Keying it to fav[0] made this block restate
+  // "Lean into" line 1 in 30 of 30 emails, adding nothing.
+  const target = owned[0] ?? null;
+  const activityKey = target?.planet
+    ? (fav.find((f) => f.key && String(f.key).toLowerCase().includes(String(target.planet).toLowerCase()))?.key ?? fav[0]?.key)
+    : fav[0]?.key;
+  if (activityKey) {
+    const el = computeElections({ activityKey, span: "day", lat, lon, tzOffsetMin: tz, natal: natal?.computed ?? null, startAt: now });
+    // Never offer a window that has already elapsed at send time (7 of 30
+    // emails did — "the hard conversation, 7:09 AM" in a 7:00 AM email), and
+    // keep it inside plausible waking hours.
+    const nowClock = new Date(now.getTime() - tz * 60000).toISOString().slice(11, 16);
+    const w = el?.windows?.find((x) => {
+      if (x.allDay) return false;
+      const start = x.startAt ? new Date(new Date(x.startAt).getTime() - tz * 60000).toISOString().slice(11, 16) : x.startClock;
+      const hh = parseInt(String(start).slice(0, 2), 10);
+      return start > nowClock && hh >= 6 && hh <= 22;
+    });
+    if (w) {
+      const forWhat = target ? target.text.split(" · ")[0] : fav[0]?.label.toLowerCase();
+      blocks.push({ heading: "Your window", lines: [
+        detail === "minimal"
+          ? `${w.startClock}–${w.endClock} — the best stretch today for ${forWhat}.`
+          : `${w.startClock}–${w.endClock} for ${forWhat} — ${w.why.split(" · ")[0]}.`,
       ] });
     }
   }
 
-  // 5) The long weather — a FOOTNOTE: the single loudest transit, interpreted.
-  if (natal) {
-    const ts = rankTransits(
-      computeTransitAspects(natal.computed)
-        .filter((t) => (t.severity === "strong" || t.severity === "major") && (natal.timeKnown || t.natalPlanet !== "Ascendant"))
-    );
-    if (ts[0]) blocks.push({ heading: "The long weather", lines: [
-      `${transitMeaning(ts[0].transitPlanet, ts[0].aspect, ts[0].natalPlanet)} A slow background — not today's task.`,
+  // 4) THE WARNING — conditional, and stated ONCE. The void used to be
+  // repeated 4–6 times per void day ("begin nothing you want to last" printed
+  // verbatim three times in a single email); rarity is what makes it read.
+  const launching = wins.some((w) => /launch|publish|announce|sign|send/i.test(w.title))
+    || owned.some((o) => /launch|publish|announce|sign|send/i.test(o.text));
+  // Render on ANY void day: the subject line leads with "Begin nothing today"
+  // when the Moon is void, so the body has to explain it or the email opens on
+  // an unanswered promise.
+  if (voc) {
+    blocks.push({ heading: "One caution", lines: [
+      "The Moon is void today — finish and tidy freely, but begin nothing you want to last.",
     ] });
   }
 
-  const subject = `${moonSign} Moon — ${(sg?.favors ?? []).slice(0, 2).join(", ") || `an ${elem.element} day`}`;
+  // 5) YESTERDAY — one line, and the only part that proves the app is watching.
+  const yLine = await yesterdayLine(testerId, yStr);
+  if (yLine) blocks.push({ heading: "Yesterday", lines: [yLine] });
+
+  // 6) TOWARD YOUR STARS — on a MATCH only. The old version fired every day
+  // and, because one earth-tagged star meets four elements, spent 23 of 30
+  // mornings telling the reader today was not for their only goal.
+  const stars = await activeStars(testerId);
+  const dayEl = sg?.element;
+  const starMatch = stars.find((s) => s.element === dayEl);
+  if (starMatch) {
+    blocks.push({ heading: "Toward your stars", lines: [
+      `${cap(String(dayEl))} day — the current suits “${starMatch.title}.” One step counts double.`,
+    ] });
+  }
+
+  // 7) THE SKY, BRIEFLY — everything this email used to lead with, demoted to
+  // a footer and gated by the register the subscriber actually chose.
+  if (detail !== "minimal") {
+    const skyLine = detail === "full"
+      ? `${artcl(moonSign)} ${moonSign} Moon on ${weekday} — ${sg?.feel ?? `an ${elem.element} day`}. ${cap(dayRuler)}'s day: the hours favor ${DAY_RULER_GIFT[dayRuler]}. Moon ${phaseName.toLowerCase()}, ${Math.round(fraction * 100)}% lit.`
+      : `${artcl(moonSign)} ${moonSign} Moon — ${sg?.feel ?? `an ${elem.element} day`}.`;
+    blocks.push({ heading: "The sky, briefly", lines: [skyLine] });
+  }
+
+  // SUBJECT — their thing + a number or time, then a short reason. Must carry
+  // a varying token: the old "[Sign] Moon — [activities]" formula repeated
+  // verbatim on consecutive days (16 of 29 pairs), and Gmail threads identical
+  // subjects, so day two could vanish into day one.
+  // The subject must carry something that CHANGES, or consecutive days thread
+  // together in Gmail and day two disappears into day one. An ageing item
+  // supplies that naturally (and saying "4 days overdue" is more use than
+  // "1 due today" repeated for a fortnight); otherwise the date does it.
+  const dayNum = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const top = owned[0];
+  const subject = top && top.overdueDays > 0
+    ? `“${top.title.slice(0, 26)}” — ${top.overdueDays} day${top.overdueDays === 1 ? "" : "s"} on`
+    : dueCount > 0
+      ? `${dueCount} due ${dayNum}${top ? ` — ${top.title.slice(0, 24)}` : ""}`
+      : voc
+        ? `Begin nothing today — ${dayNum}`
+        : starMatch
+          ? `${cap(String(dayEl))} day for “${starMatch.title.slice(0, 22)}” — ${dayNum}`
+          : wins.length > 0
+            ? `${wins.length} block${wins.length === 1 ? "" : "s"} today — ${dayNum}`
+            : `A quiet ${weekday} — ${dayNum}`;
   return { title: fmtDay(local), subject, blocks };
 }
 
@@ -355,7 +500,8 @@ export async function composeNewMoon(testerId: string, tz: number, _lat: number,
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
-export function renderHtml(title: string, subject: string, blocks: Block[]): string {
+export function renderHtml(title: string, subject: string, blocks: Block[], track?: { testerId: string; span: string; base?: string }): string {
+  const base = (track?.base ?? process.env["PUBLIC_BASE_URL"] ?? "https://compass.day").replace(/\/$/, "");
   const blockHtml = blocks.map((b) => `
     ${b.heading ? `<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#a89a88;margin:22px 0 8px;">${b.heading}</div>` : `<div style="height:14px"></div>`}
     ${b.lines.map((l) => `<div style="font-size:14px;line-height:1.7;color:#2b2820;margin-bottom:4px;">${l}</div>`).join("")}
@@ -369,10 +515,15 @@ export function renderHtml(title: string, subject: string, blocks: Block[]): str
       ${blockHtml}
       <div style="border-top:1px solid #e3d9c2;margin-top:24px;padding-top:12px;font-size:11px;color:#a89a88;line-height:1.6;">
         Conditions, not fate — the sky describes the weather; you steer.<br/>
-        Open Compass · adjust what lands in this report in Settings.
+        ${track
+          ? `<a href="${base}/api/reports/c?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}&to=${encodeURIComponent(base + "/")}" style="color:#8a7a58;">Open today in Compass</a>
+             · <a href="${base}/api/reports/c?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}&to=${encodeURIComponent(base + "/?settings=email")}" style="color:#a89a88;">fewer emails</a>`
+          : "Open Compass · adjust what lands in this report in Settings."}
       </div>
     </div>
-  </div></body></html>`;
+  </div>
+  ${track ? `<img src="${base}/api/reports/o.gif?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}" width="1" height="1" alt="" style="display:block;border:0;"/>` : ""}
+  </body></html>`;
 }
 
 function renderText(title: string, blocks: Block[]): string {
@@ -389,10 +540,12 @@ router.get("/reports/preview", requireTesterId, async (req, res) => {
   const lat = parseFloat(String(req.query.lat ?? "40.7"));
   const lon = parseFloat(String(req.query.lon ?? "-74.0"));
 
+  const detail = (DETAILS as readonly string[]).includes(String(req.query.detail))
+    ? (String(req.query.detail) as Detail) : "medium";
   const composed = span === "week" ? await composeWeek(testerId, tz, lat, lon)
     : span === "month" ? await composeMonth(testerId, tz, lat, lon)
     : span === "newmoon" ? await composeNewMoon(testerId, tz, lat, lon)
-    : await composeDay(testerId, tz, lat, lon);
+    : await composeDay(testerId, tz, lat, lon, detail);
 
   if (req.query.format === "json") {
     res.json({ span, subject: composed.subject, title: composed.title, blocks: composed.blocks, text: renderText(composed.title, composed.blocks) });
@@ -412,7 +565,7 @@ router.get("/reports/email-subscription", requireTesterId, async (_req, res) => 
 
 router.post("/reports/email-subscription", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { email, spans, sendHour, enabled, lat, lon } = req.body ?? {};
+  const { email, spans, sendHour, enabled, lat, lon, detail } = req.body ?? {};
   if (!email || typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     res.status(400).json({ error: "a valid email is required" });
     return;
@@ -422,6 +575,9 @@ router.post("/reports/email-subscription", requireTesterId, async (req, res) => 
     spans: Array.isArray(spans) && spans.length ? spans.filter((s: string) => ["day", "week", "newmoon"].includes(s)) : ["day"],
     sendHour: Number.isInteger(sendHour) && sendHour >= 4 && sendHour <= 12 ? sendHour : 7,
     enabled: enabled === false ? "false" : "true",
+    // Mirror the client's astroDetail so the composer can speak the register
+    // the reader actually chose (it previously had no way to know).
+    detail: (DETAILS as readonly string[]).includes(String(detail)) ? String(detail) : "medium",
     lat: lat != null ? String(lat) : null,
     lon: lon != null ? String(lon) : null,
     updatedAt: new Date(),
@@ -440,9 +596,33 @@ router.post("/reports/email-test", requireTesterId, async (req, res) => {
   if (!sub) { res.status(404).json({ error: "no subscription saved yet" }); return; }
   const tz = Number.isFinite(parseInt(String(req.query.tz), 10)) ? parseInt(String(req.query.tz), 10) : 0;
   const lat = parseFloat(sub.lat ?? "40.7"), lon = parseFloat(sub.lon ?? "-74.0");
-  const d = await composeDay(testerId, tz, lat, lon);
+  const d = await composeDay(testerId, tz, lat, lon, ((sub as any).detail as Detail) ?? "medium");
   const sent = await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks));
   res.json({ sent, senderConfigured: emailConfigured() });
+});
+
+// ── Open + click endpoints ───────────────────────────────────────────────────
+// Deliberately unauthenticated: they're hit by a mail client, which cannot
+// send headers. They accept a tester id and record an event — nothing is read
+// back and nothing is returned, so this grants no access to anything. (Note
+// the contrast with the withdrawn calendar feed, where the same id in a URL
+// was a *credential*; here it is only a label on a metric.)
+router.get("/reports/o.gif", async (req, res) => {
+  const t = String(req.query.t ?? ""); const span = String(req.query.s ?? "day");
+  if (t) void logEmailEvent(t, "email_open", { span });
+  res.setHeader("Content-Type", "image/gif");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.send(PIXEL);
+});
+
+router.get("/reports/c", async (req, res) => {
+  const t = String(req.query.t ?? ""); const span = String(req.query.s ?? "day");
+  const to = String(req.query.to ?? "/");
+  if (t) void logEmailEvent(t, "email_click", { span, to });
+  // Only ever bounce to our own origin — an open redirector is a phishing gift.
+  const base = (process.env["PUBLIC_BASE_URL"] ?? "https://compass.day").replace(/\/$/, "");
+  const safe = to.startsWith(base) ? to : base + "/";
+  res.redirect(302, safe);
 });
 
 export default router;

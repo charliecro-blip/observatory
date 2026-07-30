@@ -14,6 +14,12 @@ export const emailSubscriptions = pgTable("email_subscriptions", {
   spans: jsonb("spans").$type<string[]>().notNull().default(["day"]),
   sendHour: integer("send_hour").notNull().default(7),
   enabled: text("enabled").notNull().default("true"),
+  // How much astrology the email is allowed to speak. `astroDetail` is a
+  // CLIENT preference (localStorage), so the composer had no way to honour it
+  // — a subscriber who chose "just the guidance, no jargon" was still emailed
+  // degrees, hour rulers and sign glyphs. Mirrored here at subscribe time so
+  // the server can gate its own register. minimal | medium | full.
+  detail: text("detail").notNull().default("medium"),
   lat: text("lat"),
   lon: text("lon"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

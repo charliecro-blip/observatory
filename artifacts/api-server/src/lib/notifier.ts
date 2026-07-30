@@ -3,7 +3,7 @@ import { pushSubscriptions, emailSubscriptions } from "@workspace/db/schema";
 import { julianDay, getPlanetaryHour, voidOfCourse, moonPhase, getDailyElementEmphasis } from "../lib/astro.js";
 import { sendPushToTester } from "../routes/push";
 import { sendEmail, emailConfigured } from "./email.js";
-import { composeDay, composeWeek, composeNewMoon, renderHtml } from "../routes/reports.js";
+import { composeDay, composeWeek, composeNewMoon, renderHtml, logEmailEvent } from "../routes/reports.js";
 import { logger } from "./logger";
 
 // ── Subscription cache ───────────────────────────────────────────────────────
@@ -228,16 +228,19 @@ async function emailTick() {
     const localDow = new Date(now.getTime() - tz * 60000).getUTCDay();
     try {
       if (spans.includes("day") && dedup(`email-day-${sub.testerId}-${t.date}`)) {
-        const d = await composeDay(sub.testerId, tz, lat, lonN);
-        await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks));
+        const d = await composeDay(sub.testerId, tz, lat, lonN, (sub.detail as any) ?? "medium");
+        const okD = await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks, { testerId: sub.testerId, span: "day" }));
+        void logEmailEvent(sub.testerId, "email_sent", { span: "day", ok: okD, subject: d.subject });
       }
       if (spans.includes("week") && localDow === 0 && dedup(`email-week-${sub.testerId}-${t.date}`)) {
         const w = await composeWeek(sub.testerId, tz, lat, lonN);
-        await sendEmail(sub.email, w.subject, renderHtml(w.title, w.subject, w.blocks));
+        const okW = await sendEmail(sub.email, w.subject, renderHtml(w.title, w.subject, w.blocks, { testerId: sub.testerId, span: "week" }));
+        void logEmailEvent(sub.testerId, "email_sent", { span: "week", ok: okW, subject: w.subject });
       }
       if (spans.includes("newmoon") && moonPhase(julianDay(now)).name === "New Moon" && dedup(`email-nm-${sub.testerId}-${t.date}`)) {
         const n = await composeNewMoon(sub.testerId, tz, lat, lonN);
-        await sendEmail(sub.email, n.subject, renderHtml(n.title, n.subject, n.blocks));
+        const okN = await sendEmail(sub.email, n.subject, renderHtml(n.title, n.subject, n.blocks, { testerId: sub.testerId, span: "newmoon" }));
+        void logEmailEvent(sub.testerId, "email_sent", { span: "newmoon", ok: okN, subject: n.subject });
       }
     } catch (e) {
       logger.warn({ e, testerId: sub.testerId }, "notifier: email report failed");

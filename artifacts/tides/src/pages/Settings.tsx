@@ -91,6 +91,7 @@ function ThemeSection() {
 // which reports; the server's cron sends them at your chosen hour (needs
 // RESEND_API_KEY on the server — until then "send test" reports honestly).
 function EmailReportsSection({ testerId }: { testerId: string | null }) {
+  const prefsForEmail = usePreferences().prefs;
   const tz = new Date().getTimezoneOffset();
   const { lat, lon } = useTester();
   const [email, setEmail] = useState("");
@@ -121,7 +122,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
     setStatus(null);
     const r = await fetch("/api/reports/email-subscription", {
       method: "POST", headers: { ...authH, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon }),
+      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon, detail: prefsForEmail.display.astroDetail ?? "medium" }),
     });
     if (r.ok) {
       logEvent("email_subscribe", { spans, sendHour });
