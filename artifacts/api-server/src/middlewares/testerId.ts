@@ -10,10 +10,14 @@ export function requireTesterId(req: Request, res: Response, next: NextFunction)
   const raw = req.headers["x-tester-id"];
   const fromHeader = (Array.isArray(raw) ? raw[0] : raw)?.trim();
 
-  // Fall back to query param — used by streaming voice endpoints that cannot set custom headers
-  const fromQuery = typeof req.query["testerId"] === "string" ? req.query["testerId"].trim() : undefined;
-
-  const testerId = fromHeader || fromQuery;
+  // NO query-param fallback. It was added for streaming voice endpoints that
+  // no longer exist (nothing in the client passes ?testerId= to a middleware-
+  // guarded route), and it made every leaked URL a working credential: a
+  // calendar-feed link alone returned the personal logbook and, via
+  // /account/sync, the recovery code. Routes that genuinely need a query id
+  // (iCal export, the Google OAuth hand-off) read it themselves and are
+  // scoped accordingly.
+  const testerId = fromHeader;
 
   if (!testerId) {
     res.status(400).json({

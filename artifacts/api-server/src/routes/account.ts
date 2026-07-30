@@ -52,7 +52,13 @@ router.post("/account/sync", requireTesterId, async (req, res) => {
 
   if (existing) {
     await db.update(testerProfiles).set(fields).where(eq(testerProfiles.testerId, testerId));
-    res.json({ recoveryCode: existing.recoveryCode });
+    // Deliberately does NOT return the recovery code. The client is sent it
+    // once, at creation, and keeps its own copy; re-issuing it on every sync
+    // made the tester id equivalent to the key it is supposed to protect —
+    // anyone holding an id could ask for the code and restore the account
+    // anywhere. Someone who has lost their key can no longer mint a new one
+    // from an id alone; they contact us.
+    res.json({ ok: true });
     return;
   }
 
