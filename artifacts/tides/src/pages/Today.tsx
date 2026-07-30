@@ -620,8 +620,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     staleTime: 60_000,
   });
 
-  const todayStart = `${today}T00:00:00`;
-  const todayEnd = `${today}T23:59:59`;
+  // RFC 3339 WITH an offset — Google's timeMin/timeMax reject a bare local
+  // string, and the failure comes back as HTTP 200 + an empty list, which is
+  // indistinguishable from "no events today". Calendar.tsx always sent proper
+  // instants; this one didn't, so Today silently showed an empty day.
+  const todayStart = new Date(`${today}T00:00:00`).toISOString();
+  const todayEnd = new Date(`${today}T23:59:59`).toISOString();
   const { data: gcalData } = useQuery<{ events: { title: string; start: string; end: string; allDay: boolean; color: string | null; htmlLink: string }[] }>({
     queryKey: ["gcal-events-today", testerId, today],
     queryFn: async () => {
@@ -688,7 +692,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         body: JSON.stringify({ done: String(done) }),
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); },
   });
 
   const addTask = useMutation({
@@ -700,7 +704,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
       });
       if (!r.ok) throw new Error("add task failed"); // was silent — the typed title vanished on failure
     },
-    onSuccess: () => { logEvent("task_add", { from: "waves" }); qc.invalidateQueries({ queryKey: ["tasks"] }); setNewTaskTitle(""); setShowAddTask(false); },
+    onSuccess: () => { logEvent("task_add", { from: "waves" }); { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); }; setNewTaskTitle(""); setShowAddTask(false); },
   });
 
   const gcalEvents = (gcalData?.events ?? []).map(e => ({ title: e.title, start: e.start, end: e.end, allDay: e.allDay }));

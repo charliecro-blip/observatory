@@ -30,7 +30,15 @@ router.get("/check-ins/today", requireTesterId, async (req, res) => {
 router.post("/check-ins", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const body = UpsertCheckInBody.parse(req.body);
-  const date = body.date ?? todayString();
+  // A daily record must be stamped with the WRITER's day. The old fallback to
+  // the server's UTC date is what filed a US-evening reflection under tomorrow;
+  // the callers all send `date` now, and a new one shouldn't be able to
+  // reintroduce the bug by forgetting to.
+  if (!body.date) {
+    res.status(400).json({ error: "date (YYYY-MM-DD, the viewer's local day) is required" });
+    return;
+  }
+  const date = body.date;
 
   // Partial upsert: only fields present in the body are written. Different
   // surfaces write different slices of the same day (journal → notes,
