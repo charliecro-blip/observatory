@@ -1218,20 +1218,24 @@ function ExportSection({ testerId }: { testerId: string | null }) {
 
   return (
     <SectionCard title="Your calendar feed" sub="Your scheduled blocks and tasks, in any calendar app. Planetary hours and sky events aren't included.">
-      <Row label="Subscribe (stays up to date)" sub="Apple Calendar, Google Calendar, Outlook">
-        <button onClick={copySubscribe} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
-          {copied ? "Copied ✓" : "Copy feed link"}
-        </button>
-      </Row>
+      {/* SUBSCRIBE FEED WITHDRAWN 2026-07-30 — security.
+          The feed URL carried `testerId`, which is not just an export id: it
+          is the account credential. The middleware accepts it as a QUERY
+          PARAM, so the URL alone (no crafted headers) reads the logbook and
+          — via /account/sync — returns the RECOVERY CODE, i.e. full account
+          takeover. A webcal URL is worse than a download because Google/
+          Apple store and re-fetch it indefinitely.
+          Restore only behind a separate random, revocable, read-only
+          feedToken that is scoped to the iCal route and can never be used as
+          x-tester-id. See BACKLOG §2. */}
       <div style={{
-        fontSize: 9.5, fontFamily: "monospace", color: "#8a8278", userSelect: "all",
-        background: "var(--color-card-2)", border: "1px solid var(--color-border)",
-        borderRadius: 6, padding: "6px 9px", margin: "2px 0 8px", overflowWrap: "anywhere",
-      }}>{subscribeUrl}</div>
-      <div style={{ fontSize: 10, color: "#a09888", lineHeight: 1.55, marginBottom: 10 }}>
-        Paste it into your calendar app's "add calendar by URL". It refreshes on its
-        own, so anything you schedule in Compass shows up there. Anyone with this
-        link can read your schedule — keep it to yourself.
+        fontSize: 10.5, color: "#8a6a30", lineHeight: 1.55, marginBottom: 10,
+        background: "#c0802010", border: "1px solid #c0802033", borderRadius: 9, padding: "9px 12px",
+      }}>
+        <b style={{ color: "#a06818" }}>Calendar subscription is temporarily off.</b>{" "}
+        The live feed link doubled as your account key, so we pulled it rather than
+        leave it out there. It'll be back as a separate revocable link you can reset
+        at any time. The one-time download below is unaffected.
       </div>
       <Row label="One-time download" sub="A snapshot — won't update later">
         <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer" }}>

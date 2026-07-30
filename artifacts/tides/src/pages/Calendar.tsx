@@ -385,7 +385,6 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
 function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<typeof useQueryClient> }) {
   const { data: status } = useGCalStatus(testerId);
   const popupRef = useRef<Window | null>(null);
-  const [feedCopied, setFeedCopied] = useState(false);
 
   useEffect(() => {
     function onMsg(e: MessageEvent) {
@@ -424,26 +423,16 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     // feed solves the same user problem in the other direction (Compass's
     // blocks OUT to any calendar, rather than their events IN), and this is
     // exactly the moment someone wants it.
+    // (The "send mine to my calendar" feed button that briefly lived here was
+    // withdrawn 2026-07-30 — the feed URL carried the account credential. It
+    // returns once the feed has its own revocable token. See BACKLOG §2.)
     return (
-      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-        <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
-          fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
-          background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
-          display:"flex", alignItems:"center", gap:4,
-        }}>
-          <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
-        </div>
-        <button
-          onClick={async () => {
-            const url = `webcal://${window.location.host}/api/export/ical?testerId=${encodeURIComponent(testerId ?? "")}`;
-            try { await navigator.clipboard.writeText(url); setFeedCopied(true); setTimeout(() => setFeedCopied(false), 2500); }
-            catch { window.prompt("Copy this feed URL into your calendar app:", url); }
-          }}
-          title="Meanwhile: subscribe your calendar app to your Compass blocks — it stays up to date on its own"
-          style={{
-            fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-            background:"var(--color-card)", color:"var(--color-primary)", cursor:"pointer", fontWeight:600,
-          }}>{feedCopied ? "Feed link copied ✓" : "↗ Send mine to my calendar"}</button>
+      <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
+        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
+        background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
+        display:"flex", alignItems:"center", gap:4,
+      }}>
+        <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
       </div>
     );
   }
