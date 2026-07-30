@@ -6,8 +6,9 @@
  * so clearing the browser or switching devices no longer means losing
  * everything. No passwords, no email — the key is the secret.
  *
- * POST /api/account/sync     (x-tester-id) — upsert the profile, returns { recoveryCode }
- * POST /api/account/recover  { code }      — returns { testerId, profile } for a valid key
+ * POST   /api/account/sync     (x-tester-id) — upsert the profile, returns { recoveryCode }
+ * POST   /api/account/recover  { code }      — returns { testerId, profile } for a valid key
+ * DELETE /api/account          (x-tester-id) — erase the account and everything keyed to it
  */
 import { Router, type IRouter } from "express";
 import { randomBytes } from "node:crypto";
@@ -15,6 +16,7 @@ import { db, testerProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { mintFeedToken, hashFeedToken } from "../lib/feedToken.js";
 import { requireTesterId } from "../middlewares/testerId.js";
+import { deleteAccount } from "../lib/accountDeletion.js";
 
 const router: IRouter = Router();
 
@@ -142,6 +144,51 @@ router.delete("/account/feed-token", requireTesterId, async (_req, res) => {
     feedTokenHash: null, feedTokenCreatedAt: null, feedTokenLastUsedAt: null,
   }).where(eq(testerProfiles.testerId, testerId));
   res.json({ ok: true });
+});
+
+// ── Deletion ─────────────────────────────────────────────────────────────────
+// The privacy policy promises this; until now it was kept by hand over email.
+//
+// The tester id is the only credential in this system, so it is what authorises
+// the delete — but a bearer token that can also *destroy* everything on a bare
+// DELETE is a footgun (a stray prefetch, a mis-scoped script, a copied curl).
+// The client must additionally echo the exact phrase, which no accidental
+// request will carry. It is a deliberateness check, not a second factor; the
+// real confirmation is the typed word in the UI.
+const DELETE_CONFIRMATION = "DELETE MY ACCOUNT";
+
+router.delete("/account", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const confirm = typeof req.body?.confirm === "string" ? req.body.confirm.trim().toUpperCase() : "";
+  if (confirm !== DELETE_CONFIRMATION) {
+    res.status(400).json({
+      error: "confirmation_required",
+      message: `Send { "confirm": "${DELETE_CONFIRMATION}" } to delete this account.`,
+    });
+    return;
+  }
+
+  try {
+    const report = await deleteAccount(testerId);
+    res.json({
+      ok: true,
+      rowsDeleted: report.totalRows,
+      tables: report.deleted,
+      // Reported honestly rather than assumed: null = nothing was connected,
+      // false = Google refused or was unreachable and the user should revoke
+      // manually. Claiming a revocation we didn't get is exactly the kind of
+      // quiet lie a deletion flow must not tell.
+      googleRevoked: report.googleRevoked,
+    });
+  } catch (e) {
+    // A failed transaction leaves the account intact, which is the safe end of
+    // the failure — say so, so the user retries instead of assuming they're gone.
+    res.status(500).json({
+      error: "deletion_failed",
+      message: "Nothing was deleted — the whole operation is one transaction, so your account is untouched. Try again, or email charliecro@gmail.com.",
+    });
+    throw e;
+  }
 });
 
 export default router;

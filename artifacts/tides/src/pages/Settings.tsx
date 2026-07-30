@@ -8,7 +8,7 @@ import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
-import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
+import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
 import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
 import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
@@ -61,6 +61,135 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
 
 function Divider() {
   return <div style={{ borderTop: "1px solid var(--color-border)", margin: "2px 0" }} />;
+}
+
+// ── Delete account ───────────────────────────────────────────────────────────
+// The privacy policy promised deletion but the only route was emailing a human,
+// which is a promise with a person-shaped single point of failure. This makes it
+// self-serve and immediate.
+//
+// Three deliberate choices:
+//   · collapsed by default — this is not a setting anyone browses toward
+//   · it says what goes, specifically, BEFORE asking for a decision
+//   · a typed phrase, not an "are you sure?" — the one action here with no undo
+//     should cost more than a reflex click
+const DELETE_PHRASE = "DELETE MY ACCOUNT";
+
+function DeleteAccountSection({ testerId }: { testerId: string | null }) {
+  const { profile } = useTester();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [state, setState] = useState<"idle" | "deleting" | "done" | "error">("idle");
+  const [result, setResult] = useState<{ rowsDeleted: number; googleRevoked: boolean | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const armed = typed.trim().toUpperCase() === DELETE_PHRASE && state === "idle";
+
+  const doDelete = async () => {
+    if (!testerId) return;
+    setState("deleting");
+    setError(null);
+    try {
+      const r = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: DELETE_PHRASE }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        // The server deletes in one transaction, so a failure means nothing
+        // was removed. Say that plainly — otherwise the honest thing to assume
+        // is a half-deleted account, which is far more alarming than the truth.
+        setError(data?.message ?? "Couldn't reach the server. Nothing was deleted — try again.");
+        setState("error");
+        return;
+      }
+      setResult({ rowsDeleted: data.rowsDeleted ?? 0, googleRevoked: data.googleRevoked ?? null });
+      setState("done");
+      purgeLocalData();
+    } catch {
+      setError("Couldn't reach the server. Nothing was deleted — try again.");
+      setState("error");
+    }
+  };
+
+  if (state === "done") {
+    return (
+      <SectionCard title="Account deleted">
+        <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.6 }}>
+          {result?.rowsDeleted ?? 0} records erased, and this browser has been cleared.
+          {result?.googleRevoked === true && " Your Google Calendar access was revoked."}
+          {result?.googleRevoked === false && (
+            <> We <strong>couldn't confirm</strong> that Google revoked our calendar access — please
+            remove it yourself at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google account permissions</a>.</>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: "#aaa", marginTop: 8, lineHeight: 1.6 }}>
+          Our database host keeps point-in-time backups, so copies may persist there briefly
+          before they age out. Your account key no longer restores anything.
+        </div>
+        <button onClick={() => window.location.reload()} style={{
+          marginTop: 12, padding: "8px 20px", borderRadius: 8, border: "none",
+          fontSize: 12, cursor: "pointer", background: "#1a2a3a", color: "#fff",
+        }}>Start over</button>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Delete account">
+      {!open ? (
+        <button onClick={() => setOpen(true)} style={{
+          fontSize: 11, padding: "5px 12px", borderRadius: 7, cursor: "pointer",
+          border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#9a6060",
+        }}>Delete my account and data…</button>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.6 }}>
+            This erases everything, immediately and permanently: your birth details and chart,
+            tasks, habits and their history, planning windows, Guiding Stars, wins, journal and
+            logbook entries, felt ratings, cycle data, advisor conversations, email and push
+            subscriptions, your calendar-feed link, usage records, and your account key.
+          </div>
+          <div style={{ fontSize: 11, color: "#aaa", lineHeight: 1.6 }}>
+            Any Google Calendar connection is revoked with Google. Database backups may hold
+            copies briefly before they age out. There is no undo, and your account key will not
+            bring it back.
+          </div>
+          <div style={{ fontSize: 11, color: "#aaa" }}>
+            Type <strong style={{ color: "#9a6060", fontFamily: "monospace" }}>{DELETE_PHRASE}</strong> to confirm:
+          </div>
+          <SettingsInput
+            value={typed}
+            onChange={setTyped}
+            placeholder={DELETE_PHRASE}
+            aria-label={`Type ${DELETE_PHRASE} to confirm deletion`}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {error && <div style={{ fontSize: 11, color: "#a03030", lineHeight: 1.5 }}>{error}</div>}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={doDelete} disabled={!armed} style={{
+              padding: "8px 18px", borderRadius: 8, border: "none", fontSize: 12,
+              cursor: armed ? "pointer" : "not-allowed",
+              background: armed ? "#9a3030" : "var(--color-card-2)",
+              color: armed ? "#fff" : "#aaa",
+            }}>{state === "deleting" ? "Deleting…" : "Delete permanently"}</button>
+            <button onClick={() => { setOpen(false); setTyped(""); setError(null); setState("idle"); }} style={{
+              padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
+              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888",
+            }}>Cancel</button>
+          </div>
+          {profile?.recoveryCode && (
+            <div style={{ fontSize: 10, color: "#bbb" }}>
+              Wanting a clean browser but keeping the account? Use “Switch profile” under Profile
+              instead — your key ({profile.recoveryCode}) restores it later.
+            </div>
+          )}
+        </div>
+      )}
+    </SectionCard>
+  );
 }
 
 function ThemeSection() {
@@ -1736,6 +1865,10 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             </div>
           )}
         </SectionCard>
+
+        {/* Deletion — the privacy policy promises this; it lives last, behind a
+            disclosure, because nobody arrives at Settings looking for it. */}
+        <DeleteAccountSection testerId={testerId} />
 
         <div style={{ textAlign: "center", padding: "8px 0 4px", fontSize: 11 }}>
           <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#aaa" }}>Privacy policy</a>

@@ -167,6 +167,32 @@ export function clearProfile(): void {
   localStorage.removeItem(KEY_RECOVERY_CODE);
 }
 
+/**
+ * Wipe every trace of this install from the browser — for account deletion,
+ * where `clearProfile()` is not enough: it leaves preferences, dismissed
+ * banners, felt ratings and Studio settings behind, so the next person to open
+ * this browser inherits the deleted user's setup.
+ *
+ * Matches by NAMESPACE rather than a list of key names, for the same reason the
+ * server derives its table list instead of hardcoding one: an enumerated list
+ * silently stops being complete the first time someone adds a key.
+ */
+// Every prefix the client writes under. The app has been renamed twice
+// (Tides → Auspice → Compass) and keys were coined in both separator styles,
+// so this covers hyphen and underscore variants of each. `tests/regressions`
+// derives the real set from the source and fails if one is missing — the first
+// pass of this list omitted `compass_` and left the task-rollover state behind.
+const LOCAL_NAMESPACES = ["obs_", "obs-", "tides_", "tides-", "tw_", "tw-", "compass_", "compass-"];
+
+export function purgeLocalData(): void {
+  const doomed: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && LOCAL_NAMESPACES.some((p) => key.startsWith(p))) doomed.push(key);
+  }
+  for (const key of doomed) localStorage.removeItem(key);
+}
+
 /** Short version of a tester ID for display — first 12 chars after "obs_". */
 export function shortId(testerId: string): string {
   const inner = testerId.startsWith("obs_") ? testerId.slice(4) : testerId;

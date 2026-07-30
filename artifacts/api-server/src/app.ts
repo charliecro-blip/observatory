@@ -69,6 +69,19 @@ const generalLimiter = rateLimit({
   validate: false,
 });
 
+// Deletion is irreversible and unauthenticated beyond the tester id. A handful
+// per hour is far more than any real person needs and stops a leaked id from
+// being used to wipe accounts in bulk.
+const deleteAccountLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
+  message: { error: "Too many deletion attempts — please wait a while, or email charliecro@gmail.com." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+});
+
 // Account recovery is the sole "password" in a passwordless system — an
 // unauthenticated, unthrottled endpoint here is a brute-forceable account
 // takeover. 20/15min per IP is generous for a real user mistyping their key,
@@ -96,6 +109,9 @@ app.use("/api/chart/explicate", aiLimiter);
 app.use("/api/natal-chart/blueprint/generate", aiLimiter);
 app.use("/api/body-weather/regenerate", aiLimiter);
 app.use("/api/account/recover", recoverLimiter);
+// Method-scoped on purpose: /api/account/sync is called on every profile
+// change, so a path-wide limiter here would throttle ordinary use.
+app.delete("/api/account", deleteAccountLimiter);
 app.use("/api", generalLimiter);
 app.use("/api", router);
 

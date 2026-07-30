@@ -712,3 +712,158 @@ describe("ritual loop is chronotype-relative", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 18. ACCOUNT DELETION MUST NOT MISS A TABLE
+// Not a shipped bug — a shipped *promise*. The privacy policy says deletion
+// removes everything, and the failure mode is silent: a table added later
+// survives the delete, nobody notices, and the policy has quietly become false.
+//
+// So the server derives its target list from the drizzle schema rather than
+// keeping one by hand, and these tests hold that contract from the outside:
+// they read the schema source and assert the deletion module would cover it.
+// ─────────────────────────────────────────────────────────────────────────────
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+const SCHEMA_DIR = join(process.cwd(), "lib/db/src/schema");
+
+/** Every pgTable in the schema, and whether it carries a tester_id column. */
+function schemaTables(): { table: string; testerScoped: boolean }[] {
+  const out: { table: string; testerScoped: boolean }[] = [];
+  for (const file of readdirSync(SCHEMA_DIR).filter((f) => f.endsWith(".ts") && f !== "index.ts")) {
+    const src = readFileSync(join(SCHEMA_DIR, file), "utf-8");
+    const defs = [...src.matchAll(/export const \w+\s*=\s*pgTable\(\s*"([^"]+)"/g)];
+    defs.forEach((m, i) => {
+      const start = m.index! + m[0].length;
+      const end = i + 1 < defs.length ? defs[i + 1].index! : src.length;
+      out.push({ table: m[1], testerScoped: /tester_id/.test(src.slice(start, end)) });
+    });
+  }
+  return out;
+}
+
+describe("account deletion coverage", () => {
+  const tables = schemaTables();
+  const deletion = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/lib/accountDeletion.ts"), "utf-8");
+
+  it("the schema is actually being read (guard against a silently empty scan)", () => {
+    expect(tables.length).toBeGreaterThan(20);
+    expect(tables.filter((t) => t.testerScoped).length).toBeGreaterThan(20);
+    expect(tables.map((t) => t.table)).toContain("tester_profiles");
+  });
+
+  it("discovers tables by tester_id rather than an enumerated list", () => {
+    // The list must be DERIVED. If someone replaces this with a literal array,
+    // the next table added escapes deletion — which is the whole failure mode.
+    expect(deletion).toMatch(/getTableConfig/);
+    expect(deletion).toMatch(/"tester_id"/);
+    // A hand-written roll-call of table names would defeat the derivation.
+    const named = tables.filter((t) => t.testerScoped && deletion.includes(`"${t.table}"`));
+    expect(named).toEqual([]);
+  });
+
+  it("covers the tables an enumerated list would most likely forget", () => {
+    // These are the ones with real privacy weight and no obvious home in a
+    // 'delete the planning stuff' mental model.
+    for (const t of ["google_cal_tokens", "email_subscriptions", "push_subscriptions",
+                     "daemon_memory", "usage_events", "cycle_tracking", "natal_charts"]) {
+      const found = tables.find((x) => x.table === t);
+      expect(found, `${t} missing from schema`).toBeDefined();
+      expect(found!.testerScoped, `${t} is not tester-scoped — deletion would skip it`).toBe(true);
+    }
+  });
+
+  it("deletes advisor messages, which tester_id alone cannot reach", () => {
+    // messages keys on conversation_id, so the derivation rule is blind to it.
+    const messages = tables.find((t) => t.table === "messages");
+    expect(messages?.testerScoped).toBe(false);
+    expect(deletion).toMatch(/messages/);
+    expect(deletion).toMatch(/conversationId/);
+  });
+
+  it("revokes the Google grant before dropping the row that holds it", () => {
+    // Deleting our copy of the token only makes US forget; the grant stays live
+    // on Google's side. Order matters: the revoke needs the token to exist.
+    const revokeAt = deletion.indexOf("revokeGoogleGrant(testerId)");
+    const deleteAt = deletion.indexOf("db.transaction");
+    expect(revokeAt).toBeGreaterThan(-1);
+    expect(deleteAt).toBeGreaterThan(-1);
+    expect(revokeAt).toBeLessThan(deleteAt);
+    expect(deletion).toMatch(/oauth2\.googleapis\.com\/revoke/);
+  });
+
+  it("deletes in a single transaction — a half-deleted account is the worst case", () => {
+    expect(deletion).toMatch(/db\.transaction/);
+  });
+
+  it("reports revocation honestly instead of assuming it worked", () => {
+    // googleRevoked is a tri-state on purpose: null = nothing was connected,
+    // false = we could not confirm and the user must revoke it themselves.
+    expect(deletion).toMatch(/googleRevoked: boolean \| null/);
+  });
+});
+
+describe("local purge on deletion", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/lib/tester-profile.ts"), "utf-8");
+
+  it("clears by namespace, not by an enumerated list of keys", () => {
+    expect(src).toMatch(/LOCAL_NAMESPACES/);
+    expect(src).toMatch(/startsWith/);
+  });
+
+  it("covers every localStorage key the client actually writes", () => {
+    // DERIVED from the source, not sampled. Sampling is what let `compass_`
+    // slip: the hand-picked list happened to contain only hyphen-style Compass
+    // keys, so `compass_rollover_<id>` — the task-rollover state — survived a
+    // "deleted" account and was found only by watching a real delete.
+    const namespaces = (src.match(/const LOCAL_NAMESPACES = \[([^\]]+)\]/)?.[1] ?? "")
+      .split(",").map((s) => s.trim().replace(/"/g, "")).filter(Boolean);
+    expect(namespaces.length).toBeGreaterThan(2);
+
+    const clientDir = join(process.cwd(), "artifacts/tides/src");
+    const files: string[] = [];
+    (function walk(dir: string) {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(dir, e.name));
+        else if (/\.tsx?$/.test(e.name)) files.push(join(dir, e.name));
+      }
+    })(clientDir);
+    expect(files.length).toBeGreaterThan(20);
+
+    const keys = new Set<string>();
+    for (const file of files) {
+      const text = readFileSync(file, "utf-8");
+      for (const m of text.matchAll(/localStorage\.(?:set|get|remove)Item\(\s*([^,)]+)/g)) {
+        const expr = m[1].trim();
+        let literal: string | null = null;
+        if (/^"[^"]+"$/.test(expr)) literal = expr.slice(1, -1);
+        else if (expr.startsWith("`")) literal = expr.slice(1).split("${")[0];
+        else if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
+          // A named constant, or a helper — resolve its definition in this file.
+          const asConst = text.match(new RegExp(`(?:const|let)\\s+${expr}\\s*=\\s*["\`]([^"\`$]+)`));
+          const asFn = text.match(new RegExp(`function ${expr}\\([^)]*\\)[^{]*\\{[^}]*return\\s+["\`]([^"\`$]+)`));
+          literal = asConst?.[1] ?? asFn?.[1] ?? null;
+        }
+        if (literal) keys.add(literal);
+      }
+    }
+    // Sanity: the scan found real keys, not an empty set that passes vacuously.
+    expect(keys.size).toBeGreaterThan(10);
+    expect([...keys]).toContain("obs_tester_id");
+    expect([...keys]).toContain("compass_rollover_");
+
+    const orphans = [...keys].filter((k) => !namespaces.some((n) => k.startsWith(n)));
+    expect(orphans, `these keys would survive account deletion: ${orphans.join(", ")}`).toEqual([]);
+  });
+
+  it("iterates a snapshot — removing while indexing localStorage skips keys", () => {
+    // localStorage.key(i) reindexes on removal, so deleting inside the loop
+    // silently leaves every other key behind.
+    const body = src.slice(src.indexOf("export function purgeLocalData"));
+    expect(body).toMatch(/doomed\.push/);
+    expect(body).toMatch(/for \(const key of doomed\) localStorage\.removeItem\(key\)/);
+  });
+});

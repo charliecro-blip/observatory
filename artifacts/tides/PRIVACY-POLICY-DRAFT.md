@@ -106,11 +106,18 @@ Servers are in the United States.
 
 - **Export** — download your tasks and planning windows from Settings, or
   email us for everything else.
-- **Deletion** — email charliecro@gmail.com and we will delete your account
-  and its data, including birth details, journal entries, cycle data, advisor
-  conversations, push and email subscriptions, and any stored Google tokens.
-  We aim to do this within 30 days. Backups may retain copies for a short
-  period after that before they age out.
+- **Deletion** — delete your account yourself, from Settings → Delete account.
+  It happens immediately, not on a queue: birth details and chart, tasks,
+  habits and their history, planning windows, Guiding Stars, wins, journal and
+  logbook entries, felt ratings, cycle data, advisor conversations, email and
+  push subscriptions, your calendar-feed link, usage records, and your account
+  key. If you connected Google Calendar, we ask Google to revoke our access at
+  the same time, and tell you if that didn't succeed so you can revoke it
+  yourself. Your browser's local copy is cleared too. Our database host keeps
+  point-in-time backups, so copies may persist there for a short period before
+  they age out; we don't restore deleted accounts from them. There is no undo,
+  and your account key will not restore a deleted account. If anything goes
+  wrong, email charliecro@gmail.com.
 - **Email** — unsubscribe or change what you receive in Settings.
 - **Notifications** — turn off in Settings, or in your browser.
 - **Google Calendar** — disconnect in Settings and revoke at the link above.
