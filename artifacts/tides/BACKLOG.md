@@ -42,6 +42,7 @@ plus three code audits run 2026-07-29 (structural, election-engine, second-pass)
 ☑ Push opt-in checks server config *before* asking for OS permission; banner self-hides when unconfigured
 ☑ **Habit cadence** — daily / most_days / weekly-N / occasional, rolling-7-day window, solar anchors on dailies, "N of M dailies today", cadence-aware morning chips + evening card
 ☑ **iCal export had never worked** (`push()` returns a number; `.filter` on it threw — route 500'd on every request since forever) → fixed, plus a live `webcal://` subscribe feed
+☑ **Daily email rewritten around the reader** — the composer never imported `tasks`, so 0/30 simulated emails named a task or due date. Now: task named 23/30, median 229w→54w, unique subjects 12/30→30/30, consecutive dupes 16→0, discouraging star line 23/30→0, element self-contradiction 21/30→0. Plus the first email instrumentation (sent/open/click) and server-side `astroDetail` gating.
 
 ---
 
@@ -63,7 +64,7 @@ competitive borrowing until this block closes.***
 | ☐ | **`jsonArray()` turns outages into false emptiness** | My own fix, correctly criticised: it prevents the app-wide crash but makes a failed load look like "you have no tasks." Needs three distinct states — empty / unavailable / stale — keeping last-good data via React Query rather than substituting `[]`. | P0 |
 | ☐ | **No tests, no CI** | The largest omission. Only typecheck+build exist. Given how many real bugs surfaced in 24h, the repo is not learning not to recreate them. Lock in: local dates across UTC midnight + DST, habits/check-ins across local midnight, every write under 400/429/500/offline, election golden cases (conj/opp perfection, VoC across midnight, Tokyo/India/Newfoundland/Australia), notifier delivery in IANA zones, feed-token scope, GCal bounds, mobile pointer + glossary, dark mode, restore + Switch Profile. Plus one Playwright path: onboarding → task/habit → reflection → next local day. | P0 |
 | ☐ | **`drizzle-kit push` runs against prod on every build** | Schema can change before the build fails; no versioned history; hard rollback; code and schema can briefly disagree. Move to versioned migrations + backup + two-phase backward-compatible changes. | P0 |
-| ☐ | **Privacy policy understates collection** | I wrote it; it omits or understates menstrual-cycle data, chronotype/preferences, usage analytics (auto-sent with the tester id + arbitrary props), notification/email subscriptions, advisor memory, and OAuth tokens. It also says location is "approximate" while exact coordinates may be stored. | P0 |
+| ☑ | **Privacy policy rewritten** | Now names **Cross Astrology LLC** (TX, filed 2026-07-29) and discloses what was missing: cycle data, chronotype, usage analytics tied to the account id, email + push subscriptions, advisor conversations, Google OAuth tokens, exact coordinates (was "approximate"), the new email open/click tracking, every sub-processor (Neon/Railway/OpenAI/Resend/Geoapify), a concrete deletion promise, and a children's clause. **Still needs a lawyer before public/paid launch.** | **done** |
 | ☐ | **`/check-ins` still falls back to server UTC** when a write omits `date` | The local-day fix landed in the callers; the dangerous default remains for the next new caller. Make `date` mandatory for daily writes. | P0 |
 
 ## 3. P0-B — product integrity (after the sprint above)
