@@ -1565,26 +1565,26 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
   // visible instead of invisible.
   const [syncFailed, setSyncFailed] = useState(false);
 
-  // Retrospective: scan the last 30 days of felt logs, tally by tide character
-  const retro = useMemo(() => {
-    const byChar: Record<string, { aligned: number; total: number }> = {};
-    for (let d = 0; d < 30; d++) {
-      const day = addDaysLocal(today, -d);
-      try {
-        const r = JSON.parse(localStorage.getItem(feltKey(testerId, day)) ?? "null");
-        if (r?.felt && r?.character) {
-          byChar[r.character] = byChar[r.character] ?? { aligned: 0, total: 0 };
-          byChar[r.character].total += 1;
-          if (r.felt === "aligned") byChar[r.character].aligned += 1;
-        }
-      } catch { /* skip */ }
-    }
-    const ranked = Object.entries(byChar)
-      .filter(([, v]) => v.total >= 2)
-      .map(([c, v]) => ({ character: c, rate: v.aligned / v.total, total: v.total }))
-      .sort((a, b) => b.rate - a.rate);
-    return ranked;
-  }, [today, testerId, rating]);
+  // Your pattern, read from the SERVER. It used to be tallied out of
+  // localStorage, so restoring an account on a new device silently lost the
+  // evidence — the one claim Compass makes that comes from the reader's own
+  // experience rather than from the sky. The check-in rows had it all along.
+  const { data: pattern } = useQuery<{
+    enough: boolean; ratedTotal: number; ratedAligned: number;
+    earliest: string | null; latest: string | null; minTotal: number;
+    characters: { character: string; aligned: number; total: number; rate: number;
+      otherAligned: number; otherTotal: number; otherRate: number | null }[];
+  }>({
+    queryKey: ["felt-pattern", testerId, today, rating],
+    queryFn: async () => {
+      const r = await fetch(`/api/check-ins/felt-pattern?days=30&today=${today}`, { headers: { "x-tester-id": testerId ?? "" } });
+      if (!r.ok) throw new Error("pattern unavailable");
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 5 * 60_000,
+  });
+  const top = pattern?.enough ? pattern.characters[0] : null;
 
   function pick(felt: string) {
     setRating(felt);
@@ -1629,18 +1629,29 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
           </button>
         ))}
       </div>
-      {retro.length > 0 && (
+      {/* States what was REPORTED, with the counts, the window, and the
+          comparison — never "X days make you productive". This is
+          correlational, self-reported and small-n; the copy has to carry that
+          honestly or it's a horoscope with a number attached. */}
+      {top && (
         <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
-            Your pattern (last 30 days)
+            What you've reported
           </div>
-          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-            Your most aligned days have been{" "}
-            <b style={{ color: "#4a8060" }}>
-              {retro[0].character.charAt(0).toUpperCase() + retro[0].character.slice(1)} Tide
-            </b>{" "}
-            ({Math.round(retro[0].rate * 100)}% aligned, {retro[0].total} logged).
+          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
+            You felt aligned on <b style={{ color: "#4a8060" }}>{top.aligned} of {top.total}</b>{" "}
+            {top.character.charAt(0).toUpperCase() + top.character.slice(1)} days
+            {top.otherRate != null && <> — against {top.otherAligned} of {top.otherTotal} other days</>}.
+            <div style={{ fontSize: 9.5, color: "#a9a196", marginTop: 3 }}>
+              {pattern!.ratedTotal} days rated{pattern!.earliest && pattern!.latest ? ` · ${pattern!.earliest} to ${pattern!.latest}` : ""}. Early days — a hint, not a verdict.
+            </div>
           </div>
+        </div>
+      )}
+      {/* Say how far off the finding is, so rating feels like it accrues. */}
+      {pattern && !pattern.enough && pattern.ratedTotal > 0 && (
+        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)", fontSize: 9.5, color: "#a9a196", lineHeight: 1.5 }}>
+          {pattern.ratedTotal} of {pattern.minTotal} days rated — keep going and Compass can start showing you which days actually land.
         </div>
       )}
     </div>

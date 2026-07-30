@@ -522,3 +522,67 @@ describe("baseline typecheck errors that were real", () => {
     expect(supported).not.toContain("fontBuffers");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 15. THE FELT PATTERN — the one claim grounded in the reader's own experience
+// Shipped bug: computed from localStorage, so an account restore silently lost
+// the evidence. Now server-side — and the honesty rules matter as much as the
+// persistence, because this is correlational, self-reported, small-n data.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface Tally { character: string; aligned: number; total: number }
+const MIN_PER_CHARACTER = 4, MIN_TOTAL = 10;
+
+function summarise(rows: { felt: string; character: string }[]) {
+  const t: Record<string, Tally> = {};
+  let ratedTotal = 0, ratedAligned = 0;
+  for (const r of rows) {
+    ratedTotal++; if (r.felt === "aligned") ratedAligned++;
+    t[r.character] ??= { character: r.character, aligned: 0, total: 0 };
+    t[r.character].total++; if (r.felt === "aligned") t[r.character].aligned++;
+  }
+  const characters = Object.values(t)
+    .filter(c => c.total >= MIN_PER_CHARACTER)
+    .map(c => ({ ...c, rate: c.aligned / c.total,
+      otherAligned: ratedAligned - c.aligned, otherTotal: ratedTotal - c.total }))
+    .sort((a, b) => b.rate - a.rate);
+  return { enough: ratedTotal >= MIN_TOTAL && characters.length > 0, ratedTotal, characters };
+}
+
+const rows = (spec: [string, string, number][]) =>
+  spec.flatMap(([character, felt, n]) => Array.from({ length: n }, () => ({ character, felt })));
+
+describe("felt pattern", () => {
+  it("reports counts AND the comparison, not a bare percentage", () => {
+    const r = summarise(rows([["building", "aligned", 5], ["building", "mixed", 1], ["clear", "off", 5], ["deep", "aligned", 3]]));
+    expect(r.enough).toBe(true);
+    const top = r.characters[0];
+    expect(top.character).toBe("building");
+    expect(top.aligned).toBe(5); expect(top.total).toBe(6);
+    // The comparison is what makes 83% mean anything at all.
+    expect(top.otherTotal).toBe(8);
+    expect(top.otherAligned).toBe(3);
+  });
+
+  it("stays silent below the total threshold", () => {
+    expect(summarise(rows([["building", "aligned", 5], ["clear", "off", 4]])).enough).toBe(false);
+  });
+
+  it("excludes a character with too few ratings to mean anything", () => {
+    const r = summarise(rows([["building", "aligned", 6], ["clear", "off", 5], ["deep", "aligned", 3]]));
+    expect(r.characters.map(c => c.character)).not.toContain("deep");
+  });
+
+  it("says nothing at all with no data", () => {
+    expect(summarise([]).enough).toBe(false);
+  });
+
+  it("the copy states what was REPORTED, never what a day causes", () => {
+    const top = summarise(rows([["building", "aligned", 5], ["building", "mixed", 1], ["clear", "off", 8]])).characters[0];
+    const copy = `You felt aligned on ${top.aligned} of ${top.total} ${top.character} days — against ${top.otherAligned} of ${top.otherTotal} other days.`;
+    expect(copy).toContain("You felt aligned on 5 of 6");
+    for (const banned of ["makes you", "causes", "will be", "always", "proves"]) {
+      expect(copy.toLowerCase()).not.toContain(banned);
+    }
+  });
+});
