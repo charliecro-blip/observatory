@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { jsonArray } from "@/lib/jsonArray";
 import { localToday, localDateStr } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -978,7 +979,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
     queryKey:["windows",testerId,dateStr],
     queryFn: async()=>{
       const r = await fetch(`/api/planning/windows?date=${dateStr}`,{headers:{...(testerId?{"x-tester-id":testerId}:{}),"Content-Type":"application/json"}});
-      return r.json();
+      return jsonArray(r);
     },
     enabled:!!testerId,
   });
@@ -1290,7 +1291,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
     queryKey:["windows-all",testerId],
     queryFn: async()=>{
       const r = await fetch("/api/planning/windows?all=1",{headers:testerId?{"x-tester-id":testerId}:{}});
-      return r.json();
+      return jsonArray(r);
     },
     enabled:!!testerId,
   });

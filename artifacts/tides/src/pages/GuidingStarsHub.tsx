@@ -13,6 +13,7 @@ import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
+import { aiErrorMessage } from "@/lib/aiError";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -253,13 +254,18 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const runBreakdown = useMutation({
     mutationFn: async ({ title, description }: { title: string; description?: string }) => {
       const r = await fetch("/api/planning/breakdown", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, description }) });
+      // Was unchecked: on a 429 the steps came back empty, the button that
+      // triggered this hid itself (it's gated on breakdownFor), and NOTHING
+      // rendered — the feature silently vanished with no way to retry.
+      if (!r.ok) throw new Error(await aiErrorMessage(r));
       return (await r.json()).milestones as { title: string; element: string }[];
     },
     onSuccess: (steps) => setProposedSteps(steps ?? []),
   });
   const commitBreakdown = useMutation({
     mutationFn: async ({ goalId }: { goalId: number }) => {
-      await fetch("/api/planning/breakdown/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ goalId, milestones: proposedSteps }) });
+      const r = await fetch("/api/planning/breakdown/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ goalId, milestones: proposedSteps }) });
+      if (!r.ok) throw new Error("Couldn't save those steps — try again.");
     },
     onSuccess: () => { refreshPM(); qc.invalidateQueries({ queryKey: ["projects"] }); setBreakdownFor(null); setProposedSteps([]); },
   });
@@ -284,9 +290,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         return { title: t.title, estimatedMinutes: 45, energy: "medium", dueDate: due };
       });
       const wr = await fetch("/api/plan/weave", { method: "POST", headers: authHeaders, body: JSON.stringify({ tasks: payload, horizon: "month", lat, lon, tz: new Date().getTimezoneOffset() }) });
+      // Was unchecked: a failed weave fell through to planned=[] and reported
+      // "✓ Woven 0 onto your calendar" — indistinguishable from "nothing
+      // needed scheduling", so the user never knew it had failed.
+      if (!wr.ok) throw new Error(await aiErrorMessage(wr));
       const data = await wr.json();
       const planned = (data.planned ?? []).filter((p: any) => p.title);
-      if (planned.length) await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: planned }) });
+      if (planned.length) {
+        const cr = await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: planned }) });
+        if (!cr.ok) throw new Error("Found times, but couldn't save them to your calendar — try again.");
+      }
       return { placed: planned.length, unplaced: (data.unplaced ?? []).length };
     },
     onSuccess: (r, vars) => { refreshPM(); invalidateWindows(qc); setWeaveResult({ starId: vars.starId, ...r }); },
@@ -894,10 +907,15 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                             {done ? (
                               <div style={{ fontSize: 9.5, color: "#3a6020" }}>✓ Woven {weaveResult!.placed} onto your calendar (Plan/Ahead){weaveResult!.unplaced ? ` · ${weaveResult!.unplaced} couldn't fit` : ""}.</div>
                             ) : (
-                              <button onClick={() => weaveStar.mutate({ starId: g.id })} disabled={weaveStar.isPending}
-                                style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: `1px solid ${elCol}40`, background: `${elCol}0e`, color: elCol, cursor: "pointer", fontWeight: 600 }}>
-                                {weaveStar.isPending ? "Reading the sky…" : `✦ Schedule these ${openCount} — the sky picks the times`}
-                              </button>
+                              <>
+                                <button onClick={() => weaveStar.mutate({ starId: g.id })} disabled={weaveStar.isPending}
+                                  style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: `1px solid ${elCol}40`, background: `${elCol}0e`, color: elCol, cursor: "pointer", fontWeight: 600 }}>
+                                  {weaveStar.isPending ? "Reading the sky…" : `✦ Schedule these ${openCount} — the sky picks the times`}
+                                </button>
+                                {weaveStar.isError && (
+                                  <div style={{ fontSize: 9.5, color: "#a03030", marginTop: 4 }}>{(weaveStar.error as Error)?.message ?? "Couldn't schedule those — try again."}</div>
+                                )}
+                              </>
                             )}
                           </div>
                         );
@@ -980,6 +998,15 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                           {runBreakdown.isPending && breakdownFor === g.id ? "thinking…" : "✦ break into steps"}
                         </button>
                       )}
+                    </div>
+                  )}
+                  {/* The breakdown button hides itself once clicked, so without
+                      this a failure left the card completely silent. */}
+                  {breakdownFor === g.id && runBreakdown.isError && (
+                    <div style={{ fontSize: 9.5, color: "#a03030", marginTop: 4 }}>
+                      {(runBreakdown.error as Error)?.message ?? "Couldn't break that down."}{" "}
+                      <button onClick={() => { setBreakdownFor(null); runBreakdown.reset(); }}
+                        style={{ fontSize: 9.5, color: "#7a6cae", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>dismiss</button>
                     </div>
                   )}
                 </div>

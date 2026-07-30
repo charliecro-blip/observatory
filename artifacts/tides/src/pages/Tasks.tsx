@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { jsonArray } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
@@ -82,7 +83,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     queryKey: ["planning-windows-all", testerId],
     queryFn: async () => {
       const r = await fetch("/api/planning/windows", { headers: authH(testerId) });
-      return r.json();
+      return jsonArray(r);
     },
     enabled: !!testerId,
   });
@@ -91,7 +92,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     queryKey: ["planning-goals-active", testerId],
     queryFn: async () => {
       const r = await fetch("/api/planning/goals?status=active", { headers: authH(testerId) });
-      return r.json();
+      return jsonArray(r);
     },
     enabled: !!testerId,
   });
@@ -100,7 +101,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     queryKey: ["planning-projects-active", testerId],
     queryFn: async () => {
       const r = await fetch("/api/planning/projects?status=active", { headers: authH(testerId) });
-      return r.json();
+      return jsonArray(r);
     },
     enabled: !!testerId,
   });
@@ -115,7 +116,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     queryKey: ["tasks", testerId],
     queryFn: async () => {
       const r = await fetch("/api/tasks", { headers: authH(testerId) });
-      return r.json();
+      return jsonArray(r);
     },
     enabled: !!testerId,
     refetchInterval: 30_000,

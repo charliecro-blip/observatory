@@ -1416,10 +1416,16 @@ export default function Settings({ testerId }: { testerId: string | null }) {
     }
   }, [natal]);
 
+  // NOTE: this is the SECOND natal-chart editor on this page (NatalChartSection
+  // above is the other, and both POST the same endpoint). The duplicate is
+  // worth collapsing into one, but that's a UI change — this fix is just the
+  // correctness half: the same false-success bug already fixed in the sibling
+  // was still live here, showing "Saved ✓" on a 429/500 while the chart every
+  // reading depends on stayed unchanged.
   const saveNatal = useMutation({
     mutationFn: async () => {
       const method = natal ? "PATCH" : "POST";
-      await fetch("/api/natal-chart", {
+      const r = await fetch("/api/natal-chart", {
         method, headers: authH(testerId),
         body: JSON.stringify({
           birthDate: natalForm.birthDate,
@@ -1430,6 +1436,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           birthPlace: natalForm.birthPlace,
         }),
       });
+      if (!r.ok) throw new Error(`save chart failed (${r.status})`);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["natal-chart"] }); setSaved(true); setTimeout(() => setSaved(false), 2000); },
   });
@@ -1513,12 +1520,13 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             <Field label="Latitude"><SettingsInput value={natalForm.birthLat} onChange={v => setNatalForm(f => ({ ...f, birthLat: v }))} placeholder="40.7" /></Field>
             <Field label="Longitude"><SettingsInput value={natalForm.birthLon} onChange={v => setNatalForm(f => ({ ...f, birthLon: v }))} placeholder="-74.0" /></Field>
           </div>
-          <button onClick={() => saveNatal.mutate()} disabled={!natalForm.birthDate} style={{
+          <button onClick={() => saveNatal.mutate()} disabled={!natalForm.birthDate || saveNatal.isPending} style={{
             padding: "8px 20px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer",
             background: natalForm.birthDate ? "#1a2a3a" : "#e0dcd6", color: natalForm.birthDate ? "#fff" : "#aaa",
           }}>
-            {saved ? "Saved ✓" : natal ? "Update chart" : "Save chart"}
+            {saveNatal.isPending ? "Saving…" : saved ? "Saved ✓" : natal ? "Update chart" : "Save chart"}
           </button>
+          {saveNatal.isError && <div style={{ fontSize: 10.5, color: "#a03030", marginTop: 6 }}>Couldn't save — try again.</div>}
         </SectionCard>
 
         {/* Location */}

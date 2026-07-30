@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { localToday, addDaysLocal } from "@/lib/dates";
+import { aiErrorMessage } from "@/lib/aiError";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
@@ -54,7 +55,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
         method: "POST", headers: authHeaders,
         body: JSON.stringify({ rawList: listArg ?? rawList, tz: new Date().getTimezoneOffset() }),
       });
-      if (!r.ok) throw new Error("parse failed");
+      if (!r.ok) throw new Error(await aiErrorMessage(r));
       return (await r.json()).tasks;
     },
     onSuccess: (t) => { setCards(t); setResult(null); setCommitted(false); },
@@ -95,7 +96,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           wakeTime: chrono.wakeTime, sleepTime: chrono.sleepTime, busy,
         }),
       });
-      if (!r.ok) throw new Error("weave failed");
+      if (!r.ok) throw new Error(await aiErrorMessage(r));
       return r.json();
     },
     onSuccess: (data) => { setResult(data); setDropped(new Set()); setCommitted(false); },
@@ -161,7 +162,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
               cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "#e0dcd6", color: rawList.trim() ? "#fff" : "#aaa",
             }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>
-            {parse.isError && <span style={{ fontSize: 11, color: "#a03030" }}>Something went wrong — try again.</span>}
+            {parse.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(parse.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
         </>
       )}
@@ -240,7 +241,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               background: "#1a2a3a", color: "#fff",
             }}>{weave.isPending ? "Reading the sky…" : "✦ Weave it in"}</button>
             <button onClick={reset} style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer" }}>start over</button>
-            {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>Something went wrong — try again.</span>}
+            {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(weave.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
         </div>
       )}
