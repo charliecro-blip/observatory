@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
 import { useCurrents } from "@/hooks/useTides";
 import { usePremium } from "@/contexts/premium-context";
+import { usePreferences } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
@@ -32,6 +33,19 @@ interface Task {
   dueDate?:string; bestWindowType?:string; planningWindowId?:number;
   estMinutes?:number; energy?:string;
   goalId?:number; projectId?:number;
+  // Set when auto-rollover has carried this forward — the date it started on.
+  originalDueDate?:string|null;
+}
+
+// "carried from Tue" — the point of keeping the original date. Says the task
+// has been travelling without scolding anyone about it.
+function carriedLabel(t: Task, today: string): string | null {
+  if (!t.originalDueDate || t.originalDueDate >= today) return null;
+  const from = new Date(t.originalDueDate + "T12:00:00");
+  const days = Math.round((Date.parse(today + "T12:00:00") - from.getTime()) / 86400000);
+  if (days >= 14) return `carried for ${Math.floor(days / 7)} weeks`;
+  if (days >= 7) return "carried for a week";
+  return `carried from ${from.toLocaleDateString(undefined, { weekday: "short" })}`;
 }
 
 const ENERGY_META: Record<string,{label:string;bg:string;fg:string}> = {
@@ -68,6 +82,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   // "Guarding" — the same self-reported caution windows shown on Guiding
   // Stars/Currents, surfaced right where you're committing to something new.
   const { unlocked: premiumUnlocked } = usePremium();
+  const { prefs } = usePreferences();
   const { profile } = useTester();
   const { data: currentsData } = useCurrents(testerId, localStorage.getItem("obs_house_system") ?? "whole-sign");
   const cautionPlanets = profile?.cautionPlanets;
@@ -121,6 +136,30 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     enabled: !!testerId,
     refetchInterval: 30_000,
   });
+
+  // Auto-rollover: carry undone overdue tasks to today, once per local day.
+  // Guarded by a localStorage stamp so it fires on the first visit of a new
+  // day and not on every mount — and never touches scheduled windows, only
+  // tasks. Silent when there's nothing to move; the "carried from" label on
+  // each row is what makes it legible rather than spooky.
+  const rolloverKey = `compass_rollover_${testerId ?? "anon"}`;
+  useEffect(() => {
+    if (!testerId) return;
+    if (localStorage.getItem(rolloverKey) === today) return;
+    if (!prefs.display.autoRollover) { localStorage.setItem(rolloverKey, today); return; }
+    (async () => {
+      try {
+        const r = await fetch("/api/tasks/rollover", {
+          method: "POST", headers: authH(testerId), body: JSON.stringify({ today }),
+        });
+        if (!r.ok) return; // try again next mount rather than marking the day done
+        localStorage.setItem(rolloverKey, today);
+        const { rolled } = await r.json().catch(() => ({ rolled: 0 }));
+        if (rolled > 0) qc.invalidateQueries({ queryKey: ["tasks"] });
+      } catch { /* offline — retry next mount */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testerId, today, prefs.display.autoRollover]);
 
   const addTask = useMutation({
     mutationFn: async () => {
@@ -379,7 +418,12 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
       <button onClick={onToggle} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${isDone?"#80b870":"#c0bab0"}`,background:isDone?"#80b870":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff"}}>
         {isDone?"✓":""}
       </button>
-      <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"#bbb":"#222",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
+      <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"#bbb":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
+      {/* Auto-rollover moved this here; say where it came from rather than
+          letting the date silently read as if it were always due today. */}
+      {!isDone && carriedLabel(task, today) && (
+        <div title={`Originally due ${task.originalDueDate}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#c0802014",color:"#a07830",fontWeight:600,flexShrink:0}}>↻ {carriedLabel(task, today)}</div>
+      )}
       {task.dueDate && task.dueDate !== today && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#f0ede8",color:"#999",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
       )}

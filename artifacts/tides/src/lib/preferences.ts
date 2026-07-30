@@ -26,6 +26,10 @@ export interface DisplayPrefs {
   // Angular-crossing markers on the Today wave — a tuning knob, so it lives
   // in Settings rather than as a button on the home page.
   todayShowCrossings: boolean;
+  // Auto-rollover: carry undone, overdue TASKS to today once per day. Never
+  // moves a scheduled window — a window is a claim on a specific moment, and
+  // relocating one silently would retract the reason it existed.
+  autoRollover: boolean;
   // Vocabulary graduation — "plain" speaks only the app's feeling-language
   // (Deep Tide, Surge); "bilingual" adds the sky's own words next to them
   // (Moon in Pisces, ☽ □ ♄) so fluency grows by exposure. Superseded by
@@ -99,6 +103,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
   },
   display: {
     railSections: ["moon", "aspects", "retrogrades", "hour", "transits"],
+    autoRollover: true,
     todayShowVOC: true,
     todayShowWave: true,
     todayShow14Day: true,

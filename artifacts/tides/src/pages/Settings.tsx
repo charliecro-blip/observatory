@@ -501,6 +501,12 @@ function DisplaySection() {
       </Row>
 
       <div style={{ height: 16 }} />
+      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Tasks</div>
+      <Row label="Carry unfinished tasks forward" sub="Overdue tasks move to today, labelled with where they came from. Scheduled blocks never move on their own.">
+        <Toggle on={d.autoRollover} onChange={v => updateDisplay({ autoRollover: v })} />
+      </Row>
+
+      <div style={{ height: 16 }} />
       <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>
       <Row label="VOC banner" sub="Show void-of-course warning at top.">
         <Toggle on={d.todayShowVOC} onChange={v => updateDisplay({ todayShowVOC: v })} />

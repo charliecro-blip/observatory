@@ -94,6 +94,12 @@ export const tasks = pgTable("tasks", {
   notes: text("notes"),
   done: text("done").notNull().default("false"), // "true" | "false"
   dueDate: text("due_date"), // ISO date YYYY-MM-DD, nullable
+  // The date this task was ORIGINALLY due, if auto-rollover has since carried
+  // it forward. Rolling a task without recording where it came from destroys
+  // real information (that it's been sitting), so the original is preserved
+  // and surfaced as "carried from Tue" — continuity, not an accusation.
+  // Set once, on the first roll; never overwritten by later rolls.
+  originalDueDate: text("original_due_date"),
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
   // A task's own ruling planet — auto-diagnosed from its title, so specific
   // tasks under a star can each time to a different planet (the star may be

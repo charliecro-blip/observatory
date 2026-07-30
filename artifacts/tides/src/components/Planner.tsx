@@ -126,6 +126,26 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
     (byDay[dayKey(item.startAt)] ??= []).push({ item, idx });
   });
 
+  // ── Capacity honesty (Sunsama's move) ──────────────────────────────────────
+  // Say the overcommitment out loud BEFORE anything is written, while it's
+  // still free to drop something. Deliberately a statement, not a block: this
+  // app doesn't refuse to let you overreach, it just declines to pretend the
+  // day is bigger than it is. Waking hours come from the chronotype the user
+  // already gave us at onboarding (default 8–21 matches the weaver's clamp).
+  const wakeH = parseInt(String(chrono.wakeTime ?? "08:00").slice(0, 2), 10);
+  const sleepH = parseInt(String(chrono.sleepTime ?? "21:00").slice(0, 2), 10);
+  const wakingHours = Math.max(1, (Number.isFinite(sleepH) ? sleepH : 21) - (Number.isFinite(wakeH) ? wakeH : 8));
+  const dayLoad = Object.entries(byDay).map(([day, entries]) => {
+    const minutes = entries.reduce((sum, { item }) => {
+      const ms = Date.parse(item.endAt) - Date.parse(item.startAt);
+      return sum + (Number.isFinite(ms) && ms > 0 ? ms / 60000 : 45);
+    }, 0);
+    return { day, hours: minutes / 60, share: minutes / 60 / wakingHours, count: entries.length };
+  });
+  // Two thirds of the waking day already spoken for is the point where a plan
+  // stops being a plan; the copy stays plain rather than alarmed.
+  const heavyDays = dayLoad.filter(d => d.share >= 0.66);
+
   return (
     <div style={{ marginBottom: 30 }}>
       <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Plan</div>
@@ -253,6 +273,25 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Proposed schedule · {keptCount} task{keptCount === 1 ? "" : "s"}</div>
           ) : (
             <div style={{ fontSize: 12, color: "#999", marginBottom: 10 }}>Nothing scheduled.</div>
+          )}
+
+          {/* Capacity honesty — named before you commit, while dropping is
+              still free. Not a blocker; the app doesn't refuse to let you
+              overreach, it just won't pretend the day is bigger than it is. */}
+          {heavyDays.length > 0 && (
+            <div style={{
+              fontSize: 11, lineHeight: 1.6, color: "#8a6a30", marginBottom: 12,
+              background: "#c0802010", border: "1px solid #c0802033", borderRadius: 9, padding: "9px 12px",
+            }}>
+              <b style={{ color: "#a06818" }}>That's a full {heavyDays.length === 1 ? "day" : "few days"}.</b>{" "}
+              {heavyDays.map((d, i) => (
+                <span key={d.day}>
+                  {i > 0 ? " · " : ""}{d.day} carries {d.hours < 1 ? "under an hour" : `about ${Math.round(d.hours)}h`} across {d.count} block{d.count === 1 ? "" : "s"}
+                  {d.share >= 1 ? " — more than you're usually awake for" : `, roughly ${Math.round(d.share * 100)}% of your waking hours`}
+                </span>
+              ))}
+              . Worth dropping a couple below before you commit — you can always weave them into next week.
+            </div>
           )}
 
           {Object.entries(byDay).map(([day, entries]) => (

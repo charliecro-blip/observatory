@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { tasks } from "@workspace/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lt, isNull, sql } from "drizzle-orm";
 import { associateDeterministic } from "../lib/associate.js";
 
 const router = Router();
@@ -27,6 +27,41 @@ router.get("/tasks", async (req, res) => {
     .where(and(...conds))
     .orderBy(tasks.sortOrder, tasks.createdAt);
   res.json(rows);
+});
+
+// POST /tasks/rollover — carry undone, overdue TASKS forward to today.
+//
+// Deliberately scoped to tasks and nothing else. A scheduled planning WINDOW
+// must never move on its own: a window is a claim on a specific moment the sky
+// supported, so silently relocating one doesn't just shuffle logistics, it
+// retracts the reason the block existed. (Motion reschedules silently and its
+// users call it "AI calendar anxiety" — see COMPETITIVE-UX Part C.)
+//
+// `originalDueDate` is stamped on the first roll only, so the list can say
+// "carried from Tue" instead of quietly pretending the task was always due
+// today. The client sends its LOCAL date; the server never guesses.
+router.post("/tasks/rollover", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const today = String(req.body?.today ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) {
+    res.status(400).json({ error: "today (YYYY-MM-DD, viewer-local) required" });
+    return;
+  }
+  const rolled = await db.update(tasks)
+    .set({
+      dueDate: today,
+      // COALESCE keeps the FIRST original date across repeated rolls, so a
+      // task carried for a week still reports where it actually started.
+      originalDueDate: sql`COALESCE(${tasks.originalDueDate}, ${tasks.dueDate})`,
+    })
+    .where(and(
+      eq(tasks.testerId, testerId),
+      eq(tasks.done, "false"),
+      lt(tasks.dueDate, today),
+    ))
+    .returning({ id: tasks.id });
+  res.json({ rolled: rolled.length });
 });
 
 // POST /tasks

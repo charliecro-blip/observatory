@@ -385,6 +385,7 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
 function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<typeof useQueryClient> }) {
   const { data: status } = useGCalStatus(testerId);
   const popupRef = useRef<Window | null>(null);
+  const [feedCopied, setFeedCopied] = useState(false);
 
   useEffect(() => {
     function onMsg(e: MessageEvent) {
@@ -419,14 +420,30 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
   if (status?.configured === false) {
     // Unconfigured = the Google OAuth credentials aren't set on the server
     // (owner Railway task per GCAL-SETUP.md). Say so plainly so it doesn't
-    // read as a broken button.
+    // read as a broken button — but don't leave it a dead end: the webcal
+    // feed solves the same user problem in the other direction (Compass's
+    // blocks OUT to any calendar, rather than their events IN), and this is
+    // exactly the moment someone wants it.
     return (
-      <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
-        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
-        background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
-        display:"flex", alignItems:"center", gap:4,
-      }}>
-        <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
+      <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+        <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
+          fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
+          background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
+          display:"flex", alignItems:"center", gap:4,
+        }}>
+          <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
+        </div>
+        <button
+          onClick={async () => {
+            const url = `webcal://${window.location.host}/api/export/ical?testerId=${encodeURIComponent(testerId ?? "")}`;
+            try { await navigator.clipboard.writeText(url); setFeedCopied(true); setTimeout(() => setFeedCopied(false), 2500); }
+            catch { window.prompt("Copy this feed URL into your calendar app:", url); }
+          }}
+          title="Meanwhile: subscribe your calendar app to your Compass blocks — it stays up to date on its own"
+          style={{
+            fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
+            background:"var(--color-card)", color:"var(--color-primary)", cursor:"pointer", fontWeight:600,
+          }}>{feedCopied ? "Feed link copied ✓" : "↗ Send mine to my calendar"}</button>
       </div>
     );
   }
@@ -1353,6 +1370,26 @@ export default function Calendar({ testerId, now, lat, lon }: {
   }
   function goToday() { setYear(todayYear);setMonth(todayMonth);setSelectedDate(today); }
 
+  // Single-key view switching (Notion Calendar's idiom): D/W/M/A for the four
+  // views, T for today, ←/→ to page. Deliberately plain keys with no modifier —
+  // that's the whole point of the pattern — so every handler bails when focus
+  // is in a field or a modifier is held, or we'd eat characters mid-typing.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      const k = e.key.toLowerCase();
+      const view = ({ d: "day", w: "week", m: "month", a: "agenda" } as Record<string, CalView>)[k];
+      if (view) { setCalView(view); e.preventDefault(); return; }
+      if (k === "t") { goToday(); e.preventDefault(); return; }
+      if (e.key === "ArrowLeft") { prevPeriod(); e.preventDefault(); return; }
+      if (e.key === "ArrowRight") { nextPeriod(); e.preventDefault(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   function periodLabel() {
     if (calView==="month") return `${MONTH_NAMES[month]} ${year}`;
     if (calView==="week") {
@@ -1379,14 +1416,16 @@ export default function Calendar({ testerId, now, lat, lon }: {
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
       <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
-        <button onClick={prevPeriod} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>‹</button>
+        <button onClick={prevPeriod} title="Previous — press ←" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>‹</button>
         <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
-        <button onClick={nextPeriod} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>›</button>
-        <button onClick={goToday} style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
+        <button onClick={nextPeriod} title="Next — press →" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
           {(["agenda","day","week","month"] as CalView[]).map(v=>(
-            <button key={v} onClick={()=>setCalView(v)} style={{
+            // The title carries the shortcut — an undiscoverable shortcut is a
+            // shortcut nobody uses.
+            <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
               fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
               background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"#999",
               fontWeight:calView===v?600:400,textTransform:"capitalize",
