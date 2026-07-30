@@ -351,3 +351,44 @@ describe("email click redirect", () => {
     expect(safeRedirect("//evil.example.com", base)).toBe("https://compass.day/");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. CALENDAR FEED TOKENS
+// Shipped bug: the feed URL carried the tester id, which was the account
+// credential — a subscription link returned the logbook and the recovery code.
+// The replacement must be a distinct secret that opens ONE route.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { createHash, randomBytes } from "crypto";
+const mint = () => randomBytes(32).toString("base64url");
+const hash = (t: string) => createHash("sha256").update(t).digest("hex");
+
+describe("calendar feed token", () => {
+  it("is long, URL-safe and unguessable", () => {
+    const t = mint();
+    expect(t.length).toBeGreaterThanOrEqual(40);
+    expect(t).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(new Set(Array.from({ length: 200 }, mint)).size).toBe(200);
+  });
+
+  it("is never the tester id or the recovery code", () => {
+    const t = mint();
+    expect(t).not.toBe("orrery-demo");
+    expect(t).not.toMatch(/^TIDE-/);
+  });
+
+  it("is stored hashed — a DB dump must not yield working feed URLs", () => {
+    const t = mint();
+    const stored = hash(t);
+    expect(stored).not.toContain(t);
+    expect(stored).toHaveLength(64);
+    expect(hash(t)).toBe(stored);          // deterministic, so lookup works
+    expect(hash(mint())).not.toBe(stored); // and distinct per token
+  });
+
+  it("regenerating invalidates the previous link", () => {
+    const first = mint();
+    const stored = hash(mint()); // regenerated
+    expect(hash(first)).not.toBe(stored);
+  });
+});

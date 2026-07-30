@@ -7,6 +7,8 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { tasks, planningWindows } from "@workspace/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
+import { testerProfiles } from "@workspace/db";
+import { hashFeedToken } from "../lib/feedToken.js";
 
 const router = Router();
 
@@ -28,7 +30,33 @@ function uid(prefix: string, id: number): string {
 }
 
 router.get("/export/ical", async (req, res) => {
-  const testerId = (req.headers["x-tester-id"] as string) || (req.query.testerId as string);
+  // Two ways in, with very different trust levels:
+  //   · x-tester-id — the app itself, already authenticated as far as this
+  //     system authenticates anything.
+  //   · ?feedToken=  — a calendar client, which cannot send headers. This is a
+  //     dedicated, revocable secret that ONLY opens this route. The tester id
+  //     is deliberately no longer accepted from the query string here: that
+  //     is what turned a subscription URL into an account credential.
+  const headerId = (req.headers["x-tester-id"] as string) || "";
+  const feedToken = typeof req.query.feedToken === "string" ? req.query.feedToken : "";
+
+  let testerId = headerId;
+  if (!testerId && feedToken) {
+    // Indexed lookup on the hash — scanning every profile on each calendar
+    // poll would be a real cost (clients re-fetch on their own schedule). The
+    // hash is deterministic, so equality here is exactly as strong as the
+    // constant-time compare would be, without the table scan.
+    const owner = (await db.select().from(testerProfiles)
+      .where(eq(testerProfiles.feedTokenHash, hashFeedToken(feedToken))).limit(1))[0];
+    if (!owner) { res.status(404).json({ error: "This calendar link is no longer valid." }); return; }
+    testerId = owner.testerId;
+    // Best-effort "last fetched" so a stale or unknown subscription is visible
+    // in Settings; never allowed to fail the response.
+    void db.update(testerProfiles)
+      .set({ feedTokenLastUsedAt: new Date() })
+      .where(eq(testerProfiles.testerId, owner.testerId))
+      .catch(() => {});
+  }
   if (!testerId) { res.status(400).json({ error: "Missing testerId" }); return; }
 
   const [taskRows, windowRows] = await Promise.all([

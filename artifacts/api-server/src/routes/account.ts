@@ -13,6 +13,7 @@ import { Router, type IRouter } from "express";
 import { randomBytes } from "node:crypto";
 import { db, testerProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { mintFeedToken, hashFeedToken } from "../lib/feedToken.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 
 const router: IRouter = Router();
@@ -101,6 +102,46 @@ router.post("/account/recover", async (req, res) => {
       recoveryCode: row.recoveryCode,
     },
   });
+});
+
+// ── Calendar-feed token ──────────────────────────────────────────────────────
+// A separate, revocable secret scoped ONLY to the iCal route. See
+// lib/feedToken.ts for why this is not simply the tester id.
+
+/** Current state — never returns the token itself; it exists once, at issue. */
+router.get("/account/feed-token", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select().from(testerProfiles)
+    .where(eq(testerProfiles.testerId, testerId)).limit(1))[0];
+  res.json({
+    active: !!row?.feedTokenHash,
+    createdAt: row?.feedTokenCreatedAt ?? null,
+    lastUsedAt: row?.feedTokenLastUsedAt ?? null,
+  });
+});
+
+/** Issue or regenerate. Returns the secret ONCE — regenerating kills the old link. */
+router.post("/account/feed-token", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select().from(testerProfiles)
+    .where(eq(testerProfiles.testerId, testerId)).limit(1))[0];
+  if (!row) { res.status(404).json({ error: "No profile — sync first." }); return; }
+  const token = mintFeedToken();
+  await db.update(testerProfiles).set({
+    feedTokenHash: hashFeedToken(token),
+    feedTokenCreatedAt: new Date(),
+    feedTokenLastUsedAt: null,
+  }).where(eq(testerProfiles.testerId, testerId));
+  res.json({ token });
+});
+
+/** Revoke. Any calendar still subscribed starts 404-ing, which is the point. */
+router.delete("/account/feed-token", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  await db.update(testerProfiles).set({
+    feedTokenHash: null, feedTokenCreatedAt: null, feedTokenLastUsedAt: null,
+  }).where(eq(testerProfiles.testerId, testerId));
+  res.json({ ok: true });
 });
 
 export default router;

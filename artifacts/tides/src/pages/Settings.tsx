@@ -1189,6 +1189,52 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
 
 function ExportSection({ testerId }: { testerId: string | null }) {
   const [copied, setCopied] = useState(false);
+  // Feed token — the secret is returned ONCE at issue, so it's held in memory
+  // only. Reload and you must reset the link to see a URL again, which is the
+  // correct trade for not storing it.
+  const [feedActive, setFeedActive] = useState(false);
+  const [feedLastUsed, setFeedLastUsed] = useState<string | null>(null);
+  const [feedUrl, setFeedUrl] = useState<string | null>(null);
+  const [feedCopied, setFeedCopied] = useState(false);
+  const [feedBusy, setFeedBusy] = useState(false);
+  const authFeed = testerId ? { "x-tester-id": testerId, "Content-Type": "application/json" } : undefined;
+
+  useEffect(() => {
+    if (!authFeed) return;
+    fetch("/api/account/feed-token", { headers: authFeed })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) { setFeedActive(!!d.active); setFeedLastUsed(d.lastUsedAt ?? null); } })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testerId]);
+
+  async function issueFeed(reset = false) {
+    if (!authFeed) return;
+    if (reset && !window.confirm("Reset the link? Any calendar already subscribed will stop updating until you paste the new one.")) return;
+    setFeedBusy(true);
+    try {
+      const r = await fetch("/api/account/feed-token", { method: "POST", headers: authFeed });
+      if (!r.ok) return;
+      const { token } = await r.json();
+      setFeedActive(true); setFeedLastUsed(null);
+      setFeedUrl(`webcal://${window.location.host}/api/export/ical?feedToken=${encodeURIComponent(token)}`);
+    } finally { setFeedBusy(false); }
+  }
+
+  async function revokeFeed() {
+    if (!authFeed) return;
+    if (!window.confirm("Turn off the calendar feed? Any calendar subscribed to it will stop updating.")) return;
+    setFeedBusy(true);
+    try {
+      const r = await fetch("/api/account/feed-token", { method: "DELETE", headers: authFeed });
+      if (r.ok) { setFeedActive(false); setFeedUrl(null); setFeedLastUsed(null); }
+    } finally { setFeedBusy(false); }
+  }
+
+  async function copyFeed() {
+    if (!feedUrl) { await issueFeed(true); return; }
+    try { await navigator.clipboard.writeText(feedUrl); setFeedCopied(true); setTimeout(() => setFeedCopied(false), 2500); } catch { /* selectable above */ }
+  }
   const tid = testerId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("obs_tester_id") : null);
   const icalPath = `/api/export/ical?testerId=${encodeURIComponent(tid ?? "")}`;
 
@@ -1219,25 +1265,45 @@ function ExportSection({ testerId }: { testerId: string | null }) {
 
   return (
     <SectionCard title="Your calendar feed" sub="Your scheduled blocks and tasks, in any calendar app. Planetary hours and sky events aren't included.">
-      {/* SUBSCRIBE FEED WITHDRAWN 2026-07-30 — security.
-          The feed URL carried `testerId`, which is not just an export id: it
-          is the account credential. The middleware accepts it as a QUERY
-          PARAM, so the URL alone (no crafted headers) reads the logbook and
-          — via /account/sync — returns the RECOVERY CODE, i.e. full account
-          takeover. A webcal URL is worse than a download because Google/
-          Apple store and re-fetch it indefinitely.
-          Restore only behind a separate random, revocable, read-only
-          feedToken that is scoped to the iCal route and can never be used as
-          x-tester-id. See BACKLOG §2. */}
-      <div style={{
-        fontSize: 10.5, color: "#8a6a30", lineHeight: 1.55, marginBottom: 10,
-        background: "#c0802010", border: "1px solid #c0802033", borderRadius: 9, padding: "9px 12px",
-      }}>
-        <b style={{ color: "#a06818" }}>Calendar subscription is temporarily off.</b>{" "}
-        The live feed link doubled as your account key, so we pulled it rather than
-        leave it out there. It'll be back as a separate revocable link you can reset
-        at any time. The one-time download below is unaffected.
-      </div>
+      {/* Restored 2026-07-30 behind a revocable, iCal-scoped token. The link
+          no longer carries the account credential, so the worst case for a
+          leaked feed is "someone sees your schedule" — stated plainly below
+          — rather than account takeover. */}
+      <Row label="Subscribe (stays up to date)" sub="Apple Calendar, Google Calendar, Outlook">
+        {feedActive ? (
+          <button onClick={copyFeed} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
+            {feedCopied ? "Copied ✓" : feedUrl ? "Copy link" : "Show link"}
+          </button>
+        ) : (
+          <button onClick={() => issueFeed()} disabled={feedBusy} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+            {feedBusy ? "…" : "Create link"}
+          </button>
+        )}
+      </Row>
+      {feedUrl && (
+        <div style={{
+          fontSize: 9.5, fontFamily: "monospace", color: "#8a8278", userSelect: "all",
+          background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+          borderRadius: 6, padding: "6px 9px", margin: "2px 0 8px", overflowWrap: "anywhere",
+        }}>{feedUrl}</div>
+      )}
+      {feedActive && (
+        <div style={{ fontSize: 10, color: "#a09888", lineHeight: 1.55, marginBottom: 10 }}>
+          Paste it into your calendar app's “add calendar by URL”. It refreshes on its
+          own. This link shows your task titles and scheduled blocks to anyone who has
+          it — it is <em>not</em> your account key, and you can reset it any time.
+          {feedLastUsed && <> Last fetched {new Date(feedLastUsed).toLocaleDateString()}.</>}
+          {!feedLastUsed && feedActive && <> Not fetched yet.</>}
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <button onClick={() => issueFeed(true)} disabled={feedBusy} style={{ fontSize: 10, background: "none", border: "none", color: "#8a7a58", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+              reset link
+            </button>
+            <button onClick={revokeFeed} disabled={feedBusy} style={{ fontSize: 10, background: "none", border: "none", color: "#a06060", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+              turn off
+            </button>
+          </div>
+        </div>
+      )}
       <Row label="One-time download" sub="A snapshot — won't update later">
         <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer" }}>
           ↓ .ics
