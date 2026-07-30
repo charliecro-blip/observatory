@@ -75,9 +75,23 @@ router.get("/habits", async (req, res) => {
   const moonApplyingTo = new Set(moonAspects.filter((a) => a.applying).map((a) => (a.planet1 === "Moon" ? a.planet2 : a.planet1)));
   const sky = { element: elem, hourRuler, phase: phaseQuadrant(phaseName), voc: voidOfCourse(jd).voc, moonApplyingTo, retro };
 
+  // The client's LOCAL date anchors the whole day/streak window — the server's
+  // UTC "today" is tomorrow for a US-evening user (the 8pm-ET rollover bug),
+  // which visually un-checked habits mid-evening and broke streaks. UTC stays
+  // the fallback for old clients only.
+  const todayStr = /^\d{4}-\d{2}-\d{2}$/.test((req.query.today as string) ?? "")
+    ? (req.query.today as string)
+    : new Date().toISOString().slice(0, 10);
+  const dayStrAt = (offset: number) => {
+    // Date-string arithmetic anchored at noon UTC so the offset math itself
+    // can't roll a day.
+    const d = new Date(todayStr + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
   // Fetch last 14 days of logs for all habits
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = dayStrAt(-14);
   const logs = await db.select().from(habitLogs).where(and(eq(habitLogs.testerId, testerId), gte(habitLogs.date, cutoffStr)));
 
   const logsByHabit = logs.reduce((acc, l) => {
@@ -86,14 +100,11 @@ router.get("/habits", async (req, res) => {
   }, {} as Record<number, Set<string>>);
 
   // Build last-14-day streak array and current streak count
-  const today = new Date();
   const enriched = rows.map(h => {
     const doneSet = logsByHabit[h.id] ?? new Set();
     const days = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today); d.setDate(d.getDate() - (13 - i));
-      const ds = d.toISOString().slice(0, 10);
-      const isToday = ds === today.toISOString().slice(0, 10);
-      return { date: ds, done: doneSet.has(ds), isToday };
+      const ds = dayStrAt(-(13 - i));
+      return { date: ds, done: doneSet.has(ds), isToday: ds === todayStr };
     });
     // Current streak: count consecutive done days backwards from yesterday
     let streak = 0;
@@ -108,7 +119,7 @@ router.get("/habits", async (req, res) => {
       favoredElements: csv(h.favoredElements),
       favoredPlanets: csv((h as any).favoredPlanets),
       favoredPhases: csv(h.favoredPhases),
-      days, streak, doneToday: doneSet.has(today.toISOString().slice(0, 10)),
+      days, streak, doneToday: doneSet.has(todayStr),
       resonance: timing.match, resonanceNote: timing.note,
     };
   });

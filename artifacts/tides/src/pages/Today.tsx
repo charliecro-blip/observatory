@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
@@ -521,7 +522,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const { essential, setDensity } = useUiDensity();
   const { updateLocation, profile: testerProfile } = useTester();
   const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   // Crossings display moved to Settings (a tuning knob, not a daily control).
   const crossingsOn = prefs.display.todayShowCrossings;
   const [locating, setLocating] = useState(false);
@@ -529,7 +530,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // Travel hint dismissal is per-day: dismissing today shouldn't hide a real
   // move next month.
   const [dismissedTravelHint, setDismissedTravelHint] = useState(() =>
-    localStorage.getItem("obs_travel_hint_dismissed") === new Date().toISOString().slice(0, 10));
+    localStorage.getItem("obs_travel_hint_dismissed") === localToday());
 
   function useCurrentLocation() {
     if (!navigator.geolocation) { setLocationError(true); return; }
@@ -551,6 +552,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
+  const [journalSyncFailed, setJournalSyncFailed] = useState(false);
+  // Guards the server-hydrate race (audit P1): if the user starts typing
+  // before the "no local copy" server fetch resolves, the fetch must not
+  // stomp what they just typed.
+  const journalTypedRef = useRef(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [waveHover, setWaveHover] = useState<{ x: number; y: number; hourIdx: number } | null>(null);
@@ -562,9 +568,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     // No local copy (new device / cleared storage) — hydrate from the server
     // check-in so the journal follows the account, not the browser.
     if (!testerId) return;
-    fetch("/api/check-ins/today", { headers: { "x-tester-id": testerId } })
+    fetch(`/api/check-ins/today?date=${today}`, { headers: { "x-tester-id": testerId } })
       .then(r => (r.ok ? r.json() : null))
-      .then(row => { if (row?.notes) setJournalText(row.notes); })
+      .then(row => { if (row?.notes && !journalTypedRef.current) setJournalText(row.notes); })
       .catch(() => {});
   }, [testerId, today]);
 
@@ -572,7 +578,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // The Log, sky-stamped — localStorage stays as the instant/offline copy.
   const journalPostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function saveJournal(text: string) {
+    journalTypedRef.current = true;
     setJournalText(text);
+    setJournalSyncFailed(false);
     localStorage.setItem(journalKey(testerId, today), text);
     setJournalSaved(true);
     setTimeout(() => setJournalSaved(false), 1500);
@@ -583,7 +591,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         method: "POST",
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
         body: JSON.stringify({ date: today, notes: text }),
-      }).catch(() => {});
+      }).then(r => { if (!r.ok) setJournalSyncFailed(true); }).catch(() => setJournalSyncFailed(true));
     }, 900);
   }
 
@@ -633,7 +641,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const { data: habits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
     queryFn: async () => {
-      const r = await fetch("/api/habits", { headers: testerId ? { "x-tester-id": testerId } : {} });
+      const r = await fetch(`/api/habits?today=${localToday()}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
       return r.json();
     },
     enabled: !!testerId,
@@ -784,8 +792,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>Logbook line</span>
-            <span style={{ fontSize: 9, color: "var(--color-muted)" }}>
-              {journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
+            <span style={{ fontSize: 9, color: journalSyncFailed ? "#a03030" : "var(--color-muted)" }}>
+              {journalSyncFailed ? "saved on this device only — will retry" : journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
             </span>
           </div>
           <textarea
@@ -872,7 +880,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 }}>
                   {locating ? "Locating…" : "📍 In a new place? Tap to update your sky"}
                 </button>
-                <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", new Date().toISOString().slice(0, 10)); setDismissedTravelHint(true); }}
+                <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", localToday()); setDismissedTravelHint(true); }}
                   style={{ fontSize: 9, color: "#aab", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>✕</button>
               </span>
             );
@@ -1533,12 +1541,17 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
   const [rating, setRating] = useState<string | null>(() => {
     try { const r = JSON.parse(localStorage.getItem(feltKey(testerId, today)) ?? "null"); return r?.felt ?? null; } catch { return null; }
   });
+  // localStorage always saves; the server row (what The Log actually reads,
+  // and what survives an account restore) can silently fail while "logged ✓"
+  // keeps showing (audit P0 #4). Track it separately so a failed sync is
+  // visible instead of invisible.
+  const [syncFailed, setSyncFailed] = useState(false);
 
   // Retrospective: scan the last 30 days of felt logs, tally by tide character
   const retro = useMemo(() => {
     const byChar: Record<string, { aligned: number; total: number }> = {};
     for (let d = 0; d < 30; d++) {
-      const day = new Date(new Date(today).getTime() - d * 86400000).toISOString().slice(0, 10);
+      const day = addDaysLocal(today, -d);
       try {
         const r = JSON.parse(localStorage.getItem(feltKey(testerId, day)) ?? "null");
         if (r?.felt && r?.character) {
@@ -1557,6 +1570,7 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
 
   function pick(felt: string) {
     setRating(felt);
+    setSyncFailed(false);
     localStorage.setItem(feltKey(testerId, today), JSON.stringify({
       felt, character: now?.tide?.character ?? null, level: now?.tide?.level ?? null, date: today,
     }));
@@ -1570,14 +1584,19 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
       method: "POST",
       headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
       body: JSON.stringify({ date: today, behaviorTags: tags }),
-    }).catch(() => {});
+    }).then(r => { if (!r.ok) setSyncFailed(true); }).catch(() => setSyncFailed(true));
   }
 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>How did today feel?</span>
-        {rating && <span style={{ fontSize: 9, color: "var(--color-muted)" }}>logged ✓ — tap to change</span>}
+        {rating && !syncFailed && <span style={{ fontSize: 9, color: "var(--color-muted)" }}>logged ✓ — tap to change</span>}
+        {rating && syncFailed && (
+          <button onClick={() => pick(rating)} style={{ fontSize: 9, color: "#a03030", background: "none", border: "none", cursor: "pointer" }}>
+            saved on this device only — tap to retry
+          </button>
+        )}
       </div>
       <div style={{ display: "flex", gap: 7 }}>
         {FELT_OPTIONS.map((o) => (
@@ -1656,7 +1675,7 @@ function tlApproxSunriseSunset(dateStr: string, lat: number, lon: number): {sunr
 function tlComputePlanetaryHours(dateStr: string, lat: number, lon: number) {
   const ss = tlApproxSunriseSunset(dateStr, lat, lon);
   const ss1 = tlApproxSunriseSunset(
-    new Date(new Date(dateStr).getTime() + 86400000).toISOString().slice(0,10), lat, lon
+    addDaysLocal(dateStr, 1), lat, lon
   );
   if (!ss || !ss1) return [];
   const { sunrise, sunset } = ss;
@@ -2035,7 +2054,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   lat?: number; lon?: number;
 }) {
   const qc = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   // Defensive: these come from queries that can momentarily hand back a
   // non-array (a transient error body). The ritual card is time-gated, so a
   // bad value here surfaces as a whole-page crash rather than a skipped card.
@@ -2044,7 +2063,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   const cal = Array.isArray(gcalEvents) ? gcalEvents : [];
   const { data: habitsRaw = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => { const j = await (await fetch("/api/habits", { headers: { "x-tester-id": testerId ?? "" } })).json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const j = await (await fetch(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId ?? "" } })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const habits = Array.isArray(habitsRaw) ? habitsRaw : [];
@@ -2077,7 +2096,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   // Morning-only: if yesterday was never rated, offer it here — the reflect
   // loop's question belongs to the evening, but an unrated yesterday is still
   // worth thirty seconds over coffee.
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const yesterday = addDaysLocal(localToday(), -1);
   const { data: yDay } = useQuery<any>({
     queryKey: ["logs-day", testerId, yesterday],
     queryFn: async () => {
@@ -2264,10 +2283,10 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
 function TodayHabits({ testerId, now }: { testerId: string; now: any }) {
   const qc = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   const { data: habits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => (await fetch("/api/habits", { headers: { "x-tester-id": testerId } })).json(),
+    queryFn: async () => (await fetch(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId } })).json(),
   });
 
   const toggleLog = useMutation({

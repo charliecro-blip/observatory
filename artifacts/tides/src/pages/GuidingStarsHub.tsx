@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
@@ -177,7 +178,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   });
   const { data: allHabits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => { const j = await (await fetch("/api/habits", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const j = await (await fetch(`/api/habits?today=${localToday()}`, { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   // Steps (milestones) — the one useful bit of the old Projects tab, folded in.
@@ -278,7 +279,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       // so the deadline-first weaver keeps the sequence.
       const payload = open.map((t) => {
         const si = stepOrder.get(t.milestoneId) ?? 0;
-        const due = new Date(Date.now() + (3 + si * 4) * 86400000).toISOString().slice(0, 10);
+        const due = addDaysLocal(localToday(), 3 + si * 4);
         return { title: t.title, estimatedMinutes: 45, energy: "medium", dueDate: due };
       });
       const wr = await fetch("/api/plan/weave", { method: "POST", headers: authHeaders, body: JSON.stringify({ tasks: payload, horizon: "month", lat, lon, tz: new Date().getTimezoneOffset() }) });
@@ -316,7 +317,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const toggleHabitToday = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
       if (done) await fetch(`/api/habits/${id}/log`, { method: "DELETE", headers: authHeaders });
-      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers: authHeaders, body: JSON.stringify({ date: new Date().toISOString().slice(0, 10) }) });
+      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers: authHeaders, body: JSON.stringify({ date: localToday() }) });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["habits"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });

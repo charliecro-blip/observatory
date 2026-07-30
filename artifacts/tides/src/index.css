@@ -75,7 +75,15 @@
    Note: most page content still uses hardcoded hex (#fff cards etc.) and won't
    flip yet — this covers the app chrome (shell/rail/topbar) tonight; a full
    page-by-page conversion to these variables is a follow-up pass. */
+/* Was declared nowhere, so every native form control (input/select/textarea/
+   checkbox) kept the OS's light-mode chrome — UA-default black text on the
+   app's own dark backgrounds. This is what made typing in dark mode
+   effectively invisible on the win/intention/event/birth-data inputs
+   (audit P0 #6); one declaration per theme fixes every native control at
+   once, no per-input styling needed. */
+:root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --color-background: #14181f;
   --color-rail: #1a1f28;
   --color-border: #2a3038;

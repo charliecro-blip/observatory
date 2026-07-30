@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
 import {
   glyphChar, GLYPH_INDEX, fontFor, thinFor, GLYPH_ELEMENT_COLORS, type GlyphTheme,
@@ -338,7 +339,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
 
   const W = 1080, H = format === "story" ? 1920 : 1350;
   const s = SURFACE[theme];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
 
   async function doExport() {
     if (!svgRef.current || busy) return;

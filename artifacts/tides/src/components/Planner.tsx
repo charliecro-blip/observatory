@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
@@ -224,7 +225,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       <button onClick={() => editCard(i, { dueDate: null })} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
                     </label>
                   ) : (
-                    <button onClick={() => editCard(i, { dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) })}
+                    <button onClick={() => editCard(i, { dueDate: addDaysLocal(localToday(), 3) })}
                       style={{ fontSize: 10.5, color: "#a09888", background: "none", border: "1px dashed var(--color-border)", borderRadius: 6, padding: "3px 9px", cursor: "pointer" }}>
                       + due date
                     </button>

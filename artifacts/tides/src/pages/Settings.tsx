@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { logEvent } from "@/lib/analytics";
@@ -39,7 +40,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 0" }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, color: "#333" }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--color-foreground)" }}>{label}</div>
         {sub && <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{sub}</div>}
       </div>
       {children}
@@ -734,10 +735,12 @@ function CycleSection({ testerId }: { testerId: string | null }) {
   const save = useMutation({
     mutationFn: async () => {
       const method = cycle ? "PATCH" : "POST";
-      await fetch("/api/cycle", {
+      const r = await fetch("/api/cycle", {
         method, headers: authH(testerId),
         body: JSON.stringify({ cycleStartDate: form.cycleStartDate, cycleLength: parseInt(form.cycleLength), lutealLength: parseInt(form.lutealLength) }),
       });
+      // Was unconditional "Saved ✓" regardless of status (audit P0 #4).
+      if (!r.ok) throw new Error("cycle save failed");
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cycle"] }); setSaved(true); setTimeout(() => setSaved(false), 2000); },
   });
@@ -790,8 +793,9 @@ function CycleSection({ testerId }: { testerId: string | null }) {
           <button onClick={() => save.mutate()} disabled={!form.cycleStartDate} style={{
             padding: "7px 16px", borderRadius: 7, border: "none", fontSize: 11,
             background: form.cycleStartDate ? "#1a2a3a" : "#e0dcd6", color: form.cycleStartDate ? "#fff" : "#aaa", cursor: "pointer",
-          }}>{saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
+          }}>{save.isPending ? "Saving…" : saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
           {cycle && <button onClick={() => del.mutate()} style={{ fontSize: 10, color: "#c06060", background: "none", border: "none", cursor: "pointer" }}>Remove</button>}
+          {save.isError && <span style={{ fontSize: 10, color: "#a03030" }}>Couldn't save — try again.</span>}
         </div>
       </div>
     </SectionCard>
@@ -970,6 +974,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [locationResults, setLocationResults] = useState<any[]>([]);
   const [locationSearch, setLocationSearch] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1023,16 +1028,23 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   async function save() {
     if (!testerId || !form.birthDate || form.birthLat == null) return;
     setSaving(true);
+    setSaveError(false);
     try {
-      await fetch("/api/natal-chart", {
+      const r = await fetch("/api/natal-chart", {
         method: "POST",
         headers: authH(testerId),
         body: JSON.stringify({ birthDate: form.birthDate, birthTime: form.birthTime || "12:00", birthPlace: form.birthPlace, birthLat: form.birthLat, birthLon: form.birthLon, utcOffset: form.utcOffset, timeKnown: !!form.birthTime }),
       });
+      // Was unconditional — a 429/500 during a birth-TIME correction would
+      // show "Saved" and close the editor while every reading kept using the
+      // old (wrong) chart, with no sign anything was off (audit P0 #2).
+      if (!r.ok) { setSaveError(true); return; }
       qc.invalidateQueries({ queryKey: ["natal-chart"] });
       qc.invalidateQueries({ queryKey: ["currents"] });
       setSaved(true); setEditing(false);
       setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError(true);
     } finally { setSaving(false); }
   }
 
@@ -1108,6 +1120,9 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
             </div>
           )}
 
+          {saveError && (
+            <div style={{ fontSize: 10.5, color: "#a03030", marginBottom: 6 }}>Couldn't save — try again.</div>
+          )}
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
             {editing && (
               <button onClick={() => { setEditing(false); setLocationSearch(chart?.birthPlace ?? ""); setLocationResults([]); }}
@@ -1333,7 +1348,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
   const journalEntries = useMemo(() => {
     const entries: { date: string; text: string }[] = [];
     for (let d = 0; d < 14; d++) {
-      const date = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+      const date = addDaysLocal(localToday(), -d);
       const key = `tides-journal-${testerId ?? "anon"}-${date}`;
       const text = localStorage.getItem(key);
       if (text?.trim()) entries.push({ date, text });
@@ -1418,7 +1433,17 @@ export default function Settings({ testerId }: { testerId: string | null }) {
               <div style={{ fontSize: 13, fontWeight: 500 }}>{profile?.displayName}</div>
               <div style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginTop: 2 }}>{profile?.testerId}</div>
             </div>
-            <button onClick={resetProfile} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>
+            <button onClick={() => {
+              // Was a one-tap, unconfirmed, unrecoverable action — clearProfile
+              // wipes the recovery code from localStorage too, so a mis-tap
+              // here silently destroyed the account with no way back
+              // (audit P0 #5). Now requires reading and confirming the key.
+              const code = profile?.recoveryCode;
+              const warning = code
+                ? `Switching clears this browser's profile. Your account key is:\n\n${code}\n\nWrite it down or copy it from Account above — it's the ONLY way back. Continue?`
+                : `Switching clears this browser's profile, and no account key has synced yet — there may be no way back. Continue anyway?`;
+              if (window.confirm(warning)) resetProfile();
+            }} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>
               Switch profile
             </button>
           </div>

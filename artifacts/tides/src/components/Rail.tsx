@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { localToday, localDateStr } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
@@ -324,7 +325,7 @@ const PLANET_MEANING: Record<string, string> = {
 
 // Approximate sunrise/sunset for the Rail (mirrors Today.tsx logic)
 export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   // lstNoon below is expressed in UTC hours, so the base these offsets are added
   // to must also be UTC midnight — otherwise sun times are shifted by the local
   // timezone offset (e.g. solar noon rendering as ~5pm instead of ~1pm).
@@ -356,7 +357,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
   if (!sun) return null;
 
   const now = new Date();
-  const midnight = new Date(now.toISOString().slice(0, 10) + "T00:00:00");
+  const midnight = new Date(localDateStr(now) + "T00:00:00");
   const totalMs = 24 * 3600000;
   const srPct = (sun.sunrise.getTime() - midnight.getTime()) / totalMs * 100;
   const ssPct = (sun.sunset.getTime() - midnight.getTime()) / totalMs * 100;
@@ -456,13 +457,19 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const qc = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
 
+  // A non-2xx response (e.g. a Neon cold start) still resolves r.json() —
+  // often {error:"..."} — without throwing, so an unguarded array default
+  // never kicks in and a later .filter()/.map() on that object took down the
+  // whole app via the ErrorBoundary (audit P0 #8). Today.tsx already guards
+  // its equivalent queries this way; Rail (which mounts first) didn't.
   const { data: tasks = [] } = useQuery<any[]>({
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
       const r = await fetch(`/api/tasks?date=${today}`, { headers: testerId ? {"x-tester-id": testerId} : {} });
-      return r.json();
+      const j = await r.json();
+      return Array.isArray(j) ? j : [];
     },
     enabled: !!testerId,
     refetchInterval: 30_000,
@@ -472,7 +479,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     queryKey: ["goals", testerId],
     queryFn: async () => {
       const r = await fetch("/api/planning/goals", { headers: testerId ? {"x-tester-id": testerId} : {} });
-      return r.json();
+      const j = await r.json();
+      return Array.isArray(j) ? j : [];
     },
     enabled: !!testerId,
   });

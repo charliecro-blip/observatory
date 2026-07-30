@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrents, useNatalAngles, useTidesNow } from "@/hooks/useTides";
 import { PLANET_CORE, planetInSignNote } from "@/lib/sky-readings";
@@ -128,7 +129,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
   });
   const { data: relHabits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => { const r = await fetch("/api/habits", { headers: authHeaders }); const j = await r.json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const r = await fetch(`/api/habits?today=${localToday()}`, { headers: authHeaders }); const j = await r.json(); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const { data: relTasks = [] } = useQuery<any[]>({

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSkyEvents, useTidesWeek, useTidesNow } from "@/hooks/useTides";
@@ -25,8 +26,8 @@ const PLANET_COLORS: Record<string, string> = {
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T12:00:00");
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const today = localToday();
+  const tomorrow = addDaysLocal(today, 1);
   if (dateStr === today) return "Today";
   if (dateStr === tomorrow) return "Tomorrow";
   return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
@@ -460,7 +461,7 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
 // the Almanac tab is retired (owner 2026-07-29: "the wave chart is money").
 
 export function QualityStrip({ week, days, onPick }: { week: any; days: number; onPick?: (date: string) => void }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   return (
     <div style={{ padding:"12px 20px 14px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
       <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:8 }}>The water ahead — next {days} days</div>
@@ -501,7 +502,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
 
   const allEvents = eventsData?.events ?? [];
   const weekDayMap = new Map((week?.days ?? []).map((d: any) => [d.date, d]));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   const nowDate = new Date();
 
   function handleSelect(ev: SkyEvent) {

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
@@ -59,7 +60,7 @@ const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", 
 
 export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
   const qc = useQueryClient();
-  const today = new Date().toISOString().slice(0,10);
+  const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"" });
   const [newGoalId, setNewGoalId] = useState<number|"">("");
@@ -141,7 +142,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
   // This week's completions per element — a habit tagged with multiple
   // elements counts toward each. Reuses the 14-day `days` log already fetched
   // per habit rather than a separate query.
-  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const weekAgo = addDaysLocal(localToday(), -6);
   const weekByElement: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
   for (const h of habits) {
     const els = asArr(h.favoredElements);

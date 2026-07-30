@@ -136,12 +136,15 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
           </div>
         </div>
       )}
-      {/* Name a win — the written line that carries the meaning */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      {/* Name a win — the written line that carries the meaning. Was a
+          non-wrapping flex row whose fixed-width members summed past a phone
+          screen — the log-it button was unreachable, blocking the daily win
+          loop on mobile (audit P0 #7). */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         <input value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === "Enter" && text.trim() && nameWin.mutate()}
           placeholder="Name a win in your own words…"
-          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
         {data.stars.length > 0 && (
           <select value={starId} onChange={e => setStarId(e.target.value ? Number(e.target.value) : "")}
             style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "#777", background: "var(--color-card)", maxWidth: 110 }}>
@@ -333,11 +336,11 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
           ✓ intention set: "{data.intentions[0].text}" — the wake will answer at the next New Moon.
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
           <input value={intent} onChange={e => setIntent(e.target.value)}
             onKeyDown={e => e.key === "Enter" && intent.trim() && setIntention.mutate()}
             placeholder="This cycle, I mean to…"
-            style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+            style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
           {data.stars.length > 0 && (
             <select value={intentStar} onChange={e => setIntentStar(e.target.value ? Number(e.target.value) : "")}
               style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "#777", background: "var(--color-card)", maxWidth: 110 }}>

@@ -154,9 +154,12 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 999,
       display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120,
+      padding: "120px 16px 16px",
     }} onClick={e => e.target === e.currentTarget && onClose()}>
+      {/* Was a fixed 440px with no maxWidth — the Add button sat off-screen on
+          a 390px phone, making quick capture unusable on mobile (audit P0 #7). */}
       <div style={{
-        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440,
+        background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440, maxWidth: "100%",
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
         <div style={{ fontSize: 12, color: "#aaa", marginBottom: 4 }}>Quick capture</div>
@@ -167,9 +170,9 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
           rows={4}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select value={windowType} onChange={e => setWindowType(e.target.value)}
-            style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "#555", background: "var(--color-card-2)" }}>
+            style={{ flex: 1, minWidth: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "#555", background: "var(--color-card-2)" }}>
             <option value="">Best time: any</option>
             {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
@@ -367,6 +370,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const [locationSearch, setLocationSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [birthSaveError, setBirthSaveError] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Chronotype form state — a lightweight v1: one weekday window + one weekend
@@ -455,11 +459,16 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     suggestDst(birthDate, r.lat ?? null);
   }
 
-  async function saveBirthData() {
-    if (!createdTesterId || !birthDate || birthLat == null || birthLon == null) return;
+  // Was: fire-and-forget — a 429/500 here meant the person finished onboarding
+  // believing their chart was saved, and every reading afterward silently said
+  // "add your birth details" with no clue why (audit P0 #2). Now returns
+  // success so the caller can block advancing and say so.
+  async function saveBirthData(): Promise<boolean> {
+    if (!createdTesterId || !birthDate || birthLat == null || birthLon == null) return false;
     setSaving(true);
+    setBirthSaveError(false);
     try {
-      await fetch("/api/natal-chart", {
+      const r = await fetch("/api/natal-chart", {
         method: "POST",
         headers: { "x-tester-id": createdTesterId, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -472,6 +481,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           timeKnown: !timeUnknown && !!birthTime,
         }),
       });
+      if (!r.ok) { setBirthSaveError(true); return false; }
+      return true;
+    } catch {
+      setBirthSaveError(true);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -479,8 +493,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
 
   async function handleBirthSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (birthDate && birthLat != null) {
+      const ok = await saveBirthData();
+      if (!ok) return; // stay on this step — don't advance past a save that didn't happen
+    }
     logEvent("onboard_chart_added");
-    if (birthDate && birthLat != null) await saveBirthData();
     setStep("chronotype");
   }
 
@@ -556,7 +573,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:18 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"#888", lineHeight:1.65 }}>
-            You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, private to your device, and easy to add later.
+            You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, kept private to your account, and easy to add later.
           </div>
         </div>
 
@@ -664,6 +681,11 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </div>
           )}
 
+          {birthSaveError && (
+            <div style={{ fontSize:11, color:"#a03030", background:"#fdf0ec", border:"1px solid #e8c8c0", borderRadius:8, padding:"8px 12px", marginTop:4 }}>
+              Couldn't save your chart — check your connection and try again.
+            </div>
+          )}
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
             {/* Explore-first is a co-equal path (persona study: the birth-data
                 wall costs the growth + skeptic audiences before they see value). */}

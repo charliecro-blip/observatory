@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
 import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/elements";
 import { smoothPathD } from "@/lib/smoothPath";
@@ -70,7 +71,7 @@ function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: bool
   const n = days.length || 1;
   const gap = timeframe === "week" ? 6 : 2;
   const barW = (W - gap * (n - 1)) / n;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = localToday();
   const labelCol = dark ? "#9aa4bc" : "#7a7264";
   const axisCol = dark ? "#5a6478" : "#c4bcae";
 

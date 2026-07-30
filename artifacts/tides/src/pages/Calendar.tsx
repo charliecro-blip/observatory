@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { localToday, localDateStr } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
@@ -161,7 +162,7 @@ function computeAllPlanetaryHours(dateStr: string, lat: number, lon: number): Pl
     const s = prevSunset.getTime() + i * preH;
     const e = prevSunset.getTime() + (i + 1) * preH;
     if (e > sunrise.getTime()) break;
-    if (new Date(e).toISOString().slice(0,10) !== dateStr) continue;
+    if (localDateStr(new Date(e)) !== dateStr) continue;
     preHours.push({
       ruler: CHALDEAN[(prevRulerIdx + 12 + i) % 7],
       startTime: new Date(s), endTime: new Date(e),
@@ -216,7 +217,7 @@ function getWeekDates(dateStr: string): string[] {
   for (let i = 0; i < 7; i++) {
     const nd = new Date(d);
     nd.setDate(d.getDate() - dow + i);
-    dates.push(nd.toISOString().slice(0, 10));
+    dates.push(localDateStr(nd));
   }
   return dates;
 }
@@ -238,7 +239,7 @@ function fmtHour(h: number): string {
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T12:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 function vocRangeForDate(dateStr: string, eventsMap: Map<string, SkyEvent[]>): { startMin: number; endMin: number } | null {
   const events = eventsMap.get(dateStr) ?? [];
@@ -283,9 +284,11 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
     onSuccess: () => { invalidateWindows(qc); onClose(); },
   });
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100 }}
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100,padding:"100px 16px 16px" }}
       onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
+      {/* Was a fixed 380px, no maxWidth — Cancel/Save clipped off-screen on
+          phones, and this is the only way to add an event (audit P0 #7). */}
+      <div style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,maxWidth:"100%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
         <div style={{ fontSize:14,fontWeight:600,color: "var(--color-primary)",marginBottom:14 }}>
           New event · {new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
         </div>
@@ -963,7 +966,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 }) {
   const fmtTime = useTimeFormat();
   const qc = useQueryClient();
-  const isToday = dateStr===new Date().toISOString().slice(0,10);
+  const isToday = dateStr===localToday();
   const dateObj = new Date(dateStr+"T12:00:00");
   const dayLabel = dateObj.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const elem = dayData?.element??"", phase = dayData?.moonPhase??"", qs = dayData?.qualityScore??0;
@@ -1239,7 +1242,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
 export default function Calendar({ testerId, now, lat, lon }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
 }) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = localToday();
   const todayYear  = parseInt(today.slice(0,4));
   const todayMonth = parseInt(today.slice(5,7))-1;
 
@@ -1316,7 +1319,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const gcalMap = useMemo(() => {
     const m = new Map<string, GCalEvent[]>();
     for (const ev of gcalData?.events ?? []) {
-      const d = new Date(ev.start).toISOString().slice(0, 10);
+      const d = localDateStr(new Date(ev.start));
       const arr = m.get(d) ?? [];
       arr.push(ev);
       m.set(d, arr);
@@ -1327,7 +1330,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const windowsMap = useMemo(()=>{
     const m = new Map<string,PlanningWindow[]>();
     for (const w of allWindows) {
-      const d = new Date(w.startTime).toISOString().slice(0,10);
+      const d = localDateStr(new Date(w.startTime));
       const arr = m.get(d)??[];
       arr.push(w);
       m.set(d,arr);

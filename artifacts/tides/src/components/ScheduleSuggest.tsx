@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { localToday } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
@@ -41,7 +42,7 @@ export function ScheduleSuggest({
   // Free users go straight to picking their own time (manual scheduling is
   // free); the app's best-time intelligence is the premium layer.
   const [customOpen, setCustomOpen] = useState(!unlocked);
-  const [customDate, setCustomDate] = useState(new Date().toISOString().slice(0, 10));
+  const [customDate, setCustomDate] = useState(localToday());
   const [customStart, setCustomStart] = useState("09:00");
   const [showPremium, setShowPremium] = useState(false);
 

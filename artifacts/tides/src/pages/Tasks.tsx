@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
 import { useCurrents } from "@/hooks/useTides";
@@ -50,7 +51,7 @@ function authH(tid:string|null) {
 
 export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
   const qc = useQueryClient();
-  const today = new Date().toISOString().slice(0,10);
+  const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
   // After a task is created, offer to find it a good time (→ Ahead calendar).
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
@@ -165,10 +166,13 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const [reflectText, setReflectText] = useState("");
   const saveReflection = useMutation({
     mutationFn: async (text: string) => {
-      await fetch("/api/logs", {
+      const r = await fetch("/api/logs", {
         method: "POST", headers: authH(testerId),
         body: JSON.stringify({ type: "note", notes: text, logDate: today, loggedAt: new Date().toISOString() }),
       });
+      // Was unconditional — the modal closed and the typed note vanished on
+      // any server error, with no error surfaced (audit P0 #4).
+      if (!r.ok) throw new Error("reflection save failed");
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["logs"] }); setReflectOn(null); setReflectText(""); },
   });
@@ -190,7 +194,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   // Timeframe buckets — one page, every active task lands in exactly one, and
   // "Someday" (no due date) is always shown so nothing can hide.
-  const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const weekEnd = addDaysLocal(localToday(), 7);
   const buckets: { key: string; label: string; accent?: string; tasks: Task[] }[] = [
     { key: "overdue",  label: "Overdue",     accent: "#a04040", tasks: active.filter(t => t.dueDate && t.dueDate < today) },
     { key: "today",    label: "Today",       accent: "#3a6020", tasks: active.filter(t => t.dueDate === today) },
@@ -223,6 +227,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"#aaa"}}>Log it</button>
               <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"#a0b090",cursor:"pointer",fontSize:11}}>skip</button>
             </div>
+            {saveReflection.isError && <div style={{fontSize:10.5,color:"#a03030",marginTop:6}}>Couldn't save that note — try again.</div>}
           </div>
         )}
 
@@ -299,10 +304,11 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 </select>
               </div>
             )}
-            <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()}
+            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
+              {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
+              <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
                 style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"#e0dcd6",color:newTitle.trim()?"#fff":"#aaa",cursor:"pointer"}}>
-                Add task
+                {addTask.isPending ? "Adding…" : "Add task"}
               </button>
             </div>
           </div>

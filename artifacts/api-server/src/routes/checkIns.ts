@@ -12,7 +12,10 @@ function todayString(): string {
 
 router.get("/check-ins/today", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const today = todayString();
+  // The client passes its LOCAL date — the server's UTC "today" is a different
+  // day for US-evening users (the 8pm-ET rollover bug). UTC stays the fallback
+  // for old clients only.
+  const today = (req.query.date as string | undefined) ?? todayString();
   const [row] = await db
     .select()
     .from(dailyCheckIns)
