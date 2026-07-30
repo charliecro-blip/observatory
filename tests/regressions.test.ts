@@ -614,3 +614,101 @@ describe("tide chart scrub", () => {
     expect(shouldCapture(0, 0, "mouse")).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 17. THE RITUAL LOOP READ THE OFFICE CLOCK, NOT THE PERSON
+// Shipped bug: morning was `hour < 12` and evening `hour >= 18`, while the app
+// had been *collecting* wake/sleep times since onboarding and using them
+// everywhere else. A night owl (wake 11:00, sleep 03:00) was handed "Cast off"
+// at 07:00 while asleep and never once saw "Log the day" — their entire evening
+// falls after midnight, where the old rule returned null.
+//
+// This imports the real implementation rather than restating it: the whole
+// point is that the shipped gate and the tested gate cannot drift apart.
+// ─────────────────────────────────────────────────────────────────────────────
+import { ritualPhase } from "../artifacts/tides/src/lib/chronotype";
+
+/** A local-wall-clock Date at HH:MM — the phase gate reads local hours. */
+const at = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(2026, 6, 30, h, m, 0, 0); // 30 Jul 2026, local
+  return d;
+};
+const chrono = (wakeTime?: string, sleepTime?: string) =>
+  ({ profile: "steady", freeWindows: {}, wakeTime, sleepTime, updatedAt: "" }) as any;
+
+describe("ritual loop is chronotype-relative", () => {
+  const owl = chrono("11:00", "03:00");   // wakes 11am, sleeps 3am
+  const lark = chrono("05:00", "21:00");  // wakes 5am, sleeps 9pm
+
+  it("the night owl's evening exists at all — it is after midnight", () => {
+    expect(ritualPhase(owl, at("01:00"))).toBe("evening"); // last 3h before 03:00
+    expect(ritualPhase(owl, at("02:59"))).toBe("evening");
+    // The old rule: hour 1 is < 12, so this was "morning" — the wrong ritual.
+    expect(new Date(at("01:00")).getHours() < 12).toBe(true);
+  });
+
+  it("the night owl gets no morning card while still asleep", () => {
+    expect(ritualPhase(owl, at("07:00"))).toBe(null); // old rule said "morning"
+    expect(ritualPhase(owl, at("11:30"))).toBe("morning");
+    expect(ritualPhase(owl, at("14:59"))).toBe("morning"); // wake + 4h
+    expect(ritualPhase(owl, at("15:30"))).toBe(null);
+  });
+
+  it("the early bird's evening starts before 18:00", () => {
+    expect(ritualPhase(lark, at("18:30"))).toBe("evening"); // 21:00 − 3h
+    expect(ritualPhase(lark, at("17:00"))).toBe(null);
+    expect(ritualPhase(lark, at("05:30"))).toBe("morning");
+    expect(ritualPhase(lark, at("09:30"))).toBe(null);      // old rule said "morning"
+  });
+
+  it("up before the alarm still counts as morning", () => {
+    expect(ritualPhase(lark, at("04:15"))).toBe("morning"); // 45min early
+    expect(ritualPhase(lark, at("03:00"))).toBe(null);      // genuinely the middle of the night
+  });
+
+  it("still up past bedtime still counts as evening — the day is unlogged", () => {
+    expect(ritualPhase(lark, at("22:30"))).toBe("evening"); // 1.5h past 21:00
+    expect(ritualPhase(lark, at("23:30"))).toBe(null);
+  });
+
+  it("a short waking day splits 4:3 instead of overlapping", () => {
+    const brief = chrono("08:00", "15:00"); // 7h awake — exactly the two spans
+    expect(ritualPhase(brief, at("08:30"))).toBe("morning");
+    expect(ritualPhase(brief, at("11:59"))).toBe("morning");
+    expect(ritualPhase(brief, at("12:01"))).toBe("evening");
+    const tiny = chrono("08:00", "11:30"); // 3.5h — compressed to 2h / 1.5h
+    expect(ritualPhase(tiny, at("09:00"))).toBe("morning");
+    expect(ritualPhase(tiny, at("10:30"))).toBe("evening");
+  });
+
+  it("EVERY schedule gets both halves, anchored to that person's own day", () => {
+    const schedules: [string, string][] = [
+      ["11:00", "03:00"], ["05:00", "21:00"], ["08:00", "15:00"],
+      ["22:00", "20:00"], ["03:00", "12:00"], ["00:30", "16:00"],
+    ];
+    for (const [wake, sleep] of schedules) {
+      const minutes = Array.from({ length: 1440 }, (_, m) =>
+        ritualPhase(chrono(wake, sleep), at(`${Math.floor(m / 60)}:${m % 60}`)));
+      expect(minutes.filter((p) => p === "morning").length).toBeGreaterThan(30);
+      expect(minutes.filter((p) => p === "evening").length).toBeGreaterThan(30);
+      // Each half is one contiguous stretch, not scattered — a ritual that
+      // switched back and forth across the day would be incoherent.
+      const transitions = minutes.filter((p, i) => p !== minutes[(i + 1439) % 1440]).length;
+      expect(transitions).toBeLessThanOrEqual(4);
+      // And the anchors are the person's, not the clock's: waking is inside
+      // the morning stretch, bedtime is at the tail of the evening one.
+      const min = (hhmm: string) => Number(hhmm.split(":")[0]) * 60 + Number(hhmm.split(":")[1]);
+      expect(minutes[min(wake)]).toBe("morning");
+      expect(minutes[(min(sleep) + 1439) % 1440]).toBe("evening");
+    }
+  });
+
+  it("falls back to the wall clock when the chronotype is unset or unusable", () => {
+    for (const c of [undefined, chrono(), chrono("07:00"), chrono(undefined, "22:00"), chrono("09:00", "09:00")]) {
+      expect(ritualPhase(c, at("08:00"))).toBe("morning");
+      expect(ritualPhase(c, at("14:00"))).toBe(null);
+      expect(ritualPhase(c, at("19:00"))).toBe("evening");
+    }
+  });
+});

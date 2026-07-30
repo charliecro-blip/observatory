@@ -57,6 +57,74 @@ export function isAwakeDuring(
 }
 
 /**
+ * Which half of the daily ritual loop we're in — "Cast off" in the morning,
+ * "Log the day" in the evening, nothing in between.
+ *
+ * This used to read the wall clock (`<12` morning, `>=18` evening), which is
+ * only right for someone who keeps office hours. A night owl who wakes at 11
+ * and sleeps at 3 got the morning card handed to them at 07:00 while they were
+ * asleep, and never saw the evening card at all — their whole evening happens
+ * after midnight. So the loop is anchored to the person's own day instead:
+ *
+ *   morning — the first 4h after waking
+ *   evening — the last 3h before sleep
+ *
+ * plus two grace periods, because a ritual that vanishes the moment you're off
+ * schedule is worse than no ritual: an hour *before* the usual wake time still
+ * counts as morning (you're up early, the day is starting), and two hours
+ * *past* bedtime still counts as evening (you're up late and haven't logged).
+ *
+ * Both pairs are compressed proportionally rather than allowed to overlap when
+ * the day (or the night) is too short to hold them at full length.
+ *
+ * Wall-clock is the fallback, and only the fallback — unchanged for anyone who
+ * skipped the optional chronotype step, so this never withholds the ritual from
+ * a user who declined to hand over their sleep schedule.
+ */
+export type RitualPhase = "morning" | "evening" | null;
+
+const MORNING_SPAN = 240; // 4h from waking
+const EVENING_SPAN = 180; // the last 3h before sleep
+const EARLY_GRACE = 60;   // up before the alarm — still morning
+const LATE_GRACE = 120;   // up past bedtime — still evening
+
+const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+export function ritualPhase(
+  chronotype: Chronotype | undefined,
+  now: Date = new Date(),
+): RitualPhase {
+  const wake = chronotype?.wakeTime ? toWindowMinutes(chronotype.wakeTime) : NaN;
+  const sleep = chronotype?.sleepTime ? toWindowMinutes(chronotype.sleepTime) : NaN;
+
+  // No usable schedule (unset, malformed, or a degenerate 24h day) → the old
+  // wall-clock rule, verbatim.
+  if (!Number.isFinite(wake) || !Number.isFinite(sleep) || wake === sleep) {
+    const h = now.getHours();
+    return h < 12 ? "morning" : h >= 18 ? "evening" : null;
+  }
+
+  const awake = mod(sleep - wake, 1440);
+  const night = 1440 - awake;
+  // Share out proportionally when there isn't room for both at full length,
+  // so the two never overlap and a short day still gets both halves.
+  const share = (span: number, total: number, of: number) => Math.min(span, (of * span) / total);
+  const morningLen = share(MORNING_SPAN, MORNING_SPAN + EVENING_SPAN, awake);
+  const eveningLen = share(EVENING_SPAN, MORNING_SPAN + EVENING_SPAN, awake);
+  const lateGrace = share(LATE_GRACE, LATE_GRACE + EARLY_GRACE, night);
+  const earlyGrace = share(EARLY_GRACE, LATE_GRACE + EARLY_GRACE, night);
+
+  // Minutes since waking, which linearises the wrap past midnight: [0, awake)
+  // is the waking day, [awake, 1440) is the night.
+  const since = mod(now.getHours() * 60 + now.getMinutes() - wake, 1440);
+
+  if (since < morningLen) return "morning";
+  if (since >= awake - eveningLen && since < awake + lateGrace) return "evening";
+  if (since >= 1440 - earlyGrace) return "morning";
+  return null;
+}
+
+/**
  * The user's sleep intervals as [startHour, endHour] pairs within a 0–24 day,
  * for shading the tide chart's personal night. Empty when wake/sleep unset.
  */

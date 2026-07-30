@@ -22,7 +22,7 @@ import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { smoothPathD } from "@/lib/smoothPath";
-import { isWithinFreeWindow } from "@/lib/chronotype";
+import { isWithinFreeWindow, ritualPhase } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
@@ -794,10 +794,14 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     </div>
   ) : null;
 
-  // Ritual mode — Today reads the clock. Morning opens the day's loop,
-  // evening closes it; midday the page is its usual self.
+  // Ritual mode — Today reads the *person's* day, not the office clock.
+  // Morning opens the loop (the first hours after waking), evening closes it
+  // (the last hours before sleep); in between the page is its usual self.
+  // Falls back to the wall clock when no chronotype has been set.
+  const ritualMode = ritualPhase(testerProfile?.chronotype);
+  // Still the wall clock, deliberately: this drives the page's dawn/dusk/night
+  // wash further down, and dawn is solar — it doesn't move because you sleep in.
   const localHour = new Date().getHours();
-  const ritualMode: "morning" | "evening" | null = localHour < 12 ? "morning" : localHour >= 18 ? "evening" : null;
 
   // The reflect loop (felt rating + logbook line). In evening mode it rides
   // directly under the "Log the day" card — that IS the ritual — otherwise it
