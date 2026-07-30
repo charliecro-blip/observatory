@@ -20,7 +20,7 @@ function localDateOf(d: Date, tz: number): string {
 
 // GET /api/sky-literacy/:planet?tz=300&lookback=30
 router.get("/sky-literacy/:planet", requireTesterId, async (req, res) => {
-  const planet = req.params.planet;
+  const planet = String(req.params.planet);
   if (!PLANETS.has(planet)) {
     res.status(400).json({ error: "Unknown planet" });
     return;

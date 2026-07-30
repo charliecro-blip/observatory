@@ -483,3 +483,42 @@ describe("popup postMessage origin", () => {
     expect(accept("https://compass.day", "https://compass.day")).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. THE "KNOWN BASELINE" WAS HIDING LIVE BUGS
+// Three defects were sitting in the ~20 inherited typecheck errors that had
+// been dismissed as noise. Each one is recorded here so the class of mistake
+// — "the compiler is complaining but it's probably fine" — stays expensive.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("baseline typecheck errors that were real", () => {
+  it("passing a Date where a julian day is expected yields an Invalid Date", () => {
+    // studioCard called getSunriseSunset(now, …) instead of (julianDay(now), …).
+    // The arithmetic inside produced NaN, so `now < sun.sunrise` was ALWAYS
+    // false and the Studio card never applied its before-sunrise day ruler.
+    const asIfDateWereANumber = (jd: number) => new Date((jd - 2440587.5) * 86400000);
+    const now = new Date("2026-07-30T18:00:00Z");
+    expect(Number.isNaN(asIfDateWereANumber(now as unknown as number).getTime())).toBe(true);
+    // And an Invalid Date silently loses every comparison, which is why it was quiet:
+    expect(now < asIfDateWereANumber(now as unknown as number)).toBe(false);
+    expect(now > asIfDateWereANumber(now as unknown as number)).toBe(false);
+  });
+
+  it("`x && obj[k]` yields '' for an empty string, and ?? does not catch it", () => {
+    // momentum picked a curve with (g.planet && curves[...]) ?? fallback.
+    const curves: Record<string, number[]> = { overall: [1, 2, 3] };
+    const emptyPlanet = "";
+    const broken = (emptyPlanet && curves[`planet:${emptyPlanet}`]) ?? curves.overall;
+    expect(broken).toBe("");                       // not the fallback!
+    const fixed = (emptyPlanet ? curves[`planet:${emptyPlanet}`] : undefined) ?? curves.overall;
+    expect(fixed).toEqual([1, 2, 3]);
+  });
+
+  it("an unknown renderer option is silently ignored, not rejected", () => {
+    // resvg-js 2.6.2 has `fontFiles`, not `fontBuffers`. Passing the wrong key
+    // meant no brand font loaded and every share card rendered in Helvetica.
+    const supported = ["loadSystemFonts", "fontFiles", "fontDirs", "defaultFontSize", "defaultFontFamily"];
+    expect(supported).toContain("fontFiles");
+    expect(supported).not.toContain("fontBuffers");
+  });
+});

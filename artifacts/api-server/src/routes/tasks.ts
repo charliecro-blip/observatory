@@ -69,7 +69,7 @@ router.post("/tasks", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const { title, notes, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
-  if (!title) return res.status(400).json({ error: "title required" });
+  if (!title) { res.status(400).json({ error: "title required" }); return; }
   // Diagnose the task's ruling planet from its title so specific tasks under a
   // star each time to their own planet ("write the plan" reads Mercury even on
   // a Mars star). An explicit planet from the client wins.
@@ -93,7 +93,7 @@ router.patch("/tasks/:id", async (req, res) => {
     .set({ title, notes, done: done !== undefined ? String(done) : undefined, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 

@@ -175,9 +175,10 @@ router.get("/habits", async (req, res) => {
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId, cadence, targetPerWeek, solarAnchor } = req.body;
-  if (!name) return res.status(400).json({ error: "name required" });
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
   // Client may send arrays (the merged model) or comma-strings — store as CSV.
-  const asCsv = (v: unknown) => Array.isArray(v) ? v.join(",") : (v ?? null);
+  const asCsv = (v: unknown): string | null =>
+    Array.isArray(v) ? v.join(",") : (typeof v === "string" && v ? v : null);
   const cad = normalizeCadence(cadence);
   const [row] = await db.insert(habits).values({
     testerId, name, description, emoji,
@@ -209,7 +210,7 @@ router.patch("/habits/:id", async (req, res) => {
     };
   })();
   const [row] = await db.update(habits).set({ name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, projectId, ...cadencePatch }).where(and(eq(habits.id, id), eq(habits.testerId, testerId))).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 

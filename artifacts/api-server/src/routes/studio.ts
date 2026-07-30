@@ -76,7 +76,7 @@ router.get("/studio/best.png", async (req, res) => {
     const { Resvg } = await import("@resvg/resvg-js");
     const r = new Resvg(svg, {
       fitTo: { mode: "width", value: width },
-      font: { fontBuffers: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
+      font: { fontFiles: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
     });
     const png = r.render().asPng();
     res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-best-${span}.png"`).send(Buffer.from(png));
@@ -86,12 +86,16 @@ router.get("/studio/best.png", async (req, res) => {
 });
 
 // Font buffers loaded once — everything in assets/fonts rides along.
-let fontBuffers: Buffer[] | null = null;
-function loadFonts(): Buffer[] {
-  if (fontBuffers) return fontBuffers;
+let fontFilePaths: string[] | null = null;
+// resvg-js 2.6.2 takes `fontFiles` (paths) — there is no `fontBuffers` option
+// in this version, so passing Buffers meant the option was ignored entirely.
+// Combined with loadSystemFonts:false that left the renderer with NO fonts at
+// all, which is why the typechecker was complaining. Return paths instead.
+function loadFonts(): string[] {
+  if (fontFilePaths) return fontFilePaths;
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../assets/fonts");
-  fontBuffers = readdirSync(dir).filter(f => f.endsWith(".ttf")).map(f => readFileSync(path.join(dir, f)));
-  return fontBuffers;
+  fontFilePaths = readdirSync(dir).filter(f => f.endsWith(".ttf")).map(f => path.join(dir, f));
+  return fontFilePaths;
 }
 
 router.get("/studio/day.png", async (req, res) => {
@@ -102,7 +106,7 @@ router.get("/studio/day.png", async (req, res) => {
     const { Resvg } = await import("@resvg/resvg-js");
     const r = new Resvg(svg, {
       fitTo: { mode: "width", value: width },
-      font: { fontBuffers: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
+      font: { fontFiles: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
     });
     const png = r.render().asPng();
     res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-day.png"`).send(Buffer.from(png));
@@ -124,7 +128,7 @@ router.get("/studio/cycle.png", async (req, res) => {
     const { Resvg } = await import("@resvg/resvg-js");
     const r = new Resvg(svg, {
       fitTo: { mode: "width", value: width },
-      font: { fontBuffers: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
+      font: { fontFiles: loadFonts(), loadSystemFonts: false, defaultFontFamily: "Spectral" },
     });
     res.type("image/png").setHeader("Content-Disposition", `inline; filename="auspice-cycle.png"`).send(Buffer.from(r.render().asPng()));
   } catch (e: any) {

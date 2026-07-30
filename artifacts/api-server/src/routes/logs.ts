@@ -60,7 +60,7 @@ router.post("/logs", requireTesterId, async (req, res) => {
 // (id="timeline" → ZodError 500). Express 5 dropped regex params, so guard
 // by hand: non-numeric ids fall through to the named routes below.
 router.get("/logs/:id", requireTesterId, async (req, res, next) => {
-  if (!/^\d+$/.test(req.params.id)) { next(); return; }
+  if (!/^\d+$/.test(String(req.params.id))) { next(); return; }
   const testerId = res.locals.testerId as string;
   const { id } = GetLogParams.parse(req.params);
   const [row] = await db

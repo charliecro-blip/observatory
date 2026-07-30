@@ -160,7 +160,10 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     // Today's best window — from the star's ruling PLANET curve when it has one
     // (Mars-activated hours for a training star), else its element curve, else
     // overall. Planets time more precisely than elements.
-    const curve = (g.planet && arc.curves[`planet:${g.planet}`])
+    // `g.planet && …` evaluates to "" when planet is an empty string, and ??
+    // only catches null/undefined — so an empty planet fed "" to
+    // findPeakWindows instead of falling back to the element curve.
+    const curve = (g.planet ? arc.curves[`planet:${g.planet}`] : undefined)
       ?? arc.curves[g.element ?? "overall"]
       ?? arc.curve;
     const peak = findPeakWindows(curve, 3, 3)

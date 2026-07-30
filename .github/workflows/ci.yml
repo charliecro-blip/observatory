@@ -40,11 +40,15 @@ jobs:
       - name: Typecheck — Compass frontend
         run: pnpm --filter @workspace/tides run typecheck
 
-      # NOT GATING YET: the api-server and root typechecks are red on a
-      # long-standing inherited baseline. Reported so the count stays visible
-      # and shrinking, but not failing the build until it reaches zero — see
-      # BACKLOG. Worth taking seriously rather than muting: one entry in that
-      # baseline turned out to be a live 500 on every calendar export.
-      - name: Typecheck — api-server (report only)
+      # api-server's OWN source is now clean — the ~20 inherited errors are
+      # fixed, and THREE of them turned out to be live bugs (a 500 on every
+      # calendar export, a Studio card that never applied its before-sunrise
+      # day ruler, and share cards rendering in Helvetica instead of the brand
+      # serif). What remains is TS6305 project-reference noise from upstream
+      # legacy libs (api-zod export ambiguity, the openai integration libs),
+      # which is why this can't gate yet. Report-only until that chain is
+      # untangled — but the count is now "16 project-reference complaints",
+      # not "20 unread errors that might be real".
+      - name: Typecheck — api-server (report only; TS6305 upstream)
         continue-on-error: true
         run: pnpm --filter @workspace/api-server run typecheck

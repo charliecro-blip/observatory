@@ -130,7 +130,12 @@ export function buildDayCardSvg(opts: {
   // Day ruler: weekday ruler, switching at local sunrise (before sunrise the
   // previous day still rules) — same convention as /api/tides/now.
   const local = new Date(now.getTime() - tzOffsetMin * 60000);
-  const sun = getSunriseSunset(now, lat, lon);
+  // getSunriseSunset takes a JULIAN DAY, not a Date. Passing `now` produced an
+  // Invalid Date, so `now < sun.sunrise` was always false and the day ruler
+  // never applied its before-sunrise rule — a card generated before dawn named
+  // the wrong ruling planet. (The typechecker had been reporting this the whole
+  // time, inside the "known baseline" nobody read.)
+  const sun = getSunriseSunset(julianDay(now), lat, lon);
   const beforeSunrise = sun ? now < sun.sunrise : false;
   const dowIdx = (local.getUTCDay() + (beforeSunrise ? 6 : 0)) % 7;
   const dayRuler = WEEKDAY_RULERS[dowIdx];
@@ -526,15 +531,18 @@ export function buildBestTimesCardSvg(opts: {
       return h + (n === 0 ? HEAD_H + 30 : HEAD_H + n * ROW_H + 26);
     }, 0);
     while (heightOf() > budget) {
-      let worst: { key: string; idx: number; score: number } | null = null;
+      // Gather every droppable candidate, then take the lowest score. The
+      // previous shape assigned to a closed-over `let` inside .forEach, which
+      // TypeScript cannot narrow (it widened to `never` and flagged .key/.idx).
+      type Worst = { key: string; idx: number; score: number };
+      const candidates: Worst[] = [];
       for (const a of ACTIVITIES) {
         if (chosen[a.key].length <= 1) continue;
-        chosen[a.key].forEach((p, idx) => {
-          if (!worst || p.score < worst.score) worst = { key: a.key, idx, score: p.score };
-        });
+        chosen[a.key].forEach((p, idx) => candidates.push({ key: a.key, idx, score: p.score }));
       }
-      if (!worst) break;
-      chosen[worst.key].splice(worst.idx, 1);
+      if (candidates.length === 0) break;
+      const drop = candidates.reduce((lo, c) => (c.score < lo.score ? c : lo));
+      chosen[drop.key].splice(drop.idx, 1);
     }
     for (const a of ACTIVITIES) {
       chosen[a.key].sort((x, z) => Date.parse(`${x.date} 2000`) - Date.parse(`${z.date} 2000`));
