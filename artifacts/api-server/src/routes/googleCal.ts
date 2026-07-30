@@ -1,9 +1,49 @@
 import { Router } from "express";
+import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 import { db } from "@workspace/db";
 import { googleCalTokens } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 const router = Router();
+
+// ── OAuth state ──────────────────────────────────────────────────────────────
+// The state parameter was an UNSIGNED base64 of {testerId}: anyone could mint
+// one, so a victim could be walked through a flow that attached the attacker's
+// Google account to their profile (or the reverse). It is now HMAC-signed with
+// a server secret and expires, so only we can issue it and only briefly.
+const STATE_SECRET = process.env["OAUTH_STATE_SECRET"]
+  ?? process.env["GOOGLE_CLIENT_SECRET"]   // already a server-only secret
+  ?? randomBytes(32).toString("hex");      // last resort: valid for this boot only
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+function signState(testerId: string): string {
+  const body = Buffer.from(JSON.stringify({ testerId, ts: Date.now(), n: randomBytes(8).toString("hex") })).toString("base64url");
+  const sig = createHmac("sha256", STATE_SECRET).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function verifyState(state: string): string | null {
+  const [body, sig] = state.split(".");
+  if (!body || !sig) return null;
+  const expected = createHmac("sha256", STATE_SECRET).update(body).digest("base64url");
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const { testerId, ts } = JSON.parse(Buffer.from(body, "base64url").toString());
+    if (typeof testerId !== "string" || !testerId) return null;
+    if (!Number.isFinite(ts) || Date.now() - ts > STATE_TTL_MS) return null;  // replay window
+    return testerId;
+  } catch { return null; }
+}
+
+/** Our own origin — the only place the popup may postMessage to. */
+function appOrigin(req: { headers: Record<string, any>; protocol?: string }): string {
+  const env = process.env["PUBLIC_BASE_URL"];
+  if (env) return env.replace(/\/$/, "");
+  const host = req.headers["x-forwarded-host"] ?? req.headers.host;
+  const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
+  return host ? `${proto}://${host}` : "https://compass.day";
+}
 
 const CLIENT_ID     = process.env["GOOGLE_CLIENT_ID"]     ?? "";
 const CLIENT_SECRET = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
@@ -59,7 +99,7 @@ router.get("/integrations/google-cal/status", async (req, res) => {
 router.get("/integrations/google-cal/auth", (req, res) => {
   if (!isConfigured()) { res.status(503).json({ error: "Google Calendar not configured" }); return; }
   const testerId = req.query.testerId as string | undefined;
-  const state = testerId ? Buffer.from(JSON.stringify({ testerId })).toString("base64url") : "";
+  const state = testerId ? signState(testerId) : "";
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", CLIENT_ID);
   url.searchParams.set("redirect_uri", REDIRECT_URI);
@@ -79,7 +119,10 @@ router.get("/integrations/google-cal/callback", async (req, res) => {
 
   let testerId: string | null = null;
   if (state) {
-    try { testerId = JSON.parse(Buffer.from(state, "base64url").toString()).testerId ?? null; } catch {}
+    // Signed + time-limited: an unsigned state let anyone forge the identity
+    // this callback attaches a Google account to.
+    testerId = verifyState(state);
+    if (!testerId) { res.status(400).send("This sign-in link has expired or is invalid. Please try connecting again."); return; }
   }
 
   // Exchange code for tokens
@@ -124,10 +167,13 @@ router.get("/integrations/google-cal/callback", async (req, res) => {
     });
   }
 
-  // Close popup and signal parent
+  // Close popup and signal parent. The target origin is OURS, not '*' — a
+  // wildcard broadcasts the connected email to whatever page happens to have
+  // opened this window.
+  const origin = appOrigin(req as any);
   res.send(`<!DOCTYPE html><html><body><script>
     if (window.opener) {
-      window.opener.postMessage({ type: 'google-cal-connected', email: ${JSON.stringify(email)} }, '*');
+      window.opener.postMessage({ type: 'google-cal-connected', email: ${JSON.stringify(email)} }, ${JSON.stringify(origin)});
       window.close();
     } else {
       window.location.href = '/';

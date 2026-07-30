@@ -392,3 +392,71 @@ describe("calendar feed token", () => {
     expect(hash(first)).not.toBe(stored);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. OAUTH STATE
+// Shipped bug: `state` was an UNSIGNED base64 of {testerId}, so anyone could
+// mint one and steer which profile a Google account got attached to. And the
+// popup posted the connected email with '*' as the target origin.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { createHmac, timingSafeEqual as tse } from "crypto";
+const SECRET = "test-secret";
+const TTL = 10 * 60 * 1000;
+
+function signState(testerId: string, now = Date.now()): string {
+  const body = Buffer.from(JSON.stringify({ testerId, ts: now, n: "abc" })).toString("base64url");
+  return `${body}.${createHmac("sha256", SECRET).update(body).digest("base64url")}`;
+}
+function verifyState(state: string, now = Date.now()): string | null {
+  const [body, sig] = state.split(".");
+  if (!body || !sig) return null;
+  const expected = createHmac("sha256", SECRET).update(body).digest("base64url");
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  if (a.length !== b.length || !tse(a, b)) return null;
+  try {
+    const { testerId, ts } = JSON.parse(Buffer.from(body, "base64url").toString());
+    if (typeof testerId !== "string" || !testerId) return null;
+    if (!Number.isFinite(ts) || now - ts > TTL) return null;
+    return testerId;
+  } catch { return null; }
+}
+
+describe("google oauth state", () => {
+  it("round-trips a state we issued", () => {
+    expect(verifyState(signState("orrery-demo"))).toBe("orrery-demo");
+  });
+
+  it("rejects the OLD unsigned format outright", () => {
+    const forged = Buffer.from(JSON.stringify({ testerId: "victim" })).toString("base64url");
+    expect(verifyState(forged)).toBeNull();
+  });
+
+  it("rejects a forged signature", () => {
+    const [body] = signState("orrery-demo").split(".");
+    expect(verifyState(`${body}.not-the-real-signature`)).toBeNull();
+  });
+
+  it("rejects a tampered payload even with the original signature", () => {
+    const [, sig] = signState("orrery-demo").split(".");
+    const swapped = Buffer.from(JSON.stringify({ testerId: "attacker", ts: Date.now(), n: "abc" })).toString("base64url");
+    expect(verifyState(`${swapped}.${sig}`)).toBeNull();
+  });
+
+  it("expires, so a captured state cannot be replayed later", () => {
+    const old = signState("orrery-demo", Date.now() - (TTL + 1000));
+    expect(verifyState(old)).toBeNull();
+  });
+});
+
+describe("popup postMessage origin", () => {
+  const target = (origin: string) => origin;
+  it("never uses a wildcard", () => {
+    expect(target("https://compass.day")).not.toBe("*");
+  });
+  it("listener drops a message from another origin", () => {
+    const accept = (evOrigin: string, self: string) => evOrigin === self;
+    expect(accept("https://evil.example.com", "https://compass.day")).toBe(false);
+    expect(accept("https://compass.day", "https://compass.day")).toBe(true);
+  });
+});

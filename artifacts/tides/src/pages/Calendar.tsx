@@ -388,6 +388,9 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
 
   useEffect(() => {
     function onMsg(e: MessageEvent) {
+      // Both ends now check: the popup targets our origin, and we ignore
+      // anything that didn't come from it.
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === "google-cal-connected") {
         qc.invalidateQueries({ queryKey: ["gcal-status"] });
         qc.invalidateQueries({ queryKey: ["gcal-events"] });
