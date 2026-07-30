@@ -56,14 +56,14 @@ export default function CurrentsContextHeader({
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 4 }}>
             Your long weather
           </div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
             The seasons your stars can ride
           </div>
         </div>
-        <span style={{ fontSize: 11, color: "#ccc", flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>
           {collapsed ? "+" : "−"}
         </span>
       </button>
@@ -71,7 +71,7 @@ export default function CurrentsContextHeader({
       {!collapsed && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
           {isLoading ? (
-            <div style={{ fontSize: 12, color: "#888" }}>Loading…</div>
+            <div style={{ fontSize: 12, color: "var(--color-muted)" }}>Loading…</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {/* Slow transits — the API returns these as transitsByHouse
@@ -79,14 +79,14 @@ export default function CurrentsContextHeader({
                   Reading the wrong key was why this panel came up empty. */}
               {Array.isArray(currents?.transitsByHouse) && currents.transitsByHouse.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase", marginBottom: 6 }}>
+                  <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 6 }}>
                     Major cycles
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {currents.transitsByHouse.slice(0, 4).map((t: any, i: number) => {
                       const h = HOUSE_MEANINGS[t.house];
                       return (
-                        <div key={i} style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
+                        <div key={i} style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.4 }}>
                           <span style={{ fontWeight: 600 }}>{PLANET_GLYPH[t.planet] ?? ""} {t.planet}</span>
                           {t.retrograde ? " ℞" : ""} through your{" "}
                           <span style={{ fontWeight: 600 }}>{h ? `${ord(t.house)} · ${h.title}` : ord(t.house)}</span>
@@ -103,17 +103,17 @@ export default function CurrentsContextHeader({
                   and the profection guidance copy. */}
               {currents?.profection && (
                 <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase", marginBottom: 6 }}>
+                  <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 6 }}>
                     Your year ahead
                   </div>
-                  <div style={{ fontSize: 11, color: "#666", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>
                     <span style={{ fontWeight: 600 }}>
                       {PLANET_GLYPH[currents.profection.timeLord] ?? ""} {currents.profection.timeLord} year
                     </span>
                     {" · "}
                     {HOUSE_MEANINGS[currents.profection.house]?.title} ({ord(currents.profection.house)}) in {currents.profection.sign}
                     {PROFECTION_GUIDANCE[currents.profection.house] ? (
-                      <div style={{ marginTop: 3, color: "#888" }}>{PROFECTION_GUIDANCE[currents.profection.house]}</div>
+                      <div style={{ marginTop: 3, color: "var(--color-muted)" }}>{PROFECTION_GUIDANCE[currents.profection.house]}</div>
                     ) : null}
                   </div>
                 </div>
@@ -127,7 +127,7 @@ export default function CurrentsContextHeader({
                   background: "var(--color-card-2)",
                   borderRadius: 6,
                   fontSize: 10,
-                  color: "#888",
+                  color: "var(--color-muted)",
                   lineHeight: 1.5,
                 }}
               >

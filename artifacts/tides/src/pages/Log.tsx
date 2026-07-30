@@ -5,12 +5,13 @@ import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 const ELEMENTS = {
-  fire: { label: "Surge", color: "#b84020", bg: "#fff0ec" },
-  earth: { label: "Building", color: "#4a7040", bg: "#f0f5ee" },
-  air: { label: "Clear", color: "#c19a3a", bg: "#f4efdd" },
-  water: { label: "Deep", color: "#2a5a80", bg: "#eaf0f8" },
+  fire: { label: "Surge", color: ELEMENT_COLORS.fire, bg: "#fff0ec" },
+  earth: { label: "Building", color: ELEMENT_COLORS.earth, bg: "#f0f5ee" },
+  air: { label: "Clear", color: ELEMENT_COLORS.air, bg: "#f4efdd" },
+  water: { label: "Deep", color: ELEMENT_COLORS.water, bg: "#eaf0f8" },
 };
 
 const FELT_META: Record<string, { label: string; icon: string; color: string }> = {
@@ -132,7 +133,7 @@ function ReflectComposer({ testerId, date, dayDetail }: {
 
   return (
     <div style={{ marginBottom: 24, padding: "14px 16px", background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
         {dayDetail.checkIn ? "Your reflection" : "Reflect on this day"}
       </div>
       <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
@@ -166,8 +167,8 @@ function ReflectComposer({ testerId, date, dayDetail }: {
         <button onClick={save} disabled={!dirty || saving} style={{
           padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600,
           cursor: dirty && !saving ? "pointer" : "default",
-          background: dirty && !saving ? "#1a2a3a" : "#e0dcd6",
-          color: dirty && !saving ? "#fff" : "#aaa",
+          background: dirty && !saving ? "#1a2a3a" : "var(--color-border)",
+          color: dirty && !saving ? "#fff" : "var(--text-3)",
         }}>
           {saving ? "…" : "Save"}
         </button>
@@ -261,7 +262,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
     >
       {/* Date range selector */}
       <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ fontSize: 10, color: "#aaa", marginBottom: 6, textTransform: "uppercase" }}>
+        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>
           Lookback
         </div>
         <div style={{ display: "flex", gap: 6 }}>
@@ -276,7 +277,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                 borderRadius: 6,
                 border: dateRange === d ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
                 background: dateRange === d ? "var(--color-primary)20" : "transparent",
-                color: dateRange === d ? "var(--color-primary)" : "#888",
+                color: dateRange === d ? "var(--color-primary)" : "var(--color-muted)",
                 cursor: "pointer",
                 fontWeight: dateRange === d ? 600 : 400,
               }}
@@ -322,11 +323,11 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
       {/* Timeline list */}
       <div style={{ flex: 1, overflow: "auto", padding: "0 16px", paddingTop: 12 }}>
         {timelineLoading ? (
-          <div style={{ fontSize: 12, color: "#888", padding: "20px 0", textAlign: "center" }}>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", padding: "20px 0", textAlign: "center" }}>
             Loading…
           </div>
         ) : summaries.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#888", padding: "20px 8px", textAlign: "center", lineHeight: 1.7 }}>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", padding: "20px 8px", textAlign: "center", lineHeight: 1.7 }}>
             {flavor ? (
               <>No {PLANET_LITERACY[flavor]?.adjective ?? flavor} days in this window — try a longer lookback.</>
             ) : (
@@ -379,7 +380,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                       {e.label}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 10, color: "#888" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 10, color: "var(--color-muted)" }}>
                     {felt && (
                       <span style={{ color: felt.color, fontWeight: 600 }}>
                         {felt.icon} {felt.label}
@@ -390,14 +391,14 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                       <span title={`Energy: ${entry.energy}`}>{energyBar(entry.energy)}</span>
                     )}
                     {entry.activitiesCount > 0 && (
-                      <span style={{ color: "#666", fontWeight: 500 }}>{entry.activitiesCount} done</span>
+                      <span style={{ color: "var(--text-2)", fontWeight: 500 }}>{entry.activitiesCount} done</span>
                     )}
                     {entry.healthCount > 0 && (
-                      <span style={{ color: "#666" }}>{entry.healthCount} logged</span>
+                      <span style={{ color: "var(--text-2)" }}>{entry.healthCount} logged</span>
                     )}
                   </div>
                   {entry.notes && (
-                    <div style={{ fontSize: 9, color: "#999", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
+                    <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
                       "{entry.notes.substring(0, 50)}
                       {entry.notes.length > 50 ? "…" : ""}"
                     </div>
@@ -434,7 +435,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
            default view (owner 2026-07-17: tracking progress, emphasized). */
         <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}>
           <WakeList testerId={testerId} />
-          <div style={{ color: "#999", fontSize: 12, textAlign: "center", padding: 20 }}>
+          <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 20 }}>
             ← or select a day to read its full log
           </div>
         </div>
@@ -445,16 +446,16 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#999",
+            color: "var(--text-3)",
           }}
         >
           Loading…
         </div>
       ) : dayError ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "#999", padding: 24, textAlign: "center" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-3)", padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 13, color: "#a03030" }}>Couldn't load this day</div>
           <button onClick={() => refetchDay()}
-            style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#556", cursor: "pointer" }}>
+            style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", cursor: "pointer" }}>
             Try again
           </button>
         </div>
@@ -477,7 +478,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
               }}
             >
               <div>
-                <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase" }}>That day's weather</div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>That day's weather</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
                   {ELEMENTS[dayDetail.sky.element as keyof typeof ELEMENTS]?.label ?? dayDetail.sky.element}
                 </div>
@@ -488,7 +489,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                          door to that planet's page (natal + transits + goals). */
                       <button key={p} onClick={() => onVisitPlanet?.(p)} disabled={!onVisitPlanet} style={{
                         fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: onVisitPlanet ? "pointer" : "default",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#998a76",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-3)",
                       }}>
                         a {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} day{onVisitPlanet ? " · check in →" : ""}
                       </button>
@@ -513,11 +514,11 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
               )}
               {feltMeta && (
                 <div style={{ paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>
-                  <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase" }}>It felt</div>
+                  <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>It felt</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: feltMeta.color }}>
                     {feltMeta.icon} {feltMeta.label}
                     {feltInfo?.tideChar && (
-                      <span style={{ fontWeight: 400, color: "#999" }}>
+                      <span style={{ fontWeight: 400, color: "var(--text-3)" }}>
                         {" "}· during a {feltInfo.tideChar} tide
                       </span>
                     )}
@@ -534,7 +535,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
               collect these yet; health-tracker data shows through) */}
           {dayDetail.checkIn && [dayDetail.checkIn.energy, dayDetail.checkIn.mood, dayDetail.checkIn.stress, dayDetail.checkIn.sleepQuality].some((v) => v !== null) && (
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
                 Daily check-in
               </div>
               <div
@@ -555,7 +556,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                     ({ label, val }) =>
                       val !== null && (
                         <div key={label}>
-                          <div style={{ fontSize: 9, color: "#888" }}>{label}</div>
+                          <div style={{ fontSize: 9, color: "var(--color-muted)" }}>{label}</div>
                           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>
                             {val}
                           </div>
@@ -570,7 +571,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           {/* Activities */}
           {dayDetail.activities.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
                 Activities completed
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -586,11 +587,11 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                     }}
                   >
                     <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-foreground)" }}>{a.title}</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>
+                    <div style={{ fontSize: 11, color: "var(--color-muted)" }}>
                       {a.windowType} · {format(parseISO(a.completedAt), "h:mm a")}
                     </div>
                     {a.notes && (
-                      <div style={{ fontSize: 11, color: "#999", marginTop: 6, fontStyle: "italic" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6, fontStyle: "italic" }}>
                         {a.notes}
                       </div>
                     )}
@@ -603,7 +604,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           {/* Health logs */}
           {dayDetail.healthLogs.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
                 Health entries
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -619,13 +620,13 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                     }}
                   >
                     <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--color-foreground)" }}>{h.name}</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>
+                    <div style={{ fontSize: 11, color: "var(--color-muted)" }}>
                       {format(parseISO(h.loggedAt), "h:mm a")}
                       {h.mood !== null && ` · mood ${h.mood}`}
                       {h.energy !== null && ` · energy ${h.energy}`}
                     </div>
                     {h.notes && (
-                      <div style={{ fontSize: 11, color: "#999", marginTop: 6 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
                         {h.notes}
                       </div>
                     )}
@@ -638,7 +639,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           {/* Personal transits */}
           {dayDetail.sky.personalTransits && dayDetail.sky.personalTransits.length > 0 && (
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
                 Your transits that day
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -656,7 +657,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                     <div style={{ fontWeight: 600, marginBottom: 2, color: "var(--color-foreground)" }}>
                       {t.transitPlanet} {t.aspect} {t.natalPlanet}
                     </div>
-                    <div style={{ fontSize: 11, color: "#888" }}>{t.summary}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-muted)" }}>{t.summary}</div>
                   </div>
                 ))}
               </div>

@@ -11,6 +11,8 @@ import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
 import { QualityStrip } from "@/pages/Sky";
+import { PLANET_COLORS } from "@/lib/planetColors";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
 function hasRealLocation(lat: number, lon: number): boolean {
@@ -48,10 +50,10 @@ const CROSSING_MEANING: Record<string, string> = {
 };
 
 const ELEMENT_ACCENT: Record<string, string> = {
-  water:"#3a5a80",fire:"#8a3a20",earth:"#3a6030",air:"#c19a3a",
+  water:ELEMENT_COLORS.water,fire:ELEMENT_COLORS.fire,earth:ELEMENT_COLORS.earth,air:ELEMENT_COLORS.air,
 };
 const ELEMENT_LABEL: Record<string, string> = {
-  water:"#4a6a90",fire:"#9a4a30",earth:"#4a7040",air:"#c19a3a",
+  water:"#4a6a90",fire:"#9a4a30",earth:ELEMENT_COLORS.earth,air:ELEMENT_COLORS.air,
 };
 const ELEMENT_NOTE: Record<string, string> = {
   water:"Emotional depth, intuition, and receptive energy.",
@@ -66,11 +68,6 @@ const QUALITY_NOTE: Record<string, string> = {
   good:"smooth, well-supported conditions",
   workable:"fine for most things — nothing pushing hard either way",
   mixed:"crosscurrents — keep plans flexible",
-};
-const PLANET_COLORS: Record<string, string> = {
-  Sun:"#c08020",Moon:"#7080a0",Mercury:"#608060",Venus:"#a06080",
-  Mars:"#c04040",Jupiter:"#6040a0",Saturn:"#807060",
-  Uranus:"#3090a0",Neptune:"#5060b0",Pluto:"#703060",
 };
 const ASPECT_SYM: Record<string, string> = {
   conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹",
@@ -91,7 +88,7 @@ const WINDOW_LABELS: Record<string,string> = {
 };
 const WINDOW_COLORS: Record<string,string> = {
   deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#808090",
-  social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:"#c04040",retreat:"#6080a0",
+  social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:PLANET_COLORS.Mars,retreat:"#6080a0",
 };
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -299,15 +296,15 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
             placeholder={WINDOW_LABELS[form.type]}
             style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:13,outline:"none",background: "var(--color-card-2)" }}/>
           <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
-            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",color:"#444" }}>
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",color:"var(--text-1)" }}>
             {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
           <div style={{ display:"flex",gap:8 }}>
-            <label style={{ flex:1,fontSize:11,color:"#888" }}>Start
+            <label style={{ flex:1,fontSize:11,color:"var(--color-muted)" }}>Start
               <input type="time" value={form.startTime} onChange={e=>setForm(f=>({...f,startTime:e.target.value}))}
                 style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
             </label>
-            <label style={{ flex:1,fontSize:11,color:"#888" }}>End
+            <label style={{ flex:1,fontSize:11,color:"var(--color-muted)" }}>End
               <input type="time" value={form.endTime} onChange={e=>setForm(f=>({...f,endTime:e.target.value}))}
                 style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
             </label>
@@ -318,7 +315,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
         </div>
         {save.isError && <div style={{ marginTop:10,fontSize:11.5,color:"#a03030" }}>Couldn't save — the event wasn't added. Check your connection and try again.</div>}
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
-          <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"#888",fontSize:12,cursor:"pointer" }}>Cancel</button>
+          <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",fontSize:12,cursor:"pointer" }}>Cancel</button>
           <button onClick={()=>save.mutate()} disabled={save.isPending}
             style={{ flex:2,padding:"9px 0",borderRadius:8,border:"none",background:"#1a2a3a",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
             {save.isPending?"Saving…":"Save"}
@@ -433,7 +430,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     return (
       <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
         fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
-        background:"var(--color-card-2)", color:"#b0a898", cursor:"default",
+        background:"var(--color-card-2)", color:"var(--color-muted)", cursor:"default",
         display:"flex", alignItems:"center", gap:4,
       }}>
         <span style={{ fontSize:10 }}>📅</span> Google Cal · coming soon
@@ -463,7 +460,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
   return (
     <button onClick={connect} style={{
       fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-      background: "var(--color-card)", color:"#555", cursor:"pointer",
+      background: "var(--color-card)", color:"var(--text-2)", cursor:"pointer",
       display:"flex", alignItems:"center", gap:4,
     }}>
       <span style={{ fontSize:10 }}>📅</span> Connect Google Cal
@@ -525,7 +522,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           {isDay && <div style={{ height:LEGEND_H, borderBottom:"1px solid var(--color-border)", background:"var(--color-card-2)" }}/>}
           {Array.from({length:HOURS+1},(_,i)=>(
             <div key={i} style={{ height:ROW_H,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:8,paddingTop:2 }}>
-              <span style={{ fontSize:9,color:"#bbb",fontWeight:500 }}>{fmtHour(HOUR_START+i)}</span>
+              <span style={{ fontSize:9,color:"var(--text-3)",fontWeight:500 }}>{fmtHour(HOUR_START+i)}</span>
             </div>
           ))}
         </div>
@@ -566,7 +563,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
               }}>
                 {/* Day + date */}
                 <div style={{ height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
-                  <div style={{ fontSize:isDay?10:9,color:isToday?ec:"#bbb",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
+                  <div style={{ fontSize:isDay?10:9,color:isToday?ec:"var(--text-3)",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
                   <div style={{
                     fontSize:isDay?18:15,fontWeight:700,color:isToday?"#fff":"var(--color-foreground)",lineHeight:1,
                     width:isDay?28:22,height:isDay?28:22,borderRadius:"50%",
@@ -574,7 +571,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     display:"flex",alignItems:"center",justifyContent:"center",
                   }}>{dayNum}</div>
                   {isDay && dayRuler && (
-                    <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"#aaa" }}>{PLANET_ICONS[dayRuler]} {dayRuler}</div>
+                    <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}>{PLANET_ICONS[dayRuler]} {dayRuler}</div>
                   )}
                 </div>
 
@@ -586,14 +583,14 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                 }}>
                   <div style={{ display:"flex",alignItems:"center",gap:4 }}>
                     {phase && <span style={{ fontSize:9 }}>{MOON_EMOJI[phase]??""}</span>}
-                    {signKey && <span style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"#888",fontWeight:500 }}>{SIGN_SYMBOL[signKey]} {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
+                    {signKey && <span style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}>{SIGN_SYMBOL[signKey]} {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
                     {/* week: show current planetary hour planet */}
                     {!isDay && isToday && nowHour && (
-                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"#888" }}>{PLANET_ICONS[nowHour.ruler]}</span>
+                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}>{PLANET_ICONS[nowHour.ruler]}</span>
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
-                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"#6f6a90",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
+                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize:8,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"var(--text-2)",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
                     {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
                       <span title={`Advisory: ${cautionMap.get(dateStr)!.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
                         style={{ fontSize:9,lineHeight:1,cursor:"help" }}>⚠️</span>
@@ -621,7 +618,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
               {/* Day view: planetary hours legend ABOVE scroll area */}
               {isDay && (
                 <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"var(--color-card-2)",padding:"6px 8px",overflowY:"auto" }}>
-                  <div style={{ fontSize:7.5,color:"#bbb",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
+                  <div style={{ fontSize:7.5,color:"var(--text-3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
                     {allHours.map((ph,i)=>{
                       const col = PLANET_COLORS[ph.ruler]??"#888";
@@ -717,7 +714,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                         background:"repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(111,106,144,0.08) 8px,rgba(111,106,144,0.08) 9px)",
                         borderLeft:"2px solid #6f6a9050",
                       }}>
-                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"#8a86a8",fontWeight:600 }}>◒ VOC</div>
+                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"var(--text-2)",fontWeight:600 }}>◒ VOC</div>
                       </div>
                     );
                   })()}
@@ -878,7 +875,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Row 1: date + day ruler + moon phase + caution */}
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:0 }}>
-          <span style={{ fontSize:16,lineHeight:1,fontWeight:isToday?700:500,color:isToday?"#b07820":"#333" }}>{dayNum}</span>
+          <span style={{ fontSize:16,lineHeight:1,fontWeight:isToday?700:500,color:isToday?"#b07820":"var(--text-1)" }}>{dayNum}</span>
           {isToday && <span style={{ fontSize:8,color:"#b07820",fontWeight:600,lineHeight:1.2 }}>TODAY</span>}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}>
@@ -898,12 +895,12 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
 
       {/* Row 2: moon sign + element */}
       {dayData && signKey && showSignNames && (
-        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"#aaa",marginBottom:1 }}>
+        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"var(--text-3)",marginBottom:1 }}>
           {SIGN_SYMBOL[signKey]} {moonSign.split(" ").slice(0,2).join(" ")}
         </div>
       )}
       {dayData && !showSignNames && elem && (
-        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"#aaa",marginBottom:1 }}>
+        <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"var(--text-3)",marginBottom:1 }}>
           {elem.charAt(0).toUpperCase()+elem.slice(1)}
         </div>
       )}
@@ -911,7 +908,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Row 3: VOC badge */}
       {dayData && voc && (
         <div style={{ display:"flex",alignItems:"center",gap:3,marginBottom:2 }}>
-          <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning." style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"#6f6a90",lineHeight:"14px",fontWeight:600 }}>◒ VOC</span>
+          <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning." style={{ fontSize:8.5,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"var(--text-2)",lineHeight:"14px",fontWeight:600 }}>◒ VOC</span>
         </div>
       )}
 
@@ -931,13 +928,13 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
               </div>
             );
           })}
-          {aspectEvents.length > 3 && <div style={{ fontSize:7.5,color:"#bbb" }}>+{aspectEvents.length-3} more</div>}
+          {aspectEvents.length > 3 && <div style={{ fontSize:7.5,color:"var(--text-3)" }}>+{aspectEvents.length-3} more</div>}
         </div>
       )}
 
       {/* Ingress — sign change marker (detail only) */}
       {!simple && ingressEvents.slice(0,1).map((ev,i) => (
-        <div key={i} title={ev.title} style={{ fontSize:8,color:"#4a7040",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+        <div key={i} title={ev.title} style={{ fontSize:8,color:ELEMENT_COLORS.earth,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
           → {ev.title.replace("Moon enters ", "")}{ev.time ? ` ${ev.time}` : ""}
         </div>
       ))}
@@ -947,9 +944,9 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         {gcalEvents.slice(0,2).map(ev=>{
           const col = ev.color ?? "#4285f4";
           return (
-            <div key={ev.id} style={{ fontSize:7,borderLeft:`2px solid ${col}`,paddingLeft:3,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:2,alignItems:"center" }}>
+            <div key={ev.id} style={{ fontSize:7,borderLeft:`2px solid ${col}`,paddingLeft:3,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:2,alignItems:"center" }}>
               <span style={{ color:col,fontWeight:700,fontSize:6.5 }}>G</span>
-              {ev.allDay ? "" : <span style={{ color:"#aaa" }}>{fmtTime(new Date(ev.start))}</span>}
+              {ev.allDay ? "" : <span style={{ color:"var(--text-3)" }}>{fmtTime(new Date(ev.start))}</span>}
               <span style={{ overflow:"hidden",textOverflow:"ellipsis" }}>{ev.title}</span>
             </div>
           );
@@ -964,7 +961,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             </div>
           );
         })}
-        {(wins.length + gcalEvents.length)>5 && <div style={{ fontSize:7,color:"#aaa" }}>+{wins.length+gcalEvents.length-5} more</div>}
+        {(wins.length + gcalEvents.length)>5 && <div style={{ fontSize:7,color:"var(--text-3)" }}>+{wins.length+gcalEvents.length-5} more</div>}
       </div>
     </button>
   );
@@ -1001,24 +998,24 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
   return (
     <div style={{ width:260,minWidth:260,borderLeft:"1px solid var(--color-border)",background: "var(--color-card-2)",display:"flex",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
       <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
-        <div style={{ fontSize:9,color:"#aaa",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
+        <div style={{ fontSize:9,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
-        {dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"#888",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
+        {dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
         <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
-        {!dayData && <div style={{ fontSize:11,color:"#bbb",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
+        {!dayData && <div style={{ fontSize:11,color:"var(--text-3)",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
         {dayData && (<>
           <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4 }}>
               <span style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
               <div>
                 <div style={{ fontSize:10.5,fontWeight:600,color: "var(--color-primary)" }}>{phase}</div>
-                {signKey && <div style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"#aaa" }}>{SIGN_SYMBOL[signKey]} {moonSign}</div>}
+                {signKey && <div style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--text-3)" }}>{SIGN_SYMBOL[signKey]} {moonSign}</div>}
               </div>
             </div>
-            <div style={{ fontSize:9.5,color:"#666",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
-            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#6f6a9022",border:"1px solid #d2cee2",fontSize:9,color:"#6f6a90" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
+            <div style={{ fontSize:9.5,color:"var(--text-2)",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
+            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#6f6a9022",border:"1px solid #d2cee2",fontSize:9,color:"var(--text-2)" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
             {/* Caution — the specific transit that flagged this day, explained.
                 This is the "illuminate a specific day" the caution mark points to. */}
             {cautionHits.length > 0 && (
@@ -1038,17 +1035,17 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             )}
           </div>
           <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-            <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"#bbb",marginBottom:5 }}>Conditions</div>
+            <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"var(--text-3)",marginBottom:5 }}>Conditions</div>
             <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
-              <div style={{ flex:1,height:4,borderRadius:2,background:"#e8e4de" }}>
+              <div style={{ flex:1,height:4,borderRadius:2,background:"var(--color-card-2)" }}>
                 <div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
               </div>
             </div>
             {/* element = the day's character; quality = how coherent conditions are */}
-            <div style={{ fontSize:10.5,fontWeight:600,color:ELEMENT_LABEL[elem]??"#888",textTransform:"capitalize",marginBottom:2 }}>
+            <div style={{ fontSize:10.5,fontWeight:600,color:ELEMENT_LABEL[elem]??"var(--color-muted)",textTransform:"capitalize",marginBottom:2 }}>
               {elem} day · {dayData.quality?.replace(/_/g," ")}
             </div>
-            <div style={{ fontSize:9.5,color:"#888",lineHeight:1.5 }}>
+            <div style={{ fontSize:9.5,color:"var(--color-muted)",lineHeight:1.5 }}>
               {ELEMENT_NOTE[elem] ?? ""} {QUALITY_NOTE[dayData.quality ?? ""] ? `Overall: ${QUALITY_NOTE[dayData.quality ?? ""]}.` : ""}
             </div>
           </div>
@@ -1062,17 +1059,17 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             const sorted = [...ma].sort((a,b)=> (a.applying?0:1)-(b.applying?0:1) || (a.orb??9)-(b.orb??9)).slice(0,5);
             return (
               <div style={{ background:"var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-                <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:5 }}>Moon aspects</div>
+                <div style={{ fontSize:9.5,fontWeight:600,color:"var(--text-1)",marginBottom:5 }}>Moon aspects</div>
                 {sorted.map((a:any,i:number)=>{
                   const other = a.planet ?? (a.planet1==="Moon" ? a.planet2 : a.planet1);
                   const col = ASP_COL[a.aspect] ?? "#888";
                   return (
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
-                      <span style={{ color:"#7080a0" }}>☽</span>
+                      <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
                       <span style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
-                      <span style={{ color:PLANET_COLORS[other]??"#555" }}>{PLANET_ICONS[other]??""}</span>
-                      <span style={{ flex:1,color:"#555" }}>{other}</span>
-                      <span style={{ fontSize:8.5,color:a.applying?col:"#bbb" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
+                      <span style={{ color:PLANET_COLORS[other]??"var(--text-2)" }}>{PLANET_ICONS[other]??""}</span>
+                      <span style={{ flex:1,color:"var(--text-2)" }}>{other}</span>
+                      <span style={{ fontSize:8.5,color:a.applying?col:"var(--text-3)" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
                     </div>
                   );
                 })}
@@ -1081,8 +1078,8 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
           })()}
           {crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-              <div style={{ fontSize:9.5,fontWeight:600,color:"#333",marginBottom:2 }}>Angle crossings</div>
-              <div style={{ fontSize:8.5,color:"#999",lineHeight:1.45,marginBottom:6 }}>
+              <div style={{ fontSize:9.5,fontWeight:600,color:"var(--text-1)",marginBottom:2 }}>Angle crossings</div>
+              <div style={{ fontSize:8.5,color:"var(--text-3)",lineHeight:1.45,marginBottom:6 }}>
                 Moments a planet crosses one of your local chart angles (rising point, midheaven) — a brief window, ~20 minutes, when that planet's themes peak.
               </div>
               {crossings.map((c:any,i:number)=>{
@@ -1092,8 +1089,8 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                   <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
                     <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{PLANET_ICONS[c.planet]??c.planet[0]}</div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:10,fontWeight:500,color:"#333" }}>{c.planet} {ANGLE_WORD[c.angle] ?? `crosses ${c.angle}`}</div>
-                      <div style={{ fontSize:8,color:"#aaa" }}>{c.time}</div>
+                      <div style={{ fontSize:10,fontWeight:500,color:"var(--text-1)" }}>{c.planet} {ANGLE_WORD[c.angle] ?? `crosses ${c.angle}`}</div>
+                      <div style={{ fontSize:8,color:"var(--text-3)" }}>{c.time}</div>
                     </div>
                   </div>
                 );
@@ -1111,9 +1108,9 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                     <div style={{ width:3,height:26,borderRadius:2,background:col,flexShrink:0 }}/>
                     <div style={{ flex:1,minWidth:0 }}>
                       <div style={{ fontSize:12,fontWeight:600,color:"var(--color-foreground)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{w.title}</div>
-                      <div style={{ fontSize:10.5,color:"#8a8278" }}>{fmtTime(s)} – {fmtTime(e)}</div>
+                      <div style={{ fontSize:10.5,color:"var(--color-muted)" }}>{fmtTime(s)} – {fmtTime(e)}</div>
                     </div>
-                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"#bbb",cursor:"pointer",fontSize:12 }}>✕</button>
+                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:12 }}>✕</button>
                   </div>
                 );
               })}
@@ -1155,7 +1152,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
       const d = new Date(ev.at);
       moments.push({
         min: minOf(d), time: fmtTime(d), glyph: ev.icon || (ev.type === "aspect" ? "✦" : "☽︎"),
-        label: ev.title, sub: ev.subtitle, color: ev.type === "aspect" ? "#6f6a90" : "#60708a",
+        label: ev.title, sub: ev.subtitle, color: ev.type === "aspect" ? "var(--text-2)" : "#60708a",
       });
     }
   }
@@ -1163,8 +1160,8 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
   // Void-of-course Moon — a rest window, shown as start/end bookends
   const voc = vocRangeForDate(dateStr, new Map([[dateStr, events]]));
   if (voc) {
-    moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "drifting — rest, don't launch", color: "#6f6a90" });
-    if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "#6f6a90" });
+    moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "drifting — rest, don't launch", color: "var(--text-2)" });
+    if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "var(--text-2)" });
   }
 
   // Angle crossings (advanced layer)
@@ -1174,7 +1171,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
       const min = d ? minOf(d) : (typeof c.time === "string" ? timeToMinutes(c.time) : 0);
       moments.push({
         min, time: d ? fmtTime(d) : c.time, glyph: PLANET_ICONS[c.planet] ?? "✷",
-        label: `${c.planet} crosses your ${c.angle}`, sub: c.type, color: PLANET_COLORS[c.planet] ?? "#8a8278", faded: true,
+        label: `${c.planet} crosses your ${c.angle}`, sub: c.type, color: PLANET_COLORS[c.planet] ?? "var(--color-muted)", faded: true,
       });
     }
   }
@@ -1184,7 +1181,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
     for (const ph of computeAllPlanetaryHours(dateStr, lat, lon)) {
       moments.push({
         min: minOf(ph.startTime), time: fmtTime(ph.startTime), glyph: PLANET_ICONS[ph.ruler] ?? "·",
-        label: `${ph.ruler} hour`, color: PLANET_COLORS[ph.ruler] ?? "#8a8278", faded: true,
+        label: `${ph.ruler} hour`, color: PLANET_COLORS[ph.ruler] ?? "var(--color-muted)", faded: true,
       });
     }
   }
@@ -1192,7 +1189,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
   // Your scheduled blocks
   for (const w of windows) {
     const s = new Date(w.startTime);
-    moments.push({ min: minOf(s), time: fmtTime(s), glyph: "▦", label: w.title, sub: "your block", color: "#3a5a80", onDelete: () => onDeleteWindow(w.id) });
+    moments.push({ min: minOf(s), time: fmtTime(s), glyph: "▦", label: w.title, sub: "your block", color: ELEMENT_COLORS.water, onDelete: () => onDeleteWindow(w.id) });
   }
   for (const ev of gcalEvents) {
     if (ev.allDay) { moments.push({ min: -1, time: "all day", glyph: "◷", label: ev.title, sub: "Google Calendar", color: "#4a7a4a" }); continue; }
@@ -1215,16 +1212,16 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
               {dayData?.tide?.character ? `${dayData.tide.character.charAt(0).toUpperCase()}${dayData.tide.character.slice(1)} Tide` : "The day"}
               {dayData?.tide?.levelLabel ? <span style={{ color: accent, fontWeight: 500 }}> · {dayData.tide.levelLabel}</span> : null}
             </div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
+            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1 }}>
               {moonSign ? `Moon in ${moonSign.split(" ")[0]}` : ""}{dayData?.moonPhase ? ` · ${dayData.moonPhase}` : ""}
               {dayData?.dayRuler ? ` · ${dayData.dayRuler}'s day` : ""}
             </div>
           </div>
-          <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#666", cursor: "pointer", flexShrink: 0 }}>+ block</button>
+          <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", flexShrink: 0 }}>+ block</button>
         </div>
 
         {moments.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: "#999", padding: "24px 4px", textAlign: "center" }}>
+          <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "24px 4px", textAlign: "center" }}>
             A quiet day — no standout sky moments. Turn on planetary hours for the full clock, or add a block.
           </div>
         ) : (
@@ -1233,13 +1230,13 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
               const past = isToday && m.min >= 0 && m.min < nowMin;
               return (
                 <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", borderTop: i === 0 ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
-                  <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "#999", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
+                  <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "var(--text-3)", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
                   <div style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "#777" : "var(--color-foreground)" }}>{m.label}</div>
-                    {m.sub && <div style={{ fontSize: 10, color: "#a09888", marginTop: 1 }}>{m.sub}</div>}
+                    <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
+                    {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
                   </div>
-                  {m.onDelete && <button onClick={m.onDelete} title="Remove block" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
+                  {m.onDelete && <button onClick={m.onDelete} title="Remove block" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
                 </div>
               );
             })}
@@ -1409,10 +1406,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
       <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
-        <button onClick={prevPeriod} title="Previous — press ←" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>‹</button>
+        <button onClick={prevPeriod} title="Previous — press ←" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>‹</button>
         <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
-        <button onClick={nextPeriod} title="Next — press →" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#555",cursor:"pointer",lineHeight:1.5 }}>›</button>
-        <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"#666",cursor:"pointer" }}>Today</button>
+        <button onClick={nextPeriod} title="Next — press →" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
           {(["agenda","day","week","month"] as CalView[]).map(v=>(
@@ -1420,7 +1417,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
             // shortcut nobody uses.
             <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
               fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
-              background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"#999",
+              background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"var(--text-3)",
               fontWeight:calView===v?600:400,textTransform:"capitalize",
             }}>{v}</button>
           ))}
@@ -1430,18 +1427,18 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         {calView==="agenda" && (
           <>
-            <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"#aaa",cursor:"pointer" }}>Planetary hours</button>
-            <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"#aaa",cursor:"pointer" }}>Crossings</button>
+            <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"var(--text-3)",cursor:"pointer" }}>Planetary hours</button>
+            <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"var(--text-3)",cursor:"pointer" }}>Crossings</button>
           </>
         )}
 
         {calView==="month" && (
           <>
             {calView==="month" && (
-              <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"#888":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
+              <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"var(--color-muted)":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
             )}
-            <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"#aaa",cursor:"pointer" }}>Signs</button>
-            <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"#888",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
+            <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"var(--text-3)",cursor:"pointer" }}>Signs</button>
+            <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"var(--color-muted)",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
           </>
         )}
 
@@ -1462,19 +1459,19 @@ export default function Calendar({ testerId, now, lat, lon }: {
           <>
             <div style={{ flex:1,display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 10px 10px",minWidth:0 }}>
               {/* Legend — every mark on the grid, named */}
-              <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"#a09888",flexShrink:0 }}>
+              <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"var(--color-muted)",flexShrink:0 }}>
                 <span>tint = the day's element (Moon's sign)</span>
                 {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
                 {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
-                <span><span style={{ background:"#6f6a9022",color:"#6f6a90",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
+                <span><span style={{ background:"#6f6a9022",color:"var(--text-2)",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
                 {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = a caution day for you — tap the day to see what & why</span>}
               </div>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
                   const ruler = WEEKDAY_RULERS[i];
                   return (
-                    <div key={d} title={`${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"#c8c4bc",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} <span style={{ color:PLANET_COLORS[ruler]??"#c8c4bc",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>
+                    <div key={d} title={`${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
+                      {d} <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>
                     </div>
                   );
                 })}

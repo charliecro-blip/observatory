@@ -14,6 +14,8 @@ import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
 import { aiErrorMessage } from "@/lib/aiError";
+import { PLANET_COLORS } from "@/lib/planetColors";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -21,24 +23,21 @@ const MAX_ACTIVE_STARS = 5;
 
 const ELEMENT_INFO: Record<string, { color: string; label: string }> = {
   fire:  { color: "#c04830", label: "Fire" },
-  earth: { color: "#4a7040", label: "Earth" },
-  air:   { color: "#c19a3a", label: "Air" },
-  water: { color: "#3a5a80", label: "Water" },
+  earth: { color: ELEMENT_COLORS.earth, label: "Earth" },
+  air:   { color: ELEMENT_COLORS.air, label: "Air" },
+  water: { color: ELEMENT_COLORS.water, label: "Water" },
 };
 
 const HORIZON_COLORS: Record<string, { bg: string; color: string }> = {
   near: { bg: "#dbeafe", color: "#2a5a90" },
   mid:  { bg: "#f0e8d8", color: "#8a5020" },
-  long: { bg: "#e8d8f0", color: "#c19a3a" },
+  long: { bg: "#e8d8f0", color: ELEMENT_COLORS.air },
 };
 
 // The seven classical rulers a Guiding Star can be diagnosed to — planets drive
 // scheduling more precisely than elements (Mars→training, Mercury→study).
 const STAR_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"] as const;
-const PLANET_PICK_COLOR: Record<string, string> = {
-  Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#a06080",
-  Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060",
-};
+const PLANET_PICK_COLOR = PLANET_COLORS;
 
 // A step whose wording implies "do this over and over" is really a habit, not a
 // one-off task — used to pre-highlight "make it a habit" on the step.
@@ -462,7 +461,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const atCap = list.length >= MAX_ACTIVE_STARS;
 
   if (isLoading) {
-    return <div style={{ padding: 40, color: "#999", fontSize: 13 }}>Reading your Guiding Stars…</div>;
+    return <div style={{ padding: 40, color: "var(--text-3)", fontSize: 13 }}>Reading your Guiding Stars…</div>;
   }
 
   return (
@@ -472,12 +471,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.4px" }}>Guiding Stars</div>
-            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>Your long-term ideals — the few things everything else should serve</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Your long-term ideals — the few things everything else should serve</div>
           </div>
           <button onClick={() => setShowForm(v => !v)} disabled={atCap && !showForm} title={atCap ? `Only ${MAX_ACTIVE_STARS} active at a time — pause one first` : undefined} style={{
             fontSize: 11, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--color-border)",
-            background: showForm ? "#1a2a3a" : (atCap ? "var(--color-card-2)" : "#fff"),
-            color: showForm ? "#fff" : (atCap ? "#bbb" : "#555"),
+            background: showForm ? "#1a2a3a" : (atCap ? "var(--color-card-2)" : "var(--color-card)"),
+            color: showForm ? "#fff" : (atCap ? "var(--text-3)" : "var(--text-2)"),
             cursor: atCap && !showForm ? "default" : "pointer", flexShrink: 0, whiteSpace: "nowrap",
           }}>
             {showForm ? "Cancel" : "+ New Guiding Star"}
@@ -533,8 +532,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 10.5, color: ec, background: `${ec}10`, border: `1px solid ${ec}40`, borderRadius: 7, padding: "6px 10px" }}>
                   <span style={{ fontWeight: 600 }}>⏳ {pendingAnchor.label}</span>
-                  {pendingAnchor.until && <span style={{ color: "#999" }}>until {fmtMonth(pendingAnchor.until)}</span>}
-                  <button onClick={() => setPendingAnchor(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#bbb", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
+                  {pendingAnchor.until && <span style={{ color: "var(--text-3)" }}>until {fmtMonth(pendingAnchor.until)}</span>}
+                  <button onClick={() => setPendingAnchor(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
                 </div>
               );
             })()}
@@ -543,16 +542,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 Guiding Star is a direction, not a to-do, and examples give
                 people a shape to copy. Owner #4: 'setting up a new guiding
                 star needs encouragement / walking people through it.' */}
-            <div style={{ fontSize: 11.5, color: "#8a8278", lineHeight: 1.55 }}>
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
               <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, and the sky reads its nature — a ruling planet and element that set its best timing. Adjust either if you like, set a horizon, then break it into tasks and habits below.
             </div>
             {!form.title && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                <span style={{ fontSize: 9.5, color: "#b0a898", alignSelf: "center", marginRight: 2 }}>e.g.</span>
+                <span style={{ fontSize: 9.5, color: "var(--color-muted)", alignSelf: "center", marginRight: 2 }}>e.g.</span>
                 {["Finish the book", "Grow the business", "Get strong & steady", "Deepen my closest bonds"].map(ex => (
                   <button key={ex} onClick={() => setForm(f => ({ ...f, title: ex }))} style={{
                     fontSize: 10, padding: "3px 10px", borderRadius: 10, border: "1px dashed #d0c8bc",
-                    background: "var(--color-card-2)", color: "#8a8278", cursor: "pointer",
+                    background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer",
                   }}>{ex}</button>
                 ))}
               </div>
@@ -566,10 +565,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 It suggests a ruling planet + element; you can override either. */}
             {diagnosis && (form.title.trim().length >= 3) && (
               <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "9px 11px" }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#b0a898", marginBottom: 4 }}>The sky reads this as</div>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>The sky reads this as</div>
                 <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
                 {diagnosis.houses && diagnosis.houses.length > 0 && (
-                  <div style={{ fontSize: 9.5, color: "#999", marginTop: 3 }}>
+                  <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 3 }}>
                     Lives in your {diagnosis.houses.map(ordinal).join(" & ")} house{diagnosis.houses.length > 1 ? "s" : ""}
                   </div>
                 )}
@@ -577,7 +576,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             )}
 
             <div>
-              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Its ruling planet <span style={{ color: "#c8a04a" }}>— what drives its timing</span></div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 5 }}>Its ruling planet <span style={{ color: "#c8a04a" }}>— what drives its timing</span></div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {STAR_PLANETS.map(p => {
                   const on = effPlanet === p;
@@ -588,7 +587,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       fontSize: 10.5, padding: "4px 10px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
                       border: on ? `1px solid ${col}` : "1px solid #e0dad0",
                       background: on ? `${col}18` : "var(--color-card-2)",
-                      color: on ? col : "#999", fontWeight: on ? 600 : 400,
+                      color: on ? col : "var(--text-3)", fontWeight: on ? 600 : 400,
                     }}>{PLANET_GLYPH[p] ?? ""} {p}{suggested ? " ·" : ""}</button>
                   );
                 })}
@@ -596,7 +595,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             </div>
 
             <div>
-              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 5 }}>Which element does this live in?</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 5 }}>Which element does this live in?</div>
               <div style={{ display: "flex", gap: 4 }}>
                 {Object.entries(ELEMENT_INFO).map(([key, info]) => {
                   const on = effElement === key;
@@ -606,7 +605,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       fontSize: 10, padding: "4px 11px", borderRadius: 10, cursor: "pointer", flex: 1,
                       border: on ? `1px solid ${info.color}` : suggested ? `1px dashed ${info.color}` : "1px solid #e0dad0",
                       background: on ? `${info.color}18` : "var(--color-card-2)",
-                      color: on ? info.color : suggested ? info.color : "#999",
+                      color: on ? info.color : suggested ? info.color : "var(--text-3)",
                       fontWeight: on ? 600 : 400,
                     }}>{info.label}</button>
                   );
@@ -618,13 +617,13 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               {(["near", "mid", "long"] as const).map(h => (
                 <button key={h} onClick={() => setForm(f => ({ ...f, horizon: h }))} style={{
                   flex: 1, padding: "5px 0", borderRadius: 6, border: "1px solid", cursor: "pointer", fontSize: 11,
-                  borderColor: form.horizon === h ? HORIZON_COLORS[h].color : "#d8d2ca",
+                  borderColor: form.horizon === h ? HORIZON_COLORS[h].color : "var(--text-3)",
                   background: form.horizon === h ? HORIZON_COLORS[h].bg : "transparent",
-                  color: form.horizon === h ? HORIZON_COLORS[h].color : "#888", fontWeight: form.horizon === h ? 600 : 400,
+                  color: form.horizon === h ? HORIZON_COLORS[h].color : "var(--color-muted)", fontWeight: form.horizon === h ? 600 : 400,
                 }}>{h}</button>
               ))}
               <button onClick={() => form.title.trim() && addGoal.mutate()} disabled={!form.title.trim()}
-                style={{ padding: "5px 18px", borderRadius: 7, border: "none", fontSize: 11, background: form.title.trim() ? "#1a2a3a" : "#e0dcd6", color: form.title.trim() ? "#fff" : "#aaa", cursor: "pointer" }}>
+                style={{ padding: "5px 18px", borderRadius: 7, border: "none", fontSize: 11, background: form.title.trim() ? "#1a2a3a" : "var(--color-border)", color: form.title.trim() ? "#fff" : "var(--text-3)", cursor: "pointer" }}>
                 Create
               </button>
             </div>
@@ -650,7 +649,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>{a.label}</div>
-                      <div style={{ fontSize: 9.5, color: "#999", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
                       </div>
                     </div>
@@ -665,12 +664,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               return (
                 <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
                   {!showSeasons ? (
-                    <button onClick={() => setShowSeasons(true)} style={{ fontSize: 10.5, color: "#8a8278", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                    <button onClick={() => setShowSeasons(true)} style={{ fontSize: 10.5, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
                       Optional: anchor it to a season the sky is backing →
                     </button>
                   ) : (
                     <div style={{ background: "var(--color-card-2)", borderRadius: 10, padding: "10px 14px 4px" }}>
-                      <div style={{ fontSize: 10, color: "#999", marginBottom: 6, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6, lineHeight: 1.5 }}>
                         The long cycles moving through your chart right now — riding one gives your aim a natural season instead of an invented deadline.
                       </div>
                       {prof && (
@@ -698,7 +697,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           <div style={{ textAlign: "center", padding: "44px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>
-            <div style={{ fontSize: 12.5, color: "#8a8278", lineHeight: 1.6, maxWidth: 380 }}>
+            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, maxWidth: 380 }}>
               A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Compass helps you time them to the sky.
             </div>
             <button onClick={() => setShowForm(true)} style={{
@@ -742,12 +741,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       })()}
                       {info && <span style={{ fontSize: 9, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
                     </div>
-                    {g.description && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{g.description}</div>}
+                    {g.description && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>{g.description}</div>}
                     {g.anchorKind && g.anchorHouse != null && (
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, fontSize: 9.5, color: ec, background: `${ec}10`, border: `1px solid ${ec}30`, borderRadius: 6, padding: "2px 7px" }}>
                         <span>⏳ {anchorLabel(g)}{g.anchorUntil ? ` · until ${fmtMonth(g.anchorUntil)}` : ""}</span>
                         {closing && <span style={{ color: "#a04040", fontWeight: 700 }}>closing soon</span>}
-                        <button onClick={() => clearAnchor.mutate(g.id)} title="Unlink from this cycle" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
+                        <button onClick={() => clearAnchor.mutate(g.id)} title="Unlink from this cycle" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
                       </div>
                     )}
                     {!g.element && (
@@ -755,7 +754,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         {Object.entries(ELEMENT_INFO).map(([key, ei]) => (
                           <button key={key} onClick={() => setElement.mutate({ id: g.id, element: key })} style={{
                             fontSize: 9, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
-                            border: "1px solid #e0dad0", background: "var(--color-card-2)", color: "#999",
+                            border: "1px solid #e0dad0", background: "var(--color-card-2)", color: "var(--text-3)",
                           }}>{ei.label}</button>
                         ))}
                       </div>
@@ -764,15 +763,15 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     <button onClick={() => logSession.mutate(g.id)} title="Log a session for this star" style={{
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
-                      background: "var(--color-card-2)", color: "#6a6258", cursor: "pointer",
+                      background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer",
                     }}>+ log</button>
                     <button onClick={() => cycleStatus.mutate({ id: g.id, status: g.status })} title="Set this star down for a while — it keeps its history" style={{
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
-                      background: "none", color: "#998", cursor: "pointer",
+                      background: "none", color: "var(--color-muted)", cursor: "pointer",
                     }}>pause</button>
                     <button onClick={() => { if (confirm(`Retire “${g.title}”? It ends the journey — history stays in the Log.`)) retireStar.mutate(g.id); }} title="End this star — reached, outgrown, or done with" style={{
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
-                      background: "none", color: "#998", cursor: "pointer",
+                      background: "none", color: "var(--color-muted)", cursor: "pointer",
                     }}>retire</button>
                   </div>
                 </div>
@@ -780,28 +779,28 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${pct}%`, background: ec, borderRadius: 2, opacity: 0.75 }} />
                 </div>
-                <div style={{ fontSize: 9, color: "#999", marginTop: 3 }}>{g.completedCount ?? 0}/{target} sessions this week</div>
+                <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>{g.completedCount ?? 0}/{target} sessions this week</div>
               </div>
 
               {/* Breakdown — explicit and visible, not a footnote */}
               <div style={{ padding: "10px 14px", background: "var(--color-card-2)", borderTop: "1px solid var(--color-border)" }}>
-                <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#a89a88", marginBottom: 7 }}>
+                <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>
                   Broken down into
                 </div>
                 {gTasks.length === 0 && gHabits.length === 0 && (
-                  <div style={{ fontSize: 10.5, color: "#bbb", marginBottom: 6 }}>Nothing yet — add a task or habit below.</div>
+                  <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 6 }}>Nothing yet — add a task or habit below.</div>
                 )}
                 {gTasks.length > 0 && (
                   <div style={{ marginBottom: gHabits.length > 0 ? 6 : 0 }}>
                     {gTasks.slice(0, 4).map((t: any) => (
                       <button key={t.id} onClick={() => completeTask.mutate(t.id)} title="Mark done"
-                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, color: "#6a6258", padding: "2px 0", background: "none", border: "none", cursor: "pointer" }}
+                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, color: "var(--color-muted)", padding: "2px 0", background: "none", border: "none", cursor: "pointer" }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#3a6020"; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#6a6258"; }}
                       >☐ {t.title}</button>
                     ))}
                     {gTasks.length > 4 && (
-                      <button onClick={() => onNavigate("tasks")} style={{ fontSize: 9.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                      <button onClick={() => onNavigate("tasks")} style={{ fontSize: 9.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                         +{gTasks.length - 4} more in Tasks →
                       </button>
                     )}
@@ -811,7 +810,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div>
                     {gHabits.map((h: any) => (
                       <button key={h.id} onClick={() => toggleHabitToday.mutate({ id: h.id, done: !!h.doneToday })} title={h.doneToday ? "Undo today's practice" : "Affirm today's practice"}
-                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, padding: "2px 0", background: "none", border: "none", cursor: "pointer", color: h.doneToday ? "#5a8a48" : "#6a6258" }}>
+                        style={{ display: "block", width: "100%", textAlign: "left", fontSize: 10.5, padding: "2px 0", background: "none", border: "none", cursor: "pointer", color: h.doneToday ? "#5a8a48" : "var(--color-muted)" }}>
                         {h.doneToday ? "✓" : "↻"} {h.name}{h.doneToday ? <span style={{ color: "#9ab88a", fontSize: 9 }}> · done today</span> : ""}
                       </button>
                     ))}
@@ -831,8 +830,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       {prog && (prog.tasksTotal > 0 || prog.stepsTotal > 0) && (
                         <div style={{ marginBottom: 6 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                            <span style={{ fontSize: 9, color: "#a89a88" }}>Project · {prog.pct}%</span>
-                            <span style={{ fontSize: 9, color: "#bbb" }}>
+                            <span style={{ fontSize: 9, color: "var(--text-3)" }}>Project · {prog.pct}%</span>
+                            <span style={{ fontSize: 9, color: "var(--text-3)" }}>
                               {prog.tasksTotal > 0 ? `${prog.tasksDone}/${prog.tasksTotal} tasks` : `${prog.stepsDone}/${prog.stepsTotal} steps`}
                             </span>
                           </div>
@@ -841,41 +840,41 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                           </div>
                         </div>
                       )}
-                      <div style={{ fontSize: 9, color: "#a89a88", marginBottom: 3 }}>Steps</div>
+                      <div style={{ fontSize: 9, color: "var(--text-3)", marginBottom: 3 }}>Steps</div>
                       {steps.map((m: any) => {
                         const stepTasks = tasksForStep(m.id);
                         return (
                           <div key={m.id} style={{ marginBottom: 3 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "2px 0" }}>
                               <span onClick={() => cycleStep.mutate({ id: m.id, status: m.status })} title="Cycle step status"
-                                style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "#ccc", flexShrink: 0, cursor: "pointer" }} />
-                              <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "#bbb" : "#6a6258", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
+                                style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "var(--color-border)", flexShrink: 0, cursor: "pointer" }} />
+                              <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "var(--text-3)" : "var(--color-muted)", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
                               {m.status !== "completed" && <ActivityTimesHint title={m.title} testerId={testerId} lat={lat} lon={lon} />}
-                              {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "#bbb" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
+                              {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
                               {(() => {
                                 const stepHabits = (allHabits as any[]).filter((h) => h.milestoneId === m.id);
                                 const already = stepHabits.length > 0;
                                 const recur = looksRecurring(m.title);
                                 return already ? (
-                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "#7a8a9a" }}>↻ habit</span>
+                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "var(--text-2)" }}>↻ habit</span>
                                 ) : (
                                   <button
                                     onClick={() => addHabitFromStep.mutate({ milestoneId: m.id, starId: g.id, title: m.title, element: g.element ?? undefined, planet: (g as any).planet ?? undefined })}
                                     disabled={addHabitFromStep.isPending}
                                     title={recur ? "This reads like a recurring practice — make it a habit" : "Make this step a recurring habit"}
-                                    style={{ fontSize: 9, color: recur ? "#7a6cae" : "#c0b8aa", background: recur ? "#7a6cae12" : "none", border: "none", borderRadius: 5, cursor: "pointer", padding: recur ? "1px 6px" : "0 2px", fontWeight: recur ? 600 : 400, lineHeight: 1 }}
+                                    style={{ fontSize: 9, color: recur ? "#7a6cae" : "var(--text-3)", background: recur ? "#7a6cae12" : "none", border: "none", borderRadius: 5, cursor: "pointer", padding: recur ? "1px 6px" : "0 2px", fontWeight: recur ? 600 : 400, lineHeight: 1 }}
                                   >↻ habit</button>
                                 );
                               })()}
                               <button onClick={() => { setStepTaskAdd(m.id); setStepTaskTitle(""); }} title="Add a task to this step"
-                                style={{ fontSize: 11, color: "#c0b8aa", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>+</button>
+                                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>+</button>
                             </div>
                             {/* Tasks under the step */}
                             {stepTasks.map((t) => (
                               <div key={t.id} onClick={() => toggleStepTask.mutate({ id: t.id, done: t.done === "true" })}
                                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "1px 0 1px 15px", cursor: "pointer" }}>
-                                <span style={{ fontSize: 10, color: t.done === "true" ? "#80b870" : "#ccc" }}>{t.done === "true" ? "✓" : "○"}</span>
-                                <span style={{ fontSize: 10, color: t.done === "true" ? "#bbb" : "#7a736a", textDecoration: t.done === "true" ? "line-through" : "none" }}>{t.title}</span>
+                                <span style={{ fontSize: 10, color: t.done === "true" ? "#80b870" : "var(--text-3)" }}>{t.done === "true" ? "✓" : "○"}</span>
+                                <span style={{ fontSize: 10, color: t.done === "true" ? "var(--text-3)" : "var(--text-2)", textDecoration: t.done === "true" ? "line-through" : "none" }}>{t.title}</span>
                               </div>
                             ))}
                             {stepTaskAdd === m.id && (
@@ -927,13 +926,13 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 {/* AI breakdown review — proposed steps for this star */}
                 {breakdownFor === g.id && proposedSteps.length > 0 && (
                   <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)" }}>
-                    <div style={{ fontSize: 10, color: "#8a8278", marginBottom: 6 }}>Proposed steps — edit or drop, then keep them:</div>
+                    <div style={{ fontSize: 10, color: "var(--color-muted)", marginBottom: 6 }}>Proposed steps — edit or drop, then keep them:</div>
                     {proposedSteps.map((s, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: ELEMENT_INFO[s.element]?.color ?? "#aaa", flexShrink: 0 }} />
                         <input value={s.title} onChange={(e) => setProposedSteps((ps) => ps.map((p, j) => j === i ? { ...p, title: e.target.value } : p))}
                           style={{ flex: 1, padding: "3px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }} />
-                        <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} style={{ fontSize: 11, color: "#ccc", background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                        <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>✕</button>
                       </div>
                     ))}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -941,7 +940,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         style={{ fontSize: 10.5, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
                         {commitBreakdown.isPending ? "Adding…" : `Keep ${proposedSteps.length} steps`}
                       </button>
-                      <button onClick={() => { setBreakdownFor(null); setProposedSteps([]); }} style={{ fontSize: 10, color: "#999", background: "none", border: "none", cursor: "pointer" }}>discard</button>
+                      <button onClick={() => { setBreakdownFor(null); setProposedSteps([]); }} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>discard</button>
                     </div>
                   </div>
                 )}
@@ -960,7 +959,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <button onClick={() => stepTitle.trim() && addStep.mutate({ starId: g.id, starTitle: g.title, title: stepTitle.trim() })}
                       style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
                     <button onClick={() => { setStepAdd(null); setStepTitle(""); }}
-                      style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>✕</button>
+                      style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                   </div>
                 )}
 
@@ -979,17 +978,17 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         disabled={createLinked.isPending}
                         style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{createLinked.isPending ? "…" : "Add"}</button>
                       <button onClick={() => { setQuickAdd(null); setQuickTitle(""); }}
-                        style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>✕</button>
+                        style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                       {createLinked.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                       <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "task" }); setQuickTitle(""); }}
-                        style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ task</button>
+                        style={{ fontSize: 10.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ task</button>
                       <button onClick={() => { setQuickAdd({ goalId: g.id, kind: "habit" }); setQuickTitle(""); }}
-                        style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ habit</button>
+                        style={{ fontSize: 10.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ habit</button>
                       <button onClick={() => { setStepAdd(g.id); setStepTitle(""); }}
-                        style={{ fontSize: 10.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ step</button>
+                        style={{ fontSize: 10.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>+ step</button>
                       {/* AI breakdown — only advertise when the star has no steps yet */}
                       {stepsForStar(g.id).length === 0 && breakdownFor !== g.id && (
                         <button onClick={() => { setBreakdownFor(g.id); setProposedSteps([]); runBreakdown.mutate({ title: g.title, description: g.description ?? undefined }); }}
@@ -1028,11 +1027,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           if (!prof && transits.length === 0 && keepers.length === 0) return null;
           return (
             <div style={{ background: "linear-gradient(180deg, var(--color-card) 0%, var(--color-card-2) 100%)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8ba0", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
+              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
               {prof && (
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", marginBottom: 5 }}>
                   {PLANET_GLYPH[prof.timeLord] ?? "◔"} Your {ordinal(prof.house)}-house year
-                  <span style={{ fontWeight: 400, color: "#999" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
+                  <span style={{ fontWeight: 400, color: "var(--text-3)" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
                 </div>
               )}
               {transits.slice(0, 2).map((t: any, i: number) => {
@@ -1040,17 +1039,17 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 const isExp = expandedWeather === key;
                 return (
                   <div key={i}>
-                    <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
+                    <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
                       <span style={{ color: "#a04040", flexShrink: 0 }}>{PLANET_GLYPH[t.transitPlanet]}</span>
                       <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
-                      <span style={{ fontSize: 8, color: "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
+                      <span style={{ fontSize: 8, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
                     </button>
                     {isExp && <TransitTake t={t} accent="#8a8ba0" />}
                   </div>
                 );
               })}
               {keepers.map((t: any, i: number) => (
-                <div key={`k${i}`} style={{ fontSize: 10.5, color: "#777", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", padding: "1px 0" }}>
+                <div key={`k${i}`} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", padding: "1px 0" }}>
                   <span style={{ color: "#5a6b8c", flexShrink: 0 }}>{PLANET_GLYPH[t.planet]}</span>
                   <span>{t.planet} through your {ordinal(t.house)} · {HOUSE_MEANINGS[t.house]?.title ?? ""} — {t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}</span>
                 </div>
@@ -1061,7 +1060,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
         {/* Weekly retro */}
         {topElement && topElement.completed > 0 && (
-          <div style={{ fontSize: 11.5, color: "#888", padding: "2px 2px" }}>
+          <div style={{ fontSize: 11.5, color: "var(--color-muted)", padding: "2px 2px" }}>
             Most active element this week: <b style={{ color: ELEMENT_MYTHOS[topElement.el].color }}>{ELEMENT_MYTHOS[topElement.el].name}</b>
             {" "}({topElement.completed} session{topElement.completed === 1 ? "" : "s"} logged)
           </div>
@@ -1069,7 +1068,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 
         {/* Element cards */}
         <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
             The four elements
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1085,16 +1084,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{m.name}</span>
-                    {tally.stars.length === 0 && <span style={{ fontSize: 8.5, color: "#bbb", marginLeft: "auto" }}>no Guiding Star</span>}
+                    {tally.stars.length === 0 && <span style={{ fontSize: 8.5, color: "var(--text-3)", marginLeft: "auto" }}>no Guiding Star</span>}
                   </div>
-                  <div style={{ fontSize: 10.5, color: "#888", lineHeight: 1.45 }}>{m.essence}</div>
+                  <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>{m.essence}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
                     {m.domains.slice(0, 3).map((d, i) => (
                       <span key={i} style={{ fontSize: 8.5, color: m.color, background: `${m.color}12`, padding: "2px 7px", borderRadius: 8 }}>{d}</span>
                     ))}
                   </div>
                   {tally.completed > 0 && (
-                    <div style={{ fontSize: 9.5, color: "#999", marginTop: 2 }}>{tally.completed} session{tally.completed === 1 ? "" : "s"} this week</div>
+                    <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 2 }}>{tally.completed} session{tally.completed === 1 ? "" : "s"} this week</div>
                   )}
                 </button>
               );
@@ -1105,12 +1104,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {/* Paused stars */}
         {pausedGoals.length > 0 && (
           <div style={{ paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#ccc", marginBottom: 8 }}>Paused</div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 8 }}>Paused</div>
             {pausedGoals.map((g: any) => (
               <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 7, opacity: 0.6 }}>
-                <div style={{ fontSize: 12, color: "#888", flex: 1 }}>{g.title}</div>
+                <div style={{ fontSize: 12, color: "var(--color-muted)", flex: 1 }}>{g.title}</div>
                 <button onClick={() => cycleStatus.mutate({ id: g.id, status: g.status })} style={{ fontSize: 10, color: "#6090c0", background: "none", border: "none", cursor: "pointer" }}>resume</button>
-                <button onClick={() => { if (confirm(`Retire “${g.title}”?`)) retireStar.mutate(g.id); }} style={{ fontSize: 10, color: "#998", background: "none", border: "none", cursor: "pointer" }}>retire</button>
+                <button onClick={() => { if (confirm(`Retire “${g.title}”?`)) retireStar.mutate(g.id); }} style={{ fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer" }}>retire</button>
                 <button onClick={() => { if (confirm(`Delete “${g.title}” completely? For test stars — real journeys deserve retirement.`)) deleteStar.mutate(g.id); }} style={{ fontSize: 10, color: "#c08080", background: "none", border: "none", cursor: "pointer" }}>delete</button>
               </div>
             ))}

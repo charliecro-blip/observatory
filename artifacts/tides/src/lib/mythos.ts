@@ -1,3 +1,6 @@
+// Element hues follow the active palette — see lib/elements.ts for why they
+// stay hex rather than var().
+import { ELEMENT_COLORS } from "@/lib/elements";
 // The mythic heart — canonical content for the four elements and seven classical
 // planets. Per the vocabulary treaty (DESIGN.md §16): elements are the domains of
 // a life (yours), planets are the voices of the moment (the sky's), and the tide
@@ -17,7 +20,7 @@ export interface ElementMythos {
 
 export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
   fire: {
-    key: "fire", name: "Fire", color: "#c04830",
+    key: "fire", name: "Fire", get color() { return ELEMENT_COLORS.fire; },
     essence: "The will to begin — courage, desire, and the spark that moves first.",
     myth: "Fire is the element of initiation: the part of a life that wants to exist louder tomorrow than today. It doesn't ask permission and it doesn't keep — it must be spent to stay alive. A fire North Star is a place you've chosen to be brave.",
     domains: ["ambition & launch", "the body in motion", "leadership", "creative ignition", "visibility"],
@@ -25,7 +28,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
     activities: ["workout", "launch", "pitch", "perform", "compete", "declare", "begin the thing"],
   },
   earth: {
-    key: "earth", name: "Earth", color: "#4a7040",
+    key: "earth", name: "Earth", get color() { return ELEMENT_COLORS.earth; },
     essence: "The will to endure — craft, patience, and what remains when the season turns.",
     myth: "Earth is the element of manifestation: nothing is real until it has weight, and earth is where intentions take on weight. It works slowly and doesn't care about moods. An earth North Star is a place you've chosen to build something that outlasts enthusiasm.",
     domains: ["money & resources", "home & land", "craft & skill", "health routines", "long works"],
@@ -33,7 +36,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
     activities: ["build", "save & budget", "cook & tend", "practice the craft", "organize", "complete", "repair"],
   },
   air: {
-    key: "air", name: "Air", color: "#c19a3a",
+    key: "air", name: "Air", get color() { return ELEMENT_COLORS.air; },
     essence: "The will to understand — language, connection, and the space between minds.",
     myth: "Air is the element of relation: ideas only become knowledge when they move between people, and air is the moving. It doubts, compares, translates, connects. An air North Star is a place you've chosen to think in public — to write, teach, converse, and be changed by the exchange.",
     domains: ["writing & speech", "study & ideas", "friendship & network", "trade & negotiation", "teaching"],
@@ -41,7 +44,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
     activities: ["write", "study", "call & connect", "negotiate", "teach", "brainstorm", "edit"],
   },
   water: {
-    key: "water", name: "Water", color: "#3a5a80",
+    key: "water", name: "Water", get color() { return ELEMENT_COLORS.water; },
     essence: "The will to feel — depth, memory, and the life that moves beneath the surface.",
     myth: "Water is the element of meaning: it holds what happened and turns it into who you are. It cannot be forced, only invited. A water North Star is a place you've chosen to go deep — into feeling, healing, intimacy, dream, or art that comes from the underside.",
     domains: ["emotional life", "intimacy & family", "healing & rest", "dream & spirit", "deep art"],

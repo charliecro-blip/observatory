@@ -1,3 +1,4 @@
+import { PLANET_COLORS } from "@/lib/planetColors";
 // Content layer for the Currents (long-term) view.
 // House domains × activating-planet mode → emphasis + practices.
 
@@ -38,12 +39,12 @@ export const PLANET_MODES: Record<string, PlanetMode> = {
     practices: (d) => [`Invest time and ambition into ${d}`, "Take an opportunity you'd normally decline", "Learn or teach in this area"],
   },
   Saturn: {
-    label: "Saturn", mode: "tests & structures", color: "#807060", arc: "~2.5 years",
+    label: "Saturn", mode: "tests & structures", color: PLANET_COLORS.Saturn, arc: "~2.5 years",
     emphasis: (h, d) => `A chapter of consolidation and testing in ${h.toLowerCase()} — ${d}. Slow, real, earned. Build the structure that lasts; expect to prove it.`,
     practices: (d) => [`Commit to a disciplined practice around ${d}`, "Cut what's not working; keep what's essential", "Build slowly — no shortcuts"],
   },
   Uranus: {
-    label: "Uranus", mode: "disrupts & frees", color: "#3090a0", arc: "~7 years",
+    label: "Uranus", mode: "disrupts & frees", color: PLANET_COLORS.Uranus, arc: "~7 years",
     emphasis: (h, d) => `A long awakening in ${h.toLowerCase()} — ${d}. Old forms break so something freer can emerge. Expect the unexpected; loosen your grip.`,
     practices: (d) => [`Experiment radically with ${d}`, "Release an outdated commitment here", "Allow disruption rather than forcing stability"],
   },

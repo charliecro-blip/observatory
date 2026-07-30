@@ -10,6 +10,8 @@ import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
+import { PLANET_COLORS } from "@/lib/planetColors";
 
 
 const WINDOW_TYPES = [
@@ -21,7 +23,7 @@ const WINDOW_LABELS: Record<string,string> = {
 };
 const WINDOW_COLORS: Record<string,string> = {
   deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#888",
-  social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:"#c04040",retreat:"#6080a0",
+  social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:PLANET_COLORS.Mars,retreat:"#6080a0",
 };
 const HOUR_WINDOW: Record<string,string> = {
   Sun:"deep_work",Moon:"recovery",Mercury:"planning",
@@ -49,7 +51,7 @@ function carriedLabel(t: Task, today: string): string | null {
 }
 
 const ENERGY_META: Record<string,{label:string;bg:string;fg:string}> = {
-  low:    { label:"low",    bg:"#e8efe6", fg:"#4a7040" },
+  low:    { label:"low",    bg:"#e8efe6", fg:ELEMENT_COLORS.earth },
   medium: { label:"med",    bg:"#f2ecdd", fg:"#9a7a2a" },
   high:   { label:"high",   bg:"#f3e4de", fg:"#b0502e" },
 };
@@ -58,7 +60,6 @@ function fmtEst(m:number){ return m >= 120 ? `${Math.round(m/60)}h` : m >= 60 ? 
 interface GoalLite { id:number; title:string; element?:string|null; }
 interface ProjectLite { id:number; title:string; goalId?:number|null; }
 
-const ELEMENT_COLORS: Record<string,string> = { fire:"#c04830", earth:"#4a7040", air:"#c19a3a", water:"#3a5a80" };
 
 function authH(tid:string|null) {
   return { ...(tid ? {"x-tester-id":tid} : {}), "Content-Type":"application/json" };
@@ -246,7 +247,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
-        <div style={{fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:8}}>
+        <div style={{fontSize:12,color:"var(--color-muted)",display:"flex",alignItems:"center",gap:8}}>
           <span>Tasks · everything, by when</span>
           {/* empty / unavailable / stale are three different things. Showing
               "nothing here" for a failed load is a lie, and this app's whole
@@ -258,7 +259,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             return null;
           })()}
         </div>
-        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"#fff",color:showAdd?"#fff":"#555",cursor:"pointer"}}>
+        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#fff":"var(--text-2)",cursor:"pointer"}}>
           + New task
         </button>
       </div>
@@ -275,8 +276,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 placeholder="how it went, what you noticed…"
                 style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,outline:"none",background:"var(--color-card)"}} />
               <button onClick={()=>reflectText.trim()&&saveReflection.mutate(reflectText.trim())} disabled={!reflectText.trim()||saveReflection.isPending}
-                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"#aaa"}}>Log it</button>
-              <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"#a0b090",cursor:"pointer",fontSize:11}}>skip</button>
+                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"var(--text-3)"}}>Log it</button>
+              <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"var(--color-muted)",cursor:"pointer",fontSize:11}}>skip</button>
             </div>
             {saveReflection.isError && <div style={{fontSize:10.5,color:"#a03030",marginTop:6}}>Couldn't save that note — try again.</div>}
           </div>
@@ -298,10 +299,10 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             />
             <div style={{display:"flex",gap:8,marginBottom:6}}>
               <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}
               />
               <select value={newWindow} onChange={e => setNewWindow(e.target.value)}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                 <option value="">Best time: any</option>
                 {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
               </select>
@@ -310,7 +311,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 length into a window, and "quick + low" tasks surface on flat days. */}
             <div style={{display:"flex",gap:8,marginBottom:6}}>
               <select value={newEstMinutes} onChange={e => setNewEstMinutes(e.target.value ? Number(e.target.value) : "")}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                 <option value="">Takes: any length</option>
                 <option value={15}>~15 min</option>
                 <option value={30}>~30 min</option>
@@ -319,7 +320,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 <option value={240}>half a day</option>
               </select>
               <select value={newEnergy} onChange={e => setNewEnergy(e.target.value as ""|"low"|"medium"|"high")}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                 <option value="">Energy: any</option>
                 <option value="low">Low energy</option>
                 <option value="medium">Medium energy</option>
@@ -330,14 +331,14 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
               <div style={{display:"flex",gap:8,marginBottom:6}}>
                 {goalsList.length > 0 && (
                   <select value={newGoalId} onChange={e => setNewGoalId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                     <option value="">Guiding Star: none</option>
                     {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                   </select>
                 )}
                 {projectsList.length > 0 && (
                   <select value={newProjectId} onChange={e => setNewProjectId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                     <option value="">Project: none</option>
                     {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
                   </select>
@@ -347,7 +348,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             {upcomingWindows.length > 0 && (
               <div style={{marginBottom:8}}>
                 <select value={newPlanWindow} onChange={e => setNewPlanWindow(e.target.value ? Number(e.target.value) : "")}
-                  style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"#555",background: "var(--color-card-2)"}}>
+                  style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
                   <option value="">Link to calendar block: none</option>
                   {upcomingWindows.slice(0,10).map(w => (
                     <option key={w.id} value={w.id}>{w.title} · {w.startTime.slice(0,16).replace("T"," ")}</option>
@@ -358,7 +359,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
               {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
               <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
-                style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"#e0dcd6",color:newTitle.trim()?"#fff":"#aaa",cursor:"pointer"}}>
+                style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"var(--color-border)",color:newTitle.trim()?"#fff":"var(--text-3)",cursor:"pointer"}}>
                 {addTask.isPending ? "Adding…" : "Add task"}
               </button>
             </div>
@@ -383,7 +384,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
         ))}
 
         {active.length === 0 && !showAdd && (
-          <div style={{textAlign:"center",padding:"48px 0",color:"#bbb",fontSize:13}}>
+          <div style={{textAlign:"center",padding:"48px 0",color:"var(--text-3)",fontSize:13}}>
             {testerId ? "Clear — add a task above." : "Set up your profile to track tasks."}
           </div>
         )}
@@ -409,8 +410,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 function Sect({ label, children, accent, color, muted }: any) {
   return (
     <div>
-      <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:accent??color??(muted?"#ccc":"#aaa"),fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
-        {label}<div style={{flex:1,height:1,background:"#e8e4de"}}/>
+      <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:accent??color??(muted?"var(--text-3)":"var(--text-3)"),fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+        {label}<div style={{flex:1,height:1,background:"var(--color-card-2)"}}/>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:4}}>{children}</div>
     </div>
@@ -423,35 +424,35 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
 }) {
   const isDone = task.done === "true";
   const wc = task.bestWindowType ? WINDOW_COLORS[task.bestWindowType] : undefined;
-  const goalColor = goal?.element ? ELEMENT_COLORS[goal.element] : undefined;
+  const goalColor = goal?.element ? elementColor(goal.element) : undefined;
   return (
     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:`1px solid ${highlight?"#c0d8b0":"#e8e4de"}`,background:highlight?"#f5faf2":"var(--color-card-2)",opacity:dim?0.5:1}}>
       <button onClick={onToggle} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${isDone?"#80b870":"#c0bab0"}`,background:isDone?"#80b870":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff"}}>
         {isDone?"✓":""}
       </button>
-      <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"#bbb":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
+      <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"var(--text-3)":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
       {/* Auto-rollover moved this here; say where it came from rather than
           letting the date silently read as if it were always due today. */}
       {!isDone && carriedLabel(task, today) && (
         <div title={`Originally due ${task.originalDueDate}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#c0802014",color:"#a07830",fontWeight:600,flexShrink:0}}>↻ {carriedLabel(task, today)}</div>
       )}
       {task.dueDate && task.dueDate !== today && !isDone && (
-        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#f0ede8",color:"#999",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
+        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
       )}
       {task.estMinutes && !isDone && (
-        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"#6a7684",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
+        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"var(--text-2)",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
       )}
       {task.energy && ENERGY_META[task.energy] && !isDone && (
         <div title={`${task.energy} energy`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
       )}
       {goal && !isDone && (
-        <div title={`Goal: ${goal.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "#8a8278",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
+        <div title={`Goal: ${goal.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "var(--color-muted)",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
       )}
       {project && !isDone && (
-        <div title={`Project: ${project.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:"#3a5a80",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
+        <div title={`Project: ${project.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
       )}
       {task.planningWindowId && !isDone ? (
-        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:"#3a5a80",fontWeight:600,flexShrink:0}}>▦ block</div>
+        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0}}>▦ block</div>
       ) : (!isDone && onSchedule && (
         // Schedule an EXISTING task — the sky picks a good time (owner: 'if a
         // task exists, I should be encouraged to schedule it').
@@ -460,7 +461,7 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
       {task.bestWindowType && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}
-      <button onClick={onDelete} style={{fontSize:11,color:"#ddd",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
+      <button onClick={onDelete} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
     </div>
   );
 }

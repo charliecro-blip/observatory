@@ -10,6 +10,7 @@ import Glyph from "@/components/Glyph";
 import ChartWheel from "@/components/ChartWheel";
 import { PremiumGate } from "@/components/PremiumGate";
 import { ReferenceSection } from "@/pages/Sky";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -22,7 +23,7 @@ const COLOR: Record<string, string> = {
   Sun: "#c8971e", Moon: "#5a6b8c", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830",
   Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a",
 };
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 // House → its natural element (whole-sign from Aries=1) for a quiet accent.
 const HOUSE_ELEMENT = ["fire", "earth", "air", "water", "fire", "earth", "air", "water", "fire", "earth", "air", "water"];
 
@@ -76,7 +77,7 @@ function houseSeed(house: number, title: string, natalHere: any[], transitsHere:
 function CheckInCard({ label, question, accent, onReflect, seed }: { label: string; question: string; accent: string; onReflect?: (s: string) => void; seed: string }) {
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${accent}`, borderRadius: 10, padding: "13px 16px" }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>{question}</div>
       {onReflect && (
         <button onClick={() => onReflect(seed)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${accent}`, background: `${accent}12`, color: accent }}>✦ Ask about this →</button>
@@ -88,7 +89,7 @@ function CheckInCard({ label, question, accent, onReflect, seed }: { label: stri
 function SectionCard({ label, accent, children }: { label: string; accent?: string; children: React.ReactNode }) {
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: accent ?? "#aaa", marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: accent ?? "var(--text-3)", marginBottom: 8 }}>{label}</div>
       {children}
     </div>
   );
@@ -164,7 +165,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
 
   return (
     <>
-      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 8 }}>
         The ten drives you're made of. Visit one to see what it means, how it lives in your chart, and how the sky is moving it right now.
       </div>
       {/* (The orrery chart is parked for now — owner found it distracting on
@@ -177,8 +178,8 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             <button key={p} onClick={() => setSelected(p)} title={p} style={{
               display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 999, cursor: "pointer",
               border: active ? `1.5px solid ${pc}` : "1px solid var(--color-border)", background: active ? `${pc}14` : "var(--color-card)",
-              color: active ? pc : "#888", fontWeight: active ? 600 : 400, fontSize: 12,
-            }}><Glyph name={p} size={15} bg="var(--color-card)" tint={active} style={active ? undefined : { color: "#999" }} />{p}</button>
+              color: active ? pc : "var(--color-muted)", fontWeight: active ? 600 : 400, fontSize: 12,
+            }}><Glyph name={p} size={15} bg="var(--color-card)" tint={active} style={active ? undefined : { color: "var(--text-3)" }} />{p}</button>
           );
         })}
       </div>
@@ -201,11 +202,11 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           <div style={{ fontSize: 12, color: "#8a7060", lineHeight: 1.6, marginTop: 8 }}>
             <b style={{ color: "#7a6050" }}>The honest edge:</b> {lit.shadow}
           </div>
-          <div style={{ fontSize: 12, color: "#666", lineHeight: 1.6, marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, marginTop: 8 }}>
             <b style={{ color: col }}>Use it:</b> {lit.useIt}
           </div>
           {lit.etymology && (
-            <div style={{ fontSize: 10.5, color: "#a89a88", lineHeight: 1.5, marginTop: 8, fontStyle: "italic" }}>{lit.etymology}</div>
+            <div style={{ fontSize: 10.5, color: "var(--text-3)", lineHeight: 1.5, marginTop: 8, fontStyle: "italic" }}>{lit.etymology}</div>
           )}
         </SectionCard>
       )}
@@ -214,11 +215,11 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           contact + the user's own felt-ratings on past contact days. */}
       {lit && selected !== "Moon" && (
         <SectionCard label={`Your ${lit.adjective} days`} accent={col}>
-          <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>{lit.weeklyNote}</div>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>{lit.weeklyNote}</div>
           {/* The Moon-contact rhythm isn't the whole story for the Sun: the
               week itself carries a solar day, and the natal Sun a monthly one. */}
           {selected === "Sun" && (
-            <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>
+            <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: contacts ? 10 : 0 }}>
               Two more kinds of solar day: <b>every Sunday</b> (the Sun rules the day itself), and once a
               month <b>the Moon crosses your natal Sun</b> — a personal solar day{sign ? ` (yours is in ${sign})` : " (add your birth details to track it)"}.
             </div>
@@ -227,18 +228,18 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             <div style={{ background: `${col}0e`, border: `1px solid ${col}30`, borderRadius: 9, padding: "9px 12px", marginBottom: 10 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>
                 Next one: {new Date(contacts.nextHard.at).toLocaleDateString("en-US", { weekday: "long" })}{" "}
-                <span style={{ fontWeight: 400, color: "#999" }}>
+                <span style={{ fontWeight: 400, color: "var(--text-3)" }}>
                   around {new Date(contacts.nextHard.at).toLocaleTimeString("en-US", { hour: "numeric" })} · Moon {contacts.nextHard.aspect} {selected}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: "#888", lineHeight: 1.5, marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 3 }}>
                 Likely to arrive {CONTACT_TONE[contacts.nextHard.aspect] ?? "as a distinct flavor in the day"}. Notice it — then rate the day on Today and see if you felt it.
               </div>
             </div>
           )}
           {contacts && contacts.pastHardDays?.length > 0 && (
-            <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6 }}>
-              Last 30 days: <b style={{ color: "#666" }}>{contacts.pastHardDays.length}</b> {lit.adjective} day{contacts.pastHardDays.length === 1 ? "" : "s"}.
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
+              Last 30 days: <b style={{ color: "var(--text-2)" }}>{contacts.pastHardDays.length}</b> {lit.adjective} day{contacts.pastHardDays.length === 1 ? "" : "s"}.
               {contacts.ratedCount > 0
                 ? <> You rated {contacts.ratedCount} of them — <b style={{ color: "#4a8060" }}>{contacts.alignedCount} felt aligned</b>. Your evidence lives in the Log.</>
                 : <> None rated yet — rate days on Today and your own evidence will build here.</>}
@@ -248,7 +249,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       )}
       {lit && selected === "Moon" && (
         <SectionCard label="The Moon's rhythm" accent={col}>
-          <div style={{ fontSize: 12, color: "#777", lineHeight: 1.6 }}>{lit.weeklyNote}</div>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.6 }}>{lit.weeklyNote}</div>
         </SectionCard>
       )}
 
@@ -261,7 +262,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
                 <div key={g.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0" }}>
                   <span style={{ fontSize: 11, color: col }}>✦</span>
                   <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>{g.title}</span>
-                  <span style={{ fontSize: 9.5, color: "#aaa" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
+                  <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
                 </div>
               ))}
             </div>
@@ -277,11 +278,11 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           )}
           {myTasks.length > 0 && myTasks.map((t: any) => (
             <div key={t.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "1px 0" }}>
-              <span style={{ fontSize: 10, color: "#ccc" }}>○</span>
-              <span style={{ fontSize: 11.5, color: "#7a736a" }}>{t.title}</span>
+              <span style={{ fontSize: 10, color: "var(--text-3)" }}>○</span>
+              <span style={{ fontSize: 11.5, color: "var(--text-2)" }}>{t.title}</span>
             </div>
           ))}
-          <div style={{ fontSize: 9.5, color: "#b0a898", marginTop: 6 }}>
+          <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 6 }}>
             {selected === "Moon" ? "Work that shares the Moon's water." : `Aims anchored to ${selected} or sharing its ${planetEl} nature — overlap with other planets is normal.`}
           </div>
         </SectionCard>
@@ -303,10 +304,10 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
         const soon = evs.find((e) => Math.abs(Date.parse(e.at) - Date.now()) < 15 * 60000);
         return (
           <div style={{ background: soon ? `${col}14` : "var(--color-card)", border: `1px solid ${soon ? col : "var(--color-border)"}`, borderRadius: 12, padding: "11px 16px", marginBottom: 14, display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: soon ? col : "#aaa" }}>{soon ? `✦ your ${core.name} is on an angle now` : "Today at your location"}</span>
+            <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: soon ? col : "var(--text-3)" }}>{soon ? `✦ your ${core.name} is on an angle now` : "Today at your location"}</span>
             {rise && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>rises</b> {fmt(rise.at)}{rise.approximate ? " ~" : ""}</span>}
             {culm && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>culminates</b> {fmt(culm.at)}{culm.approximate ? " ~" : ""}</span>}
-            <span style={{ fontSize: 10, color: "#999" }}>good moments to lead with {core.short.replace(/^the /, "")}</span>
+            <span style={{ fontSize: 10, color: "var(--text-3)" }}>good moments to lead with {core.short.replace(/^the /, "")}</span>
           </div>
         );
       })()}
@@ -315,14 +316,14 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
         {sign ? (
           <>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--color-foreground)", marginBottom: 4 }}>{core.name} in {sign}{house ? ` · your ${ordinal(house)} house` : ""}</div>
-            <div style={{ fontSize: 12.5, color: "#777", lineHeight: 1.6 }}>{planetInSignNote(selected, sign)}</div>
+            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6 }}>{planetInSignNote(selected, sign)}</div>
             {houseMeaning ? (
-              <div style={{ fontSize: 12, color: "#888", lineHeight: 1.6, marginTop: 6 }}>Your {ordinal(house!)} house is the ground of <b style={{ color: "#666" }}>{houseMeaning.title.toLowerCase()}</b> — {houseMeaning.domains}. That's where this drive most wants to act.</div>
+              <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.6, marginTop: 6 }}>Your {ordinal(house!)} house is the ground of <b style={{ color: "var(--text-2)" }}>{houseMeaning.title.toLowerCase()}</b> — {houseMeaning.domains}. That's where this drive most wants to act.</div>
             ) : (
-              <div style={{ fontSize: 11.5, color: "#aaa", marginTop: 6 }}>Add your birth time in Settings to see which house it lives in.</div>
+              <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 6 }}>Add your birth time in Settings to see which house it lives in.</div>
             )}
           </>
-        ) : <div style={{ fontSize: 12.5, color: "#aaa" }}>Add your birth details in Settings to see where {core.name} sits in your chart.</div>}
+        ) : <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Add your birth details in Settings to see where {core.name} sits in your chart.</div>}
       </SectionCard>
 
       {/* Its weather today — the planet as AGENT: what it's doing in the sky
@@ -334,7 +335,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             return (
               <div key={`s${i}`} style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.7 }}>
                 {core.name} {a.aspect} {partner}{a.applying ? " — building now" : " — easing off"}
-                <span style={{ color: "#a09888" }}> · {a.orb}°</span>
+                <span style={{ color: "var(--color-muted)" }}> · {a.orb}°</span>
               </div>
             );
           })}
@@ -347,13 +348,13 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       )}
 
       <div style={{ background: activations.length ? "#8a6a2008" : "var(--color-card)", border: `1px solid ${activations.length ? "#c8a84040" : "var(--color-border)"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
-        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: activations.length ? "#a8862e" : "#aaa", marginBottom: 8 }}>Being activated now</div>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: activations.length ? "#a8862e" : "var(--text-3)", marginBottom: 8 }}>Being activated now</div>
         {activations.length ? activations.map((t: any, i: number) => (
           <div key={i} style={{ marginBottom: i < activations.length - 1 ? 8 : 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}>{GLYPH[t.transitPlanet]} transiting {t.transitPlanet} {String(t.aspect).toLowerCase()} your {core.name}<span style={{ fontWeight: 400, color: "#999", marginLeft: 6 }}>{t.exact ? "exact now" : `${t.orb}° orb`}</span></div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}>{GLYPH[t.transitPlanet]} transiting {t.transitPlanet} {String(t.aspect).toLowerCase()} your {core.name}<span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>{t.exact ? "exact now" : `${t.orb}° orb`}</span></div>
             {t.likelyDomains?.length > 0 && <div style={{ fontSize: 12, color: "#8a7a50", lineHeight: 1.6, marginTop: 2 }}>Often felt around {t.likelyDomains.slice(0, 3).join(", ")}.</div>}
           </div>
-        )) : <div style={{ fontSize: 12.5, color: "#999" }}>Quiet right now — no slow planet is touching your {core.name}. It's running at its natural baseline.</div>}
+        )) : <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Quiet right now — no slow planet is touching your {core.name}. It's running at its natural baseline.</div>}
       </div>
 
       <CheckInCard label={`Check in with your inner ${core.name}`} question={CHECK_IN[selected]} accent={col} onReflect={onReflect} seed={planetSeed(selected, core.name, sign, house, activations)} />
@@ -372,7 +373,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
 
   return (
     <>
-      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 16 }}>
+      <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
         The twelve arenas of a life. Visit one to see what it governs, which of your planets live there, and what the sky is moving through it now.
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22 }}>
@@ -382,7 +383,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
             <button key={h} onClick={() => setSelected(h)} title={HOUSE_MEANINGS[h]?.title} style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontSize: 12,
               border: active ? `1.5px solid ${hc}` : "1px solid var(--color-border)", background: active ? `${hc}14` : "var(--color-card)",
-              color: active ? hc : "#888", fontWeight: active ? 600 : 400,
+              color: active ? hc : "var(--color-muted)", fontWeight: active ? 600 : 400,
             }}>{ordinal(h)}</button>
           );
         })}
@@ -391,28 +392,28 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
       <div style={{ background: `linear-gradient(180deg, ${col}12, ${col}04)`, border: "1px solid var(--color-border)", borderRadius: 14, padding: "18px 20px", marginBottom: 14 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>Your {ordinal(selected)} house · {meaning.title}</div>
         <div style={{ fontSize: 13, color: col, fontWeight: 600, marginTop: 2 }}>{meaning.domains}</div>
-        {meaning.keywords?.length > 0 && <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>{meaning.keywords.join(" · ")}</div>}
+        {meaning.keywords?.length > 0 && <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 8 }}>{meaning.keywords.join(" · ")}</div>}
       </div>
 
       <SectionCard label="Your planets here">
         {!hasHouses ? (
-          <div style={{ fontSize: 12.5, color: "#aaa" }}>Add your birth time in Settings — houses need an exact time to place your planets.</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Add your birth time in Settings — houses need an exact time to place your planets.</div>
         ) : natalHere.length ? (
           natalHere.map((p: any, i: number) => (
-            <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}>{GLYPH[p.planet]} {p.planet} in {p.sign} <span style={{ color: "#999", fontSize: 12 }}>— this drive lives in this arena of your life.</span></div>
+            <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}>{GLYPH[p.planet]} {p.planet} in {p.sign} <span style={{ color: "var(--text-3)", fontSize: 12 }}>— this drive lives in this arena of your life.</span></div>
           ))
-        ) : <div style={{ fontSize: 12.5, color: "#999" }}>No natal planets sit here — this house is furnished by its ruler and whatever's transiting through.</div>}
+        ) : <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No natal planets sit here — this house is furnished by its ruler and whatever's transiting through.</div>}
       </SectionCard>
 
       <div style={{ background: (isProfected || transitsHere.length) ? "#8a6a2008" : "var(--color-card)", border: `1px solid ${(isProfected || transitsHere.length) ? "#c8a84040" : "var(--color-border)"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
-        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: (isProfected || transitsHere.length) ? "#a8862e" : "#aaa", marginBottom: 8 }}>Being activated now</div>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: (isProfected || transitsHere.length) ? "#a8862e" : "var(--text-3)", marginBottom: 8 }}>Being activated now</div>
         {isProfected && (
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)", marginBottom: transitsHere.length ? 8 : 0 }}>★ This is your profected year — the whole year points here{currents?.profection?.timeLord ? `, ruled by ${currents.profection.timeLord}` : ""}.</div>
         )}
         {transitsHere.map((t: any, i: number) => (
           <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}>{GLYPH[t.planet]} {t.planet} moving through{t.retrograde ? " (retrograde)" : ""} — a slow chapter here{t.leavesHouse ? ` until ${new Date(t.leavesHouse).toLocaleDateString("en-US", { month: "short", year: "numeric" })}` : ""}.</div>
         ))}
-        {!isProfected && transitsHere.length === 0 && <div style={{ fontSize: 12.5, color: "#999" }}>Quiet right now — no slow planet is moving through this house.</div>}
+        {!isProfected && transitsHere.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Quiet right now — no slow planet is moving through this house.</div>}
       </div>
 
       <CheckInCard label={`Reflect on your ${ordinal(selected)} house`} question={HOUSE_CHECK_IN[selected]} accent={col} onReflect={onReflect} seed={houseSeed(selected, meaning.title, natalHere, transitsHere)} />
@@ -463,14 +464,14 @@ function ChartView({ testerId }: { testerId: string | null }) {
     }
   }
 
-  if (isLoading) return <div style={{ fontSize: 12, color: "#999", padding: 20 }}>Casting the chart…</div>;
-  if (!chart) return <div style={{ fontSize: 12.5, color: "#aaa", padding: 20 }}>Add your birth details in Settings to see your chart.</div>;
+  if (isLoading) return <div style={{ fontSize: 12, color: "var(--text-3)", padding: 20 }}>Casting the chart…</div>;
+  if (!chart) return <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: 20 }}>Add your birth details in Settings to see your chart.</div>;
 
   const aspects = (chart.aspects ?? []) as any[];
 
   return (
     <>
-      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 14 }}>
         Your natal chart with today's sky ringed outside it — the live geometry. Tap any transit for a reading that weighs it against the rest of your chart.
         {!chart.timeKnown && <span style={{ color: "#a08040" }}> Houses and angles are hidden — add your birth time to draw them.</span>}
       </div>
@@ -488,7 +489,7 @@ function ChartView({ testerId }: { testerId: string | null }) {
       </div>
 
       {/* Ranked transit stack */}
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 8 }}>Transits now · strongest first</div>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 8 }}>Transits now · strongest first</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {[...aspects].sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9) || a.orb - b.orb).slice(0, 14).map((a: any, i: number) => {
           const key = `${a.transitPlanet}-${a.aspect}-${a.natalPlanet}`;
@@ -504,15 +505,15 @@ function ChartView({ testerId }: { testerId: string | null }) {
                 </span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--color-foreground)" }}>
                   {a.transitPlanet} {a.aspect.toLowerCase()} natal {a.natalPlanet}
-                  {a.natalHouse ? <span style={{ color: "#999" }}> · {ordinal(a.natalHouse)} house</span> : null}
+                  {a.natalHouse ? <span style={{ color: "var(--text-3)" }}> · {ordinal(a.natalHouse)} house</span> : null}
                 </span>
                 {a.exact && <span style={{ fontSize: 9, color: "#a8862e", fontWeight: 600 }}>exact</span>}
-                <span style={{ fontSize: 10, color: "#aaa", fontVariantNumeric: "tabular-nums" }}>{a.orb.toFixed(1)}°</span>
+                <span style={{ fontSize: 10, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{a.orb.toFixed(1)}°</span>
               </button>
               {isPicked && (
                 <div style={{ padding: "10px 14px", borderTop: `1px solid var(--color-border)`, background: "var(--color-card-2)" }}>
                   {loadingRead && reading?.key !== key ? (
-                    <div style={{ fontSize: 11, color: "#999" }}>Reading the chart…</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>Reading the chart…</div>
                   ) : reading?.key === key ? (
                     <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{reading.text}</div>
                   ) : null}
@@ -521,7 +522,7 @@ function ChartView({ testerId }: { testerId: string | null }) {
             </div>
           );
         })}
-        {aspects.length === 0 && <div style={{ fontSize: 12, color: "#999" }}>No transits in orb right now — a quiet sky.</div>}
+        {aspects.length === 0 && <div style={{ fontSize: 12, color: "var(--text-3)" }}>No transits in orb right now — a quiet sky.</div>}
       </div>
     </>
   );
@@ -562,7 +563,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
           {([["planets", "Planets"], ["houses", "Houses"], ["chart", "Chart ⊕"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 16px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
-              background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "#999",
+              background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "var(--text-3)",
               fontWeight: mode === m ? 600 : 400, boxShadow: mode === m ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
             }}>{label}</button>
           ))}

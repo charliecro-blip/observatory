@@ -41,7 +41,7 @@ export default function BearingsCard({ testerId }: { testerId: string | null }) 
   if (!testerId || !data) return null;
   if (!data.available) {
     if (data.reason === "no-chart") return (
-      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 11.5, color: "#998a76" }}>
+      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 11.5, color: "var(--text-3)" }}>
         Add your birth chart in Settings and this page opens with your bearings — the year you're in, its lord, and the chapter's landmarks.
       </div>
     );
@@ -53,16 +53,16 @@ export default function BearingsCard({ testerId }: { testerId: string | null }) 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px 12px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
-        <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.2px", color: "#a89a88", fontWeight: 600 }}>Your bearings</span>
-        <span style={{ fontSize: 10, color: "#b0a898" }}>year turns {fmtDate(fix.year.yearEnd)}</span>
+        <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.2px", color: "var(--text-3)", fontWeight: 600 }}>Your bearings</span>
+        <span style={{ fontSize: 10, color: "var(--color-muted)" }}>year turns {fmtDate(fix.year.yearEnd)}</span>
       </div>
 
       {/* THIS YEAR */}
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 6 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "#8a8278", flexShrink: 0, width: 76 }}>THIS YEAR</span>
+        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THIS YEAR</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           an {ord(fix.year.house)}-house year — <b>{fix.year.theme.split(" — ")[0]}</b>
-          <span style={{ color: "#8a8278" }}> · {PLANET_GLYPH[fix.year.lord] ?? ""} {fix.year.lord} holds the year</span>
+          <span style={{ color: "var(--color-muted)" }}> · {PLANET_GLYPH[fix.year.lord] ?? ""} {fix.year.lord} holds the year</span>
           {nextHit && (
             <span style={{ color: "#8a6a30" }}> · next power day {fmtDate(nextHit.date)} ({nextHit.label})</span>
           )}
@@ -71,11 +71,11 @@ export default function BearingsCard({ testerId }: { testerId: string | null }) 
 
       {/* THE CHAPTER */}
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: fix.chapter.renovations.length ? 6 : 0 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "#8a8278", flexShrink: 0, width: 76 }}>THE CHAPTER</span>
+        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THE CHAPTER</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           {fix.chapter.saturnStage}
           {fix.chapter.nextWaypoint && (
-            <span style={{ color: "#8a8278" }}> · next waypoint: {fix.chapter.nextWaypoint.name}, {fmtMonthYear(fix.chapter.nextWaypoint.date)}</span>
+            <span style={{ color: "var(--color-muted)" }}> · next waypoint: {fix.chapter.nextWaypoint.name}, {fmtMonthYear(fix.chapter.nextWaypoint.date)}</span>
           )}
         </div>
       </div>
@@ -83,8 +83,8 @@ export default function BearingsCard({ testerId }: { testerId: string | null }) 
       {/* RENOVATIONS */}
       {fix.chapter.renovations.length > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "#8a8278", flexShrink: 0, width: 76 }}>IN PROGRESS</span>
-          <div style={{ fontSize: 11.5, color: "#78746a", lineHeight: 1.6 }}>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>IN PROGRESS</span>
+          <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.6 }}>
             {fix.chapter.renovations.map((r, i) => (
               <span key={i} title={r.note}>{r.line}{i < fix.chapter.renovations.length - 1 ? " · " : ""}</span>
             ))}

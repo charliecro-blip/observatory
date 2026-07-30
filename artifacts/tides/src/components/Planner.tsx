@@ -5,6 +5,7 @@ import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 // The Planner — dump everything you need to do, and it weaves each task into the
 // calendar at the time the sky best supports it (GTD + astrology). Two steps:
@@ -12,7 +13,7 @@ import { PLANET_GLYPH } from "@/lib/glyphs";
 // AI guessed), then weave those into open windows for review before anything is
 // written. Honors your waking hours and works around your Google Calendar.
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 const ENERGIES = ["low", "medium", "high"] as const;
 
 interface Card {
@@ -149,7 +150,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   return (
     <div style={{ marginBottom: 30 }}>
       <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Plan</div>
-      <div style={{ fontSize: 12.5, color: "#888", lineHeight: 1.6, marginBottom: 16 }}>
+      <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
         Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open
         stretches of your week where the sky best supports that kind of work — deep work in focused windows,
         outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so.
@@ -162,11 +163,11 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             padding: "5px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
             border: horizon === h.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
             background: horizon === h.key ? "#1a2a3a10" : "var(--color-card)",
-            color: horizon === h.key ? "#1a2a3a" : "#888", fontWeight: horizon === h.key ? 600 : 400,
+            color: horizon === h.key ? "var(--color-foreground)" : "var(--color-muted)", fontWeight: horizon === h.key ? 600 : 400,
           }}>{h.label}</button>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>{HORIZONS.find((h) => h.key === horizon)?.hint}</div>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{HORIZONS.find((h) => h.key === horizon)?.hint}</div>
 
       {/* Step 1 — dump */}
       {!cards && (
@@ -180,7 +181,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
             <button onClick={() => parse.mutate(undefined)} disabled={parse.isPending || !rawList.trim()} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
-              cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "#e0dcd6", color: rawList.trim() ? "#fff" : "#aaa",
+              cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#fff" : "var(--text-3)",
             }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>
             {parse.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(parse.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
@@ -190,7 +191,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       {/* Step 2 — editable cards */}
       {cards && !result && (
         <div>
-          <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 10 }}>
             Here's what I read — tweak the estimate, energy, or deadline, then weave it in.
           </div>
           {cards.map((c, i) => {
@@ -201,9 +202,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                   <input value={c.title} onChange={(e) => editCard(i, { title: e.target.value })}
                     style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none", outline: "none" }} />
                   {c.planets?.length > 0 && (
-                    <span style={{ fontSize: 10, color: "#999" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
+                    <span style={{ fontSize: 10, color: "var(--text-3)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
                   )}
-                  <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
+                  <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
                 </div>
                 {/* The read is a guess, not a verdict — every element stays one
                     tap away (a list of unrecognized tasks once came back
@@ -217,13 +218,13 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         fontSize: 10, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                         border: active ? `1.5px solid ${ec}` : "1px solid var(--color-border)",
                         background: active ? `${ec}14` : "var(--color-card-2)",
-                        color: active ? ec : "#999", fontWeight: active ? 600 : 400,
+                        color: active ? ec : "var(--text-3)", fontWeight: active ? 600 : 400,
                       }}>● {el}</button>
                     );
                   })}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <label style={{ fontSize: 11, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                  <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                     <input type="number" min={15} max={240} step={15} value={c.estimatedMinutes}
                       onChange={(e) => editCard(i, { estimatedMinutes: Math.max(15, Math.min(240, parseInt(e.target.value) || 45)) })}
                       style={{ width: 52, padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} /> min
@@ -233,21 +234,21 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       <button key={en} onClick={() => editCard(i, { energy: en })} style={{
                         fontSize: 10, padding: "3px 9px", borderRadius: 8, cursor: "pointer",
                         border: c.energy === en ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
-                        background: c.energy === en ? "#1a2a3a10" : "var(--color-card-2)", color: c.energy === en ? "#1a2a3a" : "#999",
+                        background: c.energy === en ? "#1a2a3a10" : "var(--color-card-2)", color: c.energy === en ? "var(--color-foreground)" : "var(--text-3)",
                       }}>{en}</button>
                     ))}
                   </div>
                   {/* Deadlines are opt-in — most tasks don't have one, and an
                       empty date field reads as a demand to invent one. */}
                   {c.dueDate != null ? (
-                    <label style={{ fontSize: 11, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                    <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                       due <input type="date" value={c.dueDate} onChange={(e) => editCard(i, { dueDate: e.target.value || null })}
                         style={{ padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
-                      <button onClick={() => editCard(i, { dueDate: null })} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
+                      <button onClick={() => editCard(i, { dueDate: null })} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
                     </label>
                   ) : (
                     <button onClick={() => editCard(i, { dueDate: addDaysLocal(localToday(), 3) })}
-                      style={{ fontSize: 10.5, color: "#a09888", background: "none", border: "1px dashed var(--color-border)", borderRadius: 6, padding: "3px 9px", cursor: "pointer" }}>
+                      style={{ fontSize: 10.5, color: "var(--color-muted)", background: "none", border: "1px dashed var(--color-border)", borderRadius: 6, padding: "3px 9px", cursor: "pointer" }}>
                       + due date
                     </button>
                   )}
@@ -260,7 +261,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
               background: "#1a2a3a", color: "#fff",
             }}>{weave.isPending ? "Reading the sky…" : "✦ Weave it in"}</button>
-            <button onClick={reset} style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer" }}>start over</button>
+            <button onClick={reset} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>start over</button>
             {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(weave.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
         </div>
@@ -272,7 +273,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           {keptCount > 0 ? (
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Proposed schedule · {keptCount} task{keptCount === 1 ? "" : "s"}</div>
           ) : (
-            <div style={{ fontSize: 12, color: "#999", marginBottom: 10 }}>Nothing scheduled.</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10 }}>Nothing scheduled.</div>
           )}
 
           {/* Capacity honesty — named before you commit, while dropping is
@@ -296,30 +297,30 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
 
           {Object.entries(byDay).map(([day, entries]) => (
             <div key={day} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 6 }}>{fmtDayHeader(entries[0].item.startAt)}</div>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 6 }}>{fmtDayHeader(entries[0].item.startAt)}</div>
               {entries.map(({ item, idx }) => {
                 const col = ELEMENT_COLOR[item.element] ?? "#888";
                 return (
                   <div key={idx} style={{ display: "flex", gap: 10, padding: "9px 12px", marginBottom: 6, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>{item.title}</div>
-                      <div style={{ fontSize: 11, color: "#777", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                         {fmtTime(item.startAt)}–{fmtTime(item.endAt)} · {item.estimatedMinutes}m
                         <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>
-                        <span style={{ color: "#999", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>
+                        <span style={{ color: "var(--text-3)", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>
                       </div>
                       {/* Timing tier — the grading language for the slot itself */}
                       {item.tierNote && (
                         <div style={{
                           fontSize: 10.5, marginTop: 3, fontWeight: 600,
-                          color: item.tier === "great" ? "#3a7040" : item.tier === "against" ? "#a06020" : "#8a8278",
+                          color: item.tier === "great" ? "#3a7040" : item.tier === "against" ? "#a06020" : "var(--color-muted)",
                         }}>
                           {item.tier === "great" ? "✦ " : item.tier === "against" ? "≋ " : "· "}{item.tierNote}
                         </div>
                       )}
-                      <div style={{ fontSize: 10.5, color: "#999", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>
                     </div>
-                    <button onClick={() => setDropped((prev) => new Set(prev).add(idx))} title="Drop this one" style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1 }}>✕</button>
+                    <button onClick={() => setDropped((prev) => new Set(prev).add(idx))} title="Drop this one" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1 }}>✕</button>
                   </div>
                 );
               })}
@@ -341,7 +342,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               <button onClick={() => commit.mutate()} disabled={commit.isPending} style={{ padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, background: "#3a6020", color: "#fff", cursor: "pointer" }}>{commit.isPending ? "Scheduling…" : `Schedule all ${keptCount} →`}</button>
             )}
             {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Woven into your calendar (Ahead) and added to Tasks.</span>}
-            <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer" }}>← back to edit</button>
+            <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>← back to edit</button>
           </div>
         </div>
       )}

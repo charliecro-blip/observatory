@@ -120,7 +120,7 @@ export function TideCard({ now }: { now: any }) {
 
       <button onClick={download} style={{
         fontSize: 12, padding: "8px 18px", borderRadius: 9, border: "none",
-        background: "#1a2a3a", color: "#f0ede8", cursor: "pointer", fontWeight: 600,
+        background: "#1a2a3a", color: "var(--text-3)", cursor: "pointer", fontWeight: 600,
       }}>↓ Download image</button>
     </div>
   );
@@ -135,7 +135,7 @@ function feltFor(testerId: string | null, date: string): { felt?: string; charac
 export function WeeklyCard({ week, northStars, testerId }: { week: any; northStars: any[]; testerId: string | null }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const days: any[] = (week?.days ?? []).slice(0, 7);
-  if (!days.length) return <div style={{ fontSize: 12, color: "#999", padding: 30 }}>Loading the week…</div>;
+  if (!days.length) return <div style={{ fontSize: 12, color: "var(--text-3)", padding: 30 }}>Loading the week…</div>;
 
   const BAR_X0 = 56, BAR_W = 52, BAR_GAP = 8, BAR_BASE = 380, BAR_MAX = 150;
 
@@ -252,7 +252,7 @@ export function WeeklyCard({ week, northStars, testerId }: { week: any; northSta
 
       <button onClick={download} style={{
         fontSize: 12, padding: "8px 18px", borderRadius: 9, border: "none",
-        background: "#1a2a3a", color: "#f0ede8", cursor: "pointer", fontWeight: 600,
+        background: "#1a2a3a", color: "var(--text-3)", cursor: "pointer", fontWeight: 600,
       }}>↓ Download image</button>
     </div>
   );
@@ -268,14 +268,14 @@ export function TideCardModal({ now, week, northStars, testerId, onClose }: {
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div style={{ background: "var(--color-card-2)", borderRadius: 16, padding: "20px", position: "relative", maxHeight: "92vh", overflowY: "auto" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "#aaa", cursor: "pointer", zIndex: 1 }}>×</button>
+        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 12 }}>
           {(["daily", "weekly"] as const).map(m => (
             <button key={m} onClick={() => setMode(m)} style={{
               fontSize: 11, padding: "4px 14px", borderRadius: 14, cursor: "pointer",
               border: mode === m ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
               background: mode === m ? "#1a2a3a" : "transparent",
-              color: mode === m ? "#f0ede8" : "var(--color-muted)", fontWeight: mode === m ? 600 : 400,
+              color: mode === m ? "var(--text-3)" : "var(--color-muted)", fontWeight: mode === m ? 600 : 400,
             }}>{m === "daily" ? "Today" : "This week"}</button>
           ))}
         </div>

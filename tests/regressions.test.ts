@@ -867,3 +867,101 @@ describe("local purge on deletion", () => {
     expect(body).toMatch(/for \(const key of doomed\) localStorage\.removeItem\(key\)/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 19. THEME-BREAKING COLOURS IN `color:`
+// Shipped bug: the app was written with a hardcoded grey ramp in inline styles
+// (#333 · #555 · #777 · #888 · #999 · #aaa · #bbb) plus frozen light-mode
+// element and planet hues. On the dark palette a measured 220 text nodes across
+// the four daily-driver tabs fell below WCAG AA — Calendar's day numbers at
+// 1.37:1, the "Guiding Stars" heading at 1.23:1, i.e. invisible.
+//
+// The fix was semantic tokens. This is the part that keeps it fixed: without a
+// guard, the next feature reintroduces a raw grey and nobody notices until a
+// dark-mode user does.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** `color:` as a JS object key — not backgroundColor, borderColor, caretColor. */
+const COLOR_PROP = /(?<![A-Za-z0-9_$-])color\s*:\s*([^,\n}]*)/g;
+
+function clientSourceFiles(): string[] {
+  const dir = join(process.cwd(), "artifacts/tides/src");
+  const out: string[] = [];
+  (function walk(d: string) {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(join(d, e.name));
+      else if (/\.tsx?$/.test(e.name)) out.push(join(d, e.name));
+    }
+  })(dir);
+  return out;
+}
+
+describe("no theme-breaking colours", () => {
+  // These files ARE the palette definitions — raw hex is their whole job.
+  const SOURCE_TABLES = ["lib/themes.ts", "lib/elements.ts", "lib/planetColors.ts",
+                         "lib/celestialGlyphs.ts", "lib/mythos.ts"];
+  const files = clientSourceFiles();
+
+  it("finds the client source at all", () => {
+    expect(files.length).toBeGreaterThan(30);
+  });
+
+  it("no raw neutral grey is used as a `color:` value", () => {
+    // A grey is anything with near-zero saturation: those are exactly the
+    // values that invert with the theme. Brand hues are a separate concern.
+    const isGrey = (hex: string) => {
+      let h = hex.slice(1);
+      if (h.length === 3) h = [...h].map((c) => c + c).join("");
+      if (h.length < 6) return false;
+      const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      return (mx === 0 ? 0 : (mx - mn) / mx) < 0.22;
+    };
+    const offenders: string[] = [];
+    for (const file of files) {
+      const rel = file.split("artifacts/tides/src/")[1];
+      if (SOURCE_TABLES.includes(rel)) continue;
+      const text = readFileSync(file, "utf-8");
+      for (const m of text.matchAll(COLOR_PROP)) {
+        for (const hex of m[1].match(/#[0-9a-fA-F]{3,8}\b/g) ?? []) {
+          // #fff / #000 on a saturated button are legitimate and deliberate;
+          // it is the ramp *between* them that breaks.
+          if (/^#(fff|ffffff|000|000000)$/i.test(hex)) continue;
+          if (isGrey(hex)) offenders.push(`${rel}: ${hex}`);
+        }
+      }
+    }
+    expect(offenders, `use var(--text-1|2|3) or var(--color-muted) instead:\n  ${offenders.join("\n  ")}`).toEqual([]);
+  });
+
+  it("element and planet hues are not re-frozen as literals outside their source tables", () => {
+    // Both palettes were copy-pasted into a dozen files and had already
+    // drifted (Venus was two different hues), so a literal here is both a
+    // dark-mode bug and a consistency bug.
+    const FROZEN = ["#8a3a20", "#b84020", "#4a7040", "#3a6030", "#c19a3a", "#2a5a80",
+                    "#3a5a80", "#6040a0", "#c04040", "#807060", "#c08020", "#7080a0"];
+    const offenders: string[] = [];
+    for (const file of files) {
+      const rel = file.split("artifacts/tides/src/")[1];
+      if (SOURCE_TABLES.includes(rel)) continue;
+      const text = readFileSync(file, "utf-8").toLowerCase();
+      for (const hex of FROZEN) {
+        if (text.includes(`"${hex}"`)) offenders.push(`${rel}: ${hex}`);
+      }
+    }
+    expect(offenders, `import ELEMENT_COLORS / PLANET_COLORS instead:\n  ${offenders.join("\n  ")}`).toEqual([]);
+  });
+
+  it("the text ramp is defined for every palette, light and dark", () => {
+    const css = readFileSync(join(process.cwd(), "artifacts/tides/src/index.css"), "utf-8");
+    for (const token of ["--text-1", "--text-2", "--text-3"]) {
+      // once in :root, once in the dark override
+      expect(css.split(token).length - 1, `${token} needs a light AND a dark value`).toBeGreaterThanOrEqual(2);
+    }
+    const themes = readFileSync(join(process.cwd(), "artifacts/tides/src/lib/themes.ts"), "utf-8");
+    // Four palettes, each carrying all three rungs.
+    for (const token of ["--text-1", "--text-2", "--text-3"]) {
+      expect(themes.split(token).length - 1, `${token} missing from a palette`).toBe(4);
+    }
+  });
+});

@@ -9,19 +9,14 @@ import { CURRICULUM } from "@/lib/sky-literacy";
 import SpineGauge from "@/components/SpineGauge";
 import { useTheme } from "@/contexts/theme-context";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
+import { PLANET_COLORS } from "@/lib/planetColors";
+import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 
 const QUALITY_COLORS: Record<string, string> = {
   favorable: "#3a6020", caution: "#a05020", neutral: "#555",
 };
 const QUALITY_BG: Record<string, string> = {
   favorable: "#e8f5e0", caution: "#f8ede0", neutral: "var(--color-background)",
-};
-const ELEMENT_COLORS: Record<string, string> = {
-  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#c19a3a",
-};
-const PLANET_COLORS: Record<string, string> = {
-  Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#c06090",
-  Mars:"#c04040", Jupiter:"#6040a0", Saturn:"#807060", Uranus:"#3090a0",
 };
 
 function formatDate(dateStr: string) {
@@ -81,13 +76,13 @@ function interpretEvent(event: SkyEvent): EventDetail {
 
   if (event.type === "crossing") {
     const planets: Record<string, { meaning:string; domains:string[]; color:string }> = {
-      Venus:   { meaning:"Relational and aesthetic energy at peak visibility. Beauty, grace, charm heightened.", domains:["Creative work","Social","Launches"], color:"#c06090" },
-      Jupiter: { meaning:"Good fortune and expansiveness at its most powerful daily moment. Optimism and reach peak.", domains:["Launches","Pitches","Partnerships"], color:"#6040a0" },
-      Mars:    { meaning:"Assertive energy peaks. Powerful for decisive action and bold moves — watch for impatience.", domains:["Decisive action","Physical effort","Confrontation"], color:"#c04040" },
-      Sun:     { meaning:"Solar energy at its highest for the day. Reputation, authority, and visibility peak.", domains:["Visibility","Authority","Presentations"], color:"#c08020" },
-      Mercury: { meaning:"Mental clarity and communication at sharpest. Excellent for negotiations and complex ideas.", domains:["Communication","Writing","Agreements"], color:"#608060" },
-      Moon:    { meaning:"Emotional sensitivity and intuition at a peak moment. Creative and relational work.", domains:["Creative flow","Emotional work"], color:"#7080a0" },
-      Saturn:  { meaning:"Discipline and structure at its most powerful. Serious planning and accountability.", domains:["Structure","Long-term planning"], color:"#807060" },
+      Venus:   { meaning:"Relational and aesthetic energy at peak visibility. Beauty, grace, charm heightened.", domains:["Creative work","Social","Launches"], color:PLANET_COLORS.Venus },
+      Jupiter: { meaning:"Good fortune and expansiveness at its most powerful daily moment. Optimism and reach peak.", domains:["Launches","Pitches","Partnerships"], color:PLANET_COLORS.Jupiter },
+      Mars:    { meaning:"Assertive energy peaks. Powerful for decisive action and bold moves — watch for impatience.", domains:["Decisive action","Physical effort","Confrontation"], color:PLANET_COLORS.Mars },
+      Sun:     { meaning:"Solar energy at its highest for the day. Reputation, authority, and visibility peak.", domains:["Visibility","Authority","Presentations"], color:PLANET_COLORS.Sun },
+      Mercury: { meaning:"Mental clarity and communication at sharpest. Excellent for negotiations and complex ideas.", domains:["Communication","Writing","Agreements"], color:PLANET_COLORS.Mercury },
+      Moon:    { meaning:"Emotional sensitivity and intuition at a peak moment. Creative and relational work.", domains:["Creative flow","Emotional work"], color:PLANET_COLORS.Moon },
+      Saturn:  { meaning:"Discipline and structure at its most powerful. Serious planning and accountability.", domains:["Structure","Long-term planning"], color:PLANET_COLORS.Saturn },
     };
     const entry = Object.entries(planets).find(([p]) => title.includes(p));
     if (entry) {
@@ -372,9 +367,9 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         <div style={{ fontSize:22, flexShrink:0, marginTop:2 }}>{event.icon}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:14, fontWeight:600, color: "var(--color-primary)", lineHeight:1.3 }}>{event.title}</div>
-          {event.time && <div style={{ fontSize:10, color:"#aaa", marginTop:2 }}>{event.time}</div>}
+          {event.time && <div style={{ fontSize:10, color:"var(--text-3)", marginTop:2 }}>{event.time}</div>}
         </div>
-        <button onClick={onClose} style={{ flexShrink:0, width:24, height:24, borderRadius:"50%", border:"none", background: "var(--color-background)", color:"#888", cursor:"pointer", fontSize:12 }}>✕</button>
+        <button onClick={onClose} style={{ flexShrink:0, width:24, height:24, borderRadius:"50%", border:"none", background: "var(--color-background)", color:"var(--color-muted)", cursor:"pointer", fontSize:12 }}>✕</button>
       </div>
       <div style={{ flex:1, overflowY:"auto", padding:"16px" }}>
         <div style={{ marginBottom:12 }}>
@@ -383,16 +378,16 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
           </span>
         </div>
         <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:6 }}>What this means</div>
+          <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"var(--text-3)", marginBottom:6 }}>What this means</div>
           <div style={{ fontSize:11.5, color:"var(--color-foreground)", lineHeight:1.7 }}>{detail.meaning}</div>
         </div>
         <div style={{ marginBottom:14, padding:"11px 13px", borderRadius:8, background:"var(--color-card-2)", border:"1px solid var(--color-border)" }}>
-          <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:5 }}>How to use it</div>
+          <div style={{ fontSize:8.5, textTransform:"uppercase", letterSpacing:"0.6px", color:"var(--text-3)", marginBottom:5 }}>How to use it</div>
           <div style={{ fontSize:11.5, color:"var(--color-muted)", lineHeight:1.7 }}>{detail.practical}</div>
         </div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
           {detail.domains.map(d => (
-            <span key={d} style={{ fontSize:10, padding:"3px 9px", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"#555" }}>{d}</span>
+            <span key={d} style={{ fontSize:10, padding:"3px 9px", borderRadius:10, border:"1px solid var(--color-border)", background: "var(--color-card-2)", color:"var(--text-2)" }}>{d}</span>
           ))}
         </div>
       </div>
@@ -401,7 +396,7 @@ function EventDetailPanel({ event, onClose, testerId }: { event: SkyEvent; onClo
         <button onClick={planSession} disabled={planned || planning || !testerId} style={{
           width:"100%", padding:"9px 0", borderRadius:8, border:"none", cursor: planned ? "default" : "pointer",
           background: planned ? "#e8f5e0" : (detail.planetColor ?? "#1a2a3a"),
-          color: planned ? "#3a6030" : "#fff", fontSize:11.5, fontWeight:500,
+          color: planned ? ELEMENT_COLORS.earth : "#fff", fontSize:11.5, fontWeight:500,
           opacity: planning ? 0.7 : 1,
         }}>
           {planned ? "✓ Added to Calendar" : planning ? "Adding…" : event.time ? `Plan session at ${event.time}` : "Plan around this event"}
@@ -422,7 +417,7 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
   const planetEntry = event.type === "crossing"
     ? Object.entries(PLANET_COLORS).find(([p]) => (event.title ?? "").includes(p))
     : null;
-  const aspectColor = event.type === "moon_aspect" ? (ASPECT_COLORS[event.icon] ?? "#7080a0") : null;
+  const aspectColor = event.type === "moon_aspect" ? (ASPECT_COLORS[event.icon] ?? PLANET_COLORS.Moon) : null;
   const accentColor = aspectColor ?? (planetEntry ? planetEntry[1] : (event.quality === "favorable" ? "#3a6020" : event.quality === "caution" ? "#a05020" : "#888"));
 
   return (
@@ -438,20 +433,20 @@ function EventRow({ event, selected, onSelect }: { event: SkyEvent; selected: bo
           <div style={{ fontSize:12, fontWeight:500, color: "var(--color-primary)" }}>{event.title}</div>
           {event.time && <div style={{ fontSize:9.5, color:accentColor, fontWeight:500 }}>{event.time}</div>}
         </div>
-        {event.subtitle && <div style={{ fontSize:10, color:"#888", lineHeight:1.4, marginTop:1 }}>{event.subtitle}</div>}
+        {event.subtitle && <div style={{ fontSize:10, color:"var(--color-muted)", lineHeight:1.4, marginTop:1 }}>{event.subtitle}</div>}
         {/* Ingresses get the sign's concrete "so what" — what the new water favors */}
         {event.type === "ingress" && (() => {
           const sign = Object.keys(SIGN_MYTHOS).find(s => (event.title ?? "").includes(s));
           const sm = sign ? SIGN_MYTHOS[sign] : null;
           if (!sm) return null;
           return (
-            <div style={{ fontSize:9.5, color:"#9a9284", lineHeight:1.45, marginTop:2 }}>
-              <span style={{ color:"#b8b0a2" }}>favors</span> {sm.favors.slice(0, 3).join(" · ")}
+            <div style={{ fontSize:9.5, color:"var(--color-muted)", lineHeight:1.45, marginTop:2 }}>
+              <span style={{ color:"var(--text-3)" }}>favors</span> {sm.favors.slice(0, 3).join(" · ")}
             </div>
           );
         })()}
       </div>
-      <div style={{ fontSize:9, color:"#ccc", flexShrink:0, marginTop:4 }}>›</div>
+      <div style={{ fontSize:9, color:"var(--text-3)", flexShrink:0, marginTop:4 }}>›</div>
     </button>
   );
 }
@@ -464,10 +459,10 @@ export function QualityStrip({ week, days, onPick }: { week: any; days: number; 
   const today = localToday();
   return (
     <div style={{ padding:"12px 20px 14px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
-      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"#bbb", marginBottom:8 }}>The water ahead — next {days} days</div>
+      <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"var(--text-3)", marginBottom:8 }}>The water ahead — next {days} days</div>
       <div style={{ display:"flex", gap:2.5, overflowX:"auto" }}>
         {(week?.days ?? []).slice(0, days).map((day: any) => {
-          const ec = ELEMENT_COLORS[day.element ?? "water"] ?? "#888";
+          const ec = elementColor(day.element ?? "water", "#888");
           const isToday = day.date === today;
           const q = day.qualityScore ?? 5;
           const barH = Math.max(8, (q / 7) * 44);
@@ -476,7 +471,7 @@ export function QualityStrip({ week, days, onPick }: { week: any; days: number; 
               onClick={onPick ? () => onPick(day.date) : undefined}
               style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2.5, minWidth:24, flexShrink:0,
                 background:"none", border:"none", padding:0, cursor: onPick ? "pointer" : "default" }}>
-              <div style={{ fontSize:8, color:isToday?"#b07030":"#999", fontWeight:isToday?700:400 }}>
+              <div style={{ fontSize:8, color:isToday?"#b07030":"var(--text-3)", fontWeight:isToday?700:400 }}>
                 {new Date(day.date+"T12:00:00").getDate()}
               </div>
               <div style={{ width:16, height:44, display:"flex", alignItems:"flex-end" }}>
@@ -546,7 +541,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
         <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Almanac</div>
         <div style={{ display:"flex", gap:6, alignItems:"center" }}>
           <select value={days} onChange={e => setDays(Number(e.target.value))}
-            style={{ fontSize:10, padding:"3px 8px", borderRadius:6, border:"1px solid var(--color-border)", background: "var(--color-background)", color:"#555" }}>
+            style={{ fontSize:10, padding:"3px 8px", borderRadius:6, border:"1px solid var(--color-border)", background: "var(--color-background)", color:"var(--text-2)" }}>
             <option value={14}>14 days</option>
             <option value={30}>30 days</option>
             <option value={60}>60 days</option>
@@ -567,26 +562,26 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
               things up in," distinct from Ahead's "your calendar." */}
           <ReferenceSection onStartStar={onStartStar} onVisitPlanet={onVisitPlanet} />
 
-          {isLoading && <div style={{ color:"#bbb", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
+          {isLoading && <div style={{ color:"var(--text-3)", fontSize:12, textAlign:"center", padding:"32px 0" }}>Computing sky events…</div>}
 
           {/* ── Angular crossings ── */}
           {!isLoading && (
             <Section
               label="Angular crossings"
               icon="⚡"
-              accent="#c08020"
+              accent={PLANET_COLORS.Sun}
               desc="Planets at the chart angles — brief, potent timing peaks"
               defaultOpen={true}
             >
               {/* Near-term crossings (next 4 hours) */}
               {nearCrossings.length === 0 && (
-                <div style={{ padding:"8px 12px", fontSize:11, color:"#bbb" }}>
+                <div style={{ padding:"8px 12px", fontSize:11, color:"var(--text-3)" }}>
                   No crossings in the next 4 hours.
                 </div>
               )}
               {nearCrossings.map((ev, i) => {
                 const pEntry = Object.entries(PLANET_COLORS).find(([p]) => (ev.title ?? "").includes(p));
-                const pCol = pEntry ? pEntry[1] : "#c08020";
+                const pCol = pEntry ? pEntry[1] : PLANET_COLORS.Sun;
                 return (
                   <div key={i} style={{ display:"flex", gap:10, alignItems:"center", padding:"8px 12px", borderBottom:"1px solid #f5f0e8" }}>
                     <div style={{ fontSize:14, width:22, textAlign:"center", flexShrink:0 }}>
@@ -597,10 +592,10 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:12, fontWeight:500, color:pCol }}>{ev.title}</div>
-                      {ev.subtitle && <div style={{ fontSize:9.5, color:"#aaa", marginTop:1 }}>{ev.subtitle}</div>}
+                      {ev.subtitle && <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:1 }}>{ev.subtitle}</div>}
                     </div>
                     <div style={{ fontSize:11, fontWeight:600, color:pCol, flexShrink:0 }}>{ev.time}</div>
-                    <button onClick={() => handleSelect(ev)} style={{ fontSize:9, color:"#bbb", background:"none", border:"none", cursor:"pointer", padding:"2px 6px", flexShrink:0 }}>›</button>
+                    <button onClick={() => handleSelect(ev)} style={{ fontSize:9, color:"var(--text-3)", background:"none", border:"none", cursor:"pointer", padding:"2px 6px", flexShrink:0 }}>›</button>
                   </div>
                 );
               })}
@@ -610,7 +605,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
                 <div>
                   <button
                     onClick={() => setShowAllCrossings(v => !v)}
-                    style={{ width:"100%", padding:"8px 12px", background:"none", border:"none", borderTop:"1px solid var(--color-border)", cursor:"pointer", fontSize:10, color:"#aaa", textAlign:"left", display:"flex", justifyContent:"space-between" }}
+                    style={{ width:"100%", padding:"8px 12px", background:"none", border:"none", borderTop:"1px solid var(--color-border)", cursor:"pointer", fontSize:10, color:"var(--text-3)", textAlign:"left", display:"flex", justifyContent:"space-between" }}
                   >
                     <span>{showAllCrossings ? "Hide upcoming crossings" : `${futureCrossings.length} more crossing${futureCrossings.length > 1 ? "s" : ""} — show all`}</span>
                     <span>{showAllCrossings ? "▲" : "▼"}</span>
@@ -620,7 +615,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
                     for (const e of futureCrossings) (byCrossDate[e.date] ??= []).push(e);
                     return Object.entries(byCrossDate).sort(([a],[b])=>a<b?-1:1).map(([date, evs]) => (
                       <div key={date}>
-                        <div style={{ padding:"5px 12px 3px", fontSize:9, color:"#bbb", background: "var(--color-card-2)", fontWeight:600 }}>
+                        <div style={{ padding:"5px 12px 3px", fontSize:9, color:"var(--text-3)", background: "var(--color-card-2)", fontWeight:600 }}>
                           {formatDate(date)} · {weekDayMap.get(date)?.moonSign ?? ""}
                         </div>
                         {evs.map((ev, i) => (
@@ -639,7 +634,7 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
             <Section
               label="Planetary aspects"
               icon="✦"
-              accent="#6040a0"
+              accent={PLANET_COLORS.Jupiter}
               desc="Active sky geometry between planets — background influence on the day"
               defaultOpen={true}
             >
@@ -685,8 +680,8 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
                             {exactLabel}
                           </span>}
                         </div>
-                        <div style={{ fontSize:10, color:"#777", lineHeight:1.5 }}>{ASP_DESC[a.aspect]}</div>
-                        <div style={{ fontSize:9, color:"#aaa", marginTop:3 }}>
+                        <div style={{ fontSize:10, color:"var(--color-muted)", lineHeight:1.5 }}>{ASP_DESC[a.aspect]}</div>
+                        <div style={{ fontSize:9, color:"var(--text-3)", marginTop:3 }}>
                           {a.stationsBeforeExact ? `Closing at ${a.orb.toFixed(1)}° — but a station turns it back before this perfects`
                             : a.neverPerfected ? `Separating at ${a.orb.toFixed(1)}° — never perfected; a station turned it back short of exact`
                             : a.applying ? `Applying — ${a.orb.toFixed(1)}° to exact` : `Separating — ${a.orb.toFixed(1)}° past exact`}
@@ -709,16 +704,16 @@ export default function Sky({ testerId, lat = 40.7, lon = -74.0, onStartStar, on
               defaultOpen={true}
             >
               {lunarStream.length === 0 && (
-                <div style={{ padding:"8px 12px", fontSize:11, color:"#bbb" }}>No lunar events in this window.</div>
+                <div style={{ padding:"8px 12px", fontSize:11, color:"var(--text-3)" }}>No lunar events in this window.</div>
               )}
               {Object.entries(lunarByDate).sort(([a],[b])=>a<b?-1:1).slice(0, 14).map(([date, evs]) => {
                 const dayData = weekDayMap.get(date);
-                const ec = dayData ? (ELEMENT_COLORS[dayData.element] ?? "#888") : "#888";
+                const ec = dayData ? (elementColor(dayData.element, "#888")) : "#888";
                 const isToday = date === today;
                 return (
                   <div key={date}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 12px 3px", background: "var(--color-card-2)", borderBottom:"1px solid var(--color-border)" }}>
-                      <div style={{ fontSize:isToday?10:9, fontWeight:isToday?700:600, color:isToday?"#b07030":"#999" }}>
+                      <div style={{ fontSize:isToday?10:9, fontWeight:isToday?700:600, color:isToday?"#b07030":"var(--text-3)" }}>
                         {formatDate(date)}
                       </div>
                       {dayData && (
@@ -760,7 +755,6 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
   // The whole reference is a big block; let people fold it away when they're
   // here for the day's sky, not the textbook (owner #23: needs expand/contract).
   const [sectionOpen, setSectionOpen] = useState(false);
-  const ELEMENT_COLORS: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
 
   const items: { key: string; glyph: string; name: string; sub: string; color: string; body: string; element?: string; planet?: string }[] =
     tab === "learn"
@@ -788,7 +782,7 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
           key: m.key, glyph: m.glyph, name: `${m.name} — ${m.archetype}`, sub: m.essence, color: m.color, planet: m.name,
           body: `${m.myth}\n\nSpeaks for: ${(m.speaksFor ?? []).join(" · ")}\n\nWhen it's loud: ${m.whenLoud}`,
         }))
-      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: ELEMENT_COLORS[m.element] ?? "#888", body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.`, element: m.element }));
+      : Object.values(SIGN_MYTHOS).map((m) => ({ key: m.key, glyph: m.glyph, name: m.name, sub: m.essence, color: elementColor(m.element, "var(--color-muted)"), body: `${m.feel} Favors: ${(m.favors ?? []).slice(0, 4).join(" · ")}.`, element: m.element }));
 
   return (
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
@@ -799,9 +793,9 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
-          <div style={{ fontSize: 9.5, color: "#aaa", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
+          <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
         </div>
-        <span style={{ fontSize: 10, color: "#bbb", transform: sectionOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>›</span>
+        <span style={{ fontSize: 10, color: "var(--text-3)", transform: sectionOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>›</span>
       </button>
       {sectionOpen && (
       <div style={{ padding: "0 14px 11px", background: "var(--color-card-2)", borderBottom: "1px solid var(--color-border)" }}>
@@ -810,7 +804,7 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
             <button key={t} onClick={() => { setTab(t); setOpen(null); }} style={{
               fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
               border: tab === t ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
-              background: tab === t ? "#1a2a3a" : "var(--color-card)", color: tab === t ? "#fff" : "#888", fontWeight: tab === t ? 600 : 400,
+              background: tab === t ? "#1a2a3a" : "var(--color-card)", color: tab === t ? "#fff" : "var(--color-muted)", fontWeight: tab === t ? 600 : 400,
             }}>{t === "learn" ? "✦ learn the sky" : t}</button>
           ))}
         </div>
@@ -834,12 +828,12 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
               <span style={{ fontSize: 14, color: it.color, width: 18, textAlign: "center", flexShrink: 0 }}>{it.glyph}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-foreground)" }}>{it.name}</div>
-                <div style={{ fontSize: 9.5, color: "#999", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+                <div style={{ fontSize: 9.5, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
               </div>
-              <span style={{ fontSize: 9, color: "#ccc", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
+              <span style={{ fontSize: 9, color: "var(--text-3)", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
             </button>
             {open === it.key && (
-              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "#777", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+              <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
                 {it.body}
                 {/* Turn a meaning into an intention (#25): steer a Guiding Star
                     into this element, or open the full planet page (#24). */}
@@ -887,9 +881,9 @@ function Section({ label, icon, accent, desc, defaultOpen, children }: {
         <span style={{ fontSize:15, width:20, textAlign:"center", flexShrink:0 }}>{icon}</span>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:11.5, fontWeight:600, color:accent }}>{label}</div>
-          <div style={{ fontSize:9.5, color:"#aaa", marginTop:1, whiteSpace:"normal" }}>{desc}</div>
+          <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:1, whiteSpace:"normal" }}>{desc}</div>
         </div>
-        <span style={{ fontSize:10, color:"#ccc", transform:open?"rotate(90deg)":"none", transition:"transform 0.15s", flexShrink:0 }}>›</span>
+        <span style={{ fontSize:10, color:"var(--text-3)", transform:open?"rotate(90deg)":"none", transition:"transform 0.15s", flexShrink:0 }}>›</span>
       </button>
       {open && <div style={{ display:"flex", flexDirection:"column" }}>{children}</div>}
     </div>

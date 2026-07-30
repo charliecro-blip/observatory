@@ -81,14 +81,14 @@ export default function RhythmCard({ now }: { now: any }) {
         </span>
         {body && bodyDir && (
           <>
-            <span style={{ color: "#ccc" }}>×</span>
+            <span style={{ color: "var(--text-3)" }}>×</span>
             <span style={{ fontSize: 11.5, color: "var(--color-foreground)" }}>
               <span style={{ color: DIR_COLOR[bodyDir], fontWeight: 600 }}>You</span> · {body}
             </span>
           </>
         )}
       </div>
-      {read && <div style={{ fontSize: 10.5, color: "#888", marginTop: 3, lineHeight: 1.5 }}>{read}</div>}
+      {read && <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.5 }}>{read}</div>}
     </div>
   );
 
@@ -96,7 +96,7 @@ export default function RhythmCard({ now }: { now: any }) {
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px 4px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Your rhythm today</span>
-        <span style={{ fontSize: 9.5, color: "#aaa" }}>your cycles, against the sky's</span>
+        <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>your cycles, against the sky's</span>
       </div>
 
       {/* Lunar month ↔ menstrual cycle */}

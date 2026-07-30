@@ -59,7 +59,7 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
           Keep the rhythm going?
         </div>
-        <div style={{ fontSize: 11.5, color: "#8a8278", lineHeight: 1.5, marginTop: 1 }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 1 }}>
           A morning star-glance and an evening check-in — the gentle two-taps that make it a daily habit. No spam; you choose exactly what fires.
         </div>
         {err && <div style={{ fontSize: 10.5, color: "#c05030", marginTop: 4 }}>{err}</div>}
@@ -67,7 +67,7 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <button onClick={dismiss} style={{
           fontSize: 11, padding: "6px 12px", borderRadius: 8, cursor: "pointer",
-          border: "1px solid var(--color-border)", background: "transparent", color: "#888",
+          border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-muted)",
         }}>Not now</button>
         <button onClick={enable} disabled={busy} style={{
           fontSize: 11, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontWeight: 600,

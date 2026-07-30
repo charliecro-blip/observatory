@@ -355,7 +355,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           fontSize: 11, padding: "5px 13px", borderRadius: 16, cursor: "pointer",
           border: value === v ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
           background: value === v ? "#1a2a3a" : "transparent",
-          color: value === v ? "#f0ede8" : "var(--color-muted)", fontWeight: value === v ? 600 : 400,
+          color: value === v ? "var(--text-3)" : "var(--color-muted)", fontWeight: value === v ? 600 : 400,
         }}>{label}</button>
       ))}
     </div>
@@ -367,7 +367,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "#aaa", cursor: "pointer", zIndex: 1 }}>×</button>
+        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
 
         {/* Controls */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 210, paddingTop: 6 }}>
@@ -391,7 +391,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           </div>
           <button onClick={doExport} disabled={busy} style={{
             marginTop: 6, fontSize: 12.5, padding: "9px 18px", borderRadius: 9, border: "none",
-            background: "#1a2a3a", color: "#f0ede8", cursor: busy ? "default" : "pointer", fontWeight: 600,
+            background: "#1a2a3a", color: "var(--text-3)", cursor: busy ? "default" : "pointer", fontWeight: 600,
           }}>{busy ? "Rendering…" : `↓ Export PNG · ${W}×${H}`}</button>
           <div style={{ fontSize: 9.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
             Exports at full Instagram resolution with the glyph faces embedded.

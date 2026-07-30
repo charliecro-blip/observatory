@@ -12,6 +12,7 @@ import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
 import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
 import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 function authH(tid: string | null) {
   return { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" };
@@ -25,7 +26,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
       onClick={() => onChange(!on)}
       style={{
         width: 38, height: 22, borderRadius: 11, border: "none", cursor: "pointer",
-        background: on ? "#1a2a3a" : "#d0cbc3", position: "relative", flexShrink: 0,
+        background: on ? "#1a2a3a" : "var(--color-border)", position: "relative", flexShrink: 0,
         transition: "background 0.15s",
       }}
     >
@@ -42,7 +43,7 @@ function Row({ label, sub, children }: { label: string; sub?: string; children: 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 0" }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 12, color: "var(--color-foreground)" }}>{label}</div>
-        {sub && <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{sub}</div>}
       </div>
       {children}
     </div>
@@ -53,7 +54,7 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "16px" }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: sub ? 2 : 10 }}>{title}</div>
-      {sub && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 12 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{sub}</div>}
       {children}
     </div>
   );
@@ -124,7 +125,7 @@ function DeleteAccountSection({ testerId }: { testerId: string | null }) {
             remove it yourself at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google account permissions</a>.</>
           )}
         </div>
-        <div style={{ fontSize: 11, color: "#aaa", marginTop: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8, lineHeight: 1.6 }}>
           Our database host keeps point-in-time backups, so copies may persist there briefly
           before they age out. Your account key no longer restores anything.
         </div>
@@ -151,12 +152,12 @@ function DeleteAccountSection({ testerId }: { testerId: string | null }) {
             logbook entries, felt ratings, cycle data, advisor conversations, email and push
             subscriptions, your calendar-feed link, usage records, and your account key.
           </div>
-          <div style={{ fontSize: 11, color: "#aaa", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.6 }}>
             Any Google Calendar connection is revoked with Google. Database backups may hold
             copies briefly before they age out. There is no undo, and your account key will not
             bring it back.
           </div>
-          <div style={{ fontSize: 11, color: "#aaa" }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)" }}>
             Type <strong style={{ color: "#9a6060", fontFamily: "monospace" }}>{DELETE_PHRASE}</strong> to confirm:
           </div>
           <SettingsInput
@@ -173,15 +174,15 @@ function DeleteAccountSection({ testerId }: { testerId: string | null }) {
               padding: "8px 18px", borderRadius: 8, border: "none", fontSize: 12,
               cursor: armed ? "pointer" : "not-allowed",
               background: armed ? "#9a3030" : "var(--color-card-2)",
-              color: armed ? "#fff" : "#aaa",
+              color: armed ? "#fff" : "var(--text-3)",
             }}>{state === "deleting" ? "Deleting…" : "Delete permanently"}</button>
             <button onClick={() => { setOpen(false); setTyped(""); setError(null); setState("idle"); }} style={{
               padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
-              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888",
+              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)",
             }}>Cancel</button>
           </div>
           {profile?.recoveryCode && (
-            <div style={{ fontSize: 10, color: "#bbb" }}>
+            <div style={{ fontSize: 10, color: "var(--text-3)" }}>
               Wanting a clean browser but keeping the account? Use “Switch profile” under Profile
               instead — your key ({profile.recoveryCode}) restores it later.
             </div>
@@ -286,7 +287,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
         Email reports
         {saved && <span style={{ fontSize: 9, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
       </div>
-      <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 10 }}>
         A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
@@ -302,7 +303,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
             fontSize: 10.5, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
             border: spans.includes(s) ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
             background: spans.includes(s) ? "#1a2a3a10" : "var(--color-card-2)",
-            color: spans.includes(s) ? "#1a2a3a" : "#999", fontWeight: spans.includes(s) ? 600 : 400,
+            color: spans.includes(s) ? "var(--color-foreground)" : "var(--text-3)", fontWeight: spans.includes(s) ? 600 : 400,
           }}>{SPAN_LABELS[s]}</button>
         ))}
       </div>
@@ -317,14 +318,14 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
         )}
         <span style={{ flex: 1 }} />
         {(["day", "week"] as const).map(s => (
-          <button key={s} onClick={() => open(s)} style={{ fontSize: 10, padding: "5px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "none", color: "#998a76" }}>
+          <button key={s} onClick={() => open(s)} style={{ fontSize: 10, padding: "5px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "none", color: "var(--text-3)" }}>
             preview the {s} ↗
           </button>
         ))}
       </div>
       {status && <div style={{ fontSize: 10.5, color: status.startsWith("Saved") || status.startsWith("Test") ? "#4a7a52" : "#8a6a30", marginTop: 8, lineHeight: 1.5 }}>{status}</div>}
       {senderConfigured === false && !status && (
-        <div style={{ fontSize: 10, color: "#a89a88", marginTop: 8 }}>Server note: RESEND_API_KEY isn't set yet — subscriptions save, sends wait for the key.</div>
+        <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 8 }}>Server note: RESEND_API_KEY isn't set yet — subscriptions save, sends wait for the key.</div>
       )}
     </div>
   );
@@ -340,7 +341,7 @@ function TextSizeSection() {
             flex: 1, padding: "9px 0", borderRadius: 9, cursor: "pointer",
             border: scale === t.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
             background: scale === t.key ? "#1a2a3a10" : "var(--color-card-2)",
-            color: scale === t.key ? "#1a2a3a" : "#777", fontWeight: scale === t.key ? 600 : 400,
+            color: scale === t.key ? "var(--color-foreground)" : "var(--color-muted)", fontWeight: scale === t.key ? 600 : 400,
             fontSize: t.key === "default" ? 12 : t.key === "large" ? 13.5 : 15,
           }}>{t.label}</button>
         ))}
@@ -403,14 +404,14 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
       <Row label="Enable push notifications" sub={permState === "denied" ? "Blocked in browser settings — check Site Settings." : permState === "default" ? "Browser will ask for permission." : "Active"}>
         <Toggle on={n.enabled} onChange={v => v ? enableNotifications() : disableNotifications()} />
       </Row>
-      {subscribing && <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>Setting up…</div>}
+      {subscribing && <div style={{ fontSize: 10, color: "var(--color-muted)", marginBottom: 6 }}>Setting up…</div>}
       {subMsg && <div style={{ fontSize: 10, color: subMsg.includes("✓") ? "#60a060" : "#c05030", marginBottom: 6 }}>{subMsg}</div>}
       {n.enabled && (
         <button onClick={async () => {
           const tid = localStorage.getItem("obs_tester_id");
           const r = await fetch("/api/push/test", { method: "POST", headers: { ...(tid ? { "x-tester-id": tid } : {}), "Content-Type": "application/json" } });
           setSubMsg(r.ok ? "Test sent — check your notifications ✓" : "Test failed — check subscription.");
-        }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer", marginBottom: 6 }}>
+        }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer", marginBottom: 6 }}>
           Send test notification
         </button>
       )}
@@ -421,11 +422,11 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
 
           {/* Quiet hours */}
           <div style={{ padding: "8px 0" }}>
-            <div style={{ fontSize: 12, color: "#333", marginBottom: 6 }}>Quiet hours</div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8 }}>No notifications will be sent during this window.</div>
+            <div style={{ fontSize: 12, color: "var(--text-1)", marginBottom: 6 }}>Quiet hours</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>No notifications will be sent during this window.</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase" }}>From</span>
+                <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>From</span>
                 <select value={n.quietStart} onChange={e => updateNotifications({ quietStart: Number(e.target.value) })}
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
@@ -433,9 +434,9 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
                   ))}
                 </select>
               </div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 12 }}>to</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>to</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 9, color: "#aaa", textTransform: "uppercase" }}>Until</span>
+                <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>Until</span>
                 <select value={n.quietEnd} onChange={e => updateNotifications({ quietEnd: Number(e.target.value) })}
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
@@ -454,13 +455,13 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
           </Row>
           {n.hourShifts && (
             <div style={{ paddingBottom: 8 }}>
-              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 6 }}>Alert for these planets:</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>Alert for these planets:</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button
                   onClick={() => updateNotifications({ hourShiftPlanets: "all" })}
                   style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
-                    background: hourShiftPlanetsIsAll ? "#1a2a3a" : "#fff",
-                    color: hourShiftPlanetsIsAll ? "#fff" : "#555",
+                    background: hourShiftPlanetsIsAll ? "#1a2a3a" : "var(--color-card)",
+                    color: hourShiftPlanetsIsAll ? "#fff" : "var(--text-2)",
                     borderColor: hourShiftPlanetsIsAll ? "#1a2a3a" : "#d0cbc3",
                   }}>All</button>
                 {ALL_PLANETS.map(p => {
@@ -468,8 +469,8 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
                   return (
                     <button key={p} onClick={() => toggleHourPlanet(p)}
                       style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
-                        background: on ? "#e8e4de" : "#fff",
-                        color: on ? "#333" : "#888",
+                        background: on ? "var(--color-card-2)" : "var(--color-card)",
+                        color: on ? "var(--text-1)" : "var(--color-muted)",
                         borderColor: on ? "#c0bab0" : "#e0dbd4",
                       }}>{p}</button>
                   );
@@ -487,20 +488,20 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
           {n.crossings && (
             <div style={{ paddingBottom: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               <div>
-                <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Planet filter:</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Planet filter:</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["benefic", "malefic", "both", "all"] as const).map(opt => (
                     <button key={opt} onClick={() => updateNotifications({ crossingPlanets: opt })}
                       style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
-                        background: n.crossingPlanets === opt ? "#1a2a3a" : "#fff",
-                        color: n.crossingPlanets === opt ? "#fff" : "#555",
+                        background: n.crossingPlanets === opt ? "#1a2a3a" : "var(--color-card)",
+                        color: n.crossingPlanets === opt ? "#fff" : "var(--text-2)",
                         borderColor: n.crossingPlanets === opt ? "#1a2a3a" : "#d0cbc3",
                       }}>{opt === "both" ? "Both" : opt === "all" ? "All" : opt === "benefic" ? "Benefics" : "Malefics"}</button>
                   ))}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Angles:</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Angles:</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["ASC", "MC", "DSC", "IC"] as const).map(ang => {
                     const on = n.crossingAngles.includes(ang);
@@ -509,7 +510,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
                         const next = on ? n.crossingAngles.filter(a => a !== ang) : [...n.crossingAngles, ang];
                         updateNotifications({ crossingAngles: next });
                       }} style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
-                        background: on ? "#e8e4de" : "#fff", color: on ? "#333" : "#888",
+                        background: on ? "var(--color-card-2)" : "var(--color-card)", color: on ? "var(--text-1)" : "var(--color-muted)",
                         borderColor: on ? "#c0bab0" : "#e0dbd4",
                       }}>{ang}</button>
                     );
@@ -566,7 +567,7 @@ function DisplaySection() {
 
   return (
     <SectionCard title="Display" sub="Choose what appears in the sidebar and Today view.">
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Sidebar sections</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Sidebar sections</div>
       {RAIL_SECTIONS.map((s, i) => (
         <React.Fragment key={s.key}>
           {i > 0 && <Divider />}
@@ -577,14 +578,14 @@ function DisplaySection() {
       ))}
 
       <div style={{ height: 16 }} />
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Time display</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Time display</div>
       <Row label="Time format" sub="How times appear across the app.">
-        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+        <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["12h", "24h"] as const).map(fmt => (
             <button key={fmt} onClick={() => updateDisplay({ timeFormat: fmt })} style={{
               fontSize: 11, padding: "3px 12px", borderRadius: 5, border: "none", cursor: "pointer",
-              background: d.timeFormat === fmt ? "#fff" : "transparent",
-              color: d.timeFormat === fmt ? "#1a2a3a" : "#999",
+              background: d.timeFormat === fmt ? "var(--color-card)" : "transparent",
+              color: d.timeFormat === fmt ? "var(--color-foreground)" : "var(--text-3)",
               fontWeight: d.timeFormat === fmt ? 600 : 400,
             }}>{fmt}</button>
           ))}
@@ -592,12 +593,12 @@ function DisplaySection() {
       </Row>
       <Divider />
       <Row label="How much astrology" sub="Same engine underneath — this only changes what's shown. Minimal: plain guidance, no jargon. Medium: the moon and the day. Full: glyphs, aspects, transits.">
-        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+        <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["minimal", "medium", "full"] as const).map(lvl => (
             <button key={lvl} onClick={() => updateDisplay({ astroDetail: lvl })} style={{
               fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
-              background: d.astroDetail === lvl ? "#fff" : "transparent",
-              color: d.astroDetail === lvl ? "#1a2a3a" : "#999",
+              background: d.astroDetail === lvl ? "var(--color-card)" : "transparent",
+              color: d.astroDetail === lvl ? "var(--color-foreground)" : "var(--text-3)",
               fontWeight: d.astroDetail === lvl ? 600 : 400,
             }}>{lvl}</button>
           ))}
@@ -605,12 +606,12 @@ function DisplaySection() {
       </Row>
       <Divider />
       <Row label="How much on screen" sub="Essential: the core journey — the tide, today's plan, your aims. Expanded: the full instrument panel (rhythm, big sky, pulse, conditions…).">
-        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+        <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["essential", "expanded"] as const).map(lvl => (
             <button key={lvl} onClick={() => updateDisplay({ uiDensity: lvl })} style={{
               fontSize: 11, padding: "3px 11px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
-              background: (d.uiDensity ?? "essential") === lvl ? "#fff" : "transparent",
-              color: (d.uiDensity ?? "essential") === lvl ? "#1a2a3a" : "#999",
+              background: (d.uiDensity ?? "essential") === lvl ? "var(--color-card)" : "transparent",
+              color: (d.uiDensity ?? "essential") === lvl ? "var(--color-foreground)" : "var(--text-3)",
               fontWeight: (d.uiDensity ?? "essential") === lvl ? 600 : 400,
             }}>{lvl}</button>
           ))}
@@ -618,12 +619,12 @@ function DisplaySection() {
       </Row>
       <Divider />
       <Row label="Sky language" sub="At the full level: plain keeps the app's own words (Deep, Surge); bilingual adds the sky's words next to them (Moon in Pisces).">
-        <div style={{ display: "flex", background: "#e8e4de", borderRadius: 7, padding: 3, gap: 1 }}>
+        <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["plain", "bilingual"] as const).map(mode => (
             <button key={mode} onClick={() => updateDisplay({ skyLanguage: mode })} style={{
               fontSize: 11, padding: "3px 12px", borderRadius: 5, border: "none", cursor: "pointer", textTransform: "capitalize",
-              background: d.skyLanguage === mode ? "#fff" : "transparent",
-              color: d.skyLanguage === mode ? "#1a2a3a" : "#999",
+              background: d.skyLanguage === mode ? "var(--color-card)" : "transparent",
+              color: d.skyLanguage === mode ? "var(--color-foreground)" : "var(--text-3)",
               fontWeight: d.skyLanguage === mode ? 600 : 400,
             }}>{mode}</button>
           ))}
@@ -631,13 +632,13 @@ function DisplaySection() {
       </Row>
 
       <div style={{ height: 16 }} />
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Tasks</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Tasks</div>
       <Row label="Carry unfinished tasks forward" sub="Overdue tasks move to today, labelled with where they came from. Scheduled blocks never move on their own.">
         <Toggle on={d.autoRollover} onChange={v => updateDisplay({ autoRollover: v })} />
       </Row>
 
       <div style={{ height: 16 }} />
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>
       <Row label="VOC banner" sub="Show void-of-course warning at top.">
         <Toggle on={d.todayShowVOC} onChange={v => updateDisplay({ todayShowVOC: v })} />
       </Row>
@@ -684,21 +685,21 @@ function TimingSection() {
 
   return (
     <SectionCard title="Timing focus" sub="Highlight your preferred planets and set a default window type.">
-      <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8 }}>Watch planets (highlighted in sidebar):</div>
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>Watch planets (highlighted in sidebar):</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {PLANETS.map(p => {
           const on = t.watchPlanets.includes(p);
           return (
             <button key={p} onClick={() => togglePlanet(p)}
               style={{ fontSize: 11, padding: "4px 11px", borderRadius: 12, border: "1px solid", cursor: "pointer",
-                background: on ? "#e8e4de" : "#fff", color: on ? "#1a1a1a" : "#888",
+                background: on ? "var(--color-card-2)" : "var(--color-card)", color: on ? "var(--color-foreground)" : "var(--color-muted)",
                 borderColor: on ? "#c0bab0" : "#e0dbd4", fontWeight: on ? 500 : 400,
               }}>{p}</button>
           );
         })}
       </div>
 
-      <div style={{ fontSize: 10, color: "#aaa", marginBottom: 6 }}>Default window type for new tasks:</div>
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>Default window type for new tasks:</div>
       <select value={t.defaultWindowType} onChange={e => updateTiming({ defaultWindowType: e.target.value })}
         style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", width: "100%" }}>
         <option value="">Any</option>
@@ -789,21 +790,21 @@ function LocationSearchInput({
           onFocus={() => { if (results.length > 0) { updateDropPos(); setOpen(true); } }}
           style={{ width: "100%", padding: "7px 28px 7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" }}
         />
-        {loading && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#aaa" }}>…</span>}
+        {loading && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--text-3)" }}>…</span>}
       </div>
       {open && results.length > 0 && (
         <div style={dropStyle}>
           {results.map((r, i) => (
             <button key={i} onMouseDown={() => pick(r)} style={{
               display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
-              border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "#333",
+              border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-1)",
               borderBottom: i < results.length - 1 ? "1px solid var(--color-border)" : "none",
             }}
               onMouseEnter={e => (e.currentTarget.style.background = "#f5f2ed")}
               onMouseLeave={e => (e.currentTarget.style.background = "none")}
             >
               <div style={{ fontWeight: 500 }}>{r.city ?? r.displayName}</div>
-              <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{r.displayName}</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{r.displayName}</div>
             </button>
           ))}
         </div>
@@ -817,7 +818,7 @@ function LocationSearchInput({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>{label}</label>
+      <label style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>{label}</label>
       {children}
     </div>
   );
@@ -902,8 +903,8 @@ function CycleSection({ testerId }: { testerId: string | null }) {
       {currentPhase && (
         <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: `${currentPhase.color}12`, border: `1px solid ${currentPhase.color}40` }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: currentPhase.color }}>{currentPhase.phase} phase · day {currentPhase.dayOfCycle}</div>
-          <div style={{ fontSize: 10, color: "#777", marginTop: 3 }}>{currentPhase.desc}</div>
-          {currentPhase.daysLeft > 0 && <div style={{ fontSize: 9, color: "#bbb", marginTop: 3 }}>{currentPhase.daysLeft} day{currentPhase.daysLeft !== 1 ? "s" : ""} remaining in phase</div>}
+          <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 3 }}>{currentPhase.desc}</div>
+          {currentPhase.daysLeft > 0 && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>{currentPhase.daysLeft} day{currentPhase.daysLeft !== 1 ? "s" : ""} remaining in phase</div>}
         </div>
       )}
 
@@ -928,7 +929,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {CYCLE_PHASES.map(p => (
-            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: "#888" }}>
+            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: "var(--color-muted)" }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: p.color }} />{p.name}
             </div>
           ))}
@@ -937,7 +938,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={() => save.mutate()} disabled={!form.cycleStartDate} style={{
             padding: "7px 16px", borderRadius: 7, border: "none", fontSize: 11,
-            background: form.cycleStartDate ? "#1a2a3a" : "#e0dcd6", color: form.cycleStartDate ? "#fff" : "#aaa", cursor: "pointer",
+            background: form.cycleStartDate ? "#1a2a3a" : "var(--color-border)", color: form.cycleStartDate ? "#fff" : "var(--text-3)", cursor: "pointer",
           }}>{save.isPending ? "Saving…" : saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
           {cycle && <button onClick={() => del.mutate()} style={{ fontSize: 10, color: "#c06060", background: "none", border: "none", cursor: "pointer" }}>Remove</button>}
           {save.isError && <span style={{ fontSize: 10, color: "#a03030" }}>Couldn't save — try again.</span>}
@@ -964,13 +965,13 @@ function PremiumPreviewSection() {
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#6a8a5a", marginBottom: 5 }}>Free</div>
-          <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
             The daily tide & Big Sky · the calendar & forecast · scheduling tasks & habits yourself · the sky reference · Guiding Stars, tasks & habits as a plain planner
           </div>
         </div>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
-          <div style={{ fontSize: 10.5, color: "#777", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
             Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · Ask — the "what do I do now" advisor
           </div>
         </div>
@@ -996,7 +997,7 @@ function CautionPlanetsSection() {
   const picked = profile?.cautionPlanets ?? [];
   return (
     <SectionCard title="Caution planets" sub="Which outer-planet transits you want flagged as advisories, on Tasks, Calendar, and your Guiding Stars.">
-      <div style={{ fontSize: 11.5, color: "#777", marginBottom: 10 }}>
+      <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 10 }}>
         {picked.length === 0 ? "None set — advisories are off." : `Watching: ${picked.map(p => CAUTION_PLANET_NAMES[p] ?? p).join(", ")}`}
       </div>
       <button onClick={() => setOpen(true)} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer" }}>
@@ -1060,27 +1061,27 @@ function ChronotypeSection() {
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>
+              <div style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>
                 {CHRONOTYPE_OPTIONS.find(o => o.key === existing.profile)?.label ?? existing.profile}
               </div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                 Weekdays {existing.freeWindows?.mon?.start}–{existing.freeWindows?.mon?.end} · Weekends {existing.freeWindows?.sat?.start}–{existing.freeWindows?.sat?.end}
                 {existing.wakeTime && existing.sleepTime && <> · Awake {existing.wakeTime}–{existing.sleepTime}</>}
               </div>
-              {existing.description && <div style={{ fontSize: 10, color: "#aaa", marginTop: 4, fontStyle: "italic" }}>"{existing.description}"</div>}
+              {existing.description && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4, fontStyle: "italic" }}>"{existing.description}"</div>}
             </div>
-            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer" }}>
+            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer" }}>
               Edit
             </button>
           </div>
-          {saved && <div style={{ fontSize: 10, color: "#3a6030" }}>✓ Saved</div>}
+          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}>✓ Saved</div>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!existing && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>Not set yet — add your rhythm to unlock chronotype-aware timing suggestions.</div>}
+          {!existing && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Not set yet — add your rhythm to unlock chronotype-aware timing suggestions.</div>}
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Morning or night person?</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Morning or night person?</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
               {CHRONOTYPE_OPTIONS.map(o => (
                 <button key={o.key} type="button" onClick={() => setChronoProfile(o.key)}
@@ -1089,48 +1090,48 @@ function ChronotypeSection() {
                     border: chronoProfile === o.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
                     background: chronoProfile === o.key ? "#1a2a3a10" : "var(--color-card-2)",
                   }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: chronoProfile === o.key ? "#1a2a3a" : "#333" }}>{o.label}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: chronoProfile === o.key ? "var(--color-foreground)" : "var(--text-1)" }}>{o.label}</div>
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually awake</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Usually awake</div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
               <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} style={inputStyle} />
-              <span style={{ color: "#bbb", fontSize: 11 }}>to</span>
+              <span style={{ color: "var(--text-3)", fontSize: 11 }}>to</span>
               <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually free — weekdays</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Usually free — weekdays</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="time" value={weekdayStart} onChange={e => setWeekdayStart(e.target.value)} style={inputStyle} />
-              <span style={{ color: "#bbb", fontSize: 10 }}>to</span>
+              <span style={{ color: "var(--text-3)", fontSize: 10 }}>to</span>
               <input type="time" value={weekdayEnd} onChange={e => setWeekdayEnd(e.target.value)} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Usually free — weekends</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Usually free — weekends</div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="time" value={weekendStart} onChange={e => setWeekendStart(e.target.value)} style={inputStyle} />
-              <span style={{ color: "#bbb", fontSize: 10 }}>to</span>
+              <span style={{ color: "var(--text-3)", fontSize: 10 }}>to</span>
               <input type="time" value={weekendEnd} onChange={e => setWeekendEnd(e.target.value)} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>In your own words <span style={{ opacity: 0.6 }}>(optional)</span></div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>In your own words <span style={{ opacity: 0.6 }}>(optional)</span></div>
             <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. dead by 10pm, useless before coffee…" style={{ ...inputStyle, width: "100%" }} />
           </div>
 
           <div style={{ display: "flex", gap: 8 }}>
             {existing && (
-              <button onClick={() => setEditing(false)} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#888", cursor: "pointer" }}>
+              <button onClick={() => setEditing(false)} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer" }}>
                 Cancel
               </button>
             )}
-            <button onClick={save} disabled={!chronoProfile} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", background: chronoProfile ? "#1a2a3a" : "#e0dcd6", color: chronoProfile ? "#fff" : "#aaa", cursor: chronoProfile ? "pointer" : "default" }}>
+            <button onClick={save} disabled={!chronoProfile} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", background: chronoProfile ? "#1a2a3a" : "var(--color-border)", color: chronoProfile ? "#fff" : "var(--text-3)", cursor: chronoProfile ? "pointer" : "default" }}>
               Save
             </button>
           </div>
@@ -1227,63 +1228,63 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   return (
     <SectionCard title="Birth chart" sub="Used for personal transits — which planetary cycles are active in your chart right now.">
       {isLoading ? (
-        <div style={{ fontSize: 11, color: "#bbb", padding: "4px 0" }}>Loading…</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)", padding: "4px 0" }}>Loading…</div>
       ) : hasChart && !editing ? (
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{chart.birthDate}{chart.timeKnown === false ? " · time unknown" : chart.birthTime && ` at ${chart.birthTime}`}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{chart.birthPlace}</div>
+              <div style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 500 }}>{chart.birthDate}{chart.timeKnown === false ? " · time unknown" : chart.birthTime && ` at ${chart.birthTime}`}</div>
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>{chart.birthPlace}</div>
               {chart.timeKnown === false ? (
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
-                  ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign} <span style={{ color: "#b0a898" }}>(approx)</span>
-                  <div style={{ color: "#b0a898", marginTop: 2 }}>Rising sign, houses & Currents need a birth time — add it below to unlock them.</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
+                  ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign} <span style={{ color: "var(--color-muted)" }}>(approx)</span>
+                  <div style={{ color: "var(--color-muted)", marginTop: 2 }}>Rising sign, houses & Currents need a birth time — add it below to unlock them.</div>
                 </div>
               ) : chart.ascendant && (
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
                   ↑ {chart.ascendant.sign} rising · ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign}
                 </div>
               )}
             </div>
-            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#555", cursor: "pointer" }}>
+            <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: "5px 13px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer" }}>
               Edit
             </button>
           </div>
-          {saved && <div style={{ fontSize: 10, color: "#3a6030" }}>✓ Saved</div>}
+          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}>✓ Saved</div>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!hasChart && <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>No birth chart saved yet. Add your birth data to unlock personal transits.</div>}
+          {!hasChart && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>No birth chart saved yet. Add your birth data to unlock personal transits.</div>}
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Date of birth</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Date of birth</div>
             <input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} style={inputStyle} />
           </div>
 
           <div>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Time of birth <span style={{ opacity: 0.6 }}>(optional — needed for Ascendant)</span></div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Time of birth <span style={{ opacity: 0.6 }}>(optional — needed for Ascendant)</span></div>
             <input type="time" value={form.birthTime} onChange={e => setForm(f => ({ ...f, birthTime: e.target.value }))} style={inputStyle} />
           </div>
 
           <div style={{ position: "relative" }}>
-            <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>Place of birth</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Place of birth</div>
             <input value={locationSearch} onChange={e => handleLocationInput(e.target.value)} placeholder="City, country…" style={inputStyle} />
             {locationResults.length > 0 && (
               <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, marginTop: 2, maxHeight: 180, overflowY: "auto" }}>
                 {locationResults.map((r, i) => (
                   <button key={i} type="button" onClick={() => pickLocation(r)}
-                    style={{ display: "block", width: "100%", padding: "8px 12px", textAlign: "left", border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "#333", borderBottom: "1px solid var(--color-border)" }}>
+                    style={{ display: "block", width: "100%", padding: "8px 12px", textAlign: "left", border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-1)", borderBottom: "1px solid var(--color-border)" }}>
                     {r.displayName ?? r.formatted ?? r.name}
                   </button>
                 ))}
               </div>
             )}
-            {form.birthLat != null && <div style={{ fontSize: 10, color: "#3a6030", marginTop: 3 }}>✓ Location set</div>}
+            {form.birthLat != null && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth, marginTop: 3 }}>✓ Location set</div>}
           </div>
 
           {form.birthLat != null && (
             <div>
-              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 4 }}>UTC offset at birth</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>UTC offset at birth</div>
               <select value={form.utcOffset} onChange={e => setForm(f => ({ ...f, utcOffset: Number(e.target.value) }))}
                 style={{ ...inputStyle, width: "auto" }}>
                 {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
@@ -1299,14 +1300,14 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
             {editing && (
               <button onClick={() => { setEditing(false); setLocationSearch(chart?.birthPlace ?? ""); setLocationResults([]); }}
-                style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "#888", cursor: "pointer" }}>
+                style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer" }}>
                 Cancel
               </button>
             )}
             <button onClick={save} disabled={!form.birthDate || form.birthLat == null || saving}
               style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", cursor: (!form.birthDate || form.birthLat == null) ? "default" : "pointer",
-                background: (!form.birthDate || form.birthLat == null) ? "#e0dcd6" : "#1a2a3a",
-                color: (!form.birthDate || form.birthLat == null) ? "#aaa" : "#fff" }}>
+                background: (!form.birthDate || form.birthLat == null) ? "var(--color-border)" : "#1a2a3a",
+                color: (!form.birthDate || form.birthLat == null) ? "var(--text-3)" : "#fff" }}>
               {saving ? "Saving…" : "Save birth chart"}
             </button>
           </div>
@@ -1411,13 +1412,13 @@ function ExportSection({ testerId }: { testerId: string | null }) {
       </Row>
       {feedUrl && (
         <div style={{
-          fontSize: 9.5, fontFamily: "monospace", color: "#8a8278", userSelect: "all",
+          fontSize: 9.5, fontFamily: "monospace", color: "var(--color-muted)", userSelect: "all",
           background: "var(--color-card-2)", border: "1px solid var(--color-border)",
           borderRadius: 6, padding: "6px 9px", margin: "2px 0 8px", overflowWrap: "anywhere",
         }}>{feedUrl}</div>
       )}
       {feedActive && (
-        <div style={{ fontSize: 10, color: "#a09888", lineHeight: 1.55, marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: "var(--color-muted)", lineHeight: 1.55, marginBottom: 10 }}>
           Paste it into your calendar app's “add calendar by URL”. It refreshes on its
           own. This link shows your task titles and scheduled blocks to anyone who has
           it — it is <em>not</em> your account key, and you can reset it any time.
@@ -1434,7 +1435,7 @@ function ExportSection({ testerId }: { testerId: string | null }) {
         </div>
       )}
       <Row label="One-time download" sub="A snapshot — won't update later">
-        <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer" }}>
+        <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer" }}>
           ↓ .ics
         </button>
       </Row>
@@ -1489,9 +1490,9 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
     <SectionCard title="Integrations">
       <Row label="Google Calendar" sub="Show your events alongside tidal timing in the Calendar view.">
         {isLoading ? (
-          <span style={{ fontSize: 10, color: "#bbb" }}>…</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>…</span>
         ) : status?.configured === false ? (
-          <span style={{ fontSize: 10, color: "#ccc", padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 6 }}>Not configured</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)", padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 6 }}>Not configured</span>
         ) : status?.connected ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 10, color: "#408040", padding: "3px 10px", border: "1px solid #b0d0b0", borderRadius: 6, background: "#40804018" }}>
@@ -1502,7 +1503,7 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
             </button>
           </div>
         ) : (
-          <button onClick={connect} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#555", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+          <button onClick={connect} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
             <span>📅</span> Connect
           </button>
         )}
@@ -1539,7 +1540,7 @@ function HouseSystemSection() {
             <div style={{ fontSize: 12.5, fontWeight: system === h.id ? 600 : 500, color: "var(--color-primary)" }}>
               {h.label}{system === h.id && <span style={{ color: "#3a4a68", fontSize: 10, marginLeft: 6 }}>✓ selected</span>}
             </div>
-            <div style={{ fontSize: 10.5, color: "#999", marginTop: 2, lineHeight: 1.4 }}>{h.note}</div>
+            <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2, lineHeight: 1.4 }}>{h.note}</div>
           </button>
         ))}
       </div>
@@ -1583,13 +1584,13 @@ function AccountSection() {
               fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
             }}>{copied ? "Copied ✓" : "Copy"}</button>
           </div>
-          <div style={{ fontSize: 10, color: "#999", marginTop: 8, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 8, lineHeight: 1.55 }}>
             On another device: open Compass → "Been here before?" on the first screen → enter this key.
             Anyone holding the key can restore your data, so treat it like a password.
           </div>
         </div>
       ) : (
-        <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
           Your account key hasn't been created yet — it appears here automatically the next time the
           app reaches the server. Check back in a moment.
         </div>
@@ -1599,7 +1600,7 @@ function AccountSection() {
       <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Send feedback</div>
-          <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
         </div>
         <a href="mailto:charliecro@gmail.com?subject=Compass%20feedback"
           style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 14px", textDecoration: "none", background: "var(--color-card-2)", flexShrink: 0 }}>
@@ -1686,7 +1687,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--color-border)", background: "var(--color-rail)", flexShrink: 0 }}>
-        <div style={{ fontSize: 12, color: "#888" }}>Settings</div>
+        <div style={{ fontSize: 12, color: "var(--color-muted)" }}>Settings</div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
@@ -1720,7 +1721,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500 }}>{profile?.displayName}</div>
-              <div style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginTop: 2 }}>{profile?.testerId}</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace", marginTop: 2 }}>{profile?.testerId}</div>
             </div>
             <button onClick={() => {
               // Was a one-tap, unconfirmed, unrecoverable action — clearProfile
@@ -1732,7 +1733,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
                 ? `Switching clears this browser's profile. Your account key is:\n\n${code}\n\nWrite it down or copy it from Account above — it's the ONLY way back. Continue?`
                 : `Switching clears this browser's profile, and no account key has synced yet — there may be no way back. Continue anyway?`;
               if (window.confirm(warning)) resetProfile();
-            }} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "#888", cursor: "pointer" }}>
+            }} style={{ marginLeft: "auto", fontSize: 11, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>
               Switch profile
             </button>
           </div>
@@ -1763,7 +1764,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           </div>
           <button onClick={() => saveNatal.mutate()} disabled={!natalForm.birthDate || saveNatal.isPending} style={{
             padding: "8px 20px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer",
-            background: natalForm.birthDate ? "#1a2a3a" : "#e0dcd6", color: natalForm.birthDate ? "#fff" : "#aaa",
+            background: natalForm.birthDate ? "#1a2a3a" : "var(--color-border)", color: natalForm.birthDate ? "#fff" : "var(--text-3)",
           }}>
             {saveNatal.isPending ? "Saving…" : saved ? "Saved ✓" : natal ? "Update chart" : "Save chart"}
           </button>
@@ -1789,7 +1790,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             }}
             style={{
               width: "100%", marginBottom: 14, padding: "10px 0", borderRadius: 8,
-              border: "1.5px solid #1a2a3a", background: "#1a2a3a", color: "#f0ede8",
+              border: "1.5px solid #1a2a3a", background: "#1a2a3a", color: "var(--text-3)",
               fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
@@ -1845,20 +1846,20 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         <SectionCard title="Journal history">
           <button onClick={() => setJournalOpen(v => !v)}
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: journalOpen ? 12 : 0 }}>
-            <span style={{ fontSize: 11, color: "#aaa" }}>{journalOpen ? "▲" : "▼"} {journalEntries.length} entries (last 14 days)</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>{journalOpen ? "▲" : "▼"} {journalEntries.length} entries (last 14 days)</span>
           </button>
           {journalOpen && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {journalEntries.length === 0 && (
-                <div style={{ fontSize: 11, color: "#bbb", textAlign: "center", padding: "12px 0" }}>No journal entries yet.</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", padding: "12px 0" }}>No journal entries yet.</div>
               )}
               {journalEntries.map(({ date, text }) => {
                 const d = new Date(date + "T12:00:00");
                 const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                 return (
                   <div key={date} style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
-                    <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#bbb", marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 12, color: "#444", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{text}</div>
+                    <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-1)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{text}</div>
                   </div>
                 );
               })}
@@ -1871,7 +1872,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         <DeleteAccountSection testerId={testerId} />
 
         <div style={{ textAlign: "center", padding: "8px 0 4px", fontSize: 11 }}>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#aaa" }}>Privacy policy</a>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-3)" }}>Privacy policy</a>
         </div>
 
       </div>

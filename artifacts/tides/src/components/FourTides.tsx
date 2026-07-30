@@ -25,11 +25,11 @@ export function FourTidesKey({ current }: { current?: TideCharacter }) {
           }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color }}>{CHARACTER_LABEL[c]}</span>
-              <span style={{ fontSize: 9.5, color: "#999", textTransform: "capitalize" }}>{el} tide</span>
+              <span style={{ fontSize: 9.5, color: "var(--text-3)", textTransform: "capitalize" }}>{el} tide</span>
               {isCur && <span style={{ fontSize: 9, color, marginLeft: "auto", fontWeight: 600 }}>today</span>}
             </div>
             <div style={{ fontSize: 11, color: "var(--color-foreground)", marginTop: 3, lineHeight: 1.5 }}>{CHARACTER_ESSENCE[c]}</div>
-            <div style={{ fontSize: 10, color: "#8a8278", marginTop: 3, lineHeight: 1.5, fontStyle: "italic" }}>{CHARACTER_WHY[c]}</div>
+            <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.5, fontStyle: "italic" }}>{CHARACTER_WHY[c]}</div>
           </div>
         );
       })}
@@ -46,7 +46,7 @@ export function FourTidesBadge({ current }: { current?: TideCharacter }) {
         title="What are the four tides?"
         style={{
           width: 15, height: 15, borderRadius: "50%", border: "1px solid var(--color-border)",
-          background: "var(--color-card)", color: "#999", fontSize: 9, cursor: "pointer",
+          background: "var(--color-card)", color: "var(--text-3)", fontSize: 9, cursor: "pointer",
           lineHeight: 1, padding: 0, verticalAlign: "middle",
         }}>?</button>
       {open && (

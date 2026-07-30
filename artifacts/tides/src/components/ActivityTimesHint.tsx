@@ -70,17 +70,17 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
       </button>
       {open && (
         <div onClick={e => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2, paddingLeft: 2 }}>
-          {isFetching && <span style={{ fontSize: 9, color: "#aaa" }}>reading the sky…</span>}
-          {!isFetching && top.length === 0 && <span style={{ fontSize: 9, color: "#aaa" }}>no clean window this week</span>}
+          {isFetching && <span style={{ fontSize: 9, color: "var(--text-3)" }}>reading the sky…</span>}
+          {!isFetching && top.length === 0 && <span style={{ fontSize: 9, color: "var(--text-3)" }}>no clean window this week</span>}
           {top.map((w, i) => {
             const key = `${w.dow}|${w.startClock}`;
             return (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5 }}>
-                <span style={{ color: w.tier === "great" ? "#c8a04a" : "#8a9a8a", flexShrink: 0 }}>{w.tier === "great" ? "★" : "●"}</span>
-                <span style={{ color: "#6a6258", flexShrink: 0 }}>{w.dow} {w.allDay ? "all day" : `${w.startClock}–${w.endClock}`}</span>
+                <span style={{ color: w.tier === "great" ? "#c8a04a" : "var(--color-muted)", flexShrink: 0 }}>{w.tier === "great" ? "★" : "●"}</span>
+                <span style={{ color: "var(--color-muted)", flexShrink: 0 }}>{w.dow} {w.allDay ? "all day" : `${w.startClock}–${w.endClock}`}</span>
                 {!w.allDay && (scheduled === key
                   ? <span style={{ color: "#4a8060", fontWeight: 600 }}>✓</span>
-                  : <button onClick={() => schedule.mutate(w)} style={{ fontSize: 8.5, color: "#8a8278", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>schedule</button>)}
+                  : <button onClick={() => schedule.mutate(w)} style={{ fontSize: 8.5, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>schedule</button>)}
               </div>
             );
           })}

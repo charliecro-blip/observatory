@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { jsonArray } from "@/lib/jsonArray";
-import { ELEMENT_COLORS, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
+import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal } from "@/lib/dates";
@@ -26,11 +26,8 @@ import { isWithinFreeWindow, ritualPhase } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
+import { PLANET_COLORS } from "@/lib/planetColors";
 
-const PLANET_COLORS: Record<string, string> = {
-  Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#c06090",
-  Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060", Uranus: "#3090a0",
-};
 
 const PLANET_SIGNIFICATION: Record<string, string> = {
   Moon: "nourishment · care · small tasks · environment",
@@ -57,13 +54,13 @@ const CROSSING_ACTIVITY: Record<string, string> = {
 
 
 const QUALITY_COLORS: Record<string, string> = {
-  good: "#60a060", supported: "#60a060", challenging: "#c04040", caution: "#d0a040", neutral: "#888",
+  good: "#60a060", supported: "#60a060", challenging: PLANET_COLORS.Mars, caution: "#d0a040", neutral: "#888",
 };
 
 const WINDOW_COLORS: Record<string, string> = {
   deep_work: "#3a7aaa", creative: "#9060b0", planning: "#c08040", admin: "#888",
   social: "#d06060", relationship: "#b04080", recovery: "#60a080", retreat: "#6080a0",
-  launch: "#c04040", study: "#5060a0",
+  launch: PLANET_COLORS.Mars, study: "#5060a0",
 };
 
 function heroText(now: any): string {
@@ -124,7 +121,7 @@ function PinButton({ onPin }: { onPin: () => void }) {
       title="Save this insight"
       style={{
         background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
-        fontSize: 13, color: pinned ? "#c08020" : "#ccc", flexShrink: 0,
+        fontSize: 13, color: pinned ? PLANET_COLORS.Sun : "var(--text-3)", flexShrink: 0,
         transition: "color 0.2s",
       }}
     >
@@ -302,43 +299,43 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               {/* Sub-brand tag (brand kit): Ask signs in Meridian small-caps. */}
               <span style={{ fontSize: 8.5, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
             </div>
-            <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>What do you want to orient to?</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {history.length > 0 && !showPins && (
               <button onClick={() => { setHistory([]); setStreamBuffer(""); setInput(""); }} style={{
                 fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
-                background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
+                background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer",
               }}>← New question</button>
             )}
             {pins.length > 0 && (
               <button onClick={() => setShowPins(v => !v)} style={{
                 fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
-                background: showPins ? "#1a2a3a" : "#fff", color: showPins ? "var(--color-background)" : "#4a5a6a",
+                background: showPins ? "#1a2a3a" : "var(--color-card)", color: showPins ? "var(--color-background)" : "var(--text-2)",
                 cursor: "pointer",
               }}>★ Saved ({pins.length})</button>
             )}
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#aaa", lineHeight: 1 }}>×</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)", lineHeight: 1 }}>×</button>
           </div>
         </div>
 
         {/* Saved pins panel */}
         {showPins && (
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {pins.length === 0 && <div style={{ fontSize: 12, color: "#bbb", textAlign: "center", marginTop: 16 }}>No saved insights yet.</div>}
+            {pins.length === 0 && <div style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center", marginTop: 16 }}>No saved insights yet.</div>}
             {pins.map((p, i) => (
               <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
                 <div style={{ fontSize: 13, color: "var(--color-primary)", lineHeight: 1.5 }}>{p.content}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                  <span style={{ fontSize: 9, color: "#bbb" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ fontSize: 9, color: "var(--text-3)" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                   <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
                     fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
-                    background: "var(--color-card-2)", color: "#4a5a6a", cursor: "pointer",
+                    background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer",
                   }}>→ task</button>
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "#bbb", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}>← Back to conversation</button>
+            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}>← Back to conversation</button>
           </div>
         )}
 
@@ -366,9 +363,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               <span style={{ fontSize: 15, color: iconColor, width: 18, textAlign: "center", flexShrink: 0 }}>{icon}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{label}</span>
-                {sub && <span style={{ display: "block", fontSize: 10, color: "#999", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
+                {sub && <span style={{ display: "block", fontSize: 10, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}
               </span>
-              <span style={{ fontSize: 11, color: "#ccc", flexShrink: 0 }}>→</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>→</span>
             </button>
           );
 
@@ -377,10 +374,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               {/* Your Guiding Stars */}
               {activeStars.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Your guiding stars</div>
+                  <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Your guiding stars</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {activeStars.map((s: any) => (
-                      <Row key={s.id} icon="✦" iconColor="#c19a3a"
+                      <Row key={s.id} icon="✦" iconColor={ELEMENT_COLORS.air}
                         label={s.title}
                         sub="Make progress on this — with the sky as it is now"
                         onClick={() => send(`Help me make progress on my guiding star "${s.title}" right now. Given the current sky and my rhythm, what's one concrete thing I could do toward it in this window, and is now a good time for that kind of effort? If the moment doesn't suit it, say so and tell me when would be better.`)}
@@ -392,7 +389,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
 
               {/* Right now — this moment's grain + rest */}
               <div>
-                <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Right now</div>
+                <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Right now</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {charLabel && (
                     <Row icon="◐" iconColor={charColor}
@@ -401,7 +398,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                       onClick={() => send(`The tide right now is ${charLabel}. Given that grain and my tasks and goals, what's the best thing I could do with this moment? Keep it to what genuinely fits this kind of energy.`)}
                     />
                   )}
-                  <Row icon={restful ? "☾" : "⏸"} iconColor="#7080a0"
+                  <Row icon={restful ? "☾" : "⏸"} iconColor={PLANET_COLORS.Moon}
                     label={restful ? "Rest — the tide is low" : "Permission to rest"}
                     sub={restful ? "This window ebbs. Let me help you feel okay stepping back." : "Is stepping back the right call right now?"}
                     onClick={() => send(`Is this a moment to rest? Look honestly at the current tide and my chart. If the window supports rest or a gentler pace, help me feel okay about that instead of pushing. If it genuinely supports effort, tell me that plainly too.`)}
@@ -411,12 +408,12 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
 
               {/* Ask about timing */}
               <div>
-                <div style={{ fontSize: 9, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Ask about timing</div>
+                <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Ask about timing</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {QUICK_INTENTIONS.filter(q => q.mode === "fill").map(q => (
                     <button key={q.label} onClick={() => { setInput(q.value); inputRef.current?.focus(); }} style={{
                       fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "1px solid var(--color-border)",
-                      background: "var(--color-card)", color: "#4a5a6a", cursor: "pointer",
+                      background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer",
                     }}>{q.label}</button>
                   ))}
                 </div>
@@ -428,7 +425,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
         {/* Message thread */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           {allMessages.length === 0 && (
-            <div style={{ color: "#bbb", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+            <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", marginTop: 8 }}>
               Choose above, or ask anything below.
             </div>
           )}
@@ -441,8 +438,8 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               <div style={{
                 maxWidth: "82%", padding: "10px 14px", borderRadius: 12,
                 fontSize: 13, lineHeight: 1.5,
-                background: m.role === "user" ? "#1a2a3a" : "#fff",
-                color: m.role === "user" ? "var(--color-background)" : "#1a2a3a",
+                background: m.role === "user" ? "#1a2a3a" : "var(--color-card)",
+                color: m.role === "user" ? "var(--color-background)" : "var(--color-foreground)",
                 border: m.role === "assistant" ? "1px solid var(--color-border)" : "none",
                 borderBottomRightRadius: m.role === "user" ? 4 : 12,
                 borderBottomLeftRadius: m.role === "assistant" ? 4 : 12,
@@ -458,12 +455,12 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                   <button
                     onClick={() => onAddTask(m.content.slice(0, 80))}
                     title="Add as task"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#ccc", padding: "1px 3px" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--text-3)", padding: "1px 3px" }}
                   >→</button>
                   <button
                     onClick={() => saveToMemory(m.content, i)}
                     title="Save to daemon memory (persists across sessions)"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: memSaved === i ? "#9060c0" : "#ddd", padding: "1px 3px" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: memSaved === i ? "#9060c0" : "var(--text-3)", padding: "1px 3px" }}
                   >{memSaved === i ? "✦" : "◆"}</button>
                   <button
                     onClick={() => send("Why? Briefly show me which sky factors shaped that answer — the Moon's sign, the tide, the planetary hour, my transits — and what each one contributed. Teach me the mechanism so I could read it myself next time.")}
@@ -498,8 +495,8 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               disabled={!input.trim() || streaming}
               style={{
                 padding: "9px 16px", borderRadius: 10, border: "none",
-                background: input.trim() && !streaming ? "#1a2a3a" : "#e0dcd6",
-                color: input.trim() && !streaming ? "#fff" : "#aaa",
+                background: input.trim() && !streaming ? "#1a2a3a" : "var(--color-border)",
+                color: input.trim() && !streaming ? "#fff" : "var(--text-3)",
                 fontSize: 12, fontWeight: 500, cursor: input.trim() && !streaming ? "pointer" : "default",
                 flexShrink: 0,
               }}
@@ -507,7 +504,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               {streaming ? "…" : "Send"}
             </button>
           </div>
-          <div style={{ fontSize: 9, color: "#ccc", marginTop: 5 }}>Enter to send · Shift+Enter for new line</div>
+          <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 5 }}>Enter to send · Shift+Enter for new line</div>
         </div>
 
         </>}
@@ -760,7 +757,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const crossingBanner = crossingsOn && activeCrossings.length > 0 ? (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {activeCrossings.map(({ c: cr, diff, orbDeg }, i) => {
-        const pCol = PLANET_COLORS[cr.planet] ?? "#c08020";
+        const pCol = PLANET_COLORS[cr.planet] ?? PLANET_COLORS.Sun;
         const sig = PLANET_SIGNIFICATION[cr.planet];
         const isBenefic = ["Venus", "Jupiter", "Sun"].includes(cr.planet);
         const whenLabel = Math.abs(diff) < 2 ? "peaking now"
@@ -776,7 +773,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
                 {cr.planet} crosses {cr.angle} · active now
               </div>
-              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 2 }}>
                 {cr.time} · {whenLabel}{sig ? ` — ${sig}` : ""}
               </div>
               {CROSSING_ACTIVITY[cr.planet] && (
@@ -859,7 +856,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
         borderBottom: "1px solid var(--color-border)", background: "var(--color-rail)", flexShrink: 0,
       }}>
-        <div style={{ fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div style={{ fontSize: 10, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           {new Date().toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -902,7 +899,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   {locating ? "Locating…" : "📍 In a new place? Tap to update your sky"}
                 </button>
                 <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", localToday()); setDismissedTravelHint(true); }}
-                  style={{ fontSize: 9, color: "#aab", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>✕</button>
+                  style={{ fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>✕</button>
               </span>
             );
           })()}
@@ -989,7 +986,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               To your Aims →
             </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
           </div>
@@ -1007,7 +1004,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               Explore
             </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} style={{ fontSize: 13, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
           </div>
@@ -1020,6 +1017,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const character = (tide?.character ?? "deep") as TideCharacter;
           const elKey = CHARACTER_ELEMENT[character] ?? "water";
           const elColor = ELEMENT_COLORS[elKey] ?? elemColor;
+          // The hero is a filled panel with white text on it, so it takes the
+          // deep surface tone rather than the (dark-mode-lifted) text hue.
+          const elFill  = ELEMENT_SURFACE[elKey] ?? elemColor;
           const elBg    = ELEMENT_BG[elKey] ?? "#f0f0f0";
           const levelLabel = tide?.levelLabel ?? "Steady";
           // Quiet day: little is happening (low aspect activation, no swells ahead).
@@ -1045,7 +1045,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             // shrinkage and collapsed to its 2px borders (invisible hero).
             <div style={{ borderRadius: 14, overflow: "hidden", flexShrink: 0, border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               {/* Tide banner */}
-              <div style={{ background: `linear-gradient(135deg, ${elColor}, ${elColor}cc)`, padding: "24px 28px 20px" }}>
+              <div style={{ background: `linear-gradient(135deg, ${elFill}, ${elFill}cc)`, padding: "24px 28px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 8 }}>
@@ -1091,7 +1091,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
               {/* Guidance + meta */}
               <div style={{ background: elBg, padding: "16px 24px" }}>
-                <div style={{ fontSize: 14.5, color: "#2a2a2a", lineHeight: 1.6, marginBottom: confNote ? 7 : 12 }}>
+                <div style={{ fontSize: 14.5, color: "var(--text-1)", lineHeight: 1.6, marginBottom: confNote ? 7 : 12 }}>
                   {guidanceText}
                 </div>
                 {confNote && (
@@ -1108,11 +1108,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
                     Energy {energyPct}%
                   </div>
-                  <div style={{ fontSize: 9.5, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
                     {tide?.trend ?? "steady"}
                   </div>
-                  <div style={{ fontSize: 9.5, color: "#888", display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
                     {tide?.confidence ?? "medium"} confidence
                   </div>
@@ -1136,7 +1136,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   return (
                     <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${elColor}22`, display: "flex", alignItems: "center", gap: 7 }}>
                       <span style={{ fontSize: 9, fontWeight: 700, color: "#a04040", background: "#a0404015", padding: "2px 6px", borderRadius: 4, flexShrink: 0 }}>YOU</span>
-                      <span style={{ fontSize: 10.5, color: "#8a4040" }}>
+                      <span style={{ fontSize: 10.5, color: "var(--color-quality-challenge)" }}>
                         World tide is {levelLabel.toLowerCase()}, but yours is choppy — {dayScale.summary}
                       </span>
                     </div>
@@ -1184,7 +1184,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 <span style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.55 }}>
                   Today has {lit.undertone}.
                 </span>
-                <span style={{ fontSize: 10.5, color: "#999", marginLeft: 6 }}>
+                <span style={{ fontSize: 10.5, color: "var(--text-3)", marginLeft: 6 }}>
                   Moon {best.aspect} {best.partner}{whenPhrase ? ` — ${whenPhrase}` : ""} · comes around about once a week.
                 </span>
               </div>
@@ -1246,7 +1246,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>◌</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#6a5030" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-brass)" }}>
                 Moon void of course{now.voc.nextIngress ? ` · until ${now.voc.nextIngress}` : ""}
               </div>
               <div style={{ fontSize: 10, color: "#9a7050", marginTop: 2 }}>
@@ -1278,7 +1278,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: phase.color }}>{phase.name} · day {dayOfCycle} of cycle</div>
-                <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{phase.desc}</div>
+                <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{phase.desc}</div>
               </div>
               <div style={{ fontSize: 8, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
             </div>
@@ -1300,7 +1300,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 </div>
               )}
               {habits.filter((h: any) => h.minimumViable).length > 0 && (
-                <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
+                <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 6 }}>
                   <span style={{ fontWeight: 600, color: "#6a4020" }}>Minimum viable: </span>
                   {habits.filter((h: any) => h.minimumViable).map((h: any) => `${h.name}: ${h.minimumViable}`).join(" · ")}
                 </div>
@@ -1353,12 +1353,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               if (!rows.length) return null;
               return (
                 <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
-                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 5 }}>
+                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
                     moments ahead
                   </div>
                   {rows.map((m: any, i: number) => (
                     <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
-                      <span style={{ color: "#998a76", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
+                      <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
                       <span style={{ color: "var(--color-foreground)" }}>
                         {m.planet} hour — {m.task ? <>a window for “<b>{m.task.title}</b>”</>
                           : m.star ? <>moves “<b>{m.star.title}</b>”</>
@@ -1383,7 +1383,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   {addTask.isError && <span style={{ fontSize: 10, color: "#a03030", alignSelf: "center" }}>failed — retry</span>}
                 </div>
               ) : (
-                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "#ccc", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   + add task
                 </button>
               )}
@@ -1401,7 +1401,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
           alignSelf: "center", margin: "6px 0 10px", padding: "7px 18px", borderRadius: 18,
           border: "1px solid var(--color-border)", background: "var(--color-card)",
-          fontSize: 11, color: "#8a8278", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0,
+          fontSize: 11, color: "var(--color-muted)", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0,
         }}>
           {essential ? "Show the full instrument panel ↓" : "Simplify to the essentials ↑"}
         </button>
@@ -1414,8 +1414,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 // ── NorthStarsCard — chief aims for the week ────────────────────────────────────
 
 const NS_ELEMENT_INFO: Record<string, { color: string; label: string }> = {
-  fire: { color: "#c04830", label: "Fire" }, earth: { color: "#4a7040", label: "Earth" },
-  air: { color: "#c19a3a", label: "Air" }, water: { color: "#3a5a80", label: "Water" },
+  fire: { color: "#c04830", label: "Fire" }, earth: { color: ELEMENT_COLORS.earth, label: "Earth" },
+  air: { color: ELEMENT_COLORS.air, label: "Air" }, water: { color: ELEMENT_COLORS.water, label: "Water" },
 };
 
 function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerId: string | null; onNavigate?: (v: string) => void }) {
@@ -1435,11 +1435,11 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>★ North Stars</div>
-        <button onClick={() => onNavigate?.("work")} style={{ fontSize: 9.5, color: "#aaa", background: "none", border: "none", cursor: "pointer" }}>manage →</button>
+        <button onClick={() => onNavigate?.("work")} style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>manage →</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
         {stars.map((g: any) => {
-          const info = NS_ELEMENT_INFO[g.element ?? ""] ?? { color: "#8a8278", label: "" };
+          const info = NS_ELEMENT_INFO[g.element ?? ""] ?? { color: "var(--color-muted)", label: "" };
           const target = Math.max(g.scheduledCount, 2); // aim for at least 2-3 sessions/week
           const pct = Math.min(100, Math.round((g.completedCount / target) * 100));
           return (
@@ -1454,10 +1454,10 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
                   <div style={{ height: "100%", width: `${pct}%`, background: info.color, borderRadius: 2, opacity: 0.75 }} />
                 </div>
               </div>
-              <span style={{ fontSize: 9.5, color: "#999", flexShrink: 0 }}>{g.completedCount}/{target} this wk</span>
+              <span style={{ fontSize: 9.5, color: "var(--text-3)", flexShrink: 0 }}>{g.completedCount}/{target} this wk</span>
               <button onClick={() => logSession.mutate(g.id)} title="Log a session for this goal" style={{
                 fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
-                background: "var(--color-card-2)", color: "#6a6258", cursor: "pointer", flexShrink: 0,
+                background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer", flexShrink: 0,
               }}>+ log</button>
             </div>
           );
@@ -1539,9 +1539,9 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
           </div>
         )}
         {eras.length > 0 && (
-          <div style={{ fontSize: 9.5, color: "#b0a89c", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 9.5, color: "var(--color-muted)", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.6 }}>
             the era · {eras.map((e) => `${e.p}${e.rx ? " ℞" : ""} in ${e.sign} — ${ERA_GLOSS[e.p]}`).join(" · ")}
-            <span style={{ color: "#c0b8ac" }}> · in effect for months to years</span>
+            <span style={{ color: "var(--text-3)" }}> · in effect for months to years</span>
           </div>
         )}
       </div>
@@ -1646,7 +1646,7 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
             You felt aligned on <b style={{ color: "#4a8060" }}>{top.aligned} of {top.total}</b>{" "}
             {top.character.charAt(0).toUpperCase() + top.character.slice(1)} days
             {top.otherRate != null && <> — against {top.otherAligned} of {top.otherTotal} other days</>}.
-            <div style={{ fontSize: 9.5, color: "#a9a196", marginTop: 3 }}>
+            <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 3 }}>
               {pattern!.ratedTotal} days rated{pattern!.earliest && pattern!.latest ? ` · ${pattern!.earliest} to ${pattern!.latest}` : ""}. Early days — a hint, not a verdict.
             </div>
           </div>
@@ -1654,7 +1654,7 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
       )}
       {/* Say how far off the finding is, so rating feels like it accrues. */}
       {pattern && !pattern.enough && pattern.ratedTotal > 0 && (
-        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)", fontSize: 9.5, color: "#a9a196", lineHeight: 1.5 }}>
+        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)", fontSize: 9.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
           {pattern.ratedTotal} of {pattern.minTotal} days rated — keep going and Compass can start showing you which days actually land.
         </div>
       )}
@@ -1667,17 +1667,14 @@ function TideFeedback({ now, today, testerId }: { now: any; today: string; teste
 const CHALDEAN_TL = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
 const WEEKDAY_RULERS_TL = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
 
-const PLANET_COLORS_TL: Record<string,string> = {
-  Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#c06090",
-  Mars:"#c04040", Jupiter:"#6040a0", Saturn:"#807060",
-};
+const PLANET_COLORS_TL = PLANET_COLORS;
 
 const ASPECT_ICON: Record<string,string> = {
   conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎",
 };
 
 const EVENT_COLORS: Record<string,string> = {
-  moon_phase:"#7080a0", ingress:"#4a7040", voc:"#b0a030", crossing:"#6040a0", moon_aspect:"#3a7080", quality_window:"#40a060",
+  moon_phase:PLANET_COLORS.Moon, ingress:ELEMENT_COLORS.earth, voc:"#b0a030", crossing:PLANET_COLORS.Jupiter, moon_aspect:"#3a7080", quality_window:"#40a060",
 };
 
 function tlApproxSunriseSunset(dateStr: string, lat: number, lon: number): {sunrise: Date; sunset: Date} | null {
@@ -1763,7 +1760,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
       <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Today's Hours</div>
-        <div style={{ fontSize: 9, color: "#aaa" }}>Planetary hours + sky events</div>
+        <div style={{ fontSize: 9, color: "var(--text-3)" }}>Planetary hours + sky events</div>
       </div>
       <div style={{ position: "relative", height: Math.min(totalH, 560), overflowY: "auto" }}>
         {/* Hour rows */}
@@ -1778,10 +1775,10 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
             <div key={h} style={{
               height: ROW_H, display: "flex", alignItems: "stretch",
               borderBottom: "1px solid var(--color-border)",
-              background: isNow ? "#fffbf0" : ph?.isDay === false ? "#f5f3f7" : "#fff",
+              background: isNow ? "#fffbf0" : ph?.isDay === false ? "#f5f3f7" : "var(--color-card)",
             }}>
               {/* Time label */}
-              <div style={{ width: 42, flexShrink: 0, display: "flex", alignItems: "flex-start", paddingTop: 6, paddingLeft: 12, fontSize: 9, color: isNow ? "#b07820" : "#bbb", fontWeight: isNow ? 700 : 400 }}>
+              <div style={{ width: 42, flexShrink: 0, display: "flex", alignItems: "flex-start", paddingTop: 6, paddingLeft: 12, fontSize: 9, color: isNow ? "#b07820" : "var(--text-3)", fontWeight: isNow ? 700 : 400 }}>
                 {h === 12 ? "12p" : h > 12 ? `${h-12}p` : `${h}a`}
               </div>
               {/* Planet hour bar */}
@@ -1789,7 +1786,7 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
                 {ph && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <div style={{ fontSize: 9, color: pColor, fontWeight: 600 }}>{ph.ruler}</div>
-                    <div style={{ fontSize: 7, color: "#bbb" }}>{ph.isDay ? "☉︎" : "☽︎"}</div>
+                    <div style={{ fontSize: 7, color: "var(--text-3)" }}>{ph.isDay ? "☉︎" : "☽︎"}</div>
                   </div>
                 )}
               </div>
@@ -1803,8 +1800,8 @@ function DayTimeline({ today, now, lat, lon, skyEvents }: {
                   .map(({ e }, idx) => (
                     <div key={idx} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <div style={{ width: 4, height: 4, borderRadius: "50%", background: EVENT_COLORS[e.type] ?? "#aaa", flexShrink: 0 }} />
-                      <div style={{ fontSize: 9.5, color: EVENT_COLORS[e.type] ?? "#666", fontWeight: 500 }}>{e.icon} {e.title}</div>
-                      {e.time && <div style={{ fontSize: 8, color: "#bbb", marginLeft: "auto", paddingRight: 12 }}>
+                      <div style={{ fontSize: 9.5, color: EVENT_COLORS[e.type] ?? "var(--text-2)", fontWeight: 500 }}>{e.icon} {e.title}</div>
+                      {e.time && <div style={{ fontSize: 8, color: "var(--text-3)", marginLeft: "auto", paddingRight: 12 }}>
                         {fmtTime(new Date(`${today}T${e.time}`))}
                       </div>}
                     </div>
@@ -1864,7 +1861,7 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
       options: hourActs,
       seed: new Date().getHours(),
       source: `${hourPlanet} hour`,
-      color: PLANET_THEMES[hourPlanet]?.color ?? "#8a8278",
+      color: PLANET_THEMES[hourPlanet]?.color ?? "var(--color-muted)",
       title: PLANET_MYTHOS[hourPlanet]?.whenLoud,
     });
   }
@@ -1905,8 +1902,8 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
 
   return (
     <div style={{ margin: "12px 0" }}>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "#9a9090", marginBottom: 8 }}>
-        Resonant now <span style={{ letterSpacing: 0, textTransform: "none", color: "#c0b8ac" }}>· tap a card for another way in</span>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
+        Resonant now <span style={{ letterSpacing: 0, textTransform: "none", color: "var(--text-3)" }}>· tap a card for another way in</span>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {suggestions.map((s, i) => {
@@ -1924,7 +1921,7 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
                 <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
                 {/* explicit invitation — the muted counter alone read as decoration */}
-                <span style={{ fontSize: 9, color: "#9a9088", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
+                <span style={{ fontSize: 9, color: "var(--color-muted)", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>
             </button>
           );
@@ -1978,9 +1975,9 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
             {a.planet} in {a.sign} {geo.symbol} {b.planet} in {b.sign}
           </span>
           {timing && <span style={{ fontSize: 9, color: "#b07030", background: "#fff8e8", border: "1px solid #e8d080", padding: "1px 6px", borderRadius: 5 }}>{timing}</span>}
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb", flexShrink: 0 }}>{open ? "▲ less" : "▼ explore"}</span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>{open ? "▲ less" : "▼ explore"}</span>
         </div>
-        <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55, marginTop: 5 }}>{essence}</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.55, marginTop: 5 }}>{essence}</div>
       </button>
 
       {open && (
@@ -1989,22 +1986,22 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
           <div style={{ marginTop: 10, background: "var(--color-card-2)", borderRadius: 9, padding: "10px 12px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
               <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
-              <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                another take ↻ <span style={{ color: "#bbb" }}>{takeIdx + 1}/{takes.length}</span>
+              <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                another take ↻ <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
               </button>
             </div>
-            <div style={{ fontSize: 11.5, color: "#555", lineHeight: 1.65 }}>{takes[takeIdx].text}</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.65 }}>{takes[takeIdx].text}</div>
           </div>
 
           {/* Favors / watch */}
           <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <span style={{ fontSize: 9.5, fontWeight: 700, color: "#3a6020" }}>FAVORS </span>
-              <span style={{ fontSize: 10.5, color: "#666", lineHeight: 1.5 }}>{guidance.favors}</span>
+              <span style={{ fontSize: 10.5, color: "var(--text-2)", lineHeight: 1.5 }}>{guidance.favors}</span>
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <span style={{ fontSize: 9.5, fontWeight: 700, color: "#a04030" }}>WATCH </span>
-              <span style={{ fontSize: 10.5, color: "#666", lineHeight: 1.5 }}>{guidance.watch}</span>
+              <span style={{ fontSize: 10.5, color: "var(--text-2)", lineHeight: 1.5 }}>{guidance.watch}</span>
             </div>
           </div>
 
@@ -2013,17 +2010,17 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
             {[a, b].map((p) => {
               const pc = PLANET_CORE[p.planet];
               return (
-                <div key={p.planet} style={{ fontSize: 10.5, color: "#8a8278", lineHeight: 1.5 }}>
+                <div key={p.planet} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
                   <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}>{BIGSKY_PLANET_GLYPH[p.planet]} {p.planet} in {p.sign}</span>
                   {pc ? ` — ${pc.is}.` : ""}
-                  <span style={{ color: "#a89a88" }}> In {p.sign}: {SIGN_INFLECTION[p.sign] ?? ""}.</span>
+                  <span style={{ color: "var(--text-3)" }}> In {p.sign}: {SIGN_INFLECTION[p.sign] ?? ""}.</span>
                 </div>
               );
             })}
           </div>
 
           {/* The concept, explained plainly */}
-          <div style={{ marginTop: 9, fontSize: 10, color: "#a09888", lineHeight: 1.55, fontStyle: "italic" }}>
+          <div style={{ marginTop: 9, fontSize: 10, color: "var(--color-muted)", lineHeight: 1.55, fontStyle: "italic" }}>
             What a {geo.word} is: {geo.angle} apart. {geo.explain}
           </div>
         </div>
@@ -2051,8 +2048,8 @@ function BigSky({ now }: { now: any }) {
   return (
     <div style={{ flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 7, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8a8278" }}>The big sky</div>
-        <div style={{ fontSize: 10, color: "#b0a898" }}>the strongest planet-to-planet weather right now — tap to explore</div>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)" }}>The big sky</div>
+        <div style={{ fontSize: 10, color: "var(--color-muted)" }}>the strongest planet-to-planet weather right now — tap to explore</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {headliners.map((a, i) => <BigSkyCard key={`${a.planet1}-${a.planet2}-${i}`} asp={a} signOf={signOf} />)}
@@ -2112,7 +2109,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   const tide = now?.tide;
   const character = (tide?.character ?? "deep") as TideCharacter;
   const elKey = CHARACTER_ELEMENT[character] ?? "water";
-  const elColor = ELEMENT_COLORS[elKey] ?? "#3a5a80";
+  const elColor = ELEMENT_COLORS[elKey] ?? ELEMENT_COLORS.water;
   const habitList = Array.isArray(habits) ? habits : [];
   const el = now?.element?.element ?? "";
 
@@ -2171,13 +2168,13 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>⛵ Cast off{firstName ? `, ${firstName}` : ""}</span>
           <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
         </div>
-        <div style={{ fontSize: 11.5, color: "#777", marginBottom: 10 }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 10 }}>
           {CHARACTER_LABEL[character]} tide, {tide?.levelLabel?.toLowerCase() ?? "steady"} — {CHARACTER_ESSENCE[character]?.toLowerCase().replace(/\.$/, "")}.
         </div>
 
         {/* Yesterday, if it slipped past unrated */}
         {testerId && yDay !== undefined && !yesterdayFelt && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 10.5, color: "#998a76" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 10.5, color: "var(--text-3)" }}>
             <span>Yesterday felt…</span>
             {[["aligned", "●", "#4a8060"], ["mixed", "◐", "#a08040"], ["off", "○", "#9a6060"]].map(([k, icon, c]) => (
               <button key={k} onClick={() => rateYesterday(k)} style={{
@@ -2231,18 +2228,18 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
                     border: h.doneToday ? "1px solid #4a806040" : `1px solid ${resonant ? elColor : "var(--color-border)"}`,
                     background: h.doneToday ? "#4a806012" : "var(--color-card)",
                   }}>
-                    <span style={{ fontSize: 11, color: h.doneToday ? "#4a8060" : "#999" }}>{h.doneToday ? "✓" : "○"}</span>
+                    <span style={{ fontSize: 11, color: h.doneToday ? "#4a8060" : "var(--text-3)" }}>{h.doneToday ? "✓" : "○"}</span>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: h.doneToday ? "#4a8060" : "var(--color-foreground)" }}>{h.name}</span>
                     {resonant && <span style={{ fontSize: 10, color: elColor }}>✦</span>}
                     {/* A streak reads as encouragement on a daily and as
                         nonsense on a 3×/week — so non-dailies show their
                         cadence position instead. */}
-                    <span style={{ fontSize: 9, color: "#aaa" }}>
+                    <span style={{ fontSize: 9, color: "var(--text-3)" }}>
                       {(h.cadence ?? "daily") !== "daily"
                         ? `${h.windowDone ?? 0}/${h.windowTarget ?? 0} this week`
                         : h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}
                     </span>
-                    {anchor && <span style={{ fontSize: 8.5, color: "#998a76" }}>{anchor}</span>}
+                    {anchor && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{anchor}</span>}
                   </button>
                 );
               })}
@@ -2253,19 +2250,19 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
         {three.length > 0 ? (
           <div>
-            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 5 }}>Today's three</div>
+            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 5 }}>Today's three</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {three.map((t, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12 }}>
                   <span style={{ color: elColor, width: 14, textAlign: "center", flexShrink: 0 }}>{t.glyph}</span>
                   <span style={{ color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</span>
-                  <span style={{ fontSize: 9.5, color: "#aaa", flexShrink: 0 }}>{t.sub}</span>
+                  <span style={{ fontSize: 9.5, color: "var(--text-3)", flexShrink: 0 }}>{t.sub}</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: 11, color: "#999" }}>Nothing on deck yet — weave the day in <b>Plan</b>, or just ride the tide.</div>
+          <div style={{ fontSize: 11, color: "var(--text-3)" }}>Nothing on deck yet — weave the day in <b>Plan</b>, or just ride the tide.</div>
         )}
       </div>
     );
@@ -2319,14 +2316,14 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
               {habitList.filter((h: any) => !h.doneToday).map((h: any) => (
                 <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: false })} style={{
                   fontSize: 10, padding: "3px 9px", borderRadius: 14, background: "var(--color-card)",
-                  border: "1px solid var(--color-border)", color: "#999", cursor: "pointer",
+                  border: "1px solid var(--color-border)", color: "var(--text-3)", cursor: "pointer",
                 }}>○ {h.name} — did it? tap to log</button>
               ))}
             </div>
           )}
         </>
       ) : (
-        <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 8 }}>
           A quiet day in the log is still a day in the log.
           {(tide?.level === "low" || tide?.level === "ebb") && " The tide was low — resting was reading the water right."}
         </div>
@@ -2336,9 +2333,9 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           words — this is the loop's evening half. */}
       <EveningHarvest testerId={testerId} lat={lat} lon={lon} />
 
-      <div style={{ fontSize: 10.5, color: "#999", paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+      <div style={{ fontSize: 10.5, color: "var(--text-3)", paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
         Rate the day below — it lands in the Log, stamped with tonight's sky.
-        {tomorrowChar && <span style={{ color: "#8a8278" }}> Tomorrow: a {tomorrowChar} day.</span>}
+        {tomorrowChar && <span style={{ color: "var(--color-muted)" }}> Tomorrow: a {tomorrowChar} day.</span>}
       </div>
     </div>
   );
@@ -2371,7 +2368,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
   const practiceRows = (practicesData?.practices ?? []).filter((p: any) => p.timing !== "neutral").slice(0, 4);
   const FIT_LABEL: Record<string, { text: string; color: string }> = {
     resonant: { text: "✦ a great time for this", color: "#3a7040" },
-    supported: { text: "· this time will do", color: "#8a8278" },
+    supported: { text: "· this time will do", color: "var(--color-muted)" },
     soften: { text: "≋ against the current — soften it", color: "#a06020" },
     protect: { text: "≋ against the current — protect the minimum", color: "#a06020" },
   };
@@ -2409,7 +2406,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Habits & practices</div>
-        {habits.length > 0 && <div style={{ fontSize: 9.5, color: "#999" }}>{doneCount}/{habits.length} done</div>}
+        {habits.length > 0 && <div style={{ fontSize: 9.5, color: "var(--text-3)" }}>{doneCount}/{habits.length} done</div>}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
         {sorted.map((h) => {
@@ -2423,7 +2420,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
                 cursor: "pointer", fontSize: 11.5,
                 border: h.doneToday ? "1px solid #a8c898" : resonant ? "1px solid #b8ccb0" : "1px solid var(--color-border)",
                 background: h.doneToday ? "#eef6e8" : "var(--color-card-2)",
-                color: h.doneToday ? "#4a7040" : "var(--color-foreground)",
+                color: h.doneToday ? ELEMENT_COLORS.earth : "var(--color-foreground)",
               }}>
               <span style={{
                 width: 16, height: 16, borderRadius: "50%", flexShrink: 0, fontSize: 10, color: "#fff",
@@ -2433,7 +2430,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
               }}>{h.doneToday ? "✓" : ""}</span>
               {h.emoji ? `${h.emoji} ` : ""}{h.name}
               {resonant && <span style={{ fontSize: 8.5, color: "#4a8060" }}>✦</span>}
-              {anchor && <span style={{ fontSize: 8.5, color: "#998a76" }}>{anchor.label}</span>}
+              {anchor && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{anchor.label}</span>}
             </button>
           );
         })}
@@ -2446,7 +2443,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
               <div key={p.id} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 11 }}>
                 <span style={{ color: "var(--color-foreground)", fontWeight: 500 }}>{p.name}</span>
                 {fit && <span style={{ fontSize: 9.5, color: fit.color, fontWeight: 600 }}>{fit.text}</span>}
-                {p.reasons?.[0] && <span style={{ fontSize: 9, color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</span>}
+                {p.reasons?.[0] && <span style={{ fontSize: 9, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</span>}
               </div>
             );
           })}
@@ -2459,16 +2456,16 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
 // ── PlanetaryPulse ─────────────────────────────────────────────────────────────
 
 const PLANET_THEMES: Record<string, { themes: string; icon: string; color: string }> = {
-  Sun:     { icon:"☉︎", color:"#c08020", themes:"visibility · authority · vitality · identity" },
-  Moon:    { icon:"☽︎", color:"#7080a0", themes:"feeling · intuition · nourishment · cycles" },
-  Mercury: { icon:"☿︎", color:"#608060", themes:"communication · writing · analysis · ideas" },
-  Venus:   { icon:"♀︎", color:"#c06090", themes:"connection · beauty · pleasure · values" },
-  Mars:    { icon:"♂︎", color:"#c04040", themes:"drive · action · courage · physical energy" },
-  Jupiter: { icon:"♃︎", color:"#6040a0", themes:"expansion · optimism · generosity · faith" },
-  Saturn:  { icon:"♄︎", color:"#807060", themes:"discipline · structure · responsibility · long-term" },
-  Uranus:  { icon:"♅︎", color:"#3090a0", themes:"disruption · innovation · liberation · surprise" },
-  Neptune: { icon:"♆︎", color:"#5060b0", themes:"imagination · transcendence · compassion · dissolution" },
-  Pluto:   { icon:"♇︎", color:"#703060", themes:"transformation · depth · power · shadow" },
+  Sun:     { icon:"☉︎", color:PLANET_COLORS.Sun, themes:"visibility · authority · vitality · identity" },
+  Moon:    { icon:"☽︎", color:PLANET_COLORS.Moon, themes:"feeling · intuition · nourishment · cycles" },
+  Mercury: { icon:"☿︎", color:PLANET_COLORS.Mercury, themes:"communication · writing · analysis · ideas" },
+  Venus:   { icon:"♀︎", color:PLANET_COLORS.Venus, themes:"connection · beauty · pleasure · values" },
+  Mars:    { icon:"♂︎", color:PLANET_COLORS.Mars, themes:"drive · action · courage · physical energy" },
+  Jupiter: { icon:"♃︎", color:PLANET_COLORS.Jupiter, themes:"expansion · optimism · generosity · faith" },
+  Saturn:  { icon:"♄︎", color:PLANET_COLORS.Saturn, themes:"discipline · structure · responsibility · long-term" },
+  Uranus:  { icon:"♅︎", color:PLANET_COLORS.Uranus, themes:"disruption · innovation · liberation · surprise" },
+  Neptune: { icon:"♆︎", color:PLANET_COLORS.Neptune, themes:"imagination · transcendence · compassion · dissolution" },
+  Pluto:   { icon:"♇︎", color:PLANET_COLORS.Pluto, themes:"transformation · depth · power · shadow" },
 };
 
 const ASPECT_STRENGTH: Record<string, number> = {
@@ -2555,7 +2552,7 @@ function PlanetaryPulse({ now }: { now: any }) {
     <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:12, padding:"14px 18px", flexShrink:0 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
         <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Planetary pulse</div>
-        <div style={{ fontSize:9, color:"#bbb" }}>active sky emphasis</div>
+        <div style={{ fontSize:9, color:"var(--text-3)" }}>active sky emphasis</div>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {rows.map(({ planet, data, asp }) => {
@@ -2572,7 +2569,7 @@ function PlanetaryPulse({ now }: { now: any }) {
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <span style={{ fontSize:11, fontWeight:600, color: "var(--color-primary)" }}>
-                    {planet}{sign && <span style={{ fontWeight:400, color:"#a09888" }}> in {sign}</span>}
+                    {planet}{sign && <span style={{ fontWeight:400, color:"var(--color-muted)" }}> in {sign}</span>}
                   </span>
                   {asp && (
                     <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${info.color}18`, color:info.color, fontWeight:500 }}>
@@ -2584,10 +2581,10 @@ function PlanetaryPulse({ now }: { now: any }) {
                     <span style={{ fontSize:8.5, color:"#b07030" }}>exact {fmtExactWhen(asp.hoursToExact)}</span>
                   )}
                   {asp && !asp.applying && asp.hoursSinceExact != null && (
-                    <span style={{ fontSize:8.5, color:"#999" }}>peaked {fmtSinceExact(asp.hoursSinceExact)}</span>
+                    <span style={{ fontSize:8.5, color:"var(--text-3)" }}>peaked {fmtSinceExact(asp.hoursSinceExact)}</span>
                   )}
                 </div>
-                <div style={{ fontSize:10, color:"#888", lineHeight:1.4, marginBottom:4 }}>{info.themes}</div>
+                <div style={{ fontSize:10, color:"var(--color-muted)", lineHeight:1.4, marginBottom:4 }}>{info.themes}</div>
                 <div style={{ height:3, background: "var(--color-background)", borderRadius:2, overflow:"hidden" }}>
                   <div style={{ width:`${intensityW}%`, height:"100%", background:info.color, borderRadius:2, opacity:0.7 }} />
                 </div>
@@ -2596,7 +2593,7 @@ function PlanetaryPulse({ now }: { now: any }) {
           );
         })}
       </div>
-      <div style={{ fontSize:8.5, color:"#ccc", marginTop:10 }}>
+      <div style={{ fontSize:8.5, color:"var(--text-3)", marginTop:10 }}>
         Moon and Sun aspects active now · applying = ↗ building
       </div>
     </div>
@@ -2614,9 +2611,9 @@ const WINDOW_TO_ELEMENT: Record<string, string> = {
 
 const ELEM_INFO: Record<string, { color: string; label: string; glyph: string }> = {
   fire:   { color: "#c04830", label: "Fire",   glyph: "🔥" },
-  earth:  { color: "#4a7040", label: "Earth",  glyph: "🌱" },
-  air:    { color: "#c19a3a", label: "Air",     glyph: "💨" },
-  water:  { color: "#3a5a80", label: "Water",  glyph: "💧" },
+  earth:  { color: ELEMENT_COLORS.earth, label: "Earth",  glyph: "🌱" },
+  air:    { color: ELEMENT_COLORS.air, label: "Air",     glyph: "💨" },
+  water:  { color: ELEMENT_COLORS.water, label: "Water",  glyph: "💧" },
   spirit: { color: "#a08060", label: "Spirit", glyph: "✦"  },
 };
 
@@ -2658,13 +2655,13 @@ function ElementalBalance({ habits, tasks }: { habits: any[]; tasks: { bestWindo
               <div style={{ flex: 1, height: 7, background: "var(--color-background)", borderRadius: 4, overflow: "hidden" }}>
                 <div style={{ width: `${pct}%`, height: "100%", background: info.color, borderRadius: 4, opacity: thin ? 0.4 : 0.8, transition: "width 0.4s ease" }} />
               </div>
-              <div style={{ width: 16, fontSize: 9, color: thin ? "#bbb" : info.color, textAlign: "right", flexShrink: 0 }}>{count}</div>
-              {thin && <span style={{ fontSize: 8, color: "#bbb" }}>thin</span>}
+              <div style={{ width: 16, fontSize: 9, color: thin ? "var(--text-3)" : info.color, textAlign: "right", flexShrink: 0 }}>{count}</div>
+              {thin && <span style={{ fontSize: 8, color: "var(--text-3)" }}>thin</span>}
             </div>
           );
         })}
       </div>
-      <div style={{ fontSize: 8, color: "#ccc", marginTop: 8 }}>Based on active habits · pending tasks</div>
+      <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 8 }}>Based on active habits · pending tasks</div>
     </div>
   );
 }
@@ -2674,13 +2671,13 @@ function ElementalBalance({ habits, tasks }: { habits: any[]; tasks: { bestWindo
 type ChartType = "flow" | "heart" | "create" | "move" | "focus" | "study" | "rest" | "launch";
 
 const CHART_TYPES: { id: ChartType; label: string; color: string; desc: string }[] = [
-  { id: "flow",   label: "Overall",  color: "#3a5a80", desc: "General quality — all factors" },
+  { id: "flow",   label: "Overall",  color: ELEMENT_COLORS.water, desc: "General quality — all factors" },
   { id: "focus",  label: "Focus",    color: "#4a6a50", desc: "Deep work · concentration · flow state" },
-  { id: "move",   label: "Active",   color: "#c04040", desc: "Movement · exercise · assertion" },
-  { id: "create", label: "Creative", color: "#6040a0", desc: "Art · expression · making" },
-  { id: "heart",  label: "Social",   color: "#c06090", desc: "Connection · relationship · love" },
+  { id: "move",   label: "Active",   color: PLANET_COLORS.Mars, desc: "Movement · exercise · assertion" },
+  { id: "create", label: "Creative", color: PLANET_COLORS.Jupiter, desc: "Art · expression · making" },
+  { id: "heart",  label: "Social",   color: PLANET_COLORS.Venus, desc: "Connection · relationship · love" },
   { id: "study",  label: "Study",    color: "#405080", desc: "Learning · reading · research" },
-  { id: "rest",   label: "Rest",     color: "#607060", desc: "Recovery · sleep · stillness" },
+  { id: "rest",   label: "Rest",     color: "var(--text-2)", desc: "Recovery · sleep · stillness" },
   { id: "launch", label: "Launch",   color: "#b05020", desc: "Starting · publishing · putting things out" },
 ];
 
@@ -2979,7 +2976,7 @@ function TideChart({
       <div style={{ padding: "12px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>The tide</div>
-          <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{now?.momentLabel}</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{now?.momentLabel}</div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {/* View toggle */}
@@ -2987,8 +2984,8 @@ function TideChart({
             {(["Day", "Week"] as const).map(t => (
               <div key={t} onClick={() => setTideView(t.toLowerCase() as "day"|"week")} style={{
                 fontSize: 10, padding: "2px 9px", borderRadius: 4,
-                background: tideView === t.toLowerCase() ? "#fff" : "transparent",
-                color: tideView === t.toLowerCase() ? "#333" : "#999",
+                background: tideView === t.toLowerCase() ? "var(--color-card)" : "transparent",
+                color: tideView === t.toLowerCase() ? "var(--text-1)" : "var(--text-3)",
                 fontWeight: tideView === t.toLowerCase() ? 500 : 400, cursor: "pointer",
               }}>{t}</div>
             ))}
@@ -3001,14 +2998,14 @@ function TideChart({
         {CHART_TYPES.map(ct2 => (
           <button key={ct2.id} onClick={() => setChartType(ct2.id)} style={{
             fontSize: 10, padding: "5px 12px", border: "none", background: "none", cursor: "pointer",
-            color: chartType === ct2.id ? ct2.color : "#bbb",
+            color: chartType === ct2.id ? ct2.color : "var(--text-3)",
             fontWeight: chartType === ct2.id ? 600 : 400,
             borderBottom: chartType === ct2.id ? `2px solid ${ct2.color}` : "2px solid transparent",
             marginBottom: -1,
           }}>{ct2.label}</button>
         ))}
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 9, color: "#bbb", alignSelf: "center", paddingBottom: 4 }}>{ct.desc}</div>
+        <div style={{ fontSize: 9, color: "var(--text-3)", alignSelf: "center", paddingBottom: 4 }}>{ct.desc}</div>
       </div>
 
       {/* Wave → task bridge: surface matching open tasks */}
@@ -3028,7 +3025,7 @@ function TideChart({
               <span key={t.id} style={{
                 fontSize: 10, padding: "2px 9px", borderRadius: 10,
                 background: "var(--color-card)", border: `1px solid ${ct.color}40`,
-                color: "#333", flexShrink: 0,
+                color: "var(--text-1)", flexShrink: 0,
               }}>{t.title}</span>
             ))}
           </div>
@@ -3170,7 +3167,7 @@ function TideChart({
             return (
               <div style={{
                 position:"absolute", top:12+tipTop, left:18+tipLeft,
-                background:"#1a2a3a", color:"#e8e4de", borderRadius:9, padding:"9px 12px",
+                background:"#1a2a3a", color:"var(--text-3)", borderRadius:9, padding:"9px 12px",
                 fontSize:10.5, lineHeight:1.45, width:200, pointerEvents:"none",
                 boxShadow:"0 6px 20px rgba(0,0,0,0.25)",
               }}>
@@ -3181,7 +3178,7 @@ function TideChart({
                   </span>
                 </div>
                 {hoverPt.win && (
-                  <div style={{ color:"#8a9aaa", fontSize:9.5, marginBottom:hoverCrossings.length>0?5:0 }}>
+                  <div style={{ color:"var(--color-muted)", fontSize:9.5, marginBottom:hoverCrossings.length>0?5:0 }}>
                     {hoverPt.win.quality?.replace(/_/g," ")}
                     {hoverPt.win.voidOfCourse?" · void of course":""}
                   </div>
@@ -3191,7 +3188,7 @@ function TideChart({
                     <div style={{ color:PLANET_COLORS[c.planet]??"#c8b870", fontWeight:600, fontSize:10 }}>
                       {PLANET_ICONS[c.planet]??"○"} {c.planet} × {c.angle} · {c.time}
                     </div>
-                    <div style={{ color:"#7080a0", fontSize:9, marginTop:1 }}>{PLANET_SIGNIFICATION[c.planet]}</div>
+                    <div style={{ color:PLANET_COLORS.Moon, fontSize:9, marginTop:1 }}>{PLANET_SIGNIFICATION[c.planet]}</div>
                   </div>
                 ))}
               </div>
@@ -3199,7 +3196,7 @@ function TideChart({
           })()}
 
           {/* Legend */}
-          <div style={{ display:"flex", gap:12, marginTop:6, fontSize:8, color:"#bbb", alignItems:"center" }}>
+          <div style={{ display:"flex", gap:12, marginTop:6, fontSize:8, color:"var(--text-3)", alignItems:"center" }}>
             <div style={{ display:"flex", gap:4, alignItems:"center" }}>
               <div style={{ width:14, height:5, background:"linear-gradient(to right, #c06040, #c8a030, #50a050)", borderRadius:2 }}/>
               quality band
@@ -3220,7 +3217,7 @@ function TideChart({
       {/* Week view — wave + day columns */}
       {tideView === "week" && (() => {
         const days7 = (week?.days ?? []).slice(0, 7);
-        if (!days7.length) return <div style={{ padding:20, color:"#bbb", fontSize:12 }}>No week data.</div>;
+        if (!days7.length) return <div style={{ padding:20, color:"var(--text-3)", fontSize:12 }}>No week data.</div>;
 
         const WEEK_W = 700, WAVE_H2 = 100;
         const DAY_W = WEEK_W / 7;
@@ -3318,16 +3315,16 @@ function TideChart({
                     border: isToday ? `1.5px solid ${ec}40` : "1px solid #ede9e4",
                     borderRadius: 6, padding:"5px 4px", display:"flex", flexDirection:"column", gap:3, alignItems:"center",
                   }}>
-                    <div style={{ fontSize:7.5, color: isToday ? ec : "#aaa", fontWeight: isToday ? 700 : 400, textTransform:"uppercase" }}>{dayLabel}</div>
+                    <div style={{ fontSize:7.5, color: isToday ? ec : "var(--text-3)", fontWeight: isToday ? 700 : 400, textTransform:"uppercase" }}>{dayLabel}</div>
                     <div style={{ fontSize:13, fontWeight: isToday ? 700 : 500, color: isToday ? ec : "#3a4a5a", lineHeight:1 }}>{dateLabel}</div>
                     <div style={{ width:6, height:6, borderRadius:"50%", background:barColor, opacity:0.85 }}/>
                     <div style={{ fontSize:8, color:"#6a7a8a" }}>{phaseGlyph} {d.moonSign?.slice(0,3)}</div>
                     {moonAspects.slice(0,1).map((a: any, ai: number) => (
-                      <div key={ai} style={{ fontSize:7, color: PLANET_COLORS[a.planet] ?? "#888" }}>
+                      <div key={ai} style={{ fontSize:7, color: PLANET_COLORS[a.planet] ?? "var(--color-muted)" }}>
                         ☽{ASPECT_GLYPHS[a.aspect] ?? "·"}{PLANET_ICONS[a.planet] ?? a.planet?.[0]}
                       </div>
                     ))}
-                    {d.voidPeriods && <div style={{ fontSize:6.5, color:"#bbb" }}>voc</div>}
+                    {d.voidPeriods && <div style={{ fontSize:6.5, color:"var(--text-3)" }}>voc</div>}
                   </div>
                 );
               })}
@@ -3344,10 +3341,10 @@ type WaveRowType = "practice-resonant" | "practice-supported" | "practice-soften
 
 const WAVE_ROW_STYLE: Record<WaveRowType, { border: string; dot: string; textColor: string; dim?: boolean }> = {
   "practice-resonant":  { border: "#60a060", dot: "#60a060", textColor: "#2a5020" },
-  "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: "#3a5a80" },
+  "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: ELEMENT_COLORS.water },
   "practice-soften":    { border: "#d0a060", dot: "#d0a060", textColor: "#8a5020", dim: true },
   "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222" },
-  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: "#c19a3a" },
+  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: ELEMENT_COLORS.air },
 };
 
 function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: string; sub?: string; onCheck?: () => void }) {
@@ -3367,7 +3364,7 @@ function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: stri
       )}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 12, color: s.textColor, fontWeight: type === "practice-resonant" ? 500 : 400 }}>{label}</div>
-        {sub && <div style={{ fontSize: 9, color: "#bbb", marginTop: 1 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -3392,14 +3389,14 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>The month's water</span>
-        <span style={{ fontSize: 9.5, color: "#aaa" }}>next 30 days · tap a day</span>
+        <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>next 30 days · tap a day</span>
       </div>
       <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 52 }}>
         {days.map((d) => {
           // Always a 6-digit hex (so the `${ec}55` alpha suffix stays valid) and
           // a defined color for spirit/VOC days — they were rendering as a
           // broken white-body/grey-top bar because "spirit" fell to "#888".
-          const MB_HEX: Record<string, string> = { fire: "#b84020", earth: "#4a7040", air: "#c19a3a", water: "#2a5a80", spirit: "#7a7196" };
+          const MB_HEX: Record<string, string> = { fire: ELEMENT_COLORS.fire, earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water, spirit: "#7a7196" };
           const ec = MB_HEX[d.element ?? "water"] ?? "#7a7196";
           const qs = d.qualityScore ?? 4;
           const h = 10 + Math.round((qs / 7) * 38);
@@ -3417,7 +3414,7 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
           );
         })}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#bbb", marginTop: 3 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "var(--text-3)", marginTop: 3 }}>
         <span>today</span><span>+30d</span>
       </div>
 
@@ -3430,15 +3427,15 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
               {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               <span style={{ color: ec, marginLeft: 8 }}>{CHAR_WORD[selDay.element] ?? ""} day</span>
-              <span style={{ fontWeight: 400, color: "#999", marginLeft: 6, fontSize: 10.5 }}>· {selDay.element}</span>
+              <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, fontSize: 10.5 }}>· {selDay.element}</span>
             </div>
-            <div style={{ fontSize: 10.5, color: "#888", marginTop: 3 }}>{chargeLine(selDay.qualityScore ?? 4)}</div>
-            <div style={{ fontSize: 10.5, color: "#777", marginTop: 5, lineHeight: 1.5 }}>{buildDayVibe(selDay)}</div>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 3 }}>{chargeLine(selDay.qualityScore ?? 4)}</div>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>{buildDayVibe(selDay)}</div>
             {aspects.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
                 {aspects.slice(0, 3).map((a: any, i: number) => (
-                  <div key={i} style={{ fontSize: 9.5, color: "#666" }}>
-                    <span style={{ color: ASP_COLOR[a.aspect] ?? "#888", fontWeight: 600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
+                  <div key={i} style={{ fontSize: 9.5, color: "var(--text-2)" }}>
+                    <span style={{ color: ASP_COLOR[a.aspect] ?? "var(--color-muted)", fontWeight: 600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
                     {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
                   </div>
                 ))}
@@ -3534,19 +3531,19 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
               }}>
                 {/* Date */}
                 <div style={{ width: 36, flexShrink: 0 }}>
-                  <div style={{ fontSize: 8, textTransform: "uppercase", color: isToday ? ec : "#bbb", fontWeight: isToday ? 700 : 400 }}>{day.label?.slice(0,3)}</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "#333", lineHeight: 1 }}>{d.getDate()}</div>
+                  <div style={{ fontSize: 8, textTransform: "uppercase", color: isToday ? ec : "var(--text-3)", fontWeight: isToday ? 700 : 400 }}>{day.label?.slice(0,3)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "var(--text-1)", lineHeight: 1 }}>{d.getDate()}</div>
                 </div>
                 {/* Quality dot */}
                 <div style={{ width:6, height:6, borderRadius:"50%", background:qColor, flexShrink:0 }}/>
                 {/* Moon info */}
                 <div style={{ width: 76, flexShrink: 0 }}>
                   <div style={{ fontSize: 10, color: ec, fontWeight: 500 }}>{day.moonSign}</div>
-                  {phaseGlyph && <div style={{ fontSize: 8.5, color: "#aaa", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>}
+                  {phaseGlyph && <div style={{ fontSize: 8.5, color: "var(--text-3)", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>}
                   {day.voidPeriods && <div style={{ fontSize: 7.5, color: "#9a8050", marginTop: 1 }}>◌ VOC</div>}
                 </div>
                 {/* Vibe line */}
-                <div style={{ flex: 1, fontSize: 9, color: "#888", textAlign: "left", lineHeight: 1.4, paddingRight: 4 }}>
+                <div style={{ flex: 1, fontSize: 9, color: "var(--color-muted)", textAlign: "left", lineHeight: 1.4, paddingRight: 4 }}>
                   {buildDayVibe(day)}
                 </div>
                 {/* Aspects — small, compact */}
@@ -3556,21 +3553,21 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
                     const col = ASP_COLOR[a.aspect] ?? "#888";
                     return (
                       <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:1, fontSize:9.5 }}>
-                        <span style={{ color:"#7080a0" }}>☽</span>
+                        <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
                         <span style={{ color:col, fontWeight:700 }}>{sym}</span>
-                        <span style={{ color:"#666" }}>{a.planet?.slice(0,3)}</span>
+                        <span style={{ color:"var(--text-2)" }}>{a.planet?.slice(0,3)}</span>
                       </span>
                     );
                   })}
-                  {aspects.length === 0 && <span style={{ fontSize:9, color:"#ddd" }}>quiet</span>}
+                  {aspects.length === 0 && <span style={{ fontSize:9, color:"var(--text-3)" }}>quiet</span>}
                 </div>
                 {/* Crossings */}
-                <div style={{ flexShrink:0, fontSize:7.5, color:"#c08020", textAlign:"right" }}>
+                <div style={{ flexShrink:0, fontSize:7.5, color:PLANET_COLORS.Sun, textAlign:"right" }}>
                   {(day.crossings as any[] ?? []).slice(0,2).map((c: any, i: number) => (
                     <div key={i}>{PLANET_ICONS[c.planet] ?? c.planet[0]} {c.angle} {c.time?.slice(0,5)}</div>
                   ))}
                 </div>
-                <span style={{ fontSize:8, color:"#ccc", flexShrink:0 }}>{isOpen ? "▲" : "▾"}</span>
+                <span style={{ fontSize:8, color:"var(--text-3)", flexShrink:0 }}>{isOpen ? "▲" : "▾"}</span>
               </button>
 
               {/* Expanded detail */}
@@ -3580,18 +3577,18 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
                     {day.element ? `${day.element} day` : ""} · {day.quality?.replace(/_/g," ")} · score {qs.toFixed(1)}
                   </div>
                   {ELEMENT_TONE[day.element] && (
-                    <div style={{ fontSize:9, color:"#888", marginBottom:5 }}>{ELEMENT_TONE[day.element]}</div>
+                    <div style={{ fontSize:9, color:"var(--color-muted)", marginBottom:5 }}>{ELEMENT_TONE[day.element]}</div>
                   )}
-                  {day.tone && <div style={{ fontSize:9, color:"#777", fontStyle:"italic", marginBottom:5 }}>"{day.tone}"</div>}
+                  {day.tone && <div style={{ fontSize:9, color:"var(--color-muted)", fontStyle:"italic", marginBottom:5 }}>"{day.tone}"</div>}
                   {aspects.length > 0 && (
                     <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
                       {aspects.map((a, i) => {
                         const col = ASP_COLOR[a.aspect] ?? "#888";
                         return (
-                          <div key={i} style={{ fontSize:9, color:"#666" }}>
+                          <div key={i} style={{ fontSize:9, color:"var(--text-2)" }}>
                             <span style={{ color:col, fontWeight:600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
                             {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
-                            <span style={{ color:"#bbb" }}> · {a.applying ? "applying" : `${a.orb.toFixed(1)}° past`}</span>
+                            <span style={{ color:"var(--text-3)" }}> · {a.applying ? "applying" : `${a.orb.toFixed(1)}° past`}</span>
                           </div>
                         );
                       })}

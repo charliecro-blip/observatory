@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 /**
  * Momentum — the daily progress loop's shared UI (owner 2026-07-17):
@@ -28,7 +29,7 @@ export interface MomentumData {
   ledger: { date: string; goalId: number | null; text: string; source: string; winId?: number }[];
 }
 
-const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
+const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 const elc = (el?: string | null) => EL_COLOR[el ?? ""] ?? "#8a8278";
 
 export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0) {
@@ -55,7 +56,7 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa" }}>Your stars today</span>
+        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>Your stars today</span>
         {(data?.streak ?? 0) > 0 && (
           <span style={{ fontSize: 9, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
             ⚓ {data!.streak} day{data!.streak === 1 ? "" : "s"} at the helm
@@ -75,7 +76,7 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--color-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   ✦ {s.title}
                 </div>
-                <div style={{ fontSize: 10, color: "#888", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {s.nextMove ? `next: ${s.nextMove.title}` : s.openTasks > 0 ? `${s.openTasks} open tasks` : "break it into a first step →"}
                 </div>
               </div>
@@ -85,7 +86,7 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
                   ◷ {s.bestWindowToday.startClock}–{s.bestWindowToday.endClock}
                 </span>
               )}
-              <span style={{ fontSize: 10, color: "#ccc", flexShrink: 0 }}>→</span>
+              <span style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>→</span>
             </button>
           );
         })}
@@ -119,7 +120,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
     <div style={{ marginBottom: 8 }}>
       {todayWins.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#aaa", marginBottom: 4 }}>
+          <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
             Today's wins · {todayWins.length}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -147,17 +148,17 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
           style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
         {data.stars.length > 0 && (
           <select value={starId} onChange={e => setStarId(e.target.value ? Number(e.target.value) : "")}
-            style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "#777", background: "var(--color-card)", maxWidth: 110 }}>
+            style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "var(--color-muted)", background: "var(--color-card)", maxWidth: 110 }}>
             <option value="">no star</option>
             {data.stars.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
         )}
         <button onClick={() => text.trim() && nameWin.mutate()} disabled={!text.trim() || nameWin.isPending}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: text.trim() ? "#1a2a3a" : "#e0dcd6", color: text.trim() ? "#fff" : "#aaa", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: text.trim() ? "#1a2a3a" : "var(--color-border)", color: text.trim() ? "#fff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
           ★ log it
         </button>
       </div>
-      <div style={{ fontSize: 9.5, color: "#998a76", marginTop: 5 }}>
+      <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 5 }}>
         ⚓ {data.streak} day{data.streak === 1 ? "" : "s"} at the helm · {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.winsCycle} this moon cycle
       </div>
     </div>
@@ -191,7 +192,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
             title="Your lunation in wins, as a card">↗ cycle card</a>
         </div>
       </div>
-      <div style={{ fontSize: 10, color: "#999", marginBottom: 8 }}>
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>
         Every win, trailing behind the ship — done things harvested automatically, starred ones named by you.
       </div>
       {data.stars.length > 0 && (
@@ -199,14 +200,14 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
           <button onClick={() => setFilter("all")} style={{
             fontSize: 9.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
             border: filter === "all" ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
-            background: filter === "all" ? "#1a2a3a" : "transparent", color: filter === "all" ? "#fff" : "#888",
+            background: filter === "all" ? "#1a2a3a" : "transparent", color: filter === "all" ? "#fff" : "var(--color-muted)",
           }}>all</button>
           {data.stars.map(s => (
             <button key={s.id} onClick={() => setFilter(s.id)} style={{
               fontSize: 9.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
               border: filter === s.id ? `1px solid ${elc(s.element)}` : "1px solid var(--color-border)",
               background: filter === s.id ? `${elc(s.element)}18` : "transparent",
-              color: filter === s.id ? elc(s.element) : "#888", fontWeight: filter === s.id ? 600 : 400,
+              color: filter === s.id ? elc(s.element) : "var(--color-muted)", fontWeight: filter === s.id ? 600 : 400,
             }}>✦ {s.title}</button>
           ))}
         </div>
@@ -214,7 +215,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
         {dates.map(d => (
           <div key={d}>
-            <div style={{ fontSize: 9, color: "#b0a898", marginBottom: 3 }}>
+            <div style={{ fontSize: 9, color: "var(--color-muted)", marginBottom: 3 }}>
               {new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               {d >= data.cycleStart ? "" : " · last cycle"}
             </div>
@@ -281,7 +282,7 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>⚓ The week in the wake</span>
           <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>Sunday review</span>
         </div>
-        <div style={{ fontSize: 11.5, color: "#777", marginBottom: 7 }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 7 }}>
           {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.streak} day{data.streak === 1 ? "" : "s"} at the helm
           {data.stars.filter(s => s.winsWeek > 0).map(s => ` · ${s.title}: ${s.winsWeek}`).join("")}
         </div>
@@ -308,15 +309,15 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
     <div style={{ background: "linear-gradient(135deg, #1a2a3a10, #1a2a3a04)", border: "1px solid #1a2a3a30", borderRadius: 14, padding: "13px 16px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>🌑 New Moon — the cycle turns</span>
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#667" }}>cycle review</span>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-1)" }}>cycle review</span>
       </div>
 
       {/* Last cycle: intention vs. the wake */}
-      <div style={{ fontSize: 11.5, color: "#777", marginBottom: 6 }}>
+      <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 6 }}>
         Last cycle: {data.winsPrevCycle} win{data.winsPrevCycle === 1 ? "" : "s"} in the wake.
       </div>
       {(data.prevIntentions ?? []).map((i: any, k: number) => (
-        <div key={k} style={{ fontSize: 11, color: "#556", marginBottom: 3, fontStyle: "italic" }}>
+        <div key={k} style={{ fontSize: 11, color: "var(--text-1)", marginBottom: 3, fontStyle: "italic" }}>
           you set out to: "{i.text}"{starTitle(i.goalId) ? ` · ${starTitle(i.goalId)}` : ""}
         </div>
       ))}
@@ -343,13 +344,13 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
             style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
           {data.stars.length > 0 && (
             <select value={intentStar} onChange={e => setIntentStar(e.target.value ? Number(e.target.value) : "")}
-              style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "#777", background: "var(--color-card)", maxWidth: 110 }}>
+              style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "var(--color-muted)", background: "var(--color-card)", maxWidth: 110 }}>
               <option value="">no star</option>
               {data.stars.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
           <button onClick={() => intent.trim() && setIntention.mutate()} disabled={!intent.trim() || setIntention.isPending}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "#e0dcd6", color: intent.trim() ? "#fff" : "#aaa", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "var(--color-border)", color: intent.trim() ? "#fff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
             🌑 set it
           </button>
         </div>

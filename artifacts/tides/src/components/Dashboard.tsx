@@ -2,13 +2,14 @@ import React from "react";
 import { useCurrents, useNatalAngles } from "@/hooks/useTides";
 import { usePreferences } from "@/contexts/preferences-context";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
 // The daily report — the home as a navigation console. Weather + calendar +
 // where you're steering, in one glance, day-focused with a look down the week.
 // Each card is a compact instrument that opens its fuller surface. Assembled
 // entirely from data the home already fetches (plus currents).
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80", spirit: "#6f6a90" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water, spirit: "#6f6a90" };
 const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌︎", opposition: "☍︎", square: "□", trine: "△", sextile: "⚹" };
 
 function Card({ title, icon, onOpen, children }: { title: string; icon: string; onOpen?: () => void; children: React.ReactNode }) {
@@ -18,8 +19,8 @@ function Card({ title, icon, onOpen, children }: { title: string; icon: string; 
       cursor: onOpen ? "pointer" : "default", display: "flex", flexDirection: "column", minWidth: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 9 }}>
-        <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", flex: 1 }}>{icon} {title}</span>
-        {onOpen && <span style={{ fontSize: 12, color: "#ccc" }}>→</span>}
+        <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", flex: 1 }}>{icon} {title}</span>
+        {onOpen && <span style={{ fontSize: 12, color: "var(--text-3)" }}>→</span>}
       </div>
       {children}
     </div>
@@ -66,19 +67,19 @@ export default function Dashboard({
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0" }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: col, flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 10, color: "#aaa" }}>{g.completedCount ?? 0}/{target}</span>
+                <span style={{ fontSize: 10, color: "var(--text-3)" }}>{g.completedCount ?? 0}/{target}</span>
               </div>
             );
-          }) : <div style={{ fontSize: 12, color: "#aaa" }}>Set a guiding star to steer by →</div>}
+          }) : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Set a guiding star to steer by →</div>}
         </Card>
 
         <Card title="On deck · today" icon="◷" onOpen={onNavigate ? () => onNavigate("launch") : undefined}>
           {todayWindows.length > 0 ? todayWindows.map((w: any, i: number) => (
             <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "3px 0" }}>
-              <span style={{ fontSize: 11, color: "#999", flexShrink: 0, minWidth: 52 }}>{fmtTime(w.startTime)}</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0, minWidth: 52 }}>{fmtTime(w.startTime)}</span>
               <span style={{ fontSize: 12.5, color: "var(--color-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.title}</span>
             </div>
-          )) : <div style={{ fontSize: 12, color: "#aaa" }}>Nothing scheduled — weave your day in Plan →</div>}
+          )) : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Nothing scheduled — weave your day in Plan →</div>}
         </Card>
 
         {/* (The big-sky card was dropped — the full explorable BigSky section

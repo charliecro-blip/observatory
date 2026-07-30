@@ -44,7 +44,7 @@ const DEEP = "#141d30";
 // Muted equivalents for the low-stimulation styles — same hue family, desaturated
 // and lightened so nothing reads as bright or saturated against the card background.
 const MUTED_ELEMENT_COLORS: Record<string, string> = {
-  fire: "#a87868", earth: "#7a9070", air: "#c19a3a", water: "#6c8398",
+  fire: "#a87868", earth: "#7a9070", air: ELEMENT_COLORS.air, water: "#6c8398",
 };
 
 export type ChartStyle = "water" | "calm" | "minimal" | "bars";
@@ -332,7 +332,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
                 fontSize: 9, padding: "2px 8px", borderRadius: 8, cursor: "pointer", textTransform: "capitalize",
                 border: timeframe === t ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
                 background: timeframe === t ? "var(--color-primary)" : "transparent",
-                color: timeframe === t ? "var(--color-card)" : "#999",
+                color: timeframe === t ? "var(--color-card)" : "var(--text-3)",
                 fontWeight: timeframe === t ? 600 : 400,
               }}>{t}</button>
             ))}
@@ -341,7 +341,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {timeframe === "day" && (
             <div style={{ fontSize: 9.5, color: style === "water" ? nowColor : mutedNowColor, fontWeight: 600 }}>
-              {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "#aaa", fontWeight: 400 }}>· {heightWord}</span>
+              {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {heightWord}</span>
             </div>
           )}
           {timeframe !== "day" && weekData?.weekElement && (
@@ -351,7 +351,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           )}
           {timeframe === "day" && (
             <button onClick={() => setShowOpts(v => !v)} title="Chart options" style={{
-              fontSize: 11, color: showOpts ? "var(--color-primary)" : "#b8b0a4", background: "none",
+              fontSize: 11, color: showOpts ? "var(--color-primary)" : "var(--text-3)", background: "none",
               border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
             }}>⚙</button>
           )}
@@ -378,7 +378,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
                   fontSize: 9, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
                   border: "1px solid var(--color-border)",
                   background: opts[k] ? "var(--color-card-2)" : "transparent",
-                  color: opts[k] ? "var(--color-foreground)" : "#a89e90",
+                  color: opts[k] ? "var(--color-foreground)" : "var(--color-muted)",
                 }}>{opts[k] ? onLabel : offLabel}</button>
               ))}
             </div>
@@ -396,13 +396,13 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
                 fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer",
                 border: active ? `1px solid ${ec ?? "#1a2a3a"}` : "1px solid #e0dad0",
                 background: active ? (ec ?? "#1a2a3a") : "var(--color-card-2)",
-                color: active ? "#fff" : (ec ?? "#8a8278"),
+                color: active ? "#fff" : (ec ?? "var(--color-muted)"),
                 fontWeight: active ? 600 : 500,
               }}>{L.label}</button>
             );
           })}
           {LENS_HINTS[lens] && (
-            <span style={{ fontSize: 9.5, color: "#a09888", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
+            <span style={{ fontSize: 9.5, color: "var(--color-muted)", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
           )}
         </div>
       )}
@@ -416,13 +416,13 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         const ranked = chronotype ? [...allWindows].sort((a, b) => rank(a) - rank(b)) : allWindows;
         const shown = ranked.slice(0, 3);
         return (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "#6a6258" }}>
-            <span style={{ color: "#999" }}>Best this week for {String(bestTimes.windows[0].label).split(" — ")[0]}:</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "var(--color-muted)" }}>
+            <span style={{ color: "var(--text-3)" }}>Best this week for {String(bestTimes.windows[0].label).split(" — ")[0]}:</span>
             {shown.map((w: any, i: number) => {
               const fits = chronotype ? isWithinFreeWindow(w, chronotype) : null;
               const awake = isAwakeDuring(w, chronotype);
               return (
-                <span key={i} style={{ fontWeight: 500, color: awake ? "var(--color-foreground)" : "#b8b0a4" }}>
+                <span key={i} style={{ fontWeight: 500, color: awake ? "var(--color-foreground)" : "var(--text-3)" }}>
                   {fits && awake && <span title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
                   {!awake && <span title="You're usually asleep" style={{ marginRight: 2 }}>☾</span>}
                   {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
@@ -701,7 +701,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             )}
           </>
         ) : (
-          <div style={{ fontSize: 11, color: "#999", padding: "24px 0", textAlign: "center" }}>Reading the sky…</div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", padding: "24px 0", textAlign: "center" }}>Reading the sky…</div>
         )
       )}
 
@@ -713,7 +713,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
             {upcoming.map((e: any, i: number) => (
               <div key={i} style={{ fontSize: 10, color: labelCol, display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: "#aaa" }}>{e.clock}</span>
+                <span style={{ color: "var(--text-3)" }}>{e.clock}</span>
                 <span>{e.kind === "crossing" ? "◆" : e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·")}</span>
                 <span>{e.label}</span>
               </div>

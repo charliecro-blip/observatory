@@ -51,7 +51,7 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
           )}
           <div style={{
             background: "#1a2a3a",
-            color: "#e8e4de",
+            color: "var(--text-3)",
             borderRadius: 8,
             padding: "10px 12px",
             fontSize: 11,
@@ -131,7 +131,7 @@ export function HelpBadge({ term, style }: HelpBadgeProps) {
       content={
         <div>
           <div style={{ fontWeight: 600, marginBottom: 5, color: "#fff" }}>{entry.title}</div>
-          <div style={{ color: "#b0aaa4", fontSize: 10.5, lineHeight: 1.55 }}>{entry.body}</div>
+          <div style={{ color: "var(--color-muted)", fontSize: 10.5, lineHeight: 1.55 }}>{entry.body}</div>
         </div>
       }
       width={260}
@@ -139,7 +139,7 @@ export function HelpBadge({ term, style }: HelpBadgeProps) {
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 14, height: 14, borderRadius: "50%", fontSize: 8.5, fontWeight: 600,
-        background: "#d8d2ca", color: "#888", cursor: "help", marginLeft: 4,
+        background: "var(--color-border)", color: "var(--color-muted)", cursor: "help", marginLeft: 4,
         flexShrink: 0, ...style,
       }}>?</span>
     </Tooltip>

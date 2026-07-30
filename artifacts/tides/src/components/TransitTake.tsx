@@ -36,18 +36,18 @@ export default function TransitTake({ t, accent = "#8a7a50" }: { t: TransitLike;
   const houseMeaning = house ? HOUSE_MEANINGS[house] : null;
 
   return (
-    <div style={{ padding: "7px 10px 9px", fontSize: 10.5, color: "#777", lineHeight: 1.6, borderLeft: `2px solid ${accent}60`, background: `${accent}0a`, borderRadius: "0 0 6px 6px" }}>
+    <div style={{ padding: "7px 10px 9px", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6, borderLeft: `2px solid ${accent}60`, background: `${accent}0a`, borderRadius: "0 0 6px 6px" }}>
       <div style={{ color: "var(--color-foreground)", marginBottom: 4 }}>{essence}</div>
       {natalCore && (
         <div style={{ marginBottom: 4 }}>
-          <span style={{ color: "#aaa" }}>in your chart</span> — your {t.natalPlanet} is {natalCore}
+          <span style={{ color: "var(--text-3)" }}>in your chart</span> — your {t.natalPlanet} is {natalCore}
           {t.natalSign ? `, in ${t.natalSign}` : ""}{houseMeaning ? `, in your ${ordinal(house!)} house (${houseMeaning.title.toLowerCase()}: ${houseMeaning.domains})` : ""}.
         </div>
       )}
       <div><span style={{ color: "#7a8a5a", fontWeight: 600 }}>favors</span> {guidance.favors}</div>
       <div style={{ marginTop: 2 }}><span style={{ color: "#a07040", fontWeight: 600 }}>watch</span> {guidance.watch}</div>
       {(t.likelyDomains?.length ?? 0) > 0 && (
-        <div style={{ marginTop: 4, color: "#999" }}>often felt around {t.likelyDomains!.slice(0, 3).join(", ")}</div>
+        <div style={{ marginTop: 4, color: "var(--text-3)" }}>often felt around {t.likelyDomains!.slice(0, 3).join(", ")}</div>
       )}
     </div>
   );

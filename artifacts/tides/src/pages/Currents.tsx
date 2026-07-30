@@ -7,6 +7,7 @@ import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import TransitTake from "@/components/TransitTake";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { PLANET_COLORS } from "@/lib/planetColors";
 
 
 const ASPECT_SYM: Record<string, string> = {
@@ -14,7 +15,7 @@ const ASPECT_SYM: Record<string, string> = {
 };
 
 const SEVERITY_COLOR: Record<string, string> = {
-  major: "#a04040", strong: "#c07020", moderate: "#7080a0", mild: "#999",
+  major: "#a04040", strong: "#c07020", moderate: PLANET_COLORS.Moon, mild: "#999",
 };
 
 function fmtDate(iso: string | null): string {
@@ -47,7 +48,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
   const cautionPlanets = profile?.cautionPlanets;
 
   if (isLoading) {
-    return <div style={{ padding: 40, color: "#999", fontSize: 13 }}>Reading the long currents…</div>;
+    return <div style={{ padding: 40, color: "var(--text-3)", fontSize: 13 }}>Reading the long currents…</div>;
   }
   if (!data?.hasChart) {
     return (
@@ -55,7 +56,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
         <div style={{ maxWidth: 380, textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🌊</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)", marginBottom: 8 }}>The long currents are personal</div>
-          <div style={{ fontSize: 12.5, color: "#777", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
             Add your birth chart in Settings to see your profected year, your active
             outer-planet chapters, and how the slow planets are moving through your houses.
           </div>
@@ -71,7 +72,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
         <div style={{ maxWidth: 400, textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🕰️</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)", marginBottom: 8 }}>Currents needs your birth time</div>
-          <div style={{ fontSize: 12.5, color: "#777", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
             Your profected year, house chapters, and rising sign are all measured from
             the exact moment you were born — so they can't be worked out without a birth
             time. Your daily tide, Big Sky, and planet readings work fine without it.
@@ -96,7 +97,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
         {/* Header */}
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.4px" }}>Currents</div>
-          <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
             The slow water beneath the daily tide · {data.ascendant?.sign} rising · {houseSystem.replace("-", " ")} houses
           </div>
         </div>
@@ -113,10 +114,10 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             .slice(0, 3);
           const greatKeepers = transits.filter((t: any) => t.planet === "Jupiter" || t.planet === "Saturn");
           const cardStyle: React.CSSProperties = { background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 15px", display: "flex", flexDirection: "column", gap: 5, minWidth: 0 };
-          const labelStyle: React.CSSProperties = { fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a89a88" };
+          const labelStyle: React.CSSProperties = { fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)" };
           return (
             <div>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
                 Your season now
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
@@ -124,28 +125,28 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                   <div style={{ ...cardStyle, cursor: "pointer" }} onClick={() => setProfOpen(v => !v)} title="The annual frame — click for what this year favors">
                     <div style={labelStyle}>Profected year · through {fmtDate(prof.yearEnd)}</div>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>{prof.house}th house · {profHouse?.title}</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>{PLANET_GLYPH[prof.timeLord]} ruled by {prof.timeLord} · this month: {prof.monthHouse}th ({HOUSE_MEANINGS[prof.monthHouse]?.title})</div>
-                    {profOpen && <div style={{ fontSize: 11, color: "#777", lineHeight: 1.6 }}>{PROFECTION_GUIDANCE[prof.house]}</div>}
-                    <div style={{ fontSize: 9, color: "#bbb", marginTop: "auto" }}>{profOpen ? "▲ less" : "▼ what this year favors"}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-muted)" }}>{PLANET_GLYPH[prof.timeLord]} ruled by {prof.timeLord} · this month: {prof.monthHouse}th ({HOUSE_MEANINGS[prof.monthHouse]?.title})</div>
+                    {profOpen && <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6 }}>{PROFECTION_GUIDANCE[prof.house]}</div>}
+                    <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: "auto" }}>{profOpen ? "▲ less" : "▼ what this year favors"}</div>
                   </div>
                 )}
                 <div style={cardStyle}>
                   <div style={labelStyle}>Slow aspects · landing now</div>
                   {topAspects.length ? topAspects.map((t: any, i: number) => (
                     <div key={i} style={{ fontSize: 11.5, color: "var(--color-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {PLANET_GLYPH[t.transitPlanet]} <span style={{ color: SEVERITY_COLOR[t.severity] ?? "#999" }}>{ASPECT_SYM[(t.aspect ?? "").toLowerCase()] ?? "·"}</span> {PLANET_GLYPH[t.natalPlanet] ?? ""} {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
+                      {PLANET_GLYPH[t.transitPlanet]} <span style={{ color: SEVERITY_COLOR[t.severity] ?? "var(--text-3)" }}>{ASPECT_SYM[(t.aspect ?? "").toLowerCase()] ?? "·"}</span> {PLANET_GLYPH[t.natalPlanet] ?? ""} {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
                     </div>
-                  )) : <div style={{ fontSize: 11.5, color: "#999" }}>Quiet — no slow planet is on a natal point.</div>}
-                  <div style={{ fontSize: 9, color: "#bbb", marginTop: "auto" }}>details below ↓</div>
+                  )) : <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Quiet — no slow planet is on a natal point.</div>}
+                  <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: "auto" }}>details below ↓</div>
                 </div>
                 <div style={cardStyle}>
                   <div style={labelStyle}>Jupiter & Saturn · by house</div>
                   {greatKeepers.length ? greatKeepers.map((t: any, i: number) => (
                     <div key={i} style={{ fontSize: 11.5, color: "var(--color-foreground)" }}>
                       {PLANET_GLYPH[t.planet]} {t.planet} through your {t.house}th · {HOUSE_MEANINGS[t.house]?.title}
-                      <div style={{ fontSize: 9.5, color: "#999" }}>{t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}{t.leavesHouse ? ` · until ${fmtDate(t.leavesHouse)}` : ""}</div>
+                      <div style={{ fontSize: 9.5, color: "var(--text-3)" }}>{t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}{t.leavesHouse ? ` · until ${fmtDate(t.leavesHouse)}` : ""}</div>
                     </div>
-                  )) : <div style={{ fontSize: 11.5, color: "#999" }}>—</div>}
+                  )) : <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>—</div>}
                 </div>
               </div>
             </div>
@@ -161,7 +162,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             aspects first. House placements follow as the slower background. */}
         {majorTransits.length > 0 && (
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
               Major transits · aspects to your chart
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -189,13 +190,13 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                           {t.natalPlanet !== "Ascendant" && ` (${t.natalSign}, house ${t.natalHouse})`}
                         </div>
                         {t.likelyDomains?.length > 0 && (
-                          <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{t.likelyDomains.join(" · ")}</div>
                         )}
                       </div>
                       <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>
                         {t.exact ? "exact" : `${t.orb.toFixed(1)}°`}
                       </div>
-                      <span style={{ fontSize: 9, color: isExp ? sevColor : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
+                      <span style={{ fontSize: 9, color: isExp ? sevColor : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
                     </button>
                     {isExp && <div style={{ padding: "0 14px 10px" }}><TransitTake t={t} accent={sevColor} /></div>}
                   </div>
@@ -208,7 +209,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
         {/* The weeks ahead — a dated forecast of transits landing on your chart */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
               The weeks ahead · transits landing on your chart
             </div>
             <div style={{ display: "flex", gap: 4 }}>
@@ -217,13 +218,13 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                   fontSize: 10, padding: "2px 9px", borderRadius: 6, cursor: "pointer",
                   border: forecastDays === d ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
                   background: forecastDays === d ? "#1a2a3a10" : "var(--color-card)",
-                  color: forecastDays === d ? "#1a2a3a" : "#999", fontWeight: forecastDays === d ? 600 : 400,
+                  color: forecastDays === d ? "var(--color-foreground)" : "var(--text-3)", fontWeight: forecastDays === d ? 600 : 400,
                 }}>{d}d</button>
               ))}
             </div>
           </div>
           {(forecast?.transits ?? []).length === 0 ? (
-            <div style={{ fontSize: 12, color: "#aaa", padding: "8px 2px" }}>No notable transits perfect in the next {forecastDays} days — a quiet stretch.</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", padding: "8px 2px" }}>No notable transits perfect in the next {forecastDays} days — a quiet stretch.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(forecast?.transits ?? []).map((t: any, i: number) => {
@@ -238,7 +239,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                     <button onClick={() => setExpandedTransit(v => v === key ? null : key)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "9px 13px", display: "flex", alignItems: "center", gap: 11, textAlign: "left" }}>
                       <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{peak.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
-                        <div style={{ fontSize: 8.5, color: "#aaa" }}>{rel}</div>
+                        <div style={{ fontSize: 8.5, color: "var(--text-3)" }}>{rel}</div>
                       </div>
                       <div style={{ fontSize: 15, flexShrink: 0, display: "flex", alignItems: "center", gap: 2 }}>
                         <span>{PLANET_GLYPH[t.transitPlanet]}</span>
@@ -250,10 +251,10 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                           {t.transitPlanet} {aspLower} your natal {t.natalPlanet}
                           {t.natalPlanet !== "Ascendant" && t.natalHouse ? ` (${t.natalSign}, house ${t.natalHouse})` : t.natalPlanet !== "Ascendant" ? ` (${t.natalSign})` : ""}
                         </div>
-                        {t.likelyDomains?.length > 0 && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{t.likelyDomains.slice(0, 3).join(" · ")}</div>}
+                        {t.likelyDomains?.length > 0 && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{t.likelyDomains.slice(0, 3).join(" · ")}</div>}
                       </div>
                       <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600, flexShrink: 0 }}>{t.exact ? "exact" : `${t.orb}°`}</div>
-                      <span style={{ fontSize: 9, color: isExp ? sevColor : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
+                      <span style={{ fontSize: 9, color: isExp ? sevColor : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s", flexShrink: 0 }}>▾</span>
                     </button>
                     {isExp && <div style={{ padding: "0 13px 9px" }}><TransitTake t={t} accent={sevColor} /></div>}
                   </div>
@@ -261,14 +262,14 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
               })}
             </div>
           )}
-          <div style={{ fontSize: 9.5, color: "#bbb", marginTop: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 8, lineHeight: 1.5 }}>
             Dated to the day each aspect is tightest. Slow-planet transits (Saturn, Uranus, Neptune, Pluto) color a whole season; fast ones pass in days.
           </div>
         </div>
 
         {/* Active chapters — outer planets by house */}
         <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
             Active chapters · slow planets in your houses
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -285,12 +286,12 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
                         {t.planet} in your {t.house}th House {t.retrograde && <span style={{ color: "#a06040", fontSize: 10 }}>℞</span>}
                       </div>
-                      <div style={{ fontSize: 10, color: "#999" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)" }}>
                         {PLANET_MODES[t.planet]?.mode} · {c.houseTitle} · {fmtDate(t.enteredHouse)} → {fmtDate(t.leavesHouse)}
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: "#4a4a4a", lineHeight: 1.6, marginBottom: 9 }}>{c.emphasis}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 9 }}>{c.emphasis}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {c.practices.map((p, i) => (
                       <span key={i} style={{ fontSize: 10, color: c.color, background: `${c.color}12`, padding: "3px 9px", borderRadius: 10 }}>{p}</span>
@@ -307,16 +308,16 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             explanation: what the questionnaire feeds, and what a "window" means. */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88" }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
               Caution periods · your sensitivity
             </div>
             {cautionPlanets && cautionPlanets.length > 0 && (
-              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 9.5, color: "#999", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+              <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                 Edit
               </button>
             )}
           </div>
-          <div style={{ fontSize: 10.5, color: "#999", lineHeight: 1.55, marginBottom: 8 }}>
+          <div style={{ fontSize: 10.5, color: "var(--text-3)", lineHeight: 1.55, marginBottom: 8 }}>
             The planets you marked as personal triggers. When one of them makes a hard aspect to your
             chart, that stretch gets flagged — here, and as ⚠ marks on the Ahead calendar — so you can
             move big commitments carefully rather than be surprised by them.
@@ -329,8 +330,8 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                   <div key={p} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center" }}>
                     <span style={{ fontSize: 16 }}>{PLANET_GLYPH[p]}</span>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{p} <span style={{ color: "#999", fontWeight: 400 }}>· {arch?.label}</span></div>
-                      <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch?.feel}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>{p} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {arch?.label}</span></div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{arch?.feel}</div>
                     </div>
                   </div>
                 );
@@ -338,7 +339,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             </div>
           ) : (
             <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-              <div style={{ fontSize: 11.5, color: "#888", lineHeight: 1.6, marginBottom: 10 }}>
+              <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 10 }}>
                 Which planetary archetypes tend to hit you hardest? Any planet can be a personal trigger — this is self-reported, not computed for you.
               </div>
               <button onClick={() => setShowQuestionnaire(true)} style={{ fontSize: 11.5, padding: "7px 16px", borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600 }}>
@@ -364,7 +365,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
           const ranked = withMatch;
           return (
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
               Advisories · active now
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -388,9 +389,9 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
                           {t.triggerPlanet} {aspLower} your {t.cautionPlanet}
-                          {arch && <span style={{ color: "#999", fontWeight: 400 }}> · {arch.label}</span>}
+                          {arch && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> · {arch.label}</span>}
                         </div>
-                        {arch && <div style={{ fontSize: 10, color: "#999", marginTop: 1 }}>{arch.feel}</div>}
+                        {arch && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>{arch.feel}</div>}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
                         <div style={{ fontSize: 9, color: sevColor, background: `${sevColor}15`, padding: "2px 7px", borderRadius: 4, fontWeight: 600 }}>
@@ -409,7 +410,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
 
         {/* Chapter timeline — when the next boundary lands */}
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px" }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "#a89a88", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
             Next chapter shifts
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -418,9 +419,9 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
               .sort((a, b) => a.leavesHouse.localeCompare(b.leavesHouse))
               .map((t) => (
                 <div key={t.planet} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11.5 }}>
-                  <span style={{ width: 60, color: "#999", flexShrink: 0 }}>{fmtDate(t.leavesHouse)}</span>
+                  <span style={{ width: 60, color: "var(--text-3)", flexShrink: 0 }}>{fmtDate(t.leavesHouse)}</span>
                   <span style={{ color: PLANET_MODES[t.planet]?.color }}>{PLANET_GLYPH[t.planet]}</span>
-                  <span style={{ color: "#555" }}>{t.planet} leaves your {t.house}th House → enters the {t.house === 12 ? 1 : t.house + 1}th</span>
+                  <span style={{ color: "var(--text-2)" }}>{t.planet} leaves your {t.house}th House → enters the {t.house === 12 ? 1 : t.house + 1}th</span>
                 </div>
               ))}
           </div>

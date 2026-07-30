@@ -5,19 +5,83 @@
 
 export type Element = "fire" | "earth" | "air" | "water";
 
+// Element hues resolve from the active palette instead of being frozen at the
+// light-mode values. They must stay HEX, not `var(--color-fire)`: the app
+// concatenates an alpha suffix onto them in ~134 places (`${col}22`), and
+// `var(--x)22` is not a colour — it fails silently to transparent, which is
+// the worst kind of bug because the layout still looks plausible.
+//
+// So: one table per mode, handed back as a plain hex.
+//
+// Light keeps the app's OWN hues rather than the palette's `--color-*` values.
+// That was measured, not assumed: routing light mode through the palette put
+// air at #CBA13C and fire at #C2613E — both lighter than the inks they
+// replaced — and pushed light-mode contrast failures from 386 to 404 across
+// the four tabs. The palette hues are tuned to look right, not to carry small
+// text on paper. Dark genuinely needs the lift, so only dark takes it.
+const LIGHT: Record<Element, string> = {
+  fire: "#b84020", earth: "#4a7040", air: "#c19a3a", water: "#2a5a80",
+};
+const DARK: Record<Element, string> = {
+  fire: "#ff8a66", earth: "#6fd095", air: "#f2c94c", water: "#5cc8e8",
+};
+
+function elementsForMode(): Record<Element, string> {
+  return typeof document !== "undefined"
+    && document.documentElement.getAttribute("data-theme") === "dark" ? DARK : LIGHT;
+}
+
 export const ELEMENT_COLORS: Record<Element, string> = {
-  fire:  "#b84020",
-  earth: "#4a7040",
-  air:   "#c19a3a",
-  water: "#2a5a80",
+  get fire() { return elementsForMode().fire; },
+  get earth() { return elementsForMode().earth; },
+  get air() { return elementsForMode().air; },
+  get water() { return elementsForMode().water; },
+};
+
+/**
+ * The same elements as a FILLED SURFACE that carries white text — the Today
+ * hero, and anything else painted rather than written.
+ *
+ * This exists because the two uses pull in opposite directions and a single
+ * value cannot serve both: text on a near-black card wants a light hue, a
+ * panel under white text wants a deep one. Lifting `ELEMENT_COLORS` for dark
+ * mode fixed the text and broke the hero — white on a bright green — which is
+ * why these are separate rather than one table with a compromise in it.
+ *
+ * Deep in both modes, so it never needs a compromise.
+ */
+export const ELEMENT_SURFACE: Record<Element, string> = LIGHT;
+
+/**
+ * Same hue, for callers that hold an element as a plain `string` (a value off
+ * an API response, a form field) rather than the `Element` union. Four files
+ * kept their own loosely-typed copy of the table purely to allow this.
+ */
+export function elementColor(el: string, fallback = "var(--color-muted)"): string {
+  return el in LIGHT ? ELEMENT_COLORS[el as Element] : fallback;
+}
+
+// Element tint backgrounds. The light values are near-white washes that stay
+// near-white on a dark palette, so they're derived from the hue at low alpha
+// instead — one expression that reads correctly under every palette.
+const TINT_FALLBACK: Record<Element, string> = {
+  fire: "#fff0ec", earth: "#f0f5ee", air: "#f4efdd", water: "#eaf0f8",
 };
 
 export const ELEMENT_BG: Record<Element, string> = {
-  fire:  "#fff0ec",
-  earth: "#f0f5ee",
-  air:   "#f4efdd",
-  water: "#eaf0f8",
+  get fire() { return elementTint("fire"); },
+  get earth() { return elementTint("earth"); },
+  get air() { return elementTint("air"); },
+  get water() { return elementTint("water"); },
 };
+
+function elementTint(el: Element): string {
+  if (typeof document === "undefined") return TINT_FALLBACK[el];
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  // 8-digit hex, so it composites over whatever card it lands on and needs no
+  // separate light/dark value. Still a hex string, so concatenation is safe.
+  return dark ? `${ELEMENT_COLORS[el]}26` : TINT_FALLBACK[el];
+}
 
 export const ELEMENT_GLYPH: Record<Element, string> = {
   fire:  "△",

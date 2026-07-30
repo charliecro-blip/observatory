@@ -11,6 +11,8 @@ import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
 import { CompassMark } from "@/components/CompassMark";
 import Glyph from "@/components/Glyph";
+import { planetColor, PLANET_COLORS } from "@/lib/planetColors";
+import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 
 // Rail planet glyph — the design-system glyph (Noto symbol face, optically
 // thinned), inheriting the surrounding span's color (tint=false) so the rail's
@@ -46,9 +48,6 @@ function MoonDisc({ illum, waxing, size = 26 }: { illum: number; waxing: boolean
   );
 }
 
-const ELEMENT_COLORS: Record<string, string> = {
-  water: "#3a5a80", fire: "#8a3a20", earth: "#3a6030", air: "#c19a3a",
-};
 
 // Void-of-course is a liminal, restful state — NOT a warning. It gets its own
 // calm slate-lavender ("slack water"), deliberately distinct from the yellow/
@@ -61,7 +60,7 @@ function signGlyphInfo(sign?: string) {
   if (!sign) return null;
   const sm = SIGN_MYTHOS[sign.split(" ")[0]];
   const el = sm?.element ?? "water";
-  return { glyph: sm?.glyph ?? "", color: ELEMENT_COLORS[el] ?? "#888", el };
+  return { glyph: sm?.glyph ?? "", color: elementColor(el, "var(--color-muted)"), el };
 }
 
 // A collapsed section: one dense clickable row (label + glyphs/values), the
@@ -73,7 +72,7 @@ function GlyphRow({ label, onClick, children }: { label: string; onClick: () => 
       borderBottom: "1px solid var(--color-border)", background: "none", border: "none",
       borderBottomWidth: 1, cursor: "pointer", textAlign: "left",
     }}>
-      <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.5px", color: "#bbb", width: 34, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", width: 34, flexShrink: 0 }}>{label}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>{children}</span>
     </button>
   );
@@ -83,7 +82,7 @@ function GlyphRow({ label, onClick, children }: { label: string; onClick: () => 
 // Moon in Aquarius" a beginner can read at a glance.
 function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?: string }) {
   const el = sign ? (SIGN_MYTHOS[sign.split(" ")[0]]?.element ?? "water") : "water";
-  const col = ELEMENT_COLORS[el] ?? "#888";
+  const col = elementColor(el, "#888");
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11 }}>
       <span style={{ color: col }}>{glyph}</span>
@@ -132,13 +131,13 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
       title="Tap for another way this could play out"
       style={{
         display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-        padding: 0, cursor: "pointer", fontSize: 9.5, color: "#8a8278", lineHeight: 1.45,
+        padding: 0, cursor: "pointer", fontSize: 9.5, color: "var(--color-muted)", lineHeight: 1.45,
         fontFamily: "inherit", ...style,
       }}
     >
-      <span style={{ color: "#aaa" }}>{prefix}</span>{" "}
+      <span style={{ color: "var(--text-3)" }}>{prefix}</span>{" "}
       <span key={start} className="phrase-in">{shown.join(" · ")}</span>
-      <span style={{ marginLeft: 5, color: "#c0b8aa", fontSize: 8.5, whiteSpace: "nowrap" }}>
+      <span style={{ marginLeft: 5, color: "var(--text-3)", fontSize: 8.5, whiteSpace: "nowrap" }}>
         ⟳ {show === 1 ? `${start + 1}/${n}` : "more"}
       </span>
     </button>
@@ -146,13 +145,6 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
 }
 
 
-function planetColor(planet: string) {
-  const map: Record<string, string> = {
-    Sun: "#c08020", Moon: "#7080a0", Mercury: "#608060", Venus: "#a06080",
-    Mars: "#c04040", Jupiter: "#6040a0", Saturn: "#807060",
-  };
-  return map[planet] ?? "#888";
-}
 
 // Mobile instrument strip — the desktop rail's nesting ladder, ported to a
 // single horizontal row of glyph "instruments" under the phone top bar. A
@@ -170,7 +162,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
   const sunSign = (now as any).sunSign as string | undefined;
   const dayRuler = (now as any).dayRuler as string | undefined;
   const isVOC = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
-  const elemColor = ELEMENT_COLORS[element?.element ?? "water"] ?? "#888";
+  const elemColor = elementColor(element?.element ?? "water", "#888");
 
   const chipStyle = (id: string, accent: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer",
@@ -197,30 +189,30 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       const tk = takes.length ? takes[moonTake % takes.length] : null;
       return <>
         <b>{moonPhase?.replace(/_/g, " ")} · {moonSign}</b>{isVOC && <span style={{ color: VOC_COLOR }}> · void of course</span>}
-        {tk && <div style={{ marginTop: 3 }}><span style={{ color: "#aaa" }}>{tk.l}</span> {tk.t}
-          <button onClick={() => setMoonTake(i => i + 1)} style={{ marginLeft: 5, fontSize: 10, color: "#b0a898", background: "none", border: "none", cursor: "pointer" }}>↻</button></div>}
+        {tk && <div style={{ marginTop: 3 }}><span style={{ color: "var(--text-3)" }}>{tk.l}</span> {tk.t}
+          <button onClick={() => setMoonTake(i => i + 1)} style={{ marginLeft: 5, fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer" }}>↻</button></div>}
       </>;
     }
     if (open === "day" && dayRuler) {
-      return <><b>{dayRuler}'s day</b> <span style={{ color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>
+      return <><b>{dayRuler}'s day</b> <span style={{ color: "var(--text-3)" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>
         <CycleLine prefix="good for" options={PLANET_ACTIVITIES[dayRuler] ?? []} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "hour") {
-      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "#999" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "#8a8278" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
+      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "var(--color-muted)" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
         <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "aspects") {
       const asps = sortMoonAspects(((now as any).moonAspects ?? []) as any[]);
       return <>
         <b>Moon aspects</b>
-        {asps.length === 0 && <div style={{ marginTop: 3, color: "#8a8278" }}>None in orb right now — open water.</div>}
+        {asps.length === 0 && <div style={{ marginTop: 3, color: "var(--color-muted)" }}>None in orb right now — open water.</div>}
         {asps.slice(0, 4).map((a: any, i: number) => {
           const partner = a.planet1 === "Moon" ? a.planet2 : a.planet1;
           const glyph = { conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[a.aspect as string] ?? "·";
           return (
-            <div key={i} style={{ marginTop: 3, color: "#8a8278" }}>
+            <div key={i} style={{ marginTop: 3, color: "var(--color-muted)" }}>
               ☽ {glyph} <PG p={partner} /> <b style={{ color: "var(--color-foreground)" }}>{partner}</b>
-              <span style={{ color: "#aaa", marginLeft: 5 }}>
+              <span style={{ color: "var(--text-3)", marginLeft: 5 }}>
                 {a.applying && a.hoursToExact != null ? `exact in ~${Math.round(a.hoursToExact)}h` : !a.applying ? `${a.orb.toFixed(1)}° past` : `${a.orb.toFixed(1)}° orb`}
               </span>
             </div>
@@ -237,34 +229,34 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         {sunSign && (
           <button onClick={() => setOpen(o => o === "sun" ? null : "sun")} style={chipStyle("sun", sun?.color ?? "#888")}>
             <span style={{ color: sun?.color }}>☉ {sun?.glyph}</span>
-            <span style={{ color: "#666" }}>{sunSign}</span>
+            <span style={{ color: "var(--text-2)" }}>{sunSign}</span>
           </button>
         )}
         <button onClick={() => setOpen(o => o === "moon" ? null : "moon")} style={chipStyle("moon", moon?.color ?? "#888")}>
           <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={15} />
-          <span style={{ color: "#666" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
+          <span style={{ color: "var(--text-2)" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
           <span style={{ color: moon?.color }}>{moon?.glyph}</span>
           {isVOC && <span style={{ color: VOC_COLOR }}>◒</span>}
         </button>
         {dayRuler && (
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
             <span style={{ color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
-            <span style={{ color: "#666" }}>day</span>
+            <span style={{ color: "var(--text-2)" }}>day</span>
           </button>
         )}
         {((now as any).moonAspects ?? []).length > 0 && (
-          <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", "#7080a0")}>
-            <span style={{ color: "#7080a0" }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
-            <span style={{ color: "#666" }}>{(now as any).moonAspects.length}</span>
+          <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", PLANET_COLORS.Moon)}>
+            <span style={{ color: PLANET_COLORS.Moon }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
+            <span style={{ color: "var(--text-2)" }}>{(now as any).moonAspects.length}</span>
           </button>
         )}
         <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
           <span style={{ color: planetColor(planetaryHour.planet) }}><PG p={planetaryHour.planet} /></span>
-          <span style={{ color: "#666" }}>hr</span>
+          <span style={{ color: "var(--text-2)" }}>hr</span>
         </button>
       </div>
       {detail && (
-        <div style={{ padding: "0 12px 9px", fontSize: 11, color: "#6a6258", lineHeight: 1.5 }}>{detail}</div>
+        <div style={{ padding: "0 12px 9px", fontSize: 11, color: "var(--color-muted)", lineHeight: 1.5 }}>{detail}</div>
       )}
     </div>
   );
@@ -369,7 +361,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid var(--color-border)" }}>
-      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#bbb", marginBottom: 6 }}>Daylight · sun {isDay ? "up" : "down"}</div>
+      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 6 }}>Daylight · sun {isDay ? "up" : "down"}</div>
 
       {/* Arc bar */}
       <div style={{ position: "relative", height: 20, marginBottom: 5 }}>
@@ -395,14 +387,14 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
       </div>
 
       {/* Labels row */}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "#aaa" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "var(--text-3)" }}>
         <div>☀ {fmt(sun.sunrise)}</div>
-        <div style={{ color: "#c08020", fontSize: 8 }}>noon {fmt(sun.solarNoon)}</div>
+        <div style={{ color: PLANET_COLORS.Sun, fontSize: 8 }}>noon {fmt(sun.solarNoon)}</div>
         <div>{fmt(sun.sunset)} ☽</div>
       </div>
 
       {/* Day length */}
-      <div style={{ fontSize: 8, color: "#ccc", marginTop: 3, textAlign: "center" }}>
+      <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 3, textAlign: "center" }}>
         {(() => {
           const h = (sun.sunset.getTime() - sun.sunrise.getTime()) / 3600000;
           return `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m daylight`;
@@ -438,13 +430,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); setCollapsed(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
   // A clear, always-visible minimize control for an open section header.
   const Collapse = ({ id }: { id: string }) => (
-    <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} title="Minimize" style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
+    <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} title="Minimize" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
   );
   // Section header — the WHOLE row toggles (clicking exactly on the tiny ▾
   // was the only target before, which read as broken). Inner controls like
   // HelpBadge stop propagation themselves.
   const SectionHeader = ({ id, children }: { id: string; children: React.ReactNode }) => (
-    <div onClick={() => toggleOpen(id)} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+    <div onClick={() => toggleOpen(id)} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
       <span style={{ display: "flex", alignItems: "center" }}>{children}</span>
       <Collapse id={id} />
     </div>
@@ -546,7 +538,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const dayRuler: string | undefined = (now as any).dayRuler;
   const isVOC: boolean = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
   const pct = progressPct(planetaryHour.began, planetaryHour.ends);
-  const elemColor = ELEMENT_COLORS[element?.element ?? "water"] ?? "#888";
+  const elemColor = elementColor(element?.element ?? "water", "#888");
   const pColor = planetColor(planetaryHour.planet);
 
   return (
@@ -567,7 +559,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           Compass
         </button>
         <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
-          fontSize: 12, lineHeight: 1, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 2,
+          fontSize: 12, lineHeight: 1, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 2,
         }}>{compact ? "⊞" : "⊟"}</button>
       </div>
 
@@ -584,7 +576,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <SignChip glyph="☉︎" label={`${sunSign} season`} sign={sunSign} />
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
-            return sm ? <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
+            return sm ? <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
           })()}
           {/* The solar cycle IS part of the tides — daylight as the year's
               slowest wave: how much light, and which way it's running. */}
@@ -593,7 +585,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const h = Math.floor(d.lengthMin / 60), m = d.lengthMin % 60;
             const drift = d.deltaMin === 0 ? "holding steady" : `${Math.abs(d.deltaMin)} min ${d.deltaMin > 0 ? "longer" : "shorter"} than yesterday`;
             return (
-              <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 5, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
                 ☀ {h}h {String(m).padStart(2, "0")}m of light · <b style={{ color: "#a08a50" }}>{d.phase}</b> · {drift}
               </div>
             );
@@ -602,7 +594,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       ) : (
         <GlyphRow label="Sun" onClick={() => toggleOpen("season")}>
           <span style={{ fontSize: 12, color: signGlyphInfo(sunSign)?.color }}>☉ {signGlyphInfo(sunSign)?.glyph}</span>
-          <span style={{ fontSize: 10, color: "#999" }}>{sunSign}</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>{sunSign}</span>
         </GlyphRow>
       ))}
 
@@ -611,9 +603,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("moon") && !isOpen("moon") && (
         <GlyphRow label="Moon" onClick={() => toggleOpen("moon")}>
           <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={16} />
-          <span style={{ fontSize: 10, color: "#777" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
+          <span style={{ fontSize: 10, color: "var(--color-muted)" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
           <span style={{ fontSize: 12, color: signGlyphInfo(moonSign)?.color }}>{signGlyphInfo(moonSign)?.glyph}</span>
-          <span style={{ fontSize: 10, color: "#999" }}>{moonSign}</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>{moonSign}</span>
           {isVOC && <span style={{ fontSize: 11, color: VOC_COLOR }}>◒</span>}
         </GlyphRow>
       )}
@@ -624,7 +616,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
               <div style={{ fontWeight: 600 }}>{moonPhase?.replace(/_/g, " ")}</div>
-              <div style={{ color: "#777", marginTop: 1, fontSize: 10 }}>{Math.round((moonIllumination ?? 0) * 100)}% lit</div>
+              <div style={{ color: "var(--color-muted)", marginTop: 1, fontSize: 10 }}>{Math.round((moonIllumination ?? 0) * 100)}% lit</div>
             </div>
           </div>
           <div style={{ marginTop: 6 }}>
@@ -660,10 +652,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             ];
             const t = takes[moonTakeIdx % takes.length];
             return (
-              <div style={{ fontSize: 9.5, color: "#8a8278", marginTop: 6, lineHeight: 1.5 }}>
-                <span style={{ color: "#aaa" }}>{t.label}</span> {t.text}
+              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 6, lineHeight: 1.5 }}>
+                <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
-                  style={{ marginLeft: 5, fontSize: 9, color: "#b0a898", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+                  style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
             );
           })()}
@@ -673,8 +665,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Moon Aspects */}
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
         <GlyphRow label="Moon aspects" onClick={() => toggleOpen("aspects")}>
-          <span style={{ fontSize: 12, color: "#888" }}>☽</span>
-          <span style={{ fontSize: 10, color: "#999" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
+          <span style={{ fontSize: 12, color: "var(--color-muted)" }}>☽</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
         </GlyphRow>
       )}
       {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
@@ -693,10 +685,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div key={i} style={{ borderBottom: i < now.moonAspects!.length-1 ? "1px solid var(--color-border)" : "none" }}>
                 <button onClick={() => toggleAspect(i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", width:"100%", background:"none", border:"none", cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
-                    <span style={{ fontSize:11, color:"#7080a0" }}>☽</span>
+                    <span style={{ fontSize:11, color:PLANET_COLORS.Moon }}>☽</span>
                     <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
                     <span style={{ color:pCol, fontWeight:600 }}><PG p={other} /></span>
-                    <span style={{ color:"#555", fontSize:10 }}>{other}</span>
+                    <span style={{ color:"var(--text-2)", fontSize:10 }}>{other}</span>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <div style={{ fontSize:9 }}>
@@ -714,18 +706,18 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                               const mm = exactAt.getMinutes().toString().padStart(2,"0");
                               return <span style={{ color:col, fontWeight:500 }}>→ {hh}:{mm}</span>;
                             })()
-                          : <span style={{ color:"#ccc" }}>{a.orb.toFixed(1)}° past</span>
+                          : <span style={{ color:"var(--text-3)" }}>{a.orb.toFixed(1)}° past</span>
                       }
                     </div>
-                    <span style={{ fontSize:8, color: isExpanded ? col : "#ccc", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+                    <span style={{ fontSize:8, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
                   </div>
                 </button>
                 {isExpanded && aspMeaning && (
-                  <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"#888", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
+                  <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
                     <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
                     <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
                     {PLANET_MEANING[other] && (
-                      <div style={{ color:"#aaa" }}><strong style={{ color:pCol }}>{other}:</strong> {PLANET_MEANING[other]}</div>
+                      <div style={{ color:"var(--text-3)" }}><strong style={{ color:pCol }}>{other}:</strong> {PLANET_MEANING[other]}</div>
                     )}
                   </div>
                 )}
@@ -742,7 +734,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {dayRuler && railSections.includes("hour") && !isOpen("day") && (
         <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
           <span style={{ fontSize: 12, color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
-          <span style={{ fontSize: 10, color: "#999" }}>{dayRuler}'s day</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>{dayRuler}'s day</span>
         </GlyphRow>
       )}
       {dayRuler && railSections.includes("hour") && isOpen("day") && (
@@ -759,10 +751,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   // The day-ruler's current sign — same "…in {sign}" treatment
                   // the hour gets, since a planet is never just itself.
                   const sign = (now.planets ?? []).find((x: any) => x.planet === dayRuler)?.sign;
-                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "#a09888" }}> in {sign}</span> : null;
+                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "var(--color-muted)" }}> in {sign}</span> : null;
                 })()}
               </div>
-              <div style={{ fontSize: 9, color: "#999" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
+              <div style={{ fontSize: 9, color: "var(--text-3)" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
             </div>
           </div>
           <CycleLine
@@ -778,8 +770,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("hour") && !isOpen("hour") && (
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
           <span style={{ fontSize: 12, color: pColor }}><PG p={planetaryHour.planet} /></span>
-          <span style={{ fontSize: 10, color: "#999" }}>{planetaryHour.planet}</span>
-          <span style={{ fontSize: 9, color: "#bbb", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
+          <span style={{ fontSize: 10, color: "var(--text-3)" }}>{planetaryHour.planet}</span>
+          <span style={{ fontSize: 9, color: "var(--text-3)", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
         </GlyphRow>
       )}
       {railSections.includes("hour") && isOpen("hour") && (
@@ -801,16 +793,16 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   // The hour ruler's current sign — a planet is never just
                   // itself; the sign it stands in colors its voice.
                   const sign = (now.planets ?? []).find((x: any) => x.planet === planetaryHour.planet)?.sign;
-                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "#a09888" }}> in {sign}</span> : null;
+                  return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "var(--color-muted)" }}> in {sign}</span> : null;
                 })()}
               </div>
-              <div style={{ fontSize: 9, color: "#888" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
+              <div style={{ fontSize: 9, color: "var(--color-muted)" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
             </div>
           </div>
-          <div style={{ fontSize: 9, color: "#bbb", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+          <div style={{ fontSize: 9, color: "var(--text-3)", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
             <span>{planetaryHour.began}</span><span>{planetaryHour.ends}</span>
           </div>
-          <div style={{ height: 3, background: "#d0cbc3", borderRadius: 2, marginBottom: 8 }}>
+          <div style={{ height: 3, background: "var(--color-border)", borderRadius: 2, marginBottom: 8 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: pColor, borderRadius: 2 }} />
           </div>
           {/* One concrete thing this hour's voice favors — rotates with the
@@ -841,14 +833,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     <span style={{ fontSize: 11, color: hCol, width: 14, textAlign: "center", flexShrink: 0 }}>
                       <PG p={h.planet} />
                     </span>
-                    <span style={{ flex: 1, fontSize: 10, color: isWatched ? "#222" : "#777", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
+                    <span style={{ flex: 1, fontSize: 10, color: isWatched ? "var(--color-foreground)" : "var(--color-muted)", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
                       {h.planet}
                     </span>
-                    <span style={{ fontSize: 9, color: isWatched ? hCol : "#aaa", fontWeight: isWatched ? 600 : 400 }}>{h.time}</span>
-                    <span style={{ fontSize: 7, color: "#ccc" }}>{isExpanded ? "▲" : "▾"}</span>
+                    <span style={{ fontSize: 9, color: isWatched ? hCol : "var(--text-3)", fontWeight: isWatched ? 600 : 400 }}>{h.time}</span>
+                    <span style={{ fontSize: 7, color: "var(--text-3)" }}>{isExpanded ? "▲" : "▾"}</span>
                   </button>
                   {isExpanded && (
-                    <div style={{ padding: "4px 8px 6px 24px", fontSize: 9, color: "#888", lineHeight: 1.45, borderLeft: `2px solid ${hCol}40`, marginLeft: 11, marginBottom: 2 }}>
+                    <div style={{ padding: "4px 8px 6px 24px", fontSize: 9, color: "var(--color-muted)", lineHeight: 1.45, borderLeft: `2px solid ${hCol}40`, marginLeft: 11, marginBottom: 2 }}>
                       {PLANET_SIGNIFICATION[h.planet] ?? `${h.planet} hour.`}
                     </div>
                   )}
@@ -866,7 +858,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
             background:"none", border:"none", cursor:"pointer", padding:0,
           }}>
-            <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"#aaa" }}>
+            <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"var(--text-3)" }}>
               Planetary aspects
             </span>
             <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
@@ -891,24 +883,24 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                         <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
                         <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
                         <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
-                        <span style={{ flex:1, fontSize:9, color:"#777", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color:a.applying?col:"#ccc", fontWeight:a.applying?600:400 }} title={
+                        <span style={{ flex:1, fontSize:9, color:"var(--color-muted)", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
+                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400 }} title={
                           a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
                           : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
                           : undefined
                         }>
                           {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
                         </span>
-                        <span style={{ fontSize:8, color: isExp ? col : "#ccc", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
+                        <span style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
                       </button>
                       {isExp && aspMeaning && (
-                        <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"#888", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
+                        <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
                           <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
                           <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
-                          <div style={{ color:"#aaa" }}>
+                          <div style={{ color:"var(--text-3)" }}>
                             <strong style={{ color:p1c }}>{a.planet1}:</strong> {PLANET_MEANING[a.planet1] ?? ""}
                           </div>
-                          <div style={{ color:"#aaa", marginTop:1 }}>
+                          <div style={{ color:"var(--text-3)", marginTop:1 }}>
                             <strong style={{ color:p2c }}>{a.planet2}:</strong> {PLANET_MEANING[a.planet2] ?? ""}
                           </div>
                         </div>
@@ -928,11 +920,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize:9, color:"#8a8278" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
+            <span style={{ fontSize:9, color:"var(--color-muted)" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
             <Tooltip content={
               <div>
                 <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>
-                <div style={{ color:"#b0aaa4", fontSize:10.5, lineHeight:1.55 }}>
+                <div style={{ color:"var(--color-muted)", fontSize:10.5, lineHeight:1.55 }}>
                   {now.retrogrades.map(p => {
                     const notes: Record<string,string> = {
                       Mercury: "Mercury retrograde affects communication, contracts, travel, and technology. Re-read, revise, and revisit rather than launch.",
@@ -944,12 +936,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                       Neptune: "Neptune retrograde heightens clarity through illusion — a good time to review ideals and creative projects.",
                       Pluto: "Pluto retrograde intensifies inner transformation. Deep review of power dynamics and hidden patterns.",
                     };
-                    return <div key={p} style={{ marginBottom:5 }}><strong style={{ color:"#e8e4de" }}>{p}:</strong> {notes[p] ?? `${p} retrograde — revisit and review rather than initiate.`}</div>;
+                    return <div key={p} style={{ marginBottom:5 }}><strong style={{ color:"var(--text-3)" }}>{p}:</strong> {notes[p] ?? `${p} retrograde — revisit and review rather than initiate.`}</div>;
                   })}
                 </div>
               </div>
             } width={280}>
-              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"#d8d2ca", color:"#888", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
+              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"var(--color-border)", color:"var(--color-muted)", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
             </Tooltip>
           </div>
         </div>
@@ -971,10 +963,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           const isExp = expandedPersonal === key;
           return (
             <div key={i}>
-              <button onClick={() => setExpandedPersonal(v => v === key ? null : key)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "#555", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+              <button onClick={() => setExpandedPersonal(v => v === key ? null : key)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "var(--text-2)", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{t.summary}</span>
-                <span style={{ fontSize: 7, color: isExp ? "#8a7a50" : "#ccc", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+                <span style={{ fontSize: 7, color: isExp ? "#8a7a50" : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
               </button>
               {isExp && <TransitTake t={t} />}
             </div>
@@ -985,7 +977,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <button onClick={() => setTransitsOpen(v => !v)} style={{
               display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px",
               width: "100%", background: "none", border: "none", cursor: "pointer",
-              fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa",
+              fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
             }}>
               <span style={{ display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></span>
               <span style={{ fontSize: 8, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
@@ -993,15 +985,15 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             {transitsOpen && (
               <div style={{ padding: "0 14px 10px" }}>
                 {fast.length > 0 && (
-                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", margin: "2px 0 2px" }}>this week — fast</div>
+                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "2px 0 2px" }}>this week — fast</div>
                 )}
                 {fast.map((t: any, i: number) => (count++ < shown ? row(t, i) : null))}
                 {slow.length > 0 && (
-                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", margin: "6px 0 2px" }}>chapters — slow</div>
+                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "6px 0 2px" }}>chapters — slow</div>
                 )}
                 {slow.map((t: any, i: number) => (count++ < shown ? row(t, i + 100) : null))}
                 {now.personalTransits!.length > 3 && (
-                  <button onClick={() => setTransitsExpanded(v => !v)} style={{ fontSize: 9, color: "#a89a88", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0", textDecoration: "underline" }}>
+                  <button onClick={() => setTransitsExpanded(v => !v)} style={{ fontSize: 9, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "4px 0 0", textDecoration: "underline" }}>
                     {transitsExpanded ? "show fewer" : `show all ${now.personalTransits!.length}`}
                   </button>
                 )}
@@ -1013,7 +1005,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Guiding Stars — the chief aims, always in the corner of your eye */}
       {(northStars?.length ?? 0) > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "#aaa", marginBottom: 6 }}>★ Guiding Stars</div>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6 }}>★ Guiding Stars</div>
           {northStars!.map((g: any) => {
             const m = ELEMENT_MYTHOS[g.element ?? ""];
             const target = Math.max(g.scheduledCount ?? 0, 2);
@@ -1023,8 +1015,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 background: "none", border: "none", cursor: "pointer", textAlign: "left",
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: m?.color ?? "#c8b89a", flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 10.5, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 8.5, color: "#b0a89c", flexShrink: 0 }}>{g.completedCount ?? 0}/{target}</span>
+                <span style={{ flex: 1, fontSize: 10.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
+                <span style={{ fontSize: 8.5, color: "var(--color-muted)", flexShrink: 0 }}>{g.completedCount ?? 0}/{target}</span>
               </button>
             );
           })}
@@ -1037,7 +1029,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "8px 14px", width: "100%", background: "none", border: "none",
           cursor: "pointer", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px",
-          color: "#aaa",
+          color: "var(--text-3)",
         }}>
           <span>Waves · what to ride today</span>
           <span style={{ fontSize: 8, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
@@ -1047,11 +1039,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <div style={{ paddingBottom: 8 }}>
             {/* What a "wave" is — the doable pieces (tasks & habits), not the
                 long-term stars (those live in Aims). */}
-            <div style={{ fontSize: 8.5, color: "#b0a89c", lineHeight: 1.5, padding: "0 14px 6px" }}>
+            <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
               The doable pieces — your tasks and habits — surfaced when today's conditions support them.
             </div>
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").length > 0 && (
-              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
+              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
             )}
             {/* Resonant practices */}
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").slice(0, 3).map((p: any) => (
@@ -1062,14 +1054,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#60a060", flexShrink: 0 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10.5, color: "#2a5020", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  {p.reasons?.[0] && <div style={{ fontSize: 8, color: "#aaa", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</div>}
+                  {p.reasons?.[0] && <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</div>}
                 </div>
               </div>
             ))}
 
             {/* Tasks */}
             {(tasks as any[]).filter(t => t.done !== "true").length > 0 && (
-              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "#c4bcae", padding: "4px 14px 2px" }}>open tasks</div>
+              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "4px 14px 2px" }}>open tasks</div>
             )}
             {(tasks as any[]).filter(t => t.done !== "true").slice(0, 6).map((t: any) => (
               <div key={t.id} style={{
@@ -1080,7 +1072,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   width: 13, height: 13, borderRadius: 3, border: "1.5px solid #b0b0c0",
                   background: "transparent", flexShrink: 0, cursor: "pointer", padding: 0,
                 }}/>
-                <div style={{ fontSize: 10.5, color: "#333", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+                <div style={{ fontSize: 10.5, color: "var(--text-1)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
               </div>
             ))}
 
@@ -1107,7 +1099,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             ) : (
               <button onClick={() => setShowAddTask(true)} style={{
                 display: "block", width: "100%", textAlign: "left", padding: "5px 14px",
-                background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "#bbb",
+                background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--text-3)",
               }}>
                 + task
               </button>

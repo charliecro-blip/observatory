@@ -11,7 +11,7 @@ export function ApiErrorBanner({ retry }: { retry?: () => void }) {
         Can't reach Compass right now — this is usually a brief connection hiccup. Your data is safe; try again in a moment.
       </div>
       {retry && (
-        <button onClick={retry} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "1px solid #e0b870", background: "#fff", color: "#8a5020", cursor: "pointer" }}>
+        <button onClick={retry} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "1px solid #e0b870", background: "var(--color-card)", color: "#8a5020", cursor: "pointer" }}>
           Retry
         </button>
       )}

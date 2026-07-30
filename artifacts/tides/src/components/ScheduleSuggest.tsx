@@ -6,8 +6,9 @@ import { useTester } from "@/contexts/tester-context";
 import { usePremium } from "@/contexts/premium-context";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import { isWithinFreeWindow, isAwakeDuring } from "@/lib/chronotype";
+import { ELEMENT_COLORS } from "@/lib/elements";
 
-const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: "#4a7040", air: "#c19a3a", water: "#3a5a80" };
+const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 
 interface BestWindow { date: string; startClock: string; endClock: string; startAt: string; endAt: string; peakE: number; label: string; }
 interface Association { element: string; planets: string[]; windowType: string; rationale: string; source: string; }
@@ -127,13 +128,13 @@ export function ScheduleSuggest({
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "20px 22px", maxWidth: 440, width: "100%" }}>
-        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a89a88", marginBottom: 4 }}>Find a good time</div>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>Find a good time</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)", marginBottom: 8 }}>{title}</div>
 
         {/* Premium teaser for free users — manual scheduling stays available below */}
         {!unlocked && (
           <div style={{ background: `${ec}0c`, border: `1px solid ${ec}33`, borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
-            <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.55 }}>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.55 }}>
               <b style={{ color: "var(--color-primary)" }}>✦ Let Compass find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
             </div>
             <button onClick={() => setShowPremium(true)} style={{ marginTop: 7, fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${ec}55`, background: "var(--color-card)", color: ec, cursor: "pointer", fontWeight: 600 }}>
@@ -143,13 +144,13 @@ export function ScheduleSuggest({
         )}
 
         {unlocked && assoc && (
-          <div style={{ fontSize: 11, color: "#777", lineHeight: 1.55, marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.55, marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: ec, flexShrink: 0, marginTop: 4 }} />
-            <span>{assoc.rationale} <span style={{ color: "#aaa" }}>Best in {element} windows this week:</span></span>
+            <span>{assoc.rationale} <span style={{ color: "var(--text-3)" }}>Best in {element} windows this week:</span></span>
           </div>
         )}
 
-        {unlocked && !bestData && <div style={{ fontSize: 12, color: "#999", padding: "12px 0" }}>Reading the week…</div>}
+        {unlocked && !bestData && <div style={{ fontSize: 12, color: "var(--text-3)", padding: "12px 0" }}>Reading the week…</div>}
         {err && <div style={{ fontSize: 11, color: "#c05030", padding: "6px 0" }}>Couldn't schedule that — try again.</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -163,7 +164,7 @@ export function ScheduleSuggest({
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{fmtDay(w.startAt)} · {w.startClock}–{w.endClock}</div>
-                  <div style={{ fontSize: 9.5, color: "#999", marginTop: 1 }}>
+                  <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>
                     {free && awake ? "fits your usual free time" : awake ? "you're usually awake" : "outside your usual awake hours"}
                   </div>
                 </div>
@@ -172,14 +173,14 @@ export function ScheduleSuggest({
             );
           })}
           {unlocked && bestData && ranked.length === 0 && (
-            <div style={{ fontSize: 11.5, color: "#999" }}>No standout windows this week — pick your own time below.</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>No standout windows this week — pick your own time below.</div>
           )}
         </div>
 
         {/* Pick your own */}
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
           {!customOpen ? (
-            <button onClick={() => setCustomOpen(true)} style={{ fontSize: 11, color: "#7a8a9a", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+            <button onClick={() => setCustomOpen(true)} style={{ fontSize: 11, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
               Or pick my own time →
             </button>
           ) : (
@@ -194,7 +195,7 @@ export function ScheduleSuggest({
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-          <button onClick={() => onClose(false)} style={{ fontSize: 11, color: "#aaa", background: "none", border: "none", cursor: "pointer" }}>
+          <button onClick={() => onClose(false)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>
             Skip — I'll schedule it later
           </button>
         </div>

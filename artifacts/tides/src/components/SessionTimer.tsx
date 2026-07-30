@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
+import { planetColor } from "@/lib/planetColors";
 
 
-function planetColor(p: string) {
-  return { Sun:"#c08020", Moon:"#7080a0", Mercury:"#608060", Venus:"#a06080",
-    Mars:"#c04040", Jupiter:"#6040a0", Saturn:"#807060" }[p] ?? "#888";
-}
 
 type Phase = "idle" | "active" | "paused" | "done";
 
@@ -120,7 +117,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
           display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
           borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 10,
           background: phase === "active" ? "#fff8f0" : "var(--color-background)",
-          color: phase === "active" ? "#8a4020" : "#666",
+          color: phase === "active" ? "#8a4020" : "var(--text-2)",
           cursor: "pointer", fontWeight: phase === "active" ? 600 : 400,
         }}
       >
@@ -151,7 +148,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600 }}>{planet} hour</div>
-                <div style={{ fontSize: 9, color: "#aaa" }}>
+                <div style={{ fontSize: 9, color: "var(--text-3)" }}>
                   {planetaryHour?.began} – {planetaryHour?.ends}
                   {activeHourRemaining > 0 && <span style={{ color: "#c08030" }}> · {fmt(activeHourRemaining)} left</span>}
                 </div>
@@ -161,28 +158,28 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
 
           {phase === "idle" && (
             <>
-              <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Duration</div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Duration</div>
               <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
                 {PRESETS.map(p => (
                   <button key={p.label} onClick={() => { setDuration(p.seconds); setUseCustom(false); setUseUntilHourEnd(false); }}
                     style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
-                      background: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "#fff",
-                      color: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#fff" : "#555",
+                      background: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "var(--color-card)",
+                      color: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#fff" : "var(--text-2)",
                       borderColor: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "#d0cbc3",
                     }}>{p.label}</button>
                 ))}
                 {secsUntilHourEnd > 60 && (
                   <button onClick={() => { setUseUntilHourEnd(true); setUseCustom(false); }}
                     style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
-                      background: useUntilHourEnd ? "#1a2a3a" : "#fff",
-                      color: useUntilHourEnd ? "#fff" : "#555",
+                      background: useUntilHourEnd ? "#1a2a3a" : "var(--color-card)",
+                      color: useUntilHourEnd ? "#fff" : "var(--text-2)",
                       borderColor: useUntilHourEnd ? "#1a2a3a" : "#d0cbc3",
                     }}>Until hour ends</button>
                 )}
                 <button onClick={() => { setUseCustom(true); setUseUntilHourEnd(false); }}
                   style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
-                    background: useCustom ? "#1a2a3a" : "#fff",
-                    color: useCustom ? "#fff" : "#555",
+                    background: useCustom ? "#1a2a3a" : "var(--color-card)",
+                    color: useCustom ? "#fff" : "var(--text-2)",
                     borderColor: useCustom ? "#1a2a3a" : "#d0cbc3",
                   }}>Custom</button>
               </div>
@@ -190,7 +187,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                   <input type="number" min={1} max={300} value={customMin} onChange={e => setCustomMin(e.target.value)}
                     style={{ width: 60, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 12 }}/>
-                  <span style={{ fontSize: 11, color: "#888" }}>minutes</span>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>minutes</span>
                 </div>
               )}
               <input
@@ -209,7 +206,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
 
           {(phase === "active" || phase === "paused") && (
             <>
-              {note && <div style={{ fontSize: 11, color: "#555", marginBottom: 12, fontStyle: "italic" }}>"{note}"</div>}
+              {note && <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12, fontStyle: "italic" }}>"{note}"</div>}
               {/* Ring */}
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
                 <svg width={80} height={80} viewBox="0 0 80 80">
@@ -237,7 +234,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
             <div style={{ textAlign: "center", padding: "8px 0" }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 4 }}>Session complete</div>
-              {note && <div style={{ fontSize: 11, color: "#888", fontStyle: "italic", marginBottom: 10 }}>"{note}"</div>}
+              {note && <div style={{ fontSize: 11, color: "var(--color-muted)", fontStyle: "italic", marginBottom: 10 }}>"{note}"</div>}
               <button onClick={() => { setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
                 style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>
                 New session

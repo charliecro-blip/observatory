@@ -49,6 +49,23 @@
   --color-muted: #8a7f68;
   --color-primary: #22303e;
 
+  /* Text ramp — the missing rungs between foreground and muted.
+     The app was written with a hardcoded grey ramp in inline styles
+     (#333 · #555 · #777 · #888 · #999 · #aaa · #bbb), which is exactly the
+     range that inverts when the theme flips: on the dark palette those became
+     dark-grey-on-dark and a measured 220 text nodes fell below WCAG AA across
+     the four daily-driver tabs. Three rungs cover every use the app actually
+     had:
+       --text-1  body that isn't quite the heading  (was #333/#444)
+       --text-2  secondary/supporting              (was #555/#666)
+       --text-3  meta, timestamps, hints           (was #999/#aaa/#bbb)
+     --color-muted keeps its place between 2 and 3 (was #777/#888).
+     NEVER add a raw grey hex to a `color:` again — see the guard in
+     tests/regressions.test.ts. */
+  --text-1: #2c3846;
+  --text-2: #4a5462;
+  --text-3: #9a9184;
+
   /* Meridian — the ONE ownable brand accent. A twilight indigo pushed toward
      violet specifically so it is NONE of the four element colours and never
      competes with element meaning. Use for primary actions, the mark on hero
@@ -92,6 +109,11 @@
   --color-foreground: #e8e6e0;
   --color-muted: #8890a0;
   --color-primary: #dce4f0;
+  /* The ramp inverts: 1 is nearest the foreground, 3 the faintest, and all
+     three stay above 4.5:1 on --color-card. */
+  --text-1: #dcdad4;
+  --text-2: #c3c8d2;
+  --text-3: #9aa3b4;
   /* Meridian glows on the dark ink; brass lifts a touch for contrast. */
   --color-meridian: #7a80e6;
   --color-meridian-core: #7a80e6;

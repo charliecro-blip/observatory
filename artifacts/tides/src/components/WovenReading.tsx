@@ -49,13 +49,13 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
   return (
     <div style={{ borderTop: `1px solid ${accent}22`, margin: "12px 0", paddingTop: 11 }}>
       {/* The woven sentence — every level gets this. */}
-      <div style={{ fontSize: 13.5, color: "#2a2a2a", lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6 }}>
         {cap(reading.flavour)}
       </div>
 
       {/* What to watch — the discernment, one line. */}
       {topWatch && (
-        <div style={{ fontSize: 11.5, color: "#6a6258", marginTop: 6, display: "flex", gap: 6, alignItems: "baseline" }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 6, display: "flex", gap: 6, alignItems: "baseline" }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.8px", flexShrink: 0 }}>WATCH</span>
           <span>{cap(topWatch.note)}</span>
         </div>
@@ -73,7 +73,7 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
             <span key={p.name} title={full ? p.name : undefined} style={{
               fontSize: 10.5, lineHeight: 1.45, padding: "3px 9px", borderRadius: 12,
               background: p.polarity < 0 ? "#a0404012" : `${accent}12`,
-              color: p.polarity < 0 ? "#8a4040" : "#41526e",
+              color: p.polarity < 0 ? "var(--color-quality-challenge)" : "#41526e",
               border: `1px solid ${p.polarity < 0 ? "#a0404025" : `${accent}25`}`,
             }}>
               {p.reading}
@@ -86,7 +86,7 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
       {full && reading.testimonies?.length > 0 && (
         <div style={{ marginTop: 9 }}>
           <button onClick={() => { if (!showWorking) logEvent("reading_working_opened"); setShowWorking(!showWorking); }} style={{
-            fontSize: 10, color: "#8a8278", background: "none", border: "none", cursor: "pointer", padding: 0,
+            fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0,
             letterSpacing: "0.5px",
           }}>
             {showWorking ? "▾ the working" : "▸ the working — every voice, weighted"}
@@ -94,17 +94,17 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
           {showWorking && (
             <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
               {reading.testimonies.map((t, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 10.5, color: "#6a6258", lineHeight: 1.5 }}>
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
                   <span style={{
                     flexShrink: 0, fontVariantNumeric: "tabular-nums", fontWeight: 600,
                     color: t.polarity > 0 ? "#4a7a52" : "#a04040", width: 38, textAlign: "right",
                   }}>
                     {t.polarity > 0 ? "+" : "−"}{Math.abs(t.score).toFixed(2)}
                   </span>
-                  <span style={{ flexShrink: 0, color: "#a89a88", width: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ flexShrink: 0, color: "var(--text-3)", width: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {t.source}
                   </span>
-                  <span>{t.note}<span style={{ color: "#b0a898" }}> · w {t.weight.toFixed(2)} · loud {t.salience.toFixed(2)}</span></span>
+                  <span>{t.note}<span style={{ color: "var(--color-muted)" }}> · w {t.weight.toFixed(2)} · loud {t.salience.toFixed(2)}</span></span>
                 </div>
               ))}
             </div>
