@@ -1,6 +1,8 @@
 # Compass Privacy Policy
 
-**Effective date:** July 29, 2026 · **Contact:** charliecro@gmail.com
+**Effective date:** July 30, 2026
+**Compass is operated by Cross Astrology LLC**, a Texas limited liability company.
+**Contact:** charliecro@gmail.com
 
 ## What Compass is
 
@@ -10,21 +12,64 @@ plan.
 
 ## What we collect
 
-- **Account**: a display name you choose and a random account identifier. No
-  password, no email required to use the app.
-- **Birth details (optional)**: birth date, time, and place, which you provide
-  to unlock personal features. This is sensitive information; providing it is
-  entirely your choice, and the app works without it.
-- **What you put in**: guiding stars, tasks, habits, journal lines, felt
-  ratings, scheduled sessions.
-- **Location (optional)**: if you grant it, your approximate location is used
-  to compute local sky timing (sunrise, planetary hours). It is used for
-  calculation, not tracking.
-- **Google Calendar (optional)**: if you connect it, we request **read-only**
-  access to display your events alongside the app's timing and to schedule
-  around your busy time. We never modify your calendar. We do not store your
-  events — they are fetched when you use the app. You can disconnect at any
-  time in Settings, and revoke access at
+**Your account**
+- A display name you choose and a random account identifier. No password and
+  no email address are required to use the app.
+- A recovery key, so you can restore your data on another device. Anyone
+  holding the key can restore the account, so treat it like a password.
+
+**Your birth details (optional)**
+- Birth date, birth time, and birth place, including the **exact latitude and
+  longitude** of that place and the UTC offset. This is sensitive information;
+  providing it is entirely your choice, and the app works without it.
+- If you tell us you don't know your birth time, we record that too, and
+  suppress the parts of the chart that would otherwise be invented.
+
+**What you put in**
+- Guiding stars, tasks, habits and their completions, scheduled blocks,
+  journal lines, felt ratings ("how did today land"), named wins, and
+  New-Moon intentions.
+- **Menstrual-cycle tracking (optional)** — if you turn it on, we store your
+  last period start date and your typical cycle and luteal length, and use
+  them to fold cycle phase into timing suggestions.
+- **Your rhythm** — chronotype, usual waking and sleeping hours, and the
+  windows you say you're usually free.
+- **Your display and notification preferences.**
+
+**Your location (optional)**
+- If you grant it, we store the **precise coordinates** your device reports,
+  and use them to compute local sky timing (sunrise, planetary hours) and to
+  infer your local clock for scheduled emails. It is used for calculation, not
+  for tracking your movements, and it is not shared.
+
+**Usage analytics**
+- We record in-app events — which view you opened, when you scheduled
+  something, when you named a win, when you changed a setting — **together
+  with your account identifier** and a small set of properties describing the
+  event. We use this to understand which parts of Compass are actually used.
+
+**Email**
+- If you subscribe to reports, we store your email address, which reports you
+  want, the hour you want them, and how much astrological detail you want to
+  see.
+- Our emails contain a **tracking pixel and tracked links**, so we can see
+  whether a report was opened or clicked. If you'd rather not be counted,
+  block remote images in your mail client, or unsubscribe in Settings.
+
+**Push notifications (optional)**
+- If you enable them, we store the push subscription your browser issues.
+
+**The AI advisor**
+- Conversations you have with ✦ Ask, and any answers you choose to pin, are
+  stored so they can be shown back to you.
+
+**Google Calendar (optional)**
+- If you connect it, we request **read-only** access to display your events
+  alongside the app's timing and to schedule around your busy time. We never
+  modify your calendar. We store the **OAuth access and refresh tokens** so
+  the connection persists; we do not store your events, which are fetched
+  when you use the app. You can disconnect at any time in Settings, and revoke
+  access at
   [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
 Google API data is handled in accordance with the
@@ -38,26 +83,51 @@ including the Limited Use requirements.
 - We don't use your Google Calendar data for anything except showing you your
   own schedule inside the app.
 
-## AI features
+## Who else processes your data
 
-Some features (the ✦ Ask advisor, task parsing, natural-language planning)
-send the text you type and relevant timing context to OpenAI to generate a
-response. Don't include anything in those boxes you wouldn't want processed by
-a third-party AI service.
+To run Compass we pass data to a small number of service providers:
+
+- **Neon** — the database where your account and everything above is stored.
+- **Railway** — where the application runs.
+- **OpenAI** — receives the text you type into ✦ Ask, task capture, and
+  natural-language planning, along with the relevant timing context, in order
+  to generate a response. Don't put anything in those boxes you wouldn't want
+  processed by a third-party AI service.
+- **Resend** — sends the email reports, and therefore handles your email
+  address.
+- **Geoapify** — receives place names you type into location search.
 
 ## Where your data lives
 
-Your data is stored in a Postgres database hosted on Railway, and locally in
-your browser.
+In a Postgres database hosted on Neon, and in your browser's local storage.
+Servers are in the United States.
 
 ## Your choices
 
-- **Export / deletion**: email charliecro@gmail.com and we'll export or delete
-  your data.
-- **Account key**: your data is tied to your account key. Anyone with the key
+- **Export** — download your tasks and planning windows from Settings, or
+  email us for everything else.
+- **Deletion** — email charliecro@gmail.com and we will delete your account
+  and its data, including birth details, journal entries, cycle data, advisor
+  conversations, push and email subscriptions, and any stored Google tokens.
+  We aim to do this within 30 days. Backups may retain copies for a short
+  period after that before they age out.
+- **Email** — unsubscribe or change what you receive in Settings.
+- **Notifications** — turn off in Settings, or in your browser.
+- **Google Calendar** — disconnect in Settings and revoke at the link above.
+- **Account key** — your data is tied to your account key. Anyone with the key
   can restore your account, so treat it like a password.
+
+## Children
+
+Compass is not intended for anyone under 16, and we don't knowingly collect
+their data.
 
 ## Changes
 
 We'll update this page when the policy changes and note the effective date
 above.
+
+---
+
+*This policy is written in plain language on purpose. It has not been reviewed
+by a lawyer; it should be before Compass is offered publicly or for payment.*
