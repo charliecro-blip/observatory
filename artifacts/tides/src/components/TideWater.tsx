@@ -144,10 +144,40 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   // Hover-to-inspect (#tide-chart): scrub the day and read what's driving the
   // water at that moment — the level, the character, and any aspect/ingress/void.
   const [hoverH, setHoverH] = useState<number | null>(null);
-  const onScrub = (e: React.MouseEvent<SVGSVGElement>) => {
+  // POINTER events, not mouse events. The scrub — level, character, and the
+  // aspect driving it — was bound to onMouseMove/onMouseLeave only, so the
+  // hero chart's entire inspect interaction did not exist on a phone, and
+  // phones are most of the cohort. Pointer events cover mouse, touch and pen
+  // in one path rather than a parallel touch implementation.
+  const onScrub = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     const vx = ((e.clientX - r.left) / r.width) * W;
     setHoverH(Math.max(0, Math.min(24, (vx / W) * 24)));
+  };
+  // Only capture the pointer once a touch drag is genuinely horizontal —
+  // otherwise the chart swallows vertical page scrolling, which is far worse
+  // than not having the scrub at all.
+  const dragStart = useRef<{ x: number; y: number; capturing: boolean } | null>(null);
+  const onDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    dragStart.current = { x: e.clientX, y: e.clientY, capturing: e.pointerType === "mouse" };
+    onScrub(e); // a tap alone reads that moment
+  };
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = dragStart.current;
+    if (e.pointerType === "mouse") { onScrub(e); return; }
+    if (!d) return;
+    if (!d.capturing) {
+      const dx = Math.abs(e.clientX - d.x), dy = Math.abs(e.clientY - d.y);
+      if (dy > dx && dy > 6) { dragStart.current = null; setHoverH(null); return; } // let the page scroll
+      if (dx > 6) { d.capturing = true; e.currentTarget.setPointerCapture(e.pointerId); }
+    }
+    if (d.capturing) { e.preventDefault(); onScrub(e); }
+  };
+  const endScrub = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = dragStart.current;
+    if (d?.capturing && e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    dragStart.current = null;
+    if (e.pointerType === "mouse") setHoverH(null); // touch keeps the readout until you tap away
   };
 
   const { data: bestTimes } = useQuery<any>({
@@ -404,7 +434,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         );
       })()}
 
-      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} onMouseMove={onScrub} onMouseLeave={() => setHoverH(null)} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden", cursor: "crosshair" }}>
+      {timeframe === "day" && <svg viewBox={`0 0 ${W} ${H}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={endScrub} onPointerCancel={endScrub} onPointerLeave={endScrub} style={{ width: "100%", height: "auto", display: "block", borderRadius: 8, overflow: "hidden", cursor: "crosshair", touchAction: "pan-y" }}>
         <defs>
           <linearGradient id="twSky" x1="0" y1="0" x2="1" y2="0">
             {skyStops.map((s, i) => <stop key={i} offset={`${(s.off * 100).toFixed(2)}%`} stopColor={s.c} />)}

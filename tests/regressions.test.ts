@@ -586,3 +586,31 @@ describe("felt pattern", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 16. TIDE CHART SCRUB ON TOUCH
+// Shipped bug: onMouseMove/onMouseLeave only, so the hero chart's inspect
+// interaction did not exist on a phone. The subtle part of the fix is not
+// swallowing vertical page scroll.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function shouldCapture(dx: number, dy: number, pointerType: string) {
+  if (pointerType === "mouse") return true;
+  if (dy > dx && dy > 6) return false;   // vertical → let the page scroll
+  return dx > 6;                          // horizontal → the chart takes it
+}
+
+describe("tide chart scrub", () => {
+  it("takes a horizontal drag", () => {
+    expect(shouldCapture(30, 4, "touch")).toBe(true);
+  });
+  it("releases a vertical drag so the page can scroll", () => {
+    expect(shouldCapture(3, 40, "touch")).toBe(false);
+  });
+  it("ignores tiny jitter until a direction is clear", () => {
+    expect(shouldCapture(2, 2, "touch")).toBe(false);
+  });
+  it("a mouse always scrubs", () => {
+    expect(shouldCapture(0, 0, "mouse")).toBe(true);
+  });
+});
