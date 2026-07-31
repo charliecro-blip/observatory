@@ -158,6 +158,26 @@ Effort estimates from the competitive study. Items marked ★ are mostly-already
 | **"Some days you're a hammer. Some days you're a sponge."** | Nothing — already shipped | ☑ |
 | **"For work that doesn't run on a straight line."** | `astroDetail: minimal` must actually hold across a first session (currently gates only 3 surfaces) | ☐ |
 
+### The voice — LANGUAGE-STUDY-2026-07-30.md
+
+Owner's thinking 2026-07-30, written up with analysis. Four threads:
+- **The register** — Co-Star's snark *aimed at the situation, never the reader*
+  (their distance is what licenses their wit; we deliberately destroyed that
+  distance), plus precise/specific/measured. **Lyric in the weather, plain in
+  the instruction.** Costs nothing, applies to every line from here.
+- **☐ Rhythm as the brand line** — *"find your rhythm; it need not be linear."*
+  Dodges "productivity", states the thesis without astrology, and **resolves the
+  Wake/streak contradiction**: a rhythm has a beat you can miss and return to,
+  a streak has a number that resets. Same data, opposite meaning.
+- **☐ Mercury-sign register** — the strongest idea, and the most defensible
+  thing astrology can do here: it's a claim about how the *reader* likes
+  information to arrive, not a prediction. Chart proposes, user overrides.
+  Wants a `voice()` renderer over structured `Block[]` — so **don't bake tone
+  into any new composer.**
+- **☐ Seasonal drift** — Jupiter/Saturn set the register (slow); Mercury Rx is
+  the one fast signal that may change it; Mars/Sun/Venus stay content-only. A
+  voice that changes daily isn't a voice.
+
 **Never say:** "productivity" (they left those tools deliberately — great internal shape-name, wrong headline), "astrology app" (pre-sorts us into a low-ceiling category), "AI-powered" (commodity, and our moat is the *deterministic* engine — the weave is pure ephemeris math; only the list parse is AI).
 
 **Biggest lateral idea:** ☐ a public no-signup **"When should I ___?"** page — landing page, SEO surface, demo, and funnel in one object. The election engine already runs chartless, so most of it exists. 11/12 personas used Begin for a real decision; 4 changed real dates.
