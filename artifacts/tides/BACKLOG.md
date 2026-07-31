@@ -18,6 +18,7 @@ plus three code audits run 2026-07-29 (structural, election-engine, second-pass)
 |---|---|---|---|
 | 👤 | **Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` on Railway** | **UNBLOCKED 2026-07-30** — the longitude-as-timezone bug that would have delivered every ping at the wrong hour is fixed (it was 2h off for Austin). Push is built, wired, and now times correctly. | month §1 |
 | 👤 | **Set `RESEND_API_KEY` + `EMAIL_FROM` on Railway** | Same for email reports. Composer, cron, opt-in all shipped. | month §1 |
+| 👤 | **Set `ADMIN_TOKEN` on Railway** (`openssl rand -hex 24`) | Guards `/api/events/summary` and `/api/events/errors`. **Until it's set, both 404 in production** — deliberately closed, because they return crash messages and stack traces which can quote whatever was on the user's screen. Read them with `-H "x-admin-token: …"`. | 2026-07-30 |
 | 👤 | **Confirm `GOOGLE_CAL_REDIRECT_URI` = `https://compass.day/api/integrations/google-cal/callback`** | Only ONE redirect URI is live at a time — registering both in Google Cloud doesn't make both work. | GCAL-SETUP |
 | 👤 | **Decide: publish the Google OAuth app (unverified) vs keep in Testing** | Testing = 7-day token expiry, silent weekly disconnects. Console reportedly says "In production" — verify under Google Auth Platform → Audience. | month §9 |
 | 👤 | Google OAuth **verification** (days–weeks) | Removes the "unverified app" wall. Only worth it before a wider launch — corporate Workspace blocks it outright, which caps the highest-paying personas. | paying §A1 |

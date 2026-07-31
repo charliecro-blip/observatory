@@ -1,15 +1,42 @@
 /**
  * Usage events — fire-and-forget analytics ingest + a summary the owner reads.
  *   POST /events { event, props }         — log (never blocks the client)
- *   GET  /events/summary?days=14          — counts by event, by view, active testers
- *   GET  /events/errors?days=7            — client crashes, grouped, worst first
+ *   GET  /events/summary?days=14          — counts by event, by view, active testers  [admin]
+ *   GET  /events/errors?days=7            — client crashes, grouped, worst first     [admin]
  */
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@workspace/db";
 import { usageEvents } from "@workspace/db/schema";
 import { gte, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+/**
+ * The read endpoints below were reachable by anyone on the internet. That was
+ * survivable while they returned counts; it stopped being survivable the moment
+ * one of them returned error messages and stack traces, which can quote
+ * whatever the user had on screen — published next to their account id.
+ *
+ * Gated on ADMIN_TOKEN, and **closed by default**: with no token configured
+ * these 404 in production rather than falling open. 404 and not 401, so the
+ * endpoints don't advertise themselves to someone scanning.
+ *
+ * Ingest (POST /events) stays open — the app has to be able to write.
+ */
+const requireAdmin: RequestHandler = (req, res, next) => {
+  const expected = process.env["ADMIN_TOKEN"];
+  if (!expected) {
+    // No token set: usable locally, invisible in production.
+    if (process.env["NODE_ENV"] === "production") { res.status(404).end(); return; }
+    next();
+    return;
+  }
+  const given = String(req.headers["x-admin-token"] ?? "");
+  const a = Buffer.from(given), b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) { res.status(404).end(); return; }
+  next();
+};
 
 router.post("/events", async (req, res) => {
   const { event, props } = req.body ?? {};
@@ -20,7 +47,7 @@ router.post("/events", async (req, res) => {
   res.status(202).json({ ok: true });
 });
 
-router.get("/events/summary", async (req, res) => {
+router.get("/events/summary", requireAdmin, async (req, res) => {
   const days = Math.min(90, Math.max(1, parseInt((req.query.days as string) ?? "14", 10)));
   const since = new Date(Date.now() - days * 86400000);
   const [byEvent, byView, testers] = await Promise.all([
@@ -44,7 +71,7 @@ router.get("/events/summary", async (req, res) => {
  * "how many people did this reach" is the number that decides whether you stop
  * what you're doing.
  */
-router.get("/events/errors", async (req, res) => {
+router.get("/events/errors", requireAdmin, async (req, res) => {
   const days = Math.min(90, Math.max(1, parseInt((req.query.days as string) ?? "7", 10)));
   const since = new Date(Date.now() - days * 86400000);
   const rows = await db

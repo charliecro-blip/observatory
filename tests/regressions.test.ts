@@ -1041,3 +1041,65 @@ describe("client error reporting", () => {
     expect(src).not.toContain("location.search");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 21. THE ANALYTICS READ ENDPOINTS WERE PUBLIC
+// Shipped bug, and one I introduced myself: /api/events/summary was already
+// world-readable, which was survivable while it returned counts. Adding
+// /api/events/errors — which returns error MESSAGES and STACK TRACES, and an
+// error message can quote whatever the user had on screen — made it a leak,
+// published next to the account id it belongs to. Verified live with a bare
+// curl before it was closed.
+//
+// The invariant that matters is not "there is a check", it is that the check
+// FAILS CLOSED. A gate that falls open when unconfigured is the same bug in a
+// costume, and it is the shape almost every homegrown admin check takes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The gate from routes/events.ts, restated. */
+function adminAllows(opts: { token?: string; header?: string; nodeEnv: string }): boolean {
+  const { token, header, nodeEnv } = opts;
+  if (!token) return nodeEnv !== "production";
+  if (header === undefined) return false;
+  if (header.length !== token.length) return false;
+  return header === token;
+}
+
+describe("admin gate on the analytics reads", () => {
+  it("FAILS CLOSED in production when no token is configured", () => {
+    // The whole point. Forgetting to set the variable must not publish
+    // stack traces to the internet.
+    expect(adminAllows({ nodeEnv: "production" })).toBe(false);
+  });
+
+  it("still works locally with no token, so it isn't a dev tax", () => {
+    expect(adminAllows({ nodeEnv: "development" })).toBe(true);
+  });
+
+  it("rejects a missing, wrong, or wrong-length token", () => {
+    const token = "s3cr3t-test-token";
+    expect(adminAllows({ token, nodeEnv: "production" })).toBe(false);
+    expect(adminAllows({ token, header: "nope", nodeEnv: "production" })).toBe(false);
+    expect(adminAllows({ token, header: "", nodeEnv: "production" })).toBe(false);
+    expect(adminAllows({ token, header: token + "x", nodeEnv: "production" })).toBe(false);
+    expect(adminAllows({ token, header: token, nodeEnv: "production" })).toBe(true);
+  });
+
+  it("compares in constant time and answers 404, not 401", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/events.ts"), "utf-8");
+    // A plain === leaks length/content through timing on a bearer secret.
+    expect(src).toMatch(/timingSafeEqual/);
+    // 401 confirms the endpoint exists to anyone scanning; 404 says nothing.
+    expect(src).not.toMatch(/status\(401\)/);
+    expect(src).toMatch(/status\(404\)/);
+  });
+
+  it("leaves the ingest route open — the app has to be able to write", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/events.ts"), "utf-8");
+    expect(src).toMatch(/router\.post\("\/events", async/);       // no gate
+    expect(src).toMatch(/router\.get\("\/events\/errors", requireAdmin/);
+    expect(src).toMatch(/router\.get\("\/events\/summary", requireAdmin/);
+  });
+});
