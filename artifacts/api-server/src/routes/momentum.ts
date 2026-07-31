@@ -92,7 +92,11 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
   const ledger: LedgerItem[] = [];
   for (const t of allTasks) {
     if (t.done !== "true") continue;
-    const d = localDateOf(t.updatedAt as any, tzOffsetMin);
+    // `completedAt` if we have it, `updatedAt` only as the legacy fallback.
+    // updatedAt moves on ANY edit, so renaming a task finished last month
+    // re-dated it as a win today — and any bulk write would flood the ledger.
+    // Seeding 42 historical completions surfaced this as "Today's wins · 42".
+    const d = localDateOf((t.completedAt ?? t.updatedAt) as any, tzOffsetMin);
     if (!d || d < sinceDate) continue;
     const gid = t.goalId ?? (t.projectId ? projectGoal.get(t.projectId) ?? null : null);
     ledger.push({ date: d, goalId: gid, text: `finished: ${t.title}`, source: "task" });

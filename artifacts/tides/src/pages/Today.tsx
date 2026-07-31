@@ -812,7 +812,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // keeps its usual quiet spot further down the page.
   const reflectBlock = now ? (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <TideFeedback now={now} today={today} testerId={testerId} />
+      <DonePattern today={today} testerId={testerId} />
       {todayShowJournal && (
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -1579,115 +1579,85 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
   );
 }
 
-// ── TideFeedback (the reflect-don't-predict loop) ───────────────────────────────
+// ── The pattern panel ────────────────────────────────────────────────────────
 
-const FELT_OPTIONS: { key: string; label: string; icon: string; color: string }[] = [
-  { key: "aligned", label: "Aligned", icon: "◎", color: "#4a8060" },
-  { key: "mixed",   label: "Mixed",   icon: "◐", color: "#a08040" },
-  { key: "off",     label: "Off",     icon: "○", color: "#9a6060" },
-];
 
-function feltKey(testerId: string | null, date: string) { return `obs_felt_${testerId ?? "anon"}_${date}`; }
 
-function TideFeedback({ now, today, testerId }: { now: any; today: string; testerId: string | null }) {
-  const [rating, setRating] = useState<string | null>(() => {
-    try { const r = JSON.parse(localStorage.getItem(feltKey(testerId, today)) ?? "null"); return r?.felt ?? null; } catch { return null; }
-  });
-  // localStorage always saves; the server row (what The Log actually reads,
-  // and what survives an account restore) can silently fail while "logged ✓"
-  // keeps showing (audit P0 #4). Track it separately so a failed sync is
-  // visible instead of invisible.
-  const [syncFailed, setSyncFailed] = useState(false);
-
-  // Your pattern, read from the SERVER. It used to be tallied out of
-  // localStorage, so restoring an account on a new device silently lost the
-  // evidence — the one claim Compass makes that comes from the reader's own
-  // experience rather than from the sky. The check-in rows had it all along.
-  const { data: pattern } = useQuery<{
-    enough: boolean; ratedTotal: number; ratedAligned: number;
-    earliest: string | null; latest: string | null; minTotal: number;
-    characters: { character: string; aligned: number; total: number; rate: number;
-      otherAligned: number; otherTotal: number; otherRate: number | null }[];
+/**
+ * What you get done, by the kind of day it was.
+ *
+ * This replaced the felt rating (aligned / mixed / off), which was removed for
+ * two reasons that both survived checking:
+ *
+ *   · It was write-only. Traced 2026-07-31: the rating had ZERO references in
+ *     electionEngine, election, synthesis, dayarc, interpretation or plan. It
+ *     changed no recommendation anywhere. Thirty seconds a day for a sentence.
+ *   · It was confounded by its own advice. The app says "a Deep day — rest",
+ *     you rest, and it asks whether that felt right. Agreement is compliance,
+ *     not evidence.
+ *
+ * Completions cost the reader nothing and nobody was told to produce them.
+ *
+ * The epistemic rules are inherited wholesale, because they were the good part:
+ * silent below a floor, always the counts and the window, always the
+ * comparison, and never a causal claim — what HAPPENED on those days, not what
+ * those days do to you.
+ */
+function DonePattern({ today, testerId }: { today: string; testerId: string | null }) {
+  const { data } = useQuery<{
+    enough: boolean; daysObserved: number; activeDays: number; itemsCompleted: number;
+    range: { from: string; to: string };
+    characters: { character: string; days: number; activeDays: number; items: number; perDay: number; otherDays: number; otherPerDay: number | null }[];
+    voidOfCourse: { days: number; perDay: number; otherDays: number; otherPerDay: number | null } | null;
   }>({
-    queryKey: ["felt-pattern", testerId, today, rating],
+    queryKey: ["done-pattern", testerId, today],
     queryFn: async () => {
-      const r = await fetch(`/api/check-ins/felt-pattern?days=30&today=${today}`, { headers: { "x-tester-id": testerId ?? "" } });
+      const r = await fetch(`/api/check-ins/done-pattern?days=60&today=${today}&tz=${new Date().getTimezoneOffset()}`,
+        { headers: { "x-tester-id": testerId ?? "" } });
       if (!r.ok) throw new Error("pattern unavailable");
       return r.json();
     },
     enabled: !!testerId,
-    staleTime: 5 * 60_000,
+    staleTime: 10 * 60_000,
   });
-  const top = pattern?.enough ? pattern.characters[0] : null;
 
-  function pick(felt: string) {
-    setRating(felt);
-    setSyncFailed(false);
-    localStorage.setItem(feltKey(testerId, today), JSON.stringify({
-      felt, character: now?.tide?.character ?? null, level: now?.tide?.level ?? null, date: today,
-    }));
-    // Mirror to the day's check-in row (as behaviorTags — no schema change) so
-    // the felt loop survives browser clears and reads back in The Log.
-    if (!testerId) return;
-    const tags = [`felt:${felt}`];
-    if (now?.tide?.character) tags.push(`tideChar:${now.tide.character}`);
-    if (now?.tide?.level) tags.push(`tideLevel:${now.tide.level}`);
-    fetch("/api/check-ins", {
-      method: "POST",
-      headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-      body: JSON.stringify({ date: today, behaviorTags: tags }),
-    }).then(r => { if (!r.ok) setSyncFailed(true); }).catch(() => setSyncFailed(true));
+  if (!data) return null;
+  const top = data.enough ? data.characters[0] : null;
+  const voc = data.enough ? data.voidOfCourse : null;
+  const rate = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
+
+  // Nothing to say yet, and nothing to nag about — this accrues on its own from
+  // work the reader was doing anyway, so there is no call to action here.
+  if (!top) {
+    if (data.itemsCompleted === 0) return null;
+    return (
+      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "11px 14px" }}>
+        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 5 }}>Your pattern</div>
+        <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
+          {data.itemsCompleted} finished across {data.activeDays} of the last {data.daysObserved} days. Not enough yet to say which kinds of day suit you — it builds as you go, with nothing extra to log.
+        </div>
+      </div>
+    );
   }
 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>How did today feel?</span>
-        {rating && !syncFailed && <span style={{ fontSize: 9, color: "var(--color-muted)" }}>logged ✓ — tap to change</span>}
-        {rating && syncFailed && (
-          <button onClick={() => pick(rating)} style={{ fontSize: 9, color: "#a03030", background: "none", border: "none", cursor: "pointer" }}>
-            saved on this device only — tap to retry
-          </button>
-        )}
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
+        What you've finished
       </div>
-      <div style={{ display: "flex", gap: 7 }}>
-        {FELT_OPTIONS.map((o) => (
-          <button key={o.key} onClick={() => pick(o.key)} style={{
-            flex: 1, padding: "8px 6px", borderRadius: 8, cursor: "pointer",
-            border: rating === o.key ? `1.5px solid ${o.color}` : "1px solid var(--color-border)",
-            background: rating === o.key ? `${o.color}12` : "var(--color-card-2)",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-          }}>
-            <span style={{ fontSize: 15, color: o.color }}>{o.icon}</span>
-            <span style={{ fontSize: 9.5, color: rating === o.key ? o.color : "var(--color-muted)", fontWeight: rating === o.key ? 600 : 400 }}>{o.label}</span>
-          </button>
-        ))}
+      <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
+        You close <b style={{ color: "#4a8060" }}>{rate(top.perDay)} a day</b> on{" "}
+        {top.character.charAt(0).toUpperCase() + top.character.slice(1)} days ({top.days} of them)
+        {top.otherPerDay != null && <> — against {rate(top.otherPerDay)} on the other {top.otherDays}</>}.
       </div>
-      {/* States what was REPORTED, with the counts, the window, and the
-          comparison — never "X days make you productive". This is
-          correlational, self-reported and small-n; the copy has to carry that
-          honestly or it's a horoscope with a number attached. */}
-      {top && (
-        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
-            What you've reported
-          </div>
-          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
-            You felt aligned on <b style={{ color: "#4a8060" }}>{top.aligned} of {top.total}</b>{" "}
-            {top.character.charAt(0).toUpperCase() + top.character.slice(1)} days
-            {top.otherRate != null && <> — against {top.otherAligned} of {top.otherTotal} other days</>}.
-            <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 3 }}>
-              {pattern!.ratedTotal} days rated{pattern!.earliest && pattern!.latest ? ` · ${pattern!.earliest} to ${pattern!.latest}` : ""}. Early days — a hint, not a verdict.
-            </div>
-          </div>
+      {voc && voc.otherPerDay != null && (
+        <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
+          On void-of-course days: <b>{rate(voc.perDay)} a day</b> across {voc.days} — against {rate(voc.otherPerDay)} on the other {voc.otherDays}.
         </div>
       )}
-      {/* Say how far off the finding is, so rating feels like it accrues. */}
-      {pattern && !pattern.enough && pattern.ratedTotal > 0 && (
-        <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-border)", fontSize: 9.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-          {pattern.ratedTotal} of {pattern.minTotal} days rated — keep going and Compass can start showing you which days actually land.
-        </div>
-      )}
+      <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 5 }}>
+        {data.itemsCompleted} items · {data.range.from} to {data.range.to}. What happened on those days, not what they do to you.
+      </div>
     </div>
   );
 }
@@ -2153,31 +2123,6 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 
   const firstName = (displayName ?? "").split(" ")[0];
 
-  // Morning-only: if yesterday was never rated, offer it here — the reflect
-  // loop's question belongs to the evening, but an unrated yesterday is still
-  // worth thirty seconds over coffee.
-  const yesterday = addDaysLocal(localToday(), -1);
-  const { data: yDay } = useQuery<any>({
-    queryKey: ["logs-day", testerId, yesterday],
-    queryFn: async () => {
-      const r = await fetch(`/api/logs/day?date=${yesterday}&tz=${new Date().getTimezoneOffset()}`, { headers: { "x-tester-id": testerId ?? "" } });
-      if (!r.ok) return null;
-      return r.json();
-    },
-    enabled: !!testerId && mode === "morning",
-    staleTime: 1000 * 60 * 30,
-  });
-  const [yRated, setYRated] = useState<string | null>(null);
-  const yesterdayFelt = yRated ?? (yDay?.checkIn?.behaviorTags ?? []).find((t: string) => t.startsWith("felt:"))?.slice(5) ?? null;
-  const rateYesterday = (felt: string) => {
-    setYRated(felt);
-    fetch("/api/check-ins", {
-      method: "POST",
-      headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
-      body: JSON.stringify({ date: yesterday, behaviorTags: [`felt:${felt}`] }),
-    }).catch(() => {});
-  };
-
   if (mode === "morning") {
     const nowMs = Date.now();
     const nextEvent = cal
@@ -2202,19 +2147,6 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           {CHARACTER_LABEL[character]} tide, {tide?.levelLabel?.toLowerCase() ?? "steady"} — {CHARACTER_ESSENCE[character]?.toLowerCase().replace(/\.$/, "")}.
         </div>
 
-        {/* Yesterday, if it slipped past unrated */}
-        {testerId && yDay !== undefined && !yesterdayFelt && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 10.5, color: "var(--text-3)" }}>
-            <span>Yesterday felt…</span>
-            {[["aligned", "●", "#4a8060"], ["mixed", "◐", "#a08040"], ["off", "○", "#9a6060"]].map(([k, icon, c]) => (
-              <button key={k} onClick={() => rateYesterday(k)} style={{
-                fontSize: 10.5, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
-                border: "1px solid var(--color-border)", background: "var(--color-card)", color: c,
-              }}>{icon} {k}</button>
-            ))}
-          </div>
-        )}
-        {yRated && <div style={{ fontSize: 10, color: "#4a8060", marginBottom: 10 }}>✓ yesterday logged</div>}
 
         {/* The morning glance: one row per Guiding Star — next move + today's
             best window for its element; tap → that star's game plan. */}

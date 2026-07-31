@@ -1752,3 +1752,67 @@ describe("ephemeris time granularity", () => {
     expect(src).toMatch(/norm360\(deltaAt\(mid\) - d0\) >= target/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 34. THE FELT RATING WAS WRITE-ONLY, AND THE WAKE DATED WINS BY updatedAt
+// Owner's call 2026-07-31: drop the aligned/mixed/off rating and build the
+// pattern on what people actually finish. Two defects underneath it.
+//
+// (a) The rating changed nothing. Traced across electionEngine, election,
+//     synthesis, dayarc, interpretation and plan: zero references. It cost
+//     thirty seconds a day and returned one sentence. It was also confounded by
+//     its own advice — the app says "a Deep day, rest", you rest, and it asks
+//     whether that felt right. Agreement there is compliance, not evidence.
+//
+// (b) `tasks` had no completion timestamp at all, so "what do you finish on a
+//     Deep day" was unanswerable however much anyone finished. Adding it
+//     immediately exposed a live bug: the wake ledger dated a finished task by
+//     `updatedAt`, which moves on ANY edit — so renaming a task completed last
+//     month re-dated it as a win TODAY. Seeding 42 historical completions
+//     rendered "Today's wins · 42". After the fix: 2, the two actually
+//     finished today.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("behavioural pattern replaces the felt rating", () => {
+  const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+
+  it("no longer asks anyone to rate a day", () => {
+    expect(today).not.toMatch(/How did today feel/);
+    expect(today).not.toMatch(/Yesterday felt/);
+    expect(today).not.toMatch(/FELT_OPTIONS/);
+  });
+
+  it("reads the pattern from completions, not from self-report", () => {
+    expect(today).toMatch(/done-pattern/);
+    expect(today).not.toMatch(/felt-pattern/);
+  });
+
+  it("keeps the epistemic rules that were the good part of the old loop", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/donePattern.ts"), "utf-8");
+    expect(src).toMatch(/MIN_PER_CHARACTER/);       // silent below a floor
+    expect(src).toMatch(/otherPerDay/);             // always the comparison
+    expect(src).toMatch(/range: \{ from: since, to: today \}/); // always the window
+    // Days with ZERO completions must count, or the pattern only ever sees the
+    // days that went well.
+    expect(src).toMatch(/const n = perDay\.get\(d\) \?\? 0;/);
+  });
+
+  it("makes no causal claim", () => {
+    const banned = ["makes you", "causes", "will be", "proves", "guarantees"];
+    for (const b of banned) expect(today.toLowerCase()).not.toContain(`day ${b}`);
+    expect(today).toMatch(/What happened on those days, not what they do to you/);
+  });
+
+  it("dates a finished task by when it was FINISHED", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/momentum.ts"), "utf-8");
+    expect(src).toMatch(/t\.completedAt \?\? t\.updatedAt/);
+  });
+
+  it("stamps completedAt on the flip to done, and clears it on the flip back", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/tasks.ts"), "utf-8");
+    expect(src).toMatch(/String\(done\) === "true" \? new Date\(\) : null/);
+  });
+});

@@ -32,8 +32,8 @@ const SECTIONS: Section[] = [
     lead: "Two moments a day. Everything else is optional.",
     points: [
       { term: "Morning — Cast off", text: "Today opens with the day's character, your first few things, and one good window. It appears in the first hours after you wake, not at a fixed clock time." },
-      { term: "Evening — Log the day", text: "Rate how the day actually felt: aligned, mixed, or off. Thirty seconds. It builds a record of which kinds of day have landed for you — shown back to you once there is enough of it to mean anything." },
-      { term: "What it does and doesn't do", text: "It shows you your own pattern — \u201caligned on 5 of 6 Building days, against 2 of 8 others\u201d — with the counts, so you can judge it. It does not currently change what Compass recommends. When that changes, this will say so." },
+      { term: "Evening — Log the day", text: "A line about the day, if you want one. It lands in the Log stamped with that day's sky. Optional — nothing depends on it." },
+      { term: "Your pattern", text: "Built from what you actually finish — tasks, habits, blocks — against the kind of day it was, including void spells. Nothing extra to log: it accrues from work you were doing anyway. It stays silent until there is enough of it to mean something, and it reports what happened, never what a day does to you." },
     ],
   },
   {
@@ -90,7 +90,7 @@ const SECTIONS: Section[] = [
     points: [
       { term: "It won't move your blocks behind your back", text: "Nothing reschedules silently. If something needs to shift, you shift it." },
       { term: "It won't promise outcomes", text: "It describes conditions. 'This stretch suits deep work' — never 'this will go well'." },
-      { term: "It won't pretend to know you yet", text: "The personal layer needs your birth details, and the felt-pattern needs a couple of weeks of ratings. Until then it tells you what it doesn't know." },
+      { term: "It won't pretend to know you yet", text: "The personal layer needs your birth details, and the pattern needs a few weeks of finished work behind it. Until then it tells you what it doesn't know." },
       { term: "It won't keep a guilt ledger", text: "There's a record of when you showed up, not a streak that resets. A rhythm has a beat you can miss and come back to." },
     ],
   },
