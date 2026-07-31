@@ -965,3 +965,79 @@ describe("no theme-breaking colours", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 20. CRASHES THAT REPORT NOWHERE
+// Shipped gap: ErrorBoundary caught render crashes, showed "Something went
+// wrong", and told us nothing — and anything thrown outside React vanished into
+// a console we will never see. During a beta that makes a crash exactly as
+// visible as a tester's willingness to mention it.
+//
+// The subtle part is the throttle, not the reporting: a crash inside a render
+// loop fires hundreds of times a second, and each one is a write to a database
+// billed by compute time.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The dedupe/ceiling rule from lib/errorReport.ts, restated. */
+function makeReporter(maxPerSession = 10) {
+  const seen = new Set<string>();
+  let sent = 0;
+  return (source: string, message: string): boolean => {
+    if (sent >= maxPerSession) return false;
+    const key = `${source}:${message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    sent++;
+    return true;
+  };
+}
+
+describe("client error reporting", () => {
+  it("a render loop firing the same error 500 times writes one row", () => {
+    const report = makeReporter();
+    const written = Array.from({ length: 500 }, () => report("render", "boom")).filter(Boolean);
+    expect(written.length).toBe(1);
+  });
+
+  it("distinct errors are all kept, up to the session ceiling", () => {
+    const report = makeReporter(10);
+    const written = Array.from({ length: 25 }, (_, i) => report("render", `boom ${i}`)).filter(Boolean);
+    expect(written.length).toBe(10); // not 25 — the ceiling holds
+  });
+
+  it("the same message from different sources is two bugs, not one", () => {
+    const report = makeReporter();
+    expect(report("render", "boom")).toBe(true);
+    expect(report("promise", "boom")).toBe(true);
+  });
+
+  it("reports the three paths that can actually crash the app", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/tides/src/lib/errorReport.ts"), "utf-8");
+    for (const listener of ["error", "unhandledrejection"]) {
+      expect(src).toContain(`addEventListener("${listener}"`);
+    }
+    const boundary = readFileSync(
+      join(process.cwd(), "artifacts/tides/src/components/ErrorBoundary.tsx"), "utf-8");
+    // getDerivedStateFromError renders the fallback; componentDidCatch is the
+    // only hook that can report. Having one without the other is the bug.
+    expect(boundary).toMatch(/componentDidCatch/);
+    expect(boundary).toMatch(/reportError\(/);
+  });
+
+  it("never lets a resource-load failure masquerade as a crash", () => {
+    // window 'error' fires for a missing image with no .error object; treating
+    // those as crashes would bury the real ones in noise.
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/tides/src/lib/errorReport.ts"), "utf-8");
+    expect(src).toMatch(/if \(!e\.error\) return;/);
+  });
+
+  it("does not ship the query string alongside an account id", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/tides/src/lib/errorReport.ts"), "utf-8");
+    expect(src).toContain("location.pathname");
+    expect(src).not.toContain("location.href");
+    expect(src).not.toContain("location.search");
+  });
+});

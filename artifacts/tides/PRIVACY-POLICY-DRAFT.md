@@ -47,6 +47,12 @@ plan.
   something, when you named a win, when you changed a setting — **together
   with your account identifier** and a small set of properties describing the
   event. We use this to understand which parts of Compass are actually used.
+- When the app crashes we record a diagnostic report — the error message, a
+  stack trace, and the page you were on — alongside your account identifier, so
+  we can find and fix it. An error message can quote text that was on screen,
+  so these are truncated and limited to a handful per session. They are stored
+  with the usage events above, go nowhere else, and are removed when you delete
+  your account.
 
 **Email**
 - If you subscribe to reports, we store your email address, which reports you

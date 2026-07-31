@@ -1,4 +1,5 @@
 import React from "react";
+import { reportError } from "@/lib/errorReport";
 
 interface State { hasError: boolean; message: string }
 
@@ -10,6 +11,15 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 
   static getDerivedStateFromError(err: Error): State {
     return { hasError: true, message: err.message };
+  }
+
+  // This boundary showed the user a message and told us nothing. During a beta
+  // that means a crash is only ever as visible as a tester's willingness to
+  // mention it — and the ones who hit it early are the ones least likely to.
+  componentDidCatch(err: Error, info: React.ErrorInfo) {
+    reportError("render", err, {
+      componentStack: (info.componentStack ?? "").slice(0, 600),
+    });
   }
 
   render() {
