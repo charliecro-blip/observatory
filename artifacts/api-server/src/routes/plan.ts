@@ -240,6 +240,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     gte(planningWindows.startTime, new Date(nowMs)),
     lte(planningWindows.startTime, new Date(horizonEndMs)),
   ));
+  const placementCtx: { index: number; candidates: Slot[]; durMs: number; dueMs: number; element: string; chosen: number }[] = [];
   const reserved: { s: number; e: number }[] = existing.map((w) => ({
     s: new Date(w.startTime).getTime(), e: new Date(w.endTime).getTime(),
   }));
@@ -276,6 +277,10 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
 
     const push = (start: number, date: string, matchedLane: boolean, tier: Tier, note?: string) => {
       reserved.push({ s: start, e: start + durMs });
+      // Kept so a second pass can offer alternatives once every item has been
+      // placed. Computing them here would be wrong: `reserved` is still
+      // growing, so a slot that looks free now may be taken by the next task.
+      placementCtx.push({ index: planned.length, candidates, durMs, dueMs, element: t.assoc.element, chosen: start });
       planned.push({
         title: t.title,
         estimatedMinutes: t.estimatedMinutes,
@@ -357,6 +362,56 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
           : "the whole range is booked solid — clear a block and weave again",
       });
     }
+  }
+
+  // ── Alternatives — "move it", not just "take it or leave it" ──────────────
+  // The weaver ranked every viable slot and then threw all but the winner
+  // away, which is what made a woven plan take-it-or-leave-it: the only
+  // response to a placement you disliked was to delete it and weave again.
+  // These are the runner-up slots it already computed, filtered against the
+  // FINAL reservation set so an offered alternative is genuinely free.
+  // Claimed across ALL items, not per item. Offering the same free slot to
+  // three different tasks means any two of those moves collide — and an app
+  // whose distinguishing behaviour is capacity honesty must not hand out
+  // options that quietly conflict. Interval-based, not start-time-based:
+  // a 90-minute alternative at 12:00 and a 30-minute one at 13:00 have
+  // different starts and still overlap.
+  //
+  // The guarantee this buys: ANY SUBSET of the offered moves can be taken
+  // together without producing an overlap.
+  const claimed: { s: number; e: number }[] = [];
+
+  for (const ctx of placementCtx) {
+    const item = planned[ctx.index];
+    if (!item) continue;
+    const alts: { startAt: string; endAt: string; date: string; tier: Tier; tierNote: string; planetaryHour: string }[] = [];
+    const seenDays = new Set<string>();
+    for (const c of ctx.candidates) {
+      if (alts.length >= 3) break;
+      const start = c.startMs;
+      if (start === ctx.chosen) continue;
+      if (start < nowMs || start + ctx.durMs > ctx.dueMs) continue;
+      // Free against everything finally booked, minus this item's own slot.
+      const clash = reserved.some((r) =>
+        !(r.s === ctx.chosen && r.e === ctx.chosen + ctx.durMs) &&
+        overlaps(start, start + ctx.durMs, r.s, r.e));
+      if (clash) continue;
+      // One option per day: three choices on the same afternoon is a worse
+      // offer than three different days, and it is days people want to move by.
+      if (seenDays.has(c.date)) continue;
+      if (claimed.some((k) => overlaps(start, start + ctx.durMs, k.s, k.e))) continue;
+      seenDays.add(c.date);
+      claimed.push({ s: start, e: start + ctx.durMs });
+      const matched = c.element === ctx.element;
+      const tier: Tier = matched ? "great" : "workable";
+      alts.push({
+        startAt: new Date(start).toISOString(),
+        endAt: new Date(start + ctx.durMs).toISOString(),
+        date: c.date, tier, tierNote: TIER_NOTE[tier],
+        planetaryHour: getPlanetaryHour(new Date(start), lat, lon).ruler,
+      });
+    }
+    (item as any).alternatives = alts;
   }
 
   planned.sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));

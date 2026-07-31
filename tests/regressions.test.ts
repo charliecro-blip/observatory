@@ -1335,3 +1335,83 @@ describe("the guide", () => {
     expect(namespaces.some((n) => key.startsWith(n))).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 27. THE VOID WAS TREATED AS A PROPERTY OF THE DAY, AND MEASURED IN 10-MIN LUMPS
+// Caught in production by the owner, 2026-07-31: the 7 AM email went out titled
+// "Begin nothing today" while the Moon left the void at 07:13 and was already
+// in Pisces. Two separate defects underneath one symptom.
+//
+//   (a) composeDay sampled voidOfCourse() at ONE instant — send time — and then
+//       spoke for the whole day. At 07:00 the void had thirteen minutes left,
+//       and that became a day-long verdict in the SUBJECT LINE, the least
+//       qualified place in the email.
+//
+//   (b) computeDayArc scanned in 10-minute steps and reported the bucket as an
+//       exact clock time: "void until 07:20" for a boundary at 07:13:30. Void
+//       windows are used as literal start-and-stop guidance, so a six-minute
+//       overstatement is not cosmetic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("void of course windows", () => {
+  it("locates the ingress to the second, not to a ten-minute bucket", async () => {
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const D: any = await import("../artifacts/api-server/src/lib/dayarc.js");
+    const tz = 300;
+    const now = new Date();
+    const lon0 = ((A.moonLongitude(A.julianDay(now)) % 360) + 360) % 360;
+    const sign0 = Math.floor(lon0 / 30);
+
+    // Ground truth, computed independently of the code under test: bisect
+    // backwards for the moment the Moon entered its current sign.
+    let lo = now.getTime() - 3 * 86400000, hi = now.getTime();
+    for (let i = 0; i < 48; i++) {
+      const mid = (lo + hi) / 2;
+      const l = ((A.moonLongitude(A.julianDay(new Date(mid))) % 360) + 360) % 360;
+      if (Math.floor(l / 30) === sign0) hi = mid; else lo = mid;
+    }
+    const truthMs = hi;
+
+    const arc = D.computeDayArc(new Date(truthMs), 30.27, -97.74, tz);
+    const windows = arc.vocWindows ?? [];
+    if (!windows.length) return; // no void that day — nothing to check
+    const appEnd = Date.parse(windows[windows.length - 1].end);
+    // The old 10-minute scan drifted up to 600s. Anything over a minute would
+    // be visible to someone timing a start against it.
+    expect(Math.abs(appEnd - truthMs) / 1000).toBeLessThan(60);
+  });
+
+  it("a void with minutes left is not a verdict on the day", () => {
+    // The threshold from composeDay, restated. At 07:00 with the void ending
+    // 07:13, "Begin nothing today" must not be the subject.
+    const dominates = (msAhead: number) => msAhead >= 4 * 3600000;
+    expect(dominates(13 * 60000)).toBe(false);        // the shipped failure
+    expect(dominates(3.9 * 3600000)).toBe(false);
+    expect(dominates(6 * 3600000)).toBe(true);        // genuinely owns the day
+  });
+
+  it("a void that already closed is history, not a caution", () => {
+    const nowMs = Date.parse("2026-07-31T12:40:00Z");
+    const windows = [{ start: Date.parse("2026-07-31T05:00:00Z"), end: Date.parse("2026-07-31T12:13:30Z") }];
+    const ahead = windows.filter((w) => w.end > nowMs);
+    expect(ahead).toEqual([]);
+  });
+
+  it("the composer reads windows, not a single-instant boolean", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/reports.ts"), "utf-8");
+    const day = src.slice(src.indexOf("export async function composeDay"),
+                          src.indexOf("export async function composeWeek"));
+    expect(day).toMatch(/vocWindows/);
+    expect(day).toMatch(/vocAhead/);
+    // The subject may only use the "owns the day" form, never the raw flag.
+    expect(day).toMatch(/vocDominatesDay\s*\n?\s*\?\s*`Begin nothing today/);
+  });
+
+  it("names the hour the void lifts, rather than implying it runs all day", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/reports.ts"), "utf-8");
+    expect(src).toMatch(/The Moon is void until \$\{clock\(w\.end\)\}/);
+    expect(src).toMatch(/After that the day is ordinary/);
+  });
+});

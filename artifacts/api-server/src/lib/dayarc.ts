@@ -162,6 +162,24 @@ export function findPeakWindows(curve: DayArcCurvePoint[], topN = 2, minGapHours
   return picked.sort((a, b) => a.startHour - b.startHour);
 }
 
+
+// ── Boundary refinement ──────────────────────────────────────────────────────
+// The scan below steps in 10-minute jumps, which is plenty to DETECT that a
+// boundary happened but not to say WHEN. Reporting a 10-minute bucket as an
+// exact clock time ("void until 07:20" when the ingress is really 07:15) is
+// over-claiming precision we never had — and void windows are used as literal
+// start-and-stop guidance, so a ten-minute lie is a real one.
+//
+// Bisection costs ~10 extra ephemeris evaluations per boundary, only at
+// boundaries the coarse scan already found, and lands inside a second.
+function refineCrossing(lo: number, hi: number, isPast: (t: number) => boolean): Date {
+  for (let i = 0; i < 12; i++) {           // 10min → <0.2s
+    const mid = (lo + hi) / 2;
+    if (isPast(mid)) hi = mid; else lo = mid;
+  }
+  return new Date(Math.round(hi / 1000) * 1000);
+}
+
 export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0): DayArc {
   // Anchor the day to the viewer's local midnight (not the server's, which is UTC on
   // Railway). Shift the instant into viewer-local wall time, read its Y/M/D, then map
@@ -195,14 +213,28 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     const jd = julianDay(d);
     const mLon = norm360(moonLongitude(jd));
     const sign = signOf(mLon);
-    if (sign !== prevSign) ingresses.push({ t: d, sign });
+    if (sign !== prevSign) {
+      // Exact moment the Moon changes sign — this is what ends a void.
+      const target = sign;
+      ingresses.push({
+        t: refineCrossing(t - STEP_MS, t, (ms) => signOf(norm360(moonLongitude(julianDay(new Date(ms))))) === target),
+        sign,
+      });
+    }
     for (const p of ASPECT_PLANETS) {
       const del = norm360(mLon - bodyLon(p, jd));
       const prev = prevDelta[p];
+      // The exact perfection, not the 10-minute bucket it landed in — this is
+      // what a void window STARTS at.
+      const exact = (angle: number) => refineCrossing(t - STEP_MS, t, (ms) => {
+        const j = julianDay(new Date(ms));
+        const dd = norm360(norm360(moonLongitude(j)) - bodyLon(p, j));
+        return del >= prev ? dd >= angle : (dd >= angle && dd <= prev) || dd <= del;
+      });
       if (del >= prev) {
-        for (const A of SIGNED_ASPECTS) if (prev < A.angle && A.angle <= del) { perfections.push({ t: d, planet: p, aspect: A.name }); break; }
+        for (const A of SIGNED_ASPECTS) if (prev < A.angle && A.angle <= del) { perfections.push({ t: exact(A.angle), planet: p, aspect: A.name }); break; }
       } else {
-        for (const A of SIGNED_ASPECTS) if (A.angle > prev || A.angle <= del) { perfections.push({ t: d, planet: p, aspect: A.name }); break; }
+        for (const A of SIGNED_ASPECTS) if (A.angle > prev || A.angle <= del) { perfections.push({ t: exact(A.angle), planet: p, aspect: A.name }); break; }
       }
       prevDelta[p] = del;
     }

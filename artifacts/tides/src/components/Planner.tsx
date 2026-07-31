@@ -20,7 +20,8 @@ interface Card {
   title: string; estimatedMinutes: number; energy: string; dueDate: string | null;
   element: string; windowType: string; planets: string[]; rationale: string;
 }
-interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; }
+interface Alternative { startAt: string; endAt: string; date: string; tier: string; tierNote: string; planetaryHour: string; }
+interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; alternatives?: Alternative[]; }
 interface UnplacedItem { title: string; element: string; reason: string; }
 interface WeaveResult { horizon: string; planned: PlannedItem[]; unplaced: UnplacedItem[]; }
 
@@ -116,6 +117,26 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       setCommitted(true);
     },
   });
+
+  // Which row has its alternatives open. The plan is a proposal until commit,
+  // so moving one is local state — no endpoint, nothing written.
+  const [movingIdx, setMovingIdx] = useState<number | null>(null);
+  const moveTo = (idx: number, alt: Alternative) => {
+    setResult((r) => {
+      if (!r) return r;
+      const planned = r.planned.map((p, i) => i === idx
+        ? { ...p, startAt: alt.startAt, endAt: alt.endAt, date: alt.date, tier: alt.tier, tierNote: alt.tierNote, planetaryHour: alt.planetaryHour,
+            // The slot it just vacated becomes an option again, and the one it
+            // took stops being one — otherwise "move" is a one-way door.
+            alternatives: [
+              { startAt: p.startAt, endAt: p.endAt, date: p.date, tier: p.tier ?? "workable", tierNote: p.tierNote ?? "", planetaryHour: p.planetaryHour },
+              ...(p.alternatives ?? []).filter((a) => a.startAt !== alt.startAt),
+            ].slice(0, 3) }
+        : p);
+      return { ...r, planned };
+    });
+    setMovingIdx(null);
+  };
 
   const editCard = (i: number, patch: Partial<Card>) => setCards((cs) => cs!.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const removeCard = (i: number) => setCards((cs) => cs!.filter((_, j) => j !== i));
@@ -319,6 +340,32 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         </div>
                       )}
                       <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>
+                      {/* Move, not just drop. Until this existed the only
+                          response to a placement you disliked was to delete it
+                          and weave the whole list again. */}
+                      {(item.alternatives?.length ?? 0) > 0 && (
+                        <div style={{ marginTop: 5 }}>
+                          <button onClick={() => setMovingIdx(movingIdx === idx ? null : idx)} style={{
+                            fontSize: 10, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
+                            border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)",
+                          }}>{movingIdx === idx ? "Keep it here" : `Move — ${item.alternatives!.length} other option${item.alternatives!.length === 1 ? "" : "s"}`}</button>
+                          {movingIdx === idx && (
+                            <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 4 }}>
+                              {item.alternatives!.map((a) => (
+                                <button key={a.startAt} onClick={() => moveTo(idx, a)} style={{
+                                  textAlign: "left", fontSize: 10.5, padding: "5px 9px", borderRadius: 7, cursor: "pointer",
+                                  border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)",
+                                }}>
+                                  <b style={{ color: "var(--text-1)" }}>{fmtDayHeader(a.startAt)}</b> {fmtTime(a.startAt)}–{fmtTime(a.endAt)}
+                                  <span style={{ color: a.tier === "great" ? "#3a7040" : "var(--color-muted)", marginLeft: 6 }}>
+                                    {a.tier === "great" ? "✦" : "·"} {a.tierNote}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button onClick={() => setDropped((prev) => new Set(prev).add(idx))} title="Drop this one" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1 }}>✕</button>
                   </div>

@@ -25,6 +25,7 @@ import {
 import { computeNatalChart, computeTransitAspects, computeTransitForecast } from "../lib/natal.js";
 import { computeElections } from "../lib/electionEngine.js";
 import { dayReading } from "../lib/synthesis.js";
+import { computeDayArc } from "../lib/dayarc.js";
 import { domicileLord } from "../lib/dignity.js";
 import {
   SIGN_GUIDE, PHASE_GUIDE, DAY_RULER, DAY_RULER_GIFT, favoredActivities, bestFor,
@@ -165,7 +166,30 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
   const local = localDate(tz);
   const { name: phaseName, fraction } = moonPhase(jd);
   const elem = getDailyElementEmphasis(jd);
-  const { voc } = voidOfCourse(jd);
+  // The void is a WINDOW, not a property of the day — and treating it as the
+  // latter shipped a real miss: on 2026-07-30 the Moon was void until 8:01 AM
+  // and in Pisces thereafter, and the 7 AM email went out titled "Begin nothing
+  // today". By the time it was read the condition had already ended.
+  //
+  // `voidOfCourse(jd)` answers only "is it void at this instant", which at send
+  // time is 7 AM. computeDayArc already returns the real windows with true
+  // ingress ends (it is what the app's own rail uses to say "until 8:01 AM"),
+  // so the email uses those instead.
+  const vocWindows = computeDayArc(now, lat, lon, tz).vocWindows;
+  const dayEndMs = Date.parse(localDate(tz, 1).toISOString().slice(0, 10) + "T00:00:00Z") + tz * 60000;
+  // Only what is still AHEAD of the reader matters — a void that closed before
+  // they opened the email is not a caution, it is history.
+  const vocAhead = vocWindows
+    .map((w) => ({ start: Date.parse(w.start), end: Date.parse(w.end) }))
+    .filter((w) => w.end > now.getTime() && w.start < dayEndMs)
+    .sort((a, b) => a.start - b.start);
+  const { voc: vocNow } = voidOfCourse(jd);
+  // "Begin nothing today" is only honest when the void actually owns the day.
+  // Under four hours ahead of them, it is a spell to work around, not a verdict
+  // on the day — and it must not take the subject line.
+  const vocAheadMs = vocAhead.reduce((n, w) => n + (Math.min(w.end, dayEndMs) - Math.max(w.start, now.getTime())), 0);
+  const vocDominatesDay = vocAheadMs >= 4 * 3600000;
+  const voc = vocAhead.length > 0;
   const mercuryRx = getPlanetPositions(jd).some((p) => p.planet === "Mercury" && p.retrograde);
   const moonSign = elem.moonSign;
   const dayRuler = DAY_RULER[local.getUTCDay()];
@@ -264,8 +288,18 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
   // when the Moon is void, so the body has to explain it or the email opens on
   // an unanswered promise.
   if (voc) {
+    const w = vocAhead[0];
+    const clock = (ms: number) => new Date(ms - tz * 60000).toISOString().slice(11, 16);
+    const endsToday = w.end < dayEndMs;
     blocks.push({ heading: "One caution", lines: [
-      "The Moon is void today — finish and tidy freely, but begin nothing you want to last.",
+      vocNow && endsToday
+        // The case that shipped wrong. Name the hour it lifts, and say what
+        // the day becomes afterwards, so a 7 AM reader isn't handed a verdict
+        // that expires before their first coffee.
+        ? `The Moon is void until ${clock(w.end)} — finish and tidy, but begin nothing you want to last until then. After that the day is ordinary.`
+        : vocNow
+          ? "The Moon is void for the rest of today — finish and tidy freely, but begin nothing you want to last."
+          : `The Moon goes void at ${clock(w.start)}${endsToday ? ` and lifts at ${clock(w.end)}` : " for the rest of the day"} — start what matters before then.`,
     ] });
   }
 
@@ -308,7 +342,7 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
     ? `“${top.title.slice(0, 26)}” — ${top.overdueDays} day${top.overdueDays === 1 ? "" : "s"} on`
     : dueCount > 0
       ? `${dueCount} due ${dayNum}${top ? ` — ${top.title.slice(0, 24)}` : ""}`
-      : voc
+      : vocDominatesDay
         ? `Begin nothing today — ${dayNum}`
         : starMatch
           ? `${cap(String(dayEl))} day for “${starMatch.title.slice(0, 22)}” — ${dayNum}`
