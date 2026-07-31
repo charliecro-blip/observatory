@@ -280,3 +280,40 @@ worth knowing rather than fixing right now:
 
 The one real protection already in place: `railway.toml` runs install → tests →
 build → *then* the schema push. A broken invariant cannot reach the database.
+
+---
+
+## 10. Timing accuracy audit — 2026-07-31
+
+*Triggered by the owner catching a "Begin nothing today" email on a void that
+had already lifted. Every clock-facing number the app prints, measured against
+truth computed independently of the code under test (bisection or brute force,
+sharing no method with it).*
+
+**One disease, four instances: a coarse or approximate calculation whose result
+was printed as an exact time.**
+
+| Surface | Was | Now |
+|---|---|---|
+| Moon ingress — the rail's "void until…" | **58.5 min** (hourly scan) | 0.64 s |
+| Void window ends | 6.5 min (10-min scan) | 0 s |
+| Angular crossings | **8.6 min** — and a crossing already underway reported orb 2.25° against a true 0.002° | 0.43 min, orbs 0.00 |
+| Aspect "exact in…" | **364 min** — Moon square Mars 32 min away, reported as 6.6 h | 1.6 min (Moon), 0.8 min (slow) |
+| Sunrise / sunset | 29 s | ✅ no change needed |
+| Planetary hour boundaries | 0.0 s | ✅ no change needed |
+
+**Why these were invisible.** Every one produced a *plausible* number. Nothing
+crashed, nothing looked wrong, and the only way to see any of it was to compute
+the truth separately and subtract. Reading the code would not have found them —
+three of the four had comments asserting the approximation was adequate.
+
+**The pattern to watch for.** A scan step (4 min, 10 min, 1 h, 6 h) or a linear
+extrapolation, whose output is then formatted to the minute. If a number is
+printed as a clock time, it needs refining to below display precision — and the
+edges need checking, because two of the four defects were at a scan boundary
+rather than in its interior.
+
+**Regression tests 27–32** each recompute the truth at run time rather than
+pinning a date, and several keep the OLD method alongside the new one, asserting
+it was worse — a record of the size of the error, so nobody restores a cheap
+scan as an optimisation.
