@@ -6,21 +6,18 @@ import { randomUUID } from "crypto";
 import { tmpdir } from "os";
 import { join } from "path";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
+const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
+// See ../image/client.ts — this module throws at load for the same reason and
+// is imported directly by routes/openai.ts, so it is the same boot crash by a
+// second path. An unconfigured audio key should fail the transcribe call, not
+// the deterministic astrology the rest of the server exists to serve.
+export const isOpenAiAudioConfigured = Boolean(baseURL && apiKey);
 
 export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: apiKey || "unconfigured",
+  baseURL: baseURL || "https://api.openai.com/v1",
 });
 
 export type AudioFormat = "wav" | "mp3" | "webm" | "mp4" | "ogg" | "unknown";

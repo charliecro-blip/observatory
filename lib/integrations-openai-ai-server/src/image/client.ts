@@ -2,21 +2,22 @@ import fs from "node:fs";
 import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
+const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
+// Same fix as ../client.ts, which this module quietly defeated. That one
+// stopped throwing at module load so a missing key couldn't take down the
+// whole server — but `../index.ts` re-exports `./image`, so importing the
+// package ROOT still loaded this file and still threw. Every route that
+// imports `@workspace/integrations-openai-ai-server` goes through that barrel,
+// so the server logged "AI routes will 503 instead of crashing the server" and
+// then crashed on the next line. A guard is only as good as the sibling
+// modules its barrel drags in.
+export const isOpenAiImageConfigured = Boolean(baseURL && apiKey);
 
 export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: apiKey || "unconfigured",
+  baseURL: baseURL || "https://api.openai.com/v1",
 });
 
 export async function generateImageBuffer(
