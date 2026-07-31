@@ -38,6 +38,7 @@ import studioRouter from "./studio";
 import momentumRouter from "./momentum";
 import electionsRouter from "./elections";
 import eventsRouter from "./events";
+import donePatternRouter from "./donePattern";
 import engineRouter from "./engine";
 import positionFixRouter from "./positionFix";
 
@@ -82,6 +83,7 @@ router.use(studioRouter);
 router.use(momentumRouter);
 router.use(electionsRouter);
 router.use(eventsRouter);
+router.use(donePatternRouter);
 router.use(engineRouter);
 router.use(positionFixRouter);
 

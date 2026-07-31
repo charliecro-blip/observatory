@@ -116,6 +116,13 @@ export const tasks = pgTable("tasks", {
   // (milestone) of a Guiding Star, so progress rolls up task → step → star.
   milestoneId: integer("milestone_id"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // When it was actually finished — NOT the same as dueDate, which is when it
+  // was meant to be. Without this the app could tell you a task was done but
+  // never which day you did it on, so "what do you actually get done on a Deep
+  // day" was unanswerable from the data. Nullable and additive: the safe kind
+  // of change per BACKLOG §9a, and old rows legitimately have no answer.
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

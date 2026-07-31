@@ -89,8 +89,12 @@ router.patch("/tasks/:id", async (req, res) => {
   if (!testerId) return;
   const id = parseInt(req.params.id);
   const { title, notes, done, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
+  // Stamp the moment it flipped to done, and clear it if it flips back — this
+  // is the only record of WHEN work happened. `updatedAt` won't do: it moves
+  // on any edit, so a retitled task would look like it was finished today.
+  const completedAt = done === undefined ? undefined : (String(done) === "true" ? new Date() : null);
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
