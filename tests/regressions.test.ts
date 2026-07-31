@@ -2427,3 +2427,64 @@ describe("the AI guard is reachable and used correctly", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 41. THE TYPECHECK THAT WASN'T CHECKING
+// api-server's tsconfig declared project references to lib/db, lib/api-zod and
+// lib/integrations-openai-ai-server. Those projects emit declarations to
+// `dist/`, which nothing built — so every run reported TS6305 ("output file
+// has not been built from source file") and, far worse, **stopped validating
+// imports across those package boundaries entirely**.
+//
+// Proof it was blind: an import of a symbol the package never exported
+// (`isOpenAiConfigured`, absent from the barrel) passed both typecheck and
+// build, then threw ReferenceError on every request.
+//
+// The references also contradicted the packages themselves, whose `exports`
+// point at `./src/index.ts` — source, not dist. Dropping them lets TypeScript
+// resolve through to real source. That took api-server from 16 masked errors
+// to 23 REAL ones, all since fixed, and it now genuinely fails on a bad
+// cross-package import.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("cross-package imports are actually typechecked", () => {
+  const readJson = (p: string) => JSON.parse(readFileSync(join(process.cwd(), p), "utf-8"));
+
+  it("api-server declares no stale project references", () => {
+    const cfg = readJson("artifacts/api-server/tsconfig.json");
+    // A reference here is only safe if something builds the referenced dist.
+    // Nothing does, and the packages export source anyway.
+    expect(cfg.references).toBeUndefined();
+  });
+
+  it("the workspace packages export source, which is what makes that safe", () => {
+    for (const p of ["lib/db", "lib/api-zod", "lib/integrations-openai-ai-server"]) {
+      const exports = readJson(`${p}/package.json`).exports;
+      expect(JSON.stringify(exports)).toMatch(/\.\/src\//);
+    }
+  });
+
+  it("a package declaring node types depends on them", () => {
+    // lib/integrations-openai-ai-server set types:["node"] without depending on
+    // @types/node, so `tsc --build` failed at the root with TS2688 — which
+    // short-circuited the whole typecheck script before it reached any app.
+    for (const p of ["lib/db", "lib/integrations-openai-ai-server"]) {
+      const cfg = readJson(`${p}/tsconfig.json`);
+      if (!cfg.compilerOptions?.types?.includes("node")) continue;
+      const pkg = readJson(`${p}/package.json`);
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      expect(deps["@types/node"]).toBeDefined();
+    }
+  });
+
+  it("p-retry's AbortError is imported by name, not off the default export", () => {
+    // In p-retry v7 it is a named export. `pRetry.AbortError` was undefined, so
+    // every non-rate-limit batch failure threw "not a constructor" instead of
+    // aborting — a broken error path, invisible while this package went
+    // unchecked.
+    const src = readFileSync(
+      join(process.cwd(), "lib/integrations-openai-ai-server/src/batch/utils.ts"), "utf-8");
+    expect(src).toMatch(/import pRetry, \{ AbortError \} from "p-retry"/);
+    expect(src).not.toMatch(/new pRetry\.AbortError/);
+  });
+});

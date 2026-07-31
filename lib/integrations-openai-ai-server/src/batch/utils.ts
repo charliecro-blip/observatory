@@ -1,5 +1,9 @@
 import pLimit from "p-limit";
-import pRetry from "p-retry";
+// `AbortError` is a NAMED export in p-retry v7, not a property of the default.
+// `pRetry.AbortError` was undefined, so every non-rate-limit failure threw
+// `TypeError: pRetry.AbortError is not a constructor` instead of aborting the
+// retry cleanly — the error path itself was broken.
+import pRetry, { AbortError } from "p-retry";
 
 /**
  * Batch Processing Utilities
@@ -74,7 +78,7 @@ export async function batchProcess<T, R>(
             if (isRateLimitError(error)) {
               throw error;
             }
-            throw new pRetry.AbortError(
+            throw new AbortError(
               error instanceof Error ? error : new Error(String(error))
             );
           }
@@ -114,7 +118,7 @@ export async function batchProcessWithSSE<T, R>(
           factor: 2,
           onFailedAttempt: (error) => {
             if (!isRateLimitError(error)) {
-              throw new pRetry.AbortError(
+              throw new AbortError(
                 error instanceof Error ? error : new Error(String(error))
               );
             }

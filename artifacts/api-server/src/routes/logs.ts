@@ -78,9 +78,14 @@ router.patch("/logs/:id", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const { id } = UpdateLogParams.parse(req.params);
   const body = UpdateLogBody.parse(req.body);
+  // `logged_at` is NOT NULL in the schema, but the generated request body
+  // allows null. Passing an explicit null straight through hit the constraint
+  // and returned a 500; an omitted-or-null timestamp means "leave it alone".
+  const { loggedAt, ...restOfBody } = body;
+  const updates = { ...restOfBody, ...(loggedAt != null ? { loggedAt } : {}) };
   const [row] = await db
     .update(healthLogs)
-    .set(body)
+    .set(updates)
     .where(and(eq(healthLogs.id, id), eq(healthLogs.testerId, testerId)))
     .returning();
   if (!row) {

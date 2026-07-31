@@ -189,11 +189,21 @@ router.post(
       const { buffer, format } = await ensureCompatibleFormat(req.file.buffer);
       const stream = await voiceChatStream(buffer, "alloy", format);
 
-      let userTranscript = "";
+      // `voiceChatStream` yields only "transcript" (the ASSISTANT's words) and
+      // "audio". There has never been a "user_transcript" event, so the branch
+      // that used to be here could not fire and the user's own words were
+      // never captured — every voice message is stored as "[voice message]".
+      // The compiler said so ("types have no overlap") the whole time; nothing
+      // was reading it, because this package was never typechecked from source.
+      //
+      // Left as-is rather than quietly changed: the honest fix is to run
+      // `speechToText` over the uploaded buffer, which costs an extra API call
+      // per message in an app outside this session's scope. Recorded in
+      // BACKLOG §3b instead of guessed at here.
       let assistantTranscript = "";
+      const userTranscript = "";
 
       for await (const event of stream) {
-        if (event.type === "user_transcript") userTranscript += event.data;
         if (event.type === "transcript") assistantTranscript += event.data;
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
