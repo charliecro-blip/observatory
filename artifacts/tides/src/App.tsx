@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ApiErrorBanner } from "@/components/ApiError";
@@ -28,6 +28,8 @@ import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { logEvent } from "@/lib/analytics";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
+import { parseWhen, formatDueChip } from "@/lib/parseWhen";
+import { localToday } from "@/lib/dates";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
@@ -143,15 +145,42 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
   // One task per non-empty line, so a single capture can be a whole brain-dump.
   const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
 
+  // Lines whose parsed date the user has waved off, keyed by the raw text
+  // rather than by row index — indices shift as you type above a line, which
+  // would silently move a rejection onto someone else's task. Keying by text
+  // also means editing a line re-offers the date, which is right: the words
+  // changed, so the old refusal no longer refers to anything.
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
+  const today = localToday();
+
+  const parsed = useMemo(() => lines.map(raw => {
+    const p = parseWhen(raw, today);
+    const off = rejected.has(raw);
+    return {
+      raw,
+      title: off ? raw : p.title,
+      dueDate: off ? null : p.dueDate,
+      // Kept even when rejected, so the row can offer the date back.
+      offered: p.dueDate,
+      off,
+    };
+  }), [text, rejected, today]);
+
+  const dated = parsed.filter(p => p.offered);
+
   async function addAll() {
     if (lines.length === 0 || !testerId) return;
     setAdding(true);
     setAddError(false);
     try {
-      const results = await Promise.all(lines.map(title => fetch("/api/tasks", {
+      const results = await Promise.all(parsed.map(p => fetch("/api/tasks", {
         method: "POST",
         headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-        body: JSON.stringify({ title, bestWindowType: windowType || undefined }),
+        // `?? undefined` and not `?? null`: the column is nullable and the
+        // route spreads the body straight into the insert, so an explicit null
+        // and an absent key mean the same thing here — but undefined keeps the
+        // payload honest about what the user actually specified.
+        body: JSON.stringify({ title: p.title, dueDate: p.dueDate ?? undefined, bestWindowType: windowType || undefined }),
       })));
       // Was unconditional — a mid-list failure silently dropped that task
       // while the modal still closed on "success" (audit P0 #4).
@@ -178,13 +207,54 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
         <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>Quick capture</div>
-        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 10 }}>One thing per line — dump as many as you like.</div>
+        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 10 }}>One thing per line — dump as many as you like. Say when, and it'll be read as a due date.</div>
         <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addAll(); if (e.key === "Escape") onClose(); }}
           placeholder={"reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"}
           rows={4}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
+        {/* Live parse preview. Shows ONLY the lines a date was found in — the
+            textarea above already shows everything else, and repeating it would
+            turn a small confirmation into a second copy of the input.
+            What it must make visible is the part the user can't see coming:
+            that some of their words are about to leave the title. */}
+        {dated.length > 0 && (
+          <div style={{
+            marginBottom: 10, padding: "8px 10px", borderRadius: 8,
+            background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+          }}>
+            {dated.map(p => (
+              <div key={p.raw} style={{ display: "flex", gap: 8, alignItems: "center", padding: "2px 0" }}>
+                <span style={{
+                  flex: 1, minWidth: 0, fontSize: 11.5, lineHeight: 1.5,
+                  color: p.off ? "var(--text-3)" : "var(--text-1)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{p.title}</span>
+                <button
+                  onClick={() => setRejected(prev => {
+                    const next = new Set(prev);
+                    if (next.has(p.raw)) next.delete(p.raw); else next.add(p.raw);
+                    return next;
+                  })}
+                  title={p.off ? "Read this as a due date after all" : "Keep these words in the title instead"}
+                  style={{
+                    flexShrink: 0, padding: "2px 8px", borderRadius: 20, fontSize: 10.5, cursor: "pointer",
+                    border: "1px solid var(--color-border)",
+                    background: p.off ? "transparent" : "var(--color-card)",
+                    color: p.off ? "var(--text-3)" : "var(--text-2)",
+                    textDecoration: p.off ? "line-through" : "none",
+                    fontFamily: "inherit",
+                  }}>
+                  {formatDueChip(p.offered!, today)}{p.off ? "" : " ×"}
+                </button>
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, lineHeight: 1.5 }}>
+              Tap a date to keep those words in the title instead. Or "quote a phrase" to stop it being read at all.
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select value={windowType} onChange={e => setWindowType(e.target.value)}
             style={{ flex: 1, minWidth: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "var(--text-2)", background: "var(--color-card-2)" }}>
