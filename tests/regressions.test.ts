@@ -1984,3 +1984,119 @@ describe("today's windows are the viewer's day, not UTC's", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 37. THE CASCADE'S GRADING, AND THE THRESHOLD THAT CRIED WOLF
+// The cascade ("your 2pm ran long — shift the next three?") has to say what a
+// move COSTS, which means grading a moved window. First calibration drew the
+// workable/against line at the day's MEDIAN energy — so half of every day was
+// "against" by construction. The first end-to-end run graded three ordinary
+// afternoon blocks "against → against": alarming, and carrying no information.
+//
+// "Against" is the app's strongest word for a placement ("the only open water
+// left"). If it fires half the time it stops meaning anything, and the whole
+// reason this product can refuse is that its refusals are rare and earned.
+//
+// The measured problem with a raw threshold instead (2026-08-12, Austin):
+//   water  min=0.146  max=0.267        ← water's BEST hour
+//   air    min=0.213  p25=0.276        ← below air's 25th percentile
+// so any fixed number grades every water block against and no air block.
+// Energy is now normalised within each element's own daily range.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { tierForMoment, compareTiers, WINDOW_ELEMENT, TIER_NOTE } from "../artifacts/api-server/src/lib/timingTier";
+import { computeDayArc as arcFor } from "../artifacts/api-server/src/lib/dayarc";
+// The schema's own list, so adding a window type there fails this suite rather
+// than silently falling back to a default element.
+import { WINDOW_TYPES as WINDOW_TYPES_FROM_SCHEMA } from "../lib/db/src/schema/planning";
+
+describe("cascade timing grades", () => {
+  const LAT = 30.27, LON = -97.74, TZ = 300;
+  const noon = new Date("2026-08-12T17:00:00Z"); // midday in Austin
+  const arc = arcFor(noon, LAT, LON, TZ);
+  const dayStart = new Date(arc.dayStart).getTime();
+  const HOUR = 3600_000;
+
+  /** Grade every half hour of the working day for one element. */
+  function gradeDay(element: string) {
+    const out: string[] = [];
+    for (let h = 6; h < 23; h += 0.5) {
+      out.push(tierForMoment({
+        element, startMs: dayStart + h * HOUR, durMs: HOUR,
+        lat: LAT, lon: LON, tzOffsetMin: TZ, arc,
+      }).tier);
+    }
+    return out;
+  }
+
+  it("'against' stays rare — it is the strongest word, not the default", () => {
+    for (const element of ["fire", "earth", "air", "water"]) {
+      const tiers = gradeDay(element);
+      const against = tiers.filter((t) => t === "against").length / tiers.length;
+      // Measured worst case across three unlike days is 18% (earth, a day
+      // whose peaks fall outside working hours). The median threshold produced
+      // ~50%. This bound sits between them, so it catches the bug coming back
+      // without failing on an unusually flat sky.
+      expect(against).toBeLessThan(0.25);
+    }
+  });
+
+  it("no element is graded 'against' all day just for having a low curve", () => {
+    // Water's best hour scores below air's worst quartile. A raw threshold
+    // made water permanently against; normalising is what fixes it.
+    for (const element of ["fire", "earth", "air", "water"]) {
+      const tiers = new Set(gradeDay(element));
+      expect(tiers.has("workable") || tiers.has("great")).toBe(true);
+    }
+  });
+
+  it("every element still gets some genuinely good hours", () => {
+    for (const element of ["fire", "earth", "air", "water"]) {
+      expect(gradeDay(element)).toContain("great");
+    }
+  });
+
+  it("tiers order worst→best, so a move can be compared to where it came from", () => {
+    expect(compareTiers("against", "workable")).toBeLessThan(0);
+    expect(compareTiers("workable", "great")).toBeLessThan(0);
+    expect(compareTiers("great", "great")).toBe(0);
+    expect(compareTiers("great", "against")).toBeGreaterThan(0);
+  });
+
+  it("relative energy is comparable across elements even though raw is not", () => {
+    // The property that makes one threshold legitimate for all four.
+    for (const element of ["fire", "earth", "air", "water"]) {
+      let lo = Infinity, hi = -Infinity;
+      for (let h = 0; h < 24; h += 0.5) {
+        const v = tierForMoment({
+          element, startMs: dayStart + h * HOUR, durMs: HOUR,
+          lat: LAT, lon: LON, tzOffsetMin: TZ, arc,
+        }).relative;
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThanOrEqual(1);
+        lo = Math.min(lo, v); hi = Math.max(hi, v);
+      }
+      // Each element uses most of its own 0..1 range — that is what makes the
+      // single AGAINST_BELOW line mean the same thing for all of them.
+      expect(hi - lo).toBeGreaterThan(0.5);
+    }
+  });
+
+  it("every window type maps to an element — a new type can't silently default", () => {
+    // WINDOW_ELEMENT is a deliberate choice, not a derivation (associate.ts
+    // maps only element→windowType, and lossily). If someone adds a type,
+    // this fails rather than quietly grading it as earth.
+    for (const t of WINDOW_TYPES_FROM_SCHEMA) {
+      expect(Object.keys(WINDOW_ELEMENT)).toContain(t);
+    }
+  });
+
+  it("the note is the weaver's own wording, not a second vocabulary", () => {
+    const v = tierForMoment({
+      element: "water", startMs: dayStart + 3 * HOUR, durMs: HOUR,
+      lat: LAT, lon: LON, tzOffsetMin: TZ, arc,
+    });
+    expect(Object.values(TIER_NOTE).concat([`a great time — ${v.planetaryHour}'s own hour`]))
+      .toContain(v.tierNote);
+  });
+});

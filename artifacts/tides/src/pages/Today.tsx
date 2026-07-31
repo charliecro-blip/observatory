@@ -3,7 +3,7 @@ import { jsonArray } from "@/lib/jsonArray";
 import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
-import { localToday, addDaysLocal } from "@/lib/dates";
+import { localToday, addDaysLocal, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
@@ -1588,6 +1588,107 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
  * already that, and a schedule that demands you account for every unmet block
  * is the guilt ledger this product refuses (BACKLOG §4, do-not-copy).
  */
+/**
+ * "Your 2pm ran long — shift the next three?"
+ *
+ * The consent card. Three things it must do that a silent reschedule cannot:
+ *
+ *  · Show the cost. Each row says what the block's timing becomes, in the
+ *    weaver's own grading ("a great time for this" / "this time will do" /
+ *    "swimming against the current"). A block that no longer suits its new
+ *    hour says so BEFORE you agree, not after.
+ *  · Offer a middle. "Just the next one" is the honest answer most of the
+ *    time — the 3pm slipped, the 6pm is fine where it is.
+ *  · Make leaving them the easy, blameless option. Nothing here is a failure
+ *    state, so nothing is styled like one.
+ */
+function CascadeCard({ cascade, onApply, onDismiss, pending }: {
+  cascade: { overrunMinutes: number; anchorTitle: string; affected: any[] };
+  onApply: (shifts: { id: number; startAt: string; endAt: string }[]) => void;
+  onDismiss: () => void;
+  pending: boolean;
+}) {
+  const t = (iso: string) =>
+    new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const shiftOf = (a: any) => ({ id: a.id, startAt: a.to.startAt, endAt: a.to.endAt });
+  const all = cascade.affected.map(shiftOf);
+  const n = cascade.affected.length;
+  const costs = cascade.affected.filter((a: any) => a.verdict !== "holds").length;
+
+  // Shifting ONLY the next block can push it on top of the one after, which
+  // "shift all" never does because everything moves together. The card exists
+  // to say what a move costs, so it cannot quietly hand back a double-booking.
+  const soloOverlaps =
+    n > 1 && new Date(cascade.affected[0].to.endAt) > new Date(cascade.affected[1].from.startAt);
+
+  return (
+    <div style={{
+      marginBottom: 10, padding: "11px 13px", borderRadius: 10,
+      background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+    }}>
+      <div style={{ fontSize: 12, color: "var(--text-1)", marginBottom: 2 }}>
+        <strong>{cascade.anchorTitle}</strong> ran {cascade.overrunMinutes} min long.
+      </div>
+      <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 8 }}>
+        {n === 1 ? "One block sits after it." : `${n} blocks sit after it.`}{" "}
+        {costs === 0
+          ? "They'd all still suit their new times."
+          : costs === n
+            ? n === 1 ? "Moving it costs something:" : "Moving them costs something:"
+            : `${costs} of them would lose something:`}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 9 }}>
+        {cascade.affected.map((a: any) => (
+          <div key={a.id} style={{ fontSize: 11, lineHeight: 1.45 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+              <span style={{ color: "var(--text-1)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {a.title}
+              </span>
+              <span style={{ color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                {t(a.from.startAt)} → {t(a.to.startAt)}
+              </span>
+            </div>
+            <div style={{ color: a.verdict === "holds" ? "var(--text-3)" : "var(--text-2)", fontSize: 10.5 }}>
+              {a.verdict === "holds" ? "still " : "now "}{a.to.tierNote}
+              {a.runsPastDay && " · runs past the end of your day"}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => onApply(all)} disabled={pending}
+          style={{ fontSize: 11, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
+                   border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", fontWeight: 500 }}>
+          {n === 1 ? "Shift it" : `Shift all ${n}`}
+        </button>
+        {n > 1 && (
+          <button onClick={() => onApply([all[0]])} disabled={pending}
+            title={soloOverlaps
+              ? `Would run into ${cascade.affected[1].title} at ${t(cascade.affected[1].from.startAt)}`
+              : undefined}
+            style={{ fontSize: 11, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
+                     border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)" }}>
+            Just the next one
+          </button>
+        )}
+        <button onClick={onDismiss} disabled={pending}
+          style={{ fontSize: 11, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
+                   border: "none", background: "none", color: "var(--text-3)" }}>
+          Leave them
+        </button>
+      </div>
+      {soloOverlaps && (
+        // Visible, not a tooltip — hover-only information is already a known
+        // debt here (BACKLOG §3b) and this one changes what you'd choose.
+        <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, lineHeight: 1.45 }}>
+          Moving just the next one would run it into {cascade.affected[1].title} at{" "}
+          {t(cascade.affected[1].from.startAt)}. Shifting all {n} keeps the gaps you had.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlockCheck({ wins, markBlock, blockError, elColor }: {
   wins: any[]; markBlock: any; blockError: number | null; elColor: string;
 }) {
@@ -2174,7 +2275,60 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
     },
     onMutate: ({ id }) => { setBlockError(null); void id; },
     onError: (_e, v) => setBlockError(v.id),
-    onSuccess: () => { invalidateWindows(qc); },
+    onSuccess: (id) => {
+      invalidateWindows(qc);
+      void offerCascade(id);
+    },
+  });
+
+  // ── The cascade ───────────────────────────────────────────────────────────
+  // Marking a block done AFTER its scheduled end is the moment we learn the
+  // day slipped — and the only moment where asking about it isn't a nag,
+  // because the user just told us.
+  //
+  // It ASKS. Motion ripples silently and its own users call that "AI calendar
+  // anxiety"; Structured refuses to ripple at all, which is its loudest unmet
+  // request. Both fall out of treating a block as a slot. A Compass window is
+  // a claim that this time suits this work, so the card leads with what the
+  // move COSTS — in the weaver's own words, not a second vocabulary.
+  const [cascade, setCascade] = useState<null | {
+    overrunMinutes: number; anchorTitle: string; affected: any[];
+  }>(null);
+
+  async function offerCascade(id: number) {
+    const w = wins.find((x: any) => x.id === id);
+    if (!w || !testerId) return;
+    const overran = Date.now() - new Date(w.endTime).getTime();
+    if (overran <= 60_000) return; // finished on time — nothing slipped
+    try {
+      const { from, to } = localDayRange(localToday());
+      const r = await fetch("/api/planning/cascade/preview", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          windowId: id, from, to, lat, lon,
+          tzOffsetMin: new Date().getTimezoneOffset(),
+        }),
+      });
+      if (!r.ok) return; // a failed preview is silence, never a wrong offer
+      const p = await r.json();
+      if (p?.affected?.length) setCascade({ ...p, anchorTitle: w.title });
+    } catch {
+      // Same reasoning: if we can't say what a move costs, we don't offer one.
+    }
+  }
+
+  const applyCascade = useMutation({
+    mutationFn: async (shifts: { id: number; startAt: string; endAt: string }[]) => {
+      const r = await fetch("/api/planning/cascade/apply", {
+        method: "POST",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ shifts }),
+      });
+      if (!r.ok) throw new Error("could not move those");
+      return r.json();
+    },
+    onSuccess: () => { invalidateWindows(qc); setCascade(null); },
   });
 
   const tide = now?.tide;
@@ -2329,13 +2483,29 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
         <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>evening</span>
       </div>
 
+      {/* Outside the didAnything branch, deliberately. BlockCheck is the ONLY
+          way to mark a scheduled block complete, and it used to sit INSIDE it —
+          so on a day whose only activity was blocks, `didAnything` was false
+          and the verb never rendered. You could record a block only if you had
+          already recorded something else. The door existed and was locked from
+          the inside, which also starved the done-pattern of a third of its
+          evidence for exactly the people who plan in blocks. */}
+      {cascade && (
+        <CascadeCard
+          cascade={cascade}
+          pending={applyCascade.isPending}
+          onApply={(shifts) => applyCascade.mutate(shifts)}
+          onDismiss={() => setCascade(null)}
+        />
+      )}
+      <BlockCheck wins={wins} markBlock={markBlock} blockError={blockError} elColor={elColor} />
+
       {didAnything ? (
         <>
           <div style={{ fontSize: 12.5, color: "var(--color-foreground)", marginBottom: 6 }}>
             You {parts.join(" · ")}.
             {heavyAdj && <span style={{ color: "#8a7060" }}> On a {heavyAdj} day, that counts double.</span>}
           </div>
-          <BlockCheck wins={wins} markBlock={markBlock} blockError={blockError} elColor={elColor} />
           {keptHabits.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
               {keptHabits.map((h: any) => (

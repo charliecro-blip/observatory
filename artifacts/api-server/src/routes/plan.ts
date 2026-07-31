@@ -21,6 +21,7 @@ import { requireTesterId } from "../middlewares/testerId.js";
 import { associateDeterministic, WINDOW_TYPES } from "../lib/associate.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
+import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
@@ -159,16 +160,10 @@ function energyAt(grid: DayGrid, element: string, hour: number): number {
   return best;
 }
 
-// Timing tiers — the app's grading language for a placement. "great" = a peak
-// in the task's own lane; "workable" = a real slot that will do; "against" =
-// the only opening left runs counter to the task's current. Nothing honest is
-// hidden behind a refusal to schedule.
-type Tier = "great" | "workable" | "against";
-const TIER_NOTE: Record<Tier, string> = {
-  great: "a great time for this",
-  workable: "this time will do",
-  against: "swimming against the current — the only open water left",
-};
+// Timing tiers — the app's grading language for a placement. Defined once in
+// lib/timingTier.ts and shared, so the cascade can grade a MOVED window in the
+// same words the weaver used to place it. Nothing honest is hidden behind a
+// refusal to schedule.
 
 // Only the seven classical planets rule hours — an outer-planet association
 // (Uranus/Neptune/Pluto) can't be hour-targeted.

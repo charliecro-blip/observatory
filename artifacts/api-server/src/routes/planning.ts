@@ -3,6 +3,8 @@ import { db, goals, projects, milestones, planningWindows, tasks } from "@worksp
 import { eq, and, desc, gte, lte, lt } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { computeDayArc } from "../lib/dayarc.js";
+import { tierForMoment, compareTiers, WINDOW_ELEMENT } from "../lib/timingTier.js";
 
 const router: IRouter = Router();
 
@@ -433,6 +435,122 @@ router.post("/planning/windows/:id/complete", requireTesterId, async (req, res) 
     .set({ completedAt: done ? new Date() : null, updatedAt: new Date() })
     .where(eq(planningWindows.id, id)).returning();
   res.json(updated);
+});
+
+// ── The cascade ─────────────────────────────────────────────────────────────
+// "Your 2pm ran long — shift the next three?"
+//
+// Nobody in the category does this. Structured refuses to ripple at all (its
+// loudest unmet request); Motion ripples silently, and its own users call the
+// result "AI calendar anxiety". Both answers come from treating a block as a
+// SLOT. A Compass window isn't a slot — it's a claim that this particular time
+// suits this particular work. So moving one doesn't just shuffle logistics, it
+// may retract the reason the block existed.
+//
+// That is the whole design here: the cascade always asks, and it always says
+// what the move COSTS. A window that survives the shift says so; one that
+// lands against the current says that too, in the same words the weaver used
+// when it placed the block. Preview writes nothing.
+//
+// Preview and apply are deliberately separate, and apply takes explicit
+// instants rather than recomputing the shift: the user consents to times they
+// were actually shown, not to a second calculation that might have drifted.
+router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const id = parseInt(String(req.body?.windowId), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "windowId required" }); return; }
+
+  const anchor = (await db.select().from(planningWindows)
+    .where(and(eq(planningWindows.id, id), eq(planningWindows.testerId, testerId))).limit(1))[0] ?? null;
+  if (!anchor) { res.status(404).json({ error: "Window not found" }); return; }
+
+  const lat = Number(req.body?.lat ?? 30.27);
+  const lon = Number(req.body?.lon ?? -97.74);
+  const tzOffsetMin = Number(req.body?.tzOffsetMin ?? 0);
+  // When the work actually finished. Defaults to the completion stamp, then to
+  // now — never to the scheduled end, which is the number being disputed.
+  const ranUntil = new Date(req.body?.ranUntil ?? anchor.completedAt ?? new Date());
+  const overrunMs = ranUntil.getTime() - new Date(anchor.endTime).getTime();
+  if (overrunMs <= 60_000) {
+    // Under a minute is not an overrun, it's a rounding artefact.
+    res.json({ overrunMinutes: 0, affected: [] });
+    return;
+  }
+
+  // The rest of the viewer's day, bounded by instants the client computed —
+  // same contract as GET /planning/windows, for the same reason.
+  const from = req.body?.from ? new Date(req.body.from) : new Date(anchor.endTime);
+  const to = req.body?.to ? new Date(req.body.to) : new Date(new Date(anchor.endTime).getTime() + 86_400_000);
+
+  const later = await db.select().from(planningWindows).where(and(
+    eq(planningWindows.testerId, testerId),
+    gte(planningWindows.startTime, new Date(anchor.endTime)),
+    lt(planningWindows.startTime, to),
+  )).orderBy(planningWindows.startTime);
+
+  const pending = later.filter((w) => w.id !== anchor.id && !w.completedAt);
+
+  // One arc for the whole day rather than one per window — same inputs, and it
+  // keeps every verdict below on a single reading of the sky.
+  const arc = computeDayArc(ranUntil, lat, lon, tzOffsetMin);
+
+  const affected = pending.map((w) => {
+    const startMs = new Date(w.startTime).getTime();
+    const durMs = new Date(w.endTime).getTime() - startMs;
+    const element = WINDOW_ELEMENT[w.windowType] ?? "earth";
+    const shifted = startMs + overrunMs;
+
+    const before = tierForMoment({ element, startMs, durMs, lat, lon, tzOffsetMin, arc });
+    const after = tierForMoment({ element, startMs: shifted, durMs, lat, lon, tzOffsetMin, arc });
+
+    const delta = compareTiers(after.tier, before.tier);
+    return {
+      id: w.id,
+      title: w.title,
+      windowType: w.windowType,
+      element,
+      from: { startAt: new Date(startMs).toISOString(), endAt: new Date(startMs + durMs).toISOString(), ...before },
+      to: { startAt: new Date(shifted).toISOString(), endAt: new Date(shifted + durMs).toISOString(), ...after },
+      // What the move costs, in one word the UI can lead with.
+      verdict: delta >= 0 ? "holds" : after.tier === "against" ? "breaks" : "weakens",
+      // A block pushed past the end of the day isn't a scheduling question any
+      // more, and silently parking it at 1am would be the exact silent-move
+      // behaviour this feature exists to refuse.
+      runsPastDay: (after.startHour + durMs / 3600000) > 24,
+    };
+  });
+
+  res.json({ overrunMinutes: Math.round(overrunMs / 60_000), affected });
+});
+
+// Apply exactly the shifts the user agreed to — no more, no recomputation.
+router.post("/planning/cascade/apply", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const shifts = Array.isArray(req.body?.shifts) ? req.body.shifts : null;
+  if (!shifts?.length) { res.status(400).json({ error: "shifts required" }); return; }
+
+  const updated = await db.transaction(async (tx) => {
+    const out = [];
+    for (const s of shifts) {
+      const id = parseInt(String(s?.id), 10);
+      if (!Number.isFinite(id) || !s?.startAt || !s?.endAt) {
+        throw new Error("each shift needs id, startAt and endAt");
+      }
+      const [row] = await tx.update(planningWindows)
+        .set({ startTime: new Date(s.startAt), endTime: new Date(s.endAt), updatedAt: new Date() })
+        // testerId in the WHERE, not checked separately — one query that
+        // cannot move somebody else's block even if an id is guessed.
+        .where(and(eq(planningWindows.id, id), eq(planningWindows.testerId, testerId)))
+        .returning();
+      if (!row) throw new Error(`window ${id} not found`);
+      out.push(row);
+    }
+    return out;
+  }).catch((e: Error) => e);
+
+  if (updated instanceof Error) { res.status(400).json({ error: updated.message }); return; }
+  // All or nothing: a half-applied cascade leaves a schedule nobody agreed to.
+  res.json({ moved: updated.length, windows: updated });
 });
 
 router.delete("/planning/windows/:id", requireTesterId, async (req, res) => {
