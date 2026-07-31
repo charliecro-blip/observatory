@@ -74,7 +74,7 @@ function bodyLon(name: string, jd: number): number {
 // The Moon's next sign ingress after `fromMs` — coarse 3h steps (the Moon
 // spends ~2.5 days per sign, so this is cheap) then a 10-min refine. Used
 // only to close out a void-of-course window that runs past midnight.
-function nextIngressAfterMs(fromMs: number): number {
+export function nextIngressAfterMs(fromMs: number): number {
   const startSign = signOf(moonLongitude(julianDay(new Date(fromMs))));
   const COARSE = 3 * 3600000;
   let t = fromMs;
@@ -82,9 +82,10 @@ function nextIngressAfterMs(fromMs: number): number {
     t += COARSE;
     if (signOf(moonLongitude(julianDay(new Date(t)))) !== startSign) break;
   }
-  // Refine backward to the actual crossing.
+  // Refine backward to the actual crossing. 14 halvings of a 3h bracket lands
+  // under a second; 8 left it ~40s out, which is visible on a clock face.
   let hi = t, lo = t - COARSE;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 14; i++) {
     const mid = (lo + hi) / 2;
     if (signOf(moonLongitude(julianDay(new Date(mid)))) !== startSign) hi = mid; else lo = mid;
   }

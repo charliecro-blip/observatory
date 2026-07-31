@@ -1415,3 +1415,55 @@ describe("void of course windows", () => {
     expect(src).toMatch(/After that the day is ordinary/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 28. THE RAIL'S "UNTIL" WAS UP TO AN HOUR WRONG
+// The number the app puts in front of you as literal go/no-go guidance — "Moon
+// void of course · until 08:01 AM" — came from a scan that stepped forward in
+// one-HOUR jumps and printed the hour boundary it landed on as an exact clock
+// time. Measured across 40 consecutive ingresses: worst error 58.5 minutes.
+//
+// On 2026-07-31 it showed 08:01 AM for an ingress at 07:13:30, so it told the
+// reader to wait 47 minutes longer than they had to. That is the opposite of
+// what the feature is for.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("moon ingress precision", () => {
+  it("is accurate to seconds across many ingresses, not to the hour", async () => {
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const D: any = await import("../artifacts/api-server/src/lib/dayarc.js");
+    const base = Date.parse("2026-07-31T00:00:00Z");
+    let worstOld = 0, worstNew = 0;
+
+    for (let d = 0; d < 40; d++) {
+      const from = base + d * 86400000 + 3 * 3600000;
+      const signAt = (ms: number) =>
+        Math.floor((((A.moonLongitude(A.julianDay(new Date(ms))) % 360) + 360) % 360) / 30);
+      const s0 = signAt(from);
+
+      // Truth, bisected independently of the code under test.
+      let lo = from, hi = from + 4 * 86400000;
+      for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (signAt(mid) !== s0) hi = mid; else lo = mid; }
+      const truth = hi;
+
+      // The shipped method, kept so the regression stays legible.
+      let old = 0;
+      for (let h = 1; h <= 96; h++) { const t = from + h * 3600000; if (signAt(t) !== s0) { old = t; break; } }
+
+      worstOld = Math.max(worstOld, Math.abs(old - truth) / 60000);
+      worstNew = Math.max(worstNew, Math.abs(D.nextIngressAfterMs(from) - truth) / 60000);
+    }
+
+    // A record of how wrong it was, so nobody restores the cheap scan.
+    expect(worstOld).toBeGreaterThan(30);        // the hourly method: ~58 min out
+    expect(worstNew * 60).toBeLessThan(5);       // bisection: under 5 seconds
+  }, 30000);
+
+  it("the rail no longer scans by the hour", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/routes/tides.ts"), "utf-8");
+    expect(src).toMatch(/nextIngressAfterMs\(date\.getTime\(\)\)/);
+    // The old loop, which must not come back.
+    expect(src).not.toMatch(/for \(let h = 1; h <= 72; h\+\+\)/);
+  });
+});

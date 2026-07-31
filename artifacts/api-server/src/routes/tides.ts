@@ -16,7 +16,7 @@ import { natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide.js";
-import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
+import { computeDayArc, findPeakWindows, nextIngressAfterMs } from "../lib/dayarc.js";
 import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 
@@ -229,26 +229,25 @@ router.get("/tides/now", async (req, res) => {
   // is UTC — after ~7-8pm US time it rolled to tomorrow's ruler).
   const dayRuler = DAY_RULERS[new Date(date.getTime() - tzOffset * 60000).getUTCDay()];
 
-  // Next moon ingress — approximate as next sign change (scan forward hourly)
+  // Next moon ingress — the moment the void LIFTS, which is the single number
+  // people time a start against.
+  //
+  // This used to scan forward in one-HOUR steps and print the hour boundary as
+  // an exact clock time: it reported "08:01 AM" for an ingress at 07:13:30, so
+  // the app told you to wait 47 minutes longer than you had to. Up to a full
+  // hour of error on the number the whole feature exists to supply.
+  // nextIngressAfterMs brackets and then bisects to under a second.
   let nextIngress: string | null = null;
   if (voc) {
-    const currentSign = moonSign;
     const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    for (let h = 1; h <= 72; h++) {
-      const futureJd = jd + h / 24;
-      const futPlanets = getPlanetPositions(futureJd);
-      const futMoonSign = futPlanets.find((p) => p.planet === "Moon")!.sign;
-      if (futMoonSign !== currentSign) {
-        // Format in the viewer's timezone (same shift as fmtTime).
-        const local = new Date(date.getTime() + h * 3600000 - tzOffset * 60000);
-        let hr = local.getUTCHours();
-        const ampm = hr >= 12 ? "PM" : "AM";
-        hr = hr % 12 || 12;
-        const clock = `${String(hr).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")} ${ampm}`;
-        nextIngress = h >= 24 ? `${WEEKDAYS[local.getUTCDay()]} ${clock}` : clock;
-        break;
-      }
-    }
+    const ingressMs = nextIngressAfterMs(date.getTime());
+    const local = new Date(ingressMs - tzOffset * 60000);
+    let hr = local.getUTCHours();
+    const ampm = hr >= 12 ? "PM" : "AM";
+    hr = hr % 12 || 12;
+    const clock = `${String(hr).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")} ${ampm}`;
+    nextIngress = ingressMs - date.getTime() >= 86400000
+      ? `${WEEKDAYS[local.getUTCDay()]} ${clock}` : clock;
   }
 
   // Rhythm risk: VOC + low quality + hard Moon-to-disruptive-natal-planet aspects
