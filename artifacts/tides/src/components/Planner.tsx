@@ -147,6 +147,8 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
     if (dropped.has(idx)) return;
     (byDay[dayKey(item.startAt)] ??= []).push({ item, idx });
   });
+  // …and within each day, since a move can land between two existing rows.
+  Object.values(byDay).forEach((es) => es.sort((a, b) => Date.parse(a.item.startAt) - Date.parse(b.item.startAt)));
 
   // ── Capacity honesty (Sunsama's move) ──────────────────────────────────────
   // Say the overcommitment out loud BEFORE anything is written, while it's
@@ -316,7 +318,14 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             </div>
           )}
 
-          {Object.entries(byDay).map(([day, entries]) => (
+          {/* Sorted at RENDER, not once at weave time. The array was ordered
+              chronologically when it arrived, so grouping followed it — but a
+              move rewrites one item's time in place, and the groups then
+              rendered Friday, Monday, Sunday. A schedule out of order is worse
+              than no schedule. */}
+          {Object.entries(byDay)
+            .sort((a, b) => Date.parse(a[1][0].item.startAt) - Date.parse(b[1][0].item.startAt))
+            .map(([day, entries]) => (
             <div key={day} style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 6 }}>{fmtDayHeader(entries[0].item.startAt)}</div>
               {entries.map(({ item, idx }) => {

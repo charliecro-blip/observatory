@@ -1467,3 +1467,71 @@ describe("moon ingress precision", () => {
     expect(src).not.toMatch(/for \(let h = 1; h <= 72; h\+\+\)/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 29. A MOVED BLOCK LEFT THE SCHEDULE OUT OF ORDER
+// Found by using the feature rather than reading it. The Planner grouped rows
+// by day in ARRAY order, which was chronological only because the weaver had
+// sorted it once on arrival. Moving an item rewrites its time in place, so the
+// day headers rendered Friday, Monday, Sunday — a schedule out of order is
+// worse than no schedule, and it appeared the first time anyone used the move
+// affordance that shipped alongside it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("planner ordering after a move", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/components/Planner.tsx"), "utf-8");
+
+  it("sorts day groups at render, not once at weave time", () => {
+    expect(src).toMatch(/Object\.entries\(byDay\)[\s\S]{0,120}\.sort\(/);
+  });
+
+  it("sorts rows within a day too — a move can land between two of them", () => {
+    expect(src).toMatch(/Object\.values\(byDay\)\.forEach\([\s\S]{0,120}sort\(/);
+  });
+
+  it("moving is local state — nothing is written before commit", () => {
+    // The plan is a proposal. If this ever starts calling an endpoint, the
+    // "nothing is scheduled until you say so" promise on the same screen breaks.
+    const move = src.slice(src.indexOf("const moveTo ="), src.indexOf("const editCard"));
+    expect(move).not.toMatch(/fetch\(/);
+    expect(move).toMatch(/setResult/);
+  });
+
+  it("a move is reversible — the vacated slot becomes an option again", () => {
+    const move = src.slice(src.indexOf("const moveTo ="), src.indexOf("const editCard"));
+    expect(move).toMatch(/startAt: p\.startAt/);          // the old slot goes back on the list
+    expect(move).toMatch(/filter\(\(a\) => a\.startAt !== alt\.startAt\)/); // the taken one comes off
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 30. ALTERNATIVES THAT CONFLICT WITH EACH OTHER
+// The weaver ranks every viable slot and used to discard all but the winner,
+// which is what made a woven plan take-it-or-leave-it. Returning the runner-up
+// slots is the fix — but computing them per item offered the SAME free slot to
+// three different tasks, so any two of those moves collided. Measured before
+// the fix: three slots each offered to multiple tasks.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("planner alternatives", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/plan.ts"), "utf-8");
+
+  it("computes alternatives only after every item is placed", () => {
+    // Computing them inside the placement loop reads a `reserved` set that is
+    // still growing, so a slot that looks free is taken by the next task.
+    expect(src).toMatch(/placementCtx/);
+    expect(src.indexOf("for (const ctx of placementCtx)")).toBeGreaterThan(src.indexOf("const push ="));
+  });
+
+  it("claims slots across ALL items, so any subset of moves is safe", () => {
+    expect(src).toMatch(/const claimed: \{ s: number; e: number \}\[\] = \[\]/);
+    expect(src).toMatch(/claimed\.some\(\(k\) => overlaps\(/);
+    expect(src).toMatch(/claimed\.push\(/);
+  });
+
+  it("offers different days rather than three slots on one afternoon", () => {
+    expect(src).toMatch(/seenDays/);
+  });
+});
