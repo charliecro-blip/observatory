@@ -902,7 +902,14 @@ function Shell() {
     if (!sawIntro) {
       return <IntroSlides onDone={() => { localStorage.setItem("obs_saw_intro","1"); setSawIntro(true); }} />;
     }
-    return <OnboardingModal onComplete={name => createAndApply(name)} />;
+    return <OnboardingModal onComplete={name => {
+      const p = createAndApply(name);
+      // Seed the two starter dailies so the first screen isn't empty. Server-
+      // side and idempotent (only into an account with zero habits), and
+      // fire-and-forget — a failed seed must never block someone from getting
+      // into the app they just signed up for.
+      fetch("/api/habits/seed-starters", { method: "POST", headers: { "x-tester-id": p.testerId } }).catch(() => {});
+    }} />;
   }
 
   if (showBirthPrompt && !chartLoading) {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { habits, habitLogs } from "@workspace/db/schema";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 import {
   julianDay, moonPhase, getPlanetPositions, getDailyElementEmphasis,
   getPlanetaryHour, getMajorAspects, voidOfCourse, getSunriseSunset,
@@ -172,6 +172,65 @@ router.get("/habits", async (req, res) => {
 });
 
 // POST /habits
+/**
+ * The two starter dailies — the first thing a new account contains.
+ *
+ * Structured's best onboarding move, per COMPETITIVE-UX-2026-07-29: an empty
+ * habits screen asks a new user to invent a practice before they know what the
+ * app does with one. Two real rows make the first interaction EDITING rather
+ * than creating, and — because they carry solar anchors — they teach that a
+ * daily can move with the season without a word of explanation.
+ *
+ * IDEMPOTENT, and that is the whole safety story. It seeds only into an account
+ * with zero habits, so a double-tap, a remount, or a re-run of onboarding
+ * cannot produce four rows. A seed that can double-fire is worse than no seed:
+ * the user's first act becomes deleting our mess.
+ */
+router.post("/habits/seed-starters", async (req, res) => {
+  const testerId = tid(req, res); if (!testerId) return;
+
+  // A plain check-then-insert is NOT idempotent under concurrency, and this
+  // route gets called concurrently for real: React StrictMode double-invokes in
+  // development, and a double-tap on a slow connection does it in production.
+  // Measured before this lock: four concurrent calls produced four rows —
+  // "Rise and shine" twice, "Wind down" twice.
+  //
+  // An advisory lock serialises seeds per tester without a schema change (a
+  // unique index would be the other answer, and adding one mid-beta is exactly
+  // the kind of migration BACKLOG §9a says to avoid). It is released when the
+  // transaction ends, however it ends.
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${testerId}))`);
+
+    const existing = await tx.select({ id: habits.id }).from(habits)
+      .where(eq(habits.testerId, testerId)).limit(1);
+    if (existing.length) return null;
+
+  // Deliberately plain and obviously editable. These are a starting shape, not
+  // a prescription — the copy should invite a rename, not feel precious.
+  const starters = [
+    {
+      name: "Rise and shine", emoji: "☀",
+      description: "Anchored to sunrise — it moves with the season. Rename it, or make it yours.",
+      solarAnchor: "sunrise",
+    },
+    {
+      name: "Wind down", emoji: "☾",
+      description: "Anchored to sunset. Edit or delete freely — these two are just a starting rhythm.",
+      solarAnchor: "sunset",
+    },
+  ];
+
+    return tx.insert(habits).values(starters.map((h) => ({
+      testerId, name: h.name, emoji: h.emoji, description: h.description,
+      cadence: "daily", solarAnchor: h.solarAnchor, status: "active",
+    }))).returning();
+  });
+
+  if (!result) { res.json({ seeded: 0, reason: "already has habits" }); return; }
+  res.status(201).json({ seeded: result.length, habits: result });
+});
+
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId, cadence, targetPerWeek, solarAnchor } = req.body;

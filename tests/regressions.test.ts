@@ -1231,3 +1231,52 @@ describe("google calendar connection state", () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 25. A SEED THAT CAN DOUBLE-FIRE
+// Caught in development, before shipping, by actually running it: the starter-
+// habits seed guarded itself with a check-then-insert, which is not idempotent
+// under concurrency. Six concurrent calls produced six rows — "Rise and shine"
+// three times over. React StrictMode double-invokes in development and a
+// double-tap on a slow connection does the same in production, so this was not
+// hypothetical.
+//
+// A seed that double-fires is worse than no seed: the new user's first act
+// becomes deleting our mess, on the exact screen meant to make the app feel
+// considered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("starter habits seed", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/habits.ts"), "utf-8");
+  const seed = src.slice(src.indexOf('router.post("/habits/seed-starters"'),
+                         src.indexOf('router.post("/habits",'));
+
+  it("serialises per tester — a check-then-insert alone is a race", () => {
+    expect(seed).toMatch(/db\.transaction/);
+    expect(seed).toMatch(/pg_advisory_xact_lock/);
+    // The guard must read INSIDE the transaction, or the lock buys nothing.
+    const lockAt = seed.indexOf("pg_advisory_xact_lock");
+    const checkAt = seed.indexOf("existing.length");
+    expect(lockAt).toBeGreaterThan(-1);
+    expect(lockAt).toBeLessThan(checkAt);
+  });
+
+  it("only ever seeds an account with no habits at all", () => {
+    expect(seed).toMatch(/if \(existing\.length\) return null/);
+  });
+
+  it("seeds dailies with solar anchors — that is the thing it teaches", () => {
+    expect(seed).toMatch(/solarAnchor: "sunrise"/);
+    expect(seed).toMatch(/solarAnchor: "sunset"/);
+    expect(seed).toMatch(/cadence: "daily"/);
+  });
+
+  it("cannot block someone from entering the app they just signed up for", () => {
+    const app = readFileSync(join(process.cwd(), "artifacts/tides/src/App.tsx"), "utf-8");
+    // Fire-and-forget with a catch — a failed seed is a cosmetic loss, and
+    // awaiting it would put a network call between a new user and their first
+    // screen.
+    expect(app).toMatch(/seed-starters[\s\S]{0,160}catch\(\(\) => \{\}\)/);
+  });
+});
