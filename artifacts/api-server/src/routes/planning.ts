@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, goals, projects, milestones, planningWindows, tasks } from "@workspace/db";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, lt } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -352,10 +352,28 @@ router.get("/planning/north-stars", requireTesterId, async (req, res) => {
 
 router.get("/planning/windows", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const date = req.query.date as string | undefined; // YYYY-MM-DD filter for a specific day
+  const date = req.query.date as string | undefined; // YYYY-MM-DD — legacy, UTC-bounded
+  // The viewer's own local day, as a half-open instant range. The client knows
+  // its offset exactly (including DST, since it does calendar arithmetic on a
+  // local Date), so it sends the boundaries rather than making the server
+  // guess a timezone it was never told.
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
   const goalId = req.query.goalId ? parseInt(req.query.goalId as string, 10) : undefined;
   const conditions = [eq(planningWindows.testerId, testerId)];
-  if (date) {
+  if (from && to) {
+    conditions.push(gte(planningWindows.startTime, new Date(from)));
+    // Half-open: a window starting exactly at tomorrow's midnight is tomorrow's.
+    conditions.push(lt(planningWindows.startTime, new Date(to)));
+  } else if (date) {
+    // Shipped bug, kept only as a fallback for a browser still running a cached
+    // bundle: these are UTC day bounds applied to a LOCAL calendar date. For a
+    // US-Central viewer that shifts the window by 5 hours — measured 2026-07-31,
+    // 4 of 7 test windows filed on the wrong day. Everything from 19:00 local
+    // onward dropped out of "today" and yesterday's evening appeared in it,
+    // which is exactly the band the evening ritual and the cascade read.
+    // Same disease as the app-wide UTC rollover fix (BACKLOG §1); this route
+    // was missed because its dates live in timestamptz rather than a date string.
     const dayStart = new Date(date + "T00:00:00.000Z");
     const dayEnd = new Date(date + "T23:59:59.999Z");
     conditions.push(gte(planningWindows.startTime, dayStart));

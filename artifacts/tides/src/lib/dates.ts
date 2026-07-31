@@ -20,6 +20,25 @@ export function localToday(): string {
   return localDateStr();
 }
 
+/**
+ * The half-open instant range `[from, to)` covering the LOCAL calendar day
+ * `dateStr` — for asking the server about rows stored as timestamps.
+ *
+ * A YYYY-MM-DD alone cannot answer "which instants are that day": the server
+ * has to assume a timezone, and assuming UTC is how evening rows end up filed
+ * on tomorrow. The browser is the only party that knows the offset, so it
+ * computes the boundaries and sends them.
+ *
+ * `setDate(+1)` rather than +24h on purpose: DST days are 23 or 25 hours long,
+ * and calendar arithmetic gets both right.
+ */
+export function localDayRange(dateStr: string): { from: string; to: string } {
+  const start = new Date(dateStr + "T00:00:00"); // no Z — parsed as local time
+  const next = new Date(start);
+  next.setDate(next.getDate() + 1);
+  return { from: start.toISOString(), to: next.toISOString() };
+}
+
 /** Date-string arithmetic that never leaves local-day space. */
 export function addDaysLocal(dateStr: string, n: number): string {
   // Noon-anchored so DST transitions can't shift the calendar day.

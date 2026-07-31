@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { TidesNow, TidesWeek, ScoredPractice, PlanningWindow, SkyEvent } from "@/lib/types";
+import { localDayRange } from "@/lib/dates";
 
 function authHeaders(testerId: string | null): Record<string, string> {
   return testerId ? { "x-tester-id": testerId } : {};
@@ -174,7 +175,13 @@ export function useTodayWindows(testerId: string | null, date: string) {
   return useQuery<PlanningWindow[]>({
     queryKey: ["planning-windows", testerId, date],
     queryFn: async () => {
-      const r = await fetch(`/api/planning/windows?date=${date}`, { headers: authHeaders(testerId) });
+      // `date` stays for readability in logs; from/to are what actually bound
+      // the query, in the viewer's local day rather than UTC's.
+      const { from, to } = localDayRange(date);
+      const r = await fetch(
+        `/api/planning/windows?date=${date}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        { headers: authHeaders(testerId) },
+      );
       return r.json();
     },
     enabled: !!testerId,

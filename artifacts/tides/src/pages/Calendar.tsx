@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { jsonArray } from "@/lib/jsonArray";
-import { localToday, localDateStr } from "@/lib/dates";
+import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
@@ -1001,7 +1001,8 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
   const { data: wins=[] } = useQuery<PlanningWindow[]>({
     queryKey:["windows",testerId,dateStr],
     queryFn: async()=>{
-      const r = await fetch(`/api/planning/windows?date=${dateStr}`,{headers:{...(testerId?{"x-tester-id":testerId}:{}),"Content-Type":"application/json"}});
+      const {from,to} = localDayRange(dateStr);
+      const r = await fetch(`/api/planning/windows?date=${dateStr}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,{headers:{...(testerId?{"x-tester-id":testerId}:{}),"Content-Type":"application/json"}});
       return jsonArray(r);
     },
     enabled:!!testerId,

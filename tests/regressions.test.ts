@@ -1861,3 +1861,126 @@ describe("marking a scheduled block done", () => {
     expect(comp).toMatch(/filter\(\(w: any\) => !w\.completedAt\)/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 36. TODAY'S WINDOWS WERE A UTC DAY, NOT THE VIEWER'S DAY
+// Shipped bug, found 2026-07-31 while building on top of it. `GET
+// /planning/windows?date=YYYY-MM-DD` took a LOCAL calendar date and applied
+// UTC day bounds to a timestamptz column:
+//
+//     new Date(date + "T00:00:00.000Z") … new Date(date + "T23:59:59.999Z")
+//
+// Measured against a real server and database in America/Chicago: 4 of 7 test
+// windows filed on the wrong day. Everything from 19:00 local onward dropped
+// out of "today", and yesterday's 21:00 appeared inside it. The error is the
+// viewer's UTC offset — 5h for Austin, 5.5h the other way for Kolkata.
+//
+// This is the same disease as the app-wide UTC rollover fix (BACKLOG §1), and
+// it survived that sweep because the sweep was looking for `toISOString()
+// .slice(0,10)` on date STRINGS, while this route bounds a timestamp. It bites
+// hardest in the evening — which is precisely when the shutdown ritual, the
+// evening re-homing work and the cascade all read the day's windows.
+//
+// The fix refuses to guess: the browser is the only party that knows its own
+// offset, so it sends the day's boundaries as instants and the server just
+// filters between them.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { localDayRange } from "../artifacts/tides/src/lib/dates";
+
+describe("today's windows are the viewer's day, not UTC's", () => {
+  const datesSrc = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/lib/dates.ts"), "utf-8",
+  );
+  const planningSrc = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/planning.ts"), "utf-8",
+  );
+
+  // Re-implemented here rather than imported, so the test and the shipped
+  // helper can disagree.
+  function rangeOf(dateStr: string) {
+    const start = new Date(dateStr + "T00:00:00");
+    const next = new Date(start);
+    next.setDate(next.getDate() + 1);
+    return { from: start, to: next };
+  }
+
+  it("the range starts at local midnight and ends at the next local midnight", () => {
+    // True in every zone the CI matrix runs (Chicago, Kolkata, UTC) — the
+    // assertion is about local wall clock, so it needs no offset of its own.
+    for (const d of ["2026-01-15", "2026-06-30", "2026-08-12", "2026-12-31"]) {
+      const { from, to } = rangeOf(d);
+      expect(from.getHours()).toBe(0);
+      expect(from.getMinutes()).toBe(0);
+      expect(to.getHours()).toBe(0);
+      const [y, m, day] = d.split("-").map(Number);
+      expect(from.getFullYear()).toBe(y);
+      expect(from.getMonth() + 1).toBe(m);
+      expect(from.getDate()).toBe(day);
+      // The day after, by the calendar rather than by adding 24h.
+      const expectedNext = new Date(y, m - 1, day + 1);
+      expect(to.getDate()).toBe(expectedNext.getDate());
+    }
+  });
+
+  it("a DST day is 23 or 25 hours long, and the range says so", () => {
+    // Adding 86_400_000ms would be silently wrong twice a year. In a zone
+    // without DST every day is 24h and this still holds.
+    for (const d of ["2026-03-08", "2026-11-01", "2026-08-12"]) {
+      const { from, to } = rangeOf(d);
+      const hours = (to.getTime() - from.getTime()) / 3_600_000;
+      expect([23, 24, 25]).toContain(hours);
+    }
+  });
+
+  it("the old UTC-bounds method really was wrong — not merely different", () => {
+    // Keeps the size of the defect on the record, so nobody restores the
+    // one-liner as a simplification. Skipped where it cannot fire.
+    const offsetMin = new Date("2026-08-12T12:00:00").getTimezoneOffset();
+    if (offsetMin === 0) return; // UTC: the old method was correct there
+
+    const { from, to } = rangeOf("2026-08-12");
+    const utcStart = new Date("2026-08-12T00:00:00.000Z");
+    const utcEnd = new Date("2026-08-12T23:59:59.999Z");
+
+    // An evening instant the viewer calls "today".
+    const evening = new Date("2026-08-12T21:00:00");
+    const inNew = evening >= from && evening < to;
+    const inOld = evening >= utcStart && evening <= utcEnd;
+    expect(inNew).toBe(true);
+    if (offsetMin > 0) {
+      // West of UTC (the Americas): the old bounds lost the evening.
+      expect(inOld).toBe(false);
+    }
+    // And the two disagree by exactly the viewer's offset.
+    expect(Math.abs(from.getTime() - utcStart.getTime()) / 60_000).toBe(Math.abs(offsetMin));
+  });
+
+  it("the SHIPPED helper agrees with that independent re-implementation", () => {
+    // Without this the three tests above would be checking my arithmetic and
+    // never the app's — a re-implementation only earns its keep if something
+    // actually compares the two.
+    for (const d of ["2026-01-15", "2026-03-08", "2026-08-12", "2026-11-01", "2026-12-31"]) {
+      const mine = rangeOf(d);
+      const theirs = localDayRange(d);
+      expect(theirs.from).toBe(mine.from.toISOString());
+      expect(theirs.to).toBe(mine.to.toISOString());
+    }
+  });
+
+  it("the client sends the boundaries and the server prefers them", () => {
+    expect(datesSrc).toMatch(/export function localDayRange/);
+    // The server must not fall back to UTC bounds when it was given real ones.
+    expect(planningSrc).toMatch(/if \(from && to\)/);
+    expect(planningSrc).toMatch(/lt\(planningWindows\.startTime, new Date\(to\)\)/);
+  });
+
+  it("both window callers send from/to, not a bare date", () => {
+    for (const rel of ["artifacts/tides/src/hooks/useTides.ts",
+                       "artifacts/tides/src/pages/Calendar.tsx"]) {
+      const src = readFileSync(join(process.cwd(), rel), "utf-8");
+      const call = src.slice(src.indexOf("planning/windows?date="));
+      expect(call.slice(0, 200)).toMatch(/from=\$\{encodeURIComponent/);
+    }
+  });
+});
