@@ -6,6 +6,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { computeDayArc } from "../lib/dayarc.js";
 import { tierForMoment, compareTiers, WINDOW_ELEMENT } from "../lib/timingTier.js";
 import { pickRehomeSlots } from "../lib/rehome.js";
+import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,11 @@ router.post("/planning/breakdown", requireTesterId, async (req, res) => {
       { title: "Share it / put it into the world", element: "fire" },
     ],
   });
+
+  // No key configured → straight to the deterministic steps the catch below
+  // would have produced anyway, without a doomed round trip. A 503 here would
+  // take away a feature that works perfectly well without a model.
+  if (!isOpenAiConfigured) { res.json(fallback()); return; }
 
   try {
     const completion = await openai.chat.completions.create({

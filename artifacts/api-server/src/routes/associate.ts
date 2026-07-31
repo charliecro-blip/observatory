@@ -8,6 +8,7 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { associateDeterministic, PLANET_NAMES, WINDOW_TYPES, type Association } from "../lib/associate.js";
+import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -18,6 +19,10 @@ router.post("/associate", async (req, res) => {
 
   const base = associateDeterministic(text);
   if (!useAi) { res.json(base); return; }
+  // No key configured → the deterministic reading, which is what the catch
+  // below would return anyway. Skipping the doomed round trip is the whole
+  // point: a 503 here would replace a working answer with an error.
+  if (!isOpenAiConfigured) { res.json(base); return; }
 
   try {
     const completion = await openai.chat.completions.create({

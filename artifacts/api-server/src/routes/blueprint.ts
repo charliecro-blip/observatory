@@ -5,6 +5,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { computeNatalChart } from "../lib/natal.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { selectBlueprintContext, type KnowledgeEntry } from "../lib/knowledge.js";
+import { aiUnavailable } from "../lib/aiGuard.js";
 
 const router: IRouter = Router();
 const PROMPT_VERSION = "v2";
@@ -180,6 +181,13 @@ router.get("/natal-chart/blueprint", requireTesterId, async (req, res) => {
 router.post("/natal-chart/blueprint/generate", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
   const force = req.body?.force === true;
+
+  // The one AI route with no deterministic fallback — a blueprint IS the
+  // generated prose, so there is nothing to degrade to. 503 rather than the
+  // 500 it used to report: the client already maps 503 to "the AI service
+  // isn't configured", while a 500 reads as a transient glitch and invites a
+  // retry that cannot succeed.
+  if (aiUnavailable(res)) return;
 
   const natalRow = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
   if (!natalRow) {

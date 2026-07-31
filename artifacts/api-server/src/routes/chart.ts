@@ -14,6 +14,7 @@ import { requireTesterId } from "../middlewares/testerId.js";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { getPlanetPositions, julianDay, getMajorAspects, SIGNS } from "../lib/astro.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -113,6 +114,15 @@ router.post("/chart/explicate", requireTesterId, async (req, res) => {
     `Transiting ${transitPlanet} is in ${target.transitSign}.`,
     others.length ? `Also active in the chart right now: ${others.join("; ")}.` : "",
   ].filter(Boolean).join(" ");
+
+  // No key configured → the deterministic reading below, reached without a
+  // doomed round trip. Degrading beats refusing: this transit is real whether
+  // or not a model is available to write about it.
+  const deterministic = () => res.json({
+    transit: { transitPlanet, natalPlanet, aspect, orb: target.orb, exact: target.exact, severity: target.severity, natalHouse: timeKnown ? target.natalHouse : null },
+    reading: target.healthNote,
+  });
+  if (!isOpenAiConfigured) { deterministic(); return; }
 
   try {
     const completion = await openai.chat.completions.create({

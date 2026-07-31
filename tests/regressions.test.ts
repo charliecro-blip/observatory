@@ -2360,3 +2360,70 @@ describe("the outbox actually retries", () => {
     expect(sent).toEqual(["yesterday's line"]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 40. THE AI GUARD NOBODY COULD USE
+// `isOpenAiConfigured` shipped with a comment telling "every AI route" to
+// check it and 503. Zero routes did — and the reason turned out to be
+// structural: the flag was exported from ./client but NOT from the package
+// barrel, so from where the routes stand (importing the package root) it did
+// not exist. The instruction was unfollowable.
+//
+// Auditing the eight call sites also showed "503 everywhere" was the wrong
+// instruction. Three routes already fall back to a DETERMINISTIC answer, and
+// refusing there would remove a working feature. The rule that survives is:
+// never call the model with a placeholder credential, and prefer the
+// deterministic answer wherever one exists.
+//
+// Third bug, caught only by booting it: re-exporting the flag from aiGuard.ts
+// under its own name made esbuild emit a self-referential binding, and every
+// guarded route threw `ReferenceError: isOpenAiConfigured4 is not defined` at
+// request time — through a CLEAN build and a CLEAN typecheck.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("the AI guard is reachable and used correctly", () => {
+  const read = (p: string) => readFileSync(join(process.cwd(), p), "utf-8");
+  const barrel = read("lib/integrations-openai-ai-server/src/index.ts");
+  const guard = read("artifacts/api-server/src/lib/aiGuard.ts");
+
+  it("the package barrel exports the flag, not just the client", () => {
+    // The whole reason the instruction went unfollowed for so long.
+    expect(barrel).toMatch(/export \{[^}]*isOpenAiConfigured[^}]*\} from "\.\/client"/);
+  });
+
+  it("aiGuard does NOT re-export the flag under its own name", () => {
+    // Bundler-level footgun: it type-checks and builds, then throws per
+    // request. Routes import the flag from the package.
+    expect(guard).not.toMatch(/export \{\s*isOpenAiConfigured\s*\}/);
+  });
+
+  it("routes with a deterministic fallback degrade instead of refusing", () => {
+    // A 503 here would replace a working answer with an error.
+    for (const [file, marker] of [
+      ["artifacts/api-server/src/routes/associate.ts", "res.json(base)"],
+      ["artifacts/api-server/src/routes/planning.ts", "res.json(fallback())"],
+      ["artifacts/api-server/src/routes/chart.ts", "deterministic()"],
+    ] as const) {
+      const src = read(file);
+      const at = src.indexOf("if (!isOpenAiConfigured)");
+      expect(at).toBeGreaterThan(-1);
+      expect(src.slice(at, at + 120)).toContain(marker);
+      expect(src.slice(at, at + 120)).not.toContain("503");
+    }
+  });
+
+  it("the one route with nothing to fall back on returns a contained 503", () => {
+    const src = read("artifacts/api-server/src/routes/blueprint.ts");
+    expect(src).toMatch(/if \(aiUnavailable\(res\)\) return;/);
+    expect(guard).toMatch(/res\.status\(503\)/);
+  });
+
+  it("the streaming routes are left alone — they already contain the error", () => {
+    // advise and openai/messages emit an error frame the client renders;
+    // changing their response shape for a config production doesn't have
+    // would be churn with real regression risk.
+    for (const f of ["advise.ts", "openai.ts"]) {
+      expect(read(`artifacts/api-server/src/routes/${f}`)).not.toContain("aiUnavailable");
+    }
+  });
+});
