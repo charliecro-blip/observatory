@@ -9,6 +9,7 @@ import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
+import { Guide } from "@/components/Guide";
 import { enablePush } from "@/lib/pushSubscribe";
 import type { ChronotypeProfile } from "@/lib/tester-profile";
 import { CautionQuestionnaireModal } from "@/components/CautionQuestionnaire";
@@ -57,6 +58,21 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
       {sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{sub}</div>}
       {children}
     </div>
+  );
+}
+
+function GuideSection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {open && <Guide onClose={() => setOpen(false)} />}
+      <SectionCard title="How Compass works" sub="What each tab is for, the daily loop, and what the app deliberately won't do.">
+        <button onClick={() => setOpen(true)} style={{
+          fontSize: 12, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
+          border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-1)",
+        }}>Open the guide</button>
+      </SectionCard>
+    </>
   );
 }
 
@@ -1709,6 +1725,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Theme + text size */}
         <ThemeSection />
+        <GuideSection />
         <TextSizeSection />
         <EmailReportsSection testerId={testerId} />
 

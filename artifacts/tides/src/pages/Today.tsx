@@ -18,6 +18,7 @@ import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
+import { Guide } from "@/components/Guide";
 import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
@@ -555,6 +556,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [dismissedPremiumBanner, setDismissedPremiumBanner] = useState(() => localStorage.getItem("obs_seen_premium_banner") === "1");
   const [dismissedStarHint, setDismissedStarHint] = useState(() => localStorage.getItem("obs_seen_star_hint") === "1");
+  // The guide, and a one-line way in. The intro runs exactly once and is gone
+  // by Thursday; this is the strip that survives long enough to be useful, and
+  // it dismisses for good on first open.
+  const [showGuide, setShowGuide] = useState(false);
+  const [dismissedGuideHint, setDismissedGuideHint] = useState(() => localStorage.getItem("obs_seen_guide_hint") === "1");
+  const closeGuideHint = () => { localStorage.setItem("obs_seen_guide_hint", "1"); setDismissedGuideHint(true); };
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
@@ -945,6 +952,29 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* Active angle crossing(s) ride at the very top — a peak moment the
             day is passing through right now, above even the ritual card. */}
+        {showGuide && <Guide onClose={() => { setShowGuide(false); closeGuideHint(); }} />}
+
+        {/* First-run: one line, dismissible, gone once opened. Not a tour and
+            not a modal — a new tester's first screen should be their day, with
+            the explanation one tap away rather than in front of it. */}
+        {!dismissedGuideHint && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "9px 13px",
+            border: "1px solid var(--color-border)", borderRadius: 10, background: "var(--color-card-2)",
+          }}>
+            <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.5 }}>
+              New here? <strong style={{ fontWeight: 600 }}>How Compass works</strong> — what each tab is for, in a minute.
+            </span>
+            <button onClick={() => setShowGuide(true)} style={{
+              fontSize: 11, padding: "4px 12px", borderRadius: 7, cursor: "pointer",
+              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)",
+            }}>Read it</button>
+            <button onClick={closeGuideHint} aria-label="Dismiss" style={{
+              background: "none", border: "none", fontSize: 13, color: "var(--text-3)", cursor: "pointer",
+            }}>✕</button>
+          </div>
+        )}
+
         {crossingBanner}
 
         {/* The ritual anchor — morning "Cast off" / evening "Log the day".

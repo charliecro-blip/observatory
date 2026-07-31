@@ -1280,3 +1280,58 @@ describe("starter habits seed", () => {
     expect(app).toMatch(/seed-starters[\s\S]{0,160}catch\(\(\) => \{\}\)/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 26. THE INTRO RAN ONCE AND THERE WAS NOWHERE TO GO BACK TO
+// Not a defect — a gap, named by the owner. The intro slides teach the CONCEPTS
+// (character, level, nested rhythms) and teach them well. Nothing taught the
+// APP: which tab is for what, what the daily loop is, which affordances exist.
+// A tester finished onboarding knowing what a tide is and not knowing that Plan
+// takes a pasted to-do list. And the intro runs exactly once, so whatever it
+// did land was gone by Thursday with no way back.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("the guide", () => {
+  const guide = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/components/Guide.tsx"), "utf-8");
+
+  it("covers every tab in the nav, so no surface is unexplained", () => {
+    for (const tab of ["Today", "Calendar", "Aims", "Plan"]) {
+      expect(guide, `the guide never explains ${tab}`).toMatch(new RegExp(`title: "${tab}"`));
+    }
+  });
+
+  it("leads with the loop, not with astrology", () => {
+    // The first section a new user opens decides what they think the app is.
+    expect(guide.indexOf('key: "loop"')).toBeLessThan(guide.indexOf('key: "today"'));
+    expect(guide).toMatch(/You don't need to know any astrology/);
+  });
+
+  it("states the refusals — they are the product's most distinctive behaviour", () => {
+    expect(guide).toMatch(/won't move your blocks behind your back/);
+    expect(guide).toMatch(/won't promise outcomes/);
+    // The anti-streak position, in the rhythm framing from LANGUAGE-STUDY §4.
+    expect(guide).toMatch(/beat you can miss and come back to/);
+  });
+
+  it("is reachable from a first-run strip AND permanently from Settings", () => {
+    // One of these alone fails: a dismissible strip disappears, and nobody
+    // browses Settings looking for an explanation they don't know exists.
+    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+    const settings = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Settings.tsx"), "utf-8");
+    expect(today).toMatch(/New here\?/);
+    expect(today).toMatch(/obs_seen_guide_hint/);
+    expect(settings).toMatch(/GuideSection/);
+    expect(settings).toMatch(/Open the guide/);
+  });
+
+  it("the first-run strip is namespaced, so account deletion clears it", () => {
+    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+    const key = today.match(/"(obs_seen_guide_hint)"/)?.[1] ?? "";
+    const profile = readFileSync(
+      join(process.cwd(), "artifacts/tides/src/lib/tester-profile.ts"), "utf-8");
+    const namespaces = (profile.match(/const LOCAL_NAMESPACES = \[([^\]]+)\]/)?.[1] ?? "")
+      .split(",").map((s) => s.trim().replace(/"/g, ""));
+    expect(namespaces.some((n) => key.startsWith(n))).toBe(true);
+  });
+});
