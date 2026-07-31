@@ -251,6 +251,29 @@ export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
   const prevDelta: Record<string, number> = {};
   for (const t of MOON_TARGETS) prevDelta[t] = norm360(prevMoon - (prevLons[t] ?? 0));
 
+  // The exact instant the signed separation reaches the aspect angle, refined
+  // off the 10-minute grid. `timeMs` is not only the centre of an election
+  // swell (where 10 minutes would be harmless) — it is printed verbatim as
+  // "Moon trine Venus · exact 3:20 PM" in the election's reasoning, and on the
+  // Studio cards. A clock time to the minute, taken from a ten-minute bucket.
+  const perfectionAt = (lo: number, hi: number, planet: string, angle: number) => {
+    const deltaAt = (ms: number) => {
+      const j = julianDay(new Date(ms));
+      return norm360(norm360(moonLongitude(j)) - (lonOf(j)[planet] ?? 0));
+    };
+    // The signed delta rises monotonically across a step (the Moon outruns
+    // every target). Bisect on PROGRESS FROM THE STEP START rather than on the
+    // raw delta — that way the 360°→0° wrap needs no special case, which is
+    // where a hand-rolled wrap test got one bisection stuck a minute out.
+    const d0 = deltaAt(lo);
+    const target = norm360(angle - d0);
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      if (norm360(deltaAt(mid) - d0) >= target) hi = mid; else lo = mid;
+    }
+    return Math.round(hi / 1000) * 1000;
+  };
+
   for (let t = dayStartMs + STEP; t <= dayStartMs + 24 * 3600000; t += STEP) {
     const jd = julianDay(new Date(t));
     const mLon = norm360(moonLongitude(jd));
@@ -259,10 +282,10 @@ export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
       const d = norm360(mLon - (lons[p] ?? 0));
       const prev = prevDelta[p];
       if (d >= prev) {
-        for (const A of SIGNED_MOON_ANGLES) if (prev < A.deg && A.deg <= d) { out.push({ timeMs: t, planet: p, aspect: A.name }); break; }
+        for (const A of SIGNED_MOON_ANGLES) if (prev < A.deg && A.deg <= d) { out.push({ timeMs: perfectionAt(t - STEP, t, p, A.deg), planet: p, aspect: A.name }); break; }
       } else {
         // Wrapped past 360 → 0.
-        for (const A of SIGNED_MOON_ANGLES) if (A.deg > prev || A.deg <= d) { out.push({ timeMs: t, planet: p, aspect: A.name }); break; }
+        for (const A of SIGNED_MOON_ANGLES) if (A.deg > prev || A.deg <= d) { out.push({ timeMs: perfectionAt(t - STEP, t, p, A.deg), planet: p, aspect: A.name }); break; }
       }
       prevDelta[p] = d;
     }

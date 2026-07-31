@@ -1691,3 +1691,64 @@ describe("aspect perfection times", () => {
     expect(src).toMatch(/lo = Math\.max\(0, minAtH - SCAN_STEP_H\)/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 33. MOON PERFECTION TIMES, AND THE FLOOR UNDER ALL OF THIS
+// Fifth and last instance of the audit's pattern, found by following the chain
+// rather than stopping at "election windows look fine": scanMoonPerfections
+// stepped in 10 minutes and returned the grid step as `timeMs`. That value
+// centres a ±2.5h election swell, where 10 minutes is harmless — but it is also
+// printed verbatim as "Moon trine Venus · exact 3:20 PM" in an election's
+// reasoning and on the Studio cards. Now bisected: 10 min → ~60 s.
+//
+// AND THE CORRECTION THAT MATTERS MORE:
+//
+// The ephemeris quantises time to 30 SECONDS. moonLongitude() returns an
+// identical value for every instant inside a 30-second bucket, though
+// julianDay() carries full 1-second resolution — so the quantisation is in the
+// ephemeris implementation, not in how we call it.
+//
+// This is the floor under every timing claim in this codebase, and it means the
+// audit's headline figures ("0.64 s", "0 s drift") measured AGREEMENT BETWEEN
+// TWO SEARCHES OVER THE SAME QUANTISED DATA — not absolute accuracy. The real
+// statement is: the scan-grid error (6 to 58 minutes) is gone; what remains is
+// the ephemeris's own ±30 s, and no amount of refinement will beat it.
+//
+// Nobody should spend another hour chasing sub-minute precision here. If it is
+// ever genuinely needed, the ephemeris is the thing to replace.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("ephemeris time granularity", () => {
+  it("is 30 seconds — the floor under every timing number we print", async () => {
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const base = Date.parse("2026-08-01T12:00:00Z");
+    const l0 = A.moonLongitude(A.julianDay(new Date(base)));
+    let firstChange: number | null = null;
+    for (let s = 1; s <= 300; s++) {
+      if (A.moonLongitude(A.julianDay(new Date(base + s * 1000))) !== l0) { firstChange = s; break; }
+    }
+    expect(firstChange).not.toBeNull();
+    expect(firstChange).toBeLessThanOrEqual(60);
+    // If this ever drops to 1s the ephemeris has been changed, and the comments
+    // above about a 30-second floor need revisiting.
+    expect(firstChange).toBeGreaterThan(1);
+  }, 60000);
+
+  it("julianDay itself carries full second resolution", () => {
+    // So the quantisation is NOT ours — worth knowing before anyone tries to
+    // fix it here.
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
+    expect(src).toMatch(/getUTCSeconds\(\) \/ 86400/);
+  });
+
+  it("moon perfections are bisected, not reported as a 10-minute grid step", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/studioCard.ts"), "utf-8");
+    expect(src).toMatch(/const perfectionAt =/);
+    expect(src).toMatch(/timeMs: perfectionAt\(t - STEP, t, p, A\.deg\)/);
+    // Bisecting on progress-from-step-start rather than the raw delta is what
+    // removes the 360°→0° special case a hand-rolled wrap test got wrong.
+    expect(src).toMatch(/norm360\(deltaAt\(mid\) - d0\) >= target/);
+  });
+});

@@ -299,8 +299,22 @@ was printed as an exact time.**
 | Void window ends | 6.5 min (10-min scan) | 0 s |
 | Angular crossings | **8.6 min** — and a crossing already underway reported orb 2.25° against a true 0.002° | 0.43 min, orbs 0.00 |
 | Aspect "exact in…" | **364 min** — Moon square Mars 32 min away, reported as 6.6 h | 1.6 min (Moon), 0.8 min (slow) |
+| Moon perfection times (election reasoning, Studio cards) | 10 min (grid step) | ~60 s |
 | Sunrise / sunset | 29 s | ✅ no change needed |
 | Planetary hour boundaries | 0.0 s | ✅ no change needed |
+| Election window edges | — | ✅ correct by construction (intersections of planetary hours × swells; 0 windows overlapped a void) |
+
+**⚠️ Correction to the figures above.** The ephemeris quantises time to **30
+seconds** — `moonLongitude()` returns an identical value for every instant in a
+30-second bucket, while `julianDay()` carries full 1-second resolution, so the
+quantisation is inside the ephemeris and not in how we call it.
+
+That means the sub-second numbers in this table measured **agreement between two
+searches over the same quantised data**, not absolute accuracy. The honest
+statement is: *the scan-grid error (6–58 minutes) is gone; what remains is the
+ephemeris's own ±30 s.* Nobody should spend another hour chasing sub-minute
+precision — if it is ever genuinely needed, the ephemeris is the thing to
+replace, not the callers.
 
 **Why these were invisible.** Every one produced a *plausible* number. Nothing
 crashed, nothing looked wrong, and the only way to see any of it was to compute
