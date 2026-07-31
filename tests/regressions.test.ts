@@ -1615,3 +1615,79 @@ describe("angular crossing precision", () => {
     }
   }, 60000);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 32. "EXACT IN ~7 HOURS" FOR AN ASPECT PERFECTING IN 32 MINUTES
+// Round two of the timing audit, and the worst finding in it.
+//
+// hoursToExact came from a linear extrapolation over a ONE-HOUR finite
+// difference: sep / (sep - sepOneHourLater). That straddles the perfection
+// whenever the aspect becomes exact within the hour — sep and sepN then sit on
+// opposite sides of zero, the apparent closing rate collapses toward nothing,
+// and the estimate explodes. Measured 2026-08-02, Moon square Mars: orb 0.28°,
+// applying, true perfection 32 minutes away, REPORTED AS 6.6 HOURS. The rail
+// renders this as a clock time.
+//
+// It failed hardest on exactly the aspects that matter most — the ones about to
+// perfect — and the Moon was the one body left on the linear path, on the
+// grounds that it is "fast and never stations". Never stationing justifies
+// skipping the turn detection; it says nothing about timing.
+//
+// Planetary hours were audited in the same pass and needed no change: boundary
+// mismatch 0.0 seconds across 10 samples, and each hour abuts the next exactly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("aspect perfection times", () => {
+  it("is accurate for Moon pairs, which perfect soonest and matter most", async () => {
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    let worst = 0, n = 0;
+    for (let d = 0; d < 8; d++) {
+      const now = new Date(Date.parse("2026-08-01T09:00:00Z") + d * 86400000);
+      for (const a of A.getMajorAspects(A.julianDay(now))) {
+        if (a.hoursToExact == null || a.stationsBeforeExact) continue;
+        if (!(a.planet1 === "Moon" || a.planet2 === "Moon")) continue;
+        const sepAt = (ms: number) => {
+          const j = A.julianDay(new Date(ms));
+          const lon = (p: string) => p === "Moon" ? A.moonLongitude(j)
+            : A.getPlanetPositions(j).find((x: any) => x.planet === p)?.longitude ?? 0;
+          const raw = ((Math.abs(lon(a.planet1) - lon(a.planet2)) % 360) + 360) % 360;
+          return Math.abs((raw > 180 ? 360 - raw : raw) - a.exactAngle);
+        };
+        // Brute force at 1-minute resolution across the whole approach — no
+        // shared method with the code under test.
+        const est = now.getTime() + a.hoursToExact * 3600000;
+        let best = est, bestSep = Infinity;
+        for (let m = 0; m <= 24 * 60; m++) {
+          const v = sepAt(now.getTime() + m * 60000);
+          if (v < bestSep) { bestSep = v; best = now.getTime() + m * 60000; }
+        }
+        if (bestSep > 0.3) continue;   // never actually perfects in range
+        worst = Math.max(worst, Math.abs(best - est) / 60000); n++;
+      }
+    }
+    expect(n).toBeGreaterThan(5);
+    expect(worst).toBeLessThan(10);    // was 364 minutes
+  }, 120000);
+
+  it("determines applying/separating from a short baseline", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
+    // A one-hour baseline can flip the sign when perfection falls inside it.
+    expect(src).toMatch(/const sepShort = sepAt\(5 \/ 60/);
+    expect(src).toMatch(/const applying = sepShort < sep/);
+  });
+
+  it("searches for the Moon's perfection instead of extrapolating to it", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
+    const moonBranch = src.slice(src.indexOf("if (isMoonPair) {"), src.indexOf("} else {", src.indexOf("if (isMoonPair) {")));
+    expect(moonBranch).toMatch(/hi = m2; else lo = m1/);   // ternary search
+  });
+
+  it("refines the slow-pair walk off its six-hour grid", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
+    // minAtH is a multiple of SCAN_STEP_H, so it sat up to 3h from the truth.
+    expect(src).toMatch(/lo = Math\.max\(0, minAtH - SCAN_STEP_H\)/);
+  });
+});

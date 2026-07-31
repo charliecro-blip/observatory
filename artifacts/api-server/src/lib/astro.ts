@@ -696,17 +696,25 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
           const angleN = rawN > 180 ? 360 - rawN : rawN;
           const sepN   = Math.abs(angleN - def.angle);
 
-          // Real closing speed for THIS pair, from actual ephemeris motion over 1 hour.
-          // ratePerHour > 0 means the orb is shrinking (applying).
-          const ratePerHour = sep - sepN;
-          const applying = sepN < sep;
-          // Linear estimates — exact enough for Moon pairs (fast, never stations),
-          // and the fallback when perfection lies beyond the scan window.
+          // Applying vs separating from a SHORT baseline. The one-hour
+          // difference above straddles the perfection whenever the aspect
+          // becomes exact within the hour — sep and sepN then sit on opposite
+          // sides of zero, the apparent rate collapses toward nothing, and the
+          // linear estimate below explodes. Measured 2026-08-02, Moon square
+          // Mars: orb 0.28°, perfection 32 minutes away, reported as 6.6 HOURS.
+          // Five minutes is short enough that the Moon (~0.5°/h) cannot cross
+          // perfection inside it at any orb we report.
+          const sepShort = sepAt(5 / 60, p1.planet, p2.planet, def.angle);
+          const ratePerHour = (sep - sepShort) * 12;   // per hour, from a 5-min baseline
+          const applying = sepShort < sep;
+          void sepN;
+          // Linear estimate — the fallback when perfection lies beyond the scan
+          // window. Every pair now refines this against the real ephemeris below.
           let hoursToExact = applying && ratePerHour > 1e-6
-            ? parseFloat((sep / ratePerHour).toFixed(1))
+            ? parseFloat((sep / ratePerHour).toFixed(2))
             : null;
           let hoursSinceExact = !applying && ratePerHour < -1e-6
-            ? parseFloat((sep / -ratePerHour).toFixed(1))
+            ? parseFloat((sep / -ratePerHour).toFixed(2))
             : null;
           let stationsBeforeExact = false;
           let neverPerfected = false;
@@ -717,7 +725,28 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
           // real ephemeris to see whether the aspect actually perfects (ahead)
           // or actually perfected (behind).
           const isMoonPair = p1.planet === "Moon" || p2.planet === "Moon";
-          if (!isMoonPair) {
+          if (isMoonPair) {
+            // The Moon was the ONE pair left on a pure linear estimate, on the
+            // grounds that it is fast and never stations. "Never stations"
+            // justifies skipping the turn detection below; it says nothing
+            // about timing accuracy, and the Moon's rate is least constant
+            // exactly where the number matters most — near perfection.
+            //
+            // Ternary search for the true minimum. Separation from exact is
+            // V-shaped through a perfection, so it is unimodal across one
+            // approach; 24h covers any orb we report at ~0.5°/h.
+            const dir = applying ? 1 : -1;
+            let lo = 0, hi = 24;
+            for (let k = 0; k < 60; k++) {
+              const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+              if (sepAt(dir * m1, p1.planet, p2.planet, def.angle)
+                < sepAt(dir * m2, p1.planet, p2.planet, def.angle)) hi = m2; else lo = m1;
+            }
+            const atH = parseFloat(((lo + hi) / 2).toFixed(2));
+            if (sepAt(dir * atH, p1.planet, p2.planet, def.angle) <= PERFECT_EPS) {
+              if (applying) hoursToExact = atH; else hoursSinceExact = atH;
+            }
+          } else {
             const dir = applying ? 1 : -1; // scan toward the supposed perfection
             let prev = sep, minSep = sep, minAtH = 0, turned = false;
             for (let h = SCAN_STEP_H; h <= SCAN_SPAN_H; h += SCAN_STEP_H) {
@@ -728,8 +757,19 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
               prev = s;
             }
             if (minSep <= PERFECT_EPS) {
-              if (applying) hoursToExact = minAtH;
-              else hoursSinceExact = minAtH;
+              // The walk steps in 6 hours, so minAtH is a grid point and can sit
+              // up to 3h from the real perfection — "exact in ~36h" for one that
+              // lands at 33h. Refine within one step either side, same ternary
+              // search the Moon branch uses.
+              let lo = Math.max(0, minAtH - SCAN_STEP_H), hi = minAtH + SCAN_STEP_H;
+              for (let k = 0; k < 60; k++) {
+                const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+                if (sepAt(dir * m1, p1.planet, p2.planet, def.angle)
+                  < sepAt(dir * m2, p1.planet, p2.planet, def.angle)) hi = m2; else lo = m1;
+              }
+              const refined = parseFloat(((lo + hi) / 2).toFixed(2));
+              if (applying) hoursToExact = refined;
+              else hoursSinceExact = refined;
             } else if (turned) {
               // The pair reverses before reaching exact — no perfection to report.
               if (applying) { stationsBeforeExact = true; hoursToExact = null; }
