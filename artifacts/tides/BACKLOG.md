@@ -82,7 +82,9 @@ competitive borrowing until this block closes.***
 
 | | Item |
 |---|---|
-| ☐ | **Conversion + outcome instrumentation** — 11 events, none a conversion event. Cheapest high-value item; everything in pricing depends on it. |
+| ☐ | **Conversion + outcome instrumentation** — 11 events, none a conversion event. Cheapest high-value item; everything in pricing depends on it. **Deferred by owner 2026-07-30** — focus is getting beta underway, not measuring conversion before there's anything to convert. |
+| ☑ | **Client crash reporting** — `lib/errorReport.ts` + `componentDidCatch` + window/promise handlers, reusing `/api/events` (no new table, no SDK, no key to configure). Deduped per source+message, 10/session ceiling — a render loop was otherwise hundreds of DB writes a second on a compute-billed database. Read it at **`GET /api/events/errors?days=7`**, grouped and sorted by *people affected* before raw volume. Verified end to end on all three paths. |
+| ☐ | **A staging environment** — see §9. The single highest-leverage thing for shipping *while* beta users are on the app. |
 | ☐ | **Preference sync, scoped by ownership** — *account*: house system, astro detail, density, timing defaults, caution planets · *device*: theme, text size, reduced motion · *subscription*: quiet hours, schedule, event filters. A single blob would push a phone preference onto the desktop. |
 | ☐ | **One "no hover-only interactions" pass** — HelpBadge glossary (dismissible popover/bottom sheet + keyboard focus), Calendar's `onMouseEnter` "+ add" reveal, TideWater. |
 | ☐ | **Reviews available, not compulsory** — keep a completed period's review for several days, show a subtle pending item in Next/Log, allow dismissal, preserve access in the Log afterwards. |
@@ -184,3 +186,76 @@ Effort estimates from the competitive study. Items marked ★ are mostly-already
 The journey to own: **"is this the moment?"** → *now* / *better on Thursday* / *against
 the current* / *not this month*, with per-rule receipts. Nobody else can render the
 fourth answer and most can't render the third.
+
+---
+
+## 9. Shipping while beta users are on the app
+
+*Added 2026-07-30. Three structural facts about this setup decide what is safe
+to do once real people have data in it.*
+
+### 9a. `drizzle-kit push` is the sharp edge
+
+The schema lives as TypeScript in `lib/db/src/schema/*.ts`. On every deploy,
+`drizzle-kit push` compares that to the live database and applies the
+difference **directly** — no migration files, no history, no down step.
+
+It also has to *infer intent*. Rename `title` → `name` and it cannot tell a
+rename from "drop `title`, add an empty `name`". It will usually do the latter,
+and every row's data in that column is gone, silently, on production.
+
+**The rule while beta is live: additive only.**
+
+| Safe | Not safe without a supervised migration |
+|---|---|
+| Add a nullable column | Rename a column |
+| Add a table | Drop a column or table |
+| Add an index | Change a column's type |
+| Widen a type (text stays text) | Add a NOT NULL column to a populated table |
+
+The real fix is generated, versioned migrations. Getting there needs a
+**baseline**: the tables already exist, so migration 0 must be *marked applied*
+rather than run — otherwise it tries to create what's there. Supervised, with a
+fresh backup, never as part of a normal deploy.
+
+### 9b. There is no staging — and there should be
+
+Everything already points at a two-branch flow (`feat/tides-app` → `main`, CI
+builds both). The missing half is somewhere for the first branch to land.
+
+**Owner steps (~20 min, ~$5/mo):**
+1. **Neon** → branch the production database, name it `staging`. Branching is
+   copy-on-write and instant; it costs almost nothing and it is throwaway.
+2. **Railway** → new service from the same repo, watching **`feat/tides-app`**,
+   with `DATABASE_URL` pointing at the Neon `staging` branch and its own
+   `PUBLIC_BASE_URL`. Give it the Railway-provided domain or `staging.compass.day`.
+3. Leave production watching `main`.
+
+**What that buys, specifically:** a schema change hits a throwaway Neon branch
+*first*. If `drizzle-kit push` is about to drop a column, you find out on a copy
+instead of on a tester's journal. That is the single mitigation for 9a that
+doesn't require the migration work.
+
+Until then, the poor-man's version already works and needs nothing:
+```
+createdb compass_staging
+(cd lib/db && DATABASE_URL=postgres://localhost:5432/compass_staging npx drizzle-kit push --force)
+TEST_DATABASE_URL=postgres://localhost:5432/compass_staging pnpm test
+```
+
+### 9c. One service, no feature flags
+
+A single Railway process serves both the API and the built frontend, so a
+deploy replaces it: everyone gets the new version at once, with a few seconds
+where requests fail. Fine at beta scale — but it means risky work wants to land
+in the morning, not at 9pm while people are logging their day.
+
+No feature flags means code either reaches everyone or nobody. Consequences
+worth knowing rather than fixing right now:
+- A half-finished feature cannot sit merged-but-off. Keep it on a branch.
+- Nothing can be turned off without a deploy. **Rolling back is
+  `git revert` + push**, and that path is ~5 minutes end to end — which is
+  acceptable precisely because tests gate the build.
+
+The one real protection already in place: `railway.toml` runs install → tests →
+build → *then* the schema push. A broken invariant cannot reach the database.
