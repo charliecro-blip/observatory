@@ -32,8 +32,8 @@ const SECTIONS: Section[] = [
     lead: "Two moments a day. Everything else is optional.",
     points: [
       { term: "Morning — Cast off", text: "Today opens with the day's character, your first few things, and one good window. It appears in the first hours after you wake, not at a fixed clock time." },
-      { term: "Evening — Log the day", text: "Rate how the day actually felt: aligned, mixed, or off. Thirty seconds. This is the part that makes the app yours — it learns which days land for you and stops guessing." },
-      { term: "Why the rating matters", text: "Compass will not tell you which days suit you until it has enough of your own ratings to say so honestly. Until then it says so." },
+      { term: "Evening — Log the day", text: "Rate how the day actually felt: aligned, mixed, or off. Thirty seconds. It builds a record of which kinds of day have landed for you — shown back to you once there is enough of it to mean anything." },
+      { term: "What it does and doesn't do", text: "It shows you your own pattern — \u201caligned on 5 of 6 Building days, against 2 of 8 others\u201d — with the counts, so you can judge it. It does not currently change what Compass recommends. When that changes, this will say so." },
     ],
   },
   {

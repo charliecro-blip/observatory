@@ -787,3 +787,98 @@ export function buildCycleWinsCardSvg(m: any, opts: {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
   return { svg, width: W, height: H };
 }
+
+// ── The election card ────────────────────────────────────────────────────────
+// The keepable artifact from PAYING-PERSONAS §A3, and the thing the "$49 elect
+// a date" SKU is actually delivering. It renders THE ELECTION YOU JUST RAN —
+// the specific windows for the specific thing you asked about — rather than the
+// general best-times card, which runs a parallel computation over four broad
+// buckets and cannot name your matter.
+//
+// Deliberately keeps the refusal. If the engine found nothing, the card says so
+// and says why. A card that always produces a cheerful list of times would be a
+// different product: the "Avoid" verdict is the most distinctive thing this
+// engine does, and it survives onto the artifact people keep and send.
+
+export function buildElectionCardSvg(opts: {
+  activityLabel: string;
+  windows: { date: string; dow: string; startClock: string; endClock: string; tier: "good" | "great"; why: string; allDay?: boolean }[];
+  cautions: string[];
+  personalized: boolean;
+  spanLabel: string;
+  theme?: CardTheme; format?: CardFormat; tzLabel?: string;
+}): { svg: string; width: number; height: number } {
+  const theme = opts.theme ?? "tide";
+  const format = opts.format ?? "story";
+  const W = 1080, H = format === "story" ? 1920 : 1350;
+  const s = SURFACE[theme];
+  const accent = ELEMENT_COLORS[theme].water;
+
+  const tzNote = opts.tzLabel ? ` · times in ${opts.tzLabel}` : "";
+  const kicker = `${opts.spanLabel}${tzNote}`;
+
+  const parts: string[] = [];
+  parts.push(`<rect width="${W}" height="${H}" fill="${s.bg}"/>`);
+  parts.push(`<text x="${W / 2}" y="104" text-anchor="middle" font-family="${SERIF}" font-size="34" letter-spacing="12" font-weight="700" fill="${s.sub}">COMPASS</text>`);
+  parts.push(`<text x="${W / 2}" y="154" text-anchor="middle" font-family="${SERIF}" font-size="26" fill="${s.sub}">${esc(kicker)}</text>`);
+  parts.push(`<text x="${W / 2}" y="244" text-anchor="middle" font-family="${SERIF}" font-size="34" fill="${s.sub}">When to begin</text>`);
+  parts.push(`<text x="${W / 2}" y="316" text-anchor="middle" font-family="${SERIF}" font-size="58" font-weight="700" fill="${s.ink}">${esc(opts.activityLabel)}</text>`);
+
+  const left = 110;
+  let y = 420;
+
+  if (opts.windows.length === 0) {
+    // The refusal, rendered as the answer rather than as an empty state.
+    parts.push(`<text x="${W / 2}" y="${y + 40}" text-anchor="middle" font-family="${SERIF}" font-size="46" font-style="italic" fill="${s.ink}">Not in this window.</text>`);
+    y += 130;
+    const reason = opts.cautions[0] ?? "Nothing in this range clears the bar for this matter.";
+    for (const line of wrapCardText(reason, 46).slice(0, 4)) {
+      parts.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-family="${SERIF}" font-size="27" fill="${s.sub}">${esc(line)}</text>`);
+      y += 40;
+    }
+  } else {
+    const ROW_H = 132;
+    const budget = H - 220 - y;
+    const rows = opts.windows.slice(0, Math.max(1, Math.floor(budget / ROW_H)));
+    for (const w of rows) {
+      const isGreat = w.tier === "great";
+      parts.push(`<rect x="${left - 30}" y="${y - 46}" width="${W - 2 * (left - 30)}" height="${ROW_H - 18}" rx="14" fill="${isGreat ? accent + "14" : "none"}"/>`);
+      if (isGreat) parts.push(`<text x="${left}" y="${y}" font-family="${SERIF}" font-size="22" letter-spacing="3" font-weight="700" fill="${accent}">GREAT</text>`);
+      const when = w.allDay ? `${w.dow} · all day` : `${w.dow} · ${w.startClock}–${w.endClock}`;
+      parts.push(`<text x="${left + (isGreat ? 108 : 0)}" y="${y}" font-family="${SERIF}" font-size="38" fill="${s.ink}">${esc(when)}</text>`);
+      // The GREAT badge eats ~108px of the row, so its subtitle gets a shorter
+      // budget — otherwise the one row the card is drawing attention to is the
+      // one that truncates mid-word.
+      parts.push(`<text x="${left}" y="${y + 42}" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(truncCard(w.why, isGreat ? 54 : 64))}</text>`);
+      parts.push(`<line x1="${left}" y1="${y + 68}" x2="${W - left}" y2="${y + 68}" stroke="${s.line}" stroke-width="1"/>`);
+      y += ROW_H;
+    }
+    // Cautions ride under the list — the engine's honesty, not a disclaimer.
+    if (opts.cautions.length) {
+      y += 16;
+      for (const line of wrapCardText(opts.cautions.join(" · "), 60).slice(0, 3)) {
+        parts.push(`<text x="${left}" y="${y}" font-family="${SERIF}" font-size="24" font-style="italic" fill="${s.sub}">${esc(line)}</text>`);
+        y += 36;
+      }
+    }
+  }
+
+  parts.push(`<text x="${W / 2}" y="${H - 108}" text-anchor="middle" font-family="${SERIF}" font-size="24" fill="${s.sub}">${esc(opts.personalized ? "read against your chart" : "read from the sky alone")}</text>`);
+  parts.push(`<text x="${W / 2}" y="${H - 62}" text-anchor="middle" font-family="${SERIF}" font-size="26" font-style="italic" fill="${s.sub}">move with time</text>`);
+
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`, width: W, height: H };
+}
+
+/** Greedy word wrap — the card has no text layout engine behind it. */
+function wrapCardText(text: string, perLine: number): string[] {
+  const words = String(text).split(/\s+/);
+  const out: string[] = [];
+  let line = "";
+  for (const w of words) {
+    if ((line + " " + w).trim().length > perLine) { if (line) out.push(line.trim()); line = w; }
+    else line = (line + " " + w).trim();
+  }
+  if (line) out.push(line.trim());
+  return out;
+}
+const truncCard = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
