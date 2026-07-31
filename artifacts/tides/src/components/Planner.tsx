@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { aiErrorMessage } from "@/lib/aiError";
 import { invalidateWindows } from "@/lib/invalidateWindows";
+import { restorePlannerDraft } from "@/lib/plannerDraft";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
@@ -35,6 +36,17 @@ const fmtDayHeader = (iso: string) => new Date(iso).toLocaleDateString("en-US", 
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
+// A draft survives a reload. It used to be pure component state, so a refresh
+// — or a phone deciding to reclaim the tab — silently threw away a dump, an AI
+// parse of it, and a woven schedule. That is minutes of real work and two API
+// calls, discarded with no warning and no way back.
+const draftKey = (testerId: string | null) => `compass-planner-draft-${testerId ?? "anon"}`;
+
+interface Draft {
+  horizon: string; rawList: string; cards: Card[] | null;
+  result: WeaveResult | null; dropped: number[]; savedAt: string;
+}
+
 export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }: { testerId: string | null; lat: number; lon: number; seedList?: string | null; onSeedConsumed?: () => void }) {
   const qc = useQueryClient();
   const { profile } = useTester();
@@ -44,10 +56,52 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   const [result, setResult] = useState<WeaveResult | null>(null);
   const [dropped, setDropped] = useState<Set<number>>(new Set());
   const [committed, setCommitted] = useState(false);
+  // Set when a restored draft's schedule had already gone stale.
+  const [staleWeave, setStaleWeave] = useState(false);
+  const [restored, setRestored] = useState(false);
+
+  // Restore once, before anything else can write over it.
+  useEffect(() => {
+    try {
+      // The list comes back; a schedule whose moments have passed does not.
+      // See lib/plannerDraft.ts for why, and the tests that pin it.
+      const { draft, staleWeave: stale } = restorePlannerDraft(
+        localStorage.getItem(draftKey(testerId)), Date.now(),
+      );
+      if (draft) {
+        const d = draft as Draft;
+        setHorizon(d.horizon ?? "week");
+        setRawList(d.rawList ?? "");
+        setCards(d.cards ?? null);
+        setDropped(new Set(d.dropped ?? []));
+        setResult(d.result ?? null);
+      }
+      setStaleWeave(stale);
+    } finally {
+      setRestored(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testerId]);
+
+  // Persist on every change, but never before the restore has run — otherwise
+  // the initial empty state overwrites the draft we are about to load.
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      if (!rawList && !cards && !result) {
+        localStorage.removeItem(draftKey(testerId));
+        return;
+      }
+      const d: Draft = { horizon, rawList, cards, result, dropped: [...dropped], savedAt: new Date().toISOString() };
+      localStorage.setItem(draftKey(testerId), JSON.stringify(d));
+    } catch {
+      // Private mode / quota. The draft simply won't survive; nothing breaks.
+    }
+  }, [restored, testerId, horizon, rawList, cards, result, dropped]);
 
   const chrono: any = profile?.chronotype ?? {};
   const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) };
-  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); };
+  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); setStaleWeave(false); };
 
   const parse = useMutation({
     // Accepts an optional list so the quick-capture seed can be parsed
@@ -115,6 +169,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       invalidateWindows(qc);
       qc.invalidateQueries({ queryKey: ["tasks"] });
       setCommitted(true);
+      // Written to the calendar — it is no longer a draft, and leaving it on
+      // disk would offer to re-commit work that already exists.
+      try { localStorage.removeItem(draftKey(testerId)); } catch { /* ignore */ }
     },
   });
 
@@ -214,6 +271,14 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       {/* Step 2 — editable cards */}
       {cards && !result && (
         <div>
+          {staleWeave && (
+            // Explains a schedule that vanished between visits. Saying nothing
+            // would read as the app losing the plan; the truth is that the plan
+            // named times that have since passed.
+            <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 9, padding: "7px 10px", borderRadius: 8, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
+              Your list is still here, but the schedule around it had already passed — weave it again and it'll read the sky as it is now.
+            </div>
+          )}
           <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 10 }}>
             Here's what I read — tweak the estimate, energy, or deadline, then weave it in.
           </div>

@@ -2488,3 +2488,80 @@ describe("cross-package imports are actually typechecked", () => {
     expect(src).not.toMatch(/new pRetry\.AbortError/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 42. THE PLANNER FORGOT EVERYTHING ON REFRESH
+// `rawList`, `cards`, `result` and `dropped` were plain component state, so a
+// reload — or a phone reclaiming the tab — silently discarded a typed dump, an
+// AI parse of it, and a woven schedule. Minutes of work and two API calls,
+// gone with no warning and no way back.
+//
+// Restoring it raises a rule worth testing: the LIST keeps its value
+// indefinitely, the SCHEDULE does not. A weave names specific future moments,
+// so once they have passed the proposal describes a sky that has moved on.
+// Handing that back would be presenting stale timing as current — the exact
+// failure §10 exists to prevent. The list returns; the plan doesn't; the user
+// is told which.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { restorePlannerDraft } from "../artifacts/tides/src/lib/plannerDraft";
+
+describe("planner drafts survive a refresh, stale schedules do not", () => {
+  const NOW = Date.parse("2026-08-12T15:00:00Z");
+  const at = (offsetHours: number) =>
+    new Date(NOW + offsetHours * 3600_000).toISOString();
+  const draft = (plannedStarts: number[]) => JSON.stringify({
+    horizon: "week", rawList: "draft the report", cards: [{ title: "draft the report" }],
+    result: { planned: plannedStarts.map((h) => ({ startAt: at(h) })) },
+    dropped: [], savedAt: at(-1),
+  });
+
+  it("brings back the list and the parsed cards", () => {
+    const { draft: d } = restorePlannerDraft(draft([2]), NOW);
+    expect(d?.rawList).toBe("draft the report");
+    expect(d?.cards).toHaveLength(1);
+  });
+
+  it("keeps a schedule that is still ahead", () => {
+    const { draft: d, staleWeave } = restorePlannerDraft(draft([2, 5]), NOW);
+    expect(staleWeave).toBe(false);
+    expect(d?.result).not.toBeNull();
+  });
+
+  it("drops a schedule whose first block has passed, and says so", () => {
+    const { draft: d, staleWeave } = restorePlannerDraft(draft([-3, 4]), NOW);
+    expect(staleWeave).toBe(true);
+    expect(d?.result).toBeNull();
+    // …but never the list. Losing that is the bug being fixed.
+    expect(d?.rawList).toBe("draft the report");
+    expect(d?.cards).toHaveLength(1);
+  });
+
+  it("judges by the EARLIEST block, not the first in the array", () => {
+    // Order isn't guaranteed; a past block hiding behind a future one would
+    // restore a plan that already failed.
+    const { staleWeave } = restorePlannerDraft(draft([6, -1]), NOW);
+    expect(staleWeave).toBe(true);
+  });
+
+  it("survives nothing saved, and corrupt JSON, without throwing", () => {
+    expect(restorePlannerDraft(null, NOW)).toEqual({ draft: null, staleWeave: false });
+    expect(restorePlannerDraft("{not json", NOW)).toEqual({ draft: null, staleWeave: false });
+  });
+
+  it("a draft with no schedule at all is simply restored", () => {
+    const raw = JSON.stringify({ rawList: "just a list", cards: null, result: null });
+    const { draft: d, staleWeave } = restorePlannerDraft(raw, NOW);
+    expect(staleWeave).toBe(false);
+    expect(d?.rawList).toBe("just a list");
+  });
+
+  it("the component clears the draft once it is committed", () => {
+    // Otherwise a written plan lingers and offers to re-commit work that
+    // already exists on the calendar.
+    const src = readFileSync(join(process.cwd(), "artifacts/tides/src/components/Planner.tsx"), "utf-8");
+    const at2 = src.indexOf("setCommitted(true)");
+    expect(at2).toBeGreaterThan(-1);
+    expect(src.slice(at2, at2 + 260)).toMatch(/removeItem\(draftKey/);
+  });
+});
