@@ -92,7 +92,25 @@ router.get("/integrations/google-cal/status", async (req, res) => {
   if (!testerId) { res.json({ connected: false }); return; }
   const [row] = await db.select().from(googleCalTokens).where(eq(googleCalTokens.testerId, testerId)).limit(1);
   if (!row) { res.json({ connected: false }); return; }
-  res.json({ connected: true, email: row.calendarEmail });
+
+  // "Connected" used to mean "a row exists", which is not the same thing and
+  // fails in exactly the case that matters: while the OAuth app sits in
+  // Google's *Testing* mode, refresh tokens expire after 7 days. The row
+  // survives, so the app kept reporting Connected while quietly returning no
+  // events — a tester sees an empty calendar and no reason for it.
+  //
+  // Refreshing is the only way to know. It costs a request to Google ONLY when
+  // the access token has actually expired; refreshAccessToken() returns the
+  // cached one otherwise, so this is not a per-poll round trip.
+  const token = await refreshAccessToken(row);
+  res.json({
+    connected: true,
+    email: row.calendarEmail,
+    // The grant is gone on Google's side (revoked, or expired out of Testing
+    // mode). Distinct from `connected: false`, because the user did connect —
+    // they need one tap to reconnect, not to be told it never happened.
+    needsReconnect: token === null,
+  });
 });
 
 // GET /api/integrations/google-cal/auth  — initiate OAuth

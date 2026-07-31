@@ -1449,7 +1449,7 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
   const qc = useQueryClient();
   const popupRef = React.useRef<Window | null>(null);
 
-  const { data: status, isLoading } = useQuery<{ connected: boolean; email?: string; configured?: boolean }>({
+  const { data: status, isLoading } = useQuery<{ connected: boolean; email?: string; configured?: boolean; needsReconnect?: boolean }>({
     queryKey: ["gcal-status", testerId],
     queryFn: async () => {
       const r = await fetch("/api/integrations/google-cal/status", { headers: authH(testerId) });
@@ -1493,6 +1493,18 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>…</span>
         ) : status?.configured === false ? (
           <span style={{ fontSize: 10, color: "var(--text-3)", padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 6 }}>Not configured</span>
+        ) : status?.connected && status?.needsReconnect ? (
+          // Google dropped the grant. Say so plainly and make the fix one tap —
+          // the alternative (and what shipped before) is a calendar that is
+          // simply empty, with the app still claiming it is connected.
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: "#a06020", padding: "3px 10px", border: "1px solid #e0c0a0", borderRadius: 6, background: "#a0602018" }}>
+              ⚠ Google signed us out
+            </span>
+            <button onClick={connect} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer" }}>
+              Reconnect
+            </button>
+          </div>
         ) : status?.connected ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 10, color: "#408040", padding: "3px 10px", border: "1px solid #b0d0b0", borderRadius: 6, background: "#40804018" }}>

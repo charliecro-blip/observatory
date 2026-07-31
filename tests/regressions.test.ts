@@ -1178,3 +1178,56 @@ describe("new moon email", () => {
     expect(nm).toMatch(/artcl\(/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 24. "CONNECTED" MEANT "A ROW EXISTS"
+// Shipped bug: /integrations/google-cal/status returned connected:true whenever
+// a token row was present, without checking whether the token still worked.
+//
+// This fails in precisely the case that will hit every beta tester: while the
+// OAuth app sits in Google's *Testing* mode, refresh tokens expire after seven
+// days. The row survives the expiry, so the app went on reporting "Connected"
+// while the calendar returned nothing — an empty week with no explanation and
+// no affordance to fix it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("google calendar connection state", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/googleCal.ts"), "utf-8");
+  const statusRoute = src.slice(
+    src.indexOf('router.get("/integrations/google-cal/status"'),
+    src.indexOf('router.get("/integrations/google-cal/auth"'));
+
+  it("verifies the token rather than the row's existence", () => {
+    expect(statusRoute).toMatch(/refreshAccessToken\(row\)/);
+    expect(statusRoute).toMatch(/needsReconnect/);
+  });
+
+  it("reports a dead grant as a THIRD state, not as disconnected", () => {
+    // connected:false would be a lie about what the user did — they connected;
+    // Google dropped it. The distinction is what makes "Reconnect" the right
+    // affordance instead of "Connect".
+    expect(statusRoute).toMatch(/connected: true[\s\S]{0,400}needsReconnect/);
+  });
+
+  it("does not cost a Google round trip on every poll", () => {
+    // refreshAccessToken returns the cached access token untouched while it is
+    // still valid; only an actually-expired token reaches the network. Without
+    // that short-circuit this route would hit Google's token endpoint on every
+    // status poll, for every user.
+    const refresh = src.slice(src.indexOf("async function refreshAccessToken"),
+                              src.indexOf('router.get("/integrations/google-cal/status"'));
+    expect(refresh).toMatch(/expiresAt[\s\S]{0,80}return row\.accessToken/);
+  });
+
+  it("both surfaces that can show an empty calendar offer the reconnect", () => {
+    // Settings is where you'd look after you already suspect something; the
+    // Calendar toolbar is where you actually notice the emptiness.
+    for (const f of ["artifacts/tides/src/pages/Settings.tsx",
+                     "artifacts/tides/src/pages/Calendar.tsx"]) {
+      const ui = readFileSync(join(process.cwd(), f), "utf-8");
+      expect(ui, `${f} has no reconnect affordance`).toMatch(/needsReconnect/);
+      expect(ui).toMatch(/Reconnect/);
+    }
+  });
+});

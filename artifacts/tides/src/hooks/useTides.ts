@@ -196,8 +196,22 @@ export interface GCalEvent {
   calendarName?: string;
 }
 
+/**
+ * `needsReconnect` is a THIRD state, distinct from connected/disconnected: the
+ * user did connect, and Google has since dropped the grant — which happens to
+ * every tester every 7 days while the OAuth app sits in Testing mode. Telling
+ * them "not connected" would be a lie about what they did; showing "connected"
+ * while returning no events is the bug this replaces.
+ */
+export interface GCalStatus {
+  connected: boolean;
+  email?: string;
+  configured?: boolean;
+  needsReconnect?: boolean;
+}
+
 export function useGCalStatus(testerId: string | null) {
-  return useQuery<{ connected: boolean; email?: string; configured?: boolean }>({
+  return useQuery<GCalStatus>({
     queryKey: ["gcal-status", testerId],
     queryFn: async () => {
       const r = await fetch("/api/integrations/google-cal/status", { headers: authHeaders(testerId) });

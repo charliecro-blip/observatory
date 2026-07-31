@@ -438,6 +438,22 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     );
   }
 
+  if (status?.connected && status?.needsReconnect) {
+    // The state a tester actually hits: Google drops the grant (every 7 days
+    // while the OAuth app is in Testing mode), the row survives, and the
+    // calendar quietly shows nothing. This is the chip that turns a mystery
+    // into one tap — it sits where the empty calendar is, not in Settings.
+    return (
+      <button onClick={connect} title="Google signed us out — click to reconnect" style={{
+        fontSize:9, padding:"3px 9px", borderRadius:6, border:"1px solid #e0c0a0",
+        background:"#a0602018", color:"#a06020", cursor:"pointer",
+        display:"flex", alignItems:"center", gap:4,
+      }}>
+        <span style={{ fontSize:10 }}>⚠</span> Google signed us out · Reconnect
+      </button>
+    );
+  }
+
   if (status?.connected) {
     return (
       <div style={{ display:"flex", alignItems:"center", gap:4 }}>
