@@ -1689,10 +1689,119 @@ function CascadeCard({ cascade, onApply, onDismiss, pending }: {
   );
 }
 
-function BlockCheck({ wins, markBlock, blockError, elColor }: {
+/**
+ * Where an undone block goes next.
+ *
+ * Deliberately NOT "same time tomorrow". The reason this block sat at 2pm
+ * today doesn't transfer to 2pm tomorrow, so the times offered are scored for
+ * the work — the same grading the weaver used to place it in the first place.
+ *
+ * The one verb rule holds: choosing a time is the only action. Doing nothing
+ * leaves the block where it is, and nothing here counts, scolds, or tallies.
+ */
+function RehomeInline({ win, testerId, lat, lon, wakeHour, sleepHour, onDone }: {
+  win: any; testerId: string | null; lat: number; lon: number;
+  wakeHour: number; sleepHour: number; onDone: () => void;
+}) {
+  const [data, setData] = useState<any>(null);
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { from, to } = localDayRange(addDaysLocal(localToday(), 1));
+        const r = await fetch("/api/planning/rehome/suggest", {
+          method: "POST",
+          headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            windowId: win.id, from, to, lat, lon,
+            tzOffsetMin: new Date().getTimezoneOffset(), wakeHour, sleepHour,
+          }),
+        });
+        if (!r.ok) throw new Error("no");
+        const j = await r.json();
+        if (alive) { setData(j); setState("ready"); }
+      } catch {
+        if (alive) setState("failed");
+      }
+    })();
+    return () => { alive = false; };
+  }, [win.id, testerId, lat, lon, wakeHour, sleepHour]);
+
+  async function place(s: { startAt: string; endAt: string }) {
+    setSaving(true);
+    try {
+      // PATCH /planning/windows/:id — shipped with the Planner and, until now,
+      // never once called from the client.
+      const r = await fetch(`/api/planning/windows/${win.id}`, {
+        method: "PATCH",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ startTime: s.startAt, endTime: s.endAt }),
+      });
+      if (!r.ok) throw new Error("no");
+      onDone();
+    } catch {
+      setState("failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const box = {
+    marginTop: 4, marginBottom: 2, padding: "7px 9px", borderRadius: 8,
+    background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+  } as const;
+
+  if (state === "loading") {
+    return <div style={{ ...box, fontSize: 10.5, color: "var(--text-3)" }}>Reading tomorrow…</div>;
+  }
+  if (state === "failed") {
+    return <div style={{ ...box, fontSize: 10.5, color: "var(--text-3)" }}>
+      Couldn't work out tomorrow just now — it'll keep.
+    </div>;
+  }
+  if (!data?.suggestions?.length) {
+    return <div style={{ ...box, fontSize: 10.5, color: "var(--text-3)" }}>
+      {data?.fullDay
+        ? "Tomorrow's already spoken for. This one can wait for a real opening."
+        : "Nothing on tomorrow suits this yet."}
+    </div>;
+  }
+
+  return (
+    <div style={box}>
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 5 }}>
+        Tomorrow, when it would actually suit:
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {data.suggestions.map((s: any) => (
+          <button key={s.startAt} onClick={() => place(s)} disabled={saving}
+            style={{
+              display: "flex", gap: 8, alignItems: "baseline", textAlign: "left",
+              padding: "4px 8px", borderRadius: 7, cursor: "pointer", width: "100%",
+              border: "1px solid var(--color-border)", background: "var(--color-card)",
+              fontFamily: "inherit",
+            }}>
+            <span style={{ fontSize: 11, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>
+              {new Date(s.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-2)" }}>{s.tierNote}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, wakeHour, sleepHour, onRehomed }: {
   wins: any[]; markBlock: any; blockError: number | null; elColor: string;
+  testerId: string | null; lat: number; lon: number;
+  wakeHour: number; sleepHour: number; onRehomed: () => void;
 }) {
   const open = wins.filter((w: any) => !w.completedAt);
+  const [moving, setMoving] = useState<number | null>(null);
   if (open.length === 0) return null;
   return (
     <div style={{ marginBottom: 9 }}>
@@ -1702,22 +1811,44 @@ function BlockCheck({ wins, markBlock, blockError, elColor }: {
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {open.slice(0, 4).map((w: any) => {
           const t = new Date(w.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          // Only once its hour has actually gone. Offering to re-home a block
+          // that hasn't started yet would be the app deciding, on your behalf,
+          // that you aren't going to do it.
+          const past = Date.now() > new Date(w.endTime).getTime();
           return (
-            <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--text-2)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {t} · {w.title}
-              </span>
-              {blockError === w.id && (
-                <span style={{ fontSize: 9, color: "#a03030" }}>didn't save</span>
+            <div key={w.id}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "var(--text-2)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {t} · {w.title}
+                </span>
+                {blockError === w.id && (
+                  <span style={{ fontSize: 9, color: "#a03030" }}>didn't save</span>
+                )}
+                {past && (
+                  <button
+                    onClick={() => setMoving(moving === w.id ? null : w.id)}
+                    style={{
+                      fontSize: 10, padding: "2px 9px", borderRadius: 12, cursor: "pointer",
+                      border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-3)",
+                    }}
+                  >{moving === w.id ? "never mind" : "→ move it"}</button>
+                )}
+                <button
+                  onClick={() => markBlock.mutate({ id: w.id, done: true })}
+                  disabled={markBlock.isPending}
+                  style={{
+                    fontSize: 10, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
+                    border: `1px solid ${elColor}40`, background: `${elColor}12`, color: elColor, fontWeight: 600,
+                  }}
+                >✓ did it</button>
+              </div>
+              {moving === w.id && (
+                <RehomeInline
+                  win={w} testerId={testerId} lat={lat} lon={lon}
+                  wakeHour={wakeHour} sleepHour={sleepHour}
+                  onDone={() => { setMoving(null); onRehomed(); }}
+                />
               )}
-              <button
-                onClick={() => markBlock.mutate({ id: w.id, done: true })}
-                disabled={markBlock.isPending}
-                style={{
-                  fontSize: 10, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
-                  border: `1px solid ${elColor}40`, background: `${elColor}12`, color: elColor, fontWeight: 600,
-                }}
-              >✓ did it</button>
             </div>
           );
         })}
@@ -2232,6 +2363,19 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
 }) {
   const qc = useQueryClient();
   const today = localToday();
+  // Waking hours for re-homing, so nothing is ever proposed for 4am. The
+  // chronotype is optional, hence the plain fallback; and when sleep is
+  // earlier than wake it wraps past midnight, so the scan runs to end of day.
+  const { profile: ritualProfile } = useTester();
+  const parseHour = (v: string | undefined, fallback: number) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v ?? ""));
+    if (!m) return fallback;
+    const h = parseInt(m[1], 10) + parseInt(m[2], 10) / 60;
+    return h >= 0 && h <= 24 ? h : fallback;
+  };
+  const wakeHour = parseHour(ritualProfile?.chronotype?.wakeTime, 7);
+  const sleepRaw = parseHour(ritualProfile?.chronotype?.sleepTime, 22);
+  const sleepHour = sleepRaw > wakeHour ? sleepRaw : 24;
   // Defensive: these come from queries that can momentarily hand back a
   // non-array (a transient error body). The ritual card is time-gated, so a
   // bad value here surfaces as a whole-page crash rather than a skipped card.
@@ -2498,7 +2642,12 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           onDismiss={() => setCascade(null)}
         />
       )}
-      <BlockCheck wins={wins} markBlock={markBlock} blockError={blockError} elColor={elColor} />
+      <BlockCheck
+        wins={wins} markBlock={markBlock} blockError={blockError} elColor={elColor}
+        testerId={testerId} lat={lat ?? 30.27} lon={lon ?? -97.74}
+        wakeHour={wakeHour} sleepHour={sleepHour}
+        onRehomed={() => invalidateWindows(qc)}
+      />
 
       {didAnything ? (
         <>

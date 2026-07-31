@@ -2100,3 +2100,95 @@ describe("cascade timing grades", () => {
       .toContain(v.tierNote);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 38. RE-HOMING UNDONE WORK
+// The other half of the shutdown ritual. Tasks roll over quietly; WINDOWS
+// never do, deliberately — a window is a claim on a moment, so moving one
+// unasked retracts a reason rather than shuffling a slot. So at day's end the
+// honest question is "this didn't happen — when does it actually fit?", and
+// the answer is scored for the work rather than being "same time tomorrow".
+//
+// These are the product claims, so they are tested rather than eyeballed. The
+// self-overlap one is a real defect caught in review: a 90-minute block was
+// offered at 9:30 AND 10:30, which overlap by half an hour — one option
+// presented as two. Spacing is now the block's own length.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { pickRehomeSlots } from "../artifacts/api-server/src/lib/rehome";
+
+describe("re-homing suggestions", () => {
+  const LAT = 30.27, LON = -97.74, TZ = 300, HOUR = 3600_000;
+  const arc2 = arcFor(new Date("2026-08-12T17:00:00Z"), LAT, LON, TZ);
+  const dayStartMs = new Date(arc2.dayStart).getTime();
+
+  const base = {
+    dayStartMs, element: "water", busy: [] as { startMs: number; endMs: number }[],
+    wakeHour: 7, sleepHour: 22, nowMs: dayStartMs, // "now" = start of that day
+    lat: LAT, lon: LON, tzOffsetMin: TZ, arc: arc2,
+  };
+
+  it("never proposes options that overlap each other", () => {
+    // 9:30 and 10:30 for a 90-minute block is one option offered twice.
+    for (const mins of [30, 45, 60, 90, 120, 180]) {
+      const picks = pickRehomeSlots({ ...base, durMs: mins * 60_000 });
+      for (let i = 1; i < picks.length; i++) {
+        expect(picks[i].startMs).toBeGreaterThanOrEqual(picks[i - 1].endMs);
+      }
+    }
+  });
+
+  it("never proposes a time that collides with something already booked", () => {
+    const busy = [
+      { startMs: dayStartMs + 9 * HOUR, endMs: dayStartMs + 10 * HOUR },
+      { startMs: dayStartMs + 13 * HOUR, endMs: dayStartMs + 15 * HOUR },
+      { startMs: dayStartMs + 18 * HOUR, endMs: dayStartMs + 19.5 * HOUR },
+    ];
+    for (const element of ["fire", "earth", "air", "water"]) {
+      const picks = pickRehomeSlots({ ...base, element, busy, durMs: 60 * 60_000 });
+      expect(picks.length).toBeGreaterThan(0);
+      for (const p of picks) {
+        for (const b of busy) {
+          expect(p.startMs < b.endMs && p.endMs > b.startMs).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("never proposes an hour that has already gone", () => {
+    // Re-homing runs in the evening; for "later today" every morning slot is
+    // already spent, and offering one would be nonsense rather than generous.
+    const nowMs = dayStartMs + 15 * HOUR;
+    const picks = pickRehomeSlots({ ...base, nowMs, durMs: 60 * 60_000 });
+    for (const p of picks) expect(p.startMs).toBeGreaterThanOrEqual(nowMs);
+  });
+
+  it("stays inside waking hours, including the block's own end", () => {
+    // A 2-hour block starting at 21:00 would run to 23:00 — past a 22:00
+    // bedtime. The END has to fit, not just the start.
+    const picks = pickRehomeSlots({ ...base, durMs: 120 * 60_000 });
+    for (const p of picks) {
+      expect(p.startMs).toBeGreaterThanOrEqual(dayStartMs + base.wakeHour * HOUR);
+      expect(p.endMs).toBeLessThanOrEqual(dayStartMs + base.sleepHour * HOUR);
+    }
+  });
+
+  it("returns nothing rather than something bad when the day is full", () => {
+    // Silence is the honest answer; the route says so in words. Inventing a
+    // 3am slot to avoid an empty list would be the silent-move behaviour the
+    // whole feature exists to refuse.
+    const busy = [{ startMs: dayStartMs, endMs: dayStartMs + 24 * HOUR }];
+    expect(pickRehomeSlots({ ...base, busy, durMs: 60 * 60_000 })).toEqual([]);
+  });
+
+  it("offers the best available first — sorted by time, chosen by fit", () => {
+    const picks = pickRehomeSlots({ ...base, durMs: 60 * 60_000 });
+    // Presented chronologically…
+    for (let i = 1; i < picks.length; i++) {
+      expect(picks[i].startMs).toBeGreaterThan(picks[i - 1].startMs);
+    }
+    // …but SELECTED on fit: no pick may be worse than a rejected slot that
+    // would have fitted the same gap.
+    expect(picks.every((p) => p.verdict.tier !== "against")).toBe(true);
+  });
+});

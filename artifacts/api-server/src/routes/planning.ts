@@ -5,6 +5,7 @@ import { requireTesterId } from "../middlewares/testerId.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { computeDayArc } from "../lib/dayarc.js";
 import { tierForMoment, compareTiers, WINDOW_ELEMENT } from "../lib/timingTier.js";
+import { pickRehomeSlots } from "../lib/rehome.js";
 
 const router: IRouter = Router();
 
@@ -521,6 +522,83 @@ router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
   });
 
   res.json({ overrunMinutes: Math.round(overrunMs / 60_000), affected });
+});
+
+// ── Re-homing undone work ───────────────────────────────────────────────────
+// The other half of the shutdown ritual. Tasks already roll over quietly and
+// deliberately ("↻ carried from Mon"); WINDOWS never do, and that asymmetry is
+// on purpose — a window is a claim on a specific moment, so moving one without
+// being asked retracts a reason rather than shuffling a slot.
+//
+// Which leaves the honest question at the end of a day: this block didn't
+// happen — when does it actually fit? Not "same time tomorrow", because the
+// reason it sat at 2pm today does not transfer to 2pm tomorrow. So we score
+// tomorrow properly and offer the times that suit the WORK.
+//
+// On the grid: candidates are stepped every 15 minutes, but that is a CHOICE
+// of slot, not a measurement of an astronomical event (BACKLOG §10). Proposing
+// 2:15 PM and printing "2:15 PM" is exact — nothing is being rounded.
+router.post("/planning/rehome/suggest", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const id = parseInt(String(req.body?.windowId), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "windowId required" }); return; }
+
+  const w = (await db.select().from(planningWindows)
+    .where(and(eq(planningWindows.id, id), eq(planningWindows.testerId, testerId))).limit(1))[0] ?? null;
+  if (!w) { res.status(404).json({ error: "Window not found" }); return; }
+
+  const from = req.body?.from ? new Date(req.body.from) : null;
+  const to = req.body?.to ? new Date(req.body.to) : null;
+  if (!from || !to || !(from < to)) {
+    // The target day's own boundaries, computed by the client that knows its
+    // offset — same contract as everywhere else that asks about "a day".
+    res.status(400).json({ error: "from and to (the target local day) required" });
+    return;
+  }
+
+  const lat = Number(req.body?.lat ?? 30.27);
+  const lon = Number(req.body?.lon ?? -97.74);
+  const tzOffsetMin = Number(req.body?.tzOffsetMin ?? 0);
+  const wakeHour = Number(req.body?.wakeHour ?? 7);
+  const sleepHour = Number(req.body?.sleepHour ?? 22);
+
+  const durMs = new Date(w.endTime).getTime() - new Date(w.startTime).getTime();
+  const element = WINDOW_ELEMENT[w.windowType] ?? "earth";
+
+  // What's already claimed that day — a suggestion that double-books is not a
+  // suggestion. The block being re-homed can't collide with itself.
+  const busy = (await db.select().from(planningWindows).where(and(
+    eq(planningWindows.testerId, testerId),
+    gte(planningWindows.startTime, from),
+    lt(planningWindows.startTime, to),
+  ))).filter((b) => b.id !== id);
+
+  const arc = computeDayArc(new Date(from.getTime() + 12 * 3600_000), lat, lon, tzOffsetMin);
+  const dayStartMs = new Date(arc.dayStart).getTime();
+
+  const picks = pickRehomeSlots({
+    dayStartMs, durMs, element,
+    busy: busy.map((b) => ({
+      startMs: new Date(b.startTime).getTime(),
+      endMs: new Date(b.endTime).getTime(),
+    })),
+    wakeHour, sleepHour, nowMs: Date.now(), lat, lon, tzOffsetMin, arc,
+  });
+
+  res.json({
+    windowId: id,
+    title: w.title,
+    durationMinutes: Math.round(durMs / 60_000),
+    suggestions: picks.map((p) => ({
+      startAt: new Date(p.startMs).toISOString(),
+      endAt: new Date(p.endMs).toISOString(),
+      tier: p.verdict.tier,
+      tierNote: p.verdict.tierNote,
+      planetaryHour: p.verdict.planetaryHour,
+    })),
+    // Said out loud rather than returning an empty list with no explanation.
+    fullDay: picks.length === 0 && busy.length > 0,
+  });
 });
 
 // Apply exactly the shifts the user agreed to — no more, no recomputation.
