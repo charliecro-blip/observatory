@@ -934,6 +934,37 @@ export interface AngularCrossing {
  * @param orb            Orb in degrees (default 3° = ~12-min window each side)
  * @param lookAheadHours How many hours forward to scan (default 24)
  */
+
+/**
+ * The exact moment a planet is closest to an angle, refined off the 4-minute
+ * scan grid.
+ *
+ * Two things were wrong with reporting the grid step directly. The small one:
+ * the ASC moves ~1° per 4 minutes, so the coarse minimum sat up to ~2 minutes
+ * and a few tenths of a degree away from the real one — printed to the minute,
+ * next to an orb printed to two decimals.
+ *
+ * The large one: a crossing already IN PROGRESS when the scan began reported
+ * its first step as the peak. Measured 2026-08-01, Chiron–IC: reported
+ * 00:00:00 with orb 2.25°, actual perfection 23:51:22 with orb 0.002° — nine
+ * minutes late and a hundredfold wrong on the orb, announced as happening now.
+ * Hence `searchBack`: when the minimum lands on step 0, the true one is behind
+ * us and has to be looked for there.
+ */
+function refineCrossingPeak(
+  centreMs: number, stepMs: number, sepAt: (ms: number) => number, searchBack: boolean,
+): { atMs: number; sep: number } {
+  let lo = centreMs - (searchBack ? 60 : 1) * stepMs;
+  let hi = centreMs + stepMs;
+  // Ternary search — separation is unimodal across a single approach.
+  for (let i = 0; i < 60; i++) {
+    const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+    if (sepAt(m1) < sepAt(m2)) hi = m2; else lo = m1;
+  }
+  const atMs = (lo + hi) / 2;
+  return { atMs: Math.round(atMs / 1000) * 1000, sep: sepAt(atMs) };
+}
+
 export function getNextAngularCrossings(
   jd: number,
   latDeg = 40.7,
@@ -951,6 +982,19 @@ export function getNextAngularCrossings(
   type Active = { startStep: number; minSep: number; minStep: number };
   const activeCrossings = new Map<string, Active>(); // key: `${planet}-${angle}`
   const crossings: AngularCrossing[] = [];
+
+  // Live separation at an arbitrary instant — what the refinement minimises.
+  const jdToMs = (j: number) => (j - 2440587.5) * 86400000;
+  const sepProbe = (planetName: string, angleName: string) => (ms: number) => {
+    const j = ms / 86400000 + 2440587.5;
+    const ang = getLocalAngles(j, latDeg, lonDeg);
+    const target = angleName === "ASC" ? ang.asc : angleName === "MC" ? ang.mc : angleName === "DSC" ? ang.dsc : ang.ic;
+    const pLon = planetName === "Moon"
+      ? moonLongitude(j)
+      : (snapPlanets.find((p) => p.planet === planetName)?.longitude ?? 0);
+    const raw = normalize360(Math.abs(pLon - target));
+    return raw > 180 ? 360 - raw : raw;
+  };
 
   for (let step = 0; step <= STEPS; step++) {
     const checkJd = jd + step * STEP_JD;
@@ -985,14 +1029,16 @@ export function getNextAngularCrossings(
         } else {
           const existing = activeCrossings.get(key);
           if (existing) {
-            const crossJd = jd + existing.minStep * STEP_JD;
+            const peak = refineCrossingPeak(
+              jdToMs(jd + existing.minStep * STEP_JD), STEP_MIN * 60000,
+              sepProbe(snap.planet, name), existing.minStep === 0);
             crossings.push({
               planet:         snap.planet,
               angle:          name,
-              crossingTime:   new Date((crossJd - 2440587.5) * 86400000).toISOString(),
-              minutesFromNow: existing.minStep * STEP_MIN,
+              crossingTime:   new Date(peak.atMs).toISOString(),
+              minutesFromNow: Math.round((peak.atMs - jdToMs(jd)) / 60000),
               durationMinutes: (step - existing.startStep) * STEP_MIN,
-              orbAtExact:     parseFloat(existing.minSep.toFixed(2)),
+              orbAtExact:     parseFloat(peak.sep.toFixed(2)),
               benefic:        BENEFICS.has(snap.planet),
               malefic:        MALEFICS.has(snap.planet),
             });
@@ -1006,14 +1052,16 @@ export function getNextAngularCrossings(
   // Flush in-progress crossings at end of lookahead
   for (const [key, state] of activeCrossings) {
     const [planetName, angleName] = key.split("-") as [string, "ASC" | "MC" | "DSC" | "IC"];
-    const crossJd = jd + state.minStep * STEP_JD;
+    const peak = refineCrossingPeak(
+      jdToMs(jd + state.minStep * STEP_JD), STEP_MIN * 60000,
+      sepProbe(planetName, angleName), state.minStep === 0);
     crossings.push({
       planet:         planetName,
       angle:          angleName,
-      crossingTime:   new Date((crossJd - 2440587.5) * 86400000).toISOString(),
-      minutesFromNow: state.minStep * STEP_MIN,
+      crossingTime:   new Date(peak.atMs).toISOString(),
+      minutesFromNow: Math.round((peak.atMs - jdToMs(jd)) / 60000),
       durationMinutes: (STEPS - state.startStep) * STEP_MIN,
-      orbAtExact:     parseFloat(state.minSep.toFixed(2)),
+      orbAtExact:     parseFloat(peak.sep.toFixed(2)),
       benefic:        BENEFICS.has(planetName),
       malefic:        MALEFICS.has(planetName),
     });

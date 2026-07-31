@@ -1535,3 +1535,83 @@ describe("planner alternatives", () => {
     expect(src).toMatch(/seenDays/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 31. A CROSSING ALREADY UNDERWAY WAS REPORTED AS PEAKING NOW
+// Found by auditing every clock-facing number the app prints, after the void
+// bugs showed the pattern: a coarse scan whose result is printed as an exact
+// time.
+//
+// getNextAngularCrossings scans in 4-minute steps and reported the grid step
+// with the smallest separation as the exact crossing. Two consequences:
+//
+//   · Sub-step drift. The ASC moves ~1° per 4 minutes, so the reported peak sat
+//     up to ~2 minutes off, with an orb of 0.11–0.36° printed to two decimals
+//     against a true ~0.00°.
+//   · Far worse: a crossing ALREADY IN PROGRESS when the scan began had its
+//     minimum at step 0, so its first step became "the peak". Measured
+//     2026-08-01 Chiron–IC: reported 00:00:00 with orb 2.25°, actual
+//     perfection 23:51:22 with orb 0.002° — nine minutes late, a hundredfold
+//     wrong on the orb, and announced as happening now. These feed a banner
+//     that calls them "a ~20-min window", so nine minutes is most of it.
+//
+// Sunrise/sunset was audited in the same pass and needed no change: measured
+// against true solar altitude at the horizon over 40 events, worst drift 29
+// seconds.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("angular crossing precision", () => {
+  it("finds the true peak, including one that perfected before the scan began", async () => {
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const LAT = 30.27, LON = -97.74;
+    const jd0 = A.julianDay(new Date("2026-08-01T00:00:00Z"));
+    const crossings = A.getNextAngularCrossings(jd0, LAT, LON, 3, 24);
+    expect(crossings.length).toBeGreaterThan(0);
+
+    let worst = 0;
+    for (const c of crossings.slice(0, 8)) {
+      const at = Date.parse(c.crossingTime);
+      const sepAt = (ms: number) => {
+        const j = A.julianDay(new Date(ms));
+        const ang = A.getLocalAngles(j, LAT, LON);
+        const lon = c.planet === "Moon" ? A.moonLongitude(j)
+          : A.getPlanetPositions(j).find((p: any) => p.planet === c.planet)?.longitude ?? 0;
+        const target = ({ ASC: ang.asc, MC: ang.mc, DSC: ang.dsc, IC: ang.ic } as any)[c.angle];
+        const raw = ((Math.abs(lon - target) % 360) + 360) % 360;
+        return raw > 180 ? 360 - raw : raw;
+      };
+      // Brute force at 5-second resolution — no shared method with the code
+      // under test, so this cannot agree with it by construction.
+      let best = at, bestSep = Infinity;
+      for (let s = -1500; s <= 1500; s += 5) {
+        const v = sepAt(at + s * 1000);
+        if (v < bestSep) { bestSep = v; best = at + s * 1000; }
+      }
+      worst = Math.max(worst, Math.abs(best - at) / 60000);
+    }
+    expect(worst).toBeLessThan(1);   // was 8.63 minutes
+  }, 60000);
+
+  it("looks BACKWARD when the minimum lands on the first step", () => {
+    const src = readFileSync(
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
+    expect(src).toMatch(/refineCrossingPeak/);
+    // The searchBack flag is the whole fix for the in-progress case; without it
+    // the refinement just polishes a peak that is in the wrong place entirely.
+    expect(src).toMatch(/existing\.minStep === 0/);
+    expect(src).toMatch(/state\.minStep === 0/);
+  });
+
+  it("reports a crossing that already perfected with a negative offset", async () => {
+    // Rather than pinning it to zero and claiming it is happening now. Every
+    // consumer passes minutesFromNow through or filters on the timestamp, so a
+    // negative value is simply the truth.
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const cs = A.getNextAngularCrossings(A.julianDay(new Date("2026-08-01T00:00:00Z")), 30.27, -97.74, 3, 24);
+    const chiron = cs.find((c: any) => c.planet === "Chiron" && c.angle === "IC");
+    if (chiron) {
+      expect(chiron.minutesFromNow).toBeLessThan(0);
+      expect(chiron.orbAtExact).toBeLessThan(0.1);   // was 2.25
+    }
+  }, 60000);
+});
