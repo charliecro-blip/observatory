@@ -322,6 +322,32 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
   const blocks: Block[] = [];
   const dname = (d: number) => fmtShort(localDate(tz, d)).replace(/,.*$/, "");
 
+  // Fetched HERE rather than three blocks down, because the day-by-day reading
+  // needs it. Without it `dayReading` falls back to a chart-less synthesis and
+  // printed "A fire day — courage and initiative to spend" for 6 of the 7 day
+  // lines: a week-ahead email in which every day was the same day.
+  const natal = await natalFor(testerId);
+  const ascRuler = natal?.timeKnown ? domicileLord(natal.computed.ascendant.longitude) : undefined;
+  const natalArg = natal ? {
+    planets: natal.computed.planets.map((p) => ({ planet: p.planet, longitude: p.longitude })),
+    asc: natal.timeKnown ? natal.computed.ascendant.longitude : undefined,
+    mc: natal.timeKnown ? natal.computed.midheaven.longitude : undefined,
+  } : undefined;
+
+  // ── The reader's own week, first — the same correction the daily got ─────
+  // The weekly opened on the sky and never mentioned the reader's work at all.
+  // A week-ahead email whose first line is about the Moon is a horoscope; one
+  // that opens with what's actually due is a week ahead.
+  const todayStr = localDate(tz).toISOString().slice(0, 10);
+  const weekEndStr = localDate(tz, 7).toISOString().slice(0, 10);
+  const dueThisWeek = await db.select().from(tasks).where(and(
+    eq(tasks.testerId, testerId), eq(tasks.done, "false"),
+  ));
+  const upcoming = dueThisWeek
+    .filter((t) => t.dueDate && t.dueDate >= todayStr && t.dueDate < weekEndStr)
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+  const overdue = dueThisWeek.filter((t) => t.dueDate && t.dueDate < todayStr);
+
   // Per-day: concrete guidance from the sign, not just element/quality.
   const perDay: { d: number; voc: boolean; sky: DaySky }[] = [];
   const dayLines: string[] = [];
@@ -342,21 +368,64 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
     // The woven flavour's keynote (before "carried by") leads each day line —
     // the same synthesis the daily card runs, at local noon, day scope.
     const noonDate = new Date((localNoonJd(tz, d) - 2440587.5) * 86400000);
-    const keynote = dayReading(noonDate, _lat, _lon, { tzOffsetMin: tz, scope: "day" }).flavour.split(", carried by")[0];
-    dayLines.push(`${fmtShort(local)} — ${cap(keynote)}. ${moonSign} Moon, ${dayRuler} day: ${favText}.${vocDay ? " Void spell — keep it light." : ""}`);
+    const keynote = dayReading(noonDate, _lat, _lon, {
+      tzOffsetMin: tz, ascRuler, scope: "day", natal: natalArg,
+    }).flavour.split(", carried by")[0];
+    // The shape word comes from the MOON's element, exactly as the daily's
+    // headline does. The woven flavour weights the day ruler and Sun, so
+    // deriving it here instead printed "A fire day" above "Pisces Moon" — the
+    // weekly and the daily describing the same date differently, which is the
+    // single fastest way to make a reader stop trusting both.
+    const shape = sg?.element ? `${cap(sg.element)} day` : cap(keynote);
+    dayLines.push(`${fmtShort(local)} — ${shape}. ${moonSign} Moon, ${dayRuler} day: ${favText}.${vocDay ? " Void spell — keep it light." : ""}`);
     perDay.push({ d, voc: vocDay, sky });
   }
+  // 1) HEADLINE — the reader's week, not the sky's. Stands alone on a lock
+  // screen, which is where most of these are actually read.
+  const weekHeadline = upcoming.length > 0
+    ? `${upcoming.length} thing${upcoming.length === 1 ? "" : "s"} due this week${overdue.length ? `, ${overdue.length} still open from before` : ""}.`
+    : overdue.length > 0
+      ? `Nothing new due this week — ${overdue.length} still open from before.`
+      : "Nothing due this week. A clear run.";
+  blocks.push({ lines: [weekHeadline] });
+
+  // 2) WHAT'S DUE, WHEN — their rows against the days, capped at five. The
+  // point of a week-ahead is matching the work to the days, and it cannot do
+  // that without naming the work.
+  if (upcoming.length) {
+    blocks.push({
+      heading: "Due this week",
+      lines: upcoming.slice(0, 5).map((t) => {
+        const off = Math.round(
+          (Date.parse(String(t.dueDate) + "T12:00:00Z") - Date.parse(todayStr + "T12:00:00Z")) / 86400000);
+        const when = off === 0 ? "today" : off === 1 ? "tomorrow" : dname(off);
+        return `${when} — ${t.title}`;
+      }),
+    });
+  }
+
   blocks.push({ heading: "Day by day", lines: dayLines });
 
   // Standout days — best for focus / people / rest, by concrete activity fit.
+  //
+  // AHEAD only. These searched from d=0, so the week's headline recommendation
+  // was routinely the day you were reading it on ("Deep focus — Thu" in an
+  // email sent Thu morning), and `restDay` fell back to perDay[0] — today —
+  // whenever no void fell in the week. A week-ahead email that nominates today
+  // has no forward function at all; that is what the daily is for.
+  const ahead = perDay.filter((p) => p.d >= 1);
   const pick = (cats: string[]) => {
     let best: { d: number; label: string; score: number } | null = null;
-    for (const p of perDay) { const b = bestFor(p.sky, cats); if (b && (!best || b.score > best.score)) best = { d: p.d, label: b.label, score: b.score }; }
+    for (const p of ahead) { const b = bestFor(p.sky, cats); if (b && (!best || b.score > best.score)) best = { d: p.d, label: b.label, score: b.score }; }
     return best;
   };
   const focus = pick(["craft", "mind"]);
   const people = pick(["love", "social"]);
-  const restDay = perDay.find((p) => p.voc) ?? perDay[0];
+  // A void day if there is one ahead; otherwise the quietest day ahead, never
+  // today, and never silently the first row of the array.
+  const restDay = ahead.find((p) => p.voc)
+    ?? [...ahead].sort((a, b) => (bestFor(a.sky, ["craft", "mind"])?.score ?? 0) - (bestFor(b.sky, ["craft", "mind"])?.score ?? 0))[0]
+    ?? null;
   const stand: string[] = [];
   if (focus) stand.push(`Deep focus — ${dname(focus.d)}: best for ${focus.label.toLowerCase()}.`);
   if (people) stand.push(`People & connection — ${dname(people.d)}: best for ${people.label.toLowerCase()}.`);
@@ -380,7 +449,7 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
   }
 
   // The long weather this week — footnote: top 2 transits, dated + interpreted.
-  const natal = await natalFor(testerId);
+  // (natal is fetched at the top now; the day-by-day reading needs it.)
   if (natal) {
     let fc = computeTransitForecast(natal.computed, 7);
     if (!natal.timeKnown) fc = fc.filter((t) => t.natalPlanet !== "Ascendant");
@@ -392,9 +461,14 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
   }
 
   blocks.push({ lines: ["Plan the deep work into the strong days; keep the void spells light."] });
-  const subject = focus && people
-    ? `Your week — focus ${dname(focus.d)}, people ${dname(people.d)}`
-    : "Your week ahead — the shape of the next seven days";
+  // Subject leads with the reader's load when there is one. "Your week ahead —
+  // the shape of the next seven days" is a subject about us; "4 due this week"
+  // is a subject about them, and it is the one that survives a lock screen.
+  const subject = upcoming.length > 0
+    ? `${upcoming.length} due this week${focus ? ` — deep work ${dname(focus.d)}` : ""}`
+    : focus && people
+      ? `Your week — focus ${dname(focus.d)}, people ${dname(people.d)}`
+      : "Your week ahead — the shape of the next seven days";
   return { title: `Week of ${fmtDay(localDate(tz))}`, subject, blocks };
 }
 
@@ -475,9 +549,18 @@ export async function composeNewMoon(testerId: string, tz: number, _lat: number,
   // 4) Toward your stars — seed one now; it rides the whole cycle.
   const stars = await activeStars(testerId);
   if (stars.length) {
-    const match = stars.find((s) => s.element === sg?.element) ?? stars[0];
-    blocks.push({ heading: "Toward your stars", lines: [
-      `Seed an intention toward “${match.title}” now — a ${sign} cycle ${sg ? `favors ${sg.favors[0]}` : "suits it"}, and what you set at the dark Moon rides the whole month's tide.`,
+    // Only claim a fit when there IS one. The old line fell back to stars[0]
+    // and then asserted the cycle "favors" it regardless — producing
+    // "seed an intention toward 'aligned spine' — a Leo cycle favors perform,
+    // present, publish", which is a non-sequitur the reader can see through.
+    // With one star and four elements, ~75% of cycles hit that fallback.
+    const matched = stars.find((s) => s.element === sg?.element) ?? null;
+    const star = matched ?? stars[0];
+    blocks.push({ heading: "Toward your stars", lines: [matched
+      ? `Seed an intention toward “${star.title}” now — a ${sign} cycle ${sg ? `favors ${sg.favors[0]}` : "suits it"}, and what you set at the dark Moon rides the whole month's tide.`
+      // No elemental match: say so plainly and offer the cycle for what it is,
+      // rather than pretending the sky is pointing at their aim.
+      : `This is not ${artcl(star.element ?? "matching").toLowerCase()} ${star.element ?? "matching"} cycle — “${star.title}” isn't what this month is built for. Use it for ${sg ? sg.favors[0] : "what the sign favours"} instead, and let the star keep its own pace.`,
     ] });
   }
 

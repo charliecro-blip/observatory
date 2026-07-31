@@ -1103,3 +1103,78 @@ describe("admin gate on the analytics reads", () => {
     expect(src).toMatch(/router\.get\("\/events\/summary", requireAdmin/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 22. THE WEEKLY EMAIL CONTRADICTED THE DAILY, AND POINTED AT TODAY
+// Shipped bugs, both counted in EMAIL-STUDY-2026-07-30 (⑦, ⑧):
+//   · composeWeek called dayReading() with NO natal and NO ascRuler while
+//     composeDay passed both, so the two composers described the same date
+//     differently — "A fire day" in the weekly above "An air day" in the
+//     daily. Worse, without a chart the synthesis degenerates: "A fire day"
+//     printed for 6 of the 7 day lines. A week that reads as one day repeated.
+//   · The standout-day picks searched from d=0, so a *week ahead* email
+//     routinely nominated the morning you were reading it ("Deep focus — Thu"
+//     sent on Thursday), and the rest-day fell back to perDay[0] — today —
+//     whenever no void fell that week.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("weekly email", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/reports.ts"), "utf-8");
+  const week = src.slice(src.indexOf("export async function composeWeek"),
+                         src.indexOf("async function composeMonth"));
+
+  it("passes the chart into the day-by-day reading, as the daily does", () => {
+    // Without these the week collapses into one repeated day.
+    expect(week).toMatch(/natalFor\(testerId\)/);
+    expect(week).toMatch(/ascRuler/);
+    expect(week).toMatch(/dayReading\([\s\S]{0,200}natal:/);
+  });
+
+  it("takes the day's shape from the Moon's element, the same source as the daily", () => {
+    // The woven flavour weights the day ruler and Sun; deriving the shape word
+    // from it is what produced "A fire day" over "Pisces Moon".
+    expect(week).toMatch(/sg\?\.element/);
+  });
+
+  it("never nominates today as a standout — it is a WEEK AHEAD email", () => {
+    expect(week).toMatch(/p\.d >= 1/);
+    // The old fallback. If this reappears, "keep light / rest" is today again.
+    expect(week).not.toMatch(/\?\?\s*perDay\[0\]/);
+  });
+
+  it("fetches the chart once, not twice", () => {
+    expect(week.match(/await natalFor\(testerId\)/g)?.length ?? 0).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 23. CLAIMING A FIT THAT ISN'T THERE
+// The New Moon report picked `stars.find(elementMatch) ?? stars[0]` and then
+// asserted the cycle "favors" whatever it landed on — so with one earth star
+// and a Leo cycle it emailed "seed an intention toward 'aligned spine' — a Leo
+// cycle favors perform, present, publish". One star against four elements makes
+// that non-sequitur the ~75% case, which is exactly the shape of the daily's
+// "23/30 identical discouraging sentence" bug.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("new moon email", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/api-server/src/routes/reports.ts"), "utf-8");
+  const nm = src.slice(src.indexOf("export async function composeNewMoon"));
+
+  it("distinguishes a real elemental match from a fallback", () => {
+    expect(nm).toMatch(/const matched = stars\.find/);
+    expect(nm).toMatch(/matched\s*\n?\s*\?/);   // branches on it
+  });
+
+  it("says so plainly when the cycle does NOT suit the star", () => {
+    expect(nm).toMatch(/This is not/);
+    expect(nm).toMatch(/keep its own pace/);
+  });
+
+  it("uses the a/an helper, so we never email 'a earth cycle'", () => {
+    // Same class as the "A Aquarius Moon" bug this file already guards.
+    expect(nm).toMatch(/artcl\(/);
+  });
+});
