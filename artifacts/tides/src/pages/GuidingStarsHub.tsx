@@ -308,6 +308,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       let proj = projectForStar(starId);
       if (!proj) {
         const r = await fetch("/api/planning/projects", { method: "POST", headers: authHeaders, body: JSON.stringify({ title: starTitle, goalId: starId }) });
+        // Unchecked, this parsed an ERROR BODY as a project: `proj.id` came
+        // back undefined and the step below was created against no project at
+        // all — a milestone orphaned from the star it belongs to, reported as
+        // success.
+        if (!r.ok) throw new Error(`request failed (${r.status})`);
         proj = await r.json();
       }
       { const _r = await fetch("/api/planning/milestones", { method: "POST", headers: authHeaders, body: JSON.stringify({ title, projectId: proj.id }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
@@ -329,8 +334,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   });
   const toggleHabitToday = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
-      if (done) await fetch(`/api/habits/${id}/log`, { method: "DELETE", headers: authHeaders });
-      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers: authHeaders, body: JSON.stringify({ date: localToday() }) });
+      const r = done
+        ? await fetch(`/api/habits/${id}/log`, { method: "DELETE", headers: authHeaders })
+        : await fetch(`/api/habits/${id}/log`, { method: "POST", headers: authHeaders, body: JSON.stringify({ date: localToday() }) });
+      if (!r.ok) throw new Error(`request failed (${r.status})`);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["habits"] }); qc.invalidateQueries({ queryKey: ["north-stars"] }); },
   });
@@ -413,10 +420,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const logSession = useMutation({
     mutationFn: async (goalId: number) => {
       const now = new Date().toISOString();
-      await fetch("/api/planning/windows", {
+      const r = await fetch("/api/planning/windows", {
         method: "POST", headers: authH(testerId),
         body: JSON.stringify({ title: "Logged session", goalId, adHoc: true, startTime: now, endTime: now }),
       });
+      if (!r.ok) throw new Error(`request failed (${r.status})`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["north-stars"] }),
   });

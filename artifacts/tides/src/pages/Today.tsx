@@ -4,6 +4,7 @@ import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_T
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal, localDayRange } from "@/lib/dates";
+import { Outbox, type OutboxState } from "@/lib/outbox";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
@@ -103,6 +104,11 @@ function heroText(now: any): string {
 
 function journalKey(testerId: string | null, date: string) {
   return `tides-journal-${testerId ?? "anon"}-${date}`;
+}
+
+/** Text written but not yet accepted by the server. Survives a closed tab. */
+function journalPendingKey(testerId: string | null, date: string) {
+  return `tides-journal-pending-${testerId ?? "anon"}-${date}`;
 }
 
 // "No saved location" now means we're on the timezone-derived fallback (right
@@ -565,12 +571,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const closeGuideHint = () => { localStorage.setItem("obs_seen_guide_hint", "1"); setDismissedGuideHint(true); };
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
-  const [journalSaved, setJournalSaved] = useState(false);
-  const [journalSyncFailed, setJournalSyncFailed] = useState(false);
+  const [journalSync, setJournalSync] = useState<OutboxState>("clean");
   // Guards the server-hydrate race (audit P1): if the user starts typing
   // before the "no local copy" server fetch resolves, the fetch must not
   // stomp what they just typed.
   const journalTypedRef = useRef(false);
+  // The outbox is created once and outlives re-renders, so it reads these
+  // through refs rather than closing over a stale first-render value.
+  const testerIdRef = useRef(testerId);
+  const todayRef = useRef(today);
+  testerIdRef.current = testerId;
+  todayRef.current = today;
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [waveHover, setWaveHover] = useState<{ x: number; y: number; hourIdx: number } | null>(null);
@@ -588,25 +599,55 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
       .catch(() => {});
   }, [testerId, today]);
 
-  // Journal persists to the day's check-in row (debounced) so it shows up in
-  // The Log, sky-stamped — localStorage stays as the instant/offline copy.
-  const journalPostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Journal persists to the day's check-in row so it shows up in The Log,
+  // sky-stamped — localStorage stays as the instant/offline copy.
+  //
+  // Through an Outbox, because the old code set a "will retry" flag and then
+  // never retried: text written offline sat on disk forever while the UI said
+  // it was safe. The outbox actually retries, reports honestly when it can't,
+  // and keeps the words either way.
+  const outboxRef = useRef<Outbox | null>(null);
+  if (!outboxRef.current) {
+    outboxRef.current = new Outbox({
+      send: async (notes) => {
+        if (!testerIdRef.current) return false;
+        const r = await fetch("/api/check-ins", {
+          method: "POST",
+          headers: { "x-tester-id": testerIdRef.current, "Content-Type": "application/json" },
+          body: JSON.stringify({ date: todayRef.current, notes }),
+        });
+        if (r.ok) localStorage.removeItem(journalPendingKey(testerIdRef.current, todayRef.current));
+        return r.ok;
+      },
+      onState: (s) => setJournalSync(s),
+      setTimer: (fn, ms) => setTimeout(fn, ms),
+      clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+      debounceMs: 900,
+    });
+  }
+
+  // Unsent text from a previous session, plus a retry the moment the network
+  // comes back — the two paths that made "will retry" a lie.
+  useEffect(() => {
+    if (!testerId) return;
+    const pending = localStorage.getItem(journalPendingKey(testerId, today));
+    if (pending) outboxRef.current?.restore(pending);
+    const onOnline = () => outboxRef.current?.retryNow();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [testerId, today]);
+
+  useEffect(() => () => outboxRef.current?.dispose(), []);
+
   function saveJournal(text: string) {
     journalTypedRef.current = true;
     setJournalText(text);
-    setJournalSyncFailed(false);
     localStorage.setItem(journalKey(testerId, today), text);
-    setJournalSaved(true);
-    setTimeout(() => setJournalSaved(false), 1500);
     if (!testerId) return;
-    if (journalPostTimer.current) clearTimeout(journalPostTimer.current);
-    journalPostTimer.current = setTimeout(() => {
-      fetch("/api/check-ins", {
-        method: "POST",
-        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-        body: JSON.stringify({ date: today, notes: text }),
-      }).then(r => { if (!r.ok) setJournalSyncFailed(true); }).catch(() => setJournalSyncFailed(true));
-    }, 900);
+    // Marked unsent BEFORE the attempt, so a tab closed mid-flight leaves a
+    // record to pick up rather than a silent gap.
+    localStorage.setItem(journalPendingKey(testerId, today), text);
+    outboxRef.current?.queue(text);
   }
 
   const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
@@ -818,8 +859,22 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-foreground)" }}>Logbook line</span>
-            <span style={{ fontSize: 9, color: journalSyncFailed ? "#a03030" : "var(--color-muted)" }}>
-              {journalSyncFailed ? "saved on this device only — will retry" : journalSaved ? "saved ✓" : "lands in The Log, stamped with today's sky"}
+            {/* Four states that are each literally true, rather than one
+                reassuring sentence that wasn't. "Failed" offers the verb it
+                names — a Retry button that retries. */}
+            <span style={{ fontSize: 9, display: "flex", alignItems: "center", gap: 6, color: journalSync === "failed" ? "#a03030" : "var(--color-muted)" }}>
+              {journalSync === "failed" ? (
+                <>
+                  saved on this device — couldn't sync
+                  <button onClick={() => outboxRef.current?.retryNow()}
+                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 10, cursor: "pointer",
+                             border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)" }}>
+                    Retry
+                  </button>
+                </>
+              ) : journalSync === "syncing" || journalSync === "pending" ? "saving…"
+                : journalTypedRef.current ? "saved ✓"
+                : "lands in The Log, stamped with today's sky"}
             </span>
           </div>
           <textarea

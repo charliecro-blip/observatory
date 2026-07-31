@@ -2192,3 +2192,171 @@ describe("re-homing suggestions", () => {
     expect(picks.every((p) => p.verdict.tier !== "against")).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 39. "WILL RETRY" DIDN'T
+// Shipped bug. The journal reported `saved on this device only — will retry`
+// on a failed sync, and nothing retried: the flag was set, no timer was armed,
+// and the only thing that ever tried again was the user typing another
+// character. Write an entry offline, close the tab, and the text stayed in
+// localStorage for good — while the hydration path only reads the server when
+// there is NO local copy, so it looked fine indefinitely.
+//
+// An app telling someone their work is safe when it isn't is worse than one
+// admitting it failed. These tests are the sentence being true.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { Outbox, RETRY_DELAYS_MS } from "../artifacts/tides/src/lib/outbox";
+
+/** A hand-driven clock: nothing fires until the test advances it. */
+function harness() {
+  let seq = 0;
+  const timers = new Map<number, { fn: () => void; at: number }>();
+  let clock = 0;
+  return {
+    armed: () => [...timers.values()].map((t) => t.at - clock),
+    setTimer: (fn: () => void, ms: number) => {
+      const id = ++seq;
+      timers.set(id, { fn, at: clock + ms });
+      return id;
+    },
+    clearTimer: (h: unknown) => { timers.delete(h as number); },
+    /** Advance time and run whatever comes due, flushing microtasks after. */
+    async advance(ms: number) {
+      clock += ms;
+      for (const [id, t] of [...timers]) {
+        if (t.at <= clock) { timers.delete(id); t.fn(); }
+      }
+      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
+    },
+  };
+}
+
+describe("the outbox actually retries", () => {
+  it("sends after the debounce and reports clean", async () => {
+    const h = harness();
+    const sent: string[] = [];
+    const states: string[] = [];
+    const o = new Outbox({
+      send: async (p) => { sent.push(p); return true; },
+      onState: (s) => states.push(s),
+      setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 900,
+    });
+    o.queue("a line about today");
+    expect(sent).toEqual([]);            // nothing posted per keystroke
+    await h.advance(900);
+    expect(sent).toEqual(["a line about today"]);
+    expect(o.state).toBe("clean");
+    expect(states).toEqual(["pending", "syncing", "clean"]);
+  });
+
+  it("ARMS A RETRY on failure — the whole bug in one assertion", async () => {
+    const h = harness();
+    const o = new Outbox({
+      send: async () => false,
+      onState: () => {},
+      setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 900,
+    });
+    o.queue("text");
+    await h.advance(900);
+    expect(o.state).toBe("failed");
+    // The old code set a flag and stopped here. A timer must exist.
+    expect(h.armed()).toEqual([RETRY_DELAYS_MS[0]]);
+  });
+
+  it("retries on the documented backoff and recovers", async () => {
+    const h = harness();
+    let fail = 3;
+    const sent: string[] = [];
+    const o = new Outbox({
+      send: async (p) => { sent.push(p); return fail-- <= 0; },
+      onState: () => {},
+      setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 900,
+    });
+    o.queue("text");
+    await h.advance(900);
+    expect(sent.length).toBe(1);
+    for (let i = 0; i < 3; i++) {
+      expect(h.armed()).toEqual([RETRY_DELAYS_MS[i]]);
+      await h.advance(RETRY_DELAYS_MS[i]);
+      expect(sent.length).toBe(i + 2);
+    }
+    expect(o.state).toBe("clean");
+    expect(o.hasPending).toBe(false);
+  });
+
+  it("keeps the text when it runs out of attempts — never a silent drop", async () => {
+    const h = harness();
+    const o = new Outbox({
+      send: async () => false,
+      onState: () => {},
+      setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 0,
+    });
+    o.queue("precious");
+    await h.advance(0);
+    for (const d of RETRY_DELAYS_MS) await h.advance(d);
+    expect(h.armed()).toEqual([]);      // stopped scheduling…
+    expect(o.state).toBe("failed");     // …and says so…
+    expect(o.hasPending).toBe(true);    // …but still holds the words.
+  });
+
+  it("a manual retry (or a reconnect) picks it up again", async () => {
+    const h = harness();
+    let ok = false;
+    const sent: string[] = [];
+    const o = new Outbox({
+      send: async (p) => { sent.push(p); return ok; },
+      onState: () => {},
+      setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 0,
+    });
+    o.queue("precious");
+    await h.advance(0);
+    for (const d of RETRY_DELAYS_MS) await h.advance(d);
+    expect(o.state).toBe("failed");
+    ok = true;
+    o.retryNow();
+    await h.advance(0);
+    expect(o.state).toBe("clean");
+    expect(sent[sent.length - 1]).toBe("precious");
+  });
+
+  it("newer text wins when it supersedes an in-flight send", async () => {
+    // The failure this prevents: a slow success for the OLD text clearing the
+    // queue, so the newer edit is lost with the UI reading "saved".
+    const h = harness();
+    const sent: string[] = [];
+    let release: (v: boolean) => void = () => {};
+    const o = new Outbox({
+      send: async (p) => { sent.push(p); return new Promise<boolean>((r) => { release = r; }); },
+      onState: () => {}, setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 0,
+    });
+    o.queue("first");
+    await h.advance(0);
+    expect(sent).toEqual(["first"]);
+    o.queue("second");                 // typed while "first" is still in flight
+    release(true);                     // the old request finally succeeds
+    await h.advance(0);
+    // It must NOT stop here calling itself clean — the newer text is unsent.
+    expect(sent).toEqual(["first", "second"]);
+    expect(o.state).toBe("syncing");
+    release(true);                     // and now the newer one lands
+    await h.advance(0);
+    expect(o.state).toBe("clean");
+    expect(o.hasPending).toBe(false);
+  });
+
+  it("restores unsent text from a previous session promptly", async () => {
+    // The case the old code had no answer for: text written offline yesterday,
+    // still on disk, never sent.
+    const h = harness();
+    const sent: string[] = [];
+    const o = new Outbox({
+      send: async (p) => { sent.push(p); return true; },
+      onState: () => {}, setTimer: h.setTimer, clearTimer: h.clearTimer, debounceMs: 900,
+    });
+    o.restore("yesterday's line");
+    await h.advance(0);               // no debounce wait — it is already old
+    expect(sent).toEqual(["yesterday's line"]);
+  });
+});
