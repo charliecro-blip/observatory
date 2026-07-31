@@ -1816,3 +1816,48 @@ describe("behavioural pattern replaces the felt rating", () => {
     expect(src).toMatch(/String\(done\) === "true" \? new Date\(\) : null/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 35. THE THIRD COMPLETION SIGNAL HAD NO DOOR
+// POST /planning/windows/:id/complete shipped with the Planner and was never
+// called from anywhere in the client, so `planning_windows.completedAt` was
+// null on virtually every row (2 of 12 in production, both set by something
+// other than a user).
+//
+// Two consequences. The evening card already printed "completed N blocks" — a
+// sentence nobody could make true. And the done-pattern reads three completion
+// sources; one of them could never contribute, so a third of the evidence for
+// the feature that replaced the felt rating did not exist.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("marking a scheduled block done", () => {
+  const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+
+  it("calls the endpoint that was built and never wired", () => {
+    expect(today).toMatch(/planning\/windows\/\$\{id\}\/complete/);
+  });
+
+  it("checks r.ok — a silent write failure here is the bug class §2 removed", () => {
+    // Anchored by length, not by a second marker: "const tide = now?.tide"
+    // occurs earlier in the file too, which made the slice negative and the
+    // assertion vacuous against an empty string.
+    const at = today.indexOf("const markBlock = useMutation");
+    const block = today.slice(at, at + 1200);
+    expect(at).toBeGreaterThan(-1);
+    expect(block).toMatch(/if \(!r\.ok\) throw/);
+    expect(block).toMatch(/onError/);
+  });
+
+  it("offers one verb, not two — 'skip' is just not pressing anything", () => {
+    // A schedule that makes you account for every unmet block is the guilt
+    // ledger this product refuses (BACKLOG §4, do-not-copy).
+    const comp = today.slice(today.indexOf("function BlockCheck"), today.indexOf("function DonePattern"));
+    expect(comp).toMatch(/did it/);
+    expect(comp).not.toMatch(/Skip|skipped/);
+  });
+
+  it("only lists blocks that are still open", () => {
+    const comp = today.slice(today.indexOf("function BlockCheck"), today.indexOf("function DonePattern"));
+    expect(comp).toMatch(/filter\(\(w: any\) => !w\.completedAt\)/);
+  });
+});

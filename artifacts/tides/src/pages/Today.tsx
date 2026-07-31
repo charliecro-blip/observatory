@@ -4,6 +4,7 @@ import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_T
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal } from "@/lib/dates";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1579,6 +1580,51 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
   );
 }
 
+
+/**
+ * Today's scheduled blocks, with a way to say one happened.
+ *
+ * Deliberately only ONE verb. "Skip" needs no button — not pressing anything is
+ * already that, and a schedule that demands you account for every unmet block
+ * is the guilt ledger this product refuses (BACKLOG §4, do-not-copy).
+ */
+function BlockCheck({ wins, markBlock, blockError, elColor }: {
+  wins: any[]; markBlock: any; blockError: number | null; elColor: string;
+}) {
+  const open = wins.filter((w: any) => !w.completedAt);
+  if (open.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 9 }}>
+      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+        Did these happen?
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {open.slice(0, 4).map((w: any) => {
+          const t = new Date(w.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          return (
+            <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--text-2)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {t} · {w.title}
+              </span>
+              {blockError === w.id && (
+                <span style={{ fontSize: 9, color: "#a03030" }}>didn't save</span>
+              )}
+              <button
+                onClick={() => markBlock.mutate({ id: w.id, done: true })}
+                disabled={markBlock.isPending}
+                style={{
+                  fontSize: 10, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
+                  border: `1px solid ${elColor}40`, background: `${elColor}12`, color: elColor, fontWeight: 600,
+                }}
+              >✓ did it</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── The pattern panel ────────────────────────────────────────────────────────
 
 
@@ -2106,6 +2152,31 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
     onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
   });
 
+  // Marking a scheduled block done — the door that was missing.
+  // POST /planning/windows/:id/complete has existed since the Planner shipped
+  // and was never called from anywhere, so `completedAt` was null on virtually
+  // every row. The evening card already SAID "completed N blocks"; it just had
+  // no way for anyone to make that true. It is also one of the three signals
+  // the done-pattern reads, so an unwired verb meant a third of that evidence
+  // never existed.
+  const [blockError, setBlockError] = useState<number | null>(null);
+  const markBlock = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      const r = await fetch(`/api/planning/windows/${id}/complete`, {
+        method: "POST",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ done }),
+      });
+      // Checked, because a silent write failure here is the exact bug class
+      // this codebase spent a day removing (BACKLOG §2).
+      if (!r.ok) throw new Error("could not save");
+      return id;
+    },
+    onMutate: ({ id }) => { setBlockError(null); void id; },
+    onError: (_e, v) => setBlockError(v.id),
+    onSuccess: () => { invalidateWindows(qc); },
+  });
+
   const tide = now?.tide;
   const character = (tide?.character ?? "deep") as TideCharacter;
   const elKey = CHARACTER_ELEMENT[character] ?? "water";
@@ -2264,6 +2335,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
             You {parts.join(" · ")}.
             {heavyAdj && <span style={{ color: "#8a7060" }}> On a {heavyAdj} day, that counts double.</span>}
           </div>
+          <BlockCheck wins={wins} markBlock={markBlock} blockError={blockError} elColor={elColor} />
           {keptHabits.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
               {keptHabits.map((h: any) => (

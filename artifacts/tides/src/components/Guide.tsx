@@ -54,7 +54,7 @@ const SECTIONS: Section[] = [
     lead: "Your week, and the thirty days ahead.",
     points: [
       { term: "The strip", text: "Thirty days of tide at a glance. Tap a bar to jump to that day." },
-      { term: "The Log", text: "Every rating and logbook line you've written, stamped with that day's sky. Ahead and behind in one place." },
+      { term: "The Log", text: "Every line you've written, stamped with that day's sky, alongside what you finished. Ahead and behind in one place." },
       { term: "Keys", text: "D / W / M / A switch views, T jumps to today, ← → move by one." },
       { term: "Subscribe", text: "Settings → Your calendar feed gives you a link that puts your blocks into Apple Calendar, Google Calendar or Outlook, and keeps them up to date." },
     ],
