@@ -2645,3 +2645,133 @@ describe("the morning email says something new each day", () => {
     expect(body.match(/sg\?\.feel/g) ?? []).toHaveLength(1);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 44. AI-SLOP GUARD ON USER-FACING COPY
+// Owner asked to apply the no-ai-slop skill to the app's writing. Auditing all
+// 6,655 user-facing strings first found almost nothing to edit: three hits,
+// all "transformative", all describing Scorpio/Pluto — the traditional
+// signification, not marketing filler. The 2026-07-30 language work had
+// already done the word-level job.
+//
+// So the value isn't an edit pass, it's a ratchet. Copy is written constantly,
+// by different sessions, and this is the direction it drifts. Same shape as
+// the raw-grey guard and the no-causal-words guard: cheap, and it fails the
+// build the first time slop appears rather than the day a reader notices.
+//
+// DELIBERATELY NOT ENFORCED — em dashes. The skill says none in short copy,
+// 1–2 in longer. This app puts one in 10.9% of its strings (and two or more in
+// only 0.4%), which is the appositive rhythm LANGUAGE-STUDY-2026-07-30 chose
+// on purpose: "lyric in the weather, plain in the instruction." Stripping them
+// would flatten the house voice, which the skill itself warns against. The
+// same goes for the definitional colons in mythos.ts ("Fire is the element of
+// initiation: …") — a label and its expansion, not a fake dramatic reveal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("no AI slop in user-facing copy", () => {
+  // "transformative" is absent: it is Scorpio/Pluto's traditional meaning in
+  // an astrology app, and banning a domain term would mangle real vocabulary.
+  const BANNED = ["delve", "foster", "leverage", "utilize", "facilitate", "empower",
+    "streamline", "cutting-edge", "paradigm shift", "game changer", "tapestry",
+    "multifaceted", "meticulous", "paramount", "supercharge", "ever-evolving",
+    "seamless", "unlock the power", "take it to the next level"];
+  const EMPTY_PHRASES = ["it's worth noting", "it's important to note",
+    "at the end of the day", "in today's world", "in the age of", "the reality is",
+    "in terms of", "going forward", "let's dive in", "when it comes to"];
+  const SHAPES: [RegExp, string][] = [
+    [/\bhere'?s the thing\b|\blet me be clear\b/i, "throat-clearing opener"],
+    [/\bwhat most people get wrong\b|\bnobody tells you\b|\bthe part everyone misses\b/i, "faux-insight setup"],
+    [/\b(stands as a testament|marks a pivotal|plays a vital role|underscores its significance)\b/i, "importance puffery"],
+    [/\b(experts agree|studies show|widely regarded as)\b/i, "weasel attribution"],
+    [/,\s*(highlighting|underscoring|showcasing)\b/i, "superficial -ing analysis"],
+    [/\b(in conclusion|ultimately,|overall,)\s/i, "summary-recap ending"],
+  ];
+
+  /** Quoted literals that a reader could actually see. Comments excluded. */
+  function userStrings(src: string): { line: number; text: string }[] {
+    const out: { line: number; text: string }[] = [];
+    const lines = src.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      let l = lines[i];
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) continue;
+      l = l.replace(/\/\/.*$/, "");
+      for (const m of l.matchAll(/"([^"\\]{12,})"|'([^'\\]{12,})'|`([^`\\]{12,})`/g)) {
+        const s = m[1] ?? m[2] ?? m[3];
+        if (/^[a-z0-9_\-/.]+$/i.test(s) || !/\s/.test(s)) continue;
+        out.push({ line: i + 1, text: s });
+      }
+    }
+    return out;
+  }
+
+  function copyFiles(): string[] {
+    const out: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, e.name);
+        if (e.isDirectory()) { if (!/node_modules|dist|generated/.test(p)) walk(p); }
+        else if (/\.tsx?$/.test(e.name)) out.push(p);
+      }
+    };
+    for (const r of ["artifacts/tides/src", "artifacts/api-server/src/lib", "artifacts/api-server/src/routes"]) {
+      walk(join(process.cwd(), r));
+    }
+    return out;
+  }
+
+  const files = copyFiles();
+
+  it("finds the copy at all", () => {
+    expect(files.length).toBeGreaterThan(50);
+  });
+
+  it("uses no banned marketing words", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const { line, text } of userStrings(readFileSync(f, "utf-8"))) {
+        for (const w of BANNED) {
+          if (new RegExp(`\\b${w.replace(/-/g, "[-]")}\\b`, "i").test(text)) {
+            offenders.push(`${f.split("/src/")[1]}:${line} — "${w}" in “${text.slice(0, 70)}”`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses no empty throat-clearing phrases", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const { line, text } of userStrings(readFileSync(f, "utf-8"))) {
+        for (const p of EMPTY_PHRASES) {
+          if (text.toLowerCase().includes(p)) offenders.push(`${f.split("/src/")[1]}:${line} — "${p}"`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses none of the slop sentence shapes", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const { line, text } of userStrings(readFileSync(f, "utf-8"))) {
+        for (const [re, name] of SHAPES) {
+          if (re.test(text)) offenders.push(`${f.split("/src/")[1]}:${line} — ${name}: “${text.slice(0, 70)}”`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // NO em-dash count check. I wrote one ("at most two per string") and it
+  // failed on four strings, none of which was the crutch it was meant to
+  // catch: two were enumerations where each dash separates a label from its
+  // meaning (Tooltip.tsx listing four elements, then eight moon phases), one
+  // was an artifact of reading a three-branch ternary as a single string, and
+  // one was ordinary prose. A guard that is mostly false positives teaches
+  // people to ignore it, which is worse than not having it — the same reason
+  // "against the current" can't fire half the time and still mean anything.
+  //
+  // Measured instead, and left as the record: one em dash in 10.9% of strings,
+  // two or more in 0.4%. That is the appositive house voice, not a tic.
+});
