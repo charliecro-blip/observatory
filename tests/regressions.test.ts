@@ -2775,3 +2775,86 @@ describe("no AI slop in user-facing copy", () => {
   // Measured instead, and left as the record: one em dash in 10.9% of strings,
   // two or more in 0.4%. That is the appositive house voice, not a tic.
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 45. TESTIMONY FACTS, FOR A VOICE LAYER THAT ISN'T COMPASS'S
+// Owner settled the open question in LANGUAGE-STUDY §3: the Mercury-sign
+// register is LLM-rendered. That only works if the engine hands the renderer
+// FACTS. Every field below was already in scope where the testimony is built
+// and was being flattened into `note` — the aspect name and the orb were
+// readable only by parsing English back out, which is precisely what a second
+// register (or AstroLyrica over /engine, §5) cannot do.
+//
+// `note` is not dead once a renderer exists. It is the DEFAULT REGISTER and
+// the fallback when the renderer is unavailable — the same degrade-don't-
+// refuse rule three AI routes already follow. Which makes drift the real risk:
+// if someone edits the prose and not the facts, the LLM register and the
+// fallback start making different claims about the same sky, and nothing would
+// notice. That is what these pin.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("testimony facts agree with the prose they replaced", () => {
+  const LAT = 30.27, LON = -97.74, TZ = 300;
+  const fortnight = Array.from({ length: 14 }, (_, d) =>
+    readingFor(new Date(Date.parse("2026-08-01T09:00:00Z") + d * 86400000), LAT, LON,
+      { tzOffsetMin: TZ, scope: "moment" }));
+  const all = fortnight.flatMap((r) => r.testimonies as any[]);
+
+  it("every testimony carries facts", () => {
+    expect(all.length).toBeGreaterThan(40);
+    const naked = all.filter((t) => !t.facts).map((t) => t.source);
+    expect([...new Set(naked)]).toEqual([]);
+  });
+
+  it("the facts name the same planets the sentence does", () => {
+    for (const t of all) {
+      if (t.facts?.partner) expect(t.note).toContain(t.facts.partner);
+      // sectMalefic/hour/dayRuler all lead with their planet.
+      if (t.facts?.planet && t.facts.kind !== "phase" && t.facts.kind !== "voc" && t.facts.kind !== "moonAspect") {
+        if (t.facts.kind !== "moonSign") expect(t.note).toContain(t.facts.planet);
+      }
+    }
+  });
+
+  it("the orb in the facts is the orb in the sentence", () => {
+    // The number a different register would have to reproduce exactly.
+    const aspects = all.filter((t) => t.facts?.kind === "moonAspect");
+    expect(aspects.length).toBeGreaterThan(5);
+    for (const t of aspects) {
+      expect(t.note).toContain(`${t.facts.orbDeg.toFixed(1)}°`);
+      expect(t.facts.applying).toBe(true);   // separating aspects are skipped
+    }
+  });
+
+  it("sign and phase facts match their sentences", () => {
+    for (const t of all) {
+      if (t.facts?.kind === "moonSign") expect(t.note).toContain(t.facts.sign);
+      if (t.facts?.kind === "phase") expect(t.note).toContain(t.facts.phaseName);
+    }
+  });
+
+  it("polarity and the facts tell the same story", () => {
+    // "flow toward" vs "friction around" is the renderer's tonal fork; if it
+    // disagreed with polarity, a register could invert the day's meaning.
+    for (const t of all.filter((x) => x.facts?.kind === "moonAspect")) {
+      expect(t.note).toContain(t.polarity > 0 ? "flow toward" : "friction around");
+    }
+  });
+
+  it("the FACTS alone distinguish one day from the next", () => {
+    // Implication of LLM rendering: tests can no longer pin output text, so
+    // this is what replaces the "14/14 unique blocks" assertion — the
+    // renderer's INPUT is what must vary, and that stays deterministic.
+    const shapes = fortnight.map((r) => JSON.stringify(
+      (r.testimonies as any[]).map((t) => t.facts).filter(Boolean)));
+    for (let i = 1; i < shapes.length; i++) expect(shapes[i]).not.toBe(shapes[i - 1]);
+    expect(new Set(shapes).size).toBe(14);
+  });
+
+  it("facts survive the /engine boundary as data, not prose", () => {
+    // AstroLyrica reads this shape. If facts were dropped from the wire, the
+    // consumer would be back to parsing English.
+    const src = readFileSync(join(process.cwd(), "artifacts/api-server/src/routes/engine.ts"), "utf-8");
+    expect(src).toMatch(/reading: dayReading\(/);   // whole object, nothing stripped
+  });
+});

@@ -67,8 +67,44 @@ const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; wor
   opposition:  { harmony: -1, strength: 0.9, word: "faces off with", ing: "facing off with" },
 };
 
+/**
+ * The facts behind a testimony, as data rather than as a sentence.
+ *
+ * Everything here was already in scope where the testimony is built and was
+ * being flattened into `note` — the same disease as the morning email
+ * computing a reading and binning it, one layer down. Once prose is the only
+ * artifact, the sentence can only ever be Compass's: a different register
+ * (LANGUAGE-STUDY §3) or a different consumer over /engine (§5) has nothing to
+ * work from but English it would have to parse back.
+ *
+ * `note` stays exactly as it is. It is not dead once a renderer exists — it is
+ * the DEFAULT REGISTER and the fallback when the renderer is unavailable, the
+ * same way three AI routes already degrade to a deterministic answer rather
+ * than refuse. That is what keeps an LLM voice layer safe to depend on.
+ */
+export interface TestimonyFacts {
+  kind: "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect" | "phase" | "voc";
+  /** The planet whose voice this is, where there is one. */
+  planet?: string;
+  /** The Moon's partner in an aspect. */
+  partner?: string;
+  aspect?: string;
+  orbDeg?: number;
+  applying?: boolean;
+  sign?: string;
+  phaseName?: string;
+  waxing?: boolean;
+  /** Sect/hour standing, so a renderer can say "strongly placed" its own way. */
+  dignity?: number;
+  isDay?: boolean;
+  /** The domain this voice speaks to — "thinking and exchanging". */
+  verb?: string;
+}
+
 export interface Testimony {
   source: string;              // "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect:Venus" | "phase" | "voc"
+  /** The same claim as `note`, in fields. See TestimonyFacts. */
+  facts?: TestimonyFacts;
   element?: Element;
   activities: string[];
   weight: number;              // dignity-driven
@@ -327,11 +363,13 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   const hero = sect.team.slice().sort((a, b) => dig(b) - dig(a))[0];
   const hw = dig(hero), hTheme = PLANET_THEME[hero];
   push({ source: "sect", element: PLANET_ELEMENT[hero], activities: hTheme.activities, weight: hw, salience: 0.55, polarity: 1,
+    facts: { kind: "sect", planet: hero, dignity: hw, isDay: m.isDay, verb: hTheme.verb },
     gift: PLANET_ROADS[hero].gift, shadow: PLANET_ROADS[hero].shadow,
     carriedBy: `${hero}, the ${m.isDay ? "day" : "night"}'s steadiest voice — ${hTheme.verb}`,
     note: `${hero} is the ${m.isDay ? "day" : "night"}'s steadiest voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best` });
   const mw = dig(sect.malefic);
   push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
+    facts: { kind: "sectMalefic", planet: sect.malefic, dignity: mw, isDay: m.isDay },
     shadow: PLANET_ROADS[sect.malefic].shadow,
     note: `${sect.malefic} runs with a rougher edge ${m.isDay ? "by day" : "at night"} — the sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}` });
 
@@ -339,6 +377,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // Skipped at day scope: an hour-bound voice would go stale over a whole day.
   const hourW = dig(m.hour.ruler), ht = PLANET_THEME[m.hour.ruler];
   if (ht && opts.scope !== "day") push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: 0.6, polarity: 1,
+    facts: { kind: "hour", planet: m.hour.ruler, dignity: hourW, verb: ht.verb },
     gift: PLANET_ROADS[m.hour.ruler].gift, shadow: PLANET_ROADS[m.hour.ruler].shadow,
     carriedBy: `the ${m.hour.ruler} hour, leaning toward ${ht.verb}`,
     note: `the ${m.hour.ruler} hour (${hourW >= 1.2 ? "dignified — trust it" : hourW <= 0.6 ? "weak — a faint voice" : "middling"}) leans toward ${ht.verb}` });
@@ -346,6 +385,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // The planetary day — a whole day has one keynote.
   const dw = dig(m.dayRuler), dt = PLANET_THEME[m.dayRuler];
   if (dt) push({ source: "dayRuler", element: PLANET_ELEMENT[m.dayRuler], activities: dt.activities, weight: dw, salience: 0.5, polarity: 1,
+    facts: { kind: "dayRuler", planet: m.dayRuler, dignity: dw, verb: dt.verb },
     gift: PLANET_ROADS[m.dayRuler].gift, shadow: PLANET_ROADS[m.dayRuler].shadow,
     carriedBy: `${m.dayRuler}'s day — ${dt.verb}`,
     note: `${m.dayRuler}'s day — ${dt.verb}` });
@@ -353,6 +393,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // The Moon's sign — the day's felt character (weighted by the Moon's dignity).
   const sg = SIGN_GUIDE[m.moonSign];
   if (sg) push({ source: "moonSign", element: sg.element as Element, activities: sg.favors.slice(0, 3), weight: dig("Moon"), salience: 0.45, polarity: 1,
+    facts: { kind: "moonSign", planet: "Moon", sign: m.moonSign, dignity: dig("Moon") },
     gift: ELEMENT_ROADS[sg.element as Element].gift, shadow: ELEMENT_ROADS[sg.element as Element].shadow,
     carriedBy: `a ${m.moonSign} Moon — ${sg.feel}`,
     note: `a ${m.moonSign} Moon — ${sg.feel}` });
@@ -371,6 +412,10 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     const polarity: 1 | -1 = score >= 0 ? 1 : -1;
     push({ source: `moonAspect:${other}`, element: PLANET_ELEMENT[other], activities: th.activities,
       weight: dig(other), salience: 0.9 * (0.4 + 0.6 * exact) * nat.strength, polarity,
+      // The orb and the aspect name were readable only by parsing `note` back
+      // out of English — the one thing a second register could never do.
+      facts: { kind: "moonAspect", planet: "Moon", partner: other, aspect: a.aspect,
+               orbDeg: a.orb, applying: true, dignity: dig(other), verb: th.verb },
       gift: PLANET_ROADS[other].gift, shadow: PLANET_ROADS[other].shadow,
       carriedBy: `the Moon ${nat.ing} ${other} — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
       note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
@@ -379,10 +424,12 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // Phase — where in the cycle.
   const waxing = !/wan|last quarter|balsamic/i.test(m.phaseName);
   push({ source: "phase", activities: waxing ? ["begin", "build"] : ["finish", "release"], weight: 1, salience: 0.5, polarity: 1,
+    facts: { kind: "phase", planet: "Moon", phaseName: m.phaseName, waxing },
     note: `${m.phaseName} — ${waxing ? "waxing: build and begin" : "waning: finish and release"}` });
 
   // Void of course — a cautionary gate.
   if (m.voc) push({ source: "voc", activities: ["finish", "rest", "tidy"], weight: 1.3, salience: 0.7, polarity: -1,
+    facts: { kind: "voc", planet: "Moon", sign: m.moonSign },
     shadow: "beginning something you want to last",
     note: "the Moon is void of course — slack water; begin nothing you want to last" });
 
