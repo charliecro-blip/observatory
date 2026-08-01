@@ -31,6 +31,7 @@ import {
   SIGN_GUIDE, PHASE_GUIDE, DAY_RULER, DAY_RULER_GIFT, favoredActivities, bestFor,
   easeOff, transitMeaning, rankTransits, type DaySky,
 } from "../lib/interpretation.js";
+import { skyLines } from "../lib/skyLines.js";
 
 const router: IRouter = Router();
 
@@ -229,9 +230,18 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
   // lock-screen reader this single line IS the email, so it must stand alone.
   const dueCount = owned.filter((o) => o.sort <= 1).length;
   // The shape phrase MUST come from the same place as the footer's sky line,
-  // or a 50-word email contradicts itself: the woven flavour weights the day
-  // ruler and Sun, so it printed "A fire day" directly above "A Gemini Moon"
-  // on 21 of 30 days. The Moon's own element is what the reader is told.
+  // or a 50-word email contradicts itself: it printed "A fire day" directly
+  // above "A Gemini Moon" on 21 of 30 days.
+  //
+  // Resolved by having only ONE place name an element. The footer now prints
+  // the weave with its "a fire day — " opener stripped, so it never states one;
+  // the headline is the only claim, and no contradiction is possible.
+  //
+  // The Moon's element stays, and measurement is why: over 14 days the weave's
+  // convergent element was unique 3 times and identical to the day before 8
+  // times (it sits on the Sun's dignity, which barely moves). The Moon's sign
+  // turns over every ~2.5 days. Leading on the weave here would have printed
+  // "Fire day" for a solid week.
   const shape = cap(`${sg?.element ?? elem.element} day`);
   const headline = dueCount > 0
     ? `${dueCount} thing${dueCount === 1 ? "" : "s"} of yours today. ${shape}.`
@@ -311,6 +321,9 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
   // and, because one earth-tagged star meets four elements, spent 23 of 30
   // mornings telling the reader today was not for their only goal.
   const stars = await activeStars(testerId);
+  // Same source as the headline and the sky footer — a third opinion about
+  // what element today is would be the contradiction all over again, in the
+  // one block that tells the reader their goal is or isn't supported.
   const dayEl = sg?.element;
   const starMatch = stars.find((s) => s.element === dayEl);
   if (starMatch) {
@@ -319,13 +332,40 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
     ] });
   }
 
-  // 7) THE SKY, BRIEFLY — everything this email used to lead with, demoted to
-  // a footer and gated by the register the subscriber actually chose.
+  // 7) THE SKY, BRIEFLY — the woven reading, which this email had been
+  // COMPUTING AND DISCARDING. `dayReading` ran on line ~207 (natal chart, asc
+  // ruler, testimony, dignity) and its result was never referenced; the block
+  // printed `SIGN_GUIDE[moonSign].feel` instead — a static table entry, so
+  // every Pisces Moon got the identical sentence forever, whatever else the
+  // sky was doing. On 2026-08-01 the discarded reading held "Saturn's day —
+  // structure and the unglamorous right thing", "Moon flows to Mercury (7.4°
+  // applying)" and a Mars counterpoint, and the reader was sent "warm fog on
+  // slack water".
+  //
+  // WHICH parts of the reading, decided by measuring how much each one moves
+  // across 14 days (unique values / consecutive repeats):
+  //
+  //   Moon's applying aspect   11 unique   0 repeats   ← the daily signal
+  //   day-ruler note            7 unique   0 repeats   ← rotates by weekday
+  //   watch[0]                  7 unique   2 repeats
+  //   flavour                   6 unique   4 repeats
+  //   counterpoint              6 unique   4 repeats
+  //   convergent element        3 unique   8 repeats   ← nearly a constant
+  //
+  // Leading with the flavour printed one verbatim sentence on 6 of 8 days —
+  // the same failure as the static sign blurb, in nicer words. So the block
+  // leads with what actually changes: where the Moon is going next, then the
+  // day's ruler, then the honest but.
   if (detail !== "minimal") {
-    const skyLine = detail === "full"
-      ? `${artcl(moonSign)} ${moonSign} Moon on ${weekday} — ${sg?.feel ?? `an ${elem.element} day`}. ${cap(dayRuler)}'s day: the hours favor ${DAY_RULER_GIFT[dayRuler]}. Moon ${phaseName.toLowerCase()}, ${Math.round(fraction * 100)}% lit.`
-      : `${artcl(moonSign)} ${moonSign} Moon — ${sg?.feel ?? `an ${elem.element} day`}.`;
-    blocks.push({ heading: "The sky, briefly", lines: [skyLine] });
+    const lines = skyLines(reading);
+
+    if (detail === "full") {
+      lines.push(`${artcl(moonSign)} ${moonSign} Moon, ${phaseName.toLowerCase()} at ${Math.round(fraction * 100)}%.`);
+    }
+    // The sign blurb survives only as the floor, for a day the weave has
+    // nothing to say about.
+    if (!lines.length) lines.push(`${artcl(moonSign)} ${moonSign} Moon — ${sg?.feel ?? `an ${elem.element} day`}.`);
+    blocks.push({ heading: "The sky, briefly", lines });
   }
 
   // SUBJECT — their thing + a number or time, then a short reason. Must carry

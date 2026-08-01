@@ -2565,3 +2565,83 @@ describe("planner drafts survive a refresh, stale schedules do not", () => {
     expect(src.slice(at2, at2 + 260)).toMatch(/removeItem\(draftKey/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 43. THE MORNING EMAIL COMPUTED A READING AND THREW IT AWAY
+// Owner, 2026-08-01: "it's a nothing burger… this card is just a bit short."
+//
+// It was short structurally. composeDay called dayReading() — the synthesis
+// engine, with natal chart and ascendant ruler — assigned it to `reading`, and
+// never referenced it again. "The sky, briefly" printed
+// SIGN_GUIDE[moonSign].feel, a STATIC table entry, so every Pisces Moon got
+// "warm fog on slack water" verbatim, for ever, whatever else was happening.
+//
+// That morning the discarded reading held: Moon applying to Mercury, Saturn's
+// day, Waning Gibbous, and a Mars counterpoint. Six testimonies. None sent.
+//
+// The fix is not "write more" — it is "use what is already computed", and the
+// ORDER is measured rather than assumed. Leading with the engine's headline
+// flavour (the obvious pick) printed one verbatim sentence on 6 of 8 days: the
+// same failure as the static blurb, in better prose. Leading on the Moon's
+// applying aspect gives 14/14 unique openings over a fortnight.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { skyLines, cleanCounterpoint } from "../artifacts/api-server/src/lib/skyLines";
+import { dayReading as readingFor } from "../artifacts/api-server/src/lib/synthesis";
+
+describe("the morning email says something new each day", () => {
+  const LAT = 30.27, LON = -97.74, TZ = 300;
+  const fortnight = Array.from({ length: 14 }, (_, d) =>
+    readingFor(new Date(Date.parse("2026-08-01T12:00:00Z") + d * 86400000), LAT, LON,
+      { tzOffsetMin: TZ, scope: "day" }));
+
+  it("never repeats yesterday's block", () => {
+    // The email study drove consecutive duplicate emails from 16 to 0. A
+    // static sky line quietly put them back.
+    const blocks = fortnight.map((r) => skyLines(r).join(" "));
+    for (let i = 1; i < blocks.length; i++) {
+      expect(blocks[i]).not.toBe(blocks[i - 1]);
+    }
+    expect(new Set(blocks).size).toBeGreaterThanOrEqual(12);
+  });
+
+  it("never repeats yesterday's OPENING sentence either", () => {
+    // The whole block differing isn't enough — readers see the first line.
+    const firsts = fortnight.map((r) => skyLines(r)[0] ?? "");
+    for (let i = 1; i < firsts.length; i++) {
+      expect(firsts[i]).not.toBe(firsts[i - 1]);
+    }
+  });
+
+  it("says the same thing only once per email", () => {
+    // The flavour is BUILT from the watch list, so printing both restates it.
+    // This is the "void printed verbatim three times" failure.
+    for (const r of fortnight) {
+      const lines = skyLines(r);
+      const tails = lines.map((l) => l.toLowerCase().split("—").pop()?.trim().slice(0, 28) ?? "");
+      expect(new Set(tails).size).toBe(tails.length);
+    }
+  });
+
+  it("stays a footer — at most three sentences", () => {
+    // Longer and it competes with the reader's own day, which is exactly what
+    // the 229→54 word rewrite removed.
+    for (const r of fortnight) expect(skyLines(r).length).toBeLessThanOrEqual(3);
+  });
+
+  it("drops the tail sentence that appeared in every single email", () => {
+    expect(cleanCounterpoint("— though Mars runs rough. Hold the day's shape loosely there."))
+      .toBe("Though Mars runs rough.");
+    expect(cleanCounterpoint(undefined)).toBe("");
+  });
+
+  it("composeDay actually uses the reading it pays to compute", () => {
+    // The bug in one line: an expensive call whose result was never read.
+    const src = readFileSync(join(process.cwd(), "artifacts/api-server/src/routes/reports.ts"), "utf-8");
+    const body = src.slice(src.indexOf("export async function composeDay"), src.indexOf("export async function composeWeek"));
+    expect(body).toMatch(/const reading = dayReading\(/);
+    expect(body).toMatch(/skyLines\(reading\)/);
+    // And the sign blurb survives only as the empty-weave floor.
+    expect(body.match(/sg\?\.feel/g) ?? []).toHaveLength(1);
+  });
+});
