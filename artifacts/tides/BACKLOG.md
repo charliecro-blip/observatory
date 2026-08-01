@@ -21,6 +21,7 @@ plus three code audits run 2026-07-29 (structural, election-engine, second-pass)
 | 👤 | **Set `ADMIN_TOKEN` on Railway** (`openssl rand -hex 24`) | Guards `/api/events/summary` and `/api/events/errors`. **Until it's set, both 404 in production** — deliberately closed, because they return crash messages and stack traces which can quote whatever was on the user's screen. Read them with `-H "x-admin-token: …"`. | 2026-07-30 |
 | 👤 | **Confirm `GOOGLE_CAL_REDIRECT_URI` = `https://compass.day/api/integrations/google-cal/callback`** | Only ONE redirect URI is live at a time — registering both in Google Cloud doesn't make both work. | GCAL-SETUP |
 | 👤 | **Decide: publish the Google OAuth app (unverified) vs keep in Testing** | Testing = 7-day token expiry, silent weekly disconnects. Console reportedly says "In production" — verify under Google Auth Platform → Audience. | month §9 |
+| 👤 | **Set `ENGINE_TOKENS` on Railway** (comma-separated, one per consumer app) | **The AstroLyrica integration is built and blocked on this alone.** All eight `/engine/*` endpoints are written, mounted and version-headered, but `engineAuth` returns **503 "engine not enabled (ENGINE_TOKENS unset)"** for every request until the variable exists. Nothing else stands between AstroLyrica and the judgment stack. Untracked until 2026-08-01. | ENGINE-API-SPEC |
 | 👤 | Google OAuth **verification** (days–weeks) | Removes the "unverified app" wall. Only worth it before a wider launch — corporate Workspace blocks it outright, which caps the highest-paying personas. | paying §A1 |
 
 ---
