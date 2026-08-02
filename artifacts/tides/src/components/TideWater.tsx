@@ -114,6 +114,12 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const WATER_TOP = PAD_T + 26;      // highest the surface can reach (leaves sky visible)
   const WATER_BOT = H - PAD_B - 14;  // lowest the surface can fall (keeps some depth)
   const [lens, setLens] = useState("overall");
+  // The element tab strip is opt-in (owner 2026-08-02: "I don't know why the
+  // elemental structure is still there… I don't think it helps a ton to
+  // start"). Asking someone to learn a four-element taxonomy before the chart
+  // says anything useful is exactly the jargon-first order the app is trying
+  // not to have.
+  const [showLenses, setShowLenses] = useState(false);
   const [style, setStyle] = useState<ChartStyle>(() => {
     const saved = localStorage.getItem("tw_style");
     return (saved === "calm" || saved === "minimal" || saved === "bars" || saved === "water") ? saved : "calm";
@@ -180,13 +186,27 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
     if (e.pointerType === "mouse") setHoverH(null); // touch keeps the readout until you tap away
   };
 
+  // Which element the "best this week" windows are FOR. Previously this was
+  // simply `lens`, and both the query and the render were gated on
+  // `lens !== "overall"` — but "overall" is the default, so the single most
+  // concretely useful line the chart produces ("Best this week for bold moves:
+  // Wed 6:15–11:45pm…") was invisible until you clicked an element tab. The
+  // tabs were both the clutter AND the only door to the thing worth keeping.
+  // Now the day's own element answers by default, and picking a tab overrides
+  // it — the taxonomy becomes optional without taking the payoff with it.
+  // Both sources are ELEMENTS ("fire"…), matching the lens keys — deliberately
+  // not arc.curve[].character, which is the tide's character word ("surge") and
+  // would have silently produced a lens key the API doesn't know.
+  const dayElement: string | undefined = now?.reading?.element ?? now?.tide?.element;
+  const windowsLens = lens !== "overall" ? lens : (dayElement ?? "");
+
   const { data: bestTimes } = useQuery<any>({
-    queryKey: ["best-times", lens, lat, lon],
+    queryKey: ["best-times", windowsLens, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/best-times?lens=${lens}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
+      const r = await fetch(`/api/tides/best-times?lens=${windowsLens}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
       return r.json();
     },
-    enabled: lens !== "overall",
+    enabled: !!windowsLens && windowsLens !== "overall",
     staleTime: 300_000,
   });
 
@@ -386,7 +406,18 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         </div>
       )}
 
-      {timeframe === "day" && lenses.length > 1 && (
+      {/* The taxonomy is one tap away, not in the way. Closed by default; the
+          line below already answers for today's own element. */}
+      {timeframe === "day" && lenses.length > 1 && !showLenses && (
+        <button onClick={() => setShowLenses(true)} style={{
+          display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
+          cursor: "pointer", padding: 0, marginBottom: 6, fontSize: 10, color: "var(--text-3)",
+        }}>
+          <span style={{ fontSize: 8 }}>▸</span> Compare elements
+        </button>
+      )}
+
+      {timeframe === "day" && lenses.length > 1 && showLenses && (
         <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
           {lenses.map((L) => {
             const ec = (ELEMENT_COLORS as Record<string, string>)[L.key]; // element lenses get their own color
@@ -404,10 +435,14 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           {LENS_HINTS[lens] && (
             <span style={{ fontSize: 9.5, color: "var(--color-muted)", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
           )}
+          <button onClick={() => { setShowLenses(false); setLens("overall"); }} title="Hide the element comparison"
+            style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", marginLeft: "auto" }}>
+            ▾ hide
+          </button>
         </div>
       )}
 
-      {timeframe === "day" && lens !== "overall" && bestTimes?.windows?.length > 0 && (() => {
+      {timeframe === "day" && bestTimes?.windows?.length > 0 && (() => {
         const chronotype = profile?.chronotype;
         const allWindows: any[] = bestTimes.windows;
         // Rank: awake + free first, then awake, then asleep (a sky-perfect window
