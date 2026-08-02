@@ -143,18 +143,25 @@ function PinButton({ onPin }: { onPin: () => void }) {
 // mode "send" fires immediately; mode "fill" drops a natural starter into the
 // input for you to complete, so the message reads as your own words (no
 // awkward "ask me what it is" instructions sent on your behalf).
+// The starting questions point Ask at EXPLAINING what Compass computed, not
+// at recomputing it. "What should I do right now?" invited a second, generative
+// answer to the exact question the deterministic engine already answers on the
+// same screen — and when the two differed the user had no way to tell which to
+// believe. These ask Ask to do the thing only it can do: reason about the
+// answer, weigh what the engine can't see, and say where it might be wrong.
+// Only `fill` entries are rendered (the send-mode prompts live as rows in the
+// "Right now" section, where they can reference the current pick). Kept as a
+// list of openers the user completes themselves.
 const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[] = [
-  { label: "What should I do right now?", mode: "send", value: "Given the sky right now and my tasks and goals, what's the best thing I could do with this moment?" },
-  { label: "What should I work on?", mode: "send", value: "Looking at my tasks and goals and the current sky, what should I focus on right now?" },
-  { label: "What movement fits now?", mode: "send", value: "What kind of movement or workout best matches this moment?" },
+  { label: "Compare two options…", mode: "fill", value: "Which is the better use of this window — " },
+  { label: "I'm exhausted — does that change…", mode: "fill", value: "I'm running on empty today. Does that change " },
   { label: "Is now a good time to…", mode: "fill", value: "Is now a good time to " },
   { label: "When should I…", mode: "fill", value: "When today or this week should I " },
-  { label: "When should I launch…", mode: "fill", value: "When would be the best timing to launch " },
 ];
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, electionContext, now, northStars }: {
+function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, onAddTask, seedMessage, electionContext, strongestFit, now, northStars }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -166,6 +173,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   // When opened from Auspice's election picker: the activity + real candidate
   // windows + the user's note. Rides into /api/advise as given facts.
   electionContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
+  /** Today's deterministic pick — Ask explains THIS rather than producing a
+   *  rival answer to the same question. */
+  strongestFit?: { title: string; why: string; when: string; kind: string } | null;
   now?: any;
   northStars?: any[] | null;
 }) {
@@ -205,7 +215,9 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           "Content-Type": "application/json",
           ...(testerId ? { "x-tester-id": testerId } : {}),
         },
-        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary, ...(electionContext ? { electionContext } : {}) }),
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary,
+          ...(electionContext ? { electionContext } : {}),
+          ...(strongestFit ? { strongestFit } : {}) }),
       });
 
       // A 429 here is a quota, not an outage — surfacing it as "couldn't
@@ -395,15 +407,34 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                 </div>
               )}
 
-              {/* Right now — this moment's grain + rest */}
+              {/* Right now — explain the pick, then the softer questions.
+                  These lead with "why is Compass saying this?" rather than
+                  "what should I do?", because the app has already answered the
+                  second question deterministically on the page behind this
+                  panel. Asking the model to answer it again invites a second,
+                  differently-reasoned reply to the same question, and a user
+                  who catches the two disagreeing has no way to tell which to
+                  trust (power-user audit 2026-08-02). */}
               <div>
                 <div style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>Right now</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {strongestFit?.title && (
+                    <Row icon="✧" iconColor={charColor}
+                      label="Why this suggestion?"
+                      sub={`Compass is pointing at “${strongestFit.title}”`}
+                      onClick={() => send(`Compass is suggesting "${strongestFit.title}" right now, because: ${strongestFit.why} Walk me through that reasoning — which factors actually drove it, how strong is the case, and what would have to be true for it to be the wrong call?`)}
+                    />
+                  )}
+                  <Row icon="⚖" iconColor={PLANET_COLORS.Mercury}
+                    label="What can't Compass see?"
+                    sub="The things that could outweigh the timing"
+                    onClick={() => send(`What real-life considerations could outweigh Compass's current suggestion? Be specific about what the app cannot see — my energy, obligations, whether something is blocked, other people — and how each would change the read.`)}
+                  />
                   {charLabel && (
                     <Row icon="◐" iconColor={charColor}
                       label={`Work with the ${charLabel} tide`}
                       sub={tideChar ? CHARACTER_ESSENCE[tideChar] : undefined}
-                      onClick={() => send(`The tide right now is ${charLabel}. Given that grain and my tasks and goals, what's the best thing I could do with this moment? Keep it to what genuinely fits this kind of energy.`)}
+                      onClick={() => send(`The tide right now is ${charLabel}. Help me understand what that grain actually favours and how it bears on what I have in front of me. If Compass has already made a pick, start from that rather than proposing a different one.`)}
                     />
                   )}
                   <Row icon={restful ? "☾" : "⏸"} iconColor={PLANET_COLORS.Moon}
@@ -747,6 +778,34 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     onSuccess: () => { logEvent("task_add", { from: "waves" }); { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); }; setNewTaskTitle(""); setShowAddTask(false); },
   });
 
+  // The deterministic pick, computed ONCE at component level so the card and
+  // the advisor are guaranteed to be talking about the same recommendation.
+  // Ask is an explanation layer over this — if it were handed nothing, it would
+  // have to invent its own answer to "what should I do?", which is precisely
+  // the two-oracles problem (power-user audit, 2026-08-02).
+  const move = useMemo(() => {
+    const openTasks = todayTasks.filter(t => t.done !== "true");
+    const activeStars = (northStars ?? []).filter((g: any) => g.status !== "done");
+    return pickNextMove({
+      now: new Date(),
+      currentHour: now?.planetaryHour ? {
+        planet: now.planetaryHour.planet,
+        began: now.planetaryHour.began,
+        ends: now.planetaryHour.ends,
+      } : null,
+      upcomingHours: (now?.upcomingHours ?? []).map((h: any) => ({ planet: h.planet, time: h.time })),
+      // A task's element comes from the star it hangs off — tasks don't carry
+      // one of their own.
+      tasks: openTasks.map(t => ({
+        id: t.id, title: t.title, planet: t.planet,
+        element: t.goalId ? (activeStars.find((g: any) => g.id === t.goalId)?.element ?? null) : null,
+      })),
+      stars: activeStars.map((g: any) => ({ id: g.id, title: g.title, planet: g.planet, element: g.element })),
+      dayElement: now?.reading?.element ?? now?.tide?.element ?? null,
+      voc: !!now?.voc?.isVOC,
+    });
+  }, [todayTasks, northStars, now]);
+
   const gcalEvents = (gcalData?.events ?? []).map(e => ({ title: e.title, start: e.start, end: e.end, allDay: e.allDay }));
 
   // Build a concise week quality summary for the advisor system prompt
@@ -969,6 +1028,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           weekSummary={weekSummary}
           seedMessage={advisorSeed}
           electionContext={askContext}
+          strongestFit={move}
           now={now}
           northStars={northStars}
           onAddTask={title => {
@@ -1251,26 +1311,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             doesn't hold; "strongest fit" claims exactly what the engine
             actually computed, and is still the useful sentence. */}
         {(() => {
-          const openTasks = todayTasks.filter(t => t.done !== "true");
-          const activeStars = (northStars ?? []).filter((g: any) => g.status !== "done");
-          const move = pickNextMove({
-            now: new Date(),
-            currentHour: now?.planetaryHour ? {
-              planet: now.planetaryHour.planet,
-              began: now.planetaryHour.began,
-              ends: now.planetaryHour.ends,
-            } : null,
-            upcomingHours: (now?.upcomingHours ?? []).map((h: any) => ({ planet: h.planet, time: h.time })),
-            // A task's element comes from the star it hangs off — tasks don't
-            // carry one of their own.
-            tasks: openTasks.map(t => ({
-              id: t.id, title: t.title, planet: t.planet,
-              element: t.goalId ? (activeStars.find((g: any) => g.id === t.goalId)?.element ?? null) : null,
-            })),
-            stars: activeStars.map((g: any) => ({ id: g.id, title: g.title, planet: g.planet, element: g.element })),
-            dayElement: now?.reading?.element ?? now?.tide?.element ?? null,
-            voc: !!now?.voc?.isVOC,
-          });
           if (!now) return null;
           return (
             <div style={{

@@ -192,11 +192,34 @@ export interface ElectionRule {
   severity: "hard" | "soft" | "support";
   passed: boolean;   // true = clear/satisfied, false = triggered/failed
   detail: string;
+  /**
+   * Where this rule comes from, and whether practitioners actually agree on it.
+   *
+   * A verdict of "avoid" is a strong thing to tell someone, and Compass was
+   * phrasing its hardest rules as settled fact ("classically avoided …
+   * regardless of how the Moon looks"). Some of them ARE near-universal
+   * (don't elect into an eclipse); others are genuinely disputed, and an
+   * astrologer who disagrees should be able to see that Compass knows it is
+   * taking a position rather than reporting consensus.
+   *
+   * A ruleset may hold an opinion. It should not pretend the opinion is
+   * uncontested.
+   */
+  source?: "classical" | "compass";
+  /** Named dissent, when the rule is genuinely contested. Shown with the rule. */
+  dispute?: string;
 }
+
+/** Which ruleset produced a verdict — surfaced so the user can see Compass is
+ *  applying ONE tradition, not speaking for astrology as a whole. */
+export const ELECTION_RULESET = "Compass classical default (Hampar / DeLuce / March)";
 
 export type ElectionVerdict = "strong" | "workable" | "caution" | "avoid";
 
 export interface ElectionResult {
+  /** The ruleset this verdict was produced by — stored with the result so an
+   *  election recorded today still reports what judged it after rules change. */
+  ruleset?: string;
   date: string;             // ISO instant scored
   windowStart: string;      // ISO — start of the planetary-hour block this result represents
   windowEnd: string;        // ISO — end of that block
@@ -282,7 +305,11 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
   const retroDetail = mercRetro
     ? category.mercuryRetroNote ?? (
         category.mercuryRetro === "hard"
-          ? "Mercury is retrograde — classically avoided for signing, publishing, or committing in writing, regardless of how the Moon looks."
+          // Was: "…classically avoided …, regardless of how the Moon looks."
+          // That last clause asserted that no other testimony could matter,
+          // which is a position, not a fact — and the astrologers most likely
+          // to trust Compass are exactly the ones who would contest it.
+          ? "This ruleset treats Mercury retrograde as disqualifying for signing, publishing, or committing in writing."
           : "Mercury is retrograde — a mild caution for anything communication- or contract-adjacent, though not disqualifying for this category."
       )
     : "Mercury is direct.";
@@ -293,6 +320,11 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     // For favorable categories the retrograde is a positive signal, not a failure.
     passed: category.mercuryRetro === "favorable" ? true : !mercRetro,
     detail: retroDetail,
+    source: "classical",
+    // Genuinely contested — worth saying so rather than implying consensus.
+    dispute: mercRetro && category.mercuryRetro === "hard"
+      ? "Practitioners differ. Many accept a retrograde for a REturn — a relaunch, a renewal, a revision, resuming something paused — and read it as hostile mainly to genuinely new beginnings."
+      : undefined,
   });
 
   // 6. Eclipse within ~3 days — hard
@@ -303,6 +335,9 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     detail: nearEclipse
       ? `Within ${eclipseDays.toFixed(1)} days of an eclipse — a launch this close tends to run hot and change shape faster than planned.`
       : "No eclipse within the 3-day caution window.",
+    // Near-universal across traditions — no dispute note, because inventing
+    // controversy where there is none is its own kind of dishonesty.
+    source: "classical",
   });
 
   // 7. Malefic afflicting the moment's own Ascendant (hard aspect, orb <= 3°) — hard
@@ -386,8 +421,11 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
   else if (softFailed.length <= 1 && supportsMet >= 1) verdict = "workable";
   else verdict = "caution";
 
+  // An "avoid" says which ruleset is refusing and why — not "the stars forbid
+  // this" but "this ruleset blocks it, on these grounds". The dispute notes
+  // ride on the rules themselves so the user can weigh the objection.
   const summary = hardFailed.length > 0
-    ? `Avoid: ${hardFailed.map((r) => r.label.toLowerCase()).join(", ")}.`
+    ? `${ELECTION_RULESET} withholds this window: ${hardFailed.map((r) => r.label.toLowerCase()).join(", ")}.`
     : verdict === "strong"
       ? "A strong window — the checklist is clear and multiple supports are active."
       : verdict === "workable"
@@ -399,6 +437,9 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     windowStart: planHour.startTime.toISOString(), windowEnd: planHour.endTime.toISOString(),
     category: categoryKey, verdict, rules,
     planetaryHour: planHour.ruler, planetaryHourMatch: hourMatch, summary,
+    // Which ruleset spoke. Saved with the result so a verdict recorded today
+    // still says what it was judged by after the rules change.
+    ruleset: ELECTION_RULESET,
   };
 }
 

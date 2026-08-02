@@ -13,6 +13,11 @@ export interface ElectionRule {
   severity: "hard" | "soft" | "support";
   passed: boolean;
   detail: string;
+  /** Which tradition asserts this rule. */
+  source?: "classical" | "compass";
+  /** Named dissent where practitioners genuinely differ — shown with the rule
+   *  so a contested position never reads as settled fact. */
+  dispute?: string;
 }
 
 export type ElectionVerdict = "strong" | "workable" | "caution" | "avoid";
@@ -27,6 +32,8 @@ export interface ElectionResult {
   planetaryHour: string;
   planetaryHourMatch: boolean;
   summary: string;
+  /** The ruleset that produced this verdict, stored with it. */
+  ruleset?: string;
 }
 
 export interface ElectionScanResult {

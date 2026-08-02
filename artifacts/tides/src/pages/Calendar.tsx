@@ -126,10 +126,19 @@ function approxSunriseSunset(dateStr: string, lat: number, lon: number): { sunri
   const lstNoon = 12 - lon / 15 - EqT / 60;
   const sunriseH = lstNoon - H / 15;
   const sunsetH  = lstNoon + H / 15;
-  const midnight = new Date(dateStr + "T00:00:00");
+  // `lstNoon` is a UTC hour-of-day (it is 12 minus the longitude offset), so
+  // the anchor must be UTC midnight. This used to add it to `new Date(dateStr
+  // + "T00:00:00")` — LOCAL midnight — which silently added the viewer's UTC
+  // offset to every result: New York on 2026-08-02 came out as sunrise 09:53
+  // and sunset 00:09 the next morning. Correct only for a viewer sitting in
+  // UTC, and wrong by whole hours for everyone else, which shifted every
+  // planetary-hour band on this page away from the ones the server computes
+  // for Today and Plan.
+  const [yy, mm, dd] = dateStr.split("-").map(Number);
+  const utcMidnight = Date.UTC(yy, mm - 1, dd);
   return {
-    sunrise: new Date(midnight.getTime() + sunriseH * 3600000),
-    sunset:  new Date(midnight.getTime() + sunsetH  * 3600000),
+    sunrise: new Date(utcMidnight + sunriseH * 3600000),
+    sunset:  new Date(utcMidnight + sunsetH  * 3600000),
   };
 }
 

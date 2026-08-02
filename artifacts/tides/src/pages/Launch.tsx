@@ -136,6 +136,28 @@ function fmtRange(startIso: string, endIso: string): string {
   return `${dateLabel} · ${t(s)}–${t(e)}`;
 }
 
+/** Names which of the two electional jobs a section does, so the different
+ *  grading scales below them read as different scrutiny rather than as two
+ *  engines disagreeing. `strict` marks the inception-chart one. */
+function SectionIntro({ title, body, strict = false }: { title: string; body: string; strict?: boolean }) {
+  return (
+    <div style={{
+      marginTop: strict ? 30 : 0, marginBottom: 12, paddingLeft: 11,
+      borderLeft: `3px solid ${strict ? "#a05020" : "var(--color-border)"}`,
+    }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+        {title}
+        {strict && (
+          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: "#a05020", background: "#a0502012", border: "1px solid #a0502033", borderRadius: 5, padding: "1px 6px" }}>
+            stricter rules
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 3 }}>{body}</div>
+    </div>
+  );
+}
+
 function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
   const ok = rule.passed;
   const dotColor = rule.severity === "support"
@@ -152,6 +174,19 @@ function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
           </span>
         </div>
         <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 2 }}>{rule.detail}</div>
+        {/* Where practitioners genuinely disagree, say so. A ruleset is allowed
+            to hold a position; it is not allowed to present a contested
+            position as settled fact — and the astrologers most likely to rely
+            on Compass are exactly the ones who would otherwise catch it doing
+            that and stop trusting the rest. */}
+        {rule.dispute && (
+          <div style={{
+            fontSize: 10.5, color: "var(--text-3)", lineHeight: 1.55, marginTop: 4,
+            paddingLeft: 8, borderLeft: "2px solid var(--color-border)", fontStyle: "italic",
+          }}>
+            {rule.dispute}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -333,18 +368,38 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
             breakdown, also reachable from Aims, surfaced here in Plan). */}
 
         {mode === "begin" && (<>
-        {/* Electional — "when should I BEGIN one specific venture?" */}
+        {/* TWO DIFFERENT JOBS, not two methods for the same one.
+
+            These stacked with no explanation, so a user met an activity picker
+            grading windows "good/great" and, directly beneath, a category scan
+            grading them "strong/workable/caution/avoid" — and reasonably asked
+            which one was authoritative and why they disagreed. They disagree
+            because they answer different questions under different scrutiny:
+            finding a good time to DO something recurring is not the same act as
+            electing the inception moment of something that only begins once,
+            and the tradition is far stricter about the second. Naming that is
+            the whole fix; the engines were never really in conflict. */}
         <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>
-          Begin something
+          Pick a day
         </div>
         <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 22 }}>
-          When's a good moment to begin something? The sky's timing describes the shape and early tempo of a
-          beginning — not a guaranteed outcome. Perfect windows are rare; this shows the best available one honestly.
+          The sky's timing describes the shape and early tempo of something — not a guaranteed
+          outcome. Perfect windows are rare; this shows the best available one honestly.
         </div>
 
+        <SectionIntro
+          title="Find a time for an activity"
+          body="Writing, training, a hard conversation, filming, studying. Repeatable work — this is about fit between the hours and the kind of effort, and you can run it as often as you like."
+        />
         {/* The activity election picker — the extensive correspondence list,
             tiered good/great times, one-tap scheduling (owner 2026-07-20). */}
         <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
+
+        <SectionIntro
+          title="Elect a beginning"
+          body="Launching, signing, publishing, opening, founding. Things that begin once and carry their starting moment with them — judged against the inception chart, under stricter rules, and more willing to tell you to wait."
+          strict
+        />
 
         {/* Category picker — one idea at a time: once a category is chosen the
             grid folds away to just the choice + a "change" affordance, so the

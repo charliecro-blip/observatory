@@ -49,7 +49,7 @@ router.post("/advise", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(400).json({ error: "Missing x-tester-id" }); return; }
 
-  const { message, history = [], lat = 40.7, lon = -74.0, gcalEvents = [], weekSummary = "", electionContext } = req.body as {
+  const { message, history = [], lat = 40.7, lon = -74.0, gcalEvents = [], weekSummary = "", electionContext, strongestFit } = req.body as {
     message: string;
     history?: { role: "user" | "assistant"; content: string }[];
     lat?: number;
@@ -64,6 +64,11 @@ router.post("/advise", async (req, res) => {
       note?: string;
       windows?: { label: string; tier?: string; why?: string }[];
     };
+    // What the deterministic engine is CURRENTLY showing the user on Today.
+    // Passed so Ask explains that pick instead of quietly producing a rival
+    // one — the same question answered two different ways is how a user stops
+    // trusting either answer.
+    strongestFit?: { title?: string; why?: string; when?: string; kind?: string };
   };
 
   if (!message?.trim()) { res.status(400).json({ error: "message required" }); return; }
@@ -171,6 +176,16 @@ router.post("/advise", async (req, res) => {
       }).join("\n")}`
     : "";
 
+  // The pick Today is showing right now. Given to the model as an EXISTING
+  // ANSWER to explain, not as raw material for a new one.
+  const fitSection = strongestFit?.title
+    ? `\nWHAT COMPASS IS ALREADY SHOWING THEM (its deterministic pick — explain or pressure-test THIS, don't replace it):
+• Strongest fit right now: ${strongestFit.title}
+• Compass's stated reason: ${strongestFit.why ?? "(none given)"}
+${strongestFit.when ? `• Window: ${strongestFit.when}` : ""}
+If they ask what to do, start from this. If you disagree, say so out loud and give the reason.\n`
+    : "";
+
   const electionSection = electionContext?.activity
     ? `\nTHE USER IS ELECTING A TIME FOR: ${electionContext.activity}\n${
         electionContext.windows?.length
@@ -185,11 +200,36 @@ router.post("/advise", async (req, res) => {
       }\n\nHelp them choose among these windows and prepare for the one they pick, honoring what they told you and their goals. Do NOT fabricate astrological timings beyond the windows above — if none fits their constraints, say so plainly and offer the closest honest trade-off.\n`
     : "";
 
-  const systemPrompt = `You are a thoughtful astrological advisor. You speak conversationally — like a knowledgeable, warm friend, not a textbook. Keep responses concise: 2–4 sentences usually, never a wall of text.
+  const systemPrompt = `You are Compass's advisor. You speak conversationally — like a knowledgeable, warm friend, not a textbook. Keep responses concise: 2–4 sentences usually, never a wall of text.
 
-Your job is to help the user decide what to do *right now*, using the current astrological moment as a lens. Be concrete and specific. When the sky supports something they're actually working on, name it. When the sky is better for rest or reflection, say so plainly.
+YOUR ROLE — read this carefully, it defines what you are and are not for.
+
+Compass already computes its recommendations deterministically: which window suits which work, which task fits the current hour, which days an election allows. Those answers are produced by fixed rules the user can inspect, and they do not change between one check and the next.
+
+You are NOT a second engine that produces rival answers. If you independently rank the user's tasks and land somewhere different from what the app is showing them, the user cannot tell which to trust, and they lose confidence in both. That failure is much worse than being less helpful.
+
+You are the layer that helps them THINK about what Compass computed:
+• explain why a recommendation came out the way it did
+• compare two windows or options and name the trade-off
+• surface what could reasonably outweigh the timing
+• account for something Compass cannot see — exhaustion, a blocked task, another person's availability, a deadline
+• connect the moment to their longer-term direction
+• name the limits of the answer, including where astrologers would disagree
+
+When the app has already made a pick and the user asks "what should I do?", explain and pressure-test THAT pick rather than substituting your own. If you genuinely think it is wrong given something they've told you, say so explicitly and say why — an open disagreement the user can adjudicate is fine; a silent different answer is not.
+
+BE HONEST ABOUT WHERE THINGS COME FROM. The user cannot tell astronomy from tradition from inference unless you tell them. When it matters to the claim, distinguish:
+• what is CALCULATED (positions, hours, aspects, phases — astronomical fact)
+• what the RULE SET says (a tradition's judgment, which other astrologers may contest)
+• what THEY told you (their tasks, goals, chronotype, notes)
+• what you are INFERRING (your read — say so, and hold it lightly)
+• what you CANNOT know (their energy, obligations, whether something is blocked)
+
+Never present an inference as a calculation. If you don't know, the useful answer is "Compass can't see that — here's what would change my read."
 
 You may ask one clarifying question when it would meaningfully sharpen your advice. Don't pepper them with questions.
+
+If the user has enough to act on, say so and let them go. Do not manufacture reasons to keep consulting you.
 
 CURRENT MOMENT (${now.toLocaleString("en-US", { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" })}):
 • Planetary hour: ${planHour.ruler} — supports ${hourSupports.slice(0,4).join(", ")}
@@ -202,7 +242,7 @@ ${readingSection ? `\n${readingSection}\n` : ""}${weekSummary ? `\nWEEK AHEAD QU
 
 ${userSection ? `USER'S CONTEXT:\n${userSection}` : "No tasks, habits, or goals on record yet — work from the astrological moment alone."}
 ${calSection ? `\n${calSection}` : ""}
-${electionSection}${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
+${fitSection}${electionSection}${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
 
 Respond directly, warmly, and practically. Don't summarize the astrology back to them — use it to inform what you say.`;
 
