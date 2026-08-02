@@ -128,23 +128,45 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedList]);
 
-  // Best-effort: hand the weaver your Google Calendar events as busy time so it
-  // schedules around real commitments. Silently skipped if GCal isn't connected.
-  async function gcalBusy(): Promise<{ startAt: string; endAt: string }[]> {
+  // Your calendar as busy time, so the weaver schedules around real commitments.
+  //
+  // This used to return [] on BOTH "not connected" and "the request failed" —
+  // which made a broken calendar indistinguishable from a free week, and the
+  // weaver would confidently place deep work on top of a meeting. For someone
+  // who has started running their week through Compass, "couldn't check your
+  // calendar" and "your calendar is empty" are opposite facts, and only one of
+  // them is safe to plan on.
+  //
+  // `ok: false` is now returned distinctly so the caller can say so rather than
+  // quietly producing a wrong plan. Not-connected stays silent — that's a
+  // genuine empty, not a failure.
+  type BusyResult = { ok: boolean; busy: { startAt: string; endAt: string }[] };
+  async function gcalBusy(): Promise<BusyResult> {
+    const days = horizon === "day" ? 1 : horizon === "month" ? 28 : 7;
+    const start = new Date().toISOString();
+    const end = new Date(Date.now() + days * 86400000).toISOString();
     try {
-      const days = horizon === "day" ? 1 : horizon === "month" ? 28 : 7;
-      const start = new Date().toISOString();
-      const end = new Date(Date.now() + days * 86400000).toISOString();
       const r = await fetch(`/api/integrations/google-cal/events?start=${start}&end=${end}`, { headers: authHeaders });
-      if (!r.ok) return [];
+      // 404/409 = not connected: a true empty, nothing to warn about.
+      if (r.status === 404 || r.status === 409) return { ok: true, busy: [] };
+      if (!r.ok) return { ok: false, busy: [] };
       const data = await r.json();
-      return (data.events ?? []).filter((e: any) => !e.allDay && e.start && e.end).map((e: any) => ({ startAt: e.start, endAt: e.end }));
-    } catch { return []; }
+      if (data?.connected === false) return { ok: true, busy: [] };
+      return {
+        ok: true,
+        busy: (data.events ?? []).filter((e: any) => !e.allDay && e.start && e.end)
+          .map((e: any) => ({ startAt: e.start, endAt: e.end })),
+      };
+    } catch { return { ok: false, busy: [] }; }
   }
+  // Surfaced next to the result — never swallowed.
+  const [calendarUnverified, setCalendarUnverified] = useState(false);
 
   const weave = useMutation({
     mutationFn: async (): Promise<WeaveResult> => {
-      const busy = await gcalBusy();
+      const cal = await gcalBusy();
+      setCalendarUnverified(!cal.ok);
+      const busy = cal.busy;
       const r = await fetch("/api/plan/weave", {
         method: "POST", headers: authHeaders,
         body: JSON.stringify({
@@ -362,6 +384,28 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Proposed schedule · {keptCount} task{keptCount === 1 ? "" : "s"}</div>
           ) : (
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10 }}>Nothing scheduled.</div>
+          )}
+
+          {/* The plan was built without knowing what's already on the calendar.
+              Said plainly and BEFORE the commit button, because the failure is
+              invisible in the result itself — the schedule looks just as
+              confident either way. */}
+          {calendarUnverified && (
+            <div style={{
+              fontSize: 11, lineHeight: 1.6, color: "#8a5030", marginBottom: 12,
+              background: "#a0502010", border: "1px solid #a0502033", borderLeft: "3px solid #a05020",
+              borderRadius: 8, padding: "9px 12px", display: "flex", gap: 8, alignItems: "flex-start",
+            }}>
+              <span style={{ flexShrink: 0 }}>⚠</span>
+              <div style={{ flex: 1 }}>
+                <b>Compass couldn't check your calendar.</b> This plan was built as though
+                nothing else is booked, so it may sit on top of real commitments.
+                <button onClick={() => weave.mutate()} disabled={weave.isPending} style={{
+                  marginLeft: 6, fontSize: 10.5, padding: "2px 9px", borderRadius: 6, cursor: "pointer",
+                  border: "1px solid #a0502055", background: "var(--color-card)", color: "#8a5030", fontWeight: 600,
+                }}>{weave.isPending ? "…" : "Try again"}</button>
+              </div>
+            </div>
           )}
 
           {/* Capacity honesty — named before you commit, while dropping is

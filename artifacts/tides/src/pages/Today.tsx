@@ -1129,23 +1129,32 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     </div>
                   </div>
                 </div>
-                {/* Tide curve — ONE swell: low → high → low, so the shape agrees
-                    with the labels (the old two-hump path peaked over RISING/EBB
-                    and dipped at HIGH). The marker's y comes from the same curve
-                    function, so it always sits on the line. */}
-                <div style={{ marginTop: 20, position: "relative", height: 30 }}>
+                {/* Tide PHASE indicator — deliberately not a forecast graph.
+                    Its x-axis is the cycle (low → high → low), not the clock,
+                    so the swell is a schematic and only the marker carries
+                    data: where in the cycle this moment sits. Said out loud
+                    because it renders inches from "Energy 83%" and a
+                    confidence rating, and an analytical reader could
+                    reasonably have assumed its peaks were measured. The real
+                    time-series lives in the tide chart further down. */}
+                <div style={{ marginTop: 20, position: "relative", height: 30 }}
+                  title="Where this moment sits in the tide cycle — a phase indicator, not a graph of the day. The day's measured curve is in the tide chart below.">
                   {(() => {
                     const yAt = (x: number) => 20 - 16 * Math.sin(Math.PI * x / 300);
                     const pts = Array.from({ length: 31 }, (_, i) => `${i * 10},${yAt(i * 10).toFixed(1)}`).join(" L");
                     return (
-                      <svg viewBox="0 0 300 24" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}>
-                        <path d={`M${pts}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                      <svg viewBox="0 0 300 24" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}
+                        role="img" aria-label={`Tide phase: ${levelLabel}`}>
+                        <path d={`M${pts}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeDasharray="3,3" />
                         <circle cx={curvePos * 300} cy={yAt(curvePos * 300)} r="4.5" fill="#fff" />
                       </svg>
                     );
                   })()}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 3, letterSpacing: "0.6px" }}>
                     <span>LOW</span><span>RISING</span><span>HIGH</span><span>EBB</span><span>LOW</span>
+                  </div>
+                  <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.5)", marginTop: 4, letterSpacing: "0.4px" }}>
+                    WHERE IN THE CYCLE · not a graph of the day
                   </div>
                 </div>
               </div>
@@ -1172,18 +1181,29 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   saidAlready={now?.voc?.isVOC ? ["voc", "Void of course"] : []}
                 />
 
+                {/* Every figure here says what it MEANS on hover/tap. A bare
+                    "Energy 83% · medium confidence" invites the reader to
+                    supply their own definition — and the likeliest guess
+                    ("83% good") is the one thing it doesn't mean. "Confidence"
+                    is relabelled "signal agreement", which is what it actually
+                    measures: how much the testimonies concur. It was never a
+                    calibrated probability and shouldn't borrow the authority
+                    of one. */}
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4 }}>
+                  <div title="Estimated ACTIVATION — how charged this moment is, not how favourable. A high-energy hour can be a difficult one."
+                    style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
                     Energy {energyPct}%
                   </div>
-                  <div style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                  <div title="Which way the day's activation is moving — rising, steady, or ebbing."
+                    style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
                     {tide?.trend ?? "steady"}
                   </div>
-                  <div style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                  <div title="How much the day's separate testimonies point the same way. High agreement means a clear picture — not a guarantee about the outcome."
+                    style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
-                    {tide?.confidence ?? "medium"} confidence
+                    {tide?.confidence ?? "medium"} signal agreement
                   </div>
                   {now?.voc?.isVOC && (
                     <div style={{ fontSize: 9.5, color: "#b0a060", display: "flex", alignItems: "center", gap: 4 }}>
@@ -1216,13 +1236,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           );
         })()}
 
-        {/* Best next move — the reading above turned into one act. It sits
-            directly under the hero because the question the hero raises
-            ("what kind of time is this?") has exactly one useful answer
-            ("then do this"), and the two should not be separated by a
+        {/* Strongest fit right now — the reading above turned into one act.
+            It sits directly under the hero because the question the hero
+            raises ("what kind of time is this?") has exactly one useful
+            answer ("then do this"), and the two should not be separated by a
             scroll. Deterministic (lib/next-move.ts) so the why is always
             checkable against the rail. Shown at every density: this is the
-            core loop, not an add-on. */}
+            core loop, not an add-on.
+
+            NOT "best next move". Compass is choosing from the tasks it knows
+            about — it cannot see what you are already mid-way through, your
+            capacity today, whether something is blocked, or whether another
+            person is waiting. "Best" claims a global optimum over facts it
+            doesn't hold; "strongest fit" claims exactly what the engine
+            actually computed, and is still the useful sentence. */}
         {(() => {
           const openTasks = todayTasks.filter(t => t.done !== "true");
           const activeStars = (northStars ?? []).filter((g: any) => g.status !== "done");
@@ -1252,7 +1279,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               padding: "12px 16px", flexShrink: 0,
             }}>
               <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
-                Best next move
+                Strongest fit right now
               </div>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 {move.kind === "task" && (
@@ -1595,8 +1622,15 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
         {stars.map((g: any) => {
           const info = NS_ELEMENT_INFO[g.element ?? ""] ?? { color: "var(--color-muted)", label: "" };
-          const target = Math.max(g.scheduledCount, 2); // aim for at least 2-3 sessions/week
-          const pct = Math.min(100, Math.round((g.completedCount / target) * 100));
+          // The denominator is what the user actually SCHEDULED — never an
+          // invented "aim for at least 2-3 a week". A star with nothing booked
+          // used to render a 0%-filled bar reading "0/2 this wk": a target
+          // nobody set, already being failed. With nothing scheduled there is
+          // no ratio to draw, so the bar stands down and the row just says
+          // what happened.
+          const done = g.completedCount ?? 0;
+          const scheduled = g.scheduledCount ?? 0;
+          const pct = scheduled > 0 ? Math.min(100, Math.round((done / scheduled) * 100)) : 0;
           return (
             <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: info.color, flexShrink: 0 }} />
@@ -1605,11 +1639,15 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
                   <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
                   {info.label && <span style={{ fontSize: 8.5, color: info.color }}>{info.label}</span>}
                 </div>
-                <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: info.color, borderRadius: 2, opacity: 0.75 }} />
-                </div>
+                {scheduled > 0 && (
+                  <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: info.color, borderRadius: 2, opacity: 0.75 }} />
+                  </div>
+                )}
               </div>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)", flexShrink: 0 }}>{g.completedCount}/{target} this wk</span>
+              <span style={{ fontSize: 9.5, color: "var(--text-3)", flexShrink: 0 }}>
+                {scheduled > 0 ? `${done}/${scheduled} this wk` : done > 0 ? `${done} this wk` : "none scheduled"}
+              </span>
               <button onClick={() => logSession.mutate(g.id)} title="Log a session for this goal" style={{
                 fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                 background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer", flexShrink: 0,

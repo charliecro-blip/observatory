@@ -63,12 +63,20 @@ export default function Dashboard({
         <Card title="Guiding stars" icon="✦" tourId="today-stars" onOpen={onNavigate ? () => onNavigate("work") : undefined}>
           {stars.length > 0 ? stars.map((g: any, i: number) => {
             const col = ELEMENT_COLOR[g.element ?? ""] ?? "#8a8278";
-            const target = Math.max(g.scheduledCount ?? 0, 2);
+            // Report what HAPPENED, never a target the user didn't set. This
+            // read `{done}/{max(scheduled, 2)}` — so a star with nothing
+            // scheduled showed "0/2", an obligation invented by the app and
+            // then scored against. Movement is worth reflecting; a denominator
+            // nobody chose is just a quiet accusation.
+            const done = g.completedCount ?? 0;
+            const scheduled = g.scheduledCount ?? 0;
             return (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0" }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: col, flexShrink: 0 }} />
                 <span style={{ fontSize: 12.5, color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 10, color: "var(--text-3)" }}>{g.completedCount ?? 0}/{target}</span>
+                <span style={{ fontSize: 10, color: "var(--text-3)" }}>
+                  {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "—"}
+                </span>
               </div>
             );
           }) : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Set a guiding star to steer by →</div>}

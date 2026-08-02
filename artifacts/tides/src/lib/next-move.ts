@@ -1,4 +1,10 @@
-// "Best next move" — the one thing to do now, and why.
+// "Strongest fit right now" — the one thing to do next, and why.
+//
+// Named for exactly what it computes. It is NOT "best": Compass picks from the
+// tasks it has been told about, and cannot see what you're already mid-way
+// through, how much capacity you have today, what's blocked, or who else is
+// waiting. Claiming a global optimum over facts it doesn't hold is how a
+// useful recommendation turns into one the user learns to distrust.
 //
 // This is the app's whole promise reduced to a single line: you already know
 // what your work is; Compass says which piece of it this hour actually suits.

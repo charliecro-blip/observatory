@@ -469,7 +469,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     const el = g.element as string | undefined;
     if (!el || !byElement[el]) continue;
     byElement[el].completed += g.completedCount ?? 0;
-    byElement[el].scheduled += Math.max(g.scheduledCount ?? 0, 2);
+    byElement[el].scheduled += g.scheduledCount ?? 0;
     byElement[el].stars.push(g);
   }
   const topElement = ELEMENTS.map((el) => ({ el, completed: byElement[el].completed })).sort((a, b) => b.completed - a.completed)[0];
@@ -633,7 +633,15 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 It suggests a ruling planet + element; you can override either. */}
             {diagnosis && (form.title.trim().length >= 3) && (
               <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "9px 11px" }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>The sky reads this as</div>
+                {/* NOT "the sky reads this as". Nothing celestial read the
+                    text — Compass classified the words through its own
+                    correspondence system, and a user who notices the planet
+                    change as they retype has caught the app overclaiming.
+                    Naming the actual source is what makes the override below
+                    make sense. */}
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>
+                  Compass reads your wording as
+                </div>
                 <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
                 {diagnosis.houses && diagnosis.houses.length > 0 && (
                   <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 3 }}>
@@ -795,8 +803,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {list.map((g: any) => {
           const info = ELEMENT_MYTHOS[g.element ?? ""];
           const ec = g.element ? (ELEMENT_INFO[g.element]?.color ?? "#8a8278") : "#8a8278";
-          const target = Math.max(g.scheduledCount ?? 0, 2);
-          const pct = Math.min(100, Math.round(((g.completedCount ?? 0) / target) * 100));
+          // Denominator = what was actually scheduled, never an invented
+          // weekly quota (see Dashboard.tsx). No schedule, no ratio, no bar.
+          const done = g.completedCount ?? 0;
+          const scheduled = g.scheduledCount ?? 0;
+          const pct = scheduled > 0 ? Math.min(100, Math.round((done / scheduled) * 100)) : 0;
           const gTasks = allTasks.filter((t: any) => t.goalId === g.id && t.done !== "true");
           const gHabits = allHabits.filter((h: any) => h.goalId === g.id);
           const adding = quickAdd && quickAdd.goalId === g.id ? quickAdd.kind : null;
@@ -861,10 +872,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   </div>
                 </div>
 
-                <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: ec, borderRadius: 2, opacity: 0.75 }} />
+                {scheduled > 0 && (
+                  <div style={{ height: 3, background: "var(--color-background)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: ec, borderRadius: 2, opacity: 0.75 }} />
+                  </div>
+                )}
+                <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>
+                  {scheduled > 0 ? `${done}/${scheduled} sessions this week`
+                    : done > 0 ? `${done} session${done === 1 ? "" : "s"} this week`
+                    : "no sessions scheduled"}
                 </div>
-                <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>{g.completedCount ?? 0}/{target} sessions this week</div>
               </div>
 
               {/* Breakdown — explicit and visible, not a footnote */}

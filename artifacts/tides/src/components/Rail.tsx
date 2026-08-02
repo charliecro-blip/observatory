@@ -1068,7 +1068,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6 }}>★ Guiding Stars</div>
           {northStars!.map((g: any) => {
             const m = ELEMENT_MYTHOS[g.element ?? ""];
-            const target = Math.max(g.scheduledCount ?? 0, 2);
+            // No invented denominator — see Dashboard.tsx.
+            const done = g.completedCount ?? 0;
             return (
               <button key={g.id} onClick={() => onNavigate?.("work")} title={m ? m.essence : undefined} style={{
                 display: "flex", alignItems: "center", gap: 6, padding: "3px 0", width: "100%",
@@ -1076,7 +1077,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: m?.color ?? "#c8b89a", flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 10.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 8.5, color: "var(--color-muted)", flexShrink: 0 }}>{g.completedCount ?? 0}/{target}</span>
+                <span style={{ fontSize: 8.5, color: "var(--color-muted)", flexShrink: 0 }}>{done > 0 ? done : ""}</span>
               </button>
             );
           })}
