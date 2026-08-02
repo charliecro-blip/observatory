@@ -22,7 +22,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
   fire: {
     key: "fire", name: "Fire", get color() { return ELEMENT_COLORS.fire; },
     essence: "The will to begin — courage, desire, and the spark that moves first.",
-    myth: "Fire is the element of initiation: the part of a life that wants to exist louder tomorrow than today. It doesn't ask permission and it doesn't keep — it must be spent to stay alive. A fire North Star is a place you've chosen to be brave.",
+    myth: "Fire is the element of initiation: the part of a life that wants to exist louder tomorrow than today. It doesn't ask permission and it doesn't keep — it must be spent to stay alive. A fire Guiding Star is a place you've chosen to be brave.",
     domains: ["ambition & launch", "the body in motion", "leadership", "creative ignition", "visibility"],
     practices: ["train the body", "make the bold ask", "start before ready", "perform, publish, show up"],
     activities: ["workout", "launch", "pitch", "perform", "compete", "declare", "begin the thing"],
@@ -30,7 +30,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
   earth: {
     key: "earth", name: "Earth", get color() { return ELEMENT_COLORS.earth; },
     essence: "The will to endure — craft, patience, and what remains when the season turns.",
-    myth: "Earth is the element of manifestation: nothing is real until it has weight, and earth is where intentions take on weight. It works slowly and doesn't care about moods. An earth North Star is a place you've chosen to build something that outlasts enthusiasm.",
+    myth: "Earth is the element of manifestation: nothing is real until it has weight, and earth is where intentions take on weight. It works slowly and doesn't care about moods. An earth Guiding Star is a place you've chosen to build something that outlasts enthusiasm.",
     domains: ["money & resources", "home & land", "craft & skill", "health routines", "long works"],
     practices: ["tend daily", "finish what's started", "keep the ledger", "maintain before it breaks"],
     activities: ["build", "save & budget", "cook & tend", "practice the craft", "organize", "complete", "repair"],
@@ -38,7 +38,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
   air: {
     key: "air", name: "Air", get color() { return ELEMENT_COLORS.air; },
     essence: "The will to understand — language, connection, and the space between minds.",
-    myth: "Air is the element of relation: ideas only become knowledge when they move between people, and air is the moving. It doubts, compares, translates, connects. An air North Star is a place you've chosen to think in public — to write, teach, converse, and be changed by the exchange.",
+    myth: "Air is the element of relation: ideas only become knowledge when they move between people, and air is the moving. It doubts, compares, translates, connects. An air Guiding Star is a place you've chosen to think in public — to write, teach, converse, and be changed by the exchange.",
     domains: ["writing & speech", "study & ideas", "friendship & network", "trade & negotiation", "teaching"],
     practices: ["write daily", "read widely", "keep correspondence", "explain it to someone"],
     activities: ["write", "study", "call & connect", "negotiate", "teach", "brainstorm", "edit"],
@@ -46,7 +46,7 @@ export const ELEMENT_MYTHOS: Record<string, ElementMythos> = {
   water: {
     key: "water", name: "Water", get color() { return ELEMENT_COLORS.water; },
     essence: "The will to feel — depth, memory, and the life that moves beneath the surface.",
-    myth: "Water is the element of meaning: it holds what happened and turns it into who you are. It cannot be forced, only invited. A water North Star is a place you've chosen to go deep — into feeling, healing, intimacy, dream, or art that comes from the underside.",
+    myth: "Water is the element of meaning: it holds what happened and turns it into who you are. It cannot be forced, only invited. A water Guiding Star is a place you've chosen to go deep — into feeling, healing, intimacy, dream, or art that comes from the underside.",
     domains: ["emotional life", "intimacy & family", "healing & rest", "dream & spirit", "deep art"],
     practices: ["keep the journal", "protect rest", "sit with what surfaces", "return to the well"],
     activities: ["journal", "rest deliberately", "deep conversation", "meditate", "make from feeling", "grieve & release", "swim in it"],

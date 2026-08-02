@@ -63,7 +63,7 @@ function GoalBreakdown({ testerId }: { testerId: string | null }) {
 
       {list.length === 0 ? (
         <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "20px 0" }}>
-          No Guiding Stars yet — set one under <b>Aims</b> first, then come back to break it into steps.
+          No Guiding Stars yet — set one under <b>Stars</b> first, then come back to break it into steps.
         </div>
       ) : (
         <>
@@ -105,7 +105,7 @@ function GoalBreakdown({ testerId }: { testerId: string | null }) {
                     background: "#3a6020", color: "#fff", cursor: "pointer",
                   }}>{commit.isPending ? "Saving…" : `Commit ${proposed.length} step${proposed.length === 1 ? "" : "s"} →`}</button>
                 ) : (
-                  <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Steps added to {goal?.title} — find them under Aims to schedule.</span>
+                  <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Steps added to {goal?.title} — find them under Stars to schedule.</span>
                 )}
                 <button onClick={() => { setProposed(null); setCommitted(false); }} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>start over</button>
               </div>

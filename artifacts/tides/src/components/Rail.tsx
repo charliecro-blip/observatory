@@ -3,7 +3,7 @@ import { localToday, localDateStr } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
-import { usePreferences, useAstroDetail } from "@/contexts/preferences-context";
+import { usePreferences, useUiDensity } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { useNorthStars } from "@/hooks/useTides";
@@ -80,6 +80,10 @@ function GlyphRow({ label, onClick, children }: { label: string; onClick: () => 
 
 // An element-colored chip for a sign — the "colored bit for Sun in Cancer /
 // Moon in Aquarius" a beginner can read at a glance.
+// The sign's element tints the chip but is no longer SPELLED here. The hero's
+// woven reading names the day's element ("a fire day — courage to spend"), and
+// a rail chip saying "Pisces · water" beside it read as a flat contradiction
+// rather than as a second layer (beta pass §B2). One place names an element.
 function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?: string }) {
   const el = sign ? (SIGN_MYTHOS[sign.split(" ")[0]]?.element ?? "water") : "water";
   const col = elementColor(el, "#888");
@@ -89,7 +93,7 @@ function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?:
       <span style={{ fontWeight: 600, color: "var(--color-foreground)" }}>{label}</span>
       {sign && (
         <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 8, background: `${col}1e`, color: col, fontWeight: 600 }}>
-          {sign} · {el}
+          {sign}
         </span>
       )}
     </span>
@@ -406,8 +410,14 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
-  const reveal = useAstroDetail();
   const { railSections } = prefs.display;
+  // How much of the rail is the first session allowed to be? At `essential`
+  // the rail is a slim sky-strip — season, moon, this hour — because the full
+  // instrument panel (aspect tables, transits, retrogrades, waves) was the
+  // bulk of the nine stacked things a fresh account met on Today (beta pass
+  // §B1). Everything hidden here is one tap away via the same density toggle
+  // Today uses, mirrored at the foot of the rail so it's reachable from any view.
+  const { essential, setDensity } = useUiDensity();
   const { watchPlanets } = prefs.timing;
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
@@ -428,6 +438,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     set(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
   const setCompactMode = (v: boolean) => { setCompact(v); setExpanded(new Set()); setCollapsed(new Set()); localStorage.setItem("obs_rail_compact", v ? "1" : "0"); };
+  // Which sections survive the essential density: the nesting ladder's top
+  // three rungs (year → month → hour). Aspects, transits, retrogrades, stars
+  // and waves are the instrument panel, and waves/stars are already on Today.
+  const ESSENTIAL_RAIL = new Set(["season", "moon", "hour"]);
+  const show = (id: string) => !essential || ESSENTIAL_RAIL.has(id);
   // A clear, always-visible minimize control for an open section header.
   const Collapse = ({ id }: { id: string }) => (
     <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} title="Minimize" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
@@ -533,12 +548,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     );
   }
 
-  const { planetaryHour, upcomingHours, moonSign, moonPhase, moonIllumination, element } = now;
+  const { planetaryHour, upcomingHours, moonSign, moonPhase, moonIllumination } = now;
   const sunSign: string | undefined = (now as any).sunSign;
   const dayRuler: string | undefined = (now as any).dayRuler;
   const isVOC: boolean = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
   const pct = progressPct(planetaryHour.began, planetaryHour.ends);
-  const elemColor = elementColor(element?.element ?? "water", "#888");
   const pColor = planetColor(planetaryHour.planet);
 
   return (
@@ -558,9 +572,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
           Compass
         </button>
-        <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
-          fontSize: 12, lineHeight: 1, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 2,
-        }}>{compact ? "⊞" : "⊟"}</button>
+        {/* The compact/expand control is for the instrument panel. At essential
+            there are three sections and nothing to compact — the one control
+            that means anything there is the density switch at the foot. */}
+        {!essential && (
+          <button onClick={() => setCompactMode(!compact)} title={compact ? "Expand the panel" : "Compact — read it like an instrument panel"} style={{
+            fontSize: 12, lineHeight: 1, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 2,
+          }}>{compact ? "⊞" : "⊟"}</button>
+        )}
       </div>
 
       {/* ── The nesting ladder: big/slow/simple → small/fast/granular ──
@@ -622,25 +641,21 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <div style={{ marginTop: 6 }}>
             <SignChip glyph="☽︎" label="Moon in" sign={moonSign} />
           </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
-            {isVOC && (
+          {/* The tide chip that used to sit here is gone — it restated the
+              hero's own headline two inches away. Void of course stays: it's a
+              gate on the Moon itself, which is what this section is about. */}
+          {isVOC && (
+            <div style={{ marginTop: 6 }}>
               <span title="Void of course — the Moon makes no more aspects before changing sign. A liminal, 'slack water' stretch: rest, finish, review; not the moment to launch."
                 style={{ fontSize: 9, padding: "2px 8px", borderRadius: 8, background: VOC_BG, color: VOC_COLOR, fontWeight: 600 }}>
                 ◒ void of course
               </span>
-            )}
-            {now.tide ? (
-              <span title="Today's tide — character (energy type) and level (how charged, which way it's moving)"
-                style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor, fontWeight: 600 }}>
-                {now.tide.headline} · {now.tide.levelLabel}
-              </span>
-            ) : (
-              <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 8, background: `${elemColor}22`, color: elemColor }}>
-                {element?.element}
-              </span>
-            )}
-          </div>
-          {/* What this Moon sign means — cycles favors → feel → shadow → essence. */}
+            </div>
+          )}
+          {/* What this Moon sign means — cycles favors → feel → shadow → essence.
+              Labelled "the Moon's mood" so it reads as a LAYER under the day's
+              reading rather than a competing verdict: the hero says what kind of
+              day it is, this says what the Moon is doing inside it (§B2). */}
           {(() => {
             const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
             if (!sm) return null;
@@ -652,7 +667,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             ];
             const t = takes[moonTakeIdx % takes.length];
             return (
-              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 6, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 7, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 2 }}>
+                  The Moon's mood · next 2½ days
+                </div>
                 <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
@@ -663,13 +681,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Moon Aspects */}
-      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
+      {show("aspects") && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
         <GlyphRow label="Moon aspects" onClick={() => toggleOpen("aspects")}>
           <span style={{ fontSize: 12, color: "var(--color-muted)" }}>☽</span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
         </GlyphRow>
       )}
-      {railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
+      {show("aspects") && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
           {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
@@ -731,13 +749,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
       {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
           hour; a whole day has one keynote. */}
-      {dayRuler && railSections.includes("hour") && !isOpen("day") && (
+      {show("day") && dayRuler && railSections.includes("hour") && !isOpen("day") && (
         <GlyphRow label="Day" onClick={() => toggleOpen("day")}>
           <span style={{ fontSize: 12, color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{dayRuler}'s day</span>
         </GlyphRow>
       )}
-      {dayRuler && railSections.includes("hour") && isOpen("day") && (
+      {show("day") && dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -815,7 +833,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             style={{ marginBottom: 8 }}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {(upcomingHours ?? []).slice(0, 5).map((h) => {
+            {/* Five upcoming hours is a schedule; two is a heads-up. The
+                essential rail wants the heads-up. */}
+            {(upcomingHours ?? []).slice(0, essential ? 2 : 5).map((h) => {
               const hCol = planetColor(h.planet);
               const isWatched = watchPlanets.includes(h.planet);
               const key = h.time;
@@ -852,7 +872,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Non-moon aspects — expand toggle */}
-      {railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
+      {show("aspects") && railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
         <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <button onClick={() => setShowNonMoonAspects(v => !v)} style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
@@ -917,7 +937,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Retrogrades — moved BELOW the aspects (owner 2026-07-11): they
           were popping as "important" up top; they are slow background
           context, so they sit here under the planetary aspects. */}
-      {railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
+      {show("retrogrades") && railSections.includes("retrogrades") && now.retrogrades && now.retrogrades.length > 0 && (
         <div style={{ padding: "6px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize:9, color:"var(--color-muted)" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
@@ -950,7 +970,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Personal transits — collapsible, grouped fast → slow. Fast movers
           (Sun/Mercury/Venus/Mars) are this week's weather; slow ones
           (Jupiter → Pluto) are the chapter you're living in. */}
-      {railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (() => {
+      {show("transits") && railSections.includes("transits") && now.personalTransits && now.personalTransits.length > 0 && (() => {
         const FAST = new Set(["Sun", "Mercury", "Venus", "Mars", "Moon"]);
         const fast = now.personalTransits!.filter((t: any) => FAST.has(t.transitPlanet));
         const slow = now.personalTransits!.filter((t: any) => !FAST.has(t.transitPlanet));
@@ -1003,7 +1023,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         );
       })()}
       {/* Guiding Stars — the chief aims, always in the corner of your eye */}
-      {(northStars?.length ?? 0) > 0 && (
+      {show("stars") && (northStars?.length ?? 0) > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6 }}>★ Guiding Stars</div>
           {northStars!.map((g: any) => {
@@ -1023,7 +1043,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       )}
 
-      {/* Waves — habits / tasks / goals */}
+      {/* Waves — habits / tasks / goals. Hidden at essential: Today already
+          carries On deck and the day's tasks, so in the rail it was a third
+          copy of the same list rather than a second view of it. */}
+      {show("waves") && (
       <div style={{ borderTop: "1px solid var(--color-border)" }}>
         <button onClick={() => setWavesOpen(v => !v)} style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1107,6 +1130,20 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           </div>
         )}
       </div>
+      )}
+
+      {/* The way back to the instrument panel. Today has the same switch under
+          the hero, but the rail is on every view — so from Calendar or Plan
+          this is the one place the hidden layers can be asked for. */}
+      {essential && (
+        <button onClick={() => setDensity("expanded")} style={{
+          display: "block", width: "100%", textAlign: "left", padding: "9px 14px",
+          borderTop: "1px solid var(--color-border)", background: "none",
+          border: "none", cursor: "pointer", fontSize: 9.5, color: "var(--text-3)",
+        }}>
+          ⊞ Show the full instrument panel
+        </button>
+      )}
     </aside>
   );
 }

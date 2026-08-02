@@ -283,7 +283,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             </div>
           ))}
           <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 6 }}>
-            {selected === "Moon" ? "Work that shares the Moon's water." : `Aims anchored to ${selected} or sharing its ${planetEl} nature — overlap with other planets is normal.`}
+            {selected === "Moon" ? "Work that shares the Moon's water." : `Guiding Stars anchored to ${selected} or sharing its ${planetEl} nature — overlap with other planets is normal.`}
           </div>
         </SectionCard>
       )}

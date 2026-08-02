@@ -964,6 +964,13 @@ function Shell() {
     }, 500);
     return () => clearInterval(t);
   }, [testerId, view, tourArmed]);
+  // "The first session is still happening" — true from the moment an account
+  // lands on Today until it completes or skips the walkthrough. Today uses it
+  // to hold back its self-promoting banners (push opt-in, premium discovery):
+  // a first screen should be the day, not three asks stacked over it. Reads
+  // fresh on every render, and the tour's own onDone re-renders App, so it
+  // flips the moment the walkthrough resolves.
+  const firstRun = tourArmed || tourPending(testerId);
   // Session timer + Advise trigger live in the global top bar so they're always
   // reachable, not just from the Today page. The advisor modal itself still
   // renders inside Today (it needs Today's gcalEvents/weekSummary context), so
@@ -1152,7 +1159,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Log"

@@ -1296,7 +1296,13 @@ describe("the guide", () => {
     join(process.cwd(), "artifacts/tides/src/components/Guide.tsx"), "utf-8");
 
   it("covers every tab in the nav, so no surface is unexplained", () => {
-    for (const tab of ["Today", "Calendar", "Aims", "Plan"]) {
+    // Read the nav's own labels rather than restating them: renaming a tab
+    // (Aims → Stars, 2026-08-02) must fail here until the guide follows.
+    const app = readFileSync(join(process.cwd(), "artifacts/tides/src/App.tsx"), "utf-8");
+    const body = app.match(/const TOP_TABS[\s\S]*?=\s*\[([\s\S]*?)\n\];/)?.[1] ?? "";
+    const tabs = [...body.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(tabs.length, "could not read TOP_TABS out of App.tsx").toBeGreaterThan(0);
+    for (const tab of tabs) {
       expect(guide, `the guide never explains ${tab}`).toMatch(new RegExp(`title: "${tab}"`));
     }
   });
@@ -1314,25 +1320,42 @@ describe("the guide", () => {
     expect(guide).toMatch(/beat you can miss and come back to/);
   });
 
-  it("is reachable from a first-run strip AND permanently from Settings", () => {
-    // One of these alone fails: a dismissible strip disappears, and nobody
-    // browses Settings looking for an explanation they don't know exists.
-    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+  it("is taught on first run AND stays reachable from Settings", () => {
+    // One of these alone fails: the first-run teaching is answered once and
+    // gone, and nobody browses Settings for an explanation they don't know
+    // exists. The first-run half is now the spotlight tour over the live
+    // dashboard (2026-08-01) rather than a "New here?" reading strip.
+    const app = readFileSync(join(process.cwd(), "artifacts/tides/src/App.tsx"), "utf-8");
     const settings = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Settings.tsx"), "utf-8");
-    expect(today).toMatch(/New here\?/);
-    expect(today).toMatch(/obs_seen_guide_hint/);
+    expect(app).toMatch(/SpotlightTour/);
+    expect(app).toMatch(/tourPending/);
     expect(settings).toMatch(/GuideSection/);
     expect(settings).toMatch(/Open the guide/);
+    expect(settings).toMatch(/Replay the walkthrough/);
   });
 
-  it("the first-run strip is namespaced, so account deletion clears it", () => {
-    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
-    const key = today.match(/"(obs_seen_guide_hint)"/)?.[1] ?? "";
+  it("the tour's verdict is namespaced, so account deletion clears it", () => {
+    const tour = readFileSync(join(process.cwd(), "artifacts/tides/src/lib/tour.ts"), "utf-8");
+    // The storage key is built from a template — grab its literal prefix.
+    const key = tour.match(/`(compass-tour-[^`$]*)/)?.[1] ?? "";
+    expect(key, "could not find the tour's localStorage key").not.toBe("");
     const profile = readFileSync(
       join(process.cwd(), "artifacts/tides/src/lib/tester-profile.ts"), "utf-8");
     const namespaces = (profile.match(/const LOCAL_NAMESPACES = \[([^\]]+)\]/)?.[1] ?? "")
       .split(",").map((s) => s.trim().replace(/"/g, ""));
     expect(namespaces.some((n) => key.startsWith(n))).toBe(true);
+  });
+
+  it("holds back the self-promoting banners until the tour is answered", () => {
+    // A first screen should be the day, not a stack of asks over it (beta
+    // pass §B1). App decides; Today obeys — assert both halves are wired.
+    const app = readFileSync(join(process.cwd(), "artifacts/tides/src/App.tsx"), "utf-8");
+    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+    expect(app).toMatch(/const firstRun = tourArmed \|\| tourPending\(testerId\)/);
+    expect(app).toMatch(/firstRun=\{firstRun\}/);
+    expect(today).toMatch(/\{!firstRun && <NotificationOptIn/);
+    // The premium-discovery and first-star banners carry the same guard.
+    expect(today.match(/\{!firstRun /g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 });
 

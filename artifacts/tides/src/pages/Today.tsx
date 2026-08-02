@@ -520,12 +520,15 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onVisitPlanet, onOpenStar }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onVisitPlanet, onOpenStar, firstRun = false }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
   onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
   askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
   onVisitPlanet?: (planet: string) => void;
+  /** The walkthrough hasn't been answered yet — hold back anything that asks
+   *  the user for something before they've been shown what this page is. */
+  firstRun?: boolean;
 }) {
   const qc = useQueryClient();
   const { prefs } = usePreferences();
@@ -1035,20 +1038,23 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} />
 
         {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
-            pushes. Self-gating — hidden once enabled, dismissed, or blocked. */}
-        <NotificationOptIn lat={lat} lon={lon} />
+            pushes. Self-gating — hidden once enabled, dismissed, or blocked —
+            and held back entirely until the walkthrough is answered: asking for
+            notification permission is a poor first sentence. */}
+        {!firstRun && <NotificationOptIn lat={lat} lon={lon} />}
 
         {/* First-star hint — for users with no Guiding Stars yet, routing them
             to the app's strongest moment. Takes priority over the premium
-            banner so new users see one nudge, not a stack of two. */}
-        {northStars && northStars.length === 0 && !dismissedStarHint && (
+            banner so new users see one nudge, not a stack of two. Suppressed
+            during the walkthrough, whose last step makes exactly this ask. */}
+        {!firstRun && northStars && northStars.length === 0 && !dismissedStarHint && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>★</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
               Set your first <b>Guiding Star</b> — a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports.
             </div>
             <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-              To your Aims →
+              To your Stars →
             </button>
             <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
@@ -1059,7 +1065,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Deeper-currents discovery banner — dismissible, shown once until closed.
             Not part of onboarding (kept lean); this is the low-key invitation to
             explore premium features once someone's had a moment with the core loop. */}
-        {!essential && (!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
+        {!firstRun && !essential && (!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
@@ -1498,7 +1504,7 @@ function NorthStarsCard({ stars, testerId, onNavigate }: { stars: any[]; testerI
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>★ North Stars</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>★ Guiding Stars</div>
         <button onClick={() => onNavigate?.("work")} style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>manage →</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>

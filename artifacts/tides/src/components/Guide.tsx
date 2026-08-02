@@ -62,7 +62,7 @@ const SECTIONS: Section[] = [
   {
     key: "aims",
     glyph: "✦",
-    title: "Aims",
+    title: "Stars",
     lead: "The long things, and the daily things.",
     points: [
       { term: "Guiding Stars", text: "A few long-term aims. Each gets an element, which is how Compass knows which days suit moving it forward." },

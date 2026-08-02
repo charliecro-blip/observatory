@@ -232,7 +232,7 @@ export function WeeklyCard({ week, northStars, testerId }: { week: any; northSta
 
         {/* Summary lines */}
         <text x="260" y="500" textAnchor="middle" fill="#cdd4dc" fontSize="15" fontFamily="Georgia, serif">
-          {starCount > 0 ? `${sessionsDone} North Star session${sessionsDone === 1 ? "" : "s"} this week` : "Set a North Star to track the week's work"}
+          {starCount > 0 ? `${sessionsDone} Guiding Star session${sessionsDone === 1 ? "" : "s"} this week` : "Set a Guiding Star to track the week's work"}
         </text>
         {bestChar && ratedDays >= 2 && (
           <text x="260" y="530" textAnchor="middle" fill={CHAR_ACCENT[bestChar as TideCharacter] ?? "#cdd4dc"} fontSize="14" fontStyle="italic" fontFamily="Georgia, serif">

@@ -174,7 +174,7 @@ export const CURRICULUM: CurriculumLevel[] = [
     title: "Houses & seasons",
     essence: "Life has arenas (houses) and long chapters moving through them.",
     body: "The twelve houses are the arenas — money, home, work, partnership. Slow planets spend months or years crossing each one, and your profected year highlights one house per birthday year. This is the layer that explains why a whole season of life has a theme.",
-    practice: "Read your long weather at the top of Aims, and visit Houses in Star Base to see which arenas are lit up right now.",
+    practice: "Read your long weather at the top of Stars, and visit Houses in Star Base to see which arenas are lit up right now.",
   },
   {
     n: 6,
