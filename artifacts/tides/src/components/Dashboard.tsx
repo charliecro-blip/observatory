@@ -12,9 +12,9 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water, spirit: "#6f6a90" };
 const ASPECT_GLYPH: Record<string, string> = { conjunction: "☌︎", opposition: "☍︎", square: "□", trine: "△", sextile: "⚹" };
 
-function Card({ title, icon, onOpen, children }: { title: string; icon: string; onOpen?: () => void; children: React.ReactNode }) {
+function Card({ title, icon, onOpen, tourId, children }: { title: string; icon: string; onOpen?: () => void; tourId?: string; children: React.ReactNode }) {
   return (
-    <div onClick={onOpen} style={{
+    <div onClick={onOpen} data-tour={tourId} style={{
       background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 15px",
       cursor: onOpen ? "pointer" : "default", display: "flex", flexDirection: "column", minWidth: 0,
     }}>
@@ -59,7 +59,8 @@ export default function Dashboard({
       {/* Instrument bento */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
 
-        <Card title="Guiding stars" icon="✦" onOpen={onNavigate ? () => onNavigate("work") : undefined}>
+        {/* tourId: the walkthrough's "set a direction" stop lands here. */}
+        <Card title="Guiding stars" icon="✦" tourId="today-stars" onOpen={onNavigate ? () => onNavigate("work") : undefined}>
           {stars.length > 0 ? stars.map((g: any, i: number) => {
             const col = ELEMENT_COLOR[g.element ?? ""] ?? "#8a8278";
             const target = Math.max(g.scheduledCount ?? 0, 2);

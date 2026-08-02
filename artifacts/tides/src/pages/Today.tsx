@@ -20,7 +20,6 @@ import { Tooltip, HelpBadge } from "@/components/Tooltip";
 import type { Goal, SkyEvent, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
-import { Guide } from "@/components/Guide";
 import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
@@ -566,9 +565,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // The guide, and a one-line way in. The intro runs exactly once and is gone
   // by Thursday; this is the strip that survives long enough to be useful, and
   // it dismisses for good on first open.
-  const [showGuide, setShowGuide] = useState(false);
-  const [dismissedGuideHint, setDismissedGuideHint] = useState(() => localStorage.getItem("obs_seen_guide_hint") === "1");
-  const closeGuideHint = () => { localStorage.setItem("obs_seen_guide_hint", "1"); setDismissedGuideHint(true); };
   const [tideView, setTideView] = useState<"day" | "week">("day");
   const [journalText, setJournalText] = useState("");
   const [journalSync, setJournalSync] = useState<OutboxState>("clean");
@@ -1006,31 +1002,13 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               : undefined,                                              // midday — plain light
       }}>
 
+        {/* The "New here?" reading strip is gone — first-run teaching is the
+            spotlight tour over the real interface (App.tsx), and the Guide
+            survives as the reference manual in Settings. A new tester's first
+            screen is their day. */}
+
         {/* Active angle crossing(s) ride at the very top — a peak moment the
             day is passing through right now, above even the ritual card. */}
-        {showGuide && <Guide onClose={() => { setShowGuide(false); closeGuideHint(); }} />}
-
-        {/* First-run: one line, dismissible, gone once opened. Not a tour and
-            not a modal — a new tester's first screen should be their day, with
-            the explanation one tap away rather than in front of it. */}
-        {!dismissedGuideHint && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "9px 13px",
-            border: "1px solid var(--color-border)", borderRadius: 10, background: "var(--color-card-2)",
-          }}>
-            <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.5 }}>
-              New here? <strong style={{ fontWeight: 600 }}>How Compass works</strong> — what each tab is for, in a minute.
-            </span>
-            <button onClick={() => setShowGuide(true)} style={{
-              fontSize: 11, padding: "4px 12px", borderRadius: 7, cursor: "pointer",
-              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)",
-            }}>Read it</button>
-            <button onClick={closeGuideHint} aria-label="Dismiss" style={{
-              background: "none", border: "none", fontSize: 13, color: "var(--text-3)", cursor: "pointer",
-            }}>✕</button>
-          </div>
-        )}
-
         {crossingBanner}
 
         {/* The ritual anchor — morning "Cast off" / evening "Log the day".
@@ -1129,7 +1107,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             // flexShrink 0: this is the page's only overflow-hidden card, so
             // inside the fixed-height flex column it absorbed ALL the flex
             // shrinkage and collapsed to its 2px borders (invisible hero).
-            <div style={{ borderRadius: 14, overflow: "hidden", flexShrink: 0, border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div data-tour="today-hero" style={{ borderRadius: 14, overflow: "hidden", flexShrink: 0, border: `1px solid ${elColor}30`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               {/* Tide banner */}
               <div style={{ background: `linear-gradient(135deg, ${elFill}, ${elFill}cc)`, padding: "24px 28px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -1484,7 +1462,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* The density toggle — the add-ons are one tap away, and the tap
             persists. This is the whole "core by default, add-ons available"
             contract (owner 2026-07-23). */}
-        <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
+        <button data-tour="today-density" onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
           alignSelf: "center", margin: "6px 0 10px", padding: "7px 18px", borderRadius: 18,
           border: "1px solid var(--color-border)", background: "var(--color-card)",
           fontSize: 11, color: "var(--color-muted)", cursor: "pointer", letterSpacing: "0.3px", flexShrink: 0,

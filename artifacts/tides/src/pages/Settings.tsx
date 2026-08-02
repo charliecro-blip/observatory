@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { resetTour } from "@/lib/tour";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
@@ -61,16 +62,25 @@ function SectionCard({ title, sub, children }: { title: string; sub?: string; ch
   );
 }
 
-function GuideSection() {
+function GuideSection({ testerId }: { testerId: string | null }) {
   const [open, setOpen] = useState(false);
+  // Replaying clears this account's tour verdict; Today re-arms it on open.
+  const [replayArmed, setReplayArmed] = useState(false);
   return (
     <>
       {open && <Guide onClose={() => setOpen(false)} />}
-      <SectionCard title="How Compass works" sub="What each tab is for, the daily loop, and what the app deliberately won't do.">
-        <button onClick={() => setOpen(true)} style={{
-          fontSize: 12, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
-          border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-1)",
-        }}>Open the guide</button>
+      <SectionCard title="How Compass works" sub="The walkthrough points at the live dashboard; the guide is the fuller reference.">
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={() => { resetTour(testerId); setReplayArmed(true); logEvent("tour_replay_requested"); }} style={{
+            fontSize: 12, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
+            border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-1)",
+          }}>Replay the walkthrough</button>
+          <button onClick={() => setOpen(true)} style={{
+            fontSize: 12, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
+            border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-1)",
+          }}>Open the guide</button>
+          {replayArmed && <span style={{ fontSize: 11, color: "var(--text-3)" }}>It'll start when you open Today.</span>}
+        </div>
       </SectionCard>
     </>
   );
@@ -1725,7 +1735,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Theme + text size */}
         <ThemeSection />
-        <GuideSection />
+        <GuideSection testerId={testerId} />
         <TextSizeSection />
         <EmailReportsSection testerId={testerId} />
 
@@ -1898,7 +1908,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Deletion — the privacy policy promises this; it lives last, behind a
             disclosure, because nobody arrives at Settings looking for it. */}
-        <DeleteAccountSection testerId={testerId} />
+                <DeleteAccountSection testerId={testerId} />
 
         <div style={{ textAlign: "center", padding: "8px 0 4px", fontSize: 11 }}>
           <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-3)" }}>Privacy policy</a>

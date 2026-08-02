@@ -11,6 +11,8 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
+import SpotlightTour from "@/components/SpotlightTour";
+import { tourPending } from "@/lib/tour";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import BearingsCard from "@/components/BearingsCard";
@@ -621,6 +623,12 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     // needs behaviour-personalization) was exactly the one who never got asked
     // for wake/sleep, and rituals, re-homing and planner hours all fell back
     // to wall-clock guesses. Chronotype has its own skip; nobody is gated.
+    //
+    // The flag matters: the shell re-prompts for a chart whenever there is no
+    // natal row AND no record of declining. Without it, skipping the chart
+    // then finishing the rhythm step bounced straight back to the birth form
+    // — an onboarding loop (caught live, first browser run of this change).
+    localStorage.setItem("obs_birth_skipped", "1");
     logEvent("onboard_chart_skipped");
     setStep("chronotype");
   }
@@ -935,6 +943,23 @@ function Shell() {
   // Usage analytics: which surface is being used (owner 2026-07-20).
   useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
+
+  // First-run spotlight tour. Armed only when (a) this account has no verdict
+  // on the current tour version and (b) the hero anchor is genuinely in the
+  // DOM — the tour's missing-anchor safety would otherwise auto-advance
+  // through every step against a still-loading page and record a completion
+  // the user never saw.
+  const [tourArmed, setTourArmed] = useState(false);
+  useEffect(() => {
+    if (!testerId || view !== "today" || tourArmed || !tourPending(testerId)) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (document.querySelector('[data-tour="today-hero"]')) { setTourArmed(true); clearInterval(t); }
+      else if (tries > 40) clearInterval(t); // data never arrived — offer again next visit
+    }, 500);
+    return () => clearInterval(t);
+  }, [testerId, view, tourArmed]);
   // Session timer + Advise trigger live in the global top bar so they're always
   // reachable, not just from the Today page. The advisor modal itself still
   // renders inside Today (it needs Today's gcalEvents/weekSummary context), so
@@ -1038,9 +1063,14 @@ function Shell() {
       background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} onDumpToPlanner={dumpToPlanner} />}
+      {/* First-run spotlight tour — the walkthrough over the real interface.
+          Armed only once the hero exists in the DOM (see effect), so the
+          missing-anchor auto-advance can't burn through every step against an
+          empty page and mark itself complete before the data arrives. */}
+      {tourArmed && <SpotlightTour testerId={testerId} onDone={() => setTourArmed(false)} onFinalCta={() => setView("work")} />}
 
       {/* ── Top bar ── */}
-      <div style={{
+      <div data-tour={isMobile ? undefined : "nav-tabs"} style={{
         display:"flex", alignItems:"center", background:"var(--color-rail)",
         borderBottom:"1px solid var(--color-border)", flexShrink:0, padding: isMobile ? "0 10px" : "0 16px",
       }}>
@@ -1052,7 +1082,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1134,13 +1164,13 @@ function Shell() {
 
       {/* ── Bottom nav (phone) ── */}
       {isMobile && (
-        <div style={{
+        <div data-tour="nav-tabs" style={{
           display:"flex", flexShrink:0, background:"var(--color-rail)",
           borderTop:"1px solid var(--color-border)",
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
           {navTabs.map(t => (
-            <button key={t.id} onClick={() => setView(t.id)} style={{
+            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : undefined} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
