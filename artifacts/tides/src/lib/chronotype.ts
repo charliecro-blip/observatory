@@ -36,18 +36,44 @@ export function isWithinFreeWindow(
   return s < fwEnd && e > fwStart; // any overlap counts
 }
 
+/** The dead of night: midnight→4am. See DEAD_OF_NIGHT_END below. */
+const DEAD_OF_NIGHT_END = 4 * 60;
+
 /**
  * Is the user typically awake for this window? Uses the chronotype's
  * wake/sleep times; handles wrap-around (a night owl sleeping at 02:00 is
- * awake 11:00→26:00). Permissive when unset — same rule as free windows:
- * optional onboarding data never hides a feature.
+ * awake 11:00→26:00).
+ *
+ * Permissive when unset — optional onboarding data should not hide a feature —
+ * with ONE floor: **midnight to 4am is asleep unless somebody has actually
+ * told us otherwise.** Blanket permissiveness meant a user who skipped the
+ * rhythm step got "Best this week: Sun 12:00 AM–3:45 AM" offered first, ranked
+ * as though they'd be up for it. Being permissive about a 9pm window is a
+ * courtesy; being permissive about a 3am one is the app not knowing what it's
+ * saying (owner 2026-08-02: "assume midnight to 4am is not natural — only if
+ * someone lists that night-owl chronotype").
+ *
+ * "Told us otherwise" means an EXPLICIT statement: a stated night-owl profile,
+ * or wake/sleep hours the user actually entered. Hours we merely assumed on
+ * their behalf (`assumed: true`, set when the step is skipped) do not count —
+ * inventing a schedule and then treating our own invention as permission is
+ * exactly the failure this floor exists to stop.
  */
 export function isAwakeDuring(
   win: { startAt: string; endAt: string },
   chronotype: Chronotype | undefined,
 ): boolean {
-  if (!chronotype?.wakeTime || !chronotype?.sleepTime) return true;
   const midMin = (toMinutesOfDay(win.startAt) + toMinutesOfDay(win.endAt)) / 2;
+  const inDeadOfNight = midMin < DEAD_OF_NIGHT_END;
+  // Only a first-hand claim about the small hours lifts the floor.
+  const statedNightHours = !!chronotype && chronotype.assumed !== true
+    && (chronotype.profile === "night_owl" || !!chronotype.sleepTime);
+
+  if (!chronotype?.wakeTime || !chronotype?.sleepTime) {
+    return inDeadOfNight ? statedNightHours : true;
+  }
+  if (inDeadOfNight && !statedNightHours) return false;
+
   const wake = toWindowMinutes(chronotype.wakeTime);
   const sleep = toWindowMinutes(chronotype.sleepTime);
   if (wake === sleep) return true;

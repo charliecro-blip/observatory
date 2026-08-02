@@ -38,12 +38,35 @@ export interface Chronotype {
   updatedAt: string;                  // ISO
 }
 
-export const CHRONOTYPE_OPTIONS: { key: ChronotypeProfile; label: string; desc: string }[] = [
-  { key: "early_bird", label: "Early bird", desc: "Sharpest in the morning" },
-  { key: "night_owl", label: "Night owl", desc: "Comes alive at night" },
-  { key: "steady", label: "Steady", desc: "Fairly even through the day" },
-  { key: "napper", label: "Napper", desc: "Works in bursts, needs rest between" },
+/**
+ * The rhythm groups.
+ *
+ * Reframed 2026-08-02 from "what kind of person are you" to **when are you
+ * actually available** — the only thing the app does with this. The old
+ * descriptions ("Sharpest in the morning", "Works in bursts") asked for
+ * self-diagnosis and still left the app without hours, so the step also had to
+ * ask for wake and sleep times separately. Each group now CARRIES its hours,
+ * so picking one is a complete answer and the time pickers become fine-tuning
+ * (owner: "make the intake something that simple — big groups people can
+ * select from").
+ *
+ * Keys are unchanged so nothing stored needs migrating.
+ */
+export const CHRONOTYPE_OPTIONS: {
+  key: ChronotypeProfile; label: string; desc: string;
+  /** Implied hours — what selecting this group means in wall-clock terms. */
+  wake: string; sleep: string;
+}[] = [
+  { key: "early_bird", label: "Early riser", desc: "Up with the light, done by evening", wake: "06:00", sleep: "22:00" },
+  { key: "steady",     label: "Regular hours", desc: "Ordinary morning, ordinary night",  wake: "07:30", sleep: "23:00" },
+  { key: "napper",     label: "Slow starter", desc: "Late morning, and a long evening",   wake: "09:30", sleep: "00:30" },
+  { key: "night_owl",  label: "Night owl",    desc: "Alive after dark — genuinely up late", wake: "11:00", sleep: "03:00" },
 ];
+
+/** The hours a group implies, for filling in when someone picks one. */
+export const CHRONOTYPE_HOURS: Record<ChronotypeProfile, { wake: string; sleep: string }> =
+  Object.fromEntries(CHRONOTYPE_OPTIONS.map(o => [o.key, { wake: o.wake, sleep: o.sleep }])) as
+    Record<ChronotypeProfile, { wake: string; sleep: string }>;
 
 export const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 export const WEEKDAY_LABELS: Record<Weekday, string> = {

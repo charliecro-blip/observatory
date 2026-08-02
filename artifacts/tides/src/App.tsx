@@ -506,6 +506,9 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   // user's personal night and best-times can skip sleeping hours.
   const [wakeTime, setWakeTime] = useState("07:00");
   const [sleepTime, setSleepTime] = useState("23:00");
+  // The exact times / free windows / description are fine-tuning behind a
+  // disclosure — picking a rhythm group already answers the question.
+  const [chronoDetail, setChronoDetail] = useState(false);
 
   function buildFreeWindows(): Record<Weekday, FreeWindow> {
     const weekdayWin: FreeWindow = { start: weekdayStart, end: weekdayEnd, flexibility: "flex" };
@@ -516,15 +519,18 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   function handleChronotypeSubmit(e: React.FormEvent) {
     e.preventDefault();
     onComplete(name.trim() || "Observer");
-    if (chronoProfile) {
-      updateChronotype({
-        profile: chronoProfile,
-        description: chronoDescription.trim() || undefined,
-        freeWindows: buildFreeWindows(),
-        wakeTime, sleepTime,
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    // Submitting without picking a group used to save NOTHING — the same hole
+    // as skipping. Store the defaults instead, flagged `assumed` so the app
+    // never treats its own guess as the user's word (this is what keeps the
+    // dead-of-night floor in force for them).
+    updateChronotype({
+      profile: chronoProfile ?? "steady",
+      description: chronoDescription.trim() || undefined,
+      freeWindows: buildFreeWindows(),
+      wakeTime, sleepTime,
+      ...(chronoProfile ? {} : { assumed: true as const }),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   // Skipping keeps the FORM'S DEFAULTS (07:00–23:00) rather than storing
@@ -861,24 +867,48 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         </div>
 
         <form onSubmit={handleChronotypeSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
-          {/* Chronotype profile */}
+          {/* ONE question. Each group carries its own hours, so picking one is
+              a complete answer — the exact times and free windows below are
+              fine-tuning, not more of the interview. This step used to ask
+              five things (profile, wake/sleep, weekday free, weekend free, a
+              description) before anyone had seen the app do anything. */}
           <div>
-            <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Morning or night person?</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-              {CHRONOTYPE_OPTIONS.map(o => (
-                <button key={o.key} type="button" onClick={() => setChronoProfile(o.key)}
-                  style={{
-                    padding:"9px 10px", borderRadius:9, textAlign:"left", cursor:"pointer",
-                    border: chronoProfile === o.key ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
-                    background: chronoProfile === o.key ? "#1a2a3a10" : "var(--color-card-2)",
-                  }}>
-                  <div style={{ fontSize:12, fontWeight:600, color: chronoProfile === o.key ? "var(--color-foreground)" : "var(--color-foreground)" }}>{o.label}</div>
-                  <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:1 }}>{o.desc}</div>
-                </button>
-              ))}
+            <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:7, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>When are you usually up?</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+              {CHRONOTYPE_OPTIONS.map(o => {
+                const on = chronoProfile === o.key;
+                return (
+                  <button key={o.key} type="button"
+                    onClick={() => { setChronoProfile(o.key); setWakeTime(o.wake); setSleepTime(o.sleep); }}
+                    style={{
+                      padding:"10px 12px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                      display:"flex", alignItems:"baseline", gap:9,
+                      border: on ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+                      background: on ? "#1a2a3a10" : "var(--color-card-2)",
+                    }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:12.5, fontWeight:600, color:"var(--color-foreground)" }}>{o.label}</div>
+                      <div style={{ fontSize:10, color:"var(--text-3)", marginTop:1 }}>{o.desc}</div>
+                    </div>
+                    {/* Show the hours the choice means — no hidden assumptions. */}
+                    <span style={{ fontSize:10, color: on ? "var(--color-primary)" : "var(--text-3)", flexShrink:0, fontVariantNumeric:"tabular-nums" }}>
+                      {fmtHour12(o.wake)}–{fmtHour12(o.sleep)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          <button type="button" onClick={() => setChronoDetail(v => !v)} style={{
+            alignSelf:"flex-start", background:"none", border:"none", cursor:"pointer", padding:0,
+            fontSize:10.5, color:"var(--text-3)", display:"flex", alignItems:"center", gap:5,
+          }}>
+            <span style={{ fontSize:8, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
+            Fine-tune the hours
+          </button>
+
+          {chronoDetail && (<>
           {/* Solar profile — wake/sleep cycle */}
           <div>
             <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually awake</div>
@@ -926,6 +956,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
               style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
             />
           </div>
+          </>)}
 
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
             <button type="button" onClick={handleChronotypeSkip}
@@ -943,6 +974,15 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   );
 
   return null;
+}
+
+/** "06:00" → "6am", "00:30" → "12:30am". The rhythm groups show the hours they
+ *  mean, and 24h strings are the wrong register for a first-run question. */
+function fmtHour12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const suffix = h >= 12 ? "pm" : "am";
+  const hour = h % 12 || 12;
+  return m ? `${hour}:${String(m).padStart(2, "0")}${suffix}` : `${hour}${suffix}`;
 }
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
