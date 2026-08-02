@@ -707,16 +707,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     staleTime: 120_000,
   });
 
-  const { data: goals } = useQuery<Goal[]>({
-    queryKey: ["goals", testerId],
-    queryFn: async () => {
-      const r = await fetch("/api/planning/goals", { headers: testerId ? { "x-tester-id": testerId } : {} });
-      const j = await r.json();
-      return Array.isArray(j) ? j : []; // 429/500 error bodies must not crash .slice/.map
-    },
-    enabled: !!testerId,
-  });
-
   const { data: northStars } = useNorthStars(testerId);
 
   interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; goalId?: number | null; }
@@ -1462,7 +1452,13 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           </div>
         )}
 
-        {/* Waves — flat unified list: practices + tasks + goals */}
+        {/* Waves — today's unscheduled tasks. Guiding Stars have their own
+            card above (Dashboard) with weekly progress; listing them again
+            here — unfiltered, so paused and done stars leaked in — was
+            "what to ride today" quietly showing stars nobody could ride
+            anymore (beta pass §B1: three list-like blocks answering
+            adjacent questions; this was the one that was actually wrong,
+            not just redundant). */}
         <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
           <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Waves</div>
@@ -1472,7 +1468,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {/* Practices moved into the Habits & practices card — habits and
-                practices are one concept now; Waves is tasks + goals. */}
+                practices are one concept now. */}
             {/* Active tasks */}
             {todayTasks.filter(t => t.done !== "true").map(t => (
               <WaveRow key={`t-${t.id}`} type="task"
@@ -1480,11 +1476,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 sub={t.bestWindowType?.replace("_"," ")}
                 onCheck={() => toggleTask.mutate({ id: t.id, done: true })}
               />
-            ))}
-            {/* Goals */}
-            {(goals ?? []).slice(0, 4).map(g => (
-              <WaveRow key={`g-${g.id}`} type="goal" label={g.title}
-                sub={g.horizon} />
             ))}
             {/* Moments ahead — the planetary hours coming up, matched to the
                 task or star that runs on that planet (owner 2026-07-23: "the
