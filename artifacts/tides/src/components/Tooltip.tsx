@@ -8,32 +8,52 @@ interface TooltipProps {
 }
 
 export function Tooltip({ content, children, width = 220, delay = 120 }: TooltipProps) {
-  const [visible, setVisible] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  // A tap PINS the tooltip open — hover has no equivalent on a touch screen,
+  // so without this every HelpBadge glossary entry and Calendar crossing
+  // explainer was simply unreachable on a phone (beta pass §B5; beta users
+  // will be on phones). Tap-to-pin works identically on desktop, so this
+  // replaces rather than branches on hover vs. touch.
+  const [pinned, setPinned] = useState(false);
+  const visible = hovering || pinned;
   const [pos, setPos] = useState({ top: 0, left: 0, below: false });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
+  const place = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    // Clamp left so tooltip stays within viewport (assuming tooltip is ~width px wide)
+    const safeLeft = Math.max(width / 2 + 8, Math.min(window.innerWidth - width / 2 - 8, rect.left + rect.width / 2));
+    // If element is near top, show tooltip below instead
+    const showBelow = rect.top < 140;
+    setPos({ top: showBelow ? rect.bottom + 8 : rect.top - 8, left: safeLeft, below: showBelow });
+  }, [width]);
+
   const show = useCallback(() => {
-    timer.current = setTimeout(() => {
-      if (!triggerRef.current) return;
-      const rect = triggerRef.current.getBoundingClientRect();
-      // Clamp left so tooltip stays within viewport (assuming tooltip is ~width px wide)
-      const safeLeft = Math.max(width / 2 + 8, Math.min(window.innerWidth - width / 2 - 8, rect.left + rect.width / 2));
-      // If element is near top, show tooltip below instead
-      const showBelow = rect.top < 140;
-      setPos({ top: showBelow ? rect.bottom + 8 : rect.top - 8, left: safeLeft, below: showBelow });
-      setVisible(true);
-    }, delay);
-  }, [delay, width]);
+    timer.current = setTimeout(() => { place(); setHovering(true); }, delay);
+  }, [delay, place]);
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
-    setVisible(false);
+    setHovering(false);
   }, []);
+
+  const toggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pinned) { setPinned(false); return; }
+    place();
+    setPinned(true);
+  }, [pinned, place]);
 
   return (
     <>
-      <div ref={triggerRef} onMouseEnter={show} onMouseLeave={hide} style={{ display: "inline-flex" }}>
+      {/* A full-screen catcher behind the pinned tooltip — tapping anywhere
+          else dismisses it, since there's no mouseleave to fall back on. */}
+      {pinned && (
+        <div onClick={() => setPinned(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+      )}
+      <div ref={triggerRef} onMouseEnter={show} onMouseLeave={hide} onClick={toggle} style={{ display: "inline-flex" }}>
         {children}
       </div>
       {visible && (

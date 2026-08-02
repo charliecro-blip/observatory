@@ -513,6 +513,13 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   // appears after a ~1s delay ("takes a minute to populate"); this shows the
   // read instantly at the cursor.
   const [hoverCross, setHoverCross] = useState<{ x: number; y: number; text: string; color: string } | null>(null);
+  // Tap-to-pin, separate from hover: on desktop, clicking a crossing line
+  // means hover already populated `hoverCross`, so toggling THAT off on click
+  // would hide it the instant it's clicked. A phone has no hover at all, so
+  // it needs its own state that a tap sets and a second tap (or a tap
+  // elsewhere) clears (beta pass §B5 — this explainer was hover-only).
+  const [pinnedCross, setPinnedCross] = useState<{ x: number; y: number; text: string; color: string } | null>(null);
+  const shownCross = pinnedCross ?? hoverCross;
 
   const planetaryHoursMap = useMemo(() => {
     const m = new Map<string, PlanetHour[]>();
@@ -748,6 +755,8 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                         onMouseEnter={(e)=>setHoverCross({ x:e.clientX, y:e.clientY, text:crossText, color:pCol })}
                         onMouseMove={(e)=>setHoverCross(h=>h?{ ...h, x:e.clientX, y:e.clientY }:h)}
                         onMouseLeave={()=>setHoverCross(null)}
+                        // A second, independent pin — see pinnedCross above.
+                        onClick={(e)=>{ e.stopPropagation(); setPinnedCross(h => h ? null : { x:e.clientX, y:e.clientY, text:crossText, color:pCol }); }}
                         style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,
                         top:topPx-18,height:36,zIndex:4,cursor:"help",
@@ -820,14 +829,19 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           );
         })}
       </div>
-      {hoverCross && (
+      {/* Tapping anywhere else dismisses a pinned crossing — there's no
+          mouseleave on a touch screen to fall back on. */}
+      {pinnedCross && (
+        <div onClick={()=>setPinnedCross(null)} style={{ position:"fixed", inset:0, zIndex:9998 }} />
+      )}
+      {shownCross && (
         <div style={{
-          position:"fixed", left:Math.min(hoverCross.x+14, window.innerWidth-236), top:hoverCross.y+14,
+          position:"fixed", left:Math.min(shownCross.x+14, window.innerWidth-236), top:shownCross.y+14,
           zIndex:9999, width:220, pointerEvents:"none",
-          background:"var(--color-card)", border:`1px solid ${hoverCross.color}55`, borderLeft:`3px solid ${hoverCross.color}`,
+          background:"var(--color-card)", border:`1px solid ${shownCross.color}55`, borderLeft:`3px solid ${shownCross.color}`,
           borderRadius:8, padding:"8px 10px", fontSize:11, lineHeight:1.5, color:"var(--color-foreground)",
           boxShadow:"0 6px 20px rgba(0,0,0,0.18)",
-        }}>{hoverCross.text}</div>
+        }}>{shownCross.text}</div>
       )}
     </div>
   );
