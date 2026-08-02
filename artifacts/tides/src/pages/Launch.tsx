@@ -302,7 +302,15 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         {/* Mode switcher */}
         <div style={{ display: "inline-flex", padding: 3, gap: 3, borderRadius: 10, background: "var(--color-card-2)", border: "1px solid var(--color-border)", marginBottom: 18 }}>
-          {([["schedule", "Schedule"], ["breakdown", "Break down"], ["begin", "Begin"]] as const).map(([m, label]) => (
+          {/* Two questions only (game plan §8C): "where should this work go?"
+              and "when should this specific thing start?" Break down moved
+              INSIDE the Guiding Star it serves — GuidingStarsHub has owned
+              runBreakdown/commitBreakdown since the star rework, so the tab
+              here was a duplicate door that made Plan harder to explain.
+              "Pick a day" over "Begin": it is the marketing hook ("Pick the
+              day. Know why.") as a tab, and the least discoverable word of
+              the three became the plainest. */}
+          {([["schedule", "Schedule"], ["begin", "Pick a day"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 18px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
               background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "var(--text-3)",
@@ -316,7 +324,6 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
 
         {/* BREAK DOWN — "this goal is too big; give me the steps" (#3: the PM
             breakdown, also reachable from Aims, surfaced here in Plan). */}
-        {mode === "breakdown" && <GoalBreakdown testerId={testerId} />}
 
         {mode === "begin" && (<>
         {/* Electional — "when should I BEGIN one specific venture?" */}

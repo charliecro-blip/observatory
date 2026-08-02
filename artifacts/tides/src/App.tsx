@@ -110,11 +110,15 @@ type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 // you land on from teachable moments, Log flavor stamps, and the reference
 // that lives on it (the Almanac tab is retired; its wave chart moved to
 // Calendar, its reference moved to Planets).
+// Order mirrors the journey (game plan §8D, owner-ratified 2026-08-01):
+// orient → act/schedule → connect to direction → inspect the wider timeline.
+// "Stars" over "Aims": the feature is called Guiding Stars everywhere else,
+// and one name per concept is the terminology rule (GPT audit §11).
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"today",    label:"Today",    zoom:true},
-  {id:"calendar", label:"Calendar", zoom:true},
-  {id:"work",     label:"Aims"},
   {id:"launch",   label:"Plan"},
+  {id:"work",     label:"Stars"},
+  {id:"calendar", label:"Calendar", zoom:true},
 ];
 
 // Structured election context handed from Auspice's picker into Ask. The
