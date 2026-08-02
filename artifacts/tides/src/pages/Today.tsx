@@ -1026,7 +1026,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* Review moments — Sundays (the week in the wake) and the New Moon
             window (cycle review + next intention). Self-gating; absent
             otherwise. ?review=week|cycle forces either for design work. */}
-        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} />
+        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} firstRun={firstRun} />
 
         {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
             pushes. Self-gating — hidden once enabled, dismissed, or blocked —
@@ -1089,7 +1089,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const aspectsAhead = (now?.dayArc?.events ?? []).filter((e: any) => e.kind === "aspect" && !e.past).length;
           const isQuiet = activation < 0.25 && aspectsAhead === 0 && (tide?.band ?? "mid") !== "high";
           const guidanceText = isQuiet ? QUIET_DAY_GUIDANCE[character]
-            : tide ? tideGuidance(character, tide.level) : heroText(now);
+            : tide ? tideGuidance(character, tide.level, !!now?.voc?.isVOC) : heroText(now);
           const confNote = isQuiet ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
 
           // Tide curve marker position: Low(0) → Rising(0.25) → High(0.5) → Ebb(0.75) → Low(1)
@@ -1162,7 +1162,15 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 {/* The woven reading — the synthesis engine's judgment of the
                     moment, gated by astro-detail (minimal = one sentence + one
                     watch; full = the testimony table). */}
-                <WovenReading reading={now?.reading} level={astro.level} accent={elColor} />
+                {/* The guidance line above now reconciles the void itself, so
+                    the reading must not restate it as a pattern chip AND as a
+                    counterpoint — one fact, one voice (both keys are passed
+                    because the pattern is named "Void of course" while the
+                    testimony source is "voc"). */}
+                <WovenReading
+                  reading={now?.reading} level={astro.level} accent={elColor}
+                  saidAlready={now?.voc?.isVOC ? ["voc", "Void of course"] : []}
+                />
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4 }}>
@@ -1366,12 +1374,15 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             this card stands down to keep the page lean. */}
         {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} lat={lat} lon={lon} />}
 
+        {/* Resonant now — "what fits right now", above the chart rather than
+            below it (owner 2026-08-02: "the resonant now set of tabs is very
+            helpful — that might be lifted higher"). It answers the same
+            question the hero raises, so it belongs with the answer, not after
+            the instrument that explains it. */}
+        {!essential && now && <ModulePulse now={now} onNavigate={onNavigate} />}
+
         {/* The tide — one coherent chart for the whole day */}
         {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
-
-        {/* Module recommendations — "what fits right now" moved up near the tide
-            chart, since it was previously the very last thing on the page. */}
-        {!essential && now && <ModulePulse now={now} onNavigate={onNavigate} />}
 
         {/* Standing conditions */}
         {!essential && now && <ConditionsStrip now={now} today={today} />}

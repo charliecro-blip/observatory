@@ -10,6 +10,7 @@ import {
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects, getLocalAngles, getAngularPlanets,
   getLastMoonAspect, getNextAngularCrossings, getSunriseSunset,
+  SIGNS,
 } from "../lib/astro.js";
 import { db } from "@workspace/db";
 import { natalCharts } from "@workspace/db";
@@ -250,6 +251,28 @@ router.get("/tides/now", async (req, res) => {
       ? `${WEEKDAYS[local.getUTCDay()]} ${clock}` : clock;
   }
 
+  // Where the Moon is THROUGH her sign — always, not only during a void.
+  //
+  // The rail used to assert a flat "next 2½ days" for the Moon's mood, which is
+  // the average length of a sign transit and therefore wrong almost always: on
+  // a day the Moon changes sign at 3:36pm it told you the mood had two and a
+  // half days left. A sign is ~2.2–2.6 days depending on lunar speed, so this
+  // measures rather than assumes — bisected to under a second by
+  // nextIngressAfterMs, the same function the VOC "until" label trusts.
+  const moonLonNow = ((planets.find((p) => p.planet === "Moon")!.longitude % 360) + 360) % 360;
+  const moonIngressMs = nextIngressAfterMs(date.getTime());
+  const degIntoSign = moonLonNow % 30;
+  const moonSignProgress = {
+    // 0..1 through the current sign, by ecliptic degree (not by elapsed time —
+    // lunar speed varies by ~12% over the month, and degree is what actually
+    // defines the boundary).
+    fraction: parseFloat((degIntoSign / 30).toFixed(3)),
+    degreesIn: parseFloat(degIntoSign.toFixed(2)),
+    endsAt: new Date(moonIngressMs).toISOString(),
+    hoursLeft: parseFloat(((moonIngressMs - date.getTime()) / 3600000).toFixed(2)),
+    nextSign: SIGNS[(Math.floor(moonLonNow / 30) + 1) % 12],
+  };
+
   // Rhythm risk: VOC + low quality + hard Moon-to-disruptive-natal-planet aspects
   const DISRUPTIVE_NATAL = new Set(["Saturn", "Uranus", "Pluto", "Mars"]);
   const natalDisruption = personalTransits.filter(t =>
@@ -314,6 +337,7 @@ router.get("/tides/now", async (req, res) => {
     moonFraction: fraction,
     moonIllumination: fraction, // alias for Rail component
     moonSign,
+    moonSignProgress,
     sunSign,
     retrogrades,
     aspects,

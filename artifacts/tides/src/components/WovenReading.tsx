@@ -31,24 +31,37 @@ export interface DayReadingData {
    *  omitted it. */
   element: string;
   foci: string[];
-  watch: { note: string; salience: number }[];
+  watch: { note: string; salience: number; source?: string }[];
   counterpoint?: string;
+  /** Which testimony source the counterpoint speaks for ("voc", "moonAspect"…). */
+  counterpointSource?: string;
   patterns: ReadingPattern[];
   testimonies: ReadingTestimony[];
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
+export default function WovenReading({ reading, level, accent = "#5a6cae", saidAlready = [] }: {
   reading: DayReadingData | null | undefined;
   level: AstroDetail;
   accent?: string;
+  /** Pattern names the surrounding card has ALREADY spoken, by name. The hero's
+   *  guidance line now reconciles the void itself ("energy is high, but the
+   *  Moon is void — spend it on what's already moving"), and the counterpoint
+   *  restates it a third time. Three sentences about one fact, stacked, is how
+   *  a card stops sounding like it knows what it thinks. */
+  saidAlready?: string[];
 }) {
   const [showWorking, setShowWorking] = useState(false);
   if (!reading?.flavour) return null;
   const med = level !== "minimal";
   const full = level === "full";
-  const topWatch = reading.watch?.[0];
+  const said = new Set(saidAlready.map(s => s.toLowerCase()));
+  const patterns = (reading.patterns ?? []).filter(p => !said.has(p.name.toLowerCase()));
+  // The void reaches this card through THREE channels — watch, counterpoint,
+  // and pattern chip — so suppressing one still left the reader told the same
+  // thing twice. Take the loudest watch line the card hasn't already spoken.
+  const topWatch = (reading.watch ?? []).find(w => !said.has((w.source ?? "").toLowerCase()));
 
   return (
     <div style={{ borderTop: `1px solid ${accent}22`, margin: "12px 0", paddingTop: 11 }}>
@@ -66,14 +79,14 @@ export default function WovenReading({ reading, level, accent = "#5a6cae" }: {
       )}
 
       {/* Medium: the honest "but…" + the named shapes, plain language. */}
-      {med && reading.counterpoint && (
+      {med && reading.counterpoint && !said.has((reading.counterpointSource ?? "").toLowerCase()) && (
         <div style={{ fontSize: 11.5, color: "#907040", fontStyle: "italic", marginTop: 6, lineHeight: 1.55 }}>
           {reading.counterpoint}
         </div>
       )}
-      {med && reading.patterns?.length > 0 && (
+      {med && patterns.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {reading.patterns.slice(0, 3).map((p) => (
+          {patterns.slice(0, 3).map((p) => (
             <span key={p.name} title={full ? p.name : undefined} style={{
               fontSize: 10.5, lineHeight: 1.45, padding: "3px 9px", borderRadius: 12,
               background: p.polarity < 0 ? "#a0404012" : `${accent}12`,

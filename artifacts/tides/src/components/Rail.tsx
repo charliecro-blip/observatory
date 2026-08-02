@@ -422,6 +422,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [showNonMoonAspects, setShowNonMoonAspects] = useState(false);
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
   const [moonTakeIdx, setMoonTakeIdx] = useState(0);
+  const [seasonTakeIdx, setSeasonTakeIdx] = useState(0);
   // Instrument-dashboard collapse: `compact` (persisted) turns every core
   // section into a one-line glyph an experienced user reads at a glance; while
   // compact, an individual section can still be expanded (added to `expanded`).
@@ -593,9 +594,26 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="season">Season</SectionHeader>
           <SignChip glyph="☉︎" label={`${sunSign} season`} sign={sunSign} />
+          {/* The season gets the same "another take" treatment the Moon has —
+              it was the one chip in the rail with a single static line and
+              nothing to tap, so it read as broken next to its neighbour. */}
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
-            return sm ? <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>{sm.essence}</div> : null;
+            if (!sm) return null;
+            const takes: { label: string; text: string }[] = [
+              { label: "essence", text: sm.essence },
+              { label: "the feel", text: sm.feel },
+              { label: "favors", text: sm.favors.slice(0, 3).join(" · ") },
+              { label: "watch for", text: sm.shadow },
+            ];
+            const t = takes[seasonTakeIdx % takes.length];
+            return (
+              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
+                <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
+                <button onClick={() => setSeasonTakeIdx(i => i + 1)} title="Another take on this season"
+                  style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+              </div>
+            );
           })()}
           {/* The solar cycle IS part of the tides — daylight as the year's
               slowest wave: how much light, and which way it's running. */}
@@ -666,11 +684,33 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               { label: "essence", text: sm.essence },
             ];
             const t = takes[moonTakeIdx % takes.length];
+            // How much of this mood is LEFT — measured, not assumed. The label
+            // used to read a flat "next 2½ days" (a sign's average length), so
+            // on a day the Moon changed sign at 3:36pm it promised two and a
+            // half more days of it. The bar shows how far through the sign she
+            // actually is, which is the thing the sentence is about.
+            const prog = (now as any).moonSignProgress as
+              { fraction: number; degreesIn: number; hoursLeft: number; nextSign: string } | undefined;
+            const left = prog
+              ? prog.hoursLeft < 1 ? "minutes left"
+                : prog.hoursLeft < 24 ? `${Math.round(prog.hoursLeft)}h left`
+                : `${(prog.hoursLeft / 24).toFixed(1)} days left`
+              : null;
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 7, lineHeight: 1.5 }}>
-                <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 2 }}>
-                  The Moon's mood · next 2½ days
+                <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 3 }}>
+                  The Moon's mood{left ? ` · ${left}` : ""}
                 </div>
+                {prog && (
+                  <div title={`${Math.round(prog.degreesIn)}° through ${moonSign} — then ${prog.nextSign}`}
+                    style={{ height: 3, background: "var(--color-border)", borderRadius: 2, marginBottom: 5, position: "relative" }}>
+                    <div style={{
+                      height: "100%", width: `${Math.round(prog.fraction * 100)}%`,
+                      background: signGlyphInfo(moonSign)?.color ?? "var(--color-muted)",
+                      borderRadius: 2,
+                    }} />
+                  </div>
+                )}
                 <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>

@@ -241,8 +241,10 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
 // The weekly review reads the wake back to you; the cycle review closes the
 // loop the New Moon opened — last cycle's intention vs. what the wake shows —
 // and invites the next intention. ?review=week|cycle forces either for design.
-export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
+export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: {
   testerId: string | null; lat?: number; lon?: number; onOpenLog?: () => void;
+  /** The walkthrough hasn't been answered — this account has no past to review. */
+  firstRun?: boolean;
 }) {
   const qc = useQueryClient();
   const { data } = useMomentum(testerId, lat, lon);
@@ -268,6 +270,15 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog }: {
   const showCycle = force === "cycle" || inNewMoonWindow;
   const showWeek = !showCycle && (force === "week" || isSunday);
   if (!showCycle && !showWeek) return null;
+  // A retrospective needs something to look back ON. This was gated purely on
+  // the DATE, so an account created on a Sunday met "⚓ The week in the wake —
+  // 0 wins this week · 0 days at the helm" as one of its first impressions:
+  // the app reporting a failure the user hadn't had time to earn. Suppress
+  // while the walkthrough is unanswered, and whenever the period being
+  // reviewed is genuinely empty of both wins and stars. `?review=` still
+  // forces either card for design work.
+  const nothingToReview = data.ledger.length === 0 && data.stars.length === 0;
+  if (!force && (firstRun || nothingToReview)) return null;
 
   const named = (from: string, to?: string) => data.ledger
     .filter(l => l.source === "named" && l.date >= from && (!to || l.date < to))

@@ -208,12 +208,29 @@ export const LEVEL_GUIDANCE: Record<string, string> = {
 };
 
 // Character × level → the actionable "what to do" line.
-// Composed skeleton; the on-tap "why" can be LLM-enriched later.
-export function tideGuidance(character: TideCharacter, level: string): string {
+//
+// `voc` is not decoration. This function used to know nothing about the void,
+// while a SEPARATE named-pattern engine independently emitted "the day's
+// initiations won't take — begin nothing you want to last." Both rendered in
+// the same hero card, so a high-tide void day read as the app arguing with
+// itself: "Energy is at its peak — fully engage, act, publish, lead" directly
+// above "begin nothing you want to last." Each sentence was true; stacked,
+// they cost the reader their trust in both.
+//
+// The reconciliation is deliberately NOT "hide the void warning." A void is
+// the more specific, more actionable fact, so it wins the framing — but it
+// qualifies BEGINNINGS only, so the energy still gets named and pointed at
+// what it's actually good for now: momentum that already exists.
+export function tideGuidance(character: TideCharacter, level: string, voc = false): string {
   const grain = CHARACTER_GRAIN[character];
   const pace = LEVEL_GUIDANCE[level] ?? LEVEL_GUIDANCE.tide;
   const verbs = grain.split(", ");
   if (level === "high" || level === "rising") {
+    if (voc) {
+      // The energy is real — spend it on what's already moving. Naming the
+      // charge and then redirecting it beats pretending the day is flat.
+      return `Energy is high, but the Moon is void — spend it on what's already moving rather than on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
+    }
     return `${pace} Lean into what this tide favors — ${verbs.slice(0, 3).join(", ")}.`;
   }
   if (level === "ebb" || level === "low") {
@@ -222,7 +239,12 @@ export function tideGuidance(character: TideCharacter, level: string): string {
       : character === "building" ? "tidy, close loops, tend what's already built"
       : character === "clear" ? "review notes, read, let ideas settle rather than broadcast"
       : "rest fully, journal, let feeling move without acting on it";
-    return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.`;
+    // Low tide and a void agree with each other — no contradiction to resolve,
+    // so the void only adds the reason.
+    return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.${voc ? " The Moon is void, which points the same way." : ""}`;
+  }
+  if (voc) {
+    return `${pace} With the Moon void, favor finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
   }
   return `${pace} Good for ${verbs.slice(0, 3).join(", ")}.`;
 }

@@ -39,6 +39,20 @@ const PLANET_AROUSAL: Record<string, number> = {
   Mercury: 0.55, Venus: 0.4, Neptune: 0.2,
 };
 
+// The two great DAMPENERS. Every crest above is positive, so before this a
+// Moon–Saturn square *raised* the tide — the model read "hard aspect" as
+// "high charge" and stopped there. But Saturn contracts and Neptune dissolves:
+// on a hard contact they don't add charge to the day, they take it out. An
+// afternoon carrying a tight Moon–Saturn square is not a peak, and reporting
+// one is how the chart loses the reader who can feel the difference.
+//
+// This is NOT a favourability judgment (the tide stays "coherence, not
+// good/bad" per DESIGN.md) — it is a claim about available energy, which is
+// what the curve has always measured. Soft aspects to the same planets keep
+// their small positive lift: a Moon–Saturn trine really is steadying.
+const DAMPENERS: Record<string, number> = { Saturn: -0.85, Neptune: -0.70 };
+const HARD_ASPECTS = new Set(["conjunction", "square", "opposition"]);
+
 const DEG2RAD = Math.PI / 180, RAD2DEG = 180 / Math.PI;
 function norm360(d: number) { return ((d % 360) + 360) % 360; }
 function sep180(a: number, b: number) { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; }
@@ -425,7 +439,10 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   const perfMs = perfections.map(p => ({
     t: p.t.getTime(), planet: p.planet, aspect: p.aspect,
     amp: NATURE_AMP[p.aspect] ?? 0.15,
-    arousal: PLANET_AROUSAL[p.planet] ?? 0.5,
+    // A hard contact with a dampener is a trough, not a crest (see DAMPENERS).
+    arousal: HARD_ASPECTS.has(p.aspect) && DAMPENERS[p.planet] !== undefined
+      ? DAMPENERS[p.planet]
+      : (PLANET_AROUSAL[p.planet] ?? 0.5),
   }));
 
   // Base component per step — now just the smoothed planetary-hour whisper

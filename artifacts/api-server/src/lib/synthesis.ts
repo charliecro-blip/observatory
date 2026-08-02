@@ -121,8 +121,9 @@ export interface DayReading {
   flavour: string;             // the woven whole, one sentence
   element: string;             // the convergent element (the flavour's key)
   foci: string[];              // concrete things it favours
-  watch: { note: string; salience: number }[];  // top salience — "focus on this"
+  watch: { note: string; salience: number; source?: string }[];  // top salience — "focus on this"
   counterpoint?: string;       // the honest "but…"
+  counterpointSource?: string; // which testimony it speaks for, so clients can dedupe
   patterns: NamedPattern[];    // named configurations present
   testimonies: Testimony[];    // the parts, for the drill-down
 }
@@ -477,12 +478,24 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   // Salience ranking — "what to watch now" — the loudest testimonies + named
   // patterns, minus whatever the counterpoint already says (no repeating the
   // same sentence twice on one card).
+  // `source` rides along so the CLIENT can drop a line it has already spoken in
+  // its own words — the hero's guidance now reconciles a void directly, and
+  // without this the same instruction arrived again as "what to watch".
   const watch = [
-    ...T.filter(t => !(counterpoint && t === counter)).map(t => ({ note: t.note, salience: t.salience })),
-    ...patterns.map(p => ({ note: p.reading, salience: p.salience })),
+    ...T.filter(t => !(counterpoint && t === counter)).map(t => ({ note: t.note, salience: t.salience, source: t.source })),
+    ...patterns.map(p => ({ note: p.reading, salience: p.salience, source: p.name })),
   ].sort((a, b) => b.salience - a.salience).slice(0, 3);
 
-  return { flavour, element: topElement[0], foci, watch, counterpoint, patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)) };
+  return {
+    flavour, element: topElement[0], foci, watch, counterpoint,
+    // Which testimony the counterpoint speaks for. The client's hero card may
+    // already have said this in its own voice (the guidance line reconciles a
+    // void directly), and a card that states one fact three ways stops sounding
+    // like it knows what it thinks. Naming the source lets the client dedupe on
+    // identity rather than by matching prose.
+    counterpointSource: counterpoint ? counter?.source : undefined,
+    patterns, testimonies: T.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)),
+  };
 }
 
 /** Convenience: the woven reading for a moment. */

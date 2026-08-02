@@ -499,26 +499,38 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             </g>
           ))}
 
-          {/* Event dots — quiet, on the surface */}
+          {/* Event markers — the same symbols the list below the chart uses.
+              They were unlabelled coloured dots here, so the strip reading
+              "3:36 PM ⇒ Moon enters Aries" had no findable counterpart on the
+              curve; the reader had to convert a clock time into an x position
+              by eye. The glyph rides just above its dot, and only the future
+              ones carry it — a day's worth of past glyphs is clutter, and the
+              dot alone still marks where they were. */}
           {events.map((e: any, i: number) => {
             const h = hourOf(e.time);
             if (h < 0 || h > 24) return null;
             const isNext = e === nextEvent;
             const col = e.kind === "crossing" ? "#c8a84a" : e.kind === "ingress" ? "#7fae72" : e.aspect === "square" || e.aspect === "opposition" ? "#c08a8a" : "#9db4d4";
+            const glyph = e.kind === "crossing" ? "◆" : e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·");
+            // The NEXT event already gets a full labelled callout below, so it
+            // would otherwise show its symbol twice within 30px.
+            const showGlyph = !e.past && !isNext;
             // Crossings are ~20-minute PEAK moments — a small diamond above the
             // surface, distinct from the round aspect/ingress dots on it.
-            if (e.kind === "crossing") {
-              const cx = x(h), cy = y(energyAt(h)) - 6;
-              return (
-                <g key={i} opacity={e.past ? 0.35 : 1}>
-                  <rect x={cx - 2.6} y={cy - 2.6} width={5.2} height={5.2} transform={`rotate(45 ${cx} ${cy})`}
-                    fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.2" />
-                </g>
-              );
-            }
+            const cy0 = y(energyAt(h));
+            const markY = e.kind === "crossing" ? cy0 - 6 : cy0;
             return (
               <g key={i} opacity={e.past ? 0.35 : 1}>
-                <circle cx={x(h)} cy={y(energyAt(h))} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
+                {e.kind === "crossing" ? (
+                  <rect x={x(h) - 2.6} y={markY - 2.6} width={5.2} height={5.2} transform={`rotate(45 ${x(h)} ${markY})`}
+                    fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.2" />
+                ) : (
+                  <circle cx={x(h)} cy={markY} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
+                )}
+                {showGlyph && (
+                  <text x={x(h)} y={markY - 8} textAnchor="middle" fontSize="7.5" fontWeight="700"
+                    fill={col} style={{ pointerEvents: "none" }}>{glyph}</text>
+                )}
               </g>
             );
           })}
@@ -575,10 +587,24 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           <path d={surfaceArea} fill="url(#twMuted)" opacity={0.14} />
           <path d={surfaceD} fill="none" stroke="url(#twMuted)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
 
+          {/* Same symbols as the strip below the chart — see the note in the
+              water style. "Calm" is the DEFAULT style, so without this the
+              markers were invisible to most users; only the vivid style had
+              them. Kept monochrome here to respect calm's restraint. */}
           {events.map((e: any, i: number) => {
             const h = hourOf(e.time);
             if (h < 0 || h > 24) return null;
-            return <circle key={i} cx={x(h)} cy={y(energyAt(h))} r="2" fill={dark ? "#2a3142" : "#fff"} stroke={mutedNowColor} strokeWidth="1" opacity={e.past ? 0.3 : 0.7} />;
+            const glyph = e.kind === "crossing" ? "◆" : e.kind === "ingress" ? "⇒" : (ASPECT_GLYPH[e.aspect] ?? "·");
+            const cy0 = y(energyAt(h));
+            return (
+              <g key={i} opacity={e.past ? 0.3 : 0.7}>
+                <circle cx={x(h)} cy={cy0} r="2" fill={dark ? "#2a3142" : "#fff"} stroke={mutedNowColor} strokeWidth="1" />
+                {!e.past && (
+                  <text x={x(h)} y={cy0 - 7} textAnchor="middle" fontSize="7" fontWeight="600"
+                    fill={mutedNowColor} style={{ pointerEvents: "none" }}>{glyph}</text>
+                )}
+              </g>
+            );
           })}
 
           <text x={hiX} y={Math.max(WATER_TOP - 10, y(targetE[hiIdx]) - 10)} textAnchor="middle" fontSize="9" fontWeight="600" fill={labelCol}>
