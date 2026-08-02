@@ -102,6 +102,34 @@ competitive borrowing until this block closes.***
 
 ---
 
+## 3c. Email — parked deliberately (owner, 2026-08-01)
+
+*"That's something we can hone without the beta — it's more of an advertising
+feature."* Everything unresolved on the daily/weekly emails lives here so no
+session reopens it by accident. **None of this blocks beta.**
+
+- ☐ **Sunday = one combined email**, daily + weekly in a single send with a
+  subject that reflects both — not two emails landing together. `composeDay`
+  and `composeWeek` both exist; the work is a merged composer + one cron branch
+  + a subject that carries both registers.
+- ☐ **The sky block ends flat.** The rebuilt three sentences are precise but
+  close on the driest line. Option on the table: sign blurb ("warm fog on slack
+  water") as the CLOSING sentence — specifics first, atmosphere last. ~50 words
+  median. One-line change, deliberate voice decision.
+- ☐ **The LLM voice renderer** (Mercury-sign register) — decided LLM-rendered;
+  the facts layer is shipped; the open fork (renderer inside `dayReading()` vs
+  above it as `voice(reading, register)`) is written up in HANDOFF "Decided".
+  Includes: runtime slop-validator on generated prose, cache on
+  `(register, factsHash)`, register-applies-to-weather-only question, user
+  override.
+- ☐ **`detail: full` variant** of the new sky block barely differs from medium
+  (one appended phase line). Fine for now; revisit with the renderer.
+- ⚠️ Note for testing any of this: **email changes are invisible until `main`
+  advances** — Railway deploys `main`, and the branch was 19+ commits ahead for
+  all of 2026-08-01. "Still flat" that morning = old code, not a failed fix.
+
+---
+
 ## 4. Competitive borrowings — ranked by (impact × cheapness)
 
 Effort estimates from the competitive study. Items marked ★ are mostly-already-built.
