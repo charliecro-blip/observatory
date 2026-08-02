@@ -14,7 +14,6 @@ import Rail, { MobileInstruments } from "@/components/Rail";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import BearingsCard from "@/components/BearingsCard";
-import SpineGauge from "@/components/SpineGauge";
 import { SessionTimer } from "@/components/SessionTimer";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
@@ -281,55 +280,87 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
 
 // ── Intro slides ─────────────────────────────────────────────────────────────
 
+// Three slides, one per job (beta pass 2026-08-01, reconciled with the GPT
+// audit): what fits now → what you're steering toward → when to do it. The
+// old six taught the cosmology before the product — four day-characters, tide
+// levels, and a nine-rung nested-rhythms gauge whose compact mode stripped its
+// own labels. One slide also still promised the RETIRED felt-rating loop
+// ("log how days actually felt — it learns"). Concepts now get taught by the
+// spotlight tour on the real dashboard, where they have labels and live data.
 const INTRO_SLIDES: {
-  glyph: string; glyphColor: string; title: string; body: string;
-  cards?: { label: string; sub: string; color: string; bg: string; note: string }[];
-  spine?: boolean;
+  glyph: string; glyphColor: string; overline?: string; title: string; body: string;
+  visual: "today" | "star" | "plan"; footer?: string;
 }[] = [
   {
     glyph: "◐",
     glyphColor: ELEMENT_COLORS.water,
-    title: "A weather report for time.",
-    body: "Compass reads the sky and tells you what kind of moment you're in — and what it's good for. Like glancing at the weather before you head out, but for your day.",
-  },
-  {
-    glyph: "◵ ◶ ◷ ◴",
-    glyphColor: ELEMENT_COLORS.earth,
-    title: "Every day has a character.",
-    body: "Four kinds of energy, set by where the Moon is. You'll come to feel which one you're in.",
-    cards: [
-      { label: "Deep",     sub: "water", color: ELEMENT_COLORS.water, bg: "#eaf0f8", note: "feel · rest · create · listen" },
-      { label: "Surge",    sub: "fire",  color: ELEMENT_COLORS.fire, bg: "#fff0ec", note: "act · lead · initiate · move" },
-      { label: "Building", sub: "earth", color: ELEMENT_COLORS.earth, bg: "#f0f5ee", note: "build · finish · organize · tend" },
-      { label: "Clear",    sub: "air",   color: ELEMENT_COLORS.air, bg: "#f4efdd", note: "think · write · connect · talk" },
-    ],
-  },
-  {
-    glyph: "◠ ◡",
-    glyphColor: PLANET_COLORS.Sun,
-    title: "High tide, low tide.",
-    body: "Beyond its character, each moment has a level — how charged it is, and which way it's moving. High and rising: lean in. Low or ebbing: rest, and don't force it.",
-  },
-  {
-    glyph: "≋",
-    glyphColor: "#3f8493",
-    title: "The sky is nested rhythms.",
-    body: "The hour sits inside the day, the day inside the month, the month inside the year. Compass reads them all and tells you where you are — this ladder is the whole map.",
-    spine: true,
-  },
-  {
-    glyph: "▲",
-    glyphColor: "#5a5248",
-    title: "Plan with it, not against it.",
-    body: "Dump your to-dos and Compass weaves them into windows that suit them. Pick good moments to begin things. Log how days actually felt — it learns what fits you.",
+    overline: "A weather report for time",
+    title: "Know what fits now.",
+    body: "Compass reads the sky around this moment and turns it into a plain suggestion — focus, move, connect, rest, or wait.",
+    visual: "today",
   },
   {
     glyph: "✦",
     glyphColor: ELEMENT_COLORS.air,
-    title: "Then make it yours.",
-    body: "Add your birth details and the tide becomes personal — your own timing, your year ahead, and the long cycles moving through your life right now.",
+    title: "Give your time a direction.",
+    body: "Name a few Guiding Stars — the longer things you're building. Compass connects today's choices to where you're actually going.",
+    visual: "star",
+  },
+  {
+    glyph: "▲",
+    glyphColor: ELEMENT_COLORS.earth,
+    title: "Plan with the current.",
+    body: "Paste a list, or pick something you want to begin. Compass finds the better windows — and tells you when the timing is against it.",
+    visual: "plan",
+    footer: "Personalized by your rhythm, your calendar, and — optionally — your birth chart.",
   },
 ];
+
+/** Miniature product compositions for the intro — each slide previews the
+ *  real surface it describes, instead of an abstract diagram. */
+function IntroVisual({ kind }: { kind: "today" | "star" | "plan" }) {
+  const card: React.CSSProperties = {
+    background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+    borderRadius: 10, padding: "10px 12px", textAlign: "left",
+  };
+  if (kind === "today") {
+    return (
+      <div style={card}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: ELEMENT_COLORS.earth }}>Building Tide</span>
+          <span style={{ fontSize: 9.5, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>high · rising</span>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-2)", margin: "4px 0 8px" }}>Good for patient, constructive work.</div>
+        <div style={{ fontSize: 10.5, color: "var(--text-2)", borderTop: "1px solid var(--color-border)", paddingTop: 7 }}>
+          <span style={{ color: ELEMENT_COLORS.earth, fontWeight: 600 }}>Next move</span> · Draft the proposal — 9:30–11:00 suits it
+        </div>
+      </div>
+    );
+  }
+  if (kind === "star") {
+    return (
+      <div style={card}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>✦ Finish the book</div>
+        <div style={{ fontSize: 10.5, color: "var(--text-2)", marginTop: 4 }}>Next step · Outline chapter four</div>
+        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2 }}>A good stretch for it: Tue 10:30–12:00</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 5 }}>
+      {[
+        ["Write the proposal", "Wednesday morning", "var(--text-2)"],
+        ["The hard conversation", "Thursday evening", "var(--text-2)"],
+        ["Launch the project", "Avoid this week", "#a03030"],
+      ].map(([what, when, color]) => (
+        <div key={what} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10.5 }}>
+          <span style={{ color: "var(--text-2)" }}>{what}</span>
+          <span style={{ color, fontWeight: when === "Avoid this week" ? 700 : 400, flexShrink: 0 }}>→ {when}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function IntroSlides({ onDone }: { onDone: () => void }) {
   const [slide, setSlide] = useState(0);
@@ -340,30 +371,21 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 20px" }}>
       <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:18, padding:"36px 32px 28px", maxWidth:380, width:"100%", display:"flex", flexDirection:"column", gap:0 }}>
         {/* Glyph */}
-        <div style={{ fontSize:36, color:s.glyphColor, marginBottom:16, textAlign:"center", letterSpacing:4 }}>{s.glyph}</div>
+        <div style={{ fontSize:36, color:s.glyphColor, marginBottom:12, textAlign:"center", letterSpacing:4 }}>{s.glyph}</div>
+
+        {/* Overline — the metaphor survives as a whisper, not a slide of its own */}
+        {s.overline && <div style={{ fontSize:10, color:"var(--text-3)", textTransform:"uppercase", letterSpacing:"1px", textAlign:"center", marginBottom:6 }}>{s.overline}</div>}
 
         {/* Title */}
         <div style={{ fontSize:20, fontWeight:700, color: "var(--color-primary)", marginBottom:10, textAlign:"center", lineHeight:1.3, letterSpacing:"-0.3px" }}>{s.title}</div>
 
         {/* Body */}
-        <div style={{ fontSize:13, color:"var(--text-2)", lineHeight:1.7, textAlign:"center", marginBottom: (s.cards || s.spine) ? 18 : 32 }}>{s.body}</div>
+        <div style={{ fontSize:13, color:"var(--text-2)", lineHeight:1.7, textAlign:"center", marginBottom:16 }}>{s.body}</div>
 
-        {s.spine && <div style={{ marginBottom: 24 }}><SpineGauge compact /></div>}
+        {/* The miniature product surface this slide describes */}
+        <div style={{ marginBottom: s.footer ? 14 : 26 }}><IntroVisual kind={s.visual} /></div>
 
-        {/* Character cards (the four tides) */}
-        {s.cards && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:28 }}>
-            {s.cards.map(c => (
-              <div key={c.label} style={{ background:c.bg, border:`1px solid ${c.color}30`, borderRadius:10, padding:"10px 12px" }}>
-                <div style={{ display:"flex", alignItems:"baseline", gap:5, marginBottom:3 }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{c.label}</span>
-                  <span style={{ fontSize:9, color:`${c.color}99` }}>{c.sub}</span>
-                </div>
-                <div style={{ fontSize:9.5, color:"var(--color-muted)", lineHeight:1.4 }}>{c.note}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        {s.footer && <div style={{ fontSize:10.5, color:"var(--text-3)", textAlign:"center", lineHeight:1.6, marginBottom:20 }}>{s.footer}</div>}
 
         {/* Navigation */}
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -375,17 +397,23 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
           </div>
           <button onClick={() => isLast ? onDone() : setSlide(s => s + 1)}
             style={{ padding:"9px 22px", borderRadius:10, border:"none", background:"#1a2a3a", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
-            {isLast ? "Get started" : "Next →"}
+            {isLast ? "See my day" : "Next →"}
           </button>
         </div>
 
         {/* Skip is available from slide one — a low-attention/skeptic user
-            (persona study) shouldn't have to tap through five slides first. */}
+            (persona study) shouldn't have to tap through the slides first. */}
         {!isLast && (
           <button onClick={() => { logEvent("onboard_intro_skipped"); onDone(); }} style={{ marginTop:10, fontSize:11, color:"var(--text-3)", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
             Skip intro →
           </button>
         )}
+
+        {/* Returning users shouldn't have to sit through a pitch for a product
+            they already use — one tap lands on the restore button. */}
+        <button onClick={() => { logEvent("onboard_skip_to_restore"); onDone(); }} style={{ marginTop: isLast ? 10 : 4, fontSize:10.5, color:"var(--text-3)", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%", textDecoration:"underline", textUnderlineOffset:2 }}>
+          Been here before? Restore your account
+        </button>
       </div>
     </div>
   );
@@ -588,10 +616,13 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   }
 
   function handleSkip() {
-    // "Show me today →" goes straight into the app — no chart, no chronotype
-    // gate (both are addable in Settings). The label promises today; deliver it.
+    // "Show me today →" skips the CHART, not the rhythm. It used to exit
+    // onboarding entirely — which meant the chartless user (the one who most
+    // needs behaviour-personalization) was exactly the one who never got asked
+    // for wake/sleep, and rituals, re-homing and planner hours all fell back
+    // to wall-clock guesses. Chronotype has its own skip; nobody is gated.
     logEvent("onboard_chart_skipped");
-    onComplete(name.trim() || "Observer");
+    setStep("chronotype");
   }
 
   const cardStyle: React.CSSProperties = {
