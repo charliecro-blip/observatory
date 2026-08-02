@@ -1,10 +1,11 @@
-# Handoff — Compass, as of 2026-08-02
+# Handoff — Compass, as of 2026-08-02 (evening)
 
-*For the next session. The owner is Charlie, in Austin. Earlier today: the
-morning-email fix rippled into strategy (two GPT documents arrived and were
-adopted), then a beta product pass ran. **The pass is now COMPLETE** — all five
-tasks shipped and verified in the browser. The next session picks a new
-frontier; see "What's actually next" below.*
+*For the next session. The owner is Charlie, in Austin. The beta pass ran to
+completion, then a follow-up pass closed §B5 (hover-only), §B1 (list-block
+redundancy), and a stale-copy gap found by auditing the acceptance criteria
+directly. **`main` is deployed and live at compass.day** — twice, both
+verified by fetching the actual served bundle, not just the health check.
+Nothing is queued; the next session picks a fresh frontier.*
 
 ---
 
@@ -68,19 +69,64 @@ data; `api-scratch` pins `compass_scratch` on localhost. Recreate that DB per
 
 ---
 
+## The follow-up pass — also DONE, also deployed
+
+Same session, after the beta pass closed. The owner said "do everything";
+this is what "everything" turned out to mean, checked one item at a time
+rather than assumed:
+
+- ✅ **§B5 hover-only interactions** (`8016cc6`) — the HelpBadge glossary (11
+  terms) and Calendar's aspect-crossing explainer were mouse-only with no
+  click fallback; on a phone (no hover) both were simply unreachable, not
+  degraded. `Tooltip.tsx` gained a `pinned` state — tap toggles it, a
+  full-screen catcher dismisses on tap-elsewhere. Calendar needed a SEPARATE
+  `pinnedCross` state rather than reusing `hoverCross`: on desktop, clicking a
+  crossing line happens after hover already set `hoverCross`, so toggling
+  that same state on click would hide it the instant it's clicked.
+- ✅ **§B1 list-block redundancy** (`b1ff717`) — "Moments ahead" turned out to
+  already be a sub-section of Waves, not a separate card. The real defect was
+  one level in: Waves' own "Goals" row fetched `/api/planning/goals` with
+  **no status filter** and rendered up to four of them under "what to ride
+  today" — a paused or completed star looked exactly as ridable as an active
+  one, duplicating the Dashboard's Guiding Stars card (which correctly
+  filters to active + shows weekly progress). Removed the query and the row;
+  On Deck stays separate since it's a genuinely different question (scheduled
+  windows vs. unscheduled tasks).
+- ✅ **AUDIT-GPT §13 acceptance-criteria audit** (`500856e`) — checked every
+  criterion against the actual shipped state rather than assuming the beta
+  pass covered it. All but one already held (Plan's two top-level modes,
+  restore-account on every slide, the chartless→rhythm path, the mobile/
+  desktop nav-tabs anchors being mutually exclusive so the tour's last step
+  never silently drops on phones, `tour_*` vs `next_move_*`/`task_add`
+  analytics already distinguishing completion from activation). The one gap:
+  Planets.tsx told users to "rate the day **on Today**" — twice — but the
+  daily felt-rating nudge was removed from Today on 2026-07-31 (write-only,
+  confounded by its own advice) while the rating mechanism itself stayed
+  alive in Log's evening reflection composer. Nobody had updated the copy
+  pointing at the old location.
+
+**`main` is now at `500856e`, deployed twice this session.** Both deploys
+verified past the health check — `curl`'d the actual served JS bundle by its
+hash and grepped for strings that could only exist in the new build (first
+"Best next move" / "Adjust timing signature" / "The Moon's mood"; then
+"log how the day went" / "log a few days"). A green healthz proves the OLD
+build didn't crash; it doesn't prove the NEW one is what's serving —
+fetching the bundle by hash is the check that actually distinguishes them.
+
+---
+
 ## What's actually next
 
-The pass is closed, so nothing is half-finished. Candidates, in the order the
-game plan implies — but this is a fresh decision, not a queue:
+Nothing is queued or half-finished. Candidates for a genuinely fresh pick:
 
-1. **The owner's `main` advance is still the blocker** — everything from
-   2026-08-01/02 (including all of the above) is invisible on compass.day.
-   Nothing shipped this week has been seen by anyone but us.
-2. BETA-PASS §B5 hover-only interactions (beta users will be on phones) —
-   triaged "lean: beta", never executed.
-3. BETA-PASS §B1's remaining question: MOMENTS AHEAD vs Waves vs ON DECK are
-   still three list-like blocks answering adjacent questions.
-4. AUDIT-GPT §12's later phases.
+1. BETA-PASS's remaining open owner decision: friends-beta with an
+   un-lawyered privacy policy — yes/no, still unanswered.
+2. Owner actions from BACKLOG §0: VAPID, RESEND, ADMIN_TOKEN, ENGINE_TOKENS,
+   Google OAuth publish decision, Neon staging branch (§9b).
+3. AUDIT-GPT §12 Phase 5 — first-session validation with five real people who
+   haven't seen the product (this is qualitative, can't be automated).
+4. Whatever the STRATEGY-CONVERSATION eight-week cycle calls for next —
+   re-read it fresh rather than assume where "week 3" left off.
 
 ---
 
@@ -113,19 +159,31 @@ game plan implies — but this is a fresh decision, not a queue:
   `TOP_TABS` out of App.tsx rather than restating the labels, so the next
   rename fails loudly. (Same lesson as the typecheck-baseline one: triage a
   baseline, don't inherit it.)
+- **A green `/api/healthz` only proves the OLD build didn't crash.** After
+  pushing to `main`, fetch `https://compass.day/` for the `index-*.js` bundle
+  hash and confirm it changed, then `curl` that bundle and grep for a string
+  that could only exist in the new code. Two deploys this session were
+  confirmed this way; healthz alone would have looked identical either way.
+- **"Removed" doesn't always mean removed — check where it MOVED.**
+  Planets.tsx's stale "rate the day on Today" copy survived because the
+  daily felt-rating *nudge* was retired from Today, but the felt-rating
+  *mechanism* is still alive in Log's evening reflection. Grepping for the
+  retired feature's name isn't enough; check whether the capability
+  relocated before assuming the reference is simply dead.
 
 ## State of play
 
-`feat/tides-app` at `c165c5a`, pushed. **`main` still not advanced — nothing
-from 2026-08-01/02 is deployed**, including the email fix (owner saw the old
-flat email and thought the fix failed; it was never live). 245 tests + slop
-guard green; api-server/tides/typecheck:libs all 0 errors.
+`feat/tides-app` and `main` both at `500856e`, pushed, and `main` is the
+build actually serving compass.day (verified by bundle hash + content, not
+just health check). 245 tests + slop guard green; api-server/tides/
+typecheck:libs all 0 errors. Nothing outstanding from this session.
 
-**Owner actions unchanged** (BACKLOG §0): advance `main`, VAPID, RESEND,
-ADMIN_TOKEN, ENGINE_TOKENS (AstroLyrica is built and 503ing without it),
-Google OAuth publish decision, Neon staging branch. New from game plan: write
-the one-page Constitution + contrarian truth (founder work; fragments ready
-in STRATEGY-CONVERSATION).
+**Owner actions unchanged** (BACKLOG §0): VAPID, RESEND, ADMIN_TOKEN,
+ENGINE_TOKENS (AstroLyrica is built and 503ing without it), Google OAuth
+publish decision, Neon staging branch (§9b — `main`'s advance no longer
+needs this as an excuse; it's just still good practice). New from game plan:
+write the one-page Constitution + contrarian truth (founder work; fragments
+ready in STRATEGY-CONVERSATION).
 
 ## Decided — don't relitigate
 
