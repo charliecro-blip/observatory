@@ -527,8 +527,21 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     }
   }
 
+  // Skipping keeps the FORM'S DEFAULTS (07:00–23:00) rather than storing
+  // nothing. Chronotype is load-bearing — ritual timing, the planner's waking
+  // hours, and the sleep shading on the tide chart all read it — and with no
+  // record at all `sleepIntervals` returns [], so the planner will happily
+  // propose a 3am window. A typical rhythm is a far better prior than none,
+  // and Settings still owns the real answer whenever they want to give it.
   function handleChronotypeSkip() {
     onComplete(name.trim() || "Observer");
+    updateChronotype({
+      profile: chronoProfile ?? "steady",
+      freeWindows: buildFreeWindows(),
+      wakeTime, sleepTime,
+      assumed: true,   // not user-stated — never present this as their answer
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   function handleNameSubmit(e: React.FormEvent) {

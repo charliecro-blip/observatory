@@ -2,7 +2,7 @@ import { ElectionPicker } from "@/components/ElectionPicker";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import type { AskElectionContext } from "@/App";
 import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
 import { useNorthStars, useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
@@ -319,6 +319,13 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
           ))}
         </div>
 
+        {/* Plan weaves work into "the open stretches of your week" — but with
+            no calendar connected it doesn't know which stretches are open, so
+            the promise quietly degrades into guessing. Ask BEFORE the planning
+            happens, not after (owner 2026-08-02); dismissible, and gone for
+            good once connected. */}
+        {mode === "schedule" && <ConnectCalendarPrompt testerId={testerId} />}
+
         {/* SCHEDULE — "when should I do all of this?" */}
         {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />}
 
@@ -422,6 +429,86 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
         </div>
         </>)}
       </div>
+    </div>
+  );
+}
+
+/**
+ * "Compass will plan around what's already there."
+ *
+ * The Planner's own copy promises to weave work into "the open stretches of
+ * your week … around your waking hours and your calendar". With no calendar
+ * connected, the second half of that sentence is aspirational: it plans around
+ * a week it can't see, and the user only discovers the gap when a suggested
+ * window lands on top of a meeting.
+ *
+ * Deliberately placed BEFORE the planning UI rather than after a bad result —
+ * the fix is worth nothing once the plan is already wrong. Self-gating: absent
+ * when connected, when Google isn't configured on this deployment, and once
+ * dismissed (per tester, so a second tester on the same machine still sees it).
+ */
+function ConnectCalendarPrompt({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  const key = `obs_plan_gcal_prompt_${testerId ?? "anon"}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(key) === "1"; } catch { return false; }
+  });
+
+  const { data: status } = useQuery<{ connected: boolean; configured?: boolean }>({
+    queryKey: ["gcal-status", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/integrations/google-cal/status", {
+        headers: testerId ? { "x-tester-id": testerId } : {},
+      });
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 30_000,
+  });
+
+  // The popup posts back on success — refresh so the strip disappears without
+  // a reload, and so the Planner picks the events up on its next run.
+  React.useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === "google-cal-connected") {
+        qc.invalidateQueries({ queryKey: ["gcal-status"] });
+        qc.invalidateQueries({ queryKey: ["gcal-events"] });
+      }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [qc]);
+
+  if (dismissed || !testerId) return null;
+  if (!status || status.connected || status.configured === false) return null;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+      background: "var(--color-card)", border: "1px solid var(--color-border)",
+      borderLeft: "3px solid var(--color-primary)", borderRadius: 10,
+      padding: "10px 14px", marginBottom: 14,
+    }}>
+      <span style={{ fontSize: 15, flexShrink: 0 }}>▦</span>
+      <div style={{ flex: 1, minWidth: 220, fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
+        Connect a calendar and Compass will plan <b>around what's already there</b> —
+        otherwise it's placing work into a week it can't see.
+      </div>
+      <button
+        onClick={() => window.open(
+          `/api/integrations/google-cal/auth?testerId=${encodeURIComponent(testerId)}`,
+          "gcal-connect", "width=500,height=600,left=200,top=100")}
+        style={{
+          fontSize: 10.5, fontWeight: 600, padding: "5px 12px", borderRadius: 8, cursor: "pointer",
+          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+          color: "var(--color-primary)", flexShrink: 0,
+        }}>Connect →</button>
+      <button
+        onClick={() => { try { localStorage.setItem(key, "1"); } catch { /* private mode */ } setDismissed(true); }}
+        title="Not now"
+        style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+        ✕
+      </button>
     </div>
   );
 }

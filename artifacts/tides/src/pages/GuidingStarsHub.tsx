@@ -1102,8 +1102,15 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {/* Your long weather — Currents folded in as a context band. It sits
             BELOW your stars: you steer by your own aims first, and the slow
             arcs moving through your chart are the seasons those stars can ride.
-            Premium (personal chart). */}
-        {premiumUnlocked && currentsData?.hasChart && (() => {
+            Premium (personal chart).
+
+            Also requires at least one star. Its whole framing is "the seasons
+            your STARS can ride" — with no stars there is nothing to ride them,
+            so for a first-time visitor it was a page of profections and natal
+            transits standing between them and the one thing they came to do
+            (owner 2026-08-02: "we might back off the long weather bit — that's
+            a bit confusing for a beginner"). */}
+        {premiumUnlocked && currentsData?.hasChart && list.length > 0 && (() => {
           const prof = currentsData.profection;
           const transits: any[] = currentsData.majorTransits ?? [];
           // Jupiter & Saturn's house chapters — the great time-keepers get equal

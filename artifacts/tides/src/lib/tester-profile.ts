@@ -28,6 +28,13 @@ export interface Chronotype {
   // and best-times demote sleeping-hours windows.
   wakeTime?: string;                  // "HH:MM", 24h
   sleepTime?: string;                 // "HH:MM", 24h
+  // True when these values are a DEFAULT the app assumed (the user skipped the
+  // rhythm step) rather than something they told us. Skipping used to store
+  // nothing at all, which left sleepIntervals() empty and let the planner
+  // cheerfully propose a 3am window; a typical rhythm is a much better prior
+  // than none. Flagged so the app never presents an assumption as a statement,
+  // and so Settings can invite the real answer.
+  assumed?: boolean;
   updatedAt: string;                  // ISO
 }
 
