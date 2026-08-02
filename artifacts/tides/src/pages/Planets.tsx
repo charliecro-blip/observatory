@@ -233,7 +233,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
                 </span>
               </div>
               <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 3 }}>
-                Likely to arrive {CONTACT_TONE[contacts.nextHard.aspect] ?? "as a distinct flavor in the day"}. Notice it — then rate the day on Today and see if you felt it.
+                Likely to arrive {CONTACT_TONE[contacts.nextHard.aspect] ?? "as a distinct flavor in the day"}. Notice it — then log how the day went and see if you felt it.
               </div>
             </div>
           )}
@@ -242,7 +242,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
               Last 30 days: <b style={{ color: "var(--text-2)" }}>{contacts.pastHardDays.length}</b> {lit.adjective} day{contacts.pastHardDays.length === 1 ? "" : "s"}.
               {contacts.ratedCount > 0
                 ? <> You rated {contacts.ratedCount} of them — <b style={{ color: "#4a8060" }}>{contacts.alignedCount} felt aligned</b>. Your evidence lives in the Log.</>
-                : <> None rated yet — rate days on Today and your own evidence will build here.</>}
+                : <> None rated yet — log a few days and your own evidence will build here.</>}
             </div>
           )}
         </SectionCard>
