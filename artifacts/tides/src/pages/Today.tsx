@@ -8,6 +8,7 @@ import { Outbox, type OutboxState } from "@/lib/outbox";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
+import { pickNextMove } from "@/lib/next-move";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -718,7 +719,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: northStars } = useNorthStars(testerId);
 
-  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; }
+  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; goalId?: number | null; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
@@ -1212,6 +1213,88 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     </div>
                   );
                 })()}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Best next move — the reading above turned into one act. It sits
+            directly under the hero because the question the hero raises
+            ("what kind of time is this?") has exactly one useful answer
+            ("then do this"), and the two should not be separated by a
+            scroll. Deterministic (lib/next-move.ts) so the why is always
+            checkable against the rail. Shown at every density: this is the
+            core loop, not an add-on. */}
+        {(() => {
+          const openTasks = todayTasks.filter(t => t.done !== "true");
+          const activeStars = (northStars ?? []).filter((g: any) => g.status !== "done");
+          const move = pickNextMove({
+            now: new Date(),
+            currentHour: now?.planetaryHour ? {
+              planet: now.planetaryHour.planet,
+              began: now.planetaryHour.began,
+              ends: now.planetaryHour.ends,
+            } : null,
+            upcomingHours: (now?.upcomingHours ?? []).map((h: any) => ({ planet: h.planet, time: h.time })),
+            // A task's element comes from the star it hangs off — tasks don't
+            // carry one of their own.
+            tasks: openTasks.map(t => ({
+              id: t.id, title: t.title, planet: t.planet,
+              element: t.goalId ? (activeStars.find((g: any) => g.id === t.goalId)?.element ?? null) : null,
+            })),
+            stars: activeStars.map((g: any) => ({ id: g.id, title: g.title, planet: g.planet, element: g.element })),
+            dayElement: now?.reading?.element ?? now?.tide?.element ?? null,
+            voc: !!now?.voc?.isVOC,
+          });
+          if (!now) return null;
+          return (
+            <div style={{
+              background: "var(--color-card)", border: "1px solid var(--color-border)",
+              borderLeft: "3px solid var(--color-primary)", borderRadius: 12,
+              padding: "12px 16px", flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
+                Best next move
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                {move.kind === "task" && (
+                  <button
+                    onClick={() => { logEvent("next_move_done", { taskId: move.taskId }); toggleTask.mutate({ id: move.taskId!, done: true }); }}
+                    title="Mark it done"
+                    style={{
+                      width: 17, height: 17, borderRadius: 4, marginTop: 2, flexShrink: 0,
+                      border: "1.5px solid var(--color-primary)", background: "transparent", cursor: "pointer", padding: 0,
+                    }}
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, color: "var(--color-foreground)", fontWeight: 600, lineHeight: 1.35 }}>
+                    {move.title}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 3 }}>
+                    {move.why}
+                  </div>
+                  {move.caveat && (
+                    <div style={{ fontSize: 10.5, color: "#8a7a50", fontStyle: "italic", lineHeight: 1.5, marginTop: 3 }}>
+                      {move.caveat}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                  {move.when && (
+                    <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{move.when}</span>
+                  )}
+                  {move.kind !== "task" && (
+                    <button
+                      onClick={() => { logEvent("next_move_cta", { kind: move.kind }); onNavigate?.("work"); }}
+                      style={{
+                        fontSize: 10.5, padding: "4px 11px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", fontWeight: 600,
+                      }}>
+                      {move.kind === "star" ? "Add a step →" : "To your Stars →"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

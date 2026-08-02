@@ -132,6 +132,14 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // What we'll actually save: the user's pick if they made one, else the reading.
   const effElement = form.element || diagnosis?.element || "";
   const effPlanet = form.planet || diagnosis?.planets?.[0] || "";
+  // The planet and element pickers are OVERRIDES, not questions. Asking a
+  // first-time user to choose a ruling planet before their first star exists
+  // is asking them to know the system to use the system — so the reading
+  // stands by default and the pickers wait behind one line (beta pass §5).
+  const [showTimingOverrides, setShowTimingOverrides] = useState(false);
+  // The star that was just created, holding the "what's one next move?" ask.
+  const [nextMoveFor, setNextMoveFor] = useState<{ goalId: number; title: string; element?: string } | null>(null);
+  const [nextMoveTitle, setNextMoveTitle] = useState("");
 
   // Landed here from the morning glance: scroll that star's card into view and
   // hold a brief highlight so the eye lands on the game plan it came for.
@@ -368,12 +376,18 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
       }
       const r = await fetch("/api/planning/goals", { method: "POST", headers: authH(testerId), body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json(); throw new Error(e.message ?? "Failed"); }
+      return r.json();
     },
-    onSuccess: () => {
+    onSuccess: (created: any) => {
       qc.invalidateQueries({ queryKey: ["goals"] });
       qc.invalidateQueries({ queryKey: ["north-stars"] });
+      // A star with nothing under it is a wish. The one question that turns it
+      // into work — "what's one next move?" — is asked here, in the same
+      // breath, rather than left for the user to find later (beta pass §5:
+      // acting on a recommendation tied to real work IS the activation event).
+      if (created?.id) setNextMoveFor({ goalId: created.id, title: created.title, element: created.element ?? undefined });
       setForm({ title: "", description: "", horizon: "near", element: "", planet: "" });
-      setDiagnosis(null);
+      setDiagnosis(null); setShowTimingOverrides(false);
       setPendingAnchor(null); setShowForm(false); setFormError(null);
     },
     onError: (e: any) => setFormError(e.message),
@@ -532,6 +546,52 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           </div>
         )}
 
+        {/* The one question after a star is set. It sits exactly where the form
+            was, so the page doesn't jump and the ask reads as the next beat of
+            the same action — name the direction, then name one move. Skipping
+            is one tap and costs nothing; the star is already saved. */}
+        {nextMoveFor && (
+          <div style={{ background: "var(--color-card)", border: "1px solid #c8a84055", borderLeft: "3px solid #c8a840", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
+              <b>★ {nextMoveFor.title}</b> is set.
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+              What's one next move? Something you could actually do — Compass will find it a time that suits the work.
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                autoFocus
+                value={nextMoveTitle}
+                onChange={e => setNextMoveTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && nextMoveTitle.trim()) {
+                    createLinked.mutate({ goalId: nextMoveFor.goalId, kind: "task", title: nextMoveTitle.trim(), element: nextMoveFor.element });
+                    setNextMoveFor(null); setNextMoveTitle("");
+                  }
+                  if (e.key === "Escape") { setNextMoveFor(null); setNextMoveTitle(""); }
+                }}
+                placeholder="e.g. draft the outline"
+                style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none" }}
+              />
+              <button
+                onClick={() => {
+                  if (!nextMoveTitle.trim()) return;
+                  createLinked.mutate({ goalId: nextMoveFor.goalId, kind: "task", title: nextMoveTitle.trim(), element: nextMoveFor.element });
+                  setNextMoveFor(null); setNextMoveTitle("");
+                }}
+                disabled={!nextMoveTitle.trim()}
+                style={{ padding: "6px 16px", borderRadius: 7, border: "none", fontSize: 11.5, cursor: nextMoveTitle.trim() ? "pointer" : "default",
+                  background: nextMoveTitle.trim() ? "#1a2a3a" : "var(--color-border)", color: nextMoveTitle.trim() ? "#fff" : "var(--text-3)" }}>
+                Find it a time
+              </button>
+              <button onClick={() => { setNextMoveFor(null); setNextMoveTitle(""); }} style={{
+                padding: "6px 10px", borderRadius: 7, border: "none", background: "none",
+                fontSize: 11, color: "var(--text-3)", cursor: "pointer",
+              }}>Not yet</button>
+            </div>
+          </div>
+        )}
+
         {showForm && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
 
@@ -583,6 +643,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               </div>
             )}
 
+            {/* The overrides. Closed by default: the reading above already
+                chose, and a first star should cost a title and a tap. */}
+            <button onClick={() => setShowTimingOverrides(v => !v)} style={{
+              display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
+              cursor: "pointer", padding: 0, fontSize: 10.5, color: "var(--text-3)", textAlign: "left",
+            }}>
+              <span style={{ fontSize: 8, display: "inline-block", transition: "transform 0.15s", transform: showTimingOverrides ? "rotate(180deg)" : "none" }}>▾</span>
+              Adjust timing signature
+              {!showTimingOverrides && effPlanet && (
+                <span style={{ color: "var(--color-muted)" }}>
+                  · now {PLANET_GLYPH[effPlanet] ?? ""} {effPlanet}{effElement ? `, ${effElement}` : ""}
+                </span>
+              )}
+            </button>
+
+            {showTimingOverrides && (<>
             <div>
               <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 5 }}>Its ruling planet <span style={{ color: "#c8a04a" }}>— what drives its timing</span></div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -620,6 +696,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 })}
               </div>
             </div>
+            </>)}
 
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               {(["near", "mid", "long"] as const).map(h => (

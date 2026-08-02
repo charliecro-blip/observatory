@@ -26,6 +26,10 @@ export interface ReadingTestimony {
 export interface ReadingPattern { name: string; reading: string; polarity: 1 | -1 | 0; salience: number }
 export interface DayReadingData {
   flavour: string;
+  /** The convergent element the flavour names — the day's own current. Sent
+   *  by /api/tides/now and used by the next-move picker; the type had simply
+   *  omitted it. */
+  element: string;
   foci: string[];
   watch: { note: string; salience: number }[];
   counterpoint?: string;
