@@ -122,6 +122,13 @@ export const tasks = pgTable("tasks", {
   // day" was unanswerable from the data. Nullable and additive: the safe kind
   // of change per BACKLOG §9a, and old rows legitimately have no answer.
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  // When you STARTED it. The timing engine is stateless — it recomputes from
+  // the sky on every render — so without this it cannot know you are already
+  // mid-way through something, and "strongest fit right now" will cheerfully
+  // propose switching you off work in progress. Flow is the thing an app
+  // opened several times a day is most able to break, and this is the only
+  // fact needed to stop it. Nullable and additive, same shape as completedAt.
+  startedAt: timestamp("started_at", { withTimezone: true }),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

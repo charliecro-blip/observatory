@@ -1,6 +1,7 @@
 import React from "react";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { yourDay, type DayTask } from "@/lib/your-day";
+import { currentlyInProgress } from "@/lib/in-progress";
 
 // The two cards that ARE the journey: where you're steering, and what today
 // actually holds. Everything else this component once carried has been removed
@@ -49,7 +50,11 @@ export default function Dashboard({ northStars, windows, todayTasks, onNavigate 
   onNavigate?: (v: string) => void;
 }) {
   const stars = (northStars ?? []).slice(0, 3);
-  const day = yourDay(windows as any, todayTasks);
+  // Both this card and the Keep-going card above read the SAME in-progress
+  // answer. They disagreed once — "you're already in this" directly above
+  // "still loose: the same task" — and one shared call is the fix.
+  const running = currentlyInProgress(todayTasks as any);
+  const day = yourDay(windows as any, todayTasks, new Date(), running?.task ?? null);
 
   return (
     <div style={{ marginBottom: 22 }}>

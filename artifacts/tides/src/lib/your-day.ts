@@ -31,6 +31,8 @@ export interface DayTask {
   title: string;
   /** The API returns this as a string. */
   done?: string;
+  /** ISO instant when it was picked up, if it has been. */
+  startedAt?: string | null;
 }
 
 export interface YourDay {
@@ -68,6 +70,9 @@ export function yourDay(
   windows: DayWindow[] | undefined,
   tasks: DayTask[] | undefined,
   at: Date = new Date(),
+  /** The task currently underway, from lib/in-progress. Passed in rather than
+   *  recomputed so both cards read one answer instead of two. */
+  inProgress?: { id: number; title: string } | null,
 ): YourDay {
   const nowMs = at.getTime();
 
@@ -85,6 +90,18 @@ export function yourDay(
   // a long block does not occupy both rows and read as two commitments.
   const upcoming = timed.find((x) => x.start > nowMs && x !== current) ?? null;
 
+  // A task you are actively working on is NOT loose, and it is not "next" —
+  // it is what you are doing now.
+  //
+  // Caught on screen: the Keep-going card said "you're already in this" while
+  // this card, six inches below, filed the same task under "still loose". Two
+  // surfaces contradicting each other about the same fact is the exact failure
+  // the week caption had, so it gets the same fix — one source, checked once.
+  //
+  // A real scheduled window still wins the Now row: that is a commitment made
+  // in advance, whereas a start stamp is a note about what you picked up.
+  const started = inProgress ?? null;
+
   // Still loose — open tasks with no window carrying the same title.
   //
   // This is a TITLE join, because a task carries no reference to the window
@@ -94,12 +111,19 @@ export function yourDay(
   // from a list, rather than a scheduled task being double-counted as loose.
   const scheduled = new Set(timed.map((x) => norm(x.w.title)));
   const loose = (tasks ?? [])
-    .filter((t) => t.done !== "true" && !scheduled.has(norm(t.title)));
+    .filter((t) => t.done !== "true" && !scheduled.has(norm(t.title)))
+    .filter((t) => t.id !== started?.id);
+
+  const now = current
+    ? { title: current.w.title, when: `${fmt(current.start)}–${fmt(current.end!)}` }
+    : started
+      ? { title: started.title, when: "in progress" }
+      : null;
 
   return {
-    now: current ? { title: current.w.title, when: `${fmt(current.start)}–${fmt(current.end!)}` } : null,
+    now,
     next: upcoming ? { title: upcoming.w.title, when: fmt(upcoming.start) } : null,
     loose,
-    empty: !current && !upcoming && loose.length === 0,
+    empty: !now && !upcoming && loose.length === 0,
   };
 }

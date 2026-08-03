@@ -60,6 +60,41 @@ describe("the three rows answer three different questions", () => {
   });
 });
 
+describe("an in-progress task is not loose", () => {
+  // Caught on screen: the Keep-going card read "you're already in this" with
+  // "still loose · Revise the proposal" rendered six inches below it. Two
+  // cards contradicting each other about one fact — the same failure the week
+  // caption had when it argued with its own day labels.
+  const running = { id: 1, title: "Revise the proposal" };
+
+  it("moves it out of loose and into now", () => {
+    const d = yourDay([], [task(1, "Revise the proposal"), task(2, "Send invoice")], day(10), running);
+    expect(d.loose.map((t) => t.title)).toEqual(["Send invoice"]);
+    expect(d.now).toEqual({ title: "Revise the proposal", when: "in progress" });
+  });
+
+  it("lets a real scheduled window keep the Now row", () => {
+    // A window is a commitment made in advance; a start stamp is a note about
+    // what you picked up. The commitment wins the slot — but the started task
+    // still must not reappear as loose.
+    const d = yourDay([win("Client call", "09:00", "11:00")],
+      [task(1, "Revise the proposal")], day(10), running);
+    expect(d.now?.title).toBe("Client call");
+    expect(d.loose).toHaveLength(0);
+  });
+
+  it("is not empty when the only thing today is the task in hand", () => {
+    const d = yourDay([], [task(1, "Revise the proposal")], day(10), running);
+    expect(d.empty).toBe(false);
+  });
+
+  it("behaves as before when nothing is underway", () => {
+    const d = yourDay([], [task(1, "Revise the proposal")], day(10), null);
+    expect(d.now).toBeNull();
+    expect(d.loose).toHaveLength(1);
+  });
+});
+
 describe("loose means loose", () => {
   it("drops a task once a window carries the same title", () => {
     const d = yourDay([win("Send invoice", "15:00", "15:30")], [task(1, "Send invoice")], day(10));

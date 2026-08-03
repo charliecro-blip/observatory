@@ -11,6 +11,7 @@ import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
 import { suggestApproach } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
+import { currentlyInProgress, elapsedLabel } from "@/lib/in-progress";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -792,7 +793,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: northStars } = useNorthStars(testerId);
 
-  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; goalId?: number | null; }
+  interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; goalId?: number | null; startedAt?: string | null; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
     queryKey: ["tasks-today", testerId, today],
     queryFn: async () => {
@@ -802,6 +803,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     },
     enabled: !!testerId,
     refetchInterval: 30_000,
+  });
+
+  // Marking a start is what lets the stateless engine know you're mid-way
+  // through something. Without it, "strongest fit right now" will keep
+  // proposing that you switch off work already underway.
+  const startTask = useMutation({
+    mutationFn: async ({ id, started }: { id: number; started: boolean }) => {
+      const r = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ started: String(started) }),
+      });
+      if (!r.ok) throw new Error(`couldn't update that task (${r.status})`);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); },
   });
 
   const toggleTask = useMutation({
@@ -1398,39 +1414,67 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             actually computed, and is still the useful sentence. */}
         {(() => {
           if (!now) return null;
+          // FLOW PROTECTION. If something is already underway, the honest card
+          // is "keep going" — not a fresh recommendation. The engine is
+          // stateless and recomputes from the sky every render, so without the
+          // start stamp it would propose switching you off your own work, and
+          // for an app opened several times a day that is the most expensive
+          // mistake it can make.
+          //
+          // This deliberately OVERRIDES the sky. A better-fitting hour is not
+          // a reason to interrupt someone mid-task; the cost of the switch is
+          // real and immediate, while the gain is marginal and speculative.
+          const running = currentlyInProgress(todayTasks as any);
+          const inFlow = !!running;
           return (
             <div style={{
               background: "var(--color-card)", border: "1px solid var(--color-border)",
-              borderLeft: "3px solid var(--color-primary)", borderRadius: 12,
+              borderLeft: `3px solid ${inFlow ? "#4a7a52" : "var(--color-primary)"}`, borderRadius: 12,
               padding: "12px 16px", flexShrink: 0,
             }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
-                Strongest fit right now
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: inFlow ? "#4a7a52" : "var(--text-3)", marginBottom: 5 }}>
+                {inFlow ? `Keep going · ${elapsedLabel(running!.minutes)}` : "Strongest fit right now"}
               </div>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                {move.kind === "task" && (
+                {(inFlow || move.kind === "task") && (
                   <button
-                    onClick={() => { logEvent("next_move_done", { taskId: move.taskId }); toggleTask.mutate({ id: move.taskId!, done: true }); }}
+                    onClick={() => {
+                      const id = inFlow ? running!.task.id : move.taskId!;
+                      logEvent("next_move_done", { taskId: id, inFlow });
+                      toggleTask.mutate({ id, done: true });
+                    }}
                     title="Mark it done"
                     style={{
                       width: 17, height: 17, borderRadius: 4, marginTop: 2, flexShrink: 0,
-                      border: "1.5px solid var(--color-primary)", background: "transparent", cursor: "pointer", padding: 0,
+                      border: `1.5px solid ${inFlow ? "#4a7a52" : "var(--color-primary)"}`, background: "transparent", cursor: "pointer", padding: 0,
                     }}
                   />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, color: "var(--color-foreground)", fontWeight: 600, lineHeight: 1.35 }}>
-                    {move.title}
+                    {inFlow ? running!.task.title : move.title}
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 3 }}>
-                    {move.why}
+                    {inFlow
+                      ? "You're already in this. Compass won't move you off it — finish, or stop deliberately."
+                      : move.why}
                   </div>
-                  {move.caveat && (
+                  {inFlow && (
+                    <button
+                      onClick={() => { logEvent("in_progress_release", { taskId: running!.task.id }); startTask.mutate({ id: running!.task.id, started: false }); }}
+                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 10.5, color: "var(--text-3)" }}>
+                      not working on this anymore →
+                    </button>
+                  )}
+                  {!inFlow && move.caveat && (
                     <div style={{ fontSize: 10.5, color: "#8a7a50", fontStyle: "italic", lineHeight: 1.5, marginTop: 3 }}>
                       {move.caveat}
                     </div>
                   )}
-                  {now?.planetaryHour?.planet && (
+                  {/* Alternatives are for CHOOSING. Offering them to someone
+                      already working is the interruption this card exists to
+                      prevent, wearing a helpful face. */}
+                  {!inFlow && now?.planetaryHour?.planet && (
                     <AnotherFit
                       planet={now.planetaryHour.planet}
                       at={new Date()}
@@ -1442,10 +1486,25 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
-                  {move.when && (
+                  {!inFlow && move.when && (
                     <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{move.when}</span>
                   )}
-                  {move.kind !== "task" && (
+                  {/* Start — the only way the stateless engine ever learns you
+                      picked something up. Without a press here it keeps
+                      recommending, which is what made "keep going" impossible
+                      to build before there was a column to write to. */}
+                  {!inFlow && move.kind === "task" && (
+                    <button
+                      onClick={() => { logEvent("next_move_start", { taskId: move.taskId }); startTask.mutate({ id: move.taskId!, started: true }); }}
+                      disabled={startTask.isPending}
+                      style={{
+                        fontSize: 10.5, padding: "4px 13px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
+                        border: "1px solid #4a7a52", background: "#4a7a5212", color: "#4a7a52", fontWeight: 600,
+                      }}>
+                      {startTask.isPending ? "…" : "Start"}
+                    </button>
+                  )}
+                  {!inFlow && move.kind !== "task" && (
                     <button
                       onClick={() => { logEvent("next_move_cta", { kind: move.kind }); onNavigate?.("work"); }}
                       style={{

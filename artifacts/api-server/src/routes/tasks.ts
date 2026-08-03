@@ -88,13 +88,23 @@ router.patch("/tasks/:id", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { title, notes, done, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
+  const { title, notes, done, started, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
   // Stamp the moment it flipped to done, and clear it if it flips back — this
   // is the only record of WHEN work happened. `updatedAt` won't do: it moves
   // on any edit, so a retitled task would look like it was finished today.
   const completedAt = done === undefined ? undefined : (String(done) === "true" ? new Date() : null);
+  // Same for starting. The timing engine is stateless and recomputes from the
+  // sky every render, so without a start stamp it cannot know you are already
+  // mid-way through something and will happily propose switching you off it.
+  //
+  // Finishing also CLEARS the start: a completed task is not in progress, and
+  // leaving the stamp behind would let a finished item keep claiming the
+  // "keep going" slot for the rest of its window.
+  const startedAt = String(done) === "true" ? null
+    : started === undefined ? undefined
+    : (String(started) === "true" ? new Date() : null);
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
