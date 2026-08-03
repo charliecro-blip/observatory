@@ -273,6 +273,38 @@ router.get("/tides/now", async (req, res) => {
     nextSign: SIGNS[(Math.floor(moonLonNow / 30) + 1) % 12],
   };
 
+  // WHERE IN THE LUNAR CYCLE — a real position in a real period.
+  //
+  // The hero drew a sine wave labelled LOW · RISING · HIGH · EBB · LOW with a
+  // marker on it, and the owner asked the right question: "what is the cycle?"
+  // There wasn't one. The wave was decorative and the marker was a five-way
+  // lookup from a categorical tide level, so it could only jump between five
+  // fixed stops on a period nothing computed.
+  //
+  // The lunar month is an actual cycle with an actual position, and it is
+  // already the spine of the week chart. Position is elongation / 360, which is
+  // its canonical definition: 0 = new, 0.25 = first quarter, 0.5 = full,
+  // 0.75 = last quarter. Note this CANNOT be recovered from illumination alone —
+  // 50% lit is both first and last quarter — which is exactly why the angle is
+  // the source rather than the brightness.
+  const sunLonNow = ((planets.find((p) => p.planet === "Sun")!.longitude % 360) + 360) % 360;
+  const elongation = ((moonLonNow - sunLonNow) % 360 + 360) % 360;
+  const moonCycle = {
+    position: parseFloat((elongation / 360).toFixed(4)),
+    elongationDeg: parseFloat(elongation.toFixed(2)),
+    waxing: elongation < 180,
+    phase: moonPhaseName,
+    // The lunar cycle as an instruction, not an amount — the same six-word
+    // vocabulary the week chart labels its days with, so the two surfaces
+    // cannot drift apart.
+    approach: elongation < 22.5 ? "initiate"
+      : elongation < 112.5 ? "build"
+      : elongation < 157.5 ? "refine"
+      : elongation < 202.5 ? "release"
+      : elongation < 292.5 ? "consolidate"
+      : "recover",
+  };
+
   // Rhythm risk: VOC + low quality + hard Moon-to-disruptive-natal-planet aspects
   const DISRUPTIVE_NATAL = new Set(["Saturn", "Uranus", "Pluto", "Mars"]);
   const natalDisruption = personalTransits.filter(t =>
@@ -338,6 +370,7 @@ router.get("/tides/now", async (req, res) => {
     moonIllumination: fraction, // alias for Rail component
     moonSign,
     moonSignProgress,
+    moonCycle,
     sunSign,
     retrogrades,
     aspects,

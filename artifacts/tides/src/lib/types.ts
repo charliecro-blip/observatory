@@ -36,6 +36,17 @@ export interface TidesNow {
   moonPhase: string;
   moonIllumination: number;
   moonSign: string;
+  /** Where the Moon is in its month — elongation/360, the canonical definition.
+   *  Cannot be recovered from illumination alone (50% lit is both first and
+   *  last quarter), which is why the hero reads the angle rather than the
+   *  brightness. Replaced a decorative sine wave with a five-way marker. */
+  moonCycle?: {
+    position: number;
+    elongationDeg: number;
+    waxing: boolean;
+    phase: string;
+    approach: string;
+  };
   elementEmphasis?: string;
   planetaryHour: { planet: string; began: string; ends: string; quality: string; archetype?: string };
   upcomingHours: { planet: string; time: string }[];

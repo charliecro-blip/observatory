@@ -1204,12 +1204,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             : tide ? tideGuidance(character, tide.level, !!now?.voc?.isVOC) : heroText(now);
           const confNote = isQuiet ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
 
-          // Tide curve marker position: Low(0) → Rising(0.25) → High(0.5) → Ebb(0.75) → Low(1)
-          const curvePos = tide?.level === "low" ? 0.06
-            : tide?.level === "rising" ? 0.28
-            : tide?.level === "high" ? 0.5
-            : tide?.level === "ebb" ? 0.72
-            : 0.5; // "tide" mid sits at center
           const energyPct = Math.round((tide?.energy ?? 0.5) * 100);
 
           return (
@@ -1241,34 +1235,62 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     </div>
                   </div>
                 </div>
-                {/* Tide PHASE indicator — deliberately not a forecast graph.
-                    Its x-axis is the cycle (low → high → low), not the clock,
-                    so the swell is a schematic and only the marker carries
-                    data: where in the cycle this moment sits. Said out loud
-                    because it renders inches from "Energy 83%" and a
-                    confidence rating, and an analytical reader could
-                    reasonably have assumed its peaks were measured. The real
-                    time-series lives in the tide chart further down. */}
-                <div style={{ marginTop: 20, position: "relative", height: 30 }}
-                  title="Where this moment sits in the tide cycle — a phase indicator, not a graph of the day. The day's measured curve is in the tide chart below.">
-                  {(() => {
-                    const yAt = (x: number) => 20 - 16 * Math.sin(Math.PI * x / 300);
-                    const pts = Array.from({ length: 31 }, (_, i) => `${i * 10},${yAt(i * 10).toFixed(1)}`).join(" L");
-                    return (
-                      <svg viewBox="0 0 300 24" preserveAspectRatio="none" style={{ width: "100%", height: 30 }}
-                        role="img" aria-label={`Tide phase: ${levelLabel}`}>
-                        <path d={`M${pts}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeDasharray="3,3" />
-                        <circle cx={curvePos * 300} cy={yAt(curvePos * 300)} r="4.5" fill="#fff" />
-                      </svg>
-                    );
-                  })()}
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.55)", marginTop: 3, letterSpacing: "0.6px" }}>
-                    <span>LOW</span><span>RISING</span><span>HIGH</span><span>EBB</span><span>LOW</span>
-                  </div>
-                  <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.5)", marginTop: 4, letterSpacing: "0.4px" }}>
-                    WHERE IN THE CYCLE · not a graph of the day
-                  </div>
-                </div>
+                {/* WHERE IN THE LUNAR CYCLE.
+                    This was a sine wave labelled LOW · RISING · HIGH · EBB ·
+                    LOW with a marker on it, and the owner asked the question
+                    that ended it: "what is the cycle?" There wasn't one. The
+                    wave was drawn from Math.sin and the marker was a five-way
+                    lookup from a categorical tide level, so it could only jump
+                    between five fixed stops on a period nothing computed.
+
+                    The fix for that is not a disclaimer. A caption reading
+                    "not a graph of the day" underneath a graph is an admission
+                    that the picture is lying and a request to be forgiven for
+                    it — so the caption is gone and so is the invented curve.
+
+                    What replaces it is a real position in a real period:
+                    elongation / 360, the canonical definition of where the
+                    Moon is in its month. Every mark below is computed. */}
+                {now?.moonCycle && (() => {
+                  const mc = now.moonCycle;
+                  const STOPS = [
+                    { at: 0,    label: "new" },
+                    { at: 0.25, label: "first ¼" },
+                    { at: 0.5,  label: "full" },
+                    { at: 0.75, label: "last ¼" },
+                    { at: 1,    label: "new" },
+                  ];
+                  return (
+                    <div style={{ marginTop: 20 }}
+                      title={`${mc.phase} — ${Math.round(mc.position * 100)}% through the lunar month (${mc.elongationDeg}° from the Sun)`}>
+                      <div style={{ position: "relative", height: 15 }}>
+                        {/* The track IS the cycle: one lunar month, left to right. */}
+                        <div style={{ position: "absolute", left: 0, right: 0, top: 6,
+                          height: 2, background: "rgba(255,255,255,0.22)", borderRadius: 1 }} />
+                        {/* Elapsed portion — how much of this month is behind you. */}
+                        <div style={{ position: "absolute", left: 0, top: 6, height: 2,
+                          width: `${mc.position * 100}%`, background: "rgba(255,255,255,0.55)", borderRadius: 1 }} />
+                        {STOPS.slice(0, 4).map((st) => (
+                          <div key={st.at} style={{ position: "absolute", left: `${st.at * 100}%`, top: 3,
+                            width: 1, height: 8, background: "rgba(255,255,255,0.35)" }} />
+                        ))}
+                        <div style={{ position: "absolute", left: `${mc.position * 100}%`, top: 0,
+                          width: 14, height: 14, marginLeft: -7, borderRadius: "50%",
+                          background: "#fff", boxShadow: "0 0 0 3px rgba(255,255,255,0.18)" }} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9,
+                        color: "rgba(255,255,255,0.55)", marginTop: 5, letterSpacing: "0.6px" }}>
+                        {STOPS.map((st, i) => <span key={i}>{st.label}</span>)}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.8)", marginTop: 7, letterSpacing: "0.2px" }}>
+                        {mc.phase} · {mc.waxing ? "waxing" : "waning"} — a stretch for {({
+                          initiate: "starting", build: "building", refine: "refining",
+                          release: "releasing", consolidate: "consolidating", recover: "recovering",
+                        } as Record<string, string>)[mc.approach] ?? mc.approach}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Guidance + meta */}
