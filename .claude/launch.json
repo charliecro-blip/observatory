@@ -20,6 +20,15 @@
       "port": 3000
     },
     {
+      "name": "ayam",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/charlescross/Desktop/ayam-journal && env -u HTTP_PROXY -u HTTPS_PROXY npx vite --port 5178 --strictPort"
+      ],
+      "port": 5178
+    },
+    {
       "name": "daemon",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "cd /Users/charlescross/Desktop/daemon && pnpm dev"],
