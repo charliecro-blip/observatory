@@ -59,6 +59,15 @@ const VALENCE: Record<string, number> = { Venus: 1, Jupiter: 1, Mars: -1, Saturn
 // (×0.5); a square outweighs a benefic, a trine softens a malefic. Aversions
 // (semisextile/quincunx) never reach here — getMajorAspects omits them — but the
 // synthesis skips them defensively.
+// Mean daily motion in degrees — used only to estimate how long a non-lunar
+// aspect stays within orb, which is what files it under the right duration
+// band on the dashboard. Approximate by design: the difference between a
+// two-week and a six-month configuration is the point, not the exact day.
+const MEAN_MOTION: Record<string, number> = {
+  Sun: 0.986, Mercury: 1.383, Venus: 1.602, Mars: 0.524,
+  Jupiter: 0.083, Saturn: 0.034, Uranus: 0.012, Neptune: 0.006, Pluto: 0.004,
+};
+
 const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; word: string; ing: string }> = {
   conjunction: { harmony: 0, strength: 1.0, word: "meets", ing: "meeting" },
   sextile:     { harmony: 1, strength: 0.5, word: "reaches easily to", ing: "reaching easily to" },
@@ -83,7 +92,7 @@ const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; wor
  * than refuse. That is what keeps an LLM voice layer safe to depend on.
  */
 export interface TestimonyFacts {
-  kind: "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect" | "phase" | "voc";
+  kind: "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect" | "aspect" | "phase" | "voc";
   /** The planet whose voice this is, where there is one. */
   planet?: string;
   /** The Moon's partner in an aspect. */
@@ -92,6 +101,10 @@ export interface TestimonyFacts {
   orbDeg?: number;
   applying?: boolean;
   sign?: string;
+  /** For non-lunar aspects: roughly how many days this configuration stays
+   *  within orb. Lets a client file it under the right duration band without
+   *  inferring one from the planets involved. */
+  durationDays?: number;
   phaseName?: string;
   waxing?: boolean;
   /** Sect/hour standing, so a renderer can say "strongly placed" its own way. */
@@ -420,6 +433,53 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
       gift: PLANET_ROADS[other].gift, shadow: PLANET_ROADS[other].shadow,
       carriedBy: `the Moon ${nat.ing} ${other} — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
       note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
+  }
+
+  // ── Non-lunar aspects: the standing weather ────────────────────────────────
+  //
+  // This family did not exist. Every other layer of the sky produced testimony;
+  // planet-to-planet aspects were computed, folded into the day's HEIGHT at
+  // weight 0.05, and never spoken. That is why a week could carry a Saturn–
+  // Neptune square at 0° and still render as the flattest bars of the month:
+  // the loudest slow thing in the sky had no voice in the reading, only a
+  // whisper in a scalar.
+  //
+  // These are deliberately NOT the day's engine — the Moon is. They are the
+  // weather the day happens inside, so they carry lower salience than an
+  // applying Moon aspect but persist for days or months rather than hours.
+  // `durationDays` is what lets the dashboard file them under "this stretch"
+  // instead of guessing from the planets involved.
+  for (const a of m.aspects.filter(x => x.planet1 !== "Moon" && x.planet2 !== "Moon")) {
+    // Tight only. A 6° Jupiter–Saturn is real but it is background to the
+    // background; the surface has no room for it and the receipt can show it.
+    if (a.orb > 3) continue;
+    const nat = ASPECT_NATURE[a.aspect];
+    const th1 = PLANET_THEME[a.planet1], th2 = PLANET_THEME[a.planet2];
+    if (!nat || !th1 || !th2) continue;
+    const exact = Math.max(0, 1 - a.orb / 3);
+    // Same harmony+valence blend the Moon aspects use, averaged over the pair.
+    const pairValence = ((VALENCE[a.planet1] ?? 0) + (VALENCE[a.planet2] ?? 0)) / 2;
+    const score = nat.harmony !== 0 ? nat.harmony + 0.5 * pairValence : (pairValence || 0.3);
+    const polarity: 1 | -1 = score >= 0 ? 1 : -1;
+    // How long this configuration stays inside orb, from the pair's relative
+    // speed. Slow pairs are the ones worth naming as an era; fast pairs pass.
+    const rel = Math.abs((MEAN_MOTION[a.planet1] ?? 1) - (MEAN_MOTION[a.planet2] ?? 1));
+    const durationDays = rel > 0 ? Math.round(6 / rel) : 999;
+    push({
+      source: `aspect:${a.planet1}-${a.planet2}`,
+      element: PLANET_ELEMENT[a.planet1],
+      activities: [...th1.activities.slice(0, 2), ...th2.activities.slice(0, 1)],
+      // Weight from both dignities; salience low relative to lunar work but
+      // rising sharply as it perfects.
+      weight: (dig(a.planet1) + dig(a.planet2)) / 2,
+      salience: 0.55 * (0.35 + 0.65 * exact) * nat.strength,
+      polarity,
+      facts: { kind: "aspect", planet: a.planet1, partner: a.planet2, aspect: a.aspect,
+               orbDeg: a.orb, applying: a.applying, durationDays },
+      gift: PLANET_ROADS[a.planet1]?.gift, shadow: PLANET_ROADS[a.planet2]?.shadow,
+      carriedBy: `${a.planet1} ${nat.ing} ${a.planet2}`,
+      note: `${a.planet1} ${nat.word} ${a.planet2} (${a.orb.toFixed(1)}°${a.applying ? " applying" : " separating"}) — ${polarity > 0 ? "supports" : "complicates"} ${th2.verb}`,
+    });
   }
 
   // Phase — where in the cycle.
