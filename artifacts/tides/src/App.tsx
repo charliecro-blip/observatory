@@ -97,7 +97,42 @@ function SubTabbed({ tabs, children, initial }: { tabs: string[]; children: (act
   );
 }
 
-const queryClient = new QueryClient();
+/**
+ * Measured 2026-08-02: a single cold load fired **27 API requests across 20
+ * distinct paths**, seven of them duplicated. Production TTFB is ~0.5s on
+ * every endpoint — even `/api/healthz`, which does no work — so the cost is
+ * per-REQUEST, not per-byte (payloads are already gzipped: the day payload is
+ * 9.4 KB on the wire). With ~6 connections per host that's several round-trip
+ * waves before the page settles.
+ *
+ * The client was constructed with no defaults at all, which means React
+ * Query's own: `staleTime: 0` (every component that mounts re-fetches, even
+ * if an identical query resolved a second ago) and `retry: 3` (a 404 or a 503
+ * from an unconfigured integration is attempted four times).
+ *
+ * These defaults are chosen for data that describes the SKY: it changes on
+ * the scale of minutes, so a minute of staleness is invisible to the user and
+ * removes a whole class of redundant fetches. Individual queries that need
+ * fresher data still override staleTime themselves.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      // A 4xx is a fact about the request, not a transient failure — retrying
+      // a missing natal chart three more times cannot make it exist. Retry
+      // only genuine server/network errors, and only once.
+      retry: (failureCount, error: unknown) => {
+        const status = (error as { status?: number })?.status;
+        if (typeof status === "number" && status >= 400 && status < 500) return false;
+        return failureCount < 1;
+      },
+      // Coming back to the tab shouldn't re-run twenty queries; staleTime
+      // already governs when the data is genuinely old enough to refresh.
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 

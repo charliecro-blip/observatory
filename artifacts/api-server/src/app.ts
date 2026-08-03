@@ -117,8 +117,22 @@ app.use("/api", router);
 
 app.get("/privacy", privacyHandler);
 
-// Serve Tides frontend as static files
+// Serve Tides frontend as static files.
+//
+// Everything under /assets is CONTENT-HASHED by the build (index-eDsprgyI.js),
+// so a given URL's bytes can never change — a new build produces a new name.
+// Those are safe to cache forever, and `immutable` additionally tells the
+// browser not to send a revalidation request on reload. They were being served
+// with a 4-hour max-age, which meant a returning user re-validated the whole
+// bundle every session for no possible benefit.
+//
+// index.html is deliberately excluded: it is the one file whose contents DO
+// change in place, and it carries the pointers to the hashed assets.
 const publicDir = path.join(process.cwd(), "artifacts/tides/public");
+app.use("/assets", express.static(path.join(publicDir, "assets"), {
+  immutable: true,
+  maxAge: "1y",
+}));
 app.use(express.static(publicDir));
 
 // SPA routing: serve index.html for non-API routes

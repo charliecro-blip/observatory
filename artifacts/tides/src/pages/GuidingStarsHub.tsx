@@ -611,13 +611,27 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 people a shape to copy. Owner #4: 'setting up a new guiding
                 star needs encouragement / walking people through it.' */}
             <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
-              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Name it, and the sky reads its nature — a ruling planet and element that set its best timing. Adjust either if you like, set a horizon, then break it into tasks and habits below.
+              <b style={{ color: "var(--color-primary)" }}>A Guiding Star is a direction you're steering toward</b> — a longer-term ideal, not a single task. Compass reads its nature from your wording to learn when it's best served. <b>Not everything worth steering toward is ambition:</b> rest, people, and home are directions too — and the days that suit them are days the app would otherwise have nothing to offer you.
             </div>
+            {/* The examples used to be four flavours of achievement ("Finish the
+                book", "Grow the business"), which quietly taught that a Guiding
+                Star means output. That skews what the app can ever say: a
+                watery, inward day has nothing to point at if every star is
+                fire or air, so it reads as a flat day instead of a day for
+                different work. Grouped by the KIND of life a star can belong to
+                — the labels, not the elements, do the teaching. */}
             {!form.title && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                <span style={{ fontSize: 9.5, color: "var(--color-muted)", alignSelf: "center", marginRight: 2 }}>e.g.</span>
-                {["Finish the book", "Grow the business", "Get strong & steady", "Deepen my closest bonds"].map(ex => (
-                  <button key={ex} onClick={() => setForm(f => ({ ...f, title: ex }))} style={{
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
+                <span style={{ fontSize: 9.5, color: "var(--color-muted)", marginRight: 2 }}>e.g.</span>
+                {[
+                  { ex: "Finish the book", kind: "make" },
+                  { ex: "Grow the business", kind: "build" },
+                  { ex: "Get strong & steady", kind: "body" },
+                  { ex: "Rest without guilt", kind: "restore" },
+                  { ex: "Deepen my closest bonds", kind: "people" },
+                  { ex: "Make my home feel like mine", kind: "home" },
+                ].map(({ ex, kind }) => (
+                  <button key={ex} onClick={() => setForm(f => ({ ...f, title: ex }))} title={`A "${kind}" direction`} style={{
                     fontSize: 10, padding: "3px 10px", borderRadius: 10, border: "1px dashed #d0c8bc",
                     background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer",
                   }}>{ex}</button>
