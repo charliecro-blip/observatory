@@ -10,6 +10,7 @@ import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
 import { suggestApproach } from "@/lib/approach";
+import { conditionalFits } from "@/lib/alternatives";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -160,6 +161,56 @@ const QUICK_INTENTIONS: { label: string; mode: "send" | "fill"; value: string }[
   { label: "Is now a good time to…", mode: "fill", value: "Is now a good time to " },
   { label: "When should I…", mode: "fill", value: "When today or this week should I " },
 ];
+
+/**
+ * "Another fit" — collapsed, conditional, never coequal with the default.
+ *
+ * Three unordered recommendations would rebuild exactly the indecision that
+ * Strongest Fit exists to remove, so this stays shut until asked for. What
+ * makes it conditional rather than a list is that each line is keyed to
+ * something the engine cannot observe — your focus, your energy, whether
+ * you've been alone all day. The user chooses by consulting themselves, which
+ * is both more useful than a ranking and the honest admission: Compass reads
+ * the sky, not the body.
+ */
+function AnotherFit({ planet, at, voc, moonSign, wakeTime, sleepTime }: {
+  planet: string;
+  at: Date;
+  voc: boolean;
+  moonSign?: string | null;
+  wakeTime?: string | null;
+  sleepTime?: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const fits = conditionalFits({ planet, at, voc, moonSign, wakeTime, sleepTime });
+  // No register for this planet — collapse entirely rather than offer a row
+  // with filler in it.
+  if (!fits.length) return null;
+  return (
+    <div style={{ marginTop: 7 }}>
+      <button
+        onClick={() => { setOpen((v) => !v); if (!open) logEvent("another_fit_open", { planet }); }}
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 10.5, color: "var(--text-3)" }}>
+        {open ? "▴ hide" : "▾ another fit"}
+      </button>
+      {open && (
+        <div style={{ marginTop: 5 }}>
+          {fits.map((f) => (
+            <div key={f.capacity} style={{ display: "flex", gap: 7, alignItems: "baseline", padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
+              <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{f.condition}</span>
+              <span style={{ color: "var(--color-muted)" }}>— {f.suggestion}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4, fontStyle: "italic" }}>
+            {fits[0].basis === "voc"
+              ? "The Moon is void — these all finish rather than begin."
+              : "Compass can read the hour, not your energy. You pick the line that's true."}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
@@ -1357,6 +1408,16 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     <div style={{ fontSize: 10.5, color: "#8a7a50", fontStyle: "italic", lineHeight: 1.5, marginTop: 3 }}>
                       {move.caveat}
                     </div>
+                  )}
+                  {now?.planetaryHour?.planet && (
+                    <AnotherFit
+                      planet={now.planetaryHour.planet}
+                      at={new Date()}
+                      voc={!!now?.voc?.isVOC}
+                      moonSign={now?.moonSign}
+                      wakeTime={testerProfile?.chronotype?.wakeTime}
+                      sleepTime={testerProfile?.chronotype?.sleepTime}
+                    />
                   )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
