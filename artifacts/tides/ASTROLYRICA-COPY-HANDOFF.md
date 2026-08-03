@@ -1,0 +1,470 @@
+# Compass — copy inventory for the Astrolyrica voice pass
+
+Paste this whole file into the Astrolyrica chat. It contains **every
+user-facing copy table in the app**, verbatim, plus the rules each one has to
+satisfy. Nothing here needs repo access — the strings are all inline.
+
+What comes back should be the same tables with the same keys and the same
+shapes, rewritten in the Astrolyrica voice. Keys and structure are load-bearing
+(code indexes them); only the strings change.
+
+---
+
+## What Compass is, in one paragraph
+
+Compass reads the sky around a moment and turns it into a plain suggestion —
+what this hour is good for, and how to go about it. It is a timing app, not a
+prediction app. The astrology is computed deterministically from an ephemeris;
+an LLM never decides timing, only explains it. The product's stance is that the
+sky describes *qualities of time*, and the user matches their own activities to
+them — so almost all copy is about **ways of going about things**, not about
+what will happen.
+
+## Non-negotiable rules for any replacement copy
+
+These are product commitments, not style preferences. Copy that breaks one is
+wrong even if it reads beautifully.
+
+1. **Never manufacture significance.** On a quiet day the app says so. No line
+   may imply something is happening when nothing is.
+2. **Describe, don't promise.** Coherence, not favourability. "A charged hour
+   can be a difficult one." Never predict an outcome or guarantee a result.
+3. **Void-of-course forbids beginnings.** Every VOC string must be a re-verb —
+   finish, return, revise, repair. Never "start", "begin", "launch".
+4. **Wind-down forbids arousal.** Nothing high-arousal in the last two hours
+   before sleep — no "train hard", "compete", "sprint", "perform", "publish".
+   This is enforced by tests.
+5. **Name an outlet, not just a hazard.** Every shadow has a `work` — where the
+   same energy can legitimately go. A difficulty named without an outlet is a
+   warning label. (This field was added *because* the day's edge only warned.)
+6. **No jargon in plain clothes.** "your core self" was replaced by "your sense
+   of yourself" — the first names a concept, the second names something a
+   reader recognises in themselves.
+7. **No endorsement language.** "Stacked support" was replaced, because
+   "support" implied the sky was backing the user's plan. The computed fact is
+   only that several independent layers point the same way.
+8. **Nothing circular.** Fortune was defined as "your fortune".
+9. **Rest and company are first-class**, not consolation prizes. Being depleted
+   or wanting people are legitimate ways to spend an hour.
+10. **Concrete enough to act on within the hour.** "Stillness counts as the
+    work" is good. "Weight arriving, not yet landed" is evocative and useless.
+
+## The three defects found by reading the live app (the failure modes to hunt)
+
+- **"Stacked support — 3 other layers of the sky agree."** → endorsement.
+- **"Moon grinds against your core self (0.7°)"** → concept, not experience.
+- **"Fortune: your fortune"** → circular definition.
+
+All three had passed review as code. They were only caught by reading them on
+screen, which is why this pass is worth doing across the whole vocabulary.
+
+## Voice notes
+
+- Second person, lowercase, no exclamation marks.
+- Short. Most of these render at 10–12px in a dense dashboard.
+- British-ish plainness over American motivational register. No "crush it",
+  no "unlock", no "harness".
+- The app is allowed to decline, to say nothing is happening, and to tell
+  someone to rest. It should never sound like it is selling them their day.
+
+---
+
+# The tables
+
+### `PLANET_ROADS` — `artifacts/api-server/src/lib/synthesis.ts`
+gift / shadow / work for the seven visible planets. `work` is the outlet — where the shadow's energy can legitimately go. Used by the day's edge line and by transit notes.
+
+```ts
+const PLANET_ROADS: Record<string, { gift: string; shadow: string; work: string }> = {
+  Sun:     { gift: "vitality and warmth", shadow: "pride, needing to be the center",
+             work: "put the wanting-to-be-seen into making something worth seeing" },
+  Moon:    { gift: "care and attunement", shadow: "moodiness, clinging",
+             work: "feel it deliberately and briefly, rather than all day sideways" },
+  Mercury: { gift: "clarity and curiosity", shadow: "overthinking, scattered nerves",
+             work: "write the loop down — it stops circling once it is on paper" },
+  Venus:   { gift: "warmth and ease", shadow: "indulgence, avoiding the hard word",
+             work: "have the pleasant thing and say the true thing, in that order" },
+  Mars:    { gift: "courage and decisive effort", shadow: "impatience, a short fuse",
+             work: "spend the edge on something physical and finishable, before it finds a person" },
+  Jupiter: { gift: "faith and generosity", shadow: "overreach, glossing the detail",
+             work: "say yes to the size, then check the one detail you would rather skip" },
+  Saturn:  { gift: "discipline and endurance", shadow: "rigidity, fear, gloom",
+             work: "do the smallest real piece — the weight lifts by moving, not by resolving" },
+};
+```
+
+### `OUTER_THEME` — `artifacts/api-server/src/lib/synthesis.ts`
+same shape for the three outers, plus a `verb`.
+
+```ts
+const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> = {
+  Uranus:  { verb: "breaking the old pattern", gift: "fresh air and honest change", shadow: "restlessness, rupture for its own sake",
+             work: "change one real thing on purpose, so the restlessness has somewhere to land" },
+  Neptune: { verb: "dissolving and imagining", gift: "imagination and compassion", shadow: "fog, drift, self-deception",
+             work: "make something or rest — both use the fog; deciding in it does not" },
+  Pluto:   { verb: "deep renovation", gift: "depth and renewal", shadow: "control, obsession",
+             work: "name what you are actually trying to control, then loosen one grip" },
+};
+```
+
+### `ELEMENT_ROADS` — `artifacts/api-server/src/lib/synthesis.ts`
+gift / shadow per element.
+
+```ts
+const ELEMENT_ROADS: Record<Element, { gift: string; shadow: string }> = {
+  fire:  { gift: "courage and initiative", shadow: "burnout, recklessness" },
+  earth: { gift: "groundedness and follow-through", shadow: "rigidity, drudgery, perfectionism" },
+  air:   { gift: "perception and perspective", shadow: "overthinking, all talk and no move" },
+  water: { gift: "empathy and renewal", shadow: "overwhelm, escapism, withdrawal" },
+};
+```
+
+### `NATAL_POINT_WORD` — `artifacts/api-server/src/lib/synthesis.ts`
+what a natal point MEANS when a transit lands on it. Appears as: 'Moon grinds against {this} (0.7°)'.
+
+```ts
+const NATAL_POINT_WORD: Record<string, string> = {
+  Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "your relating",
+  Mars: "your drive", Jupiter: "your growth", Saturn: "your foundations",
+  Uranus: "your independence", Neptune: "your imagination", Pluto: "your depths",
+  ASC: "how you meet the world", MC: "your work in the world",
+  Fortune: "your body and resources", // the Lot — defining it as "your fortune" said nothing
+};
+```
+
+### `BY_PART` — `artifacts/tides/src/lib/approach.ts`
+the core activity vocabulary: planet x time-of-day. One is picked by a stable rotation; the refresh arrow cycles them. 3-5 per band.
+
+```ts
+const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
+  Sun: {
+    early:   ["set the day's one intention", "get light on your face", "decide what today is actually for"],
+    morning: ["make the decision as yourself", "lead the meeting", "put your name on it", "ask for the thing directly"],
+    midday:  ["be seen — present, publish", "claim credit honestly", "back someone publicly", "make the call you've been deferring"],
+    evening: ["say the thing you meant to say", "let something you made be seen", "give someone your full attention", "celebrate a finished thing"],
+    winddown:["name one thing that went right", "put the day down deliberately", "thank someone specifically"],
+    night:   ["let it keep until morning"],
+  },
+  Moon: {
+    early:   ["notice what mood you woke in", "eat something properly", "move slowly on purpose"],
+    morning: ["tend home & body", "call your people", "put the house back in order", "cook ahead"],
+    midday:  ["cook for someone", "check in with someone who'd like it", "tend the thing you've been neglecting", "ask how someone actually is"],
+    evening: ["water rituals — bathe, swim", "make the room comfortable", "eat with people", "put something away properly"],
+    winddown:["nap without guilt", "journal the mood", "let the day settle", "make the room soft"],
+    night:   ["rest — this is the hour for it", "let the feeling pass through without a verdict"],
+  },
+  Mercury: {
+    early:   ["sort the day before it starts", "write the list", "clear the desk first", "read one thing properly"],
+    morning: ["write & send", "learn the skill", "draft the difficult message", "ask the question you've been guessing at"],
+    midday:  ["run the errands", "negotiate the detail", "compare the two options on paper", "teach it to someone and find the gap", "make the call, don't email"],
+    evening: ["fix the words", "reply to what's outstanding", "read back what you wrote this morning", "name tomorrow's first sentence"],
+    winddown:["tidy the inbox and stop", "note tomorrow's first task", "close the open loops in writing"],
+    night:   ["read something undemanding", "stop deciding — write it down instead"],
+  },
+  Venus: {
+    early:   ["make the morning pleasant on purpose", "choose what you actually like"],
+    morning: ["beautify the space", "choose the pleasing option", "make the peace offering", "put care into the presentation"],
+    midday:  ["reconcile & connect", "tend love & friendship", "buy the thing that lasts", "make it look the way it should"],
+    evening: ["enjoy something on purpose", "share a meal", "say the affectionate thing out loud", "make plans with someone"],
+    winddown:["something soft — music, a bath, company", "let it be enough", "put beauty in the room you'll wake in"],
+    night:   ["comfort over effort"],
+  },
+  Mars: {
+    early:   ["train hard", "do the brave errand first", "take the hardest task while you're fresh"],
+    morning: ["train hard", "make the cut", "start the thing you've been circling", "say the direct no"],
+    midday:  ["have the direct conversation", "compete at something", "clear the blocked item by force", "do the physical job"],
+    evening: ["have the conversation you've been avoiding", "finish by force if needed", "throw something out", "settle the thing rather than sleep on it"],
+    winddown:["cut one thing loose", "decisive tidying, then stop", "write the boundary you'll hold tomorrow"],
+    night:   ["let the edge go until morning", "spend it walking, not arguing"],
+  },
+  Jupiter: {
+    early:   ["zoom out to the larger story", "ask what this is in service of"],
+    morning: ["apply & publish", "say yes bigger", "make the introduction", "aim one size higher than comfortable"],
+    midday:  ["teach what you know", "plan the expansion", "make the generous offer", "back someone else's bigger idea"],
+    evening: ["be generous first", "make the bigger ask", "widen the plan before narrowing it", "feed people"],
+    winddown:["read something that widens the frame", "let the plan be big and unwritten", "be glad about one thing on purpose"],
+    night:   ["dream it larger; write it tomorrow"],
+  },
+  Saturn: {
+    early:   ["do the boring foundation while it's quiet", "start the thing that needs a long runway"],
+    morning: ["keep the commitment", "build the part no one sees", "do the unglamorous hour first", "say what you can actually deliver"],
+    midday:  ["pay the debt", "prune & cancel", "fix the thing properly rather than again", "put the structure under it"],
+    evening: ["review the long game", "close the loop", "decline something to protect the rest", "check the work against the standard"],
+    winddown:["put one thing in order, slowly", "the unglamorous task, done properly", "set the boundary and keep it", "end it on time, deliberately"],
+    night:   ["stillness counts as the work", "one slow, small thing — or nothing"],
+  },
+};
+```
+
+### `VOC_FORMS` — `artifacts/tides/src/lib/approach.ts`
+void-of-course forms. Every entry must be a RE-verb — the tradition's counsel is finish, don't begin.
+
+```ts
+const VOC_FORMS: Record<string, string[]> = {
+  Sun:     ["revisit what you already put your name to", "re-read it before it goes out"],
+  Moon:    ["rest, tidy, tend what's already yours", "return to something comforting"],
+  Mercury: ["revise & re-send", "clear the backlog, start nothing new"],
+  Venus:   ["return to someone you've been meaning to", "re-make something you already love"],
+  Mars:    ["finish what's already in motion", "clear the decks, don't open a front"],
+  Jupiter: ["return to the bigger plan and revise it", "re-read what you meant to learn"],
+  Saturn:  ["close out an old obligation", "repair rather than rebuild"],
+};
+```
+
+### `REGISTER` — `artifacts/tides/src/lib/alternatives.ts`
+'another fit' — the same hour spent three other ways, keyed to what the engine cannot observe. `day` vs `quiet` (wind-down/night).
+
+```ts
+const REGISTER: Record<string, Record<Capacity, Forms>> = {
+  Sun: {
+    depleted: { day: ["do the one visible thing, then stop", "let a small win count"],
+                quiet: ["name one thing that went right"] },
+    restless: { day: ["walk somewhere you can be seen", "move the body toward the goal"],
+                quiet: ["a slow walk, nothing strenuous"] },
+    social:   { day: ["say the thing in front of someone", "let a friend see the work"],
+                quiet: ["tell one person how the day went"] },
+  },
+  Moon: {
+    depleted: { day: ["eat, rest, lower the bar on purpose", "tend the body first"],
+                quiet: ["rest without earning it"] },
+    restless: { day: ["walk, swim, move water", "cook something with your hands"],
+                quiet: ["stretch, then stop"] },
+    social:   { day: ["call the person you think of first", "be domestic with someone"],
+                quiet: ["sit with someone, no agenda"] },
+  },
+  Mercury: {
+    depleted: { day: ["sort, file, tidy — low-stakes ordering", "one small message, not the hard one"],
+                quiet: ["note tomorrow's first task and close the laptop"] },
+    restless: { day: ["walk and dictate", "run the errands that need legs"],
+                quiet: ["walk without the phone"] },
+    social:   { day: ["talk it through with someone", "teach the thing you just learned"],
+                quiet: ["a light conversation, nothing decided"] },
+  },
+  Venus: {
+    depleted: { day: ["make one thing nicer, cheaply", "choose comfort deliberately"],
+                quiet: ["something soft — music, a bath"] },
+    restless: { day: ["move somewhere beautiful", "dance, garden, arrange"],
+                quiet: ["move slowly through a pleasant room"] },
+    social:   { day: ["share a meal", "repair the thing left unsaid"],
+                quiet: ["good company, low effort"] },
+  },
+  Mars: {
+    depleted: { day: ["one decisive small thing, then stop", "clear the smallest blocked item"],
+                quiet: ["cut one thing loose, then rest"] },
+    restless: { day: ["train hard", "physical work with a visible end"],
+                quiet: ["decisive tidying — movement without adrenaline"] },
+    social:   { day: ["have the direct conversation", "do something competitive with people"],
+                quiet: ["say the honest thing kindly, then leave it"] },
+  },
+  Jupiter: {
+    depleted: { day: ["read something that widens the frame", "be generous in one cheap way"],
+                quiet: ["let the plan be big and unwritten"] },
+    restless: { day: ["go somewhere further than usual", "move toward the bigger version"],
+                quiet: ["a wandering walk, no destination"] },
+    social:   { day: ["make the bigger ask of someone", "teach, host, introduce two people"],
+                quiet: ["a long conversation with no outcome"] },
+  },
+  Saturn: {
+    depleted: { day: ["the smallest unglamorous task, done properly", "lower the commitment honestly"],
+                quiet: ["stillness counts as the work"] },
+    restless: { day: ["physical order — clear, sort, repair", "the maintenance you keep deferring"],
+                quiet: ["put one thing in order, slowly"] },
+    social:   { day: ["set the boundary out loud", "keep the promise you made someone"],
+                quiet: ["say no, kindly and early"] },
+  },
+};
+```
+
+### `CONDITION` — `artifacts/tides/src/lib/alternatives.ts`
+the three condition phrases those are keyed to.
+
+```ts
+const CONDITION: Record<Capacity, string> = {
+  depleted: "if you're running on empty",
+  restless: "if you need to move",
+  social: "if you'd rather not be alone",
+};
+```
+
+### `VOC_BY_CAPACITY` — `artifacts/tides/src/lib/alternatives.ts`
+VOC overrides capacity — re-verbs again.
+
+```ts
+const VOC_BY_CAPACITY: Record<Capacity, string> = {
+  depleted: "return to something already underway — start nothing",
+  restless: "walk, tidy, move — but open no new front",
+  social: "reconnect with someone you've been meaning to",
+};
+```
+
+### `FRAMING` — `artifacts/tides/src/lib/modes.ts`
+how the four zones are labelled in each temporal mode.
+
+```ts
+const FRAMING: Record<DayMode, ZoneFraming> = {
+  morning: {
+    moveLabel: "Where to start",
+    dayLabel: "Already committed",
+    dayEmpty: "Nothing committed yet — the day is open.",
+    aheadLabel: "Shape of the day",
+  },
+  ordinary: {
+    moveLabel: "Strongest fit right now",
+    dayLabel: "Your day",
+    dayEmpty: "Nothing on today — weave your day in Plan →",
+    aheadLabel: "Ahead",
+  },
+  evening: {
+    moveLabel: "Finish, release, or carry",
+    dayLabel: "How the day went",
+    dayEmpty: "Nothing was on today.",
+    aheadLabel: "Tomorrow's first shift",
+  },
+};
+```
+
+### `CHARACTER_ESSENCE` — `artifacts/tides/src/lib/elements.ts`
+The hero's one-line essence under the tide name. Renders at 15px directly under 'Surge Tide'.
+
+```ts
+export const CHARACTER_ESSENCE: Record<TideCharacter, string> = {
+  deep:     "Feeling, intuition, and slow creative depth.",
+  surge:    "Initiative, courage, and visible action.",
+  building: "Patient craft, structure, and finishing.",
+  clear:    "Thought, communication, and connection.",
+};
+```
+
+
+### `QUIET_DAY_GUIDANCE` — same file
+What the hero says when the sky is genuinely quiet. This is where rule 1 lives: the app declines rather than inventing a reading.
+
+```ts
+export const QUIET_DAY_GUIDANCE: Record<TideCharacter, string> = {
+  deep:     "A quiet, still day — nothing pulling hard. Follow what feeling asks for; your rhythm is your own.",
+  surge:    "A quiet, open day — no strong current. Move if you want to, but nothing's pushing. Your rhythm is your own.",
+  building: "A quiet, steady day — nothing demanding. Good for ordinary, unhurried work. Your rhythm is your own.",
+  clear:    "A quiet, open day — the sky is calm. Think, drift, or do nothing in particular. Your rhythm is your own.",
+};
+```
+
+
+### `tideGuidance()` — same file
+The hero's main paragraph, by character x level, with a VOC override.
+
+```ts
+export function tideGuidance(character: TideCharacter, level: string, voc = false): string {
+  const grain = CHARACTER_GRAIN[character];
+  const pace = LEVEL_GUIDANCE[level] ?? LEVEL_GUIDANCE.tide;
+  const verbs = grain.split(", ");
+  if (level === "high" || level === "rising") {
+    if (voc) {
+      // The energy is real — spend it on what's already moving. Naming the
+      // charge and then redirecting it beats pretending the day is flat.
+      return `Energy is high, but the Moon is void — spend it on what's already moving rather than on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
+    }
+    return `${pace} Lean into what this tide favors — ${verbs.slice(0, 3).join(", ")}.`;
+  }
+  if (level === "ebb" || level === "low") {
+    // On low/ebb, favor the receptive end of the character
+    const gentle = character === "surge" ? "let the fire bank — stretch, move gently, don't force a launch"
+      : character === "building" ? "tidy, close loops, tend what's already built"
+      : character === "clear" ? "review notes, read, let ideas settle rather than broadcast"
+      : "rest fully, journal, let feeling move without acting on it";
+    // Low tide and a void agree with each other — no contradiction to resolve,
+    // so the void only adds the reason.
+    return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.${voc ? " The Moon is void, which points the same way." : ""}`;
+  }
+  if (voc) {
+    return `${pace} With the Moon void, favor finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
+  }
+  return `${pace} Good for ${verbs.slice(0, 3).join(", ")}.`;
+}
+```
+
+---
+
+## Sentence templates (not tables — the shapes the tables get poured into)
+
+These are in `artifacts/api-server/src/lib/synthesis.ts`. The `${...}` slots are
+filled from the tables above.
+
+```ts
+// the day's edge — sect malefic
+`${planet} runs with a rougher edge ${isDay ? "by day" : "at night"} — the sharpest caution is ${shadow}. ${cap(work)}.`
+
+// the day's steadiest voice — sect benefic
+`${planet} is the ${isDay ? "day" : "night"}'s steadiest voice${strong ? ", strongly placed" : faint ? ", though faintly placed" : ""} — ${verb} carries best`
+```
+
+## READ zone labels — `artifacts/tides/src/components/ReadZone.tsx`
+
+```
+LED BY            <the leading testimony's note>
+MIXED CURRENT     Two things pull different ways — {a}; and {b}
+QUIET SKY         Nothing in particular is pulling. The ordinary reading stands.
+
+{n} other layers of the sky point the same way.      // was "Stacked support"
+No meaningful change since your last check, {when}. Your current course still holds.
+Changed since your last check, {when}.
+
+band labels:      this hour · today · this stretch · background
+```
+
+## Strongest fit / Keep going — `artifacts/tides/src/pages/Today.tsx`
+
+```
+Strongest fit right now          // ordinary mode; see FRAMING for the others
+Keep going · {22 min in}
+You're already in this. Compass won't move you off it — finish, or stop deliberately.
+not working on this anymore →
+▾ another fit  /  ▴ hide
+Compass can read the hour, not your energy. You pick the line that's true.
+The Moon is void — these all finish rather than begin.
+
+strongly charged / moderately charged / quietly charged      // never a percentage
+{high|medium|low} signal agreement
+```
+
+## Week chart — `artifacts/api-server/src/routes/tides.ts`
+
+```ts
+const APPROACH_TONE = {
+  initiate:    "A seeding week — the cycle restarts. Good for beginnings that need no audience yet.",
+  build:       "A building week. Momentum is available; put it into what you already started.",
+  refine:      "A refining week. The shape exists — this is for adjusting it, not adding to it.",
+  consolidate: "A consolidating week. Less about starting than about making what exists hold.",
+  release:     "A releasing week. Things come to visibility and completion; let them go out.",
+  recover:     "A recovering week. The cycle is emptying out. Rest is the work.",
+};
+// month spans instead say: `The cycle turns at new Moon {date} and full Moon {date}.`
+// both may be followed by: ` Structural pressure around {up to 3 dates}.`
+```
+
+The six words `initiate · build · refine · consolidate · release · recover` are
+shared by the week chart AND the hero's lunar strip. They must stay one
+vocabulary — the two surfaces contradicting each other is a bug this app has
+already had twice.
+
+## Emails
+
+`artifacts/api-server/src/lib/interpretation.ts` (192 lines) composes the report
+content; `artifacts/api-server/src/routes/reports.ts` assembles subject + HTML.
+The emails are **interpretation-first by design**: every astrological fact must
+earn its place with a "so what — do this". They reuse the app's vocabulary, so
+they should inherit the same voice rather than get their own.
+
+Two rules specific to the emails:
+- The subject must carry something that **changes** day to day, or consecutive
+  days thread into one another in the inbox.
+- On a void day the subject leads with "Begin nothing today".
+
+---
+
+## What to hand back
+
+The same tables, same keys, same shapes — only the strings rewritten. Plus a
+short note on anything you think the *structure* gets wrong, not just the
+wording: e.g. if gift/shadow/work is the wrong decomposition, or if the three
+capacities (depleted / restless / social) are the wrong three, that is more
+valuable than better adjectives.
