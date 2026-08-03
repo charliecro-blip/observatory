@@ -1147,7 +1147,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             week={week}
             todayTasks={todayTasks}
             windows={windows}
-            gcalEvents={gcalEvents}
             testerId={testerId}
             displayName={testerProfile?.displayName}
             onOpenStar={onOpenStar}
@@ -2586,12 +2585,11 @@ const STREAK_NUDGE = (streak: number) =>
   : streak >= 3 ? `day ${streak + 1} — momentum is real`
   : "small and daily beats big and rare";
 
-function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId, displayName, onOpenStar, lat, lon }: {
+function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayName, onOpenStar, lat, lon }: {
   mode: "morning" | "evening";
   now: any; week: any;
   todayTasks: { id: number; title: string; done: string }[];
   windows: any[] | undefined;
-  gcalEvents: { title: string; start: string; end: string; allDay: boolean }[];
   testerId: string | null;
   displayName?: string;
   onOpenStar?: (goalId: number) => void;
@@ -2617,7 +2615,6 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   // bad value here surfaces as a whole-page crash rather than a skipped card.
   const tasks = Array.isArray(todayTasks) ? todayTasks : [];
   const wins = Array.isArray(windows) ? windows : [];
-  const cal = Array.isArray(gcalEvents) ? gcalEvents : [];
   const { data: habitsRaw = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
     queryFn: async () => { const j = await (await fetch(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId ?? "" } })).json(); return Array.isArray(j) ? j : []; },
@@ -2729,27 +2726,23 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
   const firstName = (displayName ?? "").split(" ")[0];
 
   if (mode === "morning") {
-    const nowMs = Date.now();
-    const nextEvent = cal
-      .filter((e) => !e.allDay && Date.parse(e.end) > nowMs)
-      .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    const nextBlock = wins.filter((w: any) => !w.completedAt)
-      .sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
-    const nextTask = tasks.find((t) => t.done !== "true");
-    const three = [
-      nextTask && { glyph: "☐", label: nextTask.title, sub: "top task" },
-      nextEvent && { glyph: "◷", label: nextEvent.title, sub: new Date(nextEvent.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
-      nextBlock && { glyph: "▸", label: nextBlock.title, sub: new Date(nextBlock.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
-    ].filter(Boolean) as { glyph: string; label: string; sub: string }[];
+    // "Today's three" (top task · next event · next block) used to render here.
+    // It was YOUR DAY's now / next / still loose, computed by a second
+    // algorithm — two surfaces answering one question two ways, which is how
+    // the week caption came to argue with its own labels and how the
+    // Keep-going card came to sit above "still loose: the same task". YOUR DAY
+    // owns it, and in the morning it is framed "Already committed".
+    //
+    // The tide restatement went with it: the hero says the same sentence
+    // verbatim a few inches above. This card's job is the twice-daily anchor —
+    // the greeting, the star rows, the evening harvest — not a second reading
+    // of a day already on screen.
 
     return (
       <div style={{ background: `linear-gradient(135deg, ${elColor}16, ${elColor}05)`, border: `1px solid ${elColor}30`, borderRadius: 14, padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 3 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>⛵ Cast off{firstName ? `, ${firstName}` : ""}</span>
           <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
-        </div>
-        <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 10 }}>
-          {CHARACTER_LABEL[character]} tide, {tide?.levelLabel?.toLowerCase() ?? "steady"} — {CHARACTER_ESSENCE[character]?.toLowerCase().replace(/\.$/, "")}.
         </div>
 
 
@@ -2815,22 +2808,6 @@ function RitualCard({ mode, now, week, todayTasks, windows, gcalEvents, testerId
           );
         })()}
 
-        {three.length > 0 ? (
-          <div>
-            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 5 }}>Today's three</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {three.map((t, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12 }}>
-                  <span style={{ color: elColor, width: 14, textAlign: "center", flexShrink: 0 }}>{t.glyph}</span>
-                  <span style={{ color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</span>
-                  <span style={{ fontSize: 9.5, color: "var(--text-3)", flexShrink: 0 }}>{t.sub}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div style={{ fontSize: 11, color: "var(--text-3)" }}>Nothing on deck yet — weave the day in <b>Plan</b>, or just ride the tide.</div>
-        )}
       </div>
     );
   }
