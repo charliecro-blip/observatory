@@ -727,7 +727,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           const floorLine = Math.abs(aboveFloor) < 0.02 ? "at the day's still-water floor"
             : `${Math.round(Math.abs(aboveFloor) * 100)}% ${aboveFloor > 0 ? "above" : "below"} the floor`;
           const driverLines: string[] = inVoc ? ["slack water · void of course"]
-            : drivers.map((d: any) => `${d.ev.label} · ${d.ev.charge === "high" ? "strong charge" : "barely lifts"}`);
+            : drivers.map((d: any) => `${d.ev.label} · ${d.ev.charge === "high" ? "strong charge" : "a light touch"}`);
           const lines = [`${charLabel} water · ${floorLine}`, ...driverLines];
           const boxW = Math.max(128, ...lines.map(l => l.length * 5.0 + 20));
           const flip = px > W - boxW - 12;

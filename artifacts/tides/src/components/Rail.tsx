@@ -6,7 +6,7 @@ import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences, useUiDensity } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
-import { suggestApproach } from "@/lib/approach";
+import { suggestApproach, approachOptions } from "@/lib/approach";
 import { useTester } from "@/contexts/tester-context";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
@@ -426,6 +426,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [expandedHour, setExpandedHour] = useState<string | null>(null);
   const [moonTakeIdx, setMoonTakeIdx] = useState(0);
   const [seasonTakeIdx, setSeasonTakeIdx] = useState(0);
+  const [hourTakeIdx, setHourTakeIdx] = useState(0);
   // Instrument-dashboard collapse: `compact` (persisted) turns every core
   // section into a one-line glyph an experienced user reads at a glance; while
   // compact, an individual section can still be expanded (added to `expanded`).
@@ -857,7 +858,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "var(--color-muted)" }}> in {sign}</span> : null;
                 })()}
               </div>
-              <div style={{ fontSize: 9, color: "var(--color-muted)" }}>{planetaryHour.archetype ?? planetaryHour.quality}</div>
+
             </div>
           </div>
           <div style={{ fontSize: 9, color: "var(--text-3)", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -874,20 +875,32 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               the planet's verbs. Falls back to the flat list only if the
               approach layer has nothing for this body. */}
           {(() => {
-            const a = suggestApproach({
+            const ctx = {
               planet: planetaryHour.planet,
               at: new Date(),
               wakeTime: profile?.chronotype?.wakeTime,
               sleepTime: profile?.chronotype?.sleepTime,
               voc: isVOC,
               moonSign,
-            });
-            return a
-              ? <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
-                  <span style={{ color: "var(--text-3)" }}>this hour</span> {a.text}
-                </div>
-              : <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
-                  seed={new Date().getHours()} style={{ marginBottom: 8 }} />;
+            };
+            const opts = approachOptions(ctx);
+            if (!opts.length) {
+              return <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
+                seed={new Date().getHours()} style={{ marginBottom: 8 }} />;
+            }
+            // Stable default, alternatives on request — tapping ↻ is the user
+            // ASKING for another way in, which is a different act from the app
+            // reshuffling its own advice between glances.
+            const text = hourTakeIdx === 0 ? (suggestApproach(ctx)?.text ?? opts[0]) : opts[hourTakeIdx % opts.length];
+            return (
+              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                <span style={{ color: "var(--text-3)" }}>this hour</span> {text}
+                {opts.length > 1 && (
+                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="Another way to take this hour"
+                    style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+                )}
+              </div>
+            );
           })()}
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Five upcoming hours is a schedule; two is a heads-up. The

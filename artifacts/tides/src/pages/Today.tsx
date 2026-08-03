@@ -1387,9 +1387,21 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           if (!lit) return null;
           const pc = ({ Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" } as Record<string, string>)[best.partner] ?? "#888";
           // Say WHEN, not just what: perfection time → a part-of-day phrase.
-          const partOfDay = (d: Date) => {
+          //
+          // This read the HOUR and ignored the DATE, so an aspect that perfected
+          // at 10pm yesterday rendered as "peaked tonight" when read at 6am —
+          // the app confidently misdating an event the user had lived through.
+          // The day offset now leads the phrase.
+          const partOfDay = (d: Date, ref: Date = new Date()) => {
             const h = d.getHours();
-            return h < 5 ? "overnight" : h < 12 ? "this morning" : h < 17 ? "this afternoon" : h < 21 ? "this evening" : "tonight";
+            const band = h < 5 ? "overnight" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night";
+            const dayDiff = Math.round(
+              (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() -
+               new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime()) / 86400000);
+            if (dayDiff === 0) return band === "night" ? "tonight" : `this ${band}`;
+            if (dayDiff === -1) return band === "night" ? "last night" : `yesterday ${band}`;
+            if (dayDiff === 1) return band === "night" ? "tomorrow night" : `tomorrow ${band}`;
+            return dayDiff < 0 ? `${Math.abs(dayDiff)} days ago` : `in ${dayDiff} days`;
           };
           const clock = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric" });
           const whenPhrase = best.applying && best.hoursToExact != null
@@ -2981,6 +2993,16 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Habits & practices</div>
         {habits.length > 0 && <div style={{ fontSize: 9.5, color: "var(--text-3)" }}>{doneCount}/{habits.length} done</div>}
       </div>
+      {/* "Rise and shine" and "Wind down" are SEEDED by the app on signup, not
+          chosen — so a new user meets two habits they don't remember creating
+          and can't tell whether the app is tracking or merely proposing them.
+          Detected by the untouched seed description, which needs no migration
+          and stops identifying them the moment the user edits one. */}
+      {habits.length > 0 && habits.every((h: any) => /just a starting rhythm|Rename it, or make it yours/.test(h.description ?? "")) && (
+        <div style={{ fontSize: 10, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 7 }}>
+          These two are suggestions to start from — rename, replace or delete them.
+        </div>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
         {sorted.map((h) => {
           const resonant = !h.doneToday && el && h.favoredElements?.includes(el);

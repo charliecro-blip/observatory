@@ -141,8 +141,12 @@ const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
     morning: ["keep the commitment", "build the part no one sees"],
     midday:  ["pay the debt", "prune & cancel"],
     evening: ["review the long game", "close the loop"],
-    winddown:["put one thing in order and stop", "set the boundary and keep it"],
-    night:   ["stop — the discipline is stopping"],
+    // Saturn is not only "stop". It is the boring thing, the slow thing, the
+    // still thing, the thing done properly rather than quickly — several of
+    // which are perfectly available late. A single absolute instruction was
+    // both incomplete and easy to disagree with.
+    winddown:["put one thing in order, slowly", "the unglamorous task, done properly", "set the boundary and keep it"],
+    night:   ["stillness counts as the work", "one slow, small thing — or nothing"],
   },
 };
 
@@ -166,6 +170,26 @@ const VOC_FORMS: Record<string, string[]> = {
 function pick(list: string[], at: Date): string {
   if (list.length === 1) return list[0];
   return list[(at.getHours() + at.getDate()) % list.length];
+}
+
+/**
+ * EVERY approach available under these conditions, best first.
+ *
+ * A strong instruction ("stillness counts as the work") should be answerable
+ * with "or?" — the owner's point that a confident statement needs alternatives
+ * beside it. Note this is not the rotating-takes failure the audit flagged: the
+ * DEFAULT is stable for given conditions, and the user advances it only by
+ * asking. Stability by default, alternatives on request.
+ */
+export function approachOptions(ctx: ApproachContext): string[] {
+  const part = dayPartFor(ctx.at, ctx.wakeTime, ctx.sleepTime);
+  if (ctx.voc) {
+    const voc = VOC_FORMS[ctx.planet];
+    if (voc?.length) return voc;
+  }
+  const table = BY_PART[ctx.planet];
+  if (!table) return [];
+  return table[part] ?? table.midday ?? table.morning ?? [];
 }
 
 export function suggestApproach(ctx: ApproachContext): Approach | null {

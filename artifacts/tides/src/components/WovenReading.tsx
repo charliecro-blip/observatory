@@ -57,11 +57,19 @@ export default function WovenReading({ reading, level, accent = "#5a6cae", saidA
   const med = level !== "minimal";
   const full = level === "full";
   const said = new Set(saidAlready.map(s => s.toLowerCase()));
-  const patterns = (reading.patterns ?? []).filter(p => !said.has(p.name.toLowerCase()));
   // The void reaches this card through THREE channels — watch, counterpoint,
   // and pattern chip — so suppressing one still left the reader told the same
   // thing twice. Take the loudest watch line the card hasn't already spoken.
   const topWatch = (reading.watch ?? []).find(w => !said.has((w.source ?? "").toLowerCase()));
+  // …and named patterns are THEMSELVES pushed into the watch list server-side,
+  // so whenever a pattern won the WATCH slot its chip repeated the identical
+  // sentence two lines below it. Reported live: "Moon rules both this hour and
+  // your ascendant…" rendered twice, verbatim, in one card. Whatever WATCH
+  // just said cannot also be a chip.
+  const spoken = new Set(
+    [...said, ...(topWatch?.source ? [topWatch.source.toLowerCase()] : [])],
+  );
+  const patterns = (reading.patterns ?? []).filter(p => !spoken.has(p.name.toLowerCase()));
 
   return (
     <div style={{ borderTop: `1px solid ${accent}22`, margin: "12px 0", paddingTop: 11 }}>
