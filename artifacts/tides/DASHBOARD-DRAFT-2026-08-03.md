@@ -36,13 +36,38 @@ The rail's insight, applied properly. Every influence the app knows has a
 timescale, and that is what should sort them:
 
 ```
-this hour        ~1 hour      planetary hour
-today            hours        Moon's aspects as they perfect
-these days       ~2½ days     Moon by sign
-this month       ~29 days     lunation phase
-this season      ~1 month     Sun by sign
-this era         months–years outer-planet stations & ingresses
+this hour        ~1 hour        planetary hour
+today            hours          Moon's aspects as they perfect
+this stretch     days–weeks     NON-LUNAR aspects now partile or applying
+these days       ~2½ days       Moon by sign
+this month       ~29 days       lunation phase
+this season      ~1 month       Sun by sign
+this era         months–years   outer-planet stations & ingresses
 ```
+
+**Non-lunar aspects belong in this stack** (owner). They are the layer the app
+currently computes and then almost discards — `standing` carries weight 0.05
+in the height formula while climbing to 1.00 exactly as the tide bars shrink
+to nothing. They are also the answer to "why does this week feel like
+something when the Moon says it's empty."
+
+### Two rules for how rows are written
+
+**1. Convergence gets emphasis.** When several testimonies point the same way,
+say so — that is the app at its most useful and it is rare. A row backed by
+three agreeing voices should read differently from one backed by one. This is
+the honest version of "confidence": not a percentage, but *how many independent
+things agree*.
+
+**2. A named dynamic must be explicated.** Naming the planet is not enough —
+"Saturn hour" says almost nothing on its own. The row should carry the
+specific configuration doing the work: **planet in sign**, or **the aspect and
+its state** (applying/separating, orb, when exact).
+
+> Saturn hour · Saturn ℞ in Aries — structure under revision, not construction
+> Moon □ Saturn · applying, exact 4:16pm — weight arriving, not yet landed
+
+Same length, vastly more information, and it is checkable against the rail.
 
 **One stack, sorted by duration, with the dominant one promoted to the top and
 named.** Not six blocks in six voices — one instrument with a scale, exactly
