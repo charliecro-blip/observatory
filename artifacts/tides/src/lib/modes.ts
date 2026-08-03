@@ -43,7 +43,11 @@ const FRAMING: Record<DayMode, ZoneFraming> = {
   ordinary: {
     moveLabel: "Strongest fit right now",
     dayLabel: "Your day",
-    dayEmpty: "Nothing on today — weave your day in Plan →",
+    // No CTA. Strongest Fit is already asking for the one thing when the list
+    // is empty ("Name one thing for today"), and this card sat directly beside
+    // it saying "weave your day in Plan" — two cards, one request, which the
+    // owner read as superfluous. This states what is true and stops.
+    dayEmpty: "Nothing on today yet.",
     aheadLabel: "Ahead",
   },
   evening: {

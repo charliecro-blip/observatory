@@ -1176,6 +1176,8 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [locationResults, setLocationResults] = useState<any[]>([]);
+  /** Why the dropdown is empty — searching, no match, or lookup unavailable. */
+  const [locationNote, setLocationNote] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1200,23 +1202,42 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
     }
   }, [chart]);
 
+  // A search that finds nothing and a search that CANNOT RUN look identical if
+  // both just empty the dropdown — which is what happened: the endpoint answers
+  // 503 with {error, message} when the geocoder key is missing, `Array.isArray`
+  // is false, and the user got a silent empty list with no way to tell whether
+  // their city was unknown or the lookup was broken. Same principle as "a
+  // calendar failure must not look like a free week".
   async function searchLocation(q: string) {
-    if (q.length < 2) { setLocationResults([]); return; }
+    if (q.length < 2) { setLocationResults([]); setLocationNote(null); return; }
+    setLocationNote("searching…");
     try {
       const r = await fetch(`/api/location-search?q=${encodeURIComponent(q)}`);
       const data = await r.json();
-      setLocationResults(Array.isArray(data) ? data : (data.results ?? []));
-    } catch { setLocationResults([]); }
+      const list = Array.isArray(data) ? data : (data.results ?? null);
+      if (!r.ok || list == null) {
+        setLocationResults([]);
+        setLocationNote(data?.message ?? "Place lookup is unavailable right now — enter latitude and longitude below by hand.");
+        return;
+      }
+      setLocationResults(list);
+      setLocationNote(list.length ? null : `No match for “${q}”. Try “City, Country”, or enter latitude and longitude by hand.`);
+    } catch {
+      setLocationResults([]);
+      setLocationNote("Couldn't reach the place lookup — check your connection, or enter latitude and longitude by hand.");
+    }
   }
 
   function handleLocationInput(v: string) {
     setLocationSearch(v);
+    setLocationNote(null);
     setForm(f => ({ ...f, birthPlace: v, birthLat: null, birthLon: null }));
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => searchLocation(v), 400);
   }
 
   function pickLocation(r: any) {
+    setLocationNote(null);
     const place = r.displayName ?? r.formatted ?? r.name ?? locationSearch;
     setLocationSearch(place);
     setLocationResults([]);
@@ -1226,7 +1247,16 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   }
 
   async function save() {
-    if (!testerId || !form.birthDate || form.birthLat == null) return;
+    // A silent `return` here meant pressing Save did visibly nothing when the
+    // place had been typed but never PICKED from the dropdown — typing clears
+    // the coordinates, so the form was incomplete in a way the button gave no
+    // account of. Say which field is missing instead.
+    if (!testerId) return;
+    if (!form.birthDate) { setLocationNote("Add a birth date before saving."); return; }
+    if (form.birthLat == null) {
+      setLocationNote("Pick your birthplace from the dropdown — typing alone doesn't set the coordinates, and the chart needs them.");
+      return;
+    }
     setSaving(true);
     setSaveError(false);
     try {
@@ -1295,6 +1325,11 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
           <div style={{ position: "relative" }}>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Place of birth</div>
             <input value={locationSearch} onChange={e => handleLocationInput(e.target.value)} placeholder="City, country…" style={inputStyle} />
+            {locationNote && (
+              <div style={{ fontSize: 10.5, color: locationNote === "searching…" ? "var(--text-3)" : "#8a6a30", marginTop: 4, lineHeight: 1.45 }}>
+                {locationNote}
+              </div>
+            )}
             {locationResults.length > 0 && (
               <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, marginTop: 2, maxHeight: 180, overflowY: "auto" }}>
                 {locationResults.map((r, i) => (

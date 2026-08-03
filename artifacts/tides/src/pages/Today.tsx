@@ -607,12 +607,11 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
   );
 }
 
-export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onVisitPlanet, onOpenStar, firstRun = false }: {
+export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, showAdvisor, setShowAdvisor, advisorSeed, askContext, onOpenStar, firstRun = false }: {
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
   onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
   askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
-  onVisitPlanet?: (planet: string) => void;
   /** The walkthrough hasn't been answered yet — hold back anything that asks
    *  the user for something before they've been shown what this page is. */
   firstRun?: boolean;
@@ -1535,67 +1534,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* Daily report — the home as a navigation console: weather + where you're
             steering + what's on deck + the week, at a glance. */}
-        {/* Teachable moment — when the Moon is on a planet today, name the
-            flavor in feeling-language and offer the door into Star Base. The
-            sky schedules the lesson; we just point at it. */}
-        {(() => {
-          if (essential) return null; // add-on: education layer waits for the expanded panel
-          if (!now?.moonAspects?.length) return null;
-          const HARD = new Set(["conjunction", "square", "opposition"]);
-          // Slow/social planets carry the distinct, learnable flavors; skip
-          // Sun (already the day-ruler story) and Mercury/Venus at low weight.
-          const WEIGHT: Record<string, number> = { Saturn: 9, Pluto: 8, Neptune: 7, Uranus: 6, Jupiter: 5, Mars: 4, Venus: 2, Mercury: 1 };
-          const best = (now.moonAspects as any[])
-            .map((a) => ({ ...a, partner: a.planet1 === "Moon" ? a.planet2 : a.planet1 }))
-            .filter((a) => HARD.has(a.aspect) && WEIGHT[a.partner] && a.orb <= 4)
-            .sort((a, b) => (WEIGHT[b.partner] - WEIGHT[a.partner]) || (a.orb - b.orb))[0];
-          if (!best) return null;
-          const lit = PLANET_LITERACY[best.partner];
-          if (!lit) return null;
-          const pc = ({ Sun: "#c8971e", Mercury: "#7a8a4a", Venus: "#3f8493", Mars: "#c04830", Jupiter: "#7a5cae", Saturn: "#6a6258", Uranus: "#3a9aa8", Neptune: "#5a6cae", Pluto: "#7a3a5a" } as Record<string, string>)[best.partner] ?? "#888";
-          // Say WHEN, not just what: perfection time → a part-of-day phrase.
-          //
-          // This read the HOUR and ignored the DATE, so an aspect that perfected
-          // at 10pm yesterday rendered as "peaked tonight" when read at 6am —
-          // the app confidently misdating an event the user had lived through.
-          // The day offset now leads the phrase.
-          const partOfDay = (d: Date, ref: Date = new Date()) => {
-            const h = d.getHours();
-            const band = h < 5 ? "overnight" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night";
-            const dayDiff = Math.round(
-              (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() -
-               new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime()) / 86400000);
-            if (dayDiff === 0) return band === "night" ? "tonight" : `this ${band}`;
-            if (dayDiff === -1) return band === "night" ? "last night" : `yesterday ${band}`;
-            if (dayDiff === 1) return band === "night" ? "tomorrow night" : `tomorrow ${band}`;
-            return dayDiff < 0 ? `${Math.abs(dayDiff)} days ago` : `in ${dayDiff} days`;
-          };
-          const clock = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric" });
-          const whenPhrase = best.applying && best.hoursToExact != null
-            ? (() => { const d = new Date(Date.now() + best.hoursToExact * 3600000); return `peaks ${partOfDay(d)} around ${clock(d)}`; })()
-            : !best.applying && best.hoursSinceExact != null
-              ? (() => { const d = new Date(Date.now() - best.hoursSinceExact * 3600000); return `peaked ${partOfDay(d)}, now easing`; })()
-              : null;
-          return (
-            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: `3px solid ${pc}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 220 }}>
-                <span style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.55 }}>
-                  Today has {lit.undertone}.
-                </span>
-                <span style={{ fontSize: 10.5, color: "var(--text-3)", marginLeft: 6 }}>
-                  Moon {best.aspect} {best.partner}{whenPhrase ? ` — ${whenPhrase}` : ""} · comes around about once a week.
-                </span>
-              </div>
-              {onVisitPlanet && (
-                <button onClick={() => onVisitPlanet(best.partner)} style={{
-                  fontSize: 10.5, fontWeight: 600, padding: "4px 11px", borderRadius: 8, cursor: "pointer",
-                  border: `1px solid ${pc}50`, background: `${pc}10`, color: pc, flexShrink: 0,
-                }}>check in with your {best.partner} →</button>
-              )}
-            </div>
-          );
-        })()}
-
+        {/* The teachable-moment card was removed 2026-08-03 (owner review).
+            Three problems at once:
+              1. It said "Moon conjunction Saturn" — a fact the READ zone
+                 already leads with and the Resonant Now cards already carry.
+                 Third telling of one fact.
+              2. Its CTA sent people to Planets, a surface deliberately
+                 DEMOTED out of the nav. The home page should not promote
+                 what the product decided to de-emphasise.
+              3. Stacked under the Currents banner it pushed the actual day
+                 below the fold, which is how the owner found it at all.
+            The education layer belongs where someone goes looking for it. */}
         {/* No longer gated on `now`: this card shows your own stars and tasks,
             which have nothing to do with whether the sky has finished loading. */}
         <Dashboard northStars={northStars} windows={windows} todayTasks={todayTasks} onNavigate={onNavigate} framing={framing} />

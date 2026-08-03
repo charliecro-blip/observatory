@@ -27,7 +27,7 @@ const ord = (n: number) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 
 const fmtDate = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const fmtMonthYear = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 
-export default function BearingsCard({ testerId }: { testerId: string | null }) {
+export default function BearingsCard({ testerId, onOpenSettings }: { testerId: string | null; onOpenSettings?: () => void }) {
   const { data } = useQuery<{ available: boolean; reason?: string; fix?: Fix }>({
     queryKey: ["position-fix", testerId],
     queryFn: async () => {
@@ -41,8 +41,19 @@ export default function BearingsCard({ testerId }: { testerId: string | null }) 
   if (!testerId || !data) return null;
   if (!data.available) {
     if (data.reason === "no-chart") return (
-      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 11.5, color: "var(--text-3)" }}>
-        Add your birth chart in Settings and this page opens with your bearings — the year you're in, its lord, and the chapter's landmarks.
+      // Told people where to go and gave them no way to get there. A prompt
+      // whose whole job is to send you somewhere should be the thing that
+      // takes you.
+      <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 11.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ flex: 1, minWidth: 220 }}>
+          Add your birth chart and this page opens with your bearings — the year you're in, its lord, and the chapter's landmarks.
+        </span>
+        {onOpenSettings && (
+          <button onClick={onOpenSettings} style={{
+            fontSize: 11, fontWeight: 600, padding: "5px 13px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
+            border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)",
+          }}>Add it in Settings →</button>
+        )}
       </div>
     );
     return null; // no birth time: profections would be a guess — stay quiet

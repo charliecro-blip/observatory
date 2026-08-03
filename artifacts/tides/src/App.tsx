@@ -34,7 +34,7 @@ import { localToday } from "@/lib/dates";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
-function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void }) {
+function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed, onOpenSettings }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void; onOpenSettings?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
   // Arriving with an element seed (from the Almanac reference) always lands on
   // Guiding Stars, where the pre-filled creation form opens.
@@ -65,7 +65,7 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
         {/* Your bearings — where you are in time (year + chapter + landmarks).
             Replaced CurrentsContextHeader (owner 2026-07-27: "locating someone
             in time" is the product; you steer from where you are). */}
-        <BearingsCard testerId={testerId} />
+        <BearingsCard testerId={testerId} onOpenSettings={onOpenSettings} />
 
         {/* Tab content — inherits flex from parent, scrollable together with header */}
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed} focusStarId={focusStarId} onFocusConsumed={onFocusConsumed}/>}
@@ -1247,7 +1247,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onVisitPlanet={goToPlanet} onOpenStar={openStar} firstRun={firstRun}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Log"
@@ -1255,7 +1255,7 @@ function Shell() {
               : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
-        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
