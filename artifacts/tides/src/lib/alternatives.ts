@@ -57,34 +57,34 @@ const REGISTER: Record<string, Record<Capacity, Forms>> = {
   Sun: {
     depleted: { day: ["do the one visible thing, then stop", "let a small win count"],
                 quiet: ["name one thing that went right"] },
-    restless: { day: ["walk somewhere you can be seen", "move the body toward the goal"],
+    restless: { day: ["walk where you can be seen", "move the body toward the goal"],
                 quiet: ["a slow walk, nothing strenuous"] },
-    social:   { day: ["say the thing in front of someone", "let a friend see the work"],
+    social:   { day: ["say it in front of someone", "let a friend see the work"],
                 quiet: ["tell one person how the day went"] },
   },
   Moon: {
-    depleted: { day: ["eat, rest, lower the bar on purpose", "tend the body first"],
+    depleted: { day: ["eat, rest, drop the bar on purpose", "tend the body first"],
                 quiet: ["rest without earning it"] },
     restless: { day: ["walk, swim, move water", "cook something with your hands"],
                 quiet: ["stretch, then stop"] },
-    social:   { day: ["call the person you think of first", "be domestic with someone"],
+    social:   { day: ["call the first person you think of", "be domestic with someone"],
                 quiet: ["sit with someone, no agenda"] },
   },
   Mercury: {
-    depleted: { day: ["sort, file, tidy — low-stakes ordering", "one small message, not the hard one"],
-                quiet: ["note tomorrow's first task and close the laptop"] },
+    depleted: { day: ["sort, file, tidy — low stakes", "one small message, not the hard one"],
+                quiet: ["note tomorrow's first task and shut the laptop"] },
     restless: { day: ["walk and dictate", "run the errands that need legs"],
                 quiet: ["walk without the phone"] },
     social:   { day: ["talk it through with someone", "teach the thing you just learned"],
                 quiet: ["a light conversation, nothing decided"] },
   },
   Venus: {
-    depleted: { day: ["make one thing nicer, cheaply", "choose comfort deliberately"],
+    depleted: { day: ["make one thing nicer, cheaply", "choose comfort on purpose"],
                 quiet: ["something soft — music, a bath"] },
-    restless: { day: ["move somewhere beautiful", "dance, garden, arrange"],
-                quiet: ["move slowly through a pleasant room"] },
-    social:   { day: ["share a meal", "repair the thing left unsaid"],
-                quiet: ["good company, low effort"] },
+    restless: { day: ["move somewhere pleasant", "dance, garden, arrange"],
+                quiet: ["move slowly through a nice room"] },
+    social:   { day: ["share a meal", "mend the thing left unsaid"],
+                quiet: ["easy company, low effort"] },
   },
   Mars: {
     depleted: { day: ["one decisive small thing, then stop", "clear the smallest blocked item"],
@@ -93,20 +93,20 @@ const REGISTER: Record<string, Record<Capacity, Forms>> = {
     // bedtime. Restless is exactly the capacity that would reach for it, so
     // this is the entry the quiet register most has to catch.
     restless: { day: ["train hard", "physical work with a visible end"],
-                quiet: ["decisive tidying — movement without adrenaline"] },
-    social:   { day: ["have the direct conversation", "do something competitive with people"],
+                quiet: ["decisive tidying — movement, no adrenaline"] },
+    social:   { day: ["have the direct conversation", "something competitive with people"],
                 quiet: ["say the honest thing kindly, then leave it"] },
   },
   Jupiter: {
     depleted: { day: ["read something that widens the frame", "be generous in one cheap way"],
-                quiet: ["let the plan be big and unwritten"] },
-    restless: { day: ["go somewhere further than usual", "move toward the bigger version"],
+                quiet: ["let the plan stay big and unwritten"] },
+    restless: { day: ["go further than usual", "move toward the bigger version"],
                 quiet: ["a wandering walk, no destination"] },
-    social:   { day: ["make the bigger ask of someone", "teach, host, introduce two people"],
-                quiet: ["a long conversation with no outcome"] },
+    social:   { day: ["make the bigger ask of someone", "host, teach, introduce two people"],
+                quiet: ["a long talk with no outcome"] },
   },
   Saturn: {
-    depleted: { day: ["the smallest unglamorous task, done properly", "lower the commitment honestly"],
+    depleted: { day: ["the smallest dull task, done properly", "lower the commitment honestly"],
                 quiet: ["stillness counts as the work"] },
     restless: { day: ["physical order — clear, sort, repair", "the maintenance you keep deferring"],
                 quiet: ["put one thing in order, slowly"] },
@@ -123,9 +123,9 @@ const REGISTER: Record<string, Record<Capacity, Forms>> = {
  * about the window, and it forbids exactly the verbs these lists are full of.
  */
 const VOC_BY_CAPACITY: Record<Capacity, string> = {
-  depleted: "return to something already underway — start nothing",
+  depleted: "return to something already going — open nothing",
   restless: "walk, tidy, move — but open no new front",
-  social: "reconnect with someone you've been meaning to",
+  social: "get back to someone you've been meaning to",
 };
 
 const isQuiet = (part: DayPart) => part === "winddown" || part === "night";

@@ -37,23 +37,22 @@ const FRAMING: Record<DayMode, ZoneFraming> = {
   morning: {
     moveLabel: "Where to start",
     dayLabel: "Already committed",
-    dayEmpty: "Nothing committed yet — the day is open.",
+    dayEmpty: "Nothing committed yet — the day's open.",
     aheadLabel: "Shape of the day",
   },
   ordinary: {
     moveLabel: "Strongest fit right now",
     dayLabel: "Your day",
-    // No CTA. Strongest Fit is already asking for the one thing when the list
-    // is empty ("Name one thing for today"), and this card sat directly beside
-    // it saying "weave your day in Plan" — two cards, one request, which the
-    // owner read as superfluous. This states what is true and stops.
+    // DELIBERATE DEVIATION from the voice pass, which proposed
+    // "Nothing on today — weave it in Plan →". That was written against the
+    // copy as it stood when the handoff was extracted, an hour before the
+    // owner flagged this exact line as superfluous: Strongest Fit already
+    // says "Name one thing for today" directly beside it, so the CTA was the
+    // same request twice. Voice adopted, CTA still gone.
     dayEmpty: "Nothing on today yet.",
     aheadLabel: "Ahead",
   },
   evening: {
-    // Not "what to start". By evening the useful question is what to do with
-    // what already exists — and "carry" is offered as a real option rather
-    // than a failure, because deciding to continue tomorrow is a decision.
     moveLabel: "Finish, release, or carry",
     dayLabel: "How the day went",
     dayEmpty: "Nothing was on today.",

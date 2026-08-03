@@ -27,7 +27,11 @@ describe("the hero's guidance reconciles the void", () => {
     // The failure mode in the other direction: suppressing the charge entirely
     // would misreport a genuinely high-energy day as a quiet one.
     const g = tideGuidance("surge", "high", true);
-    expect(g).toMatch(/energy is high/i);
+    // Matched loosely on purpose. Pinned to the exact phrase "energy is high",
+    // this failed the moment the voice pass contracted it to "energy's high" —
+    // which names the charge every bit as plainly. The invariant is that the
+    // charge is NAMED, not that it is named in one particular set of words.
+    expect(g).toMatch(/energy(?:'s| is)\s+high/i);
     expect(g).toMatch(/already moving|underway/i);
   });
 

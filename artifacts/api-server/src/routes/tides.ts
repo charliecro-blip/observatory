@@ -619,12 +619,12 @@ router.get("/tides/week", (req, res) => {
   // cycle you are in. The summary now leads with the second, because that is
   // what the bars beneath it are drawing.
   const APPROACH_TONE: Record<string, string> = {
-    initiate:    "A seeding week — the cycle restarts. Good for beginnings that need no audience yet.",
-    build:       "A building week. Momentum is available; put it into what you already started.",
+    initiate:    "A seeding week — the cycle restarts. Good for beginnings that don't need an audience yet.",
+    build:       "A building week. Momentum's there; put it into what you've already started.",
     refine:      "A refining week. The shape exists — this is for adjusting it, not adding to it.",
-    consolidate: "A consolidating week. Less about starting than about making what exists hold.",
-    release:     "A releasing week. Things come to visibility and completion; let them go out.",
-    recover:     "A recovering week. The cycle is emptying out. Rest is the work.",
+    consolidate: "A consolidating week. Less about starting than making what's there hold.",
+    release:     "A releasing week. Things come to a head and complete; let them go out.",
+    recover:     "A recovering week. The cycle's emptying out. Rest is the work.",
   };
   const apCounts: Record<string, number> = {};
   days.forEach((d) => { apCounts[d.approach] = (apCounts[d.approach] ?? 0) + 1; });

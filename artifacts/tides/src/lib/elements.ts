@@ -175,10 +175,10 @@ export const CHARACTER_LABEL: Record<TideCharacter, string> = {
 
 // One-line essence of each character (subtitle-length)
 export const CHARACTER_ESSENCE: Record<TideCharacter, string> = {
-  deep:     "Feeling, intuition, and slow creative depth.",
-  surge:    "Initiative, courage, and visible action.",
-  building: "Patient craft, structure, and finishing.",
-  clear:    "Thought, communication, and connection.",
+  deep:     "Feeling, intuition, slow creative depth.",
+  surge:    "Initiative, courage, visible action.",
+  building: "Patient craft, structure, finishing.",
+  clear:    "Thought, communication, connection.",
 };
 
 // Why each is NAMED that — the explication the names need. Each name is meant
@@ -229,22 +229,22 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
     if (voc) {
       // The energy is real — spend it on what's already moving. Naming the
       // charge and then redirecting it beats pretending the day is flat.
-      return `Energy is high, but the Moon is void — spend it on what's already moving rather than on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
+      return `Energy's high, but the Moon's void — spend it on what's already moving, not on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
     }
-    return `${pace} Lean into what this tide favors — ${verbs.slice(0, 3).join(", ")}.`;
+    return `${pace} Lean into what this tide favours — ${verbs.slice(0, 3).join(", ")}.`;
   }
   if (level === "ebb" || level === "low") {
     // On low/ebb, favor the receptive end of the character
-    const gentle = character === "surge" ? "let the fire bank — stretch, move gently, don't force a launch"
+    const gentle = character === "surge" ? "let the fire bank — stretch, move gently, don't force a start"
       : character === "building" ? "tidy, close loops, tend what's already built"
       : character === "clear" ? "review notes, read, let ideas settle rather than broadcast"
-      : "rest fully, journal, let feeling move without acting on it";
+      : "rest fully, write, let feeling move without acting on it";
     // Low tide and a void agree with each other — no contradiction to resolve,
     // so the void only adds the reason.
-    return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.${voc ? " The Moon is void, which points the same way." : ""}`;
+    return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.${voc ? " The Moon's void, which points the same way." : ""}`;
   }
   if (voc) {
-    return `${pace} With the Moon void, favor finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
+    return `${pace} With the Moon void, favour finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
   }
   return `${pace} Good for ${verbs.slice(0, 3).join(", ")}.`;
 }
@@ -252,10 +252,10 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
 // Honest reading for a genuinely undramatic day — most days. Never manufacture
 // intensity; a calm sky is reported as calm, character-tinted but unforced.
 export const QUIET_DAY_GUIDANCE: Record<TideCharacter, string> = {
-  deep:     "A quiet, still day — nothing pulling hard. Follow what feeling asks for; your rhythm is your own.",
-  surge:    "A quiet, open day — no strong current. Move if you want to, but nothing's pushing. Your rhythm is your own.",
-  building: "A quiet, steady day — nothing demanding. Good for ordinary, unhurried work. Your rhythm is your own.",
-  clear:    "A quiet, open day — the sky is calm. Think, drift, or do nothing in particular. Your rhythm is your own.",
+  deep:     "A quiet, still day — nothing pulling hard. Follow what feeling asks for; the rhythm's your own.",
+  surge:    "A quiet, open day — no strong current. Move if you want to, but nothing's pushing. The rhythm's your own.",
+  building: "A quiet, steady day — nothing demanding. Good for ordinary, unhurried work. The rhythm's your own.",
+  clear:    "A quiet, open day — the sky's calm. Think, drift, or do nothing in particular. The rhythm's your own.",
 };
 
 // Confidence → how the app should hedge its voice

@@ -45,26 +45,30 @@ const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = {
 // concrete enough to act on within the hour.
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const PLANET_ROADS: Record<string, { gift: string; shadow: string; work: string }> = {
-  Sun:     { gift: "vitality and warmth", shadow: "pride, needing to be the center",
-             work: "put the wanting-to-be-seen into making something worth seeing" },
-  Moon:    { gift: "care and attunement", shadow: "moodiness, clinging",
-             work: "feel it deliberately and briefly, rather than all day sideways" },
-  Mercury: { gift: "clarity and curiosity", shadow: "overthinking, scattered nerves",
-             work: "write the loop down — it stops circling once it is on paper" },
-  Venus:   { gift: "warmth and ease", shadow: "indulgence, avoiding the hard word",
-             work: "have the pleasant thing and say the true thing, in that order" },
-  Mars:    { gift: "courage and decisive effort", shadow: "impatience, a short fuse",
-             work: "spend the edge on something physical and finishable, before it finds a person" },
-  Jupiter: { gift: "faith and generosity", shadow: "overreach, glossing the detail",
-             work: "say yes to the size, then check the one detail you would rather skip" },
-  Saturn:  { gift: "discipline and endurance", shadow: "rigidity, fear, gloom",
-             work: "do the smallest real piece — the weight lifts by moving, not by resolving" },
+  Sun:     { gift: "warmth, and the nerve to be seen", shadow: "needing to be the centre of it",
+             work: "put the wanting-to-be-seen into making one thing worth seeing" },
+  Moon:    { gift: "care, and reading the room", shadow: "the mood running the day sideways",
+             work: "feel it on purpose for ten minutes, so it doesn't leak into everything" },
+  Mercury: { gift: "quickness, and real curiosity", shadow: "the thought that keeps circling",
+             work: "write the loop down — it stops circling once it's on paper" },
+  Venus:   { gift: "ease, and warmth toward people", shadow: "smoothing it over instead of saying the hard thing",
+             work: "have the pleasant thing, then say the true thing — in that order" },
+  Mars:    { gift: "nerve, and the will to finish", shadow: "the short fuse, the rush",
+             work: "spend the edge on something physical with an end, before it finds a person" },
+  Jupiter: { gift: "generosity, and the wider view", shadow: "saying yes too big, skipping the detail",
+             work: "say yes to the size, then check the one detail you'd rather skip" },
+  Saturn:  { gift: "patience, and the long haul", shadow: "the gloom, the stiffening, the fear",
+             work: "do the smallest real piece — it lifts by moving, not by solving" },
 };
-const ELEMENT_ROADS: Record<Element, { gift: string; shadow: string }> = {
-  fire:  { gift: "courage and initiative", shadow: "burnout, recklessness" },
-  earth: { gift: "groundedness and follow-through", shadow: "rigidity, drudgery, perfectionism" },
-  air:   { gift: "perception and perspective", shadow: "overthinking, all talk and no move" },
-  water: { gift: "empathy and renewal", shadow: "overwhelm, escapism, withdrawal" },
+const ELEMENT_ROADS: Record<Element, { gift: string; shadow: string; work: string }> = {
+  fire:  { gift: "nerve, and a fast start", shadow: "burning out, or through people",
+           work: "spend it on the first hard thing, then let it bank" },
+  earth: { gift: "steadiness, and follow-through", shadow: "the rut, the grind, never good-enough",
+           work: "finish one real piece; call good-enough enough" },
+  air:   { gift: "perspective, and quick connection", shadow: "all talk and no move, the overthink",
+           work: "say it to one person, or write it — then act on the smallest bit" },
+  water: { gift: "feeling, and renewal", shadow: "the overwhelm, the retreat",
+           work: "let the feeling move — water, rest, one person — without deciding in it" },
 };
 
 // Valence of a body in the reading (lights + Mercury are neutral).
@@ -217,23 +221,20 @@ const HAND_EASY = new Map<string, PairScope>([
 
 // Themes for transiting bodies the mundane collectors don't cover.
 const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> = {
-  Uranus:  { verb: "breaking the old pattern", gift: "fresh air and honest change", shadow: "restlessness, rupture for its own sake",
+  Uranus:  { verb: "breaking the old pattern", gift: "fresh air, honest change", shadow: "restlessness, the break for its own sake",
              work: "change one real thing on purpose, so the restlessness has somewhere to land" },
-  Neptune: { verb: "dissolving and imagining", gift: "imagination and compassion", shadow: "fog, drift, self-deception",
-             work: "make something or rest — both use the fog; deciding in it does not" },
-  Pluto:   { verb: "deep renovation", gift: "depth and renewal", shadow: "control, obsession",
-             work: "name what you are actually trying to control, then loosen one grip" },
+  Neptune: { verb: "dissolving and imagining", gift: "imagination, and a softer heart", shadow: "fog, drift, the story you tell yourself",
+             work: "make something, or rest — both use the fog; deciding in it doesn't" },
+  Pluto:   { verb: "deep renovation", gift: "depth, and the nerve to begin again", shadow: "the grip, the fixation",
+             work: "name what you're actually trying to control, then loosen one hand" },
 };
 // What a natal point MEANS when something lands on it.
 const NATAL_POINT_WORD: Record<string, string> = {
-  // "your core self" was jargon wearing plain clothes — it names a concept
-  // rather than anything a reader recognises in themselves. A Sun contact is
-  // felt as pressure on who you take yourself to be.
-  Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "your relating",
-  Mars: "your drive", Jupiter: "your growth", Saturn: "your foundations",
-  Uranus: "your independence", Neptune: "your imagination", Pluto: "your depths",
+  Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "the way you relate",
+  Mars: "your drive", Jupiter: "your sense of possibility", Saturn: "what holds you up",
+  Uranus: "your need for room", Neptune: "your imagination", Pluto: "your depths",
   ASC: "how you meet the world", MC: "your work in the world",
-  Fortune: "your body and resources", // the Lot — defining it as "your fortune" said nothing
+  Fortune: "your body and what sustains it",
 };
 const PERSONAL_POINTS = new Set(["Sun", "Moon", "ASC", "MC"]);
 // Ebertin's natal orb ladder, by the NATAL target.

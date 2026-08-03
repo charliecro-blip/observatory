@@ -205,8 +205,8 @@ function AnotherFit({ planet, at, voc, moonSign, wakeTime, sleepTime }: {
           ))}
           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4, fontStyle: "italic" }}>
             {fits[0].basis === "voc"
-              ? "The Moon is void — these all finish rather than begin."
-              : "Compass can read the hour, not your energy. You pick the line that's true."}
+              ? "The Moon's void — these all finish rather than begin."
+              : "Compass reads the hour, not your energy. You pick the line that's true."}
           </div>
         </div>
       )}
@@ -1468,7 +1468,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 3 }}>
                     {inFlow
-                      ? "You're already in this. Compass won't move you off it — finish, or stop deliberately."
+                      ? "You're already in this. Compass won't move you off it — finish, or stop on purpose."
                       : move.why}
                   </div>
                   {inFlow && (
