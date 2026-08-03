@@ -103,3 +103,65 @@ counts, distinct source families, and cap reasons. Any proposed rule change
 will be run through it on both an eclipse and an ordinary month before it
 lands, and we would rather hear a rule stated precisely enough to implement
 and measure than a principle we then have to interpret.
+
+---
+
+# Addendum: speed, not just direction
+
+The owner tracks Mercury's **speed** as well as its direction, and notes that
+speed should favour slower or faster activities — which reframes the whole
+question. Retrogradation is the *sign* of a velocity we are currently throwing
+away.
+
+`isRetrograde()` derives direction from two longitude samples one day apart and
+discards the magnitude. The magnitude is therefore free. Measured for Mercury
+across 2026 from our own ephemeris, in degrees per day:
+
+| min | p10 | median | p90 | max |
+|---|---|---|---|---|
+| −1.305 | −0.539 | +1.402 | +1.924 | +2.186 |
+
+- retrograde (v < 0): **18%** of the year
+- near-stationary (|v| < 0.2°/day): **6%** of the year, 21 days
+
+Three things follow.
+
+**1. The binary hides the most loaded state.** A station is the moment a planet
+is motionless before reversing, and traditionally the strongest expression of
+its condition. Our current rule treats a stationary Mercury and a Mercury three
+weeks into a smooth retrograde as identical, and both as identical to a Mercury
+moving 1.3°/day backwards. Those are three different conditions.
+
+**2. Speed is a correspondence, not only a caution.** The owner's point: a fast
+direct Mercury (near +1.9 to +2.2°/day) suits quick correspondence, errands,
+short exchanges; a slow or stationary Mercury suits revision, research, careful
+detailed work, going back over something. That is not a warning at all — it is
+a *match* between the quality of the motion and the quality of the activity.
+Our `ACTIVITIES` table has no field for this, and arguably should: something
+like a `tempo` preference (`quick` | `slow` | `either`) that the engine can
+match against measured speed.
+
+If that existed, "Mercury retrograde" would stop being a blanket caution and
+become what it probably always was — a period that genuinely favours re-doing
+over doing, and is a *good* time for a large class of activities.
+
+**3. It may dissolve the original question.** If speed is matched as a
+correspondence, the retrograde cap may not need to exist at all for Mercury.
+The remaining question would be narrower: does a retrograde *outer* significator
+mean anything for a chosen moment, given it is a background condition 40% of
+the time?
+
+## Revised questions
+
+1. Should the tier cap be replaced by a **speed correspondence** — matching
+   measured planetary speed against an activity's tempo preference — with
+   retrogradation surfaced as provenance rather than as a demotion?
+2. Is **stationary** (|v| < ~0.2°/day) the state that deserves special
+   treatment, rather than retrograde? And if so, is it a caution, or is it a
+   different kind of favourability (concentrated, fixed, hard to shift)?
+3. Should tempo apply beyond Mercury? A slow Saturn versus a fast Jupiter is a
+   real distinction, but we do not want to invent a system where none was
+   inherited.
+4. Where does the existing per-activity `mercuryRx` field fit, if speed is
+   modelled properly? It may become redundant, or become the override for the
+   handful of matters where the tradition is emphatic.
