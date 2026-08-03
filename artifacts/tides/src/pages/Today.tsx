@@ -9,7 +9,7 @@ import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
-import { suggestApproach } from "@/lib/approach";
+import { suggestApproach, approachOptions } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
 import { currentlyInProgress, elapsedLabel } from "@/lib/in-progress";
 import { framingFor, modeFrom } from "@/lib/modes";
@@ -2264,6 +2264,7 @@ const MODULE_META: Record<string, { label: string; icon: string; view: string }>
 // event). Concrete verbs come from the language layer (PLANET_ACTIVITIES /
 // SIGN_MYTHOS) instead of module labels.
 function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
+  const { profile: pulseProfile } = useTester();
   const moonSign: string = (now?.moonSign ?? "").split(" ")[0];
   const hourPlanet: string = now?.planetaryHour?.planet ?? "";
   const sm = SIGN_MYTHOS[moonSign];
@@ -2275,7 +2276,25 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
   const suggestions: { options: string[]; seed: number; source: string; color: string; title?: string; suffix?: string }[] = [];
 
   // 1 — the hour's voice (seed rotates with the hour so untouched cards vary)
-  const hourActs = PLANET_ACTIVITIES[hourPlanet];
+  //
+  // Through the approach layer, not PLANET_ACTIVITIES. This card was the third
+  // surface found still reading the flat list raw — after Today's ahead rows
+  // and the collapsed rail — which meant a Mars hour could offer "train hard"
+  // here at 11pm, the exact sentence that layer exists to prevent. The flat
+  // list stays only as a fallback for a body the approach layer doesn't cover.
+  const hourActs = hourPlanet
+    ? (() => {
+        const opts = approachOptions({
+          planet: hourPlanet,
+          at: new Date(),
+          wakeTime: pulseProfile?.chronotype?.wakeTime,
+          sleepTime: pulseProfile?.chronotype?.sleepTime,
+          voc: !!now?.voc?.isVOC,
+          moonSign,
+        });
+        return opts.length ? opts : PLANET_ACTIVITIES[hourPlanet];
+      })()
+    : undefined;
   if (hourActs?.length) {
     suggestions.push({
       options: hourActs,
@@ -2304,7 +2323,18 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
     .sort((a: any, b: any) => (a.hoursToExact ?? 99) - (b.hoursToExact ?? 99))[0];
   if (applying) {
     const partner = applying.planet1 === "Moon" ? applying.planet2 : applying.planet1;
-    const acts = PLANET_ACTIVITIES[partner];
+    // Fourth site, found by the broadened test rather than by reading. Same
+    // rule: the aspect partner's verbs must respect the clock and the void
+    // like every other card's do.
+    const partnerOpts = approachOptions({
+      planet: partner,
+      at: new Date(),
+      wakeTime: pulseProfile?.chronotype?.wakeTime,
+      sleepTime: pulseProfile?.chronotype?.sleepTime,
+      voc: !!now?.voc?.isVOC,
+      moonSign,
+    });
+    const acts = partnerOpts.length ? partnerOpts : PLANET_ACTIVITIES[partner];
     const hard = applying.aspect === "square" || applying.aspect === "opposition";
     if (acts?.length) {
       suggestions.push({

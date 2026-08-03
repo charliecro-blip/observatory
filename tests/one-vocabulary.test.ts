@@ -20,13 +20,41 @@ import { approachOptions } from "../artifacts/tides/src/lib/approach";
 
 const read = (f: string) => readFileSync(join(process.cwd(), f), "utf-8");
 
-describe("the flat list is never rendered without the rules", () => {
-  const rail = read("artifacts/tides/src/components/Rail.tsx");
+describe("the flat list is never read without the rules", () => {
+  // EVERY file, not just the rail. The first version of this test checked
+  // Rail.tsx alone, which is exactly the mistake it was written about: the fix
+  // had been applied per-surface instead of per-vocabulary, and a
+  // file-specific test repeats that error. Scanning all consumers immediately
+  // turned up a third site — the Resonant Now cards in Today.tsx.
+  const FILES = [
+    "artifacts/tides/src/components/Rail.tsx",
+    "artifacts/tides/src/pages/Today.tsx",
+  ];
 
-  it("routes every rail surface through the approach layer", () => {
-    // PLANET_ACTIVITIES may still appear — as the FALLBACK inside railVerbs,
-    // for bodies the approach layer has no entry for. What must not exist is a
-    // component reading it straight into a rendered list.
+  it("has no consumer outside the two files this test knows about", () => {
+    // If PLANET_ACTIVITIES grows a new reader, this test must be told about it
+    // rather than silently not covering it.
+    const src = read("artifacts/tides/src/lib/mythos.ts");
+    expect(src).toMatch(/PLANET_ACTIVITIES/);
+    for (const f of FILES) expect(read(f)).toMatch(/PLANET_ACTIVITIES/);
+  });
+
+  it("only ever uses the flat list as a fallback behind approachOptions", () => {
+    for (const f of FILES) {
+      const src = read(f);
+      for (const line of src.split("\n")) {
+        if (!line.includes("PLANET_ACTIVITIES[")) continue;
+        if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
+        // Legal shapes: `opts.length ? opts : PLANET_ACTIVITIES[x]` and the
+        // equivalent inside railVerbs. Both are guarded by a real lookup first.
+        expect(line, `${f}: flat list used without an approachOptions guard —\n    ${line.trim()}`)
+          .toMatch(/\?\s*opts\s*:|:\s*\(?PLANET_ACTIVITIES/);
+      }
+    }
+  });
+
+  it("routes every rail surface through railVerbs", () => {
+    const rail = read("artifacts/tides/src/components/Rail.tsx");
     expect(rail).toMatch(/function railVerbs/);
     const rendered = [...rail.matchAll(/options=\{([^}]*)\}/g)].map((m) => m[1]);
     expect(rendered.length, "no options= props found — did the rail change shape?").toBeGreaterThan(2);
@@ -38,11 +66,18 @@ describe("the flat list is never rendered without the rules", () => {
 
   it("passes the sleep hours and the void flag wherever it asks for verbs", () => {
     // Without these the approach layer degrades to the flat list's behaviour.
+    const rail = read("artifacts/tides/src/components/Rail.tsx");
     const calls = [...rail.matchAll(/railVerbs\(([^)]*)\)/g)].map((m) => m[1]);
     expect(calls.length).toBeGreaterThan(2);
     for (const c of calls) {
       expect(c, `railVerbs called without a chronotype: ${c}`).toMatch(/chronotype/);
       expect(c, `railVerbs called without the void flag: ${c}`).toMatch(/isVOC|voc/);
+    }
+    // Today's own call sites must carry the same two facts.
+    const today = read("artifacts/tides/src/pages/Today.tsx");
+    for (const m of today.matchAll(/approachOptions\(\{([\s\S]{0,260}?)\}\)/g)) {
+      expect(m[1], `approachOptions called without sleepTime:\n${m[1]}`).toMatch(/sleepTime/);
+      expect(m[1], `approachOptions called without voc:\n${m[1]}`).toMatch(/voc:/);
     }
   });
 });
