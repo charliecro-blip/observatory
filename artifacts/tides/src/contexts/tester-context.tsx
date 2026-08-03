@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   loadProfile,
   saveProfile,
@@ -124,9 +124,16 @@ function tzFallbackCoords(): { lat: number; lon: number } {
 }
 
 export function TesterProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<TesterProfile | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  // Read localStorage DURING the first render, not in an effect. loadProfile is
+  // synchronous, so an effect bought nothing and cost a whole render at the
+  // wrong coordinates: lat/lon fell back to the timezone guess, every
+  // location-keyed query fired against it, and the profile's real coordinates
+  // then changed the query key and fired the same requests a second time
+  // (measured: /api/tides/now and /api/tides/week each twice per cold load,
+  // once at 41.9/-87.6 and once at 41.8781/-87.6298).
+  const [profile, setProfile] = useState<TesterProfile | null>(loadProfile);
+  const [isReady, setIsReady] = useState(() => profile != null);
+  const [showModal, setShowModal] = useState(() => profile == null);
 
   // Absorb the recovery code the server mints and keep the local profile in
   // step with it — used by every sync call below.
@@ -135,18 +142,19 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
     setProfile(p => (p && p.recoveryCode !== code) ? { ...p, recoveryCode: code } : p);
   }, []);
 
+  // Existing users (pre-account-system) get registered on first load — this is
+  // what backfills a recovery key for data created before today. Once per boot:
+  // the ref survives StrictMode's remount, which was posting /api/account/sync
+  // twice on every dev load.
+  // Latched unconditionally on the first run — a brand-new account is synced by
+  // createAndApply/applyProfile itself, so an unlatched guard would sync it a
+  // second time the moment that new profile landed in state.
+  const bootSynced = useRef(false);
   useEffect(() => {
-    const saved = loadProfile();
-    if (saved) {
-      setProfile(saved);
-      setIsReady(true);
-      // Existing users (pre-account-system) get registered on first load —
-      // this is what backfills a recovery key for data created before today.
-      void syncAccount(saved, absorbCode);
-    } else {
-      setShowModal(true);
-    }
-  }, [absorbCode]);
+    if (bootSynced.current) return;
+    bootSynced.current = true;
+    if (profile) void syncAccount(profile, absorbCode);
+  }, [profile, absorbCode]);
 
   const updateLocation = useCallback((lat: number, lon: number, label: string) => {
     saveLocation(lat, lon, label);

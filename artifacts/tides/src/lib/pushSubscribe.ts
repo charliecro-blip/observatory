@@ -13,16 +13,28 @@ export type EnablePushResult = { ok: true } | { ok: false; reason: string };
 // BEFORE this check, so a tester granted browser permission and then got a
 // tail-swallowed "not configured" failure — asking for something real and
 // getting nothing in return, exactly backwards).
+//
+// The cache holds the in-flight PROMISE, not just the settled answer: caching
+// only the result left a window where two callers both saw `null` and both
+// fetched (StrictMode's double effect hit it every load, and so would any two
+// opt-in surfaces mounting together). One promise means one request.
 let configuredCache: boolean | null = null;
+let configuredInFlight: Promise<boolean> | null = null;
 export async function isPushConfigured(): Promise<boolean> {
   if (configuredCache != null) return configuredCache;
-  try {
-    const r = await fetch("/api/push/vapid-key");
-    configuredCache = r.ok;
-  } catch {
-    configuredCache = false;
+  if (!configuredInFlight) {
+    configuredInFlight = (async () => {
+      try {
+        const r = await fetch("/api/push/vapid-key");
+        configuredCache = r.ok;
+      } catch {
+        configuredCache = false;
+      }
+      configuredInFlight = null;
+      return configuredCache;
+    })();
   }
-  return configuredCache;
+  return configuredInFlight;
 }
 
 export async function enablePush(opts: { lat?: number; lon?: number } = {}): Promise<EnablePushResult> {
