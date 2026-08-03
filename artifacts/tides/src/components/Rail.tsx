@@ -6,6 +6,8 @@ import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences, useUiDensity } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
+import { suggestApproach } from "@/lib/approach";
+import { useTester } from "@/contexts/tester-context";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
@@ -410,6 +412,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
+  const { profile } = useTester();
   const { railSections } = prefs.display;
   // How much of the rail is the first session allowed to be? At `essential`
   // the rail is a slim sky-strip — season, moon, this hour — because the full
@@ -866,12 +869,26 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           {/* One concrete thing this hour's voice favors — rotates with the
               hour by default, and tapping cycles the other ways it could
               play out without leaving the frame. */}
-          <CycleLine
-            prefix="this hour"
-            options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
-            seed={new Date().getHours()}
-            style={{ marginBottom: 8 }}
-          />
+          {/* The approach for THIS hour, chosen by where it lands in the
+              user's own day and whether the Moon is void — not a flat list of
+              the planet's verbs. Falls back to the flat list only if the
+              approach layer has nothing for this body. */}
+          {(() => {
+            const a = suggestApproach({
+              planet: planetaryHour.planet,
+              at: new Date(),
+              wakeTime: profile?.chronotype?.wakeTime,
+              sleepTime: profile?.chronotype?.sleepTime,
+              voc: isVOC,
+              moonSign,
+            });
+            return a
+              ? <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                  <span style={{ color: "var(--text-3)" }}>this hour</span> {a.text}
+                </div>
+              : <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
+                  seed={new Date().getHours()} style={{ marginBottom: 8 }} />;
+          })()}
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Five upcoming hours is a schedule; two is a heads-up. The
                 essential rail wants the heads-up. */}

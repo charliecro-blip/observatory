@@ -9,6 +9,7 @@ import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
+import { suggestApproach } from "@/lib/approach";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -1567,10 +1568,27 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 const star = (northStars ?? []).find((g: any) => g.planet === h.planet && g.status !== "done");
                 return { ...h, task, star };
               }).filter((m: any) => m.task || m.star).slice(0, 3);
-              // Nothing matched: still name the next hour's opening, generically.
+              // Nothing matched: still name the next hour's opening — but as an
+              // APPROACH suited to when it actually lands. This used to take
+              // PLANET_ACTIVITIES[planet][0], a flat list with no sense of the
+              // hour, which is how "Mars hour — train hard" arrived at 21:20
+              // against a stated 23:00 bedtime.
               const next = (now?.upcomingHours ?? [])[0];
-              const generic = !moments.length && next && PLANET_ACTIVITIES[next.planet]?.length
-                ? [{ ...next, generic: PLANET_ACTIVITIES[next.planet][0] }] : [];
+              const generic = (() => {
+                if (moments.length || !next) return [];
+                const hhmm = String(next.time ?? "").match(/^(\d{1,2}):(\d{2})/);
+                const when = new Date();
+                if (hhmm) when.setHours(Number(hhmm[1]), Number(hhmm[2]), 0, 0);
+                const a = suggestApproach({
+                  planet: next.planet,
+                  at: when,
+                  wakeTime: testerProfile?.chronotype?.wakeTime,
+                  sleepTime: testerProfile?.chronotype?.sleepTime,
+                  voc: !!now?.voc?.isVOC,
+                  moonSign: now?.moonSign,
+                });
+                return a ? [{ ...next, generic: a.text }] : [];
+              })();
               const rows = moments.length ? moments : generic;
               if (!rows.length) return null;
               return (
