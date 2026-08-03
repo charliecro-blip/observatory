@@ -12,7 +12,7 @@ import { pickNextMove } from "@/lib/next-move";
 import { suggestApproach } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useSkyEvents, useNorthStars } from "@/hooks/useTides";
+import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
 import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
@@ -20,7 +20,7 @@ import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { usePreferences, useTimeFormat, useAstroDetail, useUiDensity } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { Tooltip, HelpBadge } from "@/components/Tooltip";
-import type { Goal, SkyEvent, Crossing } from "@/lib/types";
+import type { Goal, Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
 import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
@@ -736,7 +736,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
-  const { data: skyEventsData } = useSkyEvents(3, lat, lon);
   const { data: practicesData } = usePractices(testerId, lat, lon);
   const { data: windows } = useTodayWindows(testerId, today);
   const { data: tidesWindowsData } = useTidesWindows(lat, lon);
@@ -2248,167 +2247,10 @@ function DonePattern({ today, testerId }: { today: string; testerId: string | nu
   );
 }
 
-// ── DayTimeline ────────────────────────────────────────────────────────────────
-
-const CHALDEAN_TL = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
-const WEEKDAY_RULERS_TL = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
-
-const PLANET_COLORS_TL = PLANET_COLORS;
-
-const ASPECT_ICON: Record<string,string> = {
-  conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎",
-};
-
-const EVENT_COLORS: Record<string,string> = {
-  moon_phase:PLANET_COLORS.Moon, ingress:ELEMENT_COLORS.earth, voc:"#b0a030", crossing:PLANET_COLORS.Jupiter, moon_aspect:"#3a7080", quality_window:"#40a060",
-};
-
-function tlApproxSunriseSunset(dateStr: string, lat: number, lon: number): {sunrise: Date; sunset: Date} | null {
-  const base = new Date(dateStr + "T12:00:00");
-  const jd = base.getTime() / 86400000 + 2440587.5;
-  const n = jd - 2451545.0;
-  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
-  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
-  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
-  const cosDec = Math.cos(Math.asin(sinDec));
-  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
-               (Math.cos(lat * Math.PI / 180) * cosDec);
-  if (Math.abs(cosH) > 1) return null;
-  const H = Math.acos(cosH) * 180 / Math.PI;
-  const B = (360 / 365) * (n - 81) * Math.PI / 180;
-  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
-  const lstNoon = 12 - lon / 15 - EqT / 60;
-  const sunriseH = lstNoon - H / 15;
-  const sunsetH  = lstNoon + H / 15;
-  const midnight = new Date(dateStr + "T00:00:00");
-  return {
-    sunrise: new Date(midnight.getTime() + sunriseH * 3600000),
-    sunset:  new Date(midnight.getTime() + sunsetH  * 3600000),
-  };
-}
-
-function tlComputePlanetaryHours(dateStr: string, lat: number, lon: number) {
-  const ss = tlApproxSunriseSunset(dateStr, lat, lon);
-  const ss1 = tlApproxSunriseSunset(
-    addDaysLocal(dateStr, 1), lat, lon
-  );
-  if (!ss || !ss1) return [];
-  const { sunrise, sunset } = ss;
-  const { sunrise: nextSunrise } = ss1;
-  const dayRuler = WEEKDAY_RULERS_TL[sunrise.getDay()];
-  const dayIdx = CHALDEAN_TL.indexOf(dayRuler);
-  const dayLen = sunset.getTime() - sunrise.getTime();
-  const dayH = dayLen / 12;
-  const nightLen = nextSunrise.getTime() - sunset.getTime();
-  const nightH = nightLen / 12;
-  const hours: {ruler:string; start:Date; end:Date; isDay:boolean}[] = [];
-  for (let i = 0; i < 12; i++) {
-    hours.push({ ruler: CHALDEAN_TL[(dayIdx + i) % 7], start: new Date(sunrise.getTime() + i * dayH), end: new Date(sunrise.getTime() + (i+1) * dayH), isDay: true });
-  }
-  for (let i = 0; i < 12; i++) {
-    hours.push({ ruler: CHALDEAN_TL[(dayIdx + 12 + i) % 7], start: new Date(sunset.getTime() + i * nightH), end: new Date(sunset.getTime() + (i+1) * nightH), isDay: false });
-  }
-  return hours;
-}
-
-function DayTimeline({ today, now, lat, lon, skyEvents }: {
-  today: string; now: any; lat: number; lon: number; skyEvents: SkyEvent[];
-}) {
-  const fmtTime = useTimeFormat();
-  const HOUR_START = 5, HOUR_END = 23;
-  const ROW_H = 52;
-
-  const planetHours = useMemo(() => tlComputePlanetaryHours(today, lat, lon), [today, lat, lon]);
-  const nowDate = new Date();
-  const nowFrac = (nowDate.getHours() + nowDate.getMinutes() / 60 - HOUR_START) / (HOUR_END - HOUR_START);
-
-  const todayEvents = useMemo(() =>
-    skyEvents.filter(e => e.date === today && e.time),
-    [skyEvents, today]
-  );
-
-  function hourFrac(h: number) { return (h - HOUR_START) / (HOUR_END - HOUR_START); }
-
-  // Map events to fractional position
-  const eventPositions = useMemo(() =>
-    todayEvents.map(e => {
-      const [hh, mm] = (e.time ?? "00:00").split(":").map(Number);
-      const frac = hourFrac(hh + mm / 60);
-      return { e, frac };
-    }).filter(x => x.frac >= 0 && x.frac <= 1),
-    [todayEvents]
-  );
-
-  const totalH = (HOUR_END - HOUR_START) * ROW_H;
-
-  return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
-      <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Today's Hours</div>
-        <div style={{ fontSize: 9, color: "var(--text-3)" }}>Planetary hours + sky events</div>
-      </div>
-      <div style={{ position: "relative", height: Math.min(totalH, 560), overflowY: "auto" }}>
-        {/* Hour rows */}
-        {Array.from({length: HOUR_END - HOUR_START}, (_, i) => {
-          const h = HOUR_START + i;
-          const isNow = nowDate.getHours() === h;
-          // find planetary hour for midpoint of this clock hour
-          const midMs = new Date(today + `T${String(h).padStart(2,"0")}:30:00`).getTime();
-          const ph = planetHours.find(p => p.start.getTime() <= midMs && p.end.getTime() > midMs);
-          const pColor = ph ? (PLANET_COLORS_TL[ph.ruler] ?? "#888") : "#ccc";
-          return (
-            <div key={h} style={{
-              height: ROW_H, display: "flex", alignItems: "stretch",
-              borderBottom: "1px solid var(--color-border)",
-              background: isNow ? "#fffbf0" : ph?.isDay === false ? "#f5f3f7" : "var(--color-card)",
-            }}>
-              {/* Time label */}
-              <div style={{ width: 42, flexShrink: 0, display: "flex", alignItems: "flex-start", paddingTop: 6, paddingLeft: 12, fontSize: 9, color: isNow ? "#b07820" : "var(--text-3)", fontWeight: isNow ? 700 : 400 }}>
-                {h === 12 ? "12p" : h > 12 ? `${h-12}p` : `${h}a`}
-              </div>
-              {/* Planet hour bar */}
-              <div style={{ width: 54, flexShrink: 0, display: "flex", alignItems: "center", paddingLeft: 4, borderLeft: `3px solid ${pColor}30`, background: `${pColor}08` }}>
-                {ph && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <div style={{ fontSize: 9, color: pColor, fontWeight: 600 }}>{ph.ruler}</div>
-                    <div style={{ fontSize: 7, color: "var(--text-3)" }}>{ph.isDay ? "☉︎" : "☽︎"}</div>
-                  </div>
-                )}
-              </div>
-              {/* Event slot */}
-              <div style={{ flex: 1, position: "relative", paddingLeft: 8, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
-                {eventPositions
-                  .filter(({ frac }) => {
-                    const evH = HOUR_START + frac * (HOUR_END - HOUR_START);
-                    return Math.floor(evH) === h;
-                  })
-                  .map(({ e }, idx) => (
-                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: EVENT_COLORS[e.type] ?? "#aaa", flexShrink: 0 }} />
-                      <div style={{ fontSize: 9.5, color: EVENT_COLORS[e.type] ?? "var(--text-2)", fontWeight: 500 }}>{e.icon} {e.title}</div>
-                      {e.time && <div style={{ fontSize: 8, color: "var(--text-3)", marginLeft: "auto", paddingRight: 12 }}>
-                        {fmtTime(new Date(`${today}T${e.time}`))}
-                      </div>}
-                    </div>
-                  ))
-                }
-                {/* Now indicator line */}
-                {isNow && (
-                  <div style={{
-                    position: "absolute", left: 0, right: 0,
-                    top: `${(nowDate.getMinutes() / 60) * 100}%`,
-                    height: 2, background: "#b07820", opacity: 0.6, pointerEvents: "none",
-                  }} />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// (DayTimeline was removed 2026-08-03 — 161 lines defining a component
+//  that was never rendered anywhere, plus the useSkyEvents fetch that fed
+//  it. The fetch was still running on every Today load: a third wasted
+//  request alongside the two found in Dashboard.)
 
 // ── ModulePulse ────────────────────────────────────────────────────────────────
 
