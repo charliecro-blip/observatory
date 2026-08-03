@@ -110,6 +110,37 @@ function generateTesterId(): string {
   return `obs_${random}`;
 }
 
+/**
+ * Give an existing account the assumed default rhythm it never got.
+ *
+ * Accounts created before 2026-08-02 could skip the rhythm step and have
+ * NOTHING stored, which left `sleepIntervals()` empty: no personal-night
+ * shading on the tide chart, and no demotion of sleeping-hours windows. New
+ * accounts now always get a default, so without this backfill the oldest
+ * users — the beta testers — keep the worst version of the feature.
+ *
+ * Written with `assumed: true`, which matters: the dead-of-night floor treats
+ * assumed hours as NOT consent, so this quietly improves the display without
+ * granting the app permission to suggest 3am on their behalf. Settings still
+ * owns the real answer whenever they want to give it.
+ */
+function backfillAssumedChronotype(): Chronotype | undefined {
+  try {
+    const seeded: Chronotype = {
+      profile: "steady",
+      freeWindows: {} as Chronotype["freeWindows"],
+      wakeTime: "07:30",
+      sleepTime: "23:00",
+      assumed: true,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(KEY_CHRONOTYPE, JSON.stringify(seeded));
+    return seeded;
+  } catch {
+    return undefined;   // private mode — the app runs fine without it
+  }
+}
+
 /** Load the saved profile from localStorage, or null if none. */
 export function loadProfile(): TesterProfile | null {
   const testerId = localStorage.getItem(KEY_ID);
@@ -118,7 +149,7 @@ export function loadProfile(): TesterProfile | null {
     const locRaw = localStorage.getItem(KEY_LOC);
     const loc = locRaw ? JSON.parse(locRaw) : {};
     const chronoRaw = localStorage.getItem(KEY_CHRONOTYPE);
-    const chronotype = chronoRaw ? JSON.parse(chronoRaw) : undefined;
+    const chronotype = chronoRaw ? JSON.parse(chronoRaw) : backfillAssumedChronotype();
     const cautionRaw = localStorage.getItem(KEY_CAUTION_PLANETS);
     const cautionPlanets = cautionRaw ? JSON.parse(cautionRaw) : undefined;
     const recoveryCode = localStorage.getItem(KEY_RECOVERY_CODE) ?? undefined;

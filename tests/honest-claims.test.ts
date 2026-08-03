@@ -35,11 +35,25 @@ describe("no invented obligations", () => {
   it("shows a progress bar only when a real denominator exists", () => {
     // A ratio needs something the user actually scheduled; otherwise there is
     // nothing to be a fraction OF.
-    for (const f of ["artifacts/tides/src/pages/Today.tsx",
-                     "artifacts/tides/src/pages/GuidingStarsHub.tsx"]) {
-      expect(read(f), `${f} draws a bar without checking scheduled > 0`)
-        .toMatch(/scheduled > 0 &&/);
-    }
+    //
+    // Asserted against GuidingStarsHub ONLY, deliberately. Today.tsx also
+    // contains a matching guard, but it lives inside `NorthStarsCard` — a
+    // component that is never rendered (proven by its strings being absent
+    // from the production bundle). Including Today.tsx here would make this
+    // test pass on code no user reaches, and would then FAIL the moment
+    // somebody deletes that dead component — a test actively defending
+    // something worthless. Source-grep tests can only be trusted on surfaces
+    // known to render.
+    const f = "artifacts/tides/src/pages/GuidingStarsHub.tsx";
+    expect(read(f), `${f} draws a bar without checking scheduled > 0`)
+      .toMatch(/scheduled > 0 &&/);
+  });
+
+  it("Dashboard reports movement without a denominator at all", () => {
+    // The live Today surface for star progress is Dashboard's card, which now
+    // states what happened rather than drawing a ratio.
+    const d = read("artifacts/tides/src/components/Dashboard.tsx");
+    expect(d).toMatch(/done > 0 \? `\$\{done\} this week`/);
   });
 });
 

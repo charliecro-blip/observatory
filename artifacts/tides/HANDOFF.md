@@ -1,11 +1,21 @@
-# Handoff — Compass, as of 2026-08-02 (evening)
+# Handoff — Compass, as of 2026-08-02 (late)
 
-*For the next session. The owner is Charlie, in Austin. The beta pass ran to
-completion, then a follow-up pass closed §B5 (hover-only), §B1 (list-block
-redundancy), and a stale-copy gap found by auditing the acceptance criteria
-directly. **`main` is deployed and live at compass.day** — twice, both
-verified by fetching the actual served bundle, not just the health check.
-Nothing is queued; the next session picks a fresh frontier.*
+*For the next session. The owner is Charlie, in Austin. A long day: the beta
+pass finished, then the owner ran their own first-run pass, then an external
+power-user audit arrived. All three are closed and deployed — **`main` is live
+at compass.day**, verified five times by fetching the served bundle and
+grepping for strings that can only exist in the new build, never by health
+check alone.*
+
+**Start here:** `POWER-USER-AUDIT-2026-08-02.md` — all ten P0s shipped, what
+each actually turned out to be, and the P1 list nobody has started.
+`FIRST-RUN-PASS-2026-08-02.md` holds the owner's own pass.
+
+**The one live thread:** a background session is removing dead components from
+`Today.tsx` and had uncommitted work in that file *and* in
+`tests/honest-claims.test.ts` at handoff. Check it landed before editing
+either. A small conflict in that test is expected and trivial — both sides are
+fixing the same thing (see "the dead-code trap" below).
 
 ---
 

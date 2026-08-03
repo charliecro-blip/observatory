@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { isAwakeDuring } from "../artifacts/tides/src/lib/chronotype";
 import type { Chronotype } from "../artifacts/tides/src/lib/tester-profile";
 
@@ -73,5 +75,25 @@ describe("the dead-of-night floor", () => {
     expect(isAwakeDuring(win(3, 5), undefined)).toBe(true);
     // 2–4am has midpoint 3:00 → dead of night.
     expect(isAwakeDuring(win(2, 4), undefined)).toBe(false);
+  });
+});
+
+describe("the backfill for existing accounts", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/lib/tester-profile.ts"), "utf-8");
+
+  it("seeds a default rhythm for accounts that have none", () => {
+    // Beta testers who skipped the old rhythm step stored nothing, so they got
+    // no sleep shading and no sleeping-hours demotion — the oldest users stuck
+    // with the worst version of the feature.
+    expect(src).toMatch(/backfillAssumedChronotype/);
+    expect(src).toMatch(/chronoRaw \? JSON\.parse\(chronoRaw\) : backfillAssumedChronotype\(\)/);
+  });
+
+  it("marks the backfill as assumed, so it never counts as consent", () => {
+    // The whole point: improve the display without granting the app permission
+    // to suggest 3am on their behalf.
+    const fn = src.match(/function backfillAssumedChronotype[\s\S]*?\n}/)?.[0] ?? "";
+    expect(fn).toMatch(/assumed: true/);
   });
 });
