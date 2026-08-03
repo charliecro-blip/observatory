@@ -36,6 +36,11 @@ const WEEKDAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "S
 const norm360 = (d: number) => ((d % 360) + 360) % 360;
 const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); return d > 180 ? 360 - d : d; };
 
+/** Why a window that otherwise qualified was held back from `great`. */
+export type CapReason =
+  | "mercury-retrograde" | "eclipse-window"
+  | "retrograde-significator" | "malefic-final-aspect";
+
 export interface ElectionWindow {
   date: string; dow: string;
   startAt: string; endAt: string;          // ISO instants (schedulable)
@@ -44,13 +49,32 @@ export interface ElectionWindow {
   tier: "good" | "great";
   score: number;
   why: string;
-  sources: string[];                        // hour | moon | sign | voc | natal | sky
+  sources: string[];                        // raw: hour | moon | sign | voc | natal-house | natal-contact | sky
+  /** Normalized independent families present in this window. What the tier
+   *  is counted from, and what convergence language must be derived from. */
+  families: SourceFamily[];
+  /** THIS window carries personal (natal) testimony supporting this activity.
+   *  Distinct from the result's `chartAvailable`. */
+  personal: boolean;
+  /** The personal testimony is what lifted this window to `great` — without
+   *  it, it would be `good`. Only meaningful when tier === "great". */
+  personalDecidedTier: boolean;
+  /** Set when the window met the bar for `great` and a traditional gate
+   *  demoted it. Null when it was never close, or was not demoted. */
+  cappedBy: CapReason | null;
 }
 
 export interface ElectionResult {
   activity: { key: string; label: string; gloss: string; category: string };
   span: "day" | "week" | "month";
-  personalized: boolean;                    // natal chart was available
+  /** A natal chart was available to the computation. Says NOTHING about
+   *  whether any returned window uses it — that is `personalized` below and
+   *  `personal` per window. */
+  chartAvailable: boolean;
+  /** At least one returned window actually carries personal testimony. This
+   *  used to be `!!natal`, which let a response of entirely global windows
+   *  describe itself as personalized. */
+  personalized: boolean;
   cautions: string[];
   windows: ElectionWindow[];
 }
@@ -74,6 +98,45 @@ function dayHours(dayStartMs: number, lat: number, lon: number): { ruler: string
   }
   return out;
 }
+
+/**
+ * CANONICAL SOURCE FAMILIES.
+ *
+ * Tier decisions must count independent *kinds* of testimony, not rows. Three
+ * separate branches used to push the bare string "natal" — a significator
+ * transiting a governing house, the Moon crossing one, and a significator
+ * contacting its own natal place — and the GREAT test read
+ * `daySources.length` BEFORE the emit-time dedupe. Two firings of the same
+ * broad natal family could therefore satisfy a threshold that documents itself
+ * as "two independent signals".
+ *
+ * Measured 2026-08-03 over 30 days x 46 activities on a real chart: this never
+ * actually mis-tiered a window (every GREAT carried three distinct families).
+ * It is fixed because the code contradicted its own stated semantics, because
+ * promoting this tier to the centre of the product widens the exposure, and
+ * because calibration has to count what the UI claims it counts — not because
+ * anyone hit it.
+ */
+export type SourceFamily =
+  | "planetary-time"   // hour ruler, weekday ruler
+  | "lunar-contact"    // Moon aspecting a significator
+  | "lunar-condition"  // Moon sign affinity, phase, void of course
+  | "standing-sky"     // non-lunar aspect between significators
+  | "natal-house"      // transiting body in a governing natal house
+  | "natal-contact";   // transit to its own natal place
+
+const FAMILY_OF: Record<string, SourceFamily> = {
+  hour: "planetary-time",
+  moon: "lunar-contact",
+  sign: "lunar-condition",
+  voc: "lunar-condition",
+  sky: "standing-sky",
+  "natal-house": "natal-house",
+  "natal-contact": "natal-contact",
+};
+const familiesOf = (srcs: string[]): SourceFamily[] =>
+  [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
+const PERSONAL_FAMILIES = new Set<SourceFamily>(["natal-house", "natal-contact"]);
 
 export function computeElections(opts: {
   activityKey: string;
@@ -159,14 +222,14 @@ export function computeElections(opts: {
         if (tl == null) continue;
         const house = assignHouse(tl, cusps);
         if (act.houses.includes(house)) {
-          daySources.push("natal"); dayBoost *= 1.2;
+          daySources.push("natal-house"); dayBoost *= 1.2;
           dayWhy.push(`${p} is moving through your ${house}${house === 1 ? "st" : house === 2 ? "nd" : house === 3 ? "rd" : "th"} — this matter's own house`);
           break;
         }
       }
       const moonHouse = assignHouse(norm360(moonLongitude(jdNoon)), cusps);
       if (act.houses.includes(moonHouse)) {
-        daySources.push("natal"); dayBoost *= 1.15;
+        daySources.push("natal-house"); dayBoost *= 1.15;
         dayWhy.push(`the Moon crosses your ${moonHouse}${moonHouse === 1 ? "st" : moonHouse === 2 ? "nd" : moonHouse === 3 ? "rd" : "th"} today`);
       }
       // Transit-to-natal return: a significator softly touching its own natal place.
@@ -176,7 +239,7 @@ export function computeElections(opts: {
         const s = sep180(tl, nl);
         const near = [0, 60, 120].find(A => Math.abs(s - A) <= 2);
         if (near != null) {
-          daySources.push("natal"); dayBoost *= 1.15;
+          daySources.push("natal-contact"); dayBoost *= 1.15;
           dayWhy.push(`${p} ${near === 0 ? "conjoins" : near === 120 ? "trines" : "sextiles"} your natal ${p}`);
           break;
         }
@@ -277,12 +340,32 @@ export function computeElections(opts: {
       // Sign-affinity days stay good — they're ambient quality, not elections.
       const stacked = c.sources.includes("moon") && c.sources.includes("hour");
       const substantive = c.sources.includes("moon") || c.sources.includes("hour");
-      const greatSignals = (stacked ? 1 : 0) + daySources.length;
+      // Count DISTINCT day-level families, not rows. `daySources.length` let
+      // one broad family fire twice and clear a threshold that documents
+      // itself as two independent signals.
+      //
+      // The hour x Moon stack still counts as ONE, deliberately, even though
+      // it spans two families. That convention predates this fix (owner
+      // 2026-07-20: one signal wasn't scarce enough, Venus hours recur daily)
+      // and normalising it away here would silently reclassify every stacked
+      // window as GREAT — a threshold change smuggled in under a bug fix.
+      // Whether the stack SHOULD count as two is a calibration question, and
+      // the pre-tier family histogram in tools/ exists to answer it.
+      const dayFamilies = familiesOf(daySources);
+      const greatSignals = (stacked ? 1 : 0) + dayFamilies.length;
       let tier: "good" | "great" = substantive && greatSignals >= 2 ? "great" : "good";
-      if (dayMercRx && act.mercuryRx === "hard") tier = "good"; // blocked matters get no great stamp
+      // Which gate demoted this window, if any. Recorded because "would have
+      // been great but for X" is both the diagnostic that tells calibration
+      // whether scarcity comes from the threshold or from the caps, AND a
+      // thing worth saying out loud to a user: a strong window held back by a
+      // retrograde significator is more informative than a silent `good`.
+      let cappedBy: CapReason | null = null;
+      const wouldBeGreat = tier === "great";
+      if (wouldBeGreat && dayMercRx && act.mercuryRx === "hard") { tier = "good"; cappedBy = "mercury-retrograde"; }
       // Verified gates: eclipse week, retrograde significators, and the Moon's
       // FINAL aspect in this window's sign (how the matter ends) each cap GREAT.
-      if (tier === "great" && (dayEcl.active || dayRxSigs.length > 0)) tier = "good";
+      if (tier === "great" && dayEcl.active) { tier = "good"; cappedBy = "eclipse-window"; }
+      if (tier === "great" && dayRxSigs.length > 0) { tier = "good"; cappedBy = "retrograde-significator"; }
       if (tier === "great" && !c.allDay) {
         // Memoized per sign occupancy — every window in the same Moon sign
         // shares one final aspect, and the scan isn't free.
@@ -291,9 +374,22 @@ export function computeElections(opts: {
         if (!finalAspectMemo.has(signKey)) finalAspectMemo.set(signKey, moonFinalAspectInSign(cJd));
         const fin = finalAspectMemo.get(signKey)!;
         if (fin && (fin.aspect === "square" || fin.aspect === "opposition") && (fin.planet === "Mars" || fin.planet === "Saturn")) {
-          tier = "good"; // Hampar: a malefic hard final aspect — the ending sours; no GREAT
+          tier = "good"; cappedBy = "malefic-final-aspect"; // the ending sours; no GREAT
         }
       }
+      // Window-level personal provenance. `personalized` on the RESULT only
+      // ever meant "a natal chart was available" — it said nothing about
+      // whether any particular window carried personal testimony, so a wholly
+      // global window sat inside a response labelled personalized. Four
+      // different claims were collapsed into one boolean; these separate them.
+      const families = familiesOf([...c.sources, ...daySources]);
+      const personalFamilies = families.filter(f => PERSONAL_FAMILIES.has(f));
+      // Would this window still be GREAT without its personal testimony? Only
+      // meaningful when it IS great — otherwise there is no tier to have
+      // decided.
+      const nonPersonalDayFamilies = dayFamilies.filter(f => !PERSONAL_FAMILIES.has(f));
+      const personalDecidedTier = tier === "great" &&
+        (stacked ? 1 : 0) + nonPersonalDayFamilies.length < 2;
       windows.push({
         date: dateLabel, dow,
         startAt: new Date(c.startMs).toISOString(), endAt: new Date(c.endMs).toISOString(),
@@ -301,6 +397,10 @@ export function computeElections(opts: {
         allDay: c.allDay, tier, score: parseFloat(score.toFixed(3)),
         why: [...c.why, ...dayWhy].join(" · "),
         sources: [...new Set([...c.sources, ...daySources])],
+        families,
+        personal: personalFamilies.length > 0,
+        personalDecidedTier,
+        cappedBy,
       });
     }
   }
@@ -324,6 +424,9 @@ export function computeElections(opts: {
 
   return {
     activity: { key: act.key, label: act.label, gloss: act.gloss, category: act.category },
-    span: opts.span, personalized: !!natal, cautions, windows: out,
+    span: opts.span,
+    chartAvailable: !!natal,
+    personalized: out.some(w => w.personal),
+    cautions, windows: out,
   };
 }

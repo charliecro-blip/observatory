@@ -30,7 +30,7 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
     staleTime: Infinity,
   });
 
-  const { data: times, isFetching } = useQuery<{ personalized: boolean; windows: ElectionWindowT[] }>({
+  const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; windows: ElectionWindowT[] }>({
     queryKey: ["election-times", match?.key, "week", testerId],
     queryFn: async () => (await fetch(
       `/api/elections/times?activity=${match!.key}&span=week&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}`,

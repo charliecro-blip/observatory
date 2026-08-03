@@ -56,7 +56,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
     staleTime: Infinity,
   });
 
-  const { data: times, isFetching } = useQuery<{ personalized: boolean; cautions: string[]; windows: ElectionWindowT[]; activity: ActivityLite }>({
+  const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; cautions: string[]; windows: ElectionWindowT[]; activity: ActivityLite }>({
     queryKey: ["election-times", activityKey, span, testerId],
     queryFn: async () => (await fetch(
       `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}`,
@@ -126,7 +126,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
         <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: ELEMENT_COLORS.air, fontFamily: "var(--font-display)" }}>· Auspice</span>
       </div>
       <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 10 }}>
-        Pick an activity — Auspice reads its good and great times from the sky{times?.personalized ? " and your chart" : ""}.
+        Pick an activity — Auspice reads its good and great times from the sky{times?.chartAvailable ? " and your chart" : ""}.
       </div>
 
       {/* Categories */}
@@ -177,7 +177,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
               ⚠ {c}
             </div>
           ))}
-          {times && !times.personalized && (
+          {times && !times.chartAvailable && (
             <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
               ○ Add your birth chart in Settings to unlock ★ great times read from your own houses.
             </div>
