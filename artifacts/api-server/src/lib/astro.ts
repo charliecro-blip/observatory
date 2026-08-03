@@ -1,18 +1,18 @@
 /**
  * Ephemeris calculations for astrological context.
  *
- * All planets use proper heliocentric orbital mechanics:
- *   1. heliocentricEcliptic()  — mean longitude → true heliocentric longitude + radius
- *   2. geoFromHelio()          — heliocentric → geocentric ecliptic longitude
+ * 2026-07-20: Sun, Moon, and the eight planets delegate to astronomy-engine
+ * (see ephemeris.ts) — the audit found the old hand-rolled model wrong-sign up
+ * to ~6% for the outers.
  *
- * Previous bug (fixed): Mars (and outer planets) were computed with
- * approxPlanetLongitude() which used only mean longitude — no equation of
- * center and no heliocentric→geocentric conversion.  For Mars this caused a
- * ~21° error (e.g. 26° Pisces instead of 18° Aries on 2026-05-03).
+ * 2026-07-27: Chiron (the one body astronomy-engine doesn't cover) moved from
+ * a flat 2D mean-elements fit to a full 3D Kepler solution from fitted JPL
+ * osculating elements (see CHIRON below) — the 2D fit was calibrated to a
+ * single 2026 epoch and drifted ~7° by 1992 (item #26). The old 2D Kepler
+ * machinery (ORBITAL/heliocentricEcliptic/geoFromHelio) was removed with it.
  *
- * 2026-07-20: Sun, Moon, and the eight planets now delegate to astronomy-engine
- * (see ephemeris.ts) — the audit found the old model wrong-sign up to ~6% for
- * the outers. The Kepler machinery below is retained only for Chiron.
+ * Asteroids (Ceres/Pallas/Juno/Vesta) use the same 3D Kepler solver further
+ * down, from J2000 mean elements with a calibrated M0.
  */
 
 import { accurateLongitude, accurateRetrograde, HAS_ACCURATE } from "./ephemeris.js";
@@ -53,61 +53,55 @@ function longitudeToSign(deg: number): { sign: string; degree: number } {
   return { sign: SIGNS[index], degree: norm % 30 };
 }
 
-/** Equation of center in degrees — converts mean anomaly → true longitude correction */
-function equationOfCenter(Mrad: number, e: number): number {
-  return RAD2DEG * (
-    (2 * e - 0.25 * e * e * e) * Math.sin(Mrad) +
-    1.25 * e * e * Math.sin(2 * Mrad) +
-    (13 / 12) * e * e * e * Math.sin(3 * Mrad)
-  );
-}
-
-interface OrbitalElements {
-  L0: number; Lrate: number;       // mean longitude at J2000 (deg) + rate (deg/century)
-  peri0: number; periRate: number; // longitude of perihelion (deg) + rate (deg/century)
-  a: number; e: number;            // semi-major axis (AU), eccentricity
-}
-
-/** True heliocentric ecliptic longitude (deg) and radius vector (AU) */
-function heliocentricEcliptic(T: number, p: OrbitalElements): { lambda: number; r: number } {
-  const L    = normalize360(p.L0    + p.Lrate    * T);
-  const peri = normalize360(p.peri0 + p.periRate * T);
-  const M    = normalize360(L - peri);
-  const C    = equationOfCenter(M * DEG2RAD, p.e);
-  const lambda = normalize360(L + C);
-  const nu   = normalize360(lambda - peri);
-  const r    = p.a * (1 - p.e * p.e) / (1 + p.e * Math.cos(nu * DEG2RAD));
-  return { lambda, r };
-}
-
-/** Heliocentric planet position → geocentric ecliptic longitude */
-function geoFromHelio(lambdaP: number, rP: number, lambdaE: number, rE: number): number {
-  const dx = rP * Math.cos(lambdaP * DEG2RAD) - rE * Math.cos(lambdaE * DEG2RAD);
-  const dy = rP * Math.sin(lambdaP * DEG2RAD) - rE * Math.sin(lambdaE * DEG2RAD);
-  return normalize360(Math.atan2(dy, dx) * RAD2DEG);
-}
-
-// ── Orbital elements (VSOP87 mean orbit at J2000, Meeus Table 33.a) ────────────
-// Valid for ~1800-2050. periRate in deg/century.
-
-const ORBITAL: Record<string, OrbitalElements> = {
-  Mercury: { L0: 252.25032350, Lrate: 149472.67411175, peri0: 77.45779628,  periRate:  0.15940013, a:  0.38709893, e: 0.20563069 },
-  Venus:   { L0: 181.97980785, Lrate:  58517.81538729, peri0: 131.60246718, periRate:  0.00268329, a:  0.72333199, e: 0.00677323 },
-  // FIX: Mars was previously computed as mean-longitude only (no EoC, no geo correction)
-  Mars:    { L0: 355.433275,   Lrate:  19140.2993313,  peri0: 336.04084,    periRate:  1.84969142, a:  1.52366231, e: 0.09339410 },
-  Jupiter: { L0:  34.351519,   Lrate:   3034.9057,     peri0:  14.331,      periRate:  1.00,       a:  5.20260,   e: 0.048498   },
-  Saturn:  { L0:  50.077444,   Lrate:   1222.1138,     peri0:  93.057,      periRate:  1.96,       a:  9.53707,   e: 0.056116   },
-  Uranus:  { L0: 314.055005,   Lrate:    428.4677,     peri0: 173.005,      periRate:  1.49,       a: 19.1913,    e: 0.047168   },
-  Neptune: { L0: 304.348665,   Lrate:    218.4862,     peri0:  48.120,      periRate:  1.43,       a: 30.0689,    e: 0.008590   },
-  Pluto:   { L0: 238.92881,    Lrate:    145.9800,     peri0: 224.067,      periRate: -1.80,       a: 39.4821,    e: 0.248835   },
-  // Chiron (2060 Chiron) — a centaur, not a classical planet. Its orbit is
-  // chaotic and highly eccentric, so this two-body mean-elements fit is an
-  // APPROXIMATION: good to ~1–2° near the present epoch, degrading further out.
-  // Calibrated so it reads ~1–2° Taurus in mid-2026 (Chiron ingressed Taurus
-  // ~Jun 2026 and stations retrograde near 2° Taurus ~Jul 26 2026), matching
-  // real ephemerides. Refine later. Period ~50.4y; e high (~0.38).
-  Chiron:  { L0: 219.8,        Lrate:    713.98,       peri0: 188.49,       periRate:  0.00,       a: 13.7084,    e: 0.3828     },
+// ── Chiron (2060 Chiron) — 3D Kepler from fitted osculating elements ─────────
+// A centaur, not covered by astronomy-engine. Base elements: JPL Horizons
+// soln JPL#171 (epoch JD 2457916.5 TDB = 2017-Jun-12), then all six elements
+// + mean motion least-squares-fitted against 987 Horizons apparent
+// ecliptic-of-date longitudes at 30-day steps spanning 1950–2030 (fit run
+// 2026-07-27; the fit absorbs two-body drift away from the osculating epoch).
+// Residuals vs Horizons: max 0.10°, rms 0.05° across the whole 1950–2030 range.
+// Verified epochs: 1977-11-01 discovery 3.1° Tau (published 3°08' Tau),
+// 1992-01-03 8.3° Leo (Swiss Ephemeris ~8.2° Leo — the old 2D model said
+// 15.6° Leo, item #26), 2018-04-17 Aries ingress day 0.0° Ari.
+// Elements live in the J2000 ecliptic frame: Earth is precessed INTO that
+// frame and the result precessed BACK to of-date, matching astronomy-engine's
+// apparent-of-date convention used for the planets. n in deg/day.
+const CHIRON = {
+  a: 13.657229, e: 0.380605, i: 7.080841, om: 209.213632, w: 339.559240,
+  M0: 152.288105, epoch: 2457916.5, n: 0.019542262,
 };
+
+/** Earth's radius vector in AU (Meeus low-precision; ±0.017 AU annual swing). */
+function earthRadiusAU(jd: number): number {
+  const T = (jd - 2451545.0) / 36525;
+  const M = normalize360(357.52911 + 35999.05029 * T) * DEG2RAD;
+  const e = 0.016708634 - 0.000042037 * T;
+  const nu = M + (2 * e - 0.25 * e ** 3) * Math.sin(M) + 1.25 * e * e * Math.sin(2 * M);
+  return 1.000001018 * (1 - e * e) / (1 + e * Math.cos(nu));
+}
+
+/** Geocentric apparent ecliptic-of-date longitude of Chiron, degrees 0..360. */
+function chironGeoLongitude(jd: number): number {
+  const el = CHIRON;
+  const M = normalize360(el.M0 + el.n * (jd - el.epoch)) * DEG2RAD;
+  // Kepler's equation for eccentric anomaly (e≈0.38 needs the Newton iteration)
+  let E = M;
+  for (let k = 0; k < 20; k++) E = E - (E - el.e * Math.sin(E) - M) / (1 - el.e * Math.cos(E));
+  const xv = el.a * (Math.cos(E) - el.e);
+  const yv = el.a * Math.sqrt(1 - el.e * el.e) * Math.sin(E);
+  const v = Math.atan2(yv, xv);                      // true anomaly
+  const r = Math.hypot(xv, yv);
+  const O = el.om * DEG2RAD, w = el.w * DEG2RAD, inc = el.i * DEG2RAD;
+  const u = v + w;
+  const xh = r * (Math.cos(O) * Math.cos(u) - Math.sin(O) * Math.sin(u) * Math.cos(inc));
+  const yh = r * (Math.sin(O) * Math.cos(u) + Math.cos(O) * Math.sin(u) * Math.cos(inc));
+  const T = (jd - 2451545.0) / 36525;
+  const p = (5029.0966 * T + 1.11113 * T * T) / 3600; // general precession in longitude, deg
+  const earthLam = normalize360(sunLongitude(jd) + 180 - p) * DEG2RAD;
+  const rE = earthRadiusAU(jd);
+  const xg = xh - rE * Math.cos(earthLam), yg = yh - rE * Math.sin(earthLam);
+  return normalize360(Math.atan2(yg, xg) * RAD2DEG + p);
+}
 
 // ── Public functions ──────────────────────────────────────────────────────────
 
@@ -158,17 +152,12 @@ export function moonPhase(jd: number): { name: string; fraction: number } {
   return { name, fraction };
 }
 
-/** Geocentric longitude of a named planet at a given JD. Accurate for the eight
- *  planets via astronomy-engine; Chiron falls back to the calibrated Kepler
- *  model (astronomy-engine doesn't cover centaurs). */
+/** Geocentric longitude of a named planet at a given JD. The eight planets via
+ *  astronomy-engine; Chiron via the fitted 3D Kepler model above. */
 function geocentricLongitude(name: string, jd: number): number {
   if (HAS_ACCURATE(name)) return accurateLongitude(name, jd);
-  // Chiron only — the hand-rolled two-body model, calibrated to ~Taurus 2026.
-  const T = (jd - 2451545.0) / 36525;
-  const earthLambda = normalize360(sunLongitude(jd) + 180);
-  const el = ORBITAL[name];
-  const { lambda, r } = heliocentricEcliptic(T, el);
-  return geoFromHelio(lambda, r, earthLambda, 1.0);
+  if (name === "Chiron") return chironGeoLongitude(jd);
+  return NaN; // unknown body — callers pass fixed name lists
 }
 
 /**
@@ -178,22 +167,15 @@ function geocentricLongitude(name: string, jd: number): number {
 export function isRetrograde(planet: string, jd: number): boolean {
   if (planet === "Sun" || planet === "Moon") return false;
   if (HAS_ACCURATE(planet)) return accurateRetrograde(planet, jd);
-  if (!ORBITAL[planet]) return false;
+  if (planet !== "Chiron") return false;
   const lon1 = geocentricLongitude(planet, jd);
   const lon2 = geocentricLongitude(planet, jd + 1);
   return normalize360(lon2 - lon1) > 180;
 }
 
 export function getPlanetPositions(jd: number) {
-  const T = (jd - 2451545.0) / 36525;
-
-  // Sun (special formula, not orbital elements)
   const sun  = sunLongitude(jd);
   const moon = moonLongitude(jd);
-
-  // Earth's heliocentric longitude is the geocentric Sun direction + 180°
-  const earthLambda = normalize360(sun + 180);
-  const earthR = 1.0; // AU (simplified; varies 0.983–1.017)
 
   const results: Array<{ planet: string; sign: string; degree: number; longitude: number; retrograde: boolean }> = [
     { planet: "Sun",  longitude: sun,  retrograde: false, ...longitudeToSign(sun)  },
@@ -201,14 +183,7 @@ export function getPlanetPositions(jd: number) {
   ];
 
   for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"] as const) {
-    let geo: number;
-    if (HAS_ACCURATE(name)) {
-      geo = accurateLongitude(name, jd);       // astronomy-engine
-    } else {
-      const el = ORBITAL[name];                // Chiron — calibrated Kepler
-      const { lambda, r } = heliocentricEcliptic(T, el);
-      geo = geoFromHelio(lambda, r, earthLambda, earthR);
-    }
+    const geo = geocentricLongitude(name, jd);
     results.push({ planet: name, longitude: geo, retrograde: isRetrograde(name, jd), ...longitudeToSign(geo) });
   }
 

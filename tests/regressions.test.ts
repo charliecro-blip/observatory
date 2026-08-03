@@ -1629,12 +1629,34 @@ describe("angular crossing precision", () => {
     // Rather than pinning it to zero and claiming it is happening now. Every
     // consumer passes minutesFromNow through or filters on the timestamp, so a
     // negative value is simply the truth.
+    //
+    // This used to single out Chiron's IC crossing, which sat in the past only
+    // because Chiron's position was WRONG. Correcting the ephemeris
+    // (2026-08-03) moved that crossing into the future and this failed, though
+    // nothing about crossing arithmetic had changed. It was also wrapped in
+    // `if (chiron)`, so it would have passed silently the moment that body
+    // dropped out of range.
+    //
+    // Re-anchored on the Sun, whose position is the best-determined in the
+    // whole ephemeris: a fixture built on a minor body can be invalidated by
+    // fixing that body, which is precisely what happened. At 12:00 UTC the
+    // Sun's ASC crossing has just perfected, so the past case is genuinely
+    // exercised — and asserted to exist, so it cannot pass on an empty list.
     const A: any = await import("../artifacts/api-server/src/lib/astro.js");
-    const cs = A.getNextAngularCrossings(A.julianDay(new Date("2026-08-01T00:00:00Z")), 30.27, -97.74, 3, 24);
-    const chiron = cs.find((c: any) => c.planet === "Chiron" && c.angle === "IC");
-    if (chiron) {
-      expect(chiron.minutesFromNow).toBeLessThan(0);
-      expect(chiron.orbAtExact).toBeLessThan(0.1);   // was 2.25
+    const ref = "2026-08-01T12:00:00Z";
+    const cs = A.getNextAngularCrossings(A.julianDay(new Date(ref)), 30.27, -97.74, 3, 24);
+    const past = cs.filter((c: any) => c.minutesFromNow < 0);
+    expect(past.length, "no already-perfected crossing in the window to test").toBeGreaterThan(0);
+    for (const c of past) {
+      expect(c.orbAtExact, `${c.planet}/${c.angle} orb at exact`).toBeLessThan(0.1);   // was 2.25
+    }
+    // And the two fields must agree with each other for every row, past or
+    // future — a negative offset with a future timestamp would mean one of
+    // them is lying regardless of which bodies happen to be in range.
+    for (const c of cs) {
+      const aheadByClock = Date.parse(c.crossingTime) > Date.parse(ref);
+      expect(c.minutesFromNow >= 0, `${c.planet}/${c.angle}: offset ${c.minutesFromNow} disagrees with ${c.crossingTime}`)
+        .toBe(aheadByClock);
     }
   }, 60000);
 });
