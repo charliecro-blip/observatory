@@ -165,3 +165,35 @@ the time?
 4. Where does the existing per-activity `mercuryRx` field fit, if speed is
    modelled properly? It may become redundant, or become the override for the
    handful of matters where the tradition is emphatic.
+
+---
+
+# Note: your untimed-chart prediction was correct, and it was a live defect
+
+You wrote that for someone with a chart but no known birth time, "planet-to-
+natal contacts may still be usable, house-based testimony must remain absent."
+That was not a hypothetical.
+
+Settings stores `birthTime: form.birthTime || "12:00"` alongside
+`timeKnown: false`. The elections route gated on `stored.birthTime != null` —
+which is true for the substituted noon — so an untimed chart arrived at the
+engine fully populated, with an Ascendant computed from a moment nobody was
+born at, and received house cusps from it. Since personal families can decide
+the tier, that fabricated Ascendant could promote a window to `great` and have
+it labelled personally reinforced.
+
+Nobody has hit it: production holds eight charts, none untimed. Fixed anyway.
+
+Houses are now withheld when the time is unknown; transit-to-natal contacts are
+kept, since planetary longitudes barely move across a day — except the Moon,
+which travels ~13°/day and would be up to 6.5° out, three times the 2° orb the
+rule uses.
+
+This is the third defect of the same shape in one session: a value standing in
+for a fact it had not established. `personalized` meant "a chart exists".
+`daySources.length` meant "independent signals". `birthTime != null` meant "the
+time is known". None had produced a visible failure; all three would have, once
+the tier was promoted to the centre of the product. Worth naming as a class,
+because the convergence contract you proposed is exactly where this class does
+damage — every field it introduces is a claim, and each one needs to be true of
+the specific window rather than of the request.
