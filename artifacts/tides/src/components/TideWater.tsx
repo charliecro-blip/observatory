@@ -63,11 +63,32 @@ function clockAt(dayStartMs: number, hour: number) {
     .toLowerCase().replace(" ", "");
 }
 
-// Week/month view — one bar per day (a day is a discrete unit at this zoom,
-// not a continuous curve), muted palette to match the "calm" day style.
+// Week/month view — THREE encodings, deliberately not one bar.
+//
+// This drew a single bar per day whose height came from the tide scalar, and
+// the scalar mixed lunar fullness with aspect activity. Measured 2026-08-02:
+// height fell 0.68 → 0.28 across a stretch where standing aspect activity
+// climbed 0.63 → 1.00, so the chart drew its SMALLEST bars during the busiest
+// weather of the month. That is not a weighting error — no set of weights
+// reconciles two quantities that are not measurements of the same substance.
+//
+// So the phenomena are separated:
+//   1. lunar tide     — bar height + colour: where in the making cycle
+//   2. weather        — a pressure band above: tight non-lunar configurations
+//   3. daily approach — a word: initiate · build · refine · consolidate ·
+//                       release · recover
+//
+// A waning week with heavy aspects now reads "consolidating, with structural
+// pressure midweek" instead of "empty".
+/** Below this, a pressure band is not worth drawing. Shared with the legend
+ *  below the chart so a band can never appear without its explanation — the
+ *  two drifting apart is exactly how the unlabelled band got on screen. */
+const PRESSURE_FLOOR = 0.08;
+
 function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: boolean; timeframe: "week" | "month" }) {
-  const W = 700, H = 150, PAD_T = 10, PAD_B = 22;
-  const barTop = PAD_T, barBot = H - PAD_B;
+  const W = 700, H = 168, PAD_T = 10, PAD_B = 34;
+  const PRESSURE_H = 14;                       // its own lane, above the bars
+  const barTop = PAD_T + PRESSURE_H + 4, barBot = H - PAD_B;
   const n = days.length || 1;
   const gap = timeframe === "week" ? 6 : 2;
   const barW = (W - gap * (n - 1)) / n;
@@ -75,12 +96,11 @@ function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: bool
   const labelCol = dark ? "#9aa4bc" : "#7a7264";
   const axisCol = dark ? "#5a6478" : "#c4bcae";
 
-  const energies = days.map((d) => d.tide?.energy ?? (d.qualityScore ?? 4) / 7);
-  const minE = Math.min(...energies), maxE = Math.max(...energies);
-  const span = Math.max(maxE - minE, 0.15);
-  const heightOf = (e: number) => Math.max(6, ((e - minE) / span) * (barBot - barTop - 10) + 10);
-
-  // Sparse date labels for month view — every 5th day plus first/last, to avoid crowding.
+  // Height is the LUNAR cycle only — moonFraction, the one thing a tide-shaped
+  // bar can honestly depict. No aspect activity is folded in here; it has its
+  // own lane.
+  const lunar = days.map((d) => d.moonFraction ?? 0.5);
+  const heightOf = (f: number) => Math.max(5, f * (barBot - barTop - 8) + 8);
   const showLabel = (i: number) => timeframe === "week" ? true : (i === 0 || i === n - 1 || i % 5 === 0);
 
   return (
@@ -88,17 +108,37 @@ function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: bool
       {days.map((d, i) => {
         const el = d.tide?.element ?? d.element ?? "water";
         const col = MUTED_ELEMENT_COLORS[el] ?? "#8a8f9a";
-        const h = heightOf(energies[i]);
+        const h = heightOf(lunar[i]);
         const bx = i * (barW + gap);
         const isToday = d.date === todayIso;
+        const pressure = d.pressure ?? 0;
         return (
           <g key={d.date}>
+            {/* 2. Weather lane — independent of the bar beneath it, which is
+                   the entire point. A tall bar with no band is a full moon in
+                   a calm sky; a short bar with a strong band is exactly the
+                   case the old chart could not draw. */}
+            {pressure > PRESSURE_FLOOR && (
+              <rect x={bx} y={PAD_T} width={barW} height={PRESSURE_H} rx={2}
+                fill="#a05020" opacity={0.18 + 0.6 * pressure}>
+                <title>{(d.weather ?? []).map((w) => w.label).join(" · ")}</title>
+              </rect>
+            )}
+            {/* 1. Lunar tide */}
             <rect x={bx} y={barBot - h} width={barW} height={h} rx={timeframe === "week" ? 3 : 1}
               fill={col} opacity={isToday ? (dark ? 0.85 : 0.75) : (dark ? 0.5 : 0.4)} />
             {isToday && <rect x={bx} y={barBot - h} width={barW} height={h} rx={timeframe === "week" ? 3 : 1} fill="none" stroke={col} strokeWidth="1.4" />}
             {showLabel(i) && (
-              <text x={bx + barW / 2} y={H - 7} textAnchor="middle" fontSize={timeframe === "week" ? 9 : 7.5} fill={isToday ? labelCol : axisCol}>
+              <text x={bx + barW / 2} y={H - 20} textAnchor="middle" fontSize={timeframe === "week" ? 9 : 7.5} fill={isToday ? labelCol : axisCol}>
                 {timeframe === "week" ? d.label.slice(0, 3) : new Date(d.date + "T12:00:00").getDate()}
+              </text>
+            )}
+            {/* 3. The approach — a word, not an amount. Week view only; at
+                   month width there is no room to read them. */}
+            {timeframe === "week" && d.approach && (
+              <text x={bx + barW / 2} y={H - 7} textAnchor="middle" fontSize="8"
+                fill={isToday ? labelCol : axisCol} opacity={isToday ? 1 : 0.75}>
+                {d.approach}
               </text>
             )}
           </g>
@@ -755,6 +795,17 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         weekData?.days?.length ? (
           <>
             <WeekMonthStrip days={weekData.days} dark={dark} timeframe={timeframe} />
+            {/* The chart draws three separate things, and the upper band is the
+                one nobody can guess. Caught on screen: a band floated above
+                Sunday with nothing on the card naming it. Shown only when a
+                band is actually drawn, so a calm week carries no legend for a
+                mark that isn't there. */}
+            {weekData.days.some((d) => (d.pressure ?? 0) > PRESSURE_FLOOR) && (
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 14, height: 7, borderRadius: 2, background: "#a05020", opacity: 0.5, flexShrink: 0 }} />
+                the upper band is structural pressure — tight planet-to-planet aspects. Hover a band to see which.
+              </div>
+            )}
             {weekData.weekTone && (
               <div style={{ fontSize: 10.5, color: labelCol, lineHeight: 1.5, marginTop: 6, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
                 {weekData.weekTone}

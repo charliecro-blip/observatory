@@ -109,6 +109,17 @@ export interface WeekDay {
   crossings?: Crossing[];
   moonAspects?: { planet: string; aspect: string; applying: boolean; orb: number }[];
   tide?: { character: string; element: string; energy: number; levelLabel: string };
+  /** How full the Moon is — the ONE quantity a tide-shaped bar can honestly
+   *  depict. The bar height is this and nothing else; aspect activity gets its
+   *  own lane rather than being folded in. */
+  moonFraction?: number;
+  /** The lunar cycle as an instruction, not an amount: initiate · build ·
+   *  refine · consolidate · release · recover. */
+  approach?: string;
+  /** Tight non-lunar configurations shaping the day. */
+  weather?: { label: string; planets: [string, string]; aspect: string; orb: number; hard: boolean }[];
+  /** 0..1 structural pressure from the hard non-lunar weather. */
+  pressure?: number;
 }
 
 export interface SkyEvent {

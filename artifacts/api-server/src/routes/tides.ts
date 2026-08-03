@@ -366,6 +366,7 @@ router.get("/tides/now", async (req, res) => {
 // ── /api/tides/week ────────────────────────────────────────────────────────
 
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const WEEK_ELEMENT_TONES: Record<string, string> = {
   fire:   "Active and expressive. Good for initiating, moving, and bringing energy to what needs momentum.",
@@ -412,6 +413,16 @@ router.get("/tides/week", (req, res) => {
     crossings: Array<{ planet: string; angle: string; time: string; at?: string; type: string }>;
     moonAspects: Array<{ planet: string; aspect: string; applying: boolean; orb: number }>;
     tide: ReturnType<typeof computeTide>;
+    /** The lunar cycle's own instruction for this day — NOT a quality score.
+     *  Six phases of a making cycle, so a waning day reads "consolidate"
+     *  rather than "less". */
+    approach: string;
+    /** Non-lunar configurations tight enough to shape the day. This is the
+     *  layer the week chart never showed: the reason a "low" week can still
+     *  be a demanding one. */
+    weather: Array<{ label: string; planets: [string, string]; aspect: string; orb: number; hard: boolean }>;
+    /** 0..1 — how much structural pressure the non-lunar weather carries. */
+    pressure: number;
   }> = [];
 
   for (let d = 0; d < numDays; d++) {
@@ -501,6 +512,45 @@ router.get("/tides/week", (req, res) => {
 
     // Recover the viewer-local calendar date/weekday from the (UTC) local-midnight instant.
     const localDay = new Date(dayMs - tzOffsetMin * 60000);
+    // ── The lunar cycle as an INSTRUCTION, not an amount ──────────────────
+    // The week chart's failure was ontological: it drew one bar whose height
+    // mixed lunar fullness with aspect activity, so a waning week rendered as
+    // an empty one. Phase does not measure how much is available — it says
+    // what part of a making cycle you are in. Named accordingly.
+    const APPROACH_BY_PHASE: Record<string, string> = {
+      "New Moon": "initiate",
+      "Waxing Crescent": "build",
+      "First Quarter": "build",
+      "Waxing Gibbous": "refine",
+      "Full Moon": "release",
+      "Waning Gibbous": "consolidate",
+      "Last Quarter": "consolidate",
+      "Waning Crescent": "recover",
+      "Balsamic": "recover",
+    };
+    const approach = APPROACH_BY_PHASE[phaseName] ?? "build";
+
+    // ── Significant weather — the non-lunar layer, encoded separately ──────
+    // Tight planet-to-planet configurations. Deliberately its own channel
+    // rather than another term in the height, because aspect activity and
+    // lunar fullness are not alternate measurements of the same substance.
+    const HARD_ASP = new Set(["conjunction", "square", "opposition"]);
+    const weather = getMajorAspects(noonJd)
+      .filter((a) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 1.5)
+      .slice(0, 4)
+      .map((a) => ({
+        label: `${a.planet1} ${a.aspect} ${a.planet2}`,
+        planets: [a.planet1, a.planet2] as [string, string],
+        aspect: a.aspect,
+        orb: parseFloat(a.orb.toFixed(2)),
+        hard: HARD_ASP.has(a.aspect),
+      }));
+    // Pressure counts the HARD ones and how exact they are — a tight square
+    // between slow bodies is the thing that makes a quiet-looking week heavy.
+    const pressure = Math.min(1, weather
+      .filter((w) => w.hard)
+      .reduce((acc, w) => acc + (1 - w.orb / 1.5) * 0.5, 0));
+
     days.push({
       date:         localDay.toISOString().split("T")[0],
       label:        DAY_LABELS[localDay.getUTCDay()],
@@ -517,6 +567,9 @@ router.get("/tides/week", (req, res) => {
       crossings,
       moonAspects: noonAspects,
       tide: dayTide,
+      approach,
+      weather,
+      pressure: parseFloat(pressure.toFixed(2)),
     });
   }
 
@@ -525,15 +578,90 @@ router.get("/tides/week", (req, res) => {
   days.forEach((d) => { elCounts[d.element] = (elCounts[d.element] ?? 0) + 1; });
   const weekEl = Object.entries(elCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "water";
 
-  const weekTone = {
-    fire:   "An active week. Energy is available for initiation, visibility, and momentum. Pace yourself — not every day will carry the same heat.",
-    earth:  "A grounding week. Steady tending serves better than bursts. Good for building, maintaining, and attending to what is already in motion.",
-    air:    "A clarifying week. Communication, sorting, writing, and study are favored. Watch for scattered attention in the busier windows.",
-    water:  "A receptive week. More is asked of the inner life than the outer. Good for integration, reflection, and relational care.",
-    spirit: "An in-between week. The Moon moves through several sign changes, and the quality of time shifts often. Flexibility and rest will serve better than forcing.",
-  }[weekEl] ?? "";
+  // The week's tone used to be derived from its dominant ELEMENT alone, which
+  // put it straight into contradiction with the new per-day approach labels:
+  // a week of "consolidate" days was being summarised as "An active week.
+  // Energy is available for initiation" because its Moon signs leaned fire.
+  // Element says what KIND of day; the lunar cycle says what part of the making
+  // cycle you are in. The summary now leads with the second, because that is
+  // what the bars beneath it are drawing.
+  const APPROACH_TONE: Record<string, string> = {
+    initiate:    "A seeding week — the cycle restarts. Good for beginnings that need no audience yet.",
+    build:       "A building week. Momentum is available; put it into what you already started.",
+    refine:      "A refining week. The shape exists — this is for adjusting it, not adding to it.",
+    consolidate: "A consolidating week. Less about starting than about making what exists hold.",
+    release:     "A releasing week. Things come to visibility and completion; let them go out.",
+    recover:     "A recovering week. The cycle is emptying out. Rest is the work.",
+  };
+  const apCounts: Record<string, number> = {};
+  days.forEach((d) => { apCounts[d.approach] = (apCounts[d.approach] ?? 0) + 1; });
+  const weekApproach = Object.entries(apCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "build";
 
-  res.json({ weekOf: days[0]?.date, days, weekTone, weekElement: weekEl });
+  // A month is not a long week. Over ~29 days the Moon passes through every
+  // phase and every sign, so BOTH "the dominant approach" and "leaning fire"
+  // become artifacts of where the window happens to start rather than facts
+  // about the span. Naming the turning points is the only honest summary at
+  // that length — so the month view gets its own sentence.
+  const isMonth = days.length > 10;
+  const turns: string[] = [];
+  if (isMonth) {
+    for (let i = 1; i < days.length - 1; i++) {
+      const [prev, cur, next] = [days[i - 1], days[i], days[i + 1]];
+      const [, mo, da] = cur.date.split("-");
+      const when = `${MONTH_ABBR[Number(mo) - 1]} ${Number(da)}`;
+      // Local extremum of illumination — the new and full Moons, found from
+      // the same fraction the bars are drawn from rather than recomputed.
+      if (cur.moonFraction <= prev.moonFraction && cur.moonFraction <= next.moonFraction && cur.moonFraction < 0.06)
+        turns.push(`new Moon ${when}`);
+      if (cur.moonFraction >= prev.moonFraction && cur.moonFraction >= next.moonFraction && cur.moonFraction > 0.94)
+        turns.push(`full Moon ${when}`);
+    }
+  }
+
+  // Structural pressure is reported SEPARATELY rather than blended into the
+  // tone — a consolidating week with a heavy midweek is both of those things,
+  // and averaging them into one adjective is what produced the misleading
+  // single bar in the first place.
+  //
+  // Naming the heavy days needs two different vocabularies. Inside one week
+  // "Tue" is unambiguous; across a month it is not — the first draft produced
+  // "pressure around Mon, Sat, Mon, Fri, Thu, Fri, Tue", where the two Mondays
+  // are different days and the reader has no way to tell which. So a span
+  // longer than a week names dates, and either way the list is capped: a
+  // summary that lists seven days has stopped summarising.
+  const heavy = days.filter((d) => d.pressure >= 0.4);
+  const asWeek = days.length <= 7;
+  const nameOf = (d: (typeof days)[number]) => {
+    if (asWeek) return d.label.slice(0, 3);
+    const [, mo, da] = d.date.split("-");
+    return `${MONTH_ABBR[Number(mo) - 1]} ${Number(da)}`;
+  };
+  let pressureNote = "";
+  if (heavy.length) {
+    // Pick the three HEAVIEST, then say them in time order. Slicing
+    // chronologically named whichever heavy days came first and pushed the
+    // rest into "and 4 more" — which on a real month hid the heaviest day of
+    // the span behind a count. Which days matter is a question about pressure;
+    // what order to say them in is a question about planning.
+    const named = heavy
+      .slice()
+      .sort((a, b) => b.pressure - a.pressure)
+      .slice(0, 3)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(nameOf);
+    const rest = heavy.length - named.length;
+    const list = named.join(", ") + (rest > 0 ? `, and ${rest} more` : "");
+    pressureNote = ` Structural pressure ${heavy.length === 1 ? "on" : "around"} ${list}.`;
+  }
+  const weekTone = isMonth
+    ? (turns.length
+        ? `The cycle turns at ${turns.join(" and ")}.`
+        : "A stretch of one lunar cycle.") + pressureNote
+    // Element is reported only for the week, where the Moon holds two or three
+    // signs and "leaning fire" says something. Across a month it says nothing.
+    : (APPROACH_TONE[weekApproach] ?? "") + pressureNote + ` Leaning ${weekEl}.`;
+
+  res.json({ weekOf: days[0]?.date, days, weekTone, weekElement: weekEl, weekApproach });
 });
 
 // ── /api/tides/best-times ───────────────────────────────────────────────────
