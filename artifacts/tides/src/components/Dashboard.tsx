@@ -2,6 +2,7 @@ import React from "react";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { yourDay, type DayTask } from "@/lib/your-day";
 import { currentlyInProgress } from "@/lib/in-progress";
+import type { ZoneFraming } from "@/lib/modes";
 
 // The two cards that ARE the journey: where you're steering, and what today
 // actually holds. Everything else this component once carried has been removed
@@ -43,11 +44,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function Dashboard({ northStars, windows, todayTasks, onNavigate }: {
+export default function Dashboard({ northStars, windows, todayTasks, onNavigate, framing }: {
   northStars: any[] | undefined;
   windows: any[] | undefined;
   todayTasks?: DayTask[];
   onNavigate?: (v: string) => void;
+  /** Mode framing — "Your day" in the middle of the day, "Already committed"
+   *  in the morning, "How the day went" at night. Same data throughout. */
+  framing: ZoneFraming;
 }) {
   const stars = (northStars ?? []).slice(0, 3);
   // Both this card and the Keep-going card above read the SAME in-progress
@@ -88,9 +92,9 @@ export default function Dashboard({ northStars, windows, todayTasks, onNavigate 
             "Nothing scheduled" and looked clear when it was not. Three rows,
             three questions — what you're inside of, what's coming, and what
             still has no time on it. */}
-        <Card title="Your day" icon="◷" onOpen={onNavigate ? () => onNavigate("launch") : undefined}>
+        <Card title={framing.dayLabel} icon="◷" onOpen={onNavigate ? () => onNavigate("launch") : undefined}>
           {day.empty
-            ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Nothing on today — weave your day in Plan →</div>
+            ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>{framing.dayEmpty}</div>
             : (
               <>
                 {day.now && <Row label="now"><span style={{ color: "var(--text-3)" }}>{day.now.when} · </span>{day.now.title}</Row>}

@@ -12,6 +12,7 @@ import { pickNextMove } from "@/lib/next-move";
 import { suggestApproach } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
 import { currentlyInProgress, elapsedLabel } from "@/lib/in-progress";
+import { framingFor, modeFrom } from "@/lib/modes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
@@ -962,6 +963,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // (the last hours before sleep); in between the page is its usual self.
   // Falls back to the wall clock when no chronotype has been set.
   const ritualMode = ritualPhase(testerProfile?.chronotype);
+  // Four zones, three temporal modes — the mode REFRAMES the zones rather than
+  // stacking another card above them. Follows the user's own hours via
+  // ritualPhase, so a night owl's 1am is never framed as their morning.
+  const framing = framingFor(modeFrom(ritualMode));
   // Still the wall clock, deliberately: this drives the page's dawn/dusk/night
   // wash further down, and dawn is solar — it doesn't move because you sleep in.
   const localHour = new Date().getHours();
@@ -1433,7 +1438,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               padding: "12px 16px", flexShrink: 0,
             }}>
               <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: inFlow ? "#4a7a52" : "var(--text-3)", marginBottom: 5 }}>
-                {inFlow ? `Keep going · ${elapsedLabel(running!.minutes)}` : "Strongest fit right now"}
+                {inFlow ? `Keep going · ${elapsedLabel(running!.minutes)}` : framing.moveLabel}
               </div>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 {(inFlow || move.kind === "task") && (
@@ -1585,7 +1590,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* No longer gated on `now`: this card shows your own stars and tasks,
             which have nothing to do with whether the sky has finished loading. */}
-        <Dashboard northStars={northStars} windows={windows} todayTasks={todayTasks} onNavigate={onNavigate} />
+        <Dashboard northStars={northStars} windows={windows} todayTasks={todayTasks} onNavigate={onNavigate} framing={framing} />
 
         {/* The month's water (30-day view) was removed from Today (owner
             2026-07-15): the day view stays about today; the month lives in the
@@ -1762,7 +1767,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               return (
                 <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
                   <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
-                    moments ahead
+                    {framing.aheadLabel}
                   </div>
                   {rows.map((m: any, i: number) => (
                     <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
