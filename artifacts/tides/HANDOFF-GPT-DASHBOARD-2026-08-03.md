@@ -177,3 +177,86 @@ Non-negotiable, from the product's constitution and hard-won fixes:
 - Determinism where it counts: the LLM explains, it never decides timing.
 - Load: the Today page is ~18 API requests on a cold production load. New
   surfaces should not each add their own.
+
+---
+
+# ADDENDUM — critique received, and the two claims measured (2026-08-03)
+
+The critique's build order is accepted: **one canonical, batchable convergence
+definition first; then Compass interrogates it, Home summarises it, Today places
+it on the clock.** Both code claims were checked against the engine rather than
+taken on trust. One is real but dormant; one is real outright. The measurement
+also inverted the headline risk.
+
+Correction to §2 above: `ACTIVITIES.length` is **46**, not 57. The earlier
+figure came from grepping `key:` across the file, which caught other structures.
+
+## Claim 1 — GREAT can be reached by one source family counted twice
+
+**Structurally true.** `greatSignals = (stacked ? 1 : 0) + daySources.length` is
+computed *before* the emit-time `new Set(...)` dedupe, and three separate
+branches push the literal `"natal"`: a significator transiting a governing
+house, the Moon crossing one, and a significator contacting its own natal place.
+Two of those satisfy `greatSignals >= 2` with one family.
+
+**Empirically dormant on the sample.** Measured over 30 days across all 46
+activities on a real natal chart: **zero** GREAT windows resolved to fewer than
+two distinct families. The distinct-family histogram for GREAT was `{3: 9}` —
+every single one carried exactly three. The branches that push "natal" evidently
+co-occur with other families in practice.
+
+So: a latent defect, not an active one. Worth fixing before the tier is
+promoted, because promotion changes the exposure — but it is not currently
+mis-tiering anything, and it should not be described as a bug users have hit.
+
+## Claim 2 — `personalized` is response-level, not window-level
+
+**Confirmed outright.** `personalized: !!natal` at the point of return, with the
+field documented as "natal chart was available". It says nothing about whether
+any given window contains personal testimony. The four-way distinction the
+critique proposes (chart available / this window has personal testimony / it
+supports this activity / it changed the tier) is the right correction.
+
+## The measurement that changes the plan
+
+| | over 30 days, 46 activities, one real chart |
+|---|---|
+| `good` windows | **635** |
+| `great` windows | **9** |
+| activities producing any `great` | **8 of 46** |
+
+**The risk is not convergence inflation. It is convergence starvation.**
+
+The critique reasonably expected "a few per week for a tracked activity" and
+warned that an engine which can always find a great window makes the tier
+meaningless. The opposite is true: across an entire month and every activity in
+the table, "great" fires nine times, and 38 of 46 activities never converge at
+all. A Home page centred on convergence would, most days, have nothing to
+promote.
+
+This does not weaken the proposed semantics — **supported / convergent /
+personally reinforced** is still the right vocabulary, and it is more useful now
+than it looked, because `supported` (635/month) is clearly the workhorse tier
+and `convergent` is genuinely rare. What it changes is the *thresholds*, and
+the design of the empty state:
+
+1. Thresholds must be set from this distribution, not from an assumption about
+   scarcity in either direction. The harness now exists:
+   `tools/convergence-calibration.test.ts`, opt-in via `npx vitest run --dir
+   tools` (~170s, deliberately kept out of the deploy's `pnpm test`).
+2. **Refusal is now the common case, not the safety valve.** The critique's
+   "no genuinely convergent window appears this week" copy will be shown often.
+   It has to be a good state, not an apology.
+3. Home's Compass module cannot be a list of convergent windows, because most
+   days there will be none. It has to lead with `supported`, and treat
+   `convergent` as the occasional highlight.
+
+## Open questions this raises for a further pass
+
+1. Given the measured scarcity, is `convergent` the right bar — or should the
+   two-independent-family rule be relaxed, with a third rarer tier above it?
+2. Should the calibration target be **per tracked activity** (a user's 5–8
+   palette) rather than across all 46? Nine per month across everything is
+   starvation; nine per month across a five-activity palette might be right.
+3. Does the family-count rule need weighting? Three weak families agreeing may
+   deserve less than two strong ones, and a flat count cannot say so.
