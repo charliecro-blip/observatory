@@ -143,6 +143,16 @@ export function computeElections(opts: {
   span: "day" | "week" | "month";
   lat: number; lon: number; tzOffsetMin: number;
   natal?: ComputedNatalChart | null;
+  /**
+   * Whether the birth TIME is known. False means the stored chart was built
+   * from a substituted noon (Settings writes `birthTime || "12:00"` with
+   * timeKnown:false), so its Ascendant — and therefore every house cusp — is
+   * fabricated. Planet positions remain usable; houses must not be.
+   *
+   * Defaults true because every caller that has a chart today has a real time;
+   * the flag exists so that stops being an assumption.
+   */
+  timeKnown?: boolean;
   startAt?: Date;
 }): ElectionResult | null {
   const act = ACTIVITIES.find(a => a.key === opts.activityKey);
@@ -155,7 +165,13 @@ export function computeElections(opts: {
   // Natal groundwork: whole-sign cusps from the natal Ascendant, and each
   // significator's own natal longitude (for transit-to-natal returns).
   const natal = opts.natal ?? null;
-  const cusps = natal ? computeCusps("whole-sign", { ascLon: natal.ascendant.longitude, mcLon: natal.midheaven.longitude, lat, lon, jd: 0 } as any) : null;
+  // No known birth time → no houses. A noon-substituted Ascendant would
+  // otherwise generate `natal-house` testimony that is pure artifact, and
+  // (since personal families can decide the tier) could promote a window to
+  // GREAT on the strength of a house placement nobody computed. Transit-to-
+  // natal contacts survive: planetary longitudes barely move across a day.
+  const houseTestimonyAllowed = opts.timeKnown !== false;
+  const cusps = natal && houseTestimonyAllowed ? computeCusps("whole-sign", { ascLon: natal.ascendant.longitude, mcLon: natal.midheaven.longitude, lat, lon, jd: 0 } as any) : null;
   const natalLonOf = (p: string) => natal?.planets.find(x => x.planet === p)?.longitude ?? null;
 
   const cautions: string[] = [];
@@ -234,6 +250,10 @@ export function computeElections(opts: {
       }
       // Transit-to-natal return: a significator softly touching its own natal place.
       for (const p of Object.keys(act.planets)) {
+        // The Moon travels ~13°/day, so a noon-substituted birth time puts its
+        // natal longitude up to ~6.5° out — three times the 2° orb below. Its
+        // "return" would be noise wearing a decimal point.
+        if (!houseTestimonyAllowed && p === "Moon") continue;
         const tl = lonOf(p); const nl = natalLonOf(p);
         if (tl == null || nl == null) continue;
         const s = sep180(tl, nl);

@@ -44,17 +44,23 @@ router.get("/elections/times", async (req, res) => {
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
 
   let natal = null;
+  let timeKnown = true;
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (testerId) {
     try {
       const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
       if (stored?.birthDate && stored.birthTime != null) {
         natal = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
+        // `birthTime != null` is NOT the same question as "is the time known".
+        // Settings stores `birthTime || "12:00"` alongside timeKnown:false, so
+        // an untimed chart arrives here looking fully specified and would have
+        // been given house cusps derived from a noon nobody was born at.
+        timeKnown = stored.timeKnown !== false;
       }
     } catch { /* chartless is fine — GOOD tier only */ }
   }
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, natal });
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, natal, timeKnown });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });
