@@ -118,11 +118,18 @@ describe("claims match the evidence", () => {
     expect(today).toMatch(/not a graph of the day/);
   });
 
-  it("defines energy and downgrades 'confidence' to signal agreement", () => {
+  it("states charge as a band, never a percentage, and calls confidence agreement", () => {
     const today = read("artifacts/tides/src/pages/Today.tsx");
     expect(today).toMatch(/signal agreement/);
-    // Energy must be described as activation, not favourability — the
-    // likeliest misreading of a bare percentage.
-    expect(today).toMatch(/ACTIVATION[^"]*not how favourable/);
+    // Charge must read as activation, not favourability — the likeliest
+    // misreading.
+    expect(today).toMatch(/not how favourable/);
+    // And it must not be a percentage. "Energy 89%" drew exactly the right
+    // question from the owner — how does that square with a 74% lit Moon? —
+    // and the answer was that energy IS illumination plus up to 0.15 for
+    // angular planets and 0.10 for tight aspects. A number that is mostly one
+    // input with two bonuses stapled on cannot carry two significant figures.
+    expect(today, "the charge percentage is back").not.toMatch(/Energy \{energyPct\}%/);
+    expect(today).toMatch(/strongly charged|moderately charged|quietly charged/);
   });
 });

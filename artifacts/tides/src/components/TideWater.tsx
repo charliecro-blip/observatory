@@ -88,7 +88,9 @@ const PRESSURE_FLOOR = 0.08;
 function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: boolean; timeframe: "week" | "month" }) {
   const W = 700, H = 168, PAD_T = 10, PAD_B = 34;
   const PRESSURE_H = 14;                       // its own lane, above the bars
-  const barTop = PAD_T + PRESSURE_H + 4, barBot = H - PAD_B;
+  // Breathing room between the pressure lane and the full-moon line; at +4
+  // the two marks collided and read as one cramped band.
+  const barTop = PAD_T + PRESSURE_H + 13, barBot = H - PAD_B;
   const n = days.length || 1;
   const gap = timeframe === "week" ? 6 : 2;
   const barW = (W - gap * (n - 1)) / n;
@@ -103,8 +105,31 @@ function WeekMonthStrip({ days, dark, timeframe }: { days: WeekDay[]; dark: bool
   const heightOf = (f: number) => Math.max(5, f * (barBot - barTop - 8) + 8);
   const showLabel = (i: number) => timeframe === "week" ? true : (i === 0 || i === n - 1 || i % 5 === 0);
 
+  const anyPressure = days.some((d) => (d.pressure ?? 0) > PRESSURE_FLOOR);
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {/* The pressure lane needs to look like a LANE. Shown one filled cell at
+          a time with nothing around it, the owner read the single mark as "a
+          bit of red on the far right" — a stray element, not a row with one
+          entry. An empty track behind it makes the row legible and makes the
+          empty days say something too: calm, rather than absent. */}
+      {anyPressure && (
+        <>
+          <rect x={0} y={PAD_T} width={W} height={PRESSURE_H} rx={2}
+            fill={dark ? "rgba(255,255,255,0.05)" : "rgba(90,70,50,0.05)"} />
+          <text x={2} y={PAD_T - 2} fontSize="7.5" fill={axisCol} letterSpacing="0.4">pressure</text>
+        </>
+      )}
+      {/* What FULL would look like. Bar height is illumination, so a waning
+          week necessarily descends — and with no reference the descent reads
+          as the week draining away rather than the Moon emptying on schedule.
+          The line is what the bars are a fraction OF. */}
+      <line x1={0} y1={barBot - heightOf(1)} x2={W} y2={barBot - heightOf(1)}
+        stroke={axisCol} strokeWidth="1" strokeDasharray="2 4" opacity={0.5} />
+      {/* Left-aligned and below the line: right-aligned it sat exactly where a
+          late-week pressure band lands, and the two overlapped. */}
+      <text x={2} y={barBot - heightOf(1) + 8} fontSize="7.5" fill={axisCol}>full moon</text>
       {days.map((d, i) => {
         const el = d.tide?.element ?? d.element ?? "water";
         const col = MUTED_ELEMENT_COLORS[el] ?? "#8a8f9a";

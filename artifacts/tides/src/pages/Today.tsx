@@ -1224,7 +1224,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             : tide ? tideGuidance(character, tide.level, !!now?.voc?.isVOC) : heroText(now);
           const confNote = isQuiet ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
 
-          const energyPct = Math.round((tide?.energy ?? 0.5) * 100);
 
           return (
             // flexShrink 0: this is the page's only overflow-hidden card, so
@@ -1356,10 +1355,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     calibrated probability and shouldn't borrow the authority
                     of one. */}
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <div title="Estimated ACTIVATION — how charged this moment is, not how favourable. A high-energy hour can be a difficult one."
+                  {/* No percentage. "Energy 89%" invited exactly the question
+                      the owner asked — how does that square with a 74% lit
+                      Moon? — and the honest answer was damning: energy IS the
+                      illumination, plus up to 0.15 for angular planets and 0.10
+                      for tight aspects. A number that is mostly one input with
+                      two bonuses stapled on should not be published to two
+                      significant figures, and the spec already said to drop it
+                      (§"What survives of the tide scalar": demote or remove the
+                      public numeric). The scalar stays an internal input; the
+                      surface says the band, which is all it can support. */}
+                  <div title="How charged this moment is — not how favourable. A charged hour can be a difficult one. Deliberately a band, not a percentage: the underlying number is mostly lunar illumination and cannot carry more precision than that."
                     style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
-                    Energy {energyPct}%
+                    {tide?.band === "high" ? "strongly charged" : tide?.band === "low" ? "quietly charged" : "moderately charged"}
                   </div>
                   <div title="Which way the day's activation is moving — rising, steady, or ebbing."
                     style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
@@ -1735,33 +1744,49 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 upcoming hour's ruler matches, that hour IS the moment. */}
             {(() => {
               const openTasks = todayTasks.filter(t => t.done !== "true");
-              const moments = (now?.upcomingHours ?? []).map((h: any) => {
+              const AHEAD_ROWS = 4;
+              const upcoming = (now?.upcomingHours ?? []).slice(0, 8);
+              const at = (t: string) => {
+                const hhmm = String(t ?? "").match(/^(\d{1,2}):(\d{2})/);
+                const when = new Date();
+                if (hhmm) when.setHours(Number(hhmm[1]), Number(hhmm[2]), 0, 0);
+                return when;
+              };
+              // Hours that line up with something you actually hold come first.
+              const moments = upcoming.map((h: any) => {
                 const task = openTasks.find(t => t.planet === h.planet);
                 const star = (northStars ?? []).find((g: any) => g.planet === h.planet && g.status !== "done");
                 return { ...h, task, star };
-              }).filter((m: any) => m.task || m.star).slice(0, 3);
-              // Nothing matched: still name the next hour's opening — but as an
-              // APPROACH suited to when it actually lands. This used to take
-              // PLANET_ACTIVITIES[planet][0], a flat list with no sense of the
-              // hour, which is how "Mars hour — train hard" arrived at 21:20
-              // against a stated 23:00 bedtime.
-              const next = (now?.upcomingHours ?? [])[0];
-              const generic = (() => {
-                if (moments.length || !next) return [];
-                const hhmm = String(next.time ?? "").match(/^(\d{1,2}):(\d{2})/);
-                const when = new Date();
-                if (hhmm) when.setHours(Number(hhmm[1]), Number(hhmm[2]), 0, 0);
-                const a = suggestApproach({
-                  planet: next.planet,
-                  at: when,
-                  wakeTime: testerProfile?.chronotype?.wakeTime,
-                  sleepTime: testerProfile?.chronotype?.sleepTime,
-                  voc: !!now?.voc?.isVOC,
-                  moonSign: now?.moonSign,
-                });
-                return a ? [{ ...next, generic: a.text }] : [];
-              })();
-              const rows = moments.length ? moments : generic;
+              }).filter((m: any) => m.task || m.star).slice(0, AHEAD_ROWS);
+              // Then fill the rest with what each remaining hour is FOR.
+              //
+              // The generic row used to be an all-or-nothing fallback — it fired
+              // only when nothing matched — so holding a single relevant task
+              // collapsed this list to one line. "I also wanted more waves":
+              // the hours were always there, the code just stopped naming them
+              // as soon as one of them had a task on it.
+              //
+              // Approach-aware, not PLANET_ACTIVITIES[planet][0]: that flat list
+              // had no sense of the hour, which is how "Mars hour — train hard"
+              // arrived at 21:20 against a stated 23:00 bedtime.
+              const used = new Set(moments.map((m: any) => m.time));
+              const generic = upcoming
+                .filter((h: any) => !used.has(h.time))
+                .map((h: any) => {
+                  const a = suggestApproach({
+                    planet: h.planet,
+                    at: at(h.time),
+                    wakeTime: testerProfile?.chronotype?.wakeTime,
+                    sleepTime: testerProfile?.chronotype?.sleepTime,
+                    voc: !!now?.voc?.isVOC,
+                    moonSign: now?.moonSign,
+                  });
+                  return a ? { ...h, generic: a.text } : null;
+                })
+                .filter(Boolean) as any[];
+              const rows = [...moments, ...generic]
+                .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
+                .slice(0, AHEAD_ROWS);
               if (!rows.length) return null;
               return (
                 <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>

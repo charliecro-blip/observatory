@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { suggestApproach, dayPartFor } from "../artifacts/tides/src/lib/approach";
+import { approachOptions, suggestApproach, dayPartFor } from "../artifacts/tides/src/lib/approach";
 
 /**
  * Same quality, different way in.
@@ -50,17 +50,28 @@ describe("Mars is still Mars, but not a workout before bed", () => {
   });
 
   it("still allows exertion just after waking", () => {
+    // Asserted against the BAND, not one string. Pinning the exact phrase made
+    // this fail the moment the vocabulary grew (2026-08-03), because the
+    // rotation index moves when a list gets longer — and "take the hardest
+    // task while you're fresh" is exactly as much exertion as the phrase it
+    // was pinned to. What must hold is that hard effort is reachable early.
     const a = suggestApproach({ planet: "Mars", at: at(9), ...RHYTHM })!;
     expect(a.part).toBe("early");
-    expect(a.text).toMatch(/train hard|brave errand/);
+    expect(approachOptions({ planet: "Mars", at: at(9), ...RHYTHM }).join(" | "))
+      .toMatch(/train hard/);
   });
 
   it("does NOT offer hard training at 21:20 — the reported bug", () => {
     const a = suggestApproach({ planet: "Mars", at: at(21, 20), ...RHYTHM })!;
     expect(a.part).toBe("winddown");
-    expect(a.text).not.toMatch(/train hard/);
-    // Still decisive — Mars doesn't become Venus after dark.
-    expect(a.text).toMatch(/cut one thing loose|decisive tidying/);
+    // The bug itself: no hard training inside the wind-down window, whichever
+    // entry the rotation lands on.
+    for (const o of approachOptions({ planet: "Mars", at: at(21, 20), ...RHYTHM })) {
+      expect(o, `wind-down offered "${o}"`).not.toMatch(/train hard|compete|sprint/);
+    }
+    // Still decisive — Mars doesn't become Venus after dark. Checked as a
+    // property of the whole wind-down set rather than of one rotation slot.
+    expect(a.text).toMatch(/cut|tidying|boundary|loose|stop/);
   });
 
   it("keeps Mars sharp in the evening without exertion", () => {

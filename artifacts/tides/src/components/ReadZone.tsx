@@ -121,7 +121,11 @@ export default function ReadZone({ reading, testerId, accent }: {
           {result.lead.note}
           {result.support.length >= 2 && (
             <div style={{ fontSize: 11, color: "#4a7a52", marginTop: 4 }}>
-              Stacked support — {result.support.length} other layers of the sky agree.
+              {/* Was "Stacked support". "Support" reads as endorsement — as
+                  though the sky were backing your plan — when the computed
+                  fact is only that several independent families point the same
+                  way. Stated plainly, with no label to lean on. */}
+              {result.support.length} other layers of the sky point the same way.
             </div>
           )}
         </div>

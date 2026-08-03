@@ -37,14 +37,28 @@ const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = {
 
 // Two roads — the gift to spend and the shadow to watch (same neutral energy,
 // high road / low road). Arroyo's positive-negative table + Forrest's elements.
-const PLANET_ROADS: Record<string, { gift: string; shadow: string }> = {
-  Sun:     { gift: "vitality and warmth", shadow: "pride, needing to be the center" },
-  Moon:    { gift: "care and attunement", shadow: "moodiness, clinging" },
-  Mercury: { gift: "clarity and curiosity", shadow: "overthinking, scattered nerves" },
-  Venus:   { gift: "warmth and ease", shadow: "indulgence, avoiding the hard word" },
-  Mars:    { gift: "courage and decisive effort", shadow: "impatience, a short fuse" },
-  Jupiter: { gift: "faith and generosity", shadow: "overreach, glossing the detail" },
-  Saturn:  { gift: "discipline and endurance", shadow: "rigidity, fear, gloom" },
+// gift / shadow / WORK. The third field was missing and its absence showed:
+// the day's edge named a hazard and stopped there ("the sharpest caution is
+// impatience, a short fuse"), which tells a reader to brace without telling
+// them what to do. Naming a difficulty without an outlet is just a warning
+// label. `work` is the outlet — where the same energy can legitimately go,
+// concrete enough to act on within the hour.
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+const PLANET_ROADS: Record<string, { gift: string; shadow: string; work: string }> = {
+  Sun:     { gift: "vitality and warmth", shadow: "pride, needing to be the center",
+             work: "put the wanting-to-be-seen into making something worth seeing" },
+  Moon:    { gift: "care and attunement", shadow: "moodiness, clinging",
+             work: "feel it deliberately and briefly, rather than all day sideways" },
+  Mercury: { gift: "clarity and curiosity", shadow: "overthinking, scattered nerves",
+             work: "write the loop down — it stops circling once it is on paper" },
+  Venus:   { gift: "warmth and ease", shadow: "indulgence, avoiding the hard word",
+             work: "have the pleasant thing and say the true thing, in that order" },
+  Mars:    { gift: "courage and decisive effort", shadow: "impatience, a short fuse",
+             work: "spend the edge on something physical and finishable, before it finds a person" },
+  Jupiter: { gift: "faith and generosity", shadow: "overreach, glossing the detail",
+             work: "say yes to the size, then check the one detail you would rather skip" },
+  Saturn:  { gift: "discipline and endurance", shadow: "rigidity, fear, gloom",
+             work: "do the smallest real piece — the weight lifts by moving, not by resolving" },
 };
 const ELEMENT_ROADS: Record<Element, { gift: string; shadow: string }> = {
   fire:  { gift: "courage and initiative", shadow: "burnout, recklessness" },
@@ -127,6 +141,9 @@ export interface Testimony {
   carriedBy?: string;          // fragment that reads after "carried by …" in the flavour
   gift?: string;               // the high road — what this voice offers
   shadow?: string;             // the low road — what to watch (feeds caution-windows)
+  /** Where the same energy can legitimately go. A shadow named without an
+   *  outlet is a warning label, not guidance — this is the outlet. */
+  work?: string;
   score: number;               // weight × salience × polarity (signed)
 }
 
@@ -199,18 +216,24 @@ const HAND_EASY = new Map<string, PairScope>([
 ]);
 
 // Themes for transiting bodies the mundane collectors don't cover.
-const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string }> = {
-  Uranus:  { verb: "breaking the old pattern", gift: "fresh air and honest change", shadow: "restlessness, rupture for its own sake" },
-  Neptune: { verb: "dissolving and imagining", gift: "imagination and compassion", shadow: "fog, drift, self-deception" },
-  Pluto:   { verb: "deep renovation", gift: "depth and renewal", shadow: "control, obsession" },
+const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> = {
+  Uranus:  { verb: "breaking the old pattern", gift: "fresh air and honest change", shadow: "restlessness, rupture for its own sake",
+             work: "change one real thing on purpose, so the restlessness has somewhere to land" },
+  Neptune: { verb: "dissolving and imagining", gift: "imagination and compassion", shadow: "fog, drift, self-deception",
+             work: "make something or rest — both use the fog; deciding in it does not" },
+  Pluto:   { verb: "deep renovation", gift: "depth and renewal", shadow: "control, obsession",
+             work: "name what you are actually trying to control, then loosen one grip" },
 };
 // What a natal point MEANS when something lands on it.
 const NATAL_POINT_WORD: Record<string, string> = {
-  Sun: "your core self", Moon: "your inner life", Mercury: "your thinking", Venus: "your relating",
+  // "your core self" was jargon wearing plain clothes — it names a concept
+  // rather than anything a reader recognises in themselves. A Sun contact is
+  // felt as pressure on who you take yourself to be.
+  Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "your relating",
   Mars: "your drive", Jupiter: "your growth", Saturn: "your foundations",
   Uranus: "your independence", Neptune: "your imagination", Pluto: "your depths",
   ASC: "how you meet the world", MC: "your work in the world",
-  Fortune: "your fortune", // the Lot — body, resources, ease
+  Fortune: "your body and resources", // the Lot — defining it as "your fortune" said nothing
 };
 const PERSONAL_POINTS = new Set(["Sun", "Moon", "ASC", "MC"]);
 // Ebertin's natal orb ladder, by the NATAL target.
@@ -294,7 +317,7 @@ function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
       const theme = PLANET_THEME[t.planet] ?? null;
       const outer = OUTER_THEME[t.planet];
       const verb = theme?.verb ?? outer?.verb ?? "its work";
-      const roads = PLANET_ROADS[t.planet] ?? (outer ? { gift: outer.gift, shadow: outer.shadow } : undefined);
+      const roads = PLANET_ROADS[t.planet] ?? (outer ? { gift: outer.gift, shadow: outer.shadow, work: outer.work } : undefined);
       const isReturn = t.planet === target.name;
       const targetWord = NATAL_POINT_WORD[target.name] ?? `your ${target.name}`;
       out.push({
@@ -385,7 +408,8 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
     facts: { kind: "sectMalefic", planet: sect.malefic, dignity: mw, isDay: m.isDay },
     shadow: PLANET_ROADS[sect.malefic].shadow,
-    note: `${sect.malefic} runs with a rougher edge ${m.isDay ? "by day" : "at night"} — the sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}` });
+    work: PLANET_ROADS[sect.malefic].work,
+    note: `${sect.malefic} runs with a rougher edge ${m.isDay ? "by day" : "at night"} — the sharpest caution is ${PLANET_ROADS[sect.malefic].shadow}. ${cap(PLANET_ROADS[sect.malefic].work)}.` });
 
   // Planetary hour — the rotating sub-mood, weighted by the hour ruler's dignity.
   // Skipped at day scope: an hour-bound voice would go stale over a whole day.
