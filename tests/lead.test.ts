@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { pickLead, familyOf, bandOf, type LeadTestimony } from "../artifacts/tides/src/lib/lead";
 
 /**
@@ -169,5 +171,48 @@ describe("calibration holds against real ephemeris", () => {
     // asserts the states track something real: quiet moments carry fewer
     // applying aspects than moments with a clear lead.
     expect(scan.qAvg, "quiet skies should have fewer applying aspects").toBeLessThan(scan.lAvg);
+  });
+});
+
+describe("bands found by looking at the rendered page", () => {
+  it("does not file the day ruler under 'this hour'", () => {
+    // Caught on screen: "Moon's day — tending and feeling" was labelled
+    // `this hour`. It shares the hour FAMILY (both are planetary-rulership
+    // testimony, so they must not count as two independent voices) but it
+    // spans the whole day.
+    expect(bandOf(t({ source: "dayRuler" }))).toBe("today");
+    expect(bandOf(t({ source: "hour" }))).toBe("now");
+    // Still one family, so support cannot be inflated by counting both.
+    expect(familyOf("dayRuler")).toBe(familyOf("hour"));
+  });
+});
+
+describe("the READ zone never repeats its own lead", () => {
+  const src = readFileSync(
+    join(process.cwd(), "artifacts/tides/src/components/ReadZone.tsx"), "utf-8");
+
+  it("excludes the lead from the duration stack", () => {
+    // Caught on screen: the lead rendered under LED BY and again, verbatim,
+    // as the `today` row two lines below — the exact duplication this zone
+    // was built to end.
+    expect(src).toMatch(/\.filter\(t => t\.source !== leadSource\)/);
+  });
+
+  it("keeps all three lead states renderable", () => {
+    for (const state of ["LED BY", "MIXED CURRENT", "QUIET SKY"]) {
+      expect(src, `${state} not rendered`).toContain(state);
+    }
+  });
+
+  it("says 'no meaningful change' rather than inventing news", () => {
+    // For an app opened several times a day, the honest answer is usually
+    // that nothing moved.
+    expect(src).toMatch(/No meaningful change since your last check/);
+  });
+
+  it("adds no network call — the reading is already on the page", () => {
+    // Load time is a measured problem (27 requests per cold load at ~0.5s
+    // TTFB each). This zone must stay derived from data already fetched.
+    expect(src).not.toMatch(/fetch\(|useQuery/);
   });
 });

@@ -29,6 +29,7 @@ import { smoothPathD } from "@/lib/smoothPath";
 import { isWithinFreeWindow, ritualPhase } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
+import ReadZone from "@/components/ReadZone";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
@@ -1229,18 +1230,30 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   <div style={{ fontSize: 11, color: "#907040", fontStyle: "italic", marginBottom: 12 }}>{confNote}</div>
                 )}
 
-                {/* The woven reading — the synthesis engine's judgment of the
-                    moment, gated by astro-detail (minimal = one sentence + one
-                    watch; full = the testimony table). */}
-                {/* The guidance line above now reconciles the void itself, so
-                    the reading must not restate it as a pattern chip AND as a
-                    counterpoint — one fact, one voice (both keys are passed
-                    because the pattern is named "Void of course" while the
-                    testimony source is "voc"). */}
-                <WovenReading
-                  reading={now?.reading} level={astro.level} accent={elColor}
-                  saidAlready={now?.voc?.isVOC ? ["voc", "Void of course"] : []}
-                />
+                {/* The woven sentence — the synthesis engine's one-line
+                    judgment. Kept; it is the flavour, and it reads well. */}
+                {now?.reading?.flavour && (
+                  <div style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6, marginTop: 12 }}>
+                    {now.reading.flavour.charAt(0).toUpperCase() + now.reading.flavour.slice(1)}
+                  </div>
+                )}
+
+                {/* Zone 1's stack replaces WATCH + counterpoint + pattern chips.
+                    Those were three channels for one class of fact, and they
+                    repeatedly said the same thing in different clothes — fixed
+                    three separate times before the general case was caught.
+                    One stack, sorted by duration, with a lead that is allowed
+                    to be "nothing". The full testimony table still lives in the
+                    receipt below at full detail. */}
+                <ReadZone reading={now?.reading} testerId={testerId} accent={elColor} />
+
+                {astro.level === "full" && (
+                  <WovenReading
+                    reading={now?.reading} level={astro.level} accent={elColor}
+                    saidAlready={now?.voc?.isVOC ? ["voc", "Void of course"] : []}
+                    workingOnly
+                  />
+                )}
 
                 {/* Every figure here says what it MEANS on hover/tap. A bare
                     "Energy 83% · medium confidence" invites the reader to

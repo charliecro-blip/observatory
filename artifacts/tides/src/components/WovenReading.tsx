@@ -41,10 +41,15 @@ export interface DayReadingData {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function WovenReading({ reading, level, accent = "#5a6cae", saidAlready = [] }: {
+export default function WovenReading({ reading, level, accent = "#5a6cae", saidAlready = [], workingOnly = false }: {
   reading: DayReadingData | null | undefined;
   level: AstroDetail;
   accent?: string;
+  /** Render ONLY the working table — the receipt. Zone 1's duration stack now
+   *  owns the flavour, the watch line, the counterpoint and the pattern chips,
+   *  which were four renderings of one class of fact. This keeps the
+   *  full-detail testimony inspection without duplicating the surface. */
+  workingOnly?: boolean;
   /** Pattern names the surrounding card has ALREADY spoken, by name. The hero's
    *  guidance line now reconciles the void itself ("energy is high, but the
    *  Moon is void — spend it on what's already moving"), and the counterpoint
@@ -73,13 +78,16 @@ export default function WovenReading({ reading, level, accent = "#5a6cae", saidA
 
   return (
     <div style={{ borderTop: `1px solid ${accent}22`, margin: "12px 0", paddingTop: 11 }}>
-      {/* The woven sentence — every level gets this. */}
-      <div style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6 }}>
-        {cap(reading.flavour)}
-      </div>
+      {/* The woven sentence — every level gets this, unless the caller is
+          rendering the receipt alone (Zone 1 already shows the flavour). */}
+      {!workingOnly && (
+        <div style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6 }}>
+          {cap(reading.flavour)}
+        </div>
+      )}
 
       {/* What to watch — the discernment, one line. */}
-      {topWatch && (
+      {!workingOnly && topWatch && (
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 6, display: "flex", gap: 6, alignItems: "baseline" }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.8px", flexShrink: 0 }}>WATCH</span>
           <span>{cap(topWatch.note)}</span>
@@ -87,12 +95,12 @@ export default function WovenReading({ reading, level, accent = "#5a6cae", saidA
       )}
 
       {/* Medium: the honest "but…" + the named shapes, plain language. */}
-      {med && reading.counterpoint && !said.has((reading.counterpointSource ?? "").toLowerCase()) && (
+      {!workingOnly && med && reading.counterpoint && !said.has((reading.counterpointSource ?? "").toLowerCase()) && (
         <div style={{ fontSize: 11.5, color: "#907040", fontStyle: "italic", marginTop: 6, lineHeight: 1.55 }}>
           {reading.counterpoint}
         </div>
       )}
-      {med && patterns.length > 0 && (
+      {!workingOnly && med && patterns.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {patterns.slice(0, 3).map((p) => (
             <span key={p.name} title={full ? p.name : undefined} style={{

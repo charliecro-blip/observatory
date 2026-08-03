@@ -89,6 +89,11 @@ export function familyOf(source: string): Family {
 /** Where a testimony sits on the duration spine. */
 export function bandOf(t: LeadTestimony): DurationBand {
   const fam = familyOf(t.source);
+  // Same family, different duration: the hour ruler governs ~60 minutes, the
+  // day ruler the whole day. They share a family so they cannot count as two
+  // independent voices, but filing the day ruler under "this hour" was simply
+  // mislabelling it.
+  if (t.source === "dayRuler") return "today";
   switch (fam) {
     case "hour":            return "now";
     case "moonAspect":      return "today";
