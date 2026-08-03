@@ -36,17 +36,32 @@ describe("no invented obligations", () => {
     // A ratio needs something the user actually scheduled; otherwise there is
     // nothing to be a fraction OF.
     //
-    // Asserted against GuidingStarsHub ONLY, deliberately. Today.tsx also
-    // contains a matching guard, but it lives inside `NorthStarsCard` — a
-    // component that is never rendered (proven by its strings being absent
-    // from the production bundle). Including Today.tsx here would make this
-    // test pass on code no user reaches, and would then FAIL the moment
-    // somebody deletes that dead component — a test actively defending
-    // something worthless. Source-grep tests can only be trusted on surfaces
-    // known to render.
-    const f = "artifacts/tides/src/pages/GuidingStarsHub.tsx";
-    expect(read(f), `${f} draws a bar without checking scheduled > 0`)
+    // The Hub is where the bar actually lives, so it is asserted outright —
+    // without that, this test would pass vacuously the day the last bar is
+    // deleted.
+    //
+    // Today.tsx used to be on the unconditional list too, and that was wrong:
+    // its only matching guard sat inside `NorthStarsCard`, a component never
+    // rendered (proven by its strings being absent from the production
+    // bundle, and deleted outright on 2026-08-03). Demanding the guard from a
+    // file that draws no bar tests nothing, and would have FAILED the moment
+    // someone removed the dead component — a test defending something
+    // worthless.
+    //
+    // The rest are checked CONDITIONALLY: a file owes the guard only if it
+    // computes a scheduled ratio in the first place. That keeps the
+    // protection alive for files that grow one later, without pinning dead
+    // code in files that don't.
+    const hub = "artifacts/tides/src/pages/GuidingStarsHub.tsx";
+    expect(read(hub), `${hub} draws a bar without checking scheduled > 0`)
       .toMatch(/scheduled > 0 &&/);
+
+    for (const f of FILES) {
+      const src = read(f);
+      if (!/Math\.round\(\(done \/ scheduled\)/.test(src)) continue;
+      expect(src, `${f} computes a scheduled ratio without checking scheduled > 0`)
+        .toMatch(/scheduled > 0 &&/);
+    }
   });
 
   it("Dashboard reports movement without a denominator at all", () => {
