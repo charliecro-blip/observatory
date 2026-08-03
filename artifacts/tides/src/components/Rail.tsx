@@ -435,7 +435,7 @@ function SunArc({ lat, lon }: { lat: number; lon: number }) {
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
-  const { profile } = useTester();
+  const { profile, locationKnown } = useTester();
   const { railSections } = prefs.display;
   // How much of the rail is the first session allowed to be? At `essential`
   // the rail is a slim sky-strip — season, moon, this hour — because the full
@@ -852,14 +852,33 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
 
       {/* Planetary Hour */}
-      {railSections.includes("hour") && !isOpen("hour") && (
+      {/* Planetary hours are DERIVED FROM LOCAL SUNRISE AND SUNSET. On a guessed
+          meridian every hour boundary shifts, so the whole section is fiction
+          dressed as a schedule — and it was previously shown anyway, behind a
+          "hours & sun times are estimated" caption. The owner's standing rule:
+          if it needs a disclaimer, the design is wrong. Withheld until the
+          location is real, with the fix offered in its place. */}
+      {railSections.includes("hour") && !locationKnown && (
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
+          <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
+          <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
+            Planetary hours are cut from your local sunrise and sunset, so they need to know where you are.
+          </div>
+          <button onClick={() => onNavigate?.("settings")}
+            style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer",
+                     fontSize: 10.5, color: "var(--color-primary)", fontWeight: 600 }}>
+            Set your location →
+          </button>
+        </div>
+      )}
+      {railSections.includes("hour") && locationKnown && !isOpen("hour") && (
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
           <span style={{ fontSize: 12, color: pColor }}><PG p={planetaryHour.planet} /></span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{planetaryHour.planet}</span>
           <span style={{ fontSize: 9, color: "var(--text-3)", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
         </GlyphRow>
       )}
-      {railSections.includes("hour") && isOpen("hour") && (
+      {railSections.includes("hour") && locationKnown && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
           <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>

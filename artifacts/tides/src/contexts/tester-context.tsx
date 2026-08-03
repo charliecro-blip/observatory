@@ -21,6 +21,20 @@ interface TesterContextValue {
   showModal: boolean;
   lat: number;
   lon: number;
+  /**
+   * Whether `lat`/`lon` are the user's ACTUAL location or a timezone guess.
+   *
+   * Without this the two were indistinguishable: the provider silently
+   * substituted fallback coordinates and every consumer received plausible
+   * numbers with no way to know they were invented. That is tolerable for a
+   * rough element reading and NOT tolerable for planetary hours, which are
+   * derived from local sunrise and sunset — a guessed meridian shifts every
+   * hour boundary, and the app was presenting those shifted times as fact
+   * behind a "hours are estimated" caption. The owner's standing rule applies:
+   * if it needs a disclaimer, the design is wrong. Hours are now withheld
+   * until this is true rather than estimated and apologised for.
+   */
+  locationKnown: boolean;
   openModal: () => void;
   closeModal: () => void;
   applyProfile: (profile: TesterProfile) => void;
@@ -242,6 +256,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fallback = tzFallbackCoords();
+  const locationKnown = profile?.lat != null && profile?.lon != null;
   const lat = profile?.lat ?? fallback.lat;
   const lon = profile?.lon ?? fallback.lon;
 
@@ -253,6 +268,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         showModal,
         lat,
         lon,
+        locationKnown,
         openModal: () => setShowModal(true),
         closeModal: () => setShowModal(false),
         applyProfile,
