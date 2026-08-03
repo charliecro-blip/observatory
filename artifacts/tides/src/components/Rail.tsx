@@ -157,7 +157,30 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
 // fluent user reads Sun/Moon/Day/Hour at a glance; tapping one opens an inline
 // detail card. This is the nesting-principle dashboard on the device most
 // people actually use.
+
+/**
+ * Hour/day verbs for the COLLAPSED rail.
+ *
+ * These popovers read PLANET_ACTIVITIES raw — a flat planet→verbs map with no
+ * sense of the clock — which is the map the approach layer was written to
+ * replace, and the reason a Mars hour once proposed "train hard" at 21:20
+ * against a stated 23:00 bedtime. That was fixed on Today and in the EXPANDED
+ * rail, and missed here, so the same sentence could still appear late at night
+ * one panel over. One vocabulary, one rule set, everywhere it renders.
+ */
+function railVerbs(planet: string | undefined, chronotype: { wakeTime?: string | null; sleepTime?: string | null } | undefined,
+                   voc: boolean, moonSign?: string | null): string[] {
+  if (!planet) return [];
+  const opts = approachOptions({
+    planet, at: new Date(),
+    wakeTime: chronotype?.wakeTime, sleepTime: chronotype?.sleepTime,
+    voc, moonSign,
+  });
+  return opts.length ? opts : (PLANET_ACTIVITIES[planet] ?? []);
+}
+
 export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
+  const { profile: miProfile } = useTester();
   const [open, setOpen] = useState<string | null>(null);
   const [moonTake, setMoonTake] = useState(0);
   // A transient/partial `now` (e.g. an error body cached mid-reload) can lack
@@ -201,11 +224,11 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
     }
     if (open === "day" && dayRuler) {
       return <><b>{dayRuler}'s day</b> <span style={{ color: "var(--text-3)" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>
-        <CycleLine prefix="good for" options={PLANET_ACTIVITIES[dayRuler] ?? []} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
+        <CycleLine prefix="good for" options={railVerbs(dayRuler, miProfile?.chronotype, isVOC, moonSign)} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "hour") {
       return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "var(--color-muted)" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
-        <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
+        <CycleLine prefix="this hour" options={railVerbs(planetaryHour.planet, miProfile?.chronotype, isVOC, moonSign)} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "aspects") {
       const asps = sortMoonAspects(((now as any).moonAspects ?? []) as any[]);
@@ -821,7 +844,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           </div>
           <CycleLine
             prefix="good for"
-            options={PLANET_ACTIVITIES[dayRuler] ?? []}
+            options={railVerbs(dayRuler, profile?.chronotype, isVOC, moonSign)}
             show={3}
             style={{ marginTop: 5, lineHeight: 1.5 }}
           />
@@ -885,7 +908,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             };
             const opts = approachOptions(ctx);
             if (!opts.length) {
-              return <CycleLine prefix="this hour" options={PLANET_ACTIVITIES[planetaryHour.planet] ?? []}
+              // Through railVerbs, which carries the same fallback but keeps
+              // the flat list from being rendered raw anywhere. In practice
+              // this branch is unreachable — both maps cover exactly the seven
+              // traditional planets — but "unreachable" is how the collapsed
+              // rail kept its unfiltered copy for a year.
+              return <CycleLine prefix="this hour" options={railVerbs(planetaryHour.planet, profile?.chronotype, isVOC, moonSign)}
                 seed={new Date().getHours()} style={{ marginBottom: 8 }} />;
             }
             // Stable default, alternatives on request — tapping ↻ is the user
