@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { fetchJson } from "@/lib/fetchJson";
+import { recordVisit } from "@/lib/visits";
 import { jsonArray } from "@/lib/jsonArray";
 import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -36,6 +37,25 @@ import WovenReading from "@/components/WovenReading";
 import ReadZone from "@/components/ReadZone";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 import { PLANET_COLORS } from "@/lib/planetColors";
+
+/**
+ * What a Moon contact means for the hour it lands in, keyed off the aspect's
+ * OWN nature rather than a hard/soft binary. The engine emits five natures and
+ * they are not two groups: a conjunction intensifies whatever it touches, which
+ * is neither support nor friction, and collapsing it into either would say
+ * something false about half the aspects the Moon makes in a day.
+ *
+ * Deliberately not advice — these rows sit under "what to ride today" beside
+ * tasks, and a line telling someone to avoid a square would contradict the
+ * task listed on the very next row.
+ */
+const LUNAR_MOMENT: Record<string, string> = {
+  supportive: "an easier stretch — use it on something real",
+  flowing: "things move without being pushed",
+  challenging: "friction, and it's workable",
+  polarizing: "two pulls at once — pick one",
+  intensifying: "whatever's already going gets louder",
+};
 
 
 const PLANET_SIGNIFICATION: Record<string, string> = {
@@ -967,6 +987,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // stacking another card above them. Follows the user's own hours via
   // ritualPhase, so a night owl's 1am is never framed as their morning.
   const framing = framingFor(modeFrom(ritualMode));
+  // Recorded in an effect, not during render: a render-time write would count
+  // re-renders as visits and inflate the number the prompt gates on.
+  useEffect(() => { recordVisit(today); }, [today]);
   // Still the wall clock, deliberately: this drives the page's dawn/dusk/night
   // wash further down, and dawn is solar — it doesn't move because you sleep in.
   const localHour = new Date().getHours();
@@ -1734,9 +1757,43 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   return a ? { ...h, generic: a.text } : null;
                 })
                 .filter(Boolean) as any[];
-              const rows = [...moments, ...generic]
+              // The Moon's aspects are the other kind of moment ahead — and the
+              // stronger one. This list knew only about planetary hours, which
+              // is exactly backwards: the census put `planetary-time` at 99%
+              // frequency (so common it can never establish convergence on its
+              // own) while `lunar-contact` runs at 39% and IS an establishing
+              // family. The rarer, load-bearing testimony was the one missing
+              // from "what to ride today".
+              //
+              // Applying only, and only what perfects before the day is out: a
+              // separating aspect is a wave already passed, and putting it in a
+              // forward-looking list would be the same error as showing an hour
+              // that has ended.
+              const lunar = ((now?.moonAspects ?? []) as any[])
+                .filter((a: any) => a.applying && !a.stationsBeforeExact)
+                .filter((a: any) => typeof a.hoursToExact === "number" && a.hoursToExact > 0 && a.hoursToExact <= 12)
+                .map((a: any) => {
+                  const when = new Date(Date.now() + a.hoursToExact * 3600000);
+                  const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
+                  return {
+                    time: `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`,
+                    lunar: { other, aspect: a.aspect, nature: a.nature },
+                    // A task or star on the aspected planet is what this wave
+                    // carries, matched the same way the hours are.
+                    task: openTasks.find(t => t.planet === other),
+                    star: (northStars ?? []).find((g: any) => g.planet === other && g.status !== "done"),
+                  };
+                })
                 .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
-                .slice(0, AHEAD_ROWS);
+                .slice(0, 2);   // two at most; this is a rail, not an ephemeris
+
+              // Lunar contacts lead. They are fewer, they are rarer, and unlike
+              // an hour they name a specific meeting between two bodies — so
+              // when the list has to be cut to AHEAD_ROWS, the hour is what
+              // should lose its place, not the aspect.
+              const rows = [...lunar, ...moments, ...generic]
+                .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
+                .slice(0, AHEAD_ROWS + lunar.length);
               if (!rows.length) return null;
               return (
                 <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
@@ -1747,8 +1804,13 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
                       <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
                       <span style={{ color: "var(--color-foreground)" }}>
-                        {m.planet} hour — {m.task ? <>a window for “<b>{m.task.title}</b>”</>
+                        {m.lunar
+                          ? <><span style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>
+                          : <>{m.planet} hour</>}
+                        {" — "}
+                        {m.task ? <>a window for “<b>{m.task.title}</b>”</>
                           : m.star ? <>moves “<b>{m.star.title}</b>”</>
+                          : m.lunar ? <>{LUNAR_MOMENT[m.lunar.nature as string] ?? "the day turns here"}</>
                           : <>{m.generic}</>}
                       </span>
                     </div>
@@ -1818,6 +1880,14 @@ const ERA_GLOSS: Record<string, string> = {
 function ConditionsStrip({ now, today }: { now: any; today: string }) {
   const retros: string[] = now?.retrogrades ?? [];
   const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
+  // Tight planet-to-planet configurations — the standing sky. Lunar aspects
+  // are excluded on purpose: the Moon's contacts belong to the DAY and have
+  // their own rail section, while these persist for days to weeks. Capped at
+  // three so a busy sky does not bury the rest of the section.
+  const standingAspects = ((now as any)?.aspects ?? [])
+    .filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 3)
+    .sort((a: any, b: any) => a.orb - b.orb)
+    .slice(0, 3);
   const ecl = activeEclipse(today, 5);
   // Planet-planet aspects moved OUT of this strip — they're the moment's
   // headline now (BigSky, up top), not a background condition. This strip is
@@ -1866,6 +1936,31 @@ function ConditionsStrip({ now, today }: { now: any; today: string }) {
             <span style={{ fontSize: 12, flexShrink: 0, color: "#907040" }}>◆</span>
             <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
               <b style={{ color: "#8a6a30" }}>Today's edge</b> — {caution.note}
+            </div>
+          </div>
+        )}
+        {/* PLANET-TO-PLANET ASPECTS. The section listed eclipses, retrogrades,
+            the day's edge and the era — and omitted the configurations
+            between planets, which are the standing conditions most likely to
+            be doing the actual work. The engine has computed them since the
+            non-lunar testimony went in; nothing surfaced them here.
+
+            Lunar aspects are deliberately excluded: they belong to the day,
+            not to the standing sky, and they have their own rail section. */}
+        {standingAspects.length > 0 && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0, color: "#6a7a8a" }}>⚹</span>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+              <b style={{ color: "var(--text-2)" }}>Between the planets</b>
+              {standingAspects.map((a: any, i: number) => (
+                <div key={i} style={{ marginTop: 2 }}>
+                  {a.planet1} {a.aspect} {a.planet2}
+                  <span style={{ color: "var(--text-3)" }}>
+                    {" · "}{a.orb <= 1 ? "exact" : `${a.orb.toFixed(1)}°`}
+                    {a.applying ? " · still closing" : " · separating"}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}

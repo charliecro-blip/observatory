@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { daysSeen } from "@/lib/visits";
 import { usePreferences } from "@/contexts/preferences-context";
 import { enablePush, isPushConfigured } from "@/lib/pushSubscribe";
 
@@ -27,6 +28,12 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
   const unsupported = typeof window === "undefined" || !("Notification" in window);
   const blocked = !unsupported && Notification.permission === "denied";
 
+  // Not before someone HAS a rhythm. This was gated on `!firstRun`, so it
+  // appeared on the second visit — asking a person to "keep the rhythm going"
+  // before they have kept one. Three distinct days is the smallest number that
+  // means the app is being returned to rather than tried.
+  const DAYS_BEFORE_ASKING = 3;
+  if (daysSeen() < DAYS_BEFORE_ASKING) return null;
   if (unsupported || blocked || dismissed || prefs.notifications?.enabled || serverReady !== true) return null;
 
   function dismiss() {

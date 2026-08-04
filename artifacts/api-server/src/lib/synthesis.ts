@@ -142,7 +142,8 @@ export interface Testimony {
   salience: number;            // loudness now
   polarity: 1 | -1;
   note: string;                // plain-language, for the drill-down
-  carriedBy?: string;          // fragment that reads after "carried by …" in the flavour
+  carriedBy?: string;          // fragment that reads after "with …" in the flavour —
+                               // a standing condition, never a rival to the READ lead
   gift?: string;               // the high road — what this voice offers
   shadow?: string;             // the low road — what to watch (feeds caution-windows)
   /** Where the same energy can legitimately go. A shadow named without an
@@ -403,8 +404,17 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   push({ source: "sect", element: PLANET_ELEMENT[hero], activities: hTheme.activities, weight: hw, salience: 0.55, polarity: 1,
     facts: { kind: "sect", planet: hero, dignity: hw, isDay: m.isDay, verb: hTheme.verb },
     gift: PLANET_ROADS[hero].gift, shadow: PLANET_ROADS[hero].shadow,
-    carriedBy: `${hero}, the ${m.isDay ? "day" : "night"}'s steadiest voice — ${hTheme.verb}`,
-    note: `${hero} is the ${m.isDay ? "day" : "night"}'s steadiest voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best` });
+    // "STEADIEST", not strongest — and deliberately not "carried by", which
+    // collided with the READ zone's "LED BY" a few lines below it. The owner
+    // read a hero saying the day was "carried by Sun" directly above "LED BY
+    // Venus" and reasonably asked which it was.
+    //
+    // They answer different questions and both are true: the sect benefic is
+    // the day's most RELIABLE voice, a standing condition of the whole day;
+    // the lead is the loudest thing happening NOW. Two facts, so the fix is
+    // wording that cannot be mistaken for a rival claim to the same throne.
+    carriedBy: `${hero} underneath it — the ${m.isDay ? "day" : "night"}'s most reliable voice, ${hTheme.verb}`,
+    note: `${hero} is the ${m.isDay ? "day" : "night"}'s most reliable voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best all day` });
   const mw = dig(sect.malefic);
   push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
     facts: { kind: "sectMalefic", planet: sect.malefic, dignity: mw, isDay: m.isDay },
@@ -549,7 +559,11 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
     fire: "a fire day", earth: "an earth day", air: "an air day", water: "a water day",
   };
   const gift = ELEMENT_ROADS[topElement[0]]?.gift;
-  const flavour = `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, carried by ${lead.carriedBy ?? lead.note}` : ""}.`;
+  // "with X underneath it" rather than "carried by X". The flavour describes a
+  // STANDING condition of the whole day; the READ zone's LED BY names what is
+  // loudest right now. Both were reading as the headline claim, so the hero
+  // said the day was carried by the Sun immediately above LED BY Venus.
+  const flavour = `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, with ${lead.carriedBy ?? lead.note}` : ""}.`;
 
   // Counterpoint: the strongest testimony that cuts against the grain (opposite
   // polarity, or a strong voice in a different element) — named with its shadow.
