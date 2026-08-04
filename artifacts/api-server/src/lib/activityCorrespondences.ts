@@ -260,6 +260,57 @@ export function primarySignificatorsOf(key: string, planets: Record<string, numb
   return Object.entries(planets).filter(([, w]) => w >= 0.8).map(([p]) => p);
 }
 
+/**
+ * MINIMUM VIABLE — the reduced form of a practice when the timing is against it.
+ *
+ * Taken from the Cultivator schema, which had this field and a surface nobody
+ * could reach. It is the sentence a `qualified` window needs in order to
+ * finish itself: "several factors agree, but Mercury is retrograde" is only
+ * half a thought — the other half is what to do instead of nothing.
+ *
+ * A property of the KIND of activity rather than of one person's instance:
+ * the reduced form of hard training is roughly the same reduced form for
+ * everyone, which is why it lives here and not on a user's row.
+ *
+ * Deliberately sparse. Only written where a genuinely smaller version exists —
+ * an activity with no meaningful reduced form gets nothing, rather than a
+ * filler sentence invented to fill the column. The app saying nothing is
+ * better than the app padding.
+ */
+const MINIMUM_VIABLE: Record<string, string> = {
+  "train-hard": "move for ten minutes at any intensity — the streak matters more than the session",
+  "endurance": "go half the distance, slowly",
+  "gentle-movement": "stretch once, standing where you are",
+  "deep-study": "read one page properly rather than five badly",
+  "first-draft": "write three sentences and stop",
+  "edit-revise": "fix one paragraph",
+  "learn-skill": "do the smallest drill once",
+  "strategize": "write down the question you are actually trying to answer",
+  "investigate": "note what you already know and what is missing",
+  "deep-work": "twenty minutes on the hardest part, then stop",
+  "finish-polish": "close one loose end",
+  "organize": "clear one surface",
+  "repair": "diagnose it, even if you do not fix it today",
+  "admin-errands": "do the single one that is blocking something else",
+  "cook": "make one component you can build on tomorrow",
+  "deep-clean": "one room, or one drawer",
+  "budget": "record what you spent, without deciding anything",
+  "journal": "one line about today",
+  "meditate": "three breaths, counted",
+  "deep-rest": "lie down for ten minutes without your phone",
+  "retreat": "take one hour off the grid instead of the day",
+  "call-family": "send a message saying you will call",
+  "deepen-bond": "ask one real question",
+  "network": "reply to the message you have been leaving",
+  "garden": "water what is already planted",
+  "beautify": "put one thing back where it belongs",
+};
+
+/** The reduced form, or null where none was written. Never invented. */
+export function minimumViableOf(key: string): string | null {
+  return MINIMUM_VIABLE[key] ?? null;
+}
+
 export const ACTIVITIES: ActivityCorrespondence[] = [
   // ── BODY ────────────────────────────────────────────────────────────────────
   A({ key: "train-hard", label: "Hard training", category: "body",

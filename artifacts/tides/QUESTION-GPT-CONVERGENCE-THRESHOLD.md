@@ -137,3 +137,48 @@ is the mode assignments, not the planet set.
 (Figures are under the new establishing/reinforcing contract, so `convergent`
 here is a larger set than the old `great` — the eclipse gate still holds most
 of August's 281 back from the top tier.)
+
+---
+
+# Retraction: every figure above was measured on a highlight reel
+
+Before the audit reaches these numbers — they are unsound, and the fault is in
+our method, not the engine.
+
+All the calibration used `span: "month"`. That path does not return the month.
+It returns **the top 14 windows by score, one per day**:
+
+```ts
+if (out.length >= (opts.span === "week" ? 10 : 14)) break;
+```
+
+So `214`, `240`, `249`, the 101 episodes, and the 4–9.8 episodes per
+palette-week were all computed on a pre-filtered best-of list, capped at 14 per
+activity no matter what the sky did.
+
+Two consequences, both bad in the same direction:
+
+1. **The frequency diagnostic could not have found what it was looking for.**
+   We hypothesised that `lunar-contact` was near-continuous and therefore not
+   discriminating enough to be an establishing family. The measurement returned
+   a median of 10 days per month and a **maximum of exactly 14 for every single
+   family** — which is the cap, not a result. The hypothesis is untested, not
+   refuted.
+
+2. **Convergence rate measured on a top-by-score list is inflated by
+   construction.** The highest-scoring windows are precisely the ones carrying
+   the most agreeing families, so selecting them and then asking how often
+   convergence occurs answers a different question than the one we asked.
+
+We are re-running as a census — day by day with `span: "day"`, which returns
+everything chronologically and uncapped — and will send corrected figures. The
+cadence conclusion ("2–3× over the defensible range") should be treated as
+unsupported until then; it may move in either direction, since the cap both
+limited the count and enriched what was counted.
+
+What survives unaffected: the doctrinal work. The establishing/reinforcing
+contract, the traditional/modern split, the inception-only cap, formal
+significators, and the two-axis separation were all decided on doctrinal
+grounds rather than on these numbers. The variant-A reconstruction also stands,
+since it compares two rules applied to the same window set and the cap affects
+both sides identically.
