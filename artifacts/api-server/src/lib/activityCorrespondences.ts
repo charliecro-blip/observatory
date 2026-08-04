@@ -212,6 +212,54 @@ export function tempoOf(key: string): TempoPreference {
   return TEMPO_BY_KEY[key] ?? "either";
 }
 
+/**
+ * FORMAL SIGNIFICATORS — which planet actually carries the matter.
+ *
+ * The engine derived this from weight: `Object.entries(act.planets).filter(w
+ * >= 0.8)`. That is the substitution the doctrinal review specifically warned
+ * against, because weight and role answer different questions.
+ *
+ *   weight — how strongly does this planet CORRESPOND to the activity?
+ *   role   — is this planet carrying the matter, such that its debility
+ *            compromises the undertaking?
+ *
+ * A 0.8 planet can be secondary; a 0.6 planet can be the one the tradition
+ * would judge. And any numeric cutoff stays arbitrary and gets hard to
+ * explain — `>= 0.8` was never defended anywhere, it was just a number.
+ *
+ * Assigned ONLY for inceptions. Role currently changes nothing anywhere else,
+ * and hand-annotating 46 activities where 35 of the annotations would be
+ * unused is how a table acquires unexamined entries that later get trusted.
+ * When role starts mattering elsewhere, it gets assigned there, deliberately.
+ *
+ * The luminaries appear here where they genuinely signify — they simply never
+ * trigger the retrograde rule, having no retrogradation.
+ */
+const PRIMARY_SIGNIFICATORS: Record<string, string[]> = {
+  "haircut": ["Venus"],
+  "start-regimen": ["Saturn"],          // the discipline is the matter
+  "apply-job": ["Mercury"],             // the act is sending the application
+  "first-date": ["Venus"],
+  "big-purchase": ["Venus"],            // value and possession
+  "set-intention": ["Sun", "Moon"],
+  "publish": ["Mercury"],               // publishing is communication
+  "launch-venture": ["Sun", "Jupiter"], // identity, and its increase
+  "sign-contract": ["Mercury"],         // the document itself
+  "move-home": ["Moon", "Saturn"],      // the home, and the land under it
+  "begin-partnership": ["Venus"],
+};
+
+/**
+ * Formal significators of the matter. Falls back to the old weight heuristic
+ * for anything unassigned — which is every non-inception, where nothing reads
+ * this — so the fallback is inert rather than quietly authoritative.
+ */
+export function primarySignificatorsOf(key: string, planets: Record<string, number>): string[] {
+  const explicit = PRIMARY_SIGNIFICATORS[key];
+  if (explicit) return explicit;
+  return Object.entries(planets).filter(([, w]) => w >= 0.8).map(([p]) => p);
+}
+
 export const ACTIVITIES: ActivityCorrespondence[] = [
   // ── BODY ────────────────────────────────────────────────────────────────────
   A({ key: "train-hard", label: "Hard training", category: "body",

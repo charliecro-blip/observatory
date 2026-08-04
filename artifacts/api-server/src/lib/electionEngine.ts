@@ -20,7 +20,7 @@
  * inside the void, phase bias nudges rather than excludes.
  */
 
-import { ACTIVITIES, modeOf, tempoOf, type ActivityCorrespondence } from "./activityCorrespondences.js";
+import { ACTIVITIES, modeOf, tempoOf, primarySignificatorsOf, type ActivityCorrespondence } from "./activityCorrespondences.js";
 import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
@@ -269,7 +269,11 @@ export function computeElections(opts: {
   if (ecl.active) cautions.push(`A ${ecl.kind} eclipse falls within a week — the tradition delays elections near eclipses. Windows stay usable, but nothing gets the GREAT stamp.`);
   // 2. Retrograde significators: the matter's own planets should be direct.
   //    A retrograde significator caps the tier (success-with-revision, not GREAT).
-  const sigPlanets = Object.entries(act.planets).filter(([, w]) => w >= 0.8).map(([p]) => p);
+  // Formal significators, not "everything weighted >= 0.8". Weight says how
+  // strongly a planet corresponds to the activity; role says whether it is
+  // carrying the matter such that its debility compromises the undertaking.
+  // The old cutoff was never defended — it was just a number.
+  const sigPlanets = primarySignificatorsOf(act.key, act.planets);
   const rxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, startJd));
   // Also narrowed: the top tier is only withheld for INCEPTIONS now, so the
   // caution no longer promises a demotion it will not deliver for a long run.
