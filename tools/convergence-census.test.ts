@@ -33,15 +33,25 @@ describe("convergence census", () => {
     const DAYS = 30;
     const START = Date.UTC(2026, 9, 15, 12);
 
+    // GUARD RAIL, added after a product-selection limit silently became a
+    // scientific conclusion. `span: "month"` returns the top fourteen by score;
+    // every cadence figure computed through it was a highlight reel presented
+    // as a census. A measurement harness must therefore PROVE it evaluated what
+    // it claims to have evaluated, rather than trusting the route it called.
+    const daysEvaluated = new Set<string>();
+    let activitiesEvaluated = 0;
+
     let supported = 0, convergent = 0, totalWindows = 0;
     const famDays: Record<string, Set<string>> = {};
     const convergentDaysPerAct: Record<string, Set<string>> = {};
 
     for (const act of ACTIVITIES) {
+      activitiesEvaluated++;
       for (let d = 0; d < DAYS; d++) {
         const at = new Date(START + d * 86400000);
         const r = computeElections({ activityKey: act.key, span: "day", ...PLACE, natal, startAt: at } as any);
         if (!r) continue;
+        daysEvaluated.add(at.toISOString().slice(0, 10));
         for (const w of r.windows) {
           totalWindows++;
           for (const f of w.families) (famDays[f] ??= new Set()).add(`${act.key}|${w.date}`);
@@ -71,6 +81,15 @@ describe("convergence census", () => {
       maxConvergentDaysPerActivityPerMonth: convDays.length ? convDays[convDays.length - 1] : 0,
       familyPresenceRate: famRate,
     };
+    // Assert the shape of the sample BEFORE reporting any frequency from it.
+    // A census that quietly evaluated 14 days is not a census.
+    expect(activitiesEvaluated, "did not evaluate every activity").toBe(ACTIVITIES.length);
+    expect(daysEvaluated.size, `evaluated ${daysEvaluated.size} distinct days, expected ${DAYS}`).toBe(DAYS);
+    // And no activity may be capped at a suspiciously round selection limit.
+    const perActivityMax = Math.max(...Object.values(convergentDaysPerAct).map(s => s.size), 0);
+    expect(perActivityMax, "an activity hit exactly 14 — the month-span cap may be in play")
+      .not.toBe(14);
+
     console.log(JSON.stringify(result, null, 1));
     mkdirSync("tools/out", { recursive: true });
     writeFileSync("tools/out/convergence-census.json", JSON.stringify(result, null, 2));

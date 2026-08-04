@@ -80,14 +80,26 @@ describe("the hour is evidence, not a second voice", () => {
   }, 40_000);
 
   it("keeps them visibly separate families", () => {
-    // Collapsing them would make the evidence receipt less truthful — they
-    // come from different techniques and different constructions.
+    // VACUOUS UNTIL FIXED: this asserted `typeof sawBoth === "boolean"`, which
+    // passes whether the case occurred or not — written by the same hand that
+    // spent the session catching exactly this. Now it scans until it finds a
+    // real co-occurrence and fails if none exists, because "they stay separate"
+    // is only a claim if they ever appear together.
     let sawBoth = false;
-    for (const w of run("edit-revise").windows) {
-      if (w.families.includes("lunar-contact") && w.families.includes("planetary-time")) sawBoth = true;
+    for (let d = 0; d < 21 && !sawBoth; d++) {
+      const at = new Date(Date.UTC(2026, 9, 1 + d, 12));
+      for (const key of ["edit-revise", "deep-study", "admin-errands"]) {
+        for (const w of run(key, { startAt: at }).windows) {
+          if (w.families.includes("lunar-contact") && w.families.includes("planetary-time")) {
+            sawBoth = true;
+            // Both present, both named — not silently merged into one.
+            expect(new Set(w.families).size).toBeGreaterThanOrEqual(2);
+          }
+        }
+      }
     }
-    expect(typeof sawBoth).toBe("boolean");
-  }, 40_000);
+    expect(sawBoth, "never observed hour and Moon together in three weeks").toBe(true);
+  }, 60_000);
 
   it("marks the overlap so it can rank without promoting", () => {
     for (const w of run("edit-revise").windows) {
