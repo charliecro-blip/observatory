@@ -40,7 +40,40 @@ const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); r
 /** Why a window that otherwise qualified was held back from `great`. */
 export type CapReason =
   | "mercury-retrograde" | "eclipse-window"
-  | "retrograde-significator" | "malefic-final-aspect";
+  | "retrograde-significator" | "malefic-final-aspect"
+  | "significator-stationing";
+
+/** How many independent source families agree. A claim about the SKY. */
+export type SupportLevel = "supported" | "convergent";
+
+/**
+ * What acting on that agreement is worth. A claim about the MATTER.
+ *
+ *   clear     — nothing qualifies it
+ *   qualified — usable, with a named complication; often better for revising,
+ *               renegotiating or a soft opening than for a clean start
+ *   defer     — a real electional objection to beginning here
+ */
+export type Suitability = "clear" | "qualified" | "defer";
+
+export type SuitabilityReason =
+  | { kind: "primary-significator-stationing-retrograde"; planet: string }
+  | { kind: "primary-significator-stationing-direct"; planet: string }
+  | { kind: "primary-significator-retrograde"; planet: string }
+  | { kind: "significator-station"; planet: string }
+  | { kind: "mercury-retrograde"; planet: string };
+
+/** Severity of each reason, so `suitability` stays a pure function of them. */
+const DEFER_REASONS = new Set<SuitabilityReason["kind"]>([
+  "primary-significator-stationing-retrograde",
+]);
+const QUALIFY_REASONS = new Set<SuitabilityReason["kind"]>([
+  "primary-significator-stationing-direct",
+  "primary-significator-retrograde",
+  "mercury-retrograde",
+]);
+// `significator-station` on a non-inception is deliberately in NEITHER set:
+// it is worth SAYING and must not hold anything back.
 
 export interface ElectionWindow {
   date: string; dow: string;
@@ -63,6 +96,12 @@ export interface ElectionWindow {
   /** Set when the window met the bar for `great` and a traditional gate
    *  demoted it. Null when it was never close, or was not demoted. */
   cappedBy: CapReason | null;
+  /** Independent agreement. Replaces what `tier` used to half-mean. */
+  supportLevel: SupportLevel;
+  /** Fitness for acting, held SEPARATE from agreement. */
+  suitability: Suitability;
+  /** Structured, so the surface can explain rather than just demote. */
+  suitabilityReasons: SuitabilityReason[];
 }
 
 export interface ElectionResult {
@@ -400,19 +439,72 @@ export function computeElections(opts: {
       // the pre-tier family histogram in tools/ exists to answer it.
       const dayFamilies = familiesOf(daySources);
       const greatSignals = (stacked ? 1 : 0) + dayFamilies.length;
-      let tier: "good" | "great" = substantive && greatSignals >= 2 ? "great" : "good";
-      // Which gate demoted this window, if any. Recorded because "would have
-      // been great but for X" is both the diagnostic that tells calibration
-      // whether scarcity comes from the threshold or from the caps, AND a
-      // thing worth saying out loud to a user: a strong window held back by a
-      // retrograde significator is more informative than a silent `good`.
+
+      // ── TWO AXES, not one overloaded tier ────────────────────────────────
+      //
+      // supportLevel answers: how many independent testimonies agree?
+      // suitability  answers: what is acting on that agreement worth?
+      //
+      // These were fused, and fusing them made the engine say something false.
+      // A retrograde significator does not make the supporting testimonies
+      // disappear — the Mercury hour still overlaps the Moon–Mercury aspect.
+      // It changes how confidently that agreement can carry a clean beginning.
+      // Collapsing it into "this is now merely good" threw away both facts and
+      // told the user neither.
+      //
+      //   Convergent · qualified  — several factors agree, but Mercury is
+      //                             retrograde: better for revision than release
+      //   Convergent · defer      — strongly activated, but the primary
+      //                             significator is stationing retrograde
+      //
+      // which is more informative than a silent demotion, and is the shape the
+      // Cultivator's `minimumViable` was waiting for.
+      const supportLevel: SupportLevel = substantive && greatSignals >= 2 ? "convergent" : "supported";
+
+      // Collected first, DERIVED after — rather than mutating a variable as we
+      // go. Each reason carries its own severity, so suitability is a pure
+      // function of the reasons and cannot drift out of step with the list the
+      // UI shows.
+      const suitabilityReasons: SuitabilityReason[] = [];
+      const qualify = (reason: SuitabilityReason) => suitabilityReasons.push(reason);
+      const defer = (reason: SuitabilityReason) => suitabilityReasons.push(reason);
+
+      // Motion of the traditional significators. Only inceptions inherit the
+      // classical objection — see the dayRxSigs comment above — but a STATION
+      // is recorded on any activity, because it is the strongest motion
+      // statement a planet makes and worth naming even where nothing is held
+      // back. Traditional doctrine reads the first station as reversal and the
+      // second as recovery not yet complete; neither is a power boost.
+      for (const st of sigStations) {
+        const first = st.motion!.phase === "stationing-retrograde";
+        if (actMode === "inception") {
+          if (first) defer({ kind: "primary-significator-stationing-retrograde", planet: st.planet });
+          else qualify({ kind: "primary-significator-stationing-direct", planet: st.planet });
+        } else {
+          suitabilityReasons.push({ kind: "significator-station", planet: st.planet });
+        }
+      }
+      for (const p of dayRxSigs) {
+        if (sigStations.some(st => st.planet === p)) continue;   // already spoken for
+        qualify({ kind: "primary-significator-retrograde", planet: p });
+      }
+      if (dayMercRx && act.mercuryRx === "hard") {
+        qualify({ kind: "mercury-retrograde", planet: "Mercury" });
+      }
+
+      // Eclipse and the malefic final aspect stay TIER caps rather than
+      // becoming suitability: they are objections to the moment itself, not to
+      // what you intend to do in it. Deliberately not replaced with a new hard
+      // cap invented to preserve scarcity — scarcity should come from the
+      // convergence definition, and refusal from real electional objections.
+      const suitability: Suitability =
+        suitabilityReasons.some(r => DEFER_REASONS.has(r.kind)) ? "defer"
+        : suitabilityReasons.some(r => QUALIFY_REASONS.has(r.kind)) ? "qualified"
+        : "clear";
+
+      let tier: "good" | "great" = supportLevel === "convergent" ? "great" : "good";
       let cappedBy: CapReason | null = null;
-      const wouldBeGreat = tier === "great";
-      if (wouldBeGreat && dayMercRx && act.mercuryRx === "hard") { tier = "good"; cappedBy = "mercury-retrograde"; }
-      // Verified gates: eclipse week, retrograde significators, and the Moon's
-      // FINAL aspect in this window's sign (how the matter ends) each cap GREAT.
       if (tier === "great" && dayEcl.active) { tier = "good"; cappedBy = "eclipse-window"; }
-      if (tier === "great" && dayRxSigs.length > 0) { tier = "good"; cappedBy = "retrograde-significator"; }
       if (tier === "great" && !c.allDay) {
         // Memoized per sign occupancy — every window in the same Moon sign
         // shares one final aspect, and the scan isn't free.
@@ -421,9 +513,12 @@ export function computeElections(opts: {
         if (!finalAspectMemo.has(signKey)) finalAspectMemo.set(signKey, moonFinalAspectInSign(cJd));
         const fin = finalAspectMemo.get(signKey)!;
         if (fin && (fin.aspect === "square" || fin.aspect === "opposition") && (fin.planet === "Mars" || fin.planet === "Saturn")) {
-          tier = "good"; cappedBy = "malefic-final-aspect"; // the ending sours; no GREAT
+          tier = "good"; cappedBy = "malefic-final-aspect"; // the ending sours
         }
       }
+      // `defer` withholds the top tier too — it is a refusal, not a caveat.
+      if (tier === "great" && suitability === "defer") { tier = "good"; cappedBy ??= "significator-stationing"; }
+
       // Window-level personal provenance. `personalized` on the RESULT only
       // ever meant "a natal chart was available" — it said nothing about
       // whether any particular window carried personal testimony, so a wholly
@@ -435,7 +530,7 @@ export function computeElections(opts: {
       // meaningful when it IS great — otherwise there is no tier to have
       // decided.
       const nonPersonalDayFamilies = dayFamilies.filter(f => !PERSONAL_FAMILIES.has(f));
-      const personalDecidedTier = tier === "great" &&
+      const personalDecidedTier = supportLevel === "convergent" &&
         (stacked ? 1 : 0) + nonPersonalDayFamilies.length < 2;
       windows.push({
         date: dateLabel, dow,
@@ -448,6 +543,9 @@ export function computeElections(opts: {
         personal: personalFamilies.length > 0,
         personalDecidedTier,
         cappedBy,
+        supportLevel,
+        suitability,
+        suitabilityReasons,
       });
     }
   }
