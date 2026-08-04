@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useTester } from "@/contexts/tester-context";
 
 /**
  * ActivityTimesHint (owner 2026-07-20): the sortage stitch. Given a step/task
@@ -25,6 +26,7 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
   // Read ONCE per render: the cache key and the request must not be able to
   // disagree about which timezone they meant.
   const tzOffset = new Date().getTimezoneOffset();
+  const { locationKnown } = useTester();
   const [scheduled, setScheduled] = useState<string | null>(null);
 
   const { data: match } = useQuery<Match | null>({
@@ -40,9 +42,9 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
     // "when should I do this here?" with times computed for somewhere else.
     // Rounded to 2dp so trivial GPS jitter does not thrash the cache while a
     // real move always does.
-    queryKey: ["election-times", match?.key, "week", testerId, lat.toFixed(2), lon.toFixed(2), tzOffset],
+    queryKey: ["election-times", match?.key, "week", testerId, lat.toFixed(2), lon.toFixed(2), tzOffset, locationKnown],
     queryFn: async () => (await fetch(
-      `/api/elections/times?activity=${match!.key}&span=week&lat=${lat}&lon=${lon}&tz=${tzOffset}`,
+      `/api/elections/times?activity=${match!.key}&span=week&lat=${lat}&lon=${lon}&tz=${tzOffset}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} },
     )).json(),
     enabled: open && !!match?.key,

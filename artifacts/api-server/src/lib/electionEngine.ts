@@ -236,6 +236,24 @@ export function computeElections(opts: {
    * the flag exists so that stops being an assumption.
    */
   timeKnown?: boolean;
+  /**
+   * Whether `lat`/`lon` are the user's real location or a timezone guess.
+   *
+   * Planetary hours are cut from local sunrise and sunset, so on a guessed
+   * meridian every hour boundary is wrong. Hiding those hours in the interface
+   * was only half the fix — they were still generating candidate windows,
+   * contributing the `planetary-time` family, and therefore influencing which
+   * windows exist and whether they converge. A hidden guessed factor that
+   * changes the answer is worse than a visible one.
+   *
+   * When false: no hour candidates, no `planetary-time`. Universal lunar and
+   * planetary testimony is unaffected — the Moon aspects the same planets
+   * wherever you are standing.
+   *
+   * Defaults true so existing internal callers and fixtures keep their
+   * meaning; the routes pass it explicitly.
+   */
+  locationKnown?: boolean;
   startAt?: Date;
 }): ElectionResult | null {
   const act = ACTIVITIES.find(a => a.key === opts.activityKey);
@@ -254,6 +272,7 @@ export function computeElections(opts: {
   // GREAT on the strength of a house placement nobody computed. Transit-to-
   // natal contacts survive: planetary longitudes barely move across a day.
   const houseTestimonyAllowed = opts.timeKnown !== false;
+  const locationKnown = opts.locationKnown !== false;
   const cusps = natal && houseTestimonyAllowed ? computeCusps("whole-sign", { ascLon: natal.ascendant.longitude, mcLon: natal.midheaven.longitude, lat, lon, jd: 0 } as any) : null;
   const natalLonOf = (p: string) => natal?.planets.find(x => x.planet === p)?.longitude ?? null;
 
@@ -444,8 +463,13 @@ export function computeElections(opts: {
     interface Cand { startMs: number; endMs: number; score: number; why: string[]; sources: string[]; allDay?: boolean }
     const cands: Cand[] = [];
 
-    // Planetary hours (waking, matching rulers)
-    const hours = dayHours(dayStartMs, lat, lon).filter(h => act.hourRulers.includes(h.ruler));
+    // Planetary hours (waking, matching rulers). Suppressed entirely when the
+    // location is a guess — see `locationKnown`. Not merely hidden: an hour
+    // computed on the wrong meridian must not create a window or count toward
+    // convergence.
+    const hours = locationKnown
+      ? dayHours(dayStartMs, lat, lon).filter(h => act.hourRulers.includes(h.ruler))
+      : [];
     for (const h of hours) {
       const startMs = Math.max(h.startMs, dayStartMs + 7 * 3600000);
       const endMs = Math.min(h.endMs, dayStartMs + 23 * 3600000);

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
 import type { AskElectionContext } from "@/App";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { useTester } from "@/contexts/tester-context";
 import { partOfDay } from "@/lib/clock";
 
 /**
@@ -35,6 +36,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
   // Read ONCE per render: the cache key and the request must not be able to
   // disagree about which timezone they meant.
   const tzOffset = new Date().getTimezoneOffset();
+  const { locationKnown } = useTester();
   const [category, setCategory] = useState<string>("body");
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [span, setSpan] = useState<"day" | "week" | "month">("week");
@@ -59,9 +61,9 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
     // "when should I do this here?" with times computed for somewhere else.
     // Rounded to 2dp so trivial GPS jitter does not thrash the cache while a
     // real move always does.
-    queryKey: ["election-times", activityKey, span, testerId, lat.toFixed(2), lon.toFixed(2), tzOffset],
+    queryKey: ["election-times", activityKey, span, testerId, lat.toFixed(2), lon.toFixed(2), tzOffset, locationKnown],
     queryFn: async () => (await fetch(
-      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${tzOffset}`,
+      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${tzOffset}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} },
     )).json(),
     enabled: !!activityKey,

@@ -39,6 +39,11 @@ router.get("/elections/match", (req, res) => {
 router.get("/elections/times", async (req, res) => {
   const activityKey = (req.query.activity as string) ?? "";
   const span = (["day", "week", "month"].includes(req.query.span as string) ? req.query.span : "week") as "day" | "week" | "month";
+  // ABSENT coordinates are not a reason to invent New York. The client sends
+  // locationKnown=false when it only has a timezone guess; the fallback then
+  // supports the universal layer and nothing local.
+  const hasCoords = req.query.lat != null && req.query.lon != null;
+  const locationKnown = hasCoords && req.query.locationKnown !== "false";
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
@@ -60,7 +65,7 @@ router.get("/elections/times", async (req, res) => {
     } catch { /* chartless is fine — GOOD tier only */ }
   }
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, natal, timeKnown });
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });
