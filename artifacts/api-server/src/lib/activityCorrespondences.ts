@@ -147,6 +147,71 @@ export function modeOf(key: string): ActivityMode {
   return MODE_BY_KEY[key] ?? "execution";
 }
 
+/**
+ * MERCURY TEMPO — a pilot, and Compass synthesis rather than inherited doctrine.
+ *
+ * PROVENANCE, stated plainly because it would be easy to dress this as
+ * classical and it is not: Lilly's scoring treats swift motion as fortifying
+ * and slow motion as weakening, full stop. The idea that a SLOW planet
+ * positively suits deliberate work — that different velocities match different
+ * kinds of task rather than simply being better or worse — is ours. It must
+ * always be labelled as Compass's reading, never as Bonatti's or Lilly's.
+ *
+ * Mercury only, deliberately. Many activities here are unmistakably Mercurial,
+ * its speed varies visibly and often, and users already grasp the difference
+ * between quick correspondence and careful revision. Inventing slow-Jupiter or
+ * fast-Saturn correspondences would be building a system nobody inherited and
+ * nobody has calibrated.
+ *
+ *   quick      — errands, short exchanges, rapid processing, live facilitation
+ *   deliberate — editing, investigation, detailed review, returning to material
+ *   either     — Mercury's tempo is not a material condition for this
+ */
+export type TempoPreference = "quick" | "deliberate" | "either";
+
+const TEMPO_BY_KEY: Record<string, TempoPreference> = {
+  // Deliberate: the work is careful, or it is a return to something.
+  "edit-revise": "deliberate",
+  "investigate": "deliberate",
+  "deep-study": "deliberate",
+  "finish-polish": "deliberate",
+  "repair": "deliberate",
+  "strategize": "deliberate",
+  "budget": "deliberate",
+  "settle-debts": "deliberate",
+  "journal": "deliberate",
+  "divination": "deliberate",
+  "retreat": "deliberate",
+
+  // Quick: short, live, or processed in volume.
+  "admin-errands": "quick",
+  "network": "quick",
+  "call-family": "quick",
+  "teach-present": "quick",
+  "host": "quick",
+  "organize": "quick",
+
+  // Explicitly neither — Mercurial, but tempo is not the material condition.
+  "first-draft": "either",
+  "learn-skill": "either",
+  "negotiate": "either",
+  "hard-conversation": "either",
+  "apply-job": "either",
+  "repair-bond": "either",
+  "big-purchase": "either",
+  "set-intention": "either",
+  "publish": "either",
+  "launch-venture": "either",
+  "sign-contract": "either",
+  "move-home": "either",
+  "begin-partnership": "either",
+  "deep-work": "either",
+};
+
+export function tempoOf(key: string): TempoPreference {
+  return TEMPO_BY_KEY[key] ?? "either";
+}
+
 export const ACTIVITIES: ActivityCorrespondence[] = [
   // ── BODY ────────────────────────────────────────────────────────────────────
   A({ key: "train-hard", label: "Hard training", category: "body",

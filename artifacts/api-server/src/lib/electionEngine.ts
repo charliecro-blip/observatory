@@ -20,7 +20,7 @@
  * inside the void, phase bias nudges rather than excludes.
  */
 
-import { ACTIVITIES, modeOf, type ActivityCorrespondence } from "./activityCorrespondences.js";
+import { ACTIVITIES, modeOf, tempoOf, type ActivityCorrespondence } from "./activityCorrespondences.js";
 import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
@@ -163,7 +163,8 @@ export type SourceFamily =
   | "lunar-condition"  // Moon sign affinity, phase, void of course
   | "standing-sky"     // non-lunar aspect between significators
   | "natal-house"      // transiting body in a governing natal house
-  | "natal-contact";   // transit to its own natal place
+  | "natal-contact"    // transit to its own natal place
+  | "planetary-motion"; // speed/direction matching the activity's tempo
 
 const FAMILY_OF: Record<string, SourceFamily> = {
   hour: "planetary-time",
@@ -173,6 +174,7 @@ const FAMILY_OF: Record<string, SourceFamily> = {
   sky: "standing-sky",
   "natal-house": "natal-house",
   "natal-contact": "natal-contact",
+  motion: "planetary-motion",
 };
 const familiesOf = (srcs: string[]): SourceFamily[] =>
   [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
@@ -228,8 +230,17 @@ export function computeElections(opts: {
   //    A retrograde significator caps the tier (success-with-revision, not GREAT).
   const sigPlanets = Object.entries(act.planets).filter(([, w]) => w >= 0.8).map(([p]) => p);
   const rxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, startJd));
-  if (rxSigs.length) cautions.push(`${rxSigs.join(" and ")} — this activity's significator${rxSigs.length > 1 ? "s are" : " is"} retrograde: doable, but expect re-work; the tradition withholds the best stamp.`);
-  if (mercRx && act.mercuryRx === "hard") cautions.push("Mercury is retrograde — the tradition blocks this outright; wait for the direct station, or use the time to prepare.");
+  // Also narrowed: the top tier is only withheld for INCEPTIONS now, so the
+  // caution no longer promises a demotion it will not deliver for a long run.
+  if (rxSigs.length) {
+    const withheld = modeOf(act.key) === "inception";
+    cautions.push(`${rxSigs.join(" and ")} — this activity's significator${rxSigs.length > 1 ? "s are" : " is"} retrograde: doable, but expect re-work${withheld ? "; for a beginning, the tradition withholds the best stamp" : ""}.`);
+  }
+  // Was "the tradition blocks this outright". That stopped being true when the
+  // retrograde handling moved from a tier cap to the suitability axis: this now
+  // QUALIFIES a window rather than refusing it, and the copy has to say what the
+  // rule does. Only a stationing primary significator on an inception defers.
+  if (mercRx && act.mercuryRx === "hard") cautions.push("Mercury is retrograde — the tradition counts this against a clean start. Usable for revisiting, re-sending or a soft opening; wait for the direct station if it must be final.");
   if (mercRx && act.mercuryRx === "soft") cautions.push("Mercury is retrograde — doable, but expect revisions and follow-ups; leave slack.");
   if (mercRx && act.mercuryRx === "favor") cautions.push("Mercury is retrograde — which actually suits this: re- work runs well under it.");
 
@@ -332,7 +343,44 @@ export function computeElections(opts: {
       }
     }
 
-    const sigs = Object.keys(act.planets).filter(p => p !== "Moon");
+    // ── Mercury tempo — Compass synthesis, not inherited doctrine ───────────
+  // Recorded on every window it fits, but NOT counted toward convergence yet.
+  // Adding a convergence-eligible family while the threshold is under review
+  // would be a threshold change wearing a feature's clothes: October already
+  // yields 214 convergent windows and we have told the reviewer we would not
+  // move the bar until the hour x Moon question is settled. `MOTION_COUNTS`
+  // flips it on in one place once that lands, and the harness can measure both
+  // sides of the switch in the meantime.
+  const MOTION_COUNTS = false;
+  const actTempo = tempoOf(act.key);
+  let tempoMatch: { fits: boolean; note: string } | null = null;
+  if (actTempo !== "either" && Object.keys(act.planets).includes("Mercury")) {
+    const mm = motionOf("Mercury", jdNoon);
+    if (mm) {
+      // Retrograde and slow both serve deliberate work; only genuinely swift
+      // direct motion serves quick work. Stations are excluded from BOTH —
+      // a planet turning is not a tempo, and the tradition reads it as
+      // impeded rather than as any kind of favourable speed.
+      const stationing = mm.phase.startsWith("stationing");
+      if (!stationing) {
+        const slowish = mm.speedBand === "slow" || mm.speedBand === "very-slow" || mm.phase === "retrograde";
+        const swift = mm.phase === "direct" && mm.speedBand === "fast";
+        if (actTempo === "deliberate" && slowish) {
+          tempoMatch = { fits: true, note: mm.phase === "retrograde"
+            ? "Mercury is retrograde — Compass reads this as suiting revision and review"
+            : "Mercury is moving slowly — Compass reads this as suiting careful work" };
+        } else if (actTempo === "quick" && swift) {
+          tempoMatch = { fits: true, note: "Mercury is swift — Compass reads this as suiting quick exchange" };
+        }
+      }
+    }
+  }
+  if (tempoMatch?.fits) {
+    dayWhy.push(tempoMatch.note);
+    if (MOTION_COUNTS) daySources.push("motion");
+  }
+
+  const sigs = Object.keys(act.planets).filter(p => p !== "Moon");
     const pair = getMajorAspects(jdNoon).find(pa =>
       (SOFT_W as any)[pa.aspect] > 0 && pa.orb <= 3 &&
       sigs.includes(pa.planet1) && sigs.includes(pa.planet2) && pa.planet1 !== pa.planet2);
