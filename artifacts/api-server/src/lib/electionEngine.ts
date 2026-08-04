@@ -98,6 +98,13 @@ export interface ElectionWindow {
   cappedBy: CapReason | null;
   /** Independent agreement. Replaces what `tier` used to half-mean. */
   supportLevel: SupportLevel;
+  /** Families discriminating enough to establish the claim. */
+  establishingFamilies: SourceFamily[];
+  /** Families that strengthen an established claim but cannot create one. */
+  reinforcingFamilies: SourceFamily[];
+  /** A matching hour sharpens a lunar swell into a window with clean edges.
+   *  Ranks supported windows; deliberately does NOT promote them. */
+  stackedHourMoon: boolean;
   /** Fitness for acting, held SEPARATE from agreement. */
   suitability: Suitability;
   /** Structured, so the surface can explain rather than just demote. */
@@ -179,6 +186,40 @@ const FAMILY_OF: Record<string, SourceFamily> = {
 const familiesOf = (srcs: string[]): SourceFamily[] =>
   [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
 const PERSONAL_FAMILIES = new Set<SourceFamily>(["natal-house", "natal-contact"]);
+
+/**
+ * ESTABLISHING vs REINFORCING — what each family is allowed to CLAIM.
+ *
+ * Counting distinct families was still too blunt, in both directions. Two
+ * strong testimonies can be genuinely convergent (the Moon applying exactly to
+ * the significator, and that significator contacting its own natal place),
+ * while three broad ones need not be (a matching hour, a preferred Moon sign
+ * and a preferred phase are three labels, none of them unusual).
+ *
+ * So the question is not how many families agree but what each family is
+ * discriminating enough to establish. Establishing families are relational or
+ * event-specific: the Moon APPLYING to this activity's significator is a real
+ * celestial event with a time. Reinforcing families are recurrent conditions:
+ * a Mercury hour comes round every day for every Mercurial activity.
+ *
+ * The governing sentence, from the doctrinal review: planetary hours are
+ * independent enough to appear in the evidence, but not discriminating enough
+ * to establish convergence without additional testimony.
+ *
+ * This also settles the hour x Moon convention that was preserved through the
+ * family-counting fix. The two stay VISIBLY separate families — collapsing
+ * them would make the receipt less truthful, since they come from different
+ * techniques — but the hour cannot be the second voice. Their overlap becomes
+ * a modifier (`stackedHourMoon`) that sharpens and ranks a window rather than
+ * promoting it.
+ */
+const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
+  "lunar-contact",    // the Moon applying to a significator — an event, with a time
+  "standing-sky",     // a tight aspect between this activity's own significators
+  "natal-contact",    // a close transit to the relevant natal planet
+]);
+const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
+  ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
 
 export function computeElections(opts: {
   activityKey: string;
@@ -507,7 +548,21 @@ export function computeElections(opts: {
       //
       // which is more informative than a silent demotion, and is the shape the
       // Cultivator's `minimumViable` was waiting for.
-      const supportLevel: SupportLevel = substantive && greatSignals >= 2 ? "convergent" : "supported";
+      // At least one establishing testimony must sit at the centre. Two of them
+      // converge on their own; one plus two reinforcing conditions also does.
+      // A pile of reinforcing conditions never does, however tall.
+      const allFamilies = familiesOf([...c.sources, ...daySources]);
+      const establishing = allFamilies.filter(f => roleOf(f) === "establishing");
+      const reinforcing = allFamilies.filter(f => roleOf(f) === "reinforcing");
+      const supportLevel: SupportLevel =
+        establishing.length >= 2 || (establishing.length >= 1 && reinforcing.length >= 2)
+          ? "convergent" : "supported";
+
+      // Kept as a MODIFIER, not a promotion. The hour x Moon overlap is still
+      // the thing that turns a several-hour lunar swell into a window with a
+      // clean start and end, so it should decide which supported window leads —
+      // just not whether the window crosses the threshold.
+      const stackedHourMoon = allFamilies.includes("lunar-contact") && allFamilies.includes("planetary-time");
 
       // Collected first, DERIVED after — rather than mutating a variable as we
       // go. Each reason carries its own severity, so suitability is a pure
@@ -577,9 +632,13 @@ export function computeElections(opts: {
       // Would this window still be GREAT without its personal testimony? Only
       // meaningful when it IS great — otherwise there is no tier to have
       // decided.
-      const nonPersonalDayFamilies = dayFamilies.filter(f => !PERSONAL_FAMILIES.has(f));
+      // Recomputed under the establishing/reinforcing rule: would this still
+      // converge with the personal families removed?
+      const nonPersonal = allFamilies.filter(f => !PERSONAL_FAMILIES.has(f));
+      const npEst = nonPersonal.filter(f => roleOf(f) === "establishing").length;
+      const npReinf = nonPersonal.filter(f => roleOf(f) === "reinforcing").length;
       const personalDecidedTier = supportLevel === "convergent" &&
-        (stacked ? 1 : 0) + nonPersonalDayFamilies.length < 2;
+        !(npEst >= 2 || (npEst >= 1 && npReinf >= 2));
       windows.push({
         date: dateLabel, dow,
         startAt: new Date(c.startMs).toISOString(), endAt: new Date(c.endMs).toISOString(),
@@ -592,6 +651,9 @@ export function computeElections(opts: {
         personalDecidedTier,
         cappedBy,
         supportLevel,
+        establishingFamilies: establishing,
+        reinforcingFamilies: reinforcing,
+        stackedHourMoon,
         suitability,
         suitabilityReasons,
       });
