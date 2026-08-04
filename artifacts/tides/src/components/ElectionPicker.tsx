@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
 import type { AskElectionContext } from "@/App";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { partOfDay } from "@/lib/clock";
 
 /**
  * The election picker (owner 2026-07-20): browse the extensive activity list,
@@ -28,17 +29,12 @@ interface ElectionWindowT {
 
 type PartOfDay = "morning" | "afternoon" | "evening";
 const PART_LABEL: Record<PartOfDay, string> = { morning: "mornings", afternoon: "afternoons", evening: "evenings" };
-// Part-of-day from a localized clock string like "7:00 AM" / "6:30 PM".
-function partOfDay(clock: string): PartOfDay {
-  const m = clock.match(/(\d+):\d+\s*(AM|PM)/i);
-  if (!m) return "afternoon";
-  let h = parseInt(m[1], 10) % 12;
-  if (/PM/i.test(m[2])) h += 12;
-  return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
-}
 
 export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string | null; lat: number; lon: number; onAsk?: (ctx: AskElectionContext, seed: string) => void }) {
   const qc = useQueryClient();
+  // Read ONCE per render: the cache key and the request must not be able to
+  // disagree about which timezone they meant.
+  const tzOffset = new Date().getTimezoneOffset();
   const [category, setCategory] = useState<string>("body");
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [span, setSpan] = useState<"day" | "week" | "month">("week");
@@ -57,9 +53,15 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
   });
 
   const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; cautions: string[]; windows: ElectionWindowT[]; activity: ActivityLite }>({
-    queryKey: ["election-times", activityKey, span, testerId],
+    // lat/lon/tz are COMPUTATIONAL INPUTS and therefore belong in the key.
+    // Without them a location or timezone change left the previous place's
+    // windows cached for the full stale period — the app quietly answering
+    // "when should I do this here?" with times computed for somewhere else.
+    // Rounded to 2dp so trivial GPS jitter does not thrash the cache while a
+    // real move always does.
+    queryKey: ["election-times", activityKey, span, testerId, lat.toFixed(2), lon.toFixed(2), tzOffset],
     queryFn: async () => (await fetch(
-      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}`,
+      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${tzOffset}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} },
     )).json(),
     enabled: !!activityKey,
@@ -94,7 +96,10 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
   const allWindows = times?.windows ?? [];
   const shownWindows = freeParts.size === 0
     ? allWindows
-    : allWindows.filter(w => w.allDay || freeParts.has(partOfDay(w.startClock)));
+    // A window whose clock cannot be read is KEPT rather than dropped: the
+    // filter is a convenience, and silently hiding a real window because a
+    // string did not parse is the same class of error as classifying it wrong.
+    : allWindows.filter(w => { const p = w.allDay ? null : partOfDay(w.startClock); return w.allDay || p == null || freeParts.has(p); });
   const filteredOut = allWindows.length - shownWindows.length;
 
   function togglePart(p: PartOfDay) {

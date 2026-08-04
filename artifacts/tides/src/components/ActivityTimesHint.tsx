@@ -22,6 +22,9 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Read ONCE per render: the cache key and the request must not be able to
+  // disagree about which timezone they meant.
+  const tzOffset = new Date().getTimezoneOffset();
   const [scheduled, setScheduled] = useState<string | null>(null);
 
   const { data: match } = useQuery<Match | null>({
@@ -31,9 +34,15 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
   });
 
   const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; windows: ElectionWindowT[] }>({
-    queryKey: ["election-times", match?.key, "week", testerId],
+    // lat/lon/tz are COMPUTATIONAL INPUTS and therefore belong in the key.
+    // Without them a location or timezone change left the previous place's
+    // windows cached for the full stale period — the app quietly answering
+    // "when should I do this here?" with times computed for somewhere else.
+    // Rounded to 2dp so trivial GPS jitter does not thrash the cache while a
+    // real move always does.
+    queryKey: ["election-times", match?.key, "week", testerId, lat.toFixed(2), lon.toFixed(2), tzOffset],
     queryFn: async () => (await fetch(
-      `/api/elections/times?activity=${match!.key}&span=week&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}`,
+      `/api/elections/times?activity=${match!.key}&span=week&lat=${lat}&lon=${lon}&tz=${tzOffset}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} },
     )).json(),
     enabled: open && !!match?.key,
