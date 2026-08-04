@@ -18,7 +18,7 @@ import { Router, type IRouter } from "express";
 import { db, tasks, planningWindows } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
-import { associateDeterministic, WINDOW_TYPES } from "../lib/associate.js";
+import { associateDeterministic, WINDOW_TYPES, type Association } from "../lib/associate.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
 import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
@@ -34,6 +34,22 @@ interface ParsedTask {
   estimatedMinutes: number;
   energy: Energy;
   dueDate: string | null; // YYYY-MM-DD
+  /**
+   * The classification as REVIEWED BY THE USER, when the request came from the
+   * edit pass rather than a raw dump.
+   *
+   * The Planner tells the user "the read is a guess, not a verdict" and lets
+   * them change fire to earth. That control was a false affordance: the weave
+   * route kept only title, estimate, energy and due date, then re-ran
+   * associateDeterministic(title) — so the correction appeared on screen and
+   * was silently discarded at scheduling time.
+   *
+   * That is the most damaging shape a bug can take in this product, because it
+   * teaches that inspectability is decorative. If the user can see the reason,
+   * the reason has to be the one that acts.
+   */
+  assoc?: Association;
+  classificationSource?: "user" | "deterministic" | "ai";
 }
 
 const HORIZON_DAYS: Record<Horizon, number> = { day: 1, week: 7, month: 28 };
@@ -206,12 +222,34 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   // or as a raw dump we AI-parse here.
   let items: ParsedTask[];
   if (Array.isArray(req.body.tasks) && req.body.tasks.length > 0) {
-    items = req.body.tasks.slice(0, 30).map((t: any) => ({
-      title: String(t.title ?? "").trim() || "Untitled",
-      estimatedMinutes: clampMinutes(t.estimatedMinutes),
-      energy: normEnergy(t.energy),
-      dueDate: /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate ?? "") ? t.dueDate : null,
-    }));
+    items = req.body.tasks.slice(0, 30).map((t: any) => {
+      const title = String(t.title ?? "").trim() || "Untitled";
+      // Trust the reviewed card, but validate it — this is still request input.
+      // An unrecognised element or window type falls back to the deterministic
+      // read rather than being passed through into scheduling.
+      const derived = associateDeterministic(title);
+      const element = (["fire", "earth", "air", "water"] as const).includes(t.element) ? t.element as Association["element"] : null;
+      const windowType = WINDOW_TYPES.includes(t.windowType) ? t.windowType : null;
+      const edited = element != null || windowType != null;
+      const assoc: Association | undefined = edited ? {
+        ...derived,
+        element: element ?? derived.element,
+        windowType: (windowType ?? derived.windowType) as typeof derived.windowType,
+        planets: Array.isArray(t.planets) && t.planets.length
+          ? (t.planets as unknown[]).filter((p): p is string => typeof p === "string").slice(0, 3)
+          : derived.planets,
+        rationale: typeof t.rationale === "string" && t.rationale.trim()
+          ? t.rationale.trim() : derived.rationale,
+      } : undefined;
+      return {
+        title,
+        estimatedMinutes: clampMinutes(t.estimatedMinutes),
+        energy: normEnergy(t.energy),
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate ?? "") ? t.dueDate : null,
+        assoc,
+        classificationSource: (edited ? "user" : "deterministic") as "user" | "deterministic",
+      };
+    });
   } else {
     items = await parseList(String(req.body.rawList ?? ""), todayISO);
   }
@@ -249,7 +287,14 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
 
   // Enrich + order: hard deadlines first, then the longest/most-demanding work,
   // so the constrained tasks claim their scarce good windows before the rest.
-  const enriched = items.map((t) => ({ ...t, assoc: associateDeterministic(t.title) }));
+  // The user's reviewed classification wins. Re-deriving here is what made the
+  // edit control a lie; the deterministic read is now only the FALLBACK, for
+  // items that never went through a review pass.
+  const enriched = items.map((t) => ({
+    ...t,
+    assoc: t.assoc ?? associateDeterministic(t.title),
+    classificationSource: t.classificationSource ?? "deterministic",
+  }));
   enriched.sort((a, b) => {
     const ad = a.dueDate ? Date.parse(a.dueDate) : Infinity;
     const bd = b.dueDate ? Date.parse(b.dueDate) : Infinity;
