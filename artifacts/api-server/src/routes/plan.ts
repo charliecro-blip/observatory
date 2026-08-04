@@ -19,6 +19,7 @@ import { db, tasks, planningWindows } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { associateDeterministic, WINDOW_TYPES, type Association } from "../lib/associate.js";
+import { wakingSegments } from "../lib/waking.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
 import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
@@ -143,22 +144,29 @@ function buildDays(days: number, lat: number, lon: number, tz: number): DayGrid[
 }
 
 /** Every candidate energy-peak window across the horizon, per elemental lane. */
+// wakingSegments / isAwakeAt live in lib/waking.ts — pure arithmetic, kept
+// out of this route so they are testable without a database.
 function buildSlots(dayGrids: DayGrid[], wake: number, sleep: number): Slot[] {
   const slots: Slot[] = [];
   for (const { date, dayStartMs, arc } of dayGrids) {
     for (const element of ["fire", "earth", "air", "water"]) {
       const curve = arc.curves[element] ?? arc.curve;
       for (const p of findPeakWindows(curve, 3, 2)) {
-        const startHour = Math.max(p.startHour, wake);
-        if (startHour >= sleep) continue; // peak sits outside waking hours — skip
-        const endHour = Math.min(Math.max(p.endHour, startHour + 1), sleep);
-        slots.push({
-          date,
-          element,
-          startMs: dayStartMs + startHour * 3600000,
-          endMs: dayStartMs + endHour * 3600000,
-          peakE: p.peakE,
-        });
+        // Clip the peak to each waking segment. A peak straddling the sleep
+        // gap yields the parts that are actually awake rather than being
+        // dropped whole or stretched across the gap.
+        for (const [lo, hi] of wakingSegments(wake, sleep)) {
+          const startHour = Math.max(p.startHour, lo);
+          const endHour = Math.min(Math.max(p.endHour, startHour + 1), hi);
+          if (endHour - startHour < 0.5) continue;   // nothing usable left
+          slots.push({
+            date,
+            element,
+            startMs: dayStartMs + startHour * 3600000,
+            endMs: dayStartMs + endHour * 3600000,
+            peakE: p.peakE,
+          });
+        }
       }
     }
   }
@@ -257,8 +265,9 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
 
   // Waking window from the caller's chronotype (falls back to a generic day).
   const wake = hourFromClock(req.body.wakeTime, DEFAULT_WAKE);
-  let sleep = hourFromClock(req.body.sleepTime, DEFAULT_SLEEP);
-  if (sleep <= wake) sleep = DEFAULT_SLEEP; // ignore wrap-past-midnight bedtimes for slotting
+  // Kept as given. Overnight rhythms are modelled by wakingSegments rather
+  // than flattened into a day that ends at 9pm.
+  const sleep = hourFromClock(req.body.sleepTime, DEFAULT_SLEEP);
   // One extra day beyond the horizon: when someone weaves "today" at 9pm
   // there is no waking water left today — the fallback rolls into tomorrow
   // morning instead of refusing (peak-slot pass stays within the horizon).
@@ -349,7 +358,8 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     const hourTargets = new Set(t.assoc.planets.filter((p) => HOUR_RULERS.has(p)));
     if (t.estimatedMinutes <= 75 && hourTargets.size > 0) {
       outer0: for (const grid of dayGrids) {
-        for (let h = wake; h + t.estimatedMinutes / 60 <= sleep; h += 0.5) {
+        for (const [segLo, segHi] of wakingSegments(wake, sleep))
+        for (let h = segLo; h + t.estimatedMinutes / 60 <= segHi; h += 0.5) {
           const start = grid.dayStartMs + h * 3600000;
           if (start < nowMs) continue;
           if (start + durMs > dueMs) break outer0;
@@ -379,7 +389,8 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     // because the *best* windows are taken; it gets an honest tier instead.
     if (!placed) {
       outer: for (const grid of dayGrids) {
-        for (let h = wake; h + t.estimatedMinutes / 60 <= sleep; h += 0.5) {
+        for (const [segLo, segHi] of wakingSegments(wake, sleep))
+        for (let h = segLo; h + t.estimatedMinutes / 60 <= segHi; h += 0.5) {
           const start = grid.dayStartMs + h * 3600000;
           if (start < nowMs) continue;
           if (start + durMs > dueMs) break outer; // past the deadline — later days won't help
