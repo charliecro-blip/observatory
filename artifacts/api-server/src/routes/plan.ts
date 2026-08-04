@@ -20,6 +20,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { associateDeterministic, WINDOW_TYPES, type Association } from "../lib/associate.js";
 import { wakingSegments } from "../lib/waking.js";
+import { endOfLocalDay, isValidTimeZone } from "../lib/localday.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
 import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
@@ -204,6 +205,10 @@ function hourFromClock(v: unknown, fallback: number): number {
 /** POST /api/plan/parse — raw dump → editable structured tasks (with a lane preview). */
 router.post("/plan/parse", requireTesterId, async (req, res) => {
   const tz = Number.isFinite(parseInt(req.body.tz, 10)) ? parseInt(req.body.tz, 10) : 0;
+  // An IANA zone name when the client sends one. The numeric offset cannot
+  // answer "when does this local day end" across a DST boundary, because the
+  // offset itself changes there.
+  const tzName: string | null = isValidTimeZone(req.body.tzName) ? req.body.tzName : null;
   const todayISO = new Date(Date.now() - tz * 60000).toISOString().slice(0, 10);
   const items = await parseList(String(req.body.rawList ?? ""), todayISO);
   const tasks = items.map((t) => {
@@ -220,6 +225,10 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   const lat = parseFloat(req.body.lat ?? "40.7");
   const lon = parseFloat(req.body.lon ?? "-74.0");
   const tz = Number.isFinite(parseInt(req.body.tz, 10)) ? parseInt(req.body.tz, 10) : 0;
+  // An IANA zone name when the client sends one. The numeric offset cannot
+  // answer "when does this local day end" across a DST boundary, because the
+  // offset itself changes there.
+  const tzName: string | null = isValidTimeZone(req.body.tzName) ? req.body.tzName : null;
   const horizon: Horizon = (["day", "week", "month"].includes(req.body.horizon) ? req.body.horizon : "week");
   const days = HORIZON_DAYS[horizon];
   const nowMs = Date.now();
@@ -316,7 +325,19 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
 
   for (const t of enriched) {
     const durMs = t.estimatedMinutes * 60000;
-    const dueMs = t.dueDate ? Date.parse(t.dueDate) + 86400000 : Infinity; // end of the due day
+    // END OF THE DUE DAY, where the user lives. `Date.parse("2026-08-04")` is
+    // UTC midnight, so adding a day put the deadline at UTC midnight too —
+    // five hours early for Chicago, eight for Los Angeles. A task due today
+    // could not be scheduled for this evening.
+    //
+    // With a zone name this is the next local midnight, correct across DST.
+    // Without one, fall back to the numeric offset, which is right except on
+    // the two transition days.
+    const dueMs = t.dueDate
+      ? (tzName
+          ? endOfLocalDay(t.dueDate, tzName)
+          : Date.parse(t.dueDate) + 86400000 + tz * 60000)
+      : Infinity;
 
     // Prefer slots in the task's own elemental lane; fall back to any lane.
     const rank = (s: Slot) => (s.element === t.assoc.element ? 1000 : 0) + s.peakE * 100;

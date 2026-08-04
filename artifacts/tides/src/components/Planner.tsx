@@ -171,6 +171,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
         method: "POST", headers: authHeaders,
         body: JSON.stringify({
           tasks: cards, horizon, lat, lon, tz: new Date().getTimezoneOffset(),
+          // The zone NAME, not just the offset: the offset changes at a DST
+          // boundary, so it cannot say when a local day ends across one.
+          tzName: Intl.DateTimeFormat().resolvedOptions().timeZone,
           wakeTime: chrono.wakeTime, sleepTime: chrono.sleepTime, busy,
         }),
       });
