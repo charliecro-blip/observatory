@@ -62,7 +62,7 @@ function interpretEvent(event: SkyEvent): EventDetail {
       Aries:{element:"Fire",tone:"bold, initiating"}, Taurus:{element:"Earth",tone:"sensual, grounding"},
       Gemini:{element:"Air",tone:"curious, social"}, Cancer:{element:"Water",tone:"nurturing, emotional"},
       Leo:{element:"Fire",tone:"creative, expressive"}, Virgo:{element:"Earth",tone:"precise, analytical"},
-      Libra:{element:"Air",tone:"relational, diplomatic"}, Scorpio:{element:"Water",tone:"intense, transformative"},
+      Libra:{element:"Air",tone:"relational, diplomatic"}, Scorpio:{element:"Water",tone:"intense, all-or-nothing"},
       Sagittarius:{element:"Fire",tone:"expansive, adventurous"}, Capricorn:{element:"Earth",tone:"ambitious, strategic"},
       Aquarius:{element:"Air",tone:"innovative, collective"}, Pisces:{element:"Water",tone:"intuitive, compassionate"},
     };

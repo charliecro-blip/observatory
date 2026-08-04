@@ -186,7 +186,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           ))}
           {times && !times.chartAvailable && (
             <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
-              ○ Add your birth chart in Settings to unlock ★ great times read from your own houses.
+              ○ Add your birth chart in Settings and ★ great times get read from your own houses.
             </div>
           )}
 

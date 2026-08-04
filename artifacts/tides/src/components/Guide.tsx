@@ -37,6 +37,17 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    key: "home",
+    glyph: "⌂",
+    title: "Home",
+    lead: "What you're steering, and when the sky backs it.",
+    points: [
+      { term: "The Compass", text: "Pick the thing you're deciding about and Compass reads its good and great times from the sky. Great times need your birth chart — they're read from your own houses, not from everyone's." },
+      { term: "Everything you're holding", text: "Every open task in one list, split by overdue, today, no date, and later. Type a line and press Enter; there's no form." },
+      { term: "Today's log", text: "Appears once you've actually crossed something off, and is shaped like the list above rather than like a journal prompt." },
+    ],
+  },
+  {
     key: "today",
     glyph: "◉",
     title: "Today",

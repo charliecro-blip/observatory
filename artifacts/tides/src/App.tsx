@@ -31,6 +31,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { parseWhen, formatDueChip } from "@/lib/parseWhen";
 import { localToday } from "@/lib/dates";
+import Home from "@/pages/Home";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
@@ -134,7 +135,7 @@ const queryClient = new QueryClient({
   },
 });
 
-type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
+type View = "home"|"today"|"calendar"|"work"|"launch"|"planets"|"settings";
 
 // Primary tabs = the loop (owner 2026-07-29: Compass is an enchanted
 // productivity app — the nav carries only the daily journey). Today is the
@@ -149,7 +150,13 @@ type View = "today"|"calendar"|"work"|"launch"|"planets"|"settings";
 // orient → act/schedule → connect to direction → inspect the wider timeline.
 // "Stars" over "Aims": the feature is called Guiding Stars everywhere else,
 // and one name per concept is the terminology rule (GPT audit §11).
+// 2026-08-04: Home leads. The owner's brief was that the homepage becomes a
+// dashboard centred on the Compass and the to-do dump, and that Today — which
+// had grown "super busy and a little overwhelming" — keeps the narrower job of
+// laying the day out in time. Today stays in the nav because it is still the
+// place the sky is read; it is no longer the place you land.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
+  {id:"home",     label:"Home"},
   {id:"today",    label:"Today",    zoom:true},
   {id:"launch",   label:"Plan"},
   {id:"work",     label:"Stars"},
@@ -756,7 +763,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
         <div style={{ marginBottom:18 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"var(--color-muted)", lineHeight:1.65 }}>
-            You can jump in and read today right now. Adding your birth chart unlocks timing read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, kept private to your account, and easy to add later.
+            You can jump in and read today right now. Adding your birth chart means the timing gets read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, kept private to your account, and easy to add later.
           </div>
         </div>
 
@@ -806,7 +813,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                 onChange={e => setTimeUnknown(e.target.checked)}
                 style={{ marginTop:2, accentColor:"#1a2a3a" }} />
               <span style={{ fontSize:11, color:"var(--color-muted)", lineHeight:1.5 }}>
-                I don't know my birth time <span style={{ color:"var(--text-3)" }}>— you'll get a chart from your planets and signs; your rising sign, houses, and long cycles stay locked until you add a time.</span>
+                I don't know my birth time <span style={{ color:"var(--text-3)" }}>— you'll get a chart from your planets and signs; your rising sign, houses, and long cycles need a birth time, so they stay empty until you add one.</span>
               </span>
             </label>
           </div>
@@ -1025,7 +1032,7 @@ function fmtHour12(hhmm: string): string {
 function Shell() {
   const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
   const testerId = profile?.testerId ?? null;
-  const [view, setView] = useState<View>("today");
+  const [view, setView] = useState<View>("home");
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
   const [calendarSeed, setCalendarSeed] = useState<string | null>(null);
@@ -1247,6 +1254,7 @@ function Shell() {
         )}
 
         {/* Main content */}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onAskAboutElection={askAboutElection}/>}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>

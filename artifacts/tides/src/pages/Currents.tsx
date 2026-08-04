@@ -76,7 +76,7 @@ function CurrentsContent({ testerId }: { testerId: string | null }) {
             Your profected year, house chapters, and rising sign are all measured from
             the exact moment you were born — so they can't be worked out without a birth
             time. Your daily tide, Big Sky, and planet readings work fine without it.
-            Add a time in Settings whenever you find it, and this unlocks.
+            Add a time in Settings whenever you find it, and this fills in.
           </div>
         </div>
       </div>
