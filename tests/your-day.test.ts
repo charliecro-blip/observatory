@@ -13,6 +13,7 @@ import { yourDay, type DayWindow, type DayTask } from "../artifacts/tides/src/li
 const day = (h: number, m = 0) => new Date(2026, 7, 3, h, m, 0);
 const win = (title: string, s: string, e?: string): DayWindow => ({ title, startTime: s, endTime: e });
 const task = (id: number, title: string, done = "false"): DayTask => ({ id, title, done });
+const win2 = (id: number, title: string, s: string, e: string): DayWindow => ({ id, title, startTime: s, endTime: e });
 
 describe("the three rows answer three different questions", () => {
   const windows = [win("Revise proposal", "10:00", "11:30"), win("Client call", "13:00", "13:30")];
@@ -95,16 +96,49 @@ describe("an in-progress task is not loose", () => {
   });
 });
 
-describe("loose means loose", () => {
-  it("drops a task once a window carries the same title", () => {
-    const d = yourDay([win("Send invoice", "15:00", "15:30")], [task(1, "Send invoice")], day(10));
-    expect(d.loose).toHaveLength(0);
+describe("the task-window relation is by id, not by title", () => {
+  // Title equality is not an identity relation. Two tasks called the same
+  // thing collapsed into one, so a genuinely loose task could vanish from this
+  // list or a scheduled one could be counted as loose.
+
+  it("keeps a same-named task loose when a DIFFERENT task holds the window", () => {
+    // The exact failure: two "Send invoice" tasks, one scheduled. Under the
+    // title join both disappeared.
+    const d = yourDay(
+      [win2(50, "Send invoice", "15:00", "15:30")],
+      [{ id: 1, title: "Send invoice", done: "false", planningWindowId: 50 },
+       { id: 2, title: "Send invoice", done: "false", planningWindowId: null }],
+      day(10));
+    expect(d.loose.map((t) => t.id), "the unscheduled twin vanished").toEqual([2]);
   });
 
-  it("matches across incidental whitespace and case", () => {
-    const d = yourDay([win("send   Invoice", "15:00", "15:30")], [task(1, "Send invoice")], day(10));
-    expect(d.loose).toHaveLength(0);
+  it("believes the link over the title", () => {
+    // Linked to a window that is not today's — still loose today, even though
+    // a same-titled window exists.
+    const d = yourDay(
+      [win2(50, "Send invoice", "15:00", "15:30")],
+      [{ id: 1, title: "Send invoice", done: "false", planningWindowId: 999 }],
+      day(10));
+    expect(d.loose.map((t) => t.id)).toEqual([1]);
   });
+
+  it("treats an unlinked task as loose, even beside a same-titled window", () => {
+    // No fallback. A fallback could not distinguish "explicitly not scheduled"
+    // from "predates the column" — both are null — so it went on swallowing
+    // the unscheduled twin. Legacy rows were backfilled once by title where
+    // the match was unambiguous; that is a migration, not a lookup.
+    const d = yourDay(
+      [win2(50, "Send invoice", "15:00", "15:30")],
+      [{ id: 1, title: "Send invoice", done: "false" }],
+      day(10));
+    expect(d.loose.map((t) => t.id)).toEqual([1]);
+  });
+});
+
+describe("loose means loose", () => {
+  // The two title-matching tests that stood here were deleted with the title
+  // join they protected. They asserted that a same-titled window hides a task,
+  // which is precisely the behaviour that made a genuinely loose task vanish.
 
   it("never lists completed work", () => {
     const d = yourDay([], [task(1, "Done thing", "true"), task(2, "Open thing")], day(10));

@@ -463,22 +463,41 @@ router.post("/plan/commit", requireTesterId, async (req, res) => {
   const list: any[] = Array.isArray(req.body.items) ? req.body.items : [];
   if (list.length === 0) { res.status(400).json({ error: "items required" }); return; }
 
-  const created: { taskId: number; windowId: number }[] = [];
-  for (const it of list) {
-    if (!it?.title?.trim() || !it.startAt || !it.endAt) continue;
-    const windowType = WINDOW_TYPES.includes(it.windowType) ? it.windowType : "deep_work";
-    const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(it.dueDate ?? "") ? it.dueDate : null;
+  // ALL OR NOTHING. This looped two independent inserts per item with no
+  // enclosing transaction, so a failure partway could leave some approved
+  // items written, a task without its window, or a half-committed schedule the
+  // UI had already described as one commitment. The copy said "commit this
+  // plan"; the persistence said "attempt these 2N writes".
+  //
+  // Each pair is also LINKED now. The two were previously related by title —
+  // Today decided whether a task was already placed by comparing normalised
+  // strings — and title equality is not an identity relation: two tasks called
+  // "Send invoice" collapse into one, so a genuinely loose task could vanish
+  // from the loose list or appear scheduled when it was not.
+  const created = await db.transaction(async (tx) => {
+    const out: { taskId: number; windowId: number }[] = [];
+    for (const it of list) {
+      if (!it?.title?.trim() || !it.startAt || !it.endAt) continue;
+      const windowType = WINDOW_TYPES.includes(it.windowType) ? it.windowType : "deep_work";
+      const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(it.dueDate ?? "") ? it.dueDate : null;
 
-    const [task] = await db.insert(tasks).values({
-      testerId, title: it.title.trim(), dueDate, bestWindowType: windowType,
-    }).returning();
-    const [win] = await db.insert(planningWindows).values({
-      testerId, title: it.title.trim(), windowType,
-      startTime: new Date(it.startAt), endTime: new Date(it.endAt),
-      notes: "Planned by the weaver",
-    }).returning();
-    created.push({ taskId: task.id, windowId: win.id });
-  }
+      // Window first, so the task can point at it in one write rather than
+      // needing an update — no window is ever briefly orphaned.
+      const [win] = await tx.insert(planningWindows).values({
+        testerId, title: it.title.trim(), windowType,
+        startTime: new Date(it.startAt), endTime: new Date(it.endAt),
+        notes: "Planned by the weaver",
+      }).returning();
+      const [task] = await tx.insert(tasks).values({
+        testerId, title: it.title.trim(), dueDate, bestWindowType: windowType,
+        planningWindowId: win.id,
+      }).returning();
+      out.push({ taskId: task.id, windowId: win.id });
+    }
+    return out;
+  });
+  // A deterministic receipt of every pair written, so the client can say what
+  // landed rather than inferring it.
   res.json({ created, count: created.length });
 });
 

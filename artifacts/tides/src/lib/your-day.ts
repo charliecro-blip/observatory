@@ -33,6 +33,9 @@ export interface DayTask {
   done?: string;
   /** ISO instant when it was picked up, if it has been. */
   startedAt?: string | null;
+  /** The window this task was scheduled into. The real relation — see the
+   *  note on the title join below. */
+  planningWindowId?: number | null;
 }
 
 export interface YourDay {
@@ -102,16 +105,23 @@ export function yourDay(
   // in advance, whereas a start stamp is a note about what you picked up.
   const started = inProgress ?? null;
 
-  // Still loose — open tasks with no window carrying the same title.
+  // Still loose — open tasks not scheduled into any of today's windows.
   //
-  // This is a TITLE join, because a task carries no reference to the window
-  // scheduled from it. It is therefore approximate in one direction: two tasks
-  // named the same thing collapse. That is the honest limit of the data, and
-  // the failure is benign — a task wrongly considered scheduled disappears
-  // from a list, rather than a scheduled task being double-counted as loose.
-  const scheduled = new Set(timed.map((x) => norm(x.w.title)));
+  // BY ID ONLY. This was a title join, because a task carried no reference to
+  // the window scheduled from it. Title equality is not an identity relation:
+  // two tasks called "Send invoice" collapsed into one, so a genuinely loose
+  // task vanished from this list.
+  //
+  // The title comparison is GONE rather than kept as a fallback. A fallback
+  // could not tell "explicitly not scheduled" from "predates the column" —
+  // both read as null — so it went on swallowing the unscheduled twin. Rows
+  // created before the column were backfilled once, by title, where the match
+  // was unambiguous; that is a migration, not a lookup, and it does not run
+  // every render.
+  const windowIds = new Set(timed.map((x) => x.w.id).filter((id): id is number => id != null));
   const loose = (tasks ?? [])
-    .filter((t) => t.done !== "true" && !scheduled.has(norm(t.title)))
+    .filter((t) => t.done !== "true")
+    .filter((t) => t.planningWindowId == null || !windowIds.has(t.planningWindowId))
     .filter((t) => t.id !== started?.id);
 
   const now = current

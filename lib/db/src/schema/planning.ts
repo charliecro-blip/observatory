@@ -129,6 +129,18 @@ export const tasks = pgTable("tasks", {
   // opened several times a day is most able to break, and this is the only
   // fact needed to stop it. Nullable and additive, same shape as completedAt.
   startedAt: timestamp("started_at", { withTimezone: true }),
+  // The window this task was scheduled into, when it has been.
+  //
+  // Until now the two were related by TITLE: Today decided whether a task was
+  // already placed by normalising and comparing strings. Title equality is not
+  // an identity relation — two tasks called "Send invoice" collapse into one,
+  // so a genuinely loose task could vanish from the loose list or appear
+  // scheduled when it was not. The Planner created a task and a window in the
+  // same breath and then forgot they were the same thing.
+  //
+  // One authoritative direction: the task points at its window. Nullable,
+  // because most tasks are never scheduled, and additive per BACKLOG 9a.
+  planningWindowId: integer("planning_window_id"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

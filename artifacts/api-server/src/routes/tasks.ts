@@ -68,7 +68,7 @@ router.post("/tasks/rollover", async (req, res) => {
 router.post("/tasks", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { title, notes, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
+  const { title, notes, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, planningWindowId } = req.body;
   if (!title) { res.status(400).json({ error: "title required" }); return; }
   // Diagnose the task's ruling planet from its title so specific tasks under a
   // star each time to their own planet ("write the plan" reads Mercury even on
@@ -76,6 +76,10 @@ router.post("/tasks", async (req, res) => {
   const diagnosedPlanet = planet ?? associateDeterministic(title).planets[0] ?? null;
   const [row] = await db.insert(tasks).values({
     testerId, title, notes, dueDate, bestWindowType, planet: diagnosedPlanet,
+    // The client already sent this when a window was chosen at creation; the
+    // route simply dropped it, which is why the relation had to be guessed
+    // from titles downstream.
+    planningWindowId: typeof planningWindowId === "number" ? planningWindowId : null,
     estMinutes: estMinutes ?? null, energy: energy ?? null,
     goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
     sortOrder: sortOrder ?? 0,
@@ -88,7 +92,7 @@ router.patch("/tasks/:id", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { title, notes, done, started, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet } = req.body;
+  const { title, notes, done, started, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, planningWindowId } = req.body;
   // Stamp the moment it flipped to done, and clear it if it flips back — this
   // is the only record of WHEN work happened. `updatedAt` won't do: it moves
   // on any edit, so a retitled task would look like it was finished today.
@@ -104,7 +108,7 @@ router.patch("/tasks/:id", async (req, res) => {
     : started === undefined ? undefined
     : (String(started) === "true" ? new Date() : null);
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, planningWindowId, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
