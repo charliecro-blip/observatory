@@ -84,13 +84,38 @@ describe("round-trips against the engine's own formatter", () => {
 });
 
 describe("computational inputs are in the cache keys", () => {
-  it("keys election times by location and timezone", () => {
+  // BRITTLE ONCE, AND IT COST A DEPLOY. The first version anchored on
+  // `tzOffset]` — the closing bracket — so when locationKnown was correctly
+  // added to the key a commit later, the assertion stopped matching working
+  // code and failed the build. A test that pins the LAST element of a list is
+  // a test that breaks every time the list grows, which is exactly when you
+  // least want noise.
+  //
+  // Now: extract the key array and assert each required input is a MEMBER,
+  // order-independent and open to extension.
+  const keyOf = (src: string): string | null => {
+    const m = src.match(/queryKey: \[("election-times"[^\]]*)\]/);
+    return m ? m[1] : null;
+  };
+
+  it("keys election times by every input the answer depends on", () => {
     // Without these, changing location left the previous place's windows
     // cached for the full stale period.
     for (const f of ["ElectionPicker", "ActivityTimesHint"]) {
       const src = readFileSync(`artifacts/tides/src/components/${f}.tsx`, "utf-8");
-      expect(src, `${f} query key`).toMatch(/queryKey: \["election-times"[^\]]*lat\.toFixed\(2\)[^\]]*lon\.toFixed\(2\)[^\]]*tzOffset\]/);
-      // And the key must read the same tz the request sends.
+      const key = keyOf(src);
+      expect(key, `${f} has no election-times query key`).not.toBeNull();
+      for (const input of ["lat.toFixed(2)", "lon.toFixed(2)", "tzOffset", "locationKnown"]) {
+        expect(key, `${f} key omits ${input}`).toContain(input);
+      }
+    }
+  });
+
+  it("reads the same timezone the request sends", () => {
+    for (const f of ["ElectionPicker", "ActivityTimesHint"]) {
+      const src = readFileSync(`artifacts/tides/src/components/${f}.tsx`, "utf-8");
+      // A second getTimezoneOffset() call in the URL could disagree with the
+      // one in the key.
       expect(src, `${f} tz consistency`).not.toMatch(/tz=\$\{new Date\(\)\.getTimezoneOffset\(\)\}/);
     }
   });
