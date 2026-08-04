@@ -55,6 +55,98 @@ export interface ActivityCorrespondence {
 
 const A = (a: ActivityCorrespondence) => a;
 
+/**
+ * ACTIVITY MODE — what KIND of act this is, which decides how much force the
+ * inherited electional rules should carry.
+ *
+ * The category error this fixes: classical electional doctrine is about
+ * BEGINNINGS whose inception chart is expected to describe how the matter
+ * unfolds. Applying it with equal weight to every ordinary action performed
+ * during a day is not a faithful reading of it. A long run was being barred
+ * from the top tier because a secondary Saturn happened to be retrograde;
+ * beginning a company under a retrograde primary significator is much closer
+ * to what the rule was written to judge.
+ *
+ *   inception   — a binding or consequential start; the rule applies in force
+ *   execution   — doing the work; no generic motion cap
+ *   maintenance — recurring upkeep; no cap unless it contains an inception
+ *   revision    — editing, repairing, renegotiating, returning to
+ *   recovery    — rest, release, retreat, restorative movement
+ *
+ * `revision` matters twice over: retrograde motion may positively SUIT it,
+ * which is the clearest case where a condition treated as a caution is
+ * actually a match.
+ */
+export type ActivityMode = "inception" | "execution" | "maintenance" | "revision" | "recovery";
+
+const MODE_BY_KEY: Record<string, ActivityMode> = {
+  // ── inception: a beginning the tradition would actually elect for ────────
+  "haircut": "inception",            // the archetypal electional matter
+  "start-regimen": "inception",
+  "first-date": "inception",
+  "apply-job": "inception",
+  "big-purchase": "inception",
+  "set-intention": "inception",
+  "publish": "inception",
+  "launch-venture": "inception",
+  "sign-contract": "inception",
+  "begin-partnership": "inception",
+  "move-home": "inception",
+
+  // ── execution: doing the work ────────────────────────────────────────────
+  "train-hard": "execution",
+  "endurance": "execution",
+  "intimacy": "execution",
+  "deep-study": "execution",
+  "first-draft": "execution",        // a draft is repeatable and low-stakes
+  "learn-skill": "execution",
+  "strategize": "execution",
+  "teach-present": "execution",
+  "deep-work": "execution",
+  "negotiate": "execution",
+  "hard-conversation": "execution",
+  "deepen-bond": "execution",
+  "host": "execution",
+  "network": "execution",
+  "call-family": "execution",
+  "cook": "execution",
+  "beautify": "execution",
+  "garden": "execution",
+  "divination": "execution",
+
+  // ── maintenance: upkeep ──────────────────────────────────────────────────
+  "organize": "maintenance",
+  "admin-errands": "maintenance",
+  "deep-clean": "maintenance",
+  "budget": "maintenance",
+  "settle-debts": "maintenance",
+
+  // ── revision: returning to something ─────────────────────────────────────
+  "edit-revise": "revision",
+  "investigate": "revision",
+  "finish-polish": "revision",
+  "repair": "revision",
+  "repair-bond": "revision",
+
+  // ── recovery ─────────────────────────────────────────────────────────────
+  "gentle-movement": "recovery",
+  "deep-rest": "recovery",
+  "meditate": "recovery",
+  "journal": "recovery",
+  "release": "recovery",
+  "retreat": "recovery",
+};
+
+/**
+ * Defaults to `execution`, the mode that carries NO inherited cap — so a
+ * newly added activity is never silently subjected to a rule nobody chose for
+ * it. tests/activity-modes.test.ts asserts the map is exhaustive, so the
+ * default should be unreachable in practice.
+ */
+export function modeOf(key: string): ActivityMode {
+  return MODE_BY_KEY[key] ?? "execution";
+}
+
 export const ACTIVITIES: ActivityCorrespondence[] = [
   // ── BODY ────────────────────────────────────────────────────────────────────
   A({ key: "train-hard", label: "Hard training", category: "body",

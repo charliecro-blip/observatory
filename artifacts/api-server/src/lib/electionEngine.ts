@@ -20,7 +20,8 @@
  * inside the void, phase bias nudges rather than excludes.
  */
 
-import { ACTIVITIES, type ActivityCorrespondence } from "./activityCorrespondences.js";
+import { ACTIVITIES, modeOf, type ActivityCorrespondence } from "./activityCorrespondences.js";
+import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
   getMajorAspects, isRetrograde, SIGNS, moonFinalAspectInSign, eclipseWindow,
@@ -211,7 +212,33 @@ export function computeElections(opts: {
     // through it (audit F5). Evaluate them per-day, at this day's own jdNoon.
     const dayMercRx = isRetrograde("Mercury", jdNoon);
     const dayEcl = eclipseWindow(jdNoon);
-    const dayRxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, jdNoon));
+    // NARROWED, on doctrinal advice. The old rule capped the top tier whenever
+  // ANY non-luminary significator was retrograde — including an outer planet
+  // holding a 0.3 weight. Measured consequence: the median activity was barred
+  // from `great` for 38% of the year, because Pluto is retrograde 45% of it,
+  // Neptune 43% and Uranus 40%.
+  //
+  // Two things were wrong with that. Bonatti's and Ramesey's caution is about
+  // the planet formally SIGNIFYING THE MATTER — in a tradition that had no
+  // outer planets at all, so they cannot inherit the rule written before their
+  // discovery. And it is a rule about BEGINNINGS whose inception chart
+  // describes how the matter unfolds; a long run does not become a worse run
+  // because a secondary Saturn is retrograde.
+  //
+  // So: traditional planets only, and only for inceptions.
+  const actMode = modeOf(act.key);
+  const dayRxSigs = actMode === "inception"
+    ? sigPlanets.filter(p => p !== "Sun" && p !== "Moon" &&
+        TRADITIONAL_PLANETS.has(p) && isRetrograde(p, jdNoon))
+    : [];
+  // Stations are recorded regardless of mode — they are the strongest motion
+  // statement a planet makes, and the surface should be able to say so even
+  // where nothing is capped. Traditional doctrine treats the first station as
+  // reversal and the second as incomplete recovery; neither is a power boost.
+  const sigStations = sigPlanets
+    .filter(p => TRADITIONAL_PLANETS.has(p) && p !== "Sun" && p !== "Moon")
+    .map(p => ({ planet: p, motion: motionOf(p, jdNoon) }))
+    .filter(x => x.motion && x.motion.phase.startsWith("stationing"));
     const moonSign = SIGNS[Math.floor(norm360(moonLongitude(jdNoon)) / 30) % 12];
     const waxing = norm360(moonLongitude(jdNoon) - sunLongitude(jdNoon)) < 180;
     const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
