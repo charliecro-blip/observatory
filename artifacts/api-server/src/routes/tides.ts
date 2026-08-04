@@ -20,6 +20,7 @@ import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide
 import { computeDayArc, findPeakWindows, nextIngressAfterMs } from "../lib/dayarc.js";
 import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
+import { planetInSign } from "../lib/planetInSign.js";
 
 const router: IRouter = Router();
 
@@ -322,6 +323,7 @@ router.get("/tides/now", async (req, res) => {
   // and where we are in the light-year (solstice-to-solstice). ─────────────
   const sunNow = getSunriseSunset(jd, lat, lon);
   const sunYest = getSunriseSunset(jd - 1, lat, lon);
+  const isDaySect = date >= sunNow.sunrise && date < sunNow.sunset;
   const lenMin = Math.round((sunNow.sunset.getTime() - sunNow.sunrise.getTime()) / 60000);
   const deltaMin = Math.round((lenMin * 60000 - (sunYest.sunset.getTime() - sunYest.sunrise.getTime())) / 60000);
   // Light phase from the Sun's ecliptic longitude (season-accurate, hemisphere-aware)
@@ -378,7 +380,17 @@ router.get("/tides/now", async (req, res) => {
     lastMoonAspect,
     // Every planet's current sign — a planet named without its sign is only
     // half the story, so the client puts "in {sign}" wherever a planet appears.
-    planets: planets.map((p) => ({ planet: p.planet, sign: p.sign, degree: parseFloat(p.degree.toFixed(2)), retrograde: p.retrograde })),
+    // `reading` is what the planet can and cannot do FROM THIS SIGN. Naming
+    // the planet and the sign and then printing generic planet copy said the
+    // one thing the pair does not mean.
+    //
+    // Sect from the actual horizon, not from clock hours: dignity's exaltation
+    // and triplicity terms differ by day and night, so "is the Sun up" has to
+    // be the real answer or the four dignity labels are wrong half the time.
+    planets: planets.map((p) => ({
+      planet: p.planet, sign: p.sign, degree: parseFloat(p.degree.toFixed(2)), retrograde: p.retrograde,
+      reading: planetInSign(p.planet, p.longitude, isDaySect),
+    })),
     localAngles,
     angularPlanets,
     invitation: voc

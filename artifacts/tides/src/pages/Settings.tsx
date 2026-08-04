@@ -631,7 +631,7 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
-      <Row label="How much on screen" sub="Essential: the core journey — the tide, today's plan, your aims. Expanded: the full instrument panel (rhythm, big sky, pulse, conditions…).">
+      <Row label="How much on screen" sub="Essential: the tide, today's plan, your aims. Expanded: adds rhythm, big sky, pulse, and standing conditions.">
         <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["essential", "expanded"] as const).map(lvl => (
             <button key={lvl} onClick={() => updateDisplay({ uiDensity: lvl })} style={{
@@ -1104,7 +1104,7 @@ function ChronotypeSection() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!existing && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Not set yet — add your rhythm to unlock chronotype-aware timing suggestions.</div>}
+          {!existing && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Not set yet. Add your rhythm and suggestions will land inside your waking hours.</div>}
 
           <div>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Morning or night person?</div>
@@ -1294,7 +1294,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
               {chart.timeKnown === false ? (
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
                   ☉ {chart.planets?.find((p: any) => p.planet === "Sun")?.sign} · ☽ {chart.planets?.find((p: any) => p.planet === "Moon")?.sign} <span style={{ color: "var(--color-muted)" }}>(approx)</span>
-                  <div style={{ color: "var(--color-muted)", marginTop: 2 }}>Rising sign, houses & Currents need a birth time — add it below to unlock them.</div>
+                  <div style={{ color: "var(--color-muted)", marginTop: 2 }}>Rising sign, houses and Currents need a birth time. Add it below.</div>
                 </div>
               ) : chart.ascendant && (
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
@@ -1310,7 +1310,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {!hasChart && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>No birth chart saved yet. Add your birth data to unlock personal transits.</div>}
+          {!hasChart && <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>No birth chart saved yet. Add your birth data and the readings become yours rather than everyone's.</div>}
 
           <div>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>Date of birth</div>

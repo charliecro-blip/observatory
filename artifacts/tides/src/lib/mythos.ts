@@ -206,7 +206,7 @@ export const SIGN_MYTHOS: Record<string, SignMythos> = {
     key: "Sagittarius", name: "Sagittarius", element: "fire", glyph: "♐︎",
     essence: "The arrow over the horizon — meaning found in motion.",
     feel: "Open ocean under full sail — the far shore matters more than this one.",
-    favors: ["plan the journey", "study the big idea", "teach — and preach a little", "go far on foot", "publish the thesis", "bet on the larger story"],
+    favors: ["plan the trip", "study the big idea", "teach — and preach a little", "go far on foot", "publish the thesis", "bet on the larger story"],
     shadow: "Promises past capacity; truth delivered without aim.",
   },
   Capricorn: {

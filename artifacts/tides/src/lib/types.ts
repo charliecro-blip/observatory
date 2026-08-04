@@ -57,7 +57,12 @@ export interface TidesNow {
   aspects?: SkyAspect[];
   retrogrades?: string[];
   /** Current position of every planet — the source for "in {sign}" wherever a planet is named. */
-  planets?: { planet: string; sign: string; degree: number; retrograde: boolean }[];
+  planets?: {
+    planet: string; sign: string; degree: number; retrograde: boolean;
+    /** What this planet can and cannot do from the sign it is in. Null for
+     *  points with no reading (the Nodes); `generational` for the outers. */
+    reading?: { does: string; misses: string; dignity: string | null; generational: boolean } | null;
+  }[];
   rhythmRisk?: boolean;
   rhythmRiskFactors?: string[];
   tide?: TideState;

@@ -65,6 +65,41 @@ function signGlyphInfo(sign?: string) {
   return { glyph: sm?.glyph ?? "", color: elementColor(el, "var(--color-muted)"), el };
 }
 
+/**
+ * What a planet can and cannot do FROM THE SIGN IT IS IN — served by the API
+ * (lib/planetInSign), never composed here.
+ *
+ * Replaces ARCHETYPE_QUALITY on the day-ruler row. That table said the same
+ * thing about Mars whether Mars was exalted in Capricorn or in fall in Cancer,
+ * so the rail printed the sign and then described a planet that was not in it.
+ *
+ * The dignity word is deliberately terse and unglossed. It is the one piece of
+ * inherited doctrine on the row, and a reader who does not know "fall" learns
+ * it faster from seeing it attached to a reading than from a parenthetical.
+ */
+function PlanetReading({ planet, planets }: { planet: string; planets?: any[] }) {
+  const r = (planets ?? []).find((x: any) => x.planet === planet)?.reading;
+  if (!r) return null;
+  const DIGNITY_COLOR: Record<string, string> = {
+    domicile: "#4a8050", exaltation: "#4a8050", detriment: "#a06030", fall: "#a06030",
+  };
+  return (
+    <div style={{ fontSize: 9, color: "var(--text-3)", lineHeight: 1.55 }}>
+      {r.dignity && (
+        <span style={{
+          fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700,
+          color: DIGNITY_COLOR[r.dignity] ?? "var(--text-3)", marginRight: 5,
+        }}>{r.dignity}</span>
+      )}
+      {r.does}
+      {/* The downside is shown, not hidden behind a tap: a placement with only
+          an upside is a horoscope. Dimmer, because it is the second thing to
+          read, not the first. */}
+      <span style={{ color: "var(--color-muted)" }}> · {r.misses}</span>
+    </div>
+  );
+}
+
 // A collapsed section: one dense clickable row (label + glyphs/values), the
 // instrument a fluent user reads at a glance. Click anywhere to expand.
 function GlyphRow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
@@ -223,11 +258,13 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       </>;
     }
     if (open === "day" && dayRuler) {
-      return <><b>{dayRuler}'s day</b> <span style={{ color: "var(--text-3)" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</span>
+      return <><b>{dayRuler}'s day</b>
+        <PlanetReading planet={dayRuler} planets={now.planets} />
         <CycleLine prefix="good for" options={railVerbs(dayRuler, miProfile?.chronotype, isVOC, moonSign)} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "hour") {
-      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{planetaryHour.began}–{planetaryHour.ends}</span><div style={{ marginTop: 3, color: "var(--color-muted)" }}>{planetaryHour.quality ?? planetaryHour.archetype}</div>
+      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
+        <PlanetReading planet={planetaryHour.planet} planets={now.planets} />
         <CycleLine prefix="this hour" options={railVerbs(planetaryHour.planet, miProfile?.chronotype, isVOC, moonSign)} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "aspects") {
@@ -313,20 +350,10 @@ const PLANET_SIGNIFICATION: Record<string, string> = {
   Saturn: "Structure, focus, consolidation. Slow down, commit, build foundations.",
 };
 
-const ARCHETYPE_QUALITY: Record<string, string> = {
-  Sun: "high · visibility",
-  Moon: "reflective · intuitive",
-  Mercury: "sharp · communicative",
-  Venus: "gentle · connective",
-  Mars: "active · assertive",
-  Jupiter: "expansive · optimistic",
-  Saturn: "grounding · disciplined",
-};
-
 const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: string }> = {
   conjunction: { name:"Conjunction ☌︎", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
   trine:       { name:"Trine △", nature:"Harmonious", desc:"120° apart — energy flows easily and supportively between these planetary themes. A natural, gifting aspect." },
-  sextile:     { name:"Sextile ⚹", nature:"Supportive", desc:"60° apart — a gentle, helpful connection. Opportunities and ease, though less effortless than a trine." },
+  sextile:     { name:"Sextile ⚹", nature:"Supportive", desc:"60° apart. A helpful connection, but it needs you to act on it — a trine gives, a sextile offers." },
   square:      { name:"Square □", nature:"Tension", desc:"90° apart — friction and challenge between these themes. Productive tension if channeled; frustration if resisted." },
   opposition:  { name:"Opposition ☍︎", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
 };
@@ -839,7 +866,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "var(--color-muted)" }}> in {sign}</span> : null;
                 })()}
               </div>
-              <div style={{ fontSize: 9, color: "var(--text-3)" }}>{ARCHETYPE_QUALITY[dayRuler] ?? ""}</div>
+              <PlanetReading planet={dayRuler} planets={now.planets} />
             </div>
           </div>
           <CycleLine
@@ -900,7 +927,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   return sign ? <span style={{ fontWeight: 400, fontSize: 10, color: "var(--color-muted)" }}> in {sign}</span> : null;
                 })()}
               </div>
-
+              <PlanetReading planet={planetaryHour.planet} planets={now.planets} />
             </div>
           </div>
           <div style={{ fontSize: 9, color: "var(--text-3)", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
