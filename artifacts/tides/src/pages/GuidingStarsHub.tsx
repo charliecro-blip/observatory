@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { fetchJson } from "@/lib/fetchJson";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -181,12 +182,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) } as Record<string, string>;
   const { data: allTasks = [] } = useQuery<any[]>({
     queryKey: ["tasks", testerId, "all"],
-    queryFn: async () => { const j = await (await fetch("/api/tasks", { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const j = await fetchJson("/api/tasks", { headers: authHeaders }); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const { data: allHabits = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => { const j = await (await fetch(`/api/habits?today=${localToday()}`, { headers: authHeaders })).json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const j = await fetchJson(`/api/habits?today=${localToday()}`, { headers: authHeaders }); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   // Steps (milestones) — the one useful bit of the old Projects tab, folded in.

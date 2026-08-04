@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/fetchJson";
 import type { TidesNow, TidesWeek, ScoredPractice, PlanningWindow, SkyEvent } from "@/lib/types";
 import { localDayRange } from "@/lib/dates";
 
@@ -21,8 +22,7 @@ export function useNorthStars(testerId: string | null) {
   return useQuery<any[]>({
     queryKey: ["north-stars", testerId],
     queryFn: async () => {
-      const r = await fetch("/api/planning/north-stars", { headers: authHeaders(testerId) });
-      return r.json();
+      return fetchJson("/api/planning/north-stars", { headers: authHeaders(testerId) });
     },
     enabled: !!testerId,
     staleTime: 30_000,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { fetchJson } from "@/lib/fetchJson";
 import { jsonArray } from "@/lib/jsonArray";
 import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -2554,7 +2555,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayNam
   const wins = Array.isArray(windows) ? windows : [];
   const { data: habitsRaw = [] } = useQuery<any[]>({
     queryKey: ["habits", testerId],
-    queryFn: async () => { const j = await (await fetch(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId ?? "" } })).json(); return Array.isArray(j) ? j : []; },
+    queryFn: async () => { const j = await fetchJson(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId ?? "" } }); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const habits = Array.isArray(habitsRaw) ? habitsRaw : [];
