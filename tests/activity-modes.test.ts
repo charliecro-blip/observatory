@@ -76,15 +76,20 @@ describe("the cap no longer reaches where the doctrine never went", () => {
     // under the old rule almost every activity carrying one was capped.
     const AT = new Date(Date.UTC(2026, 9, 15, 12));
     const PLACE = { lat: 29.4246, lon: -98.49514, tzOffsetMin: 300 };
+    // A SAMPLE, not the whole table. Looping all 46 took 25s, and this file
+    // runs on every deploy via `pnpm test` — the full sweep belongs in tools/
+    // where a slow diagnostic cannot hold up a build. These six each carry a
+    // significator that is retrograde in October 2026.
+    const SAMPLE = ["endurance", "deep-work", "edit-revise", "deep-clean", "deep-rest", "cook"];
     let greatOnNonInception = 0;
-    for (const act of ACTIVITIES) {
-      if (modeOf(act.key) === "inception") continue;
-      const r = computeElections({ activityKey: act.key, span: "week", ...PLACE, startAt: AT } as any);
+    for (const key of SAMPLE) {
+      expect(modeOf(key), `${key} should not be an inception`).not.toBe("inception");
+      const r = computeElections({ activityKey: key, span: "week", ...PLACE, startAt: AT } as any);
       if (r) greatOnNonInception += r.windows.filter((w) => w.tier === "great").length;
     }
     // The point is only that the gate is no longer categorical. Before the
     // narrowing this was reachable but heavily suppressed by outer-planet
     // retrogradation that had nothing to do with the activity.
     expect(greatOnNonInception).toBeGreaterThan(0);
-  }, 60_000);
+  }, 30_000);
 });
