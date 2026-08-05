@@ -12,6 +12,8 @@ import { eq } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
 import { linesUp, type HeldItem } from "../lib/linesUp.js";
+import { findLongSessions } from "../lib/longSession.js";
+import { narrateSession } from "../lib/sessionNarration.js";
 import { tasks, goals } from "@workspace/db";
 import { computeNatalChart } from "../lib/natal.js";
 
@@ -90,6 +92,48 @@ router.get("/elections/lines-up", async (req, res) => {
   }
 
   res.json(linesUp({ held, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown }));
+});
+
+/**
+ * GET /elections/long-session — a 3-4 hour block, with its internal arc.
+ *
+ * Returns DISTINCT TRADEOFFS rather than one winner: duration, exactitude and
+ * availability are different things to want. When nothing of the requested
+ * length exists it reports the shortfall — a four-hour request must never
+ * quietly become the activity's twenty-minute minimum viable form.
+ */
+router.get("/elections/long-session", (req, res) => {
+  const activityKey = (req.query.activity as string) ?? "";
+  const minutes = Math.min(600, Math.max(30, parseInt((req.query.minutes as string) ?? "240", 10) || 240));
+  const hasCoords = req.query.lat != null && req.query.lon != null;
+  const locationKnown = hasCoords && req.query.locationKnown !== "false";
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const dateParam = req.query.date as string | undefined;
+  // Parsed as a LOCAL date. `new Date("2026-08-05")` is UTC midnight, which is
+  // the previous day for every western longitude.
+  const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+    ? new Date(Number(dateParam.slice(0, 4)), Number(dateParam.slice(5, 7)) - 1, Number(dateParam.slice(8, 10)), 12, 0, 0)
+    : new Date();
+
+  const wakeHour = req.query.wake != null ? parseFloat(req.query.wake as string) : undefined;
+  const sleepHour = req.query.sleep != null ? parseFloat(req.query.sleep as string) : undefined;
+
+  // The narration embeds clock times in prose, so it must be written in the
+  // VIEWER's zone — the server's is UTC in production.
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+
+  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown });
+  if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
+
+  res.json({
+    ...result,
+    options: result.options.map(o => ({ ...o, narration: narrateSession(o.candidate, tzOffsetMin) })),
+    shortfall: result.shortfall && {
+      ...result.shortfall,
+      narration: result.shortfall.candidate ? narrateSession(result.shortfall.candidate, tzOffsetMin) : null,
+    },
+  });
 });
 
 // The engine: activity → tiered times. Personalizes when the tester has a

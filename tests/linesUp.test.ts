@@ -53,15 +53,28 @@ describe("what lines up", () => {
   });
 
   // This started as a 5s test timeout and was a real performance finding: ten
-  // held items meant ten full ephemeris runs at ~600ms each, so anyone with
-  // ten open tasks waited six seconds on every Home load. The elections are
-  // now memoised per ACTIVITY, since the computation does not depend on which
-  // task asked. Kept as a budget so the regression is loud rather than slow.
+  // held items meant ten full ephemeris runs at ~600ms each, so anyone with ten
+  // open tasks waited six seconds on every Home load. Elections are now
+  // memoised per ACTIVITY, since the computation does not depend on which task
+  // asked.
+  //
+  // Asserted as a RATIO, not a wall-clock budget. A fixed millisecond ceiling
+  // measures the machine rather than the code, and it duly passed alone and
+  // failed under the parallel suite. Twelve identical items should cost about
+  // what one costs; without memoisation the ratio would be ~12.
   it("prices each activity once, not each item", () => {
+    const one = [held("Deep work sprint number 0")];
     const many = Array.from({ length: 12 }, (_, i) => held(`Deep work sprint number ${i}`));
+
+    linesUp({ ...base, held: one });          // warm anything lazily initialised
     const t0 = performance.now();
+    linesUp({ ...base, held: one });
+    const single = performance.now() - t0;
+
+    const t1 = performance.now();
     linesUp({ ...base, held: many });
-    const elapsed = performance.now() - t0;
-    expect(elapsed).toBeLessThan(2500);
+    const twelve = performance.now() - t1;
+
+    expect(twelve / Math.max(single, 1)).toBeLessThan(4);
   });
 });
