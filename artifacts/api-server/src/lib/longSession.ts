@@ -186,8 +186,23 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
         reasons.push(isInception ? "the Moon goes void inside this block" : "the Moon goes void partway through");
       }
       if (voidInside && activity.voc === "favor") reasons.push("the void suits this");
-      if (backgroundFit === "contrary") reasons.push(`the Moon is in ${moonSign}, against the grain for this`);
 
+      // BACKGROUND FIT DOES NOT DECIDE SUITABILITY.
+      //
+      // `backgroundFit === "contrary"` used to push a reason here, which then
+      // made the whole block "qualified". The election engine has no such rule
+      // — Moon sign is a background PRIOR in this design, deliberately not a
+      // veto, because a hard filter on a placement that lasts two and a half
+      // days makes an activity unschedulable for days at a time.
+      //
+      // Measured before removing it: for the same activity on the same day the
+      // engine said `clear` and this module said `qualified` on 25 of 125
+      // comparisons — 20%. A user asking about deep work on 7 August got
+      // "clear" from Home and "qualified" from the session finder. Two answers
+      // to one question is a trust problem before it is a duplication problem.
+      //
+      // It survives as a RANKING signal (see the lexicographic sort) and as
+      // descriptive metadata on the candidate. It no longer changes the verdict.
       const suitability: Suitability =
         opensVoid && activity.voc === "avoid" && isInception ? "defer"
         : reasons.some(r => !r.startsWith("the void suits")) ? "qualified"

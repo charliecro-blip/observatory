@@ -245,3 +245,100 @@ inventory.** A generic "good Venus window" sitting above someone's tasks would
 not have earned first position. Dump-first would open the product as a task
 manager with astrology downstream; a *contextual* Compass first states the
 distinguishing promise immediately.
+
+
+---
+
+# Rev 3 — the architecture ruling (2026-08-05)
+
+A design review of the built stack returned a verdict I am recording here
+because it governs everything above.
+
+## The rule
+
+> **Astrological judgment happens once per candidate interval. Every higher
+> layer receives that judgment as immutable evidence and adds only practical
+> constraints.**
+
+The six-module chain is *structurally* right — a timeline, a session finder, a
+day planner, a week planner and a Home selector are genuinely different
+transformations and should not collapse into one scheduling function. It was
+*semantically* wrong at one seam: three modules each interpreted the same sky.
+
+## It was not theoretical
+
+Measured before fixing: for the same activity on the same day, `electionEngine`
+and `longSession` returned different suitability on **25 of 125** comparisons
+(20%). The engine said `clear`; the session finder said `qualified`. A user
+would have seen both — "clear" on Home, "qualified" in the session finder, for
+deep work on the same afternoon.
+
+One rule caused all of it. `longSession` let `backgroundFit === "contrary"`
+push a suitability reason, and the engine has no such rule: Moon sign is a
+background **prior** in this design, deliberately not a veto, because a hard
+filter on a placement lasting two and a half days makes an activity
+unschedulable for days. Removing it took the disagreement to **0 of 125**.
+
+`tests/oneAuthority.test.ts` now pins the invariant across the engine, the
+session finder, the day weaver and the week weaver.
+
+## The target layering
+
+```
+  ephemeris + local time
+        ↓
+  canonical sky timeline          facts only, no activity-relative roles
+        ↓
+  canonical activity evaluator    support · convergence · suitability · evidence
+        ↓                         ← THE ONLY astrological authority
+  candidate generators            short windows · long sessions
+        ↓
+  scheduling orchestrators        day · week
+        ↓
+  views                           Home · Compass · Plan · Today · Calendar
+        ↓
+  approval + persistence
+```
+
+Information may be added at each step down. **No step may reinterpret an
+upstream astrological judgment.**
+
+## Still outstanding
+
+- `dayTimeline` assigns event roles (`anchor`, `qualification`, `chapter`)
+  universally, but those are activity-relative: a void beginning is a serious
+  qualification for an inception, a useful shift for finishing, and close to
+  irrelevant to an established deep-work session. Roles belong in the evaluator.
+- `electionEngine` should be generalised to judge an arbitrary **interval**, not
+  only its own candidate windows. That is what lets `longSession` stop deriving
+  anything.
+- `election.ts` (the older engine, still serving `routes/election.ts` and
+  `studio.ts`) either retires or is narrowed to strict inception only and
+  renamed. It cannot remain an ambiguously older answer to the same question.
+- Planner keeps its workflow and loses its brain: `/plan/weave` should call the
+  day and week weavers.
+- `/tides/best-times` retires as activity advice, or is renamed to something
+  descriptive and kept away from scheduling.
+- `/planning/windows` stays persistence only. Storing a result does not make a
+  route a timing authority.
+- Calendar's client-side planetary hours retire in favour of the canonical
+  timeline.
+
+## And the duration question
+
+Capture stays one line. Duration is resolved **when the user asks Compass to
+place the task**, in one compact batch of chips, not per-task and not at
+capture. Two readiness levels:
+
+- **ready for timing** — activity known; can receive guidance without a block
+- **ready for placement** — activity *and* duration known; can reserve an interval
+
+A suggested duration may preselect a chip but must not commit a block, and
+`duration` carries its own provenance (`user` / `learned` / `suggested`).
+Activity kind is never a duration: "send one email" and "write a chapter" are
+both Mercury.
+
+The governing sentence:
+
+> **Capture records what exists. Compass judges when it fits. Scheduling asks
+> how much space it needs.**
