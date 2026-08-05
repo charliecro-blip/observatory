@@ -625,6 +625,23 @@ export function activityByKey(key: string): ActivityCorrespondence | null {
   return ACTIVITIES.find(a => a.key === key) ?? null;
 }
 
+/**
+ * Whole-word containment.
+ *
+ * Plain `includes` matched "plan" inside "plants", so "Water the plants" scored
+ * 2.00 for "Plan & strategize" — over the confidence bar, and wrong. Substring
+ * matching on short common words produces exactly the confident-and-absurd
+ * classifications this scorer is supposed to avoid.
+ */
+function hasWord(haystack: string, word: string): boolean {
+  // A trailing plural is allowed, because requiring an exact boundary lost
+  // "Water the plants" → "Garden / plant". It does NOT reopen the substring
+  // hole: /\bplan(s|es)?\b/ still fails against "plants", since "t" follows
+  // "plan" and is neither a plural suffix nor a boundary.
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${esc}(s|es)?\\b`).test(haystack);
+}
+
 export function rankActivities(text: string, limit = 3): { activity: ActivityCorrespondence; score: number }[] {
   const t = ` ${text.toLowerCase()} `;
   const scored: { activity: ActivityCorrespondence; score: number }[] = [];
@@ -633,9 +650,29 @@ export function rankActivities(text: string, limit = 3): { activity: ActivityCor
     for (const k of a.keywords) {
       if (t.includes(k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
     }
-    for (const w of a.label.toLowerCase().split(/[^a-z]+/)) {
-      if (w.length >= 4 && t.includes(w)) score += 0.5;
-    }
+    // Naming the activity should be enough to match it.
+    //
+    // Two of forty-six activities could not match their OWN LABEL at the
+    // confidence bar callers use — "The hard conversation" and "Deepen a bond"
+    // both scored 1.00, because their keyword lists happen not to contain any
+    // word from their own names. They could therefore never be classified
+    // automatically, by any caller, for any phrasing.
+    //
+    // The per-word bonus alone cannot fix that: it is deliberately small so one
+    // incidental word does not carry a match. What is reliable is a whole NAME
+    // being present.
+    //
+    // A slash in these labels separates synonyms rather than making one long
+    // name — "Long run / endurance", "Yoga / stretch / walk", "Garden / plant".
+    // Requiring every word of the joined string meant "Long run" could not
+    // match "Long run / endurance", because "endurance" was missing. Each side
+    // is its own name.
+    const names = a.label.toLowerCase().split("/")
+      .map(part => part.split(/[^a-z]+/).filter(w => w.length >= 4))
+      .filter(ws => ws.length > 0);
+    const allWords = new Set(names.flat());
+    for (const w of allWords) if (hasWord(t, w)) score += 0.5;
+    if (names.some(ws => ws.every(w => hasWord(t, w)))) score += 1.5;
     if (score > 0) scored.push({ activity: a, score });
   }
   return scored.sort((x, y) => y.score - x.score).slice(0, limit);
