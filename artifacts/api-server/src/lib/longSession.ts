@@ -33,6 +33,7 @@
 
 import { dayTimeline, containers, type TimelineEvent, type Commitment } from "./dayTimeline.js";
 import { activityByKey, modeOf } from "./activityCorrespondences.js";
+import { evaluateActivityInterval } from "./electionEngine.js";
 import { SIGNS, moonLongitude, julianDay, getPlanetaryHour, getSunriseSunset } from "./astro.js";
 
 /** Classical antipathy: fire opposes water, air opposes earth. */
@@ -149,11 +150,6 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
   // between blocks WITHIN a day. It is a prior on the day, not a filter — a
   // hard veto could make a long session unavailable for days while the person
   // has the time today and a deadline tomorrow.
-  const moonSign = SIGNS[Math.floor((((moonLongitude(julianDay(date)) % 360) + 360) % 360) / 30)];
-  const backgroundFit: BackgroundFit =
-    activity.signs?.[moonSign] ? "aligned"
-    : ANTIPATHY[activity.element] === ELEMENT_OF_SIGN(moonSign) ? "contrary"
-    : "neutral";
 
   // Planetary hours are fiction under polar day or night (see astro.ts): the
   // Sun never crosses the horizon, so there is no daylight span to divide.
@@ -179,7 +175,23 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       // scaled by mode. `voc: "avoid"` on an inception is a real deferral;
       // the same flag on execution work is a qualification at most. An
       // activity marked `favor` is one the void actively suits.
-      const reasons: string[] = [];
+      // THE VERDICT IS INHERITED, NOT DERIVED.
+      //
+      // This module used to compute its own suitability from the activity's voc
+      // policy, mode and Moon-sign fit, and disagreed with the election engine
+      // on 20% of activity-days — engine `clear`, session finder `qualified`,
+      // for the same afternoon. One interval and one activity get one verdict,
+      // and it is made in electionEngine.
+      //
+      // What is added here is strictly INTERVAL-SPECIFIC and strictly one-way:
+      // a void opening inside the block can make the verdict stricter, never
+      // looser. Everything else — stations, retrograde caps, Mercury policy,
+      // Moon sign as a prior — arrives already judged.
+      const assessment = evaluateActivityInterval({ activityKey, startAt, endAt })!;
+      const backgroundFit = assessment.backgroundFit;
+      const reasons: string[] = assessment.suitabilityReasons.map(r =>
+        `${r.kind.replace(/-/g, " ")}${(r as { planet?: string }).planet ? ` (${(r as { planet?: string }).planet})` : ""}`);
+
       const voidInside = inside.some(e => e.kind === "void-begins" || e.kind === "void-ends");
       const opensVoid = inside.some(e => e.kind === "void-begins");
       if (opensVoid && activity.voc === "avoid") {
@@ -203,10 +215,15 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       //
       // It survives as a RANKING signal (see the lexicographic sort) and as
       // descriptive metadata on the candidate. It no longer changes the verdict.
-      const suitability: Suitability =
+      // Strictest of (inherited, interval-specific). Never better than what the
+      // engine said — a higher layer may narrow a verdict, never widen it.
+      const RANKING: Record<Suitability, number> = { clear: 0, qualified: 1, defer: 2 };
+      const intervalVerdict: Suitability =
         opensVoid && activity.voc === "avoid" && isInception ? "defer"
-        : reasons.some(r => !r.startsWith("the void suits")) ? "qualified"
+        : opensVoid && activity.voc === "avoid" ? "qualified"
         : "clear";
+      const suitability: Suitability =
+        RANKING[intervalVerdict] > RANKING[assessment.suitability] ? intervalVerdict : assessment.suitability;
 
       const arc = hoursReal ? arcOf(startAt, endAt, lat, lon, preferred) : [];
       const covered = arc.filter(a => a.preferred);
@@ -234,14 +251,24 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
 
   if (!candidates.length) {
     const longest = cs.sort((a, b) => b.minutes - a.minutes)[0] ?? null;
+    // The shortfall candidate gets a REAL verdict too. It used to be hardcoded
+    // `suitability: "clear"` with no reasons — an invented judgment one layer
+    // below the one that just got fixed, and the shortfall is exactly where
+    // someone is most likely to act on a block anyway.
+    const shortAssessment = longest
+      ? evaluateActivityInterval({ activityKey, startAt: longest.startAt, endAt: longest.endAt })
+      : null;
     return {
       requestedMinutes: minutes,
       options: [],
       shortfall: {
         longestMinutes: longestAvailable,
-        candidate: longest ? {
+        candidate: longest && shortAssessment ? {
           startAt: longest.startAt, endAt: longest.endAt, durationMinutes: longest.minutes,
-          uninterrupted: true, backgroundFit, suitability: "clear", suitabilityReasons: [],
+          uninterrupted: true,
+          backgroundFit: shortAssessment.backgroundFit,
+          suitability: shortAssessment.suitability,
+          suitabilityReasons: shortAssessment.suitabilityReasons.map(r => r.kind.replace(/-/g, " ")),
           preferredHourCoverage: { minutes: 0, rulers: [] },
           transitions: longest.inside,
           arc: hoursReal ? arcOf(longest.startAt, longest.endAt, lat, lon, preferred) : [],

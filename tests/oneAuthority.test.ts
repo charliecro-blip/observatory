@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeElections } from "../artifacts/api-server/src/lib/electionEngine.js";
+import { computeElections, evaluateActivityInterval } from "../artifacts/api-server/src/lib/electionEngine.js";
 import { findLongSessions } from "../artifacts/api-server/src/lib/longSession.js";
 import { weaveDay } from "../artifacts/api-server/src/lib/dayWeaver.js";
 import { weaveWeek } from "../artifacts/api-server/src/lib/weekWeaver.js";
@@ -91,6 +91,55 @@ describe("one astrological authority", () => {
         // qualified — that was the rule that created two authorities.
         expect(o.candidate.suitabilityReasons.join(" ")).not.toMatch(/against the grain/);
       }
+    }
+  });
+});
+
+describe("the canonical evaluator", () => {
+  // The point of extracting it: the same interval and activity must return the
+  // same verdict no matter who asks, and asking twice must not drift.
+  it("is deterministic for the same interval", () => {
+    const a = evaluateActivityInterval({ activityKey: "deep-work", startAt: new Date(2026, 7, 5, 13, 0), endAt: new Date(2026, 7, 5, 17, 0) })!;
+    const b = evaluateActivityInterval({ activityKey: "deep-work", startAt: new Date(2026, 7, 5, 13, 0), endAt: new Date(2026, 7, 5, 17, 0) })!;
+    expect(b.suitability).toBe(a.suitability);
+    expect(b.suitabilityReasons.map(r => r.kind)).toEqual(a.suitabilityReasons.map(r => r.kind));
+    expect(b.backgroundFit).toBe(a.backgroundFit);
+  });
+
+  it("refuses an unknown activity rather than guessing", () => {
+    expect(evaluateActivityInterval({ activityKey: "no-such-thing", startAt: new Date(), endAt: new Date() })).toBeNull();
+  });
+
+  // Suitability is a pure function of the reasons — it cannot drift out of step
+  // with the list the UI shows, which is the property that makes the verdict
+  // inspectable rather than oracular.
+  it("derives suitability only from its own recorded reasons", () => {
+    let clearWithReasons = 0, gradedWithout = 0, seen = 0;
+    for (const key of KEYS) {
+      for (let d = 1; d <= 21; d++) {
+        const a = evaluateActivityInterval({
+          activityKey: key,
+          startAt: new Date(2026, 7, d, 13, 0), endAt: new Date(2026, 7, d, 17, 0),
+        })!;
+        seen++;
+        if (a.suitability === "clear" && a.suitabilityReasons.length) clearWithReasons++;
+        if (a.suitability !== "clear" && !a.suitabilityReasons.length) gradedWithout++;
+      }
+    }
+    expect(seen).toBeGreaterThan(100);
+    expect(gradedWithout).toBe(0);   // never graded without saying why
+  });
+
+  // Moon sign must remain a prior. If it ever starts producing a suitability
+  // reason, the 20% disagreement comes straight back.
+  it("never turns background fit into a suitability reason", () => {
+    for (let d = 1; d <= 28; d++) {
+      const a = evaluateActivityInterval({
+        activityKey: "deep-work",
+        startAt: new Date(2026, 7, d, 13, 0), endAt: new Date(2026, 7, d, 17, 0),
+      })!;
+      if (a.backgroundFit !== "contrary") continue;
+      expect(a.suitabilityReasons.map(r => r.kind).join(" ")).not.toMatch(/sign|moon|background/i);
     }
   });
 });

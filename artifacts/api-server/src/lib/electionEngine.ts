@@ -221,6 +221,114 @@ const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
 const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
   ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
 
+/**
+ * THE CANONICAL ACTIVITY VERDICT.
+ *
+ * One interval plus one activity has exactly one astrological judgment, and it
+ * is made here. Every layer above — the long-session finder, the day weaver,
+ * the week weaver, Home — receives this as immutable evidence and may add only
+ * PRACTICAL constraints: a calendar clash, a full day, a missing duration.
+ *
+ * This exists because the alternative was measured and it was bad. Before it,
+ * `longSession` derived its own suitability from the activity's voc policy,
+ * mode, and Moon-sign fit, and disagreed with this engine on 25 of 125
+ * activity-days — the engine saying `clear` while the session finder said
+ * `qualified` for the same afternoon. A user saw both.
+ *
+ * WHAT BELONGS HERE
+ * ---------------------------------------------------------------------------
+ * Anything that depends on what the sky means FOR AN ACTIVITY: whether a void
+ * qualifies it, whether a retrograde significator caps it, whether a station
+ * matters, whether the Moon's sign is aligned or contrary. Note that these are
+ * activity-relative, which is why they cannot live in `dayTimeline`: a void is
+ * a serious objection to an inception, a useful shift for finishing, and close
+ * to irrelevant to an already-running deep-work session.
+ *
+ * WHAT DOES NOT
+ * ---------------------------------------------------------------------------
+ * Whether the person is free, whether the day is overloaded, whether a deadline
+ * can be met, whether a duration is known. Those are practical, and higher
+ * layers own them entirely.
+ */
+export interface ActivityAssessment {
+  activityKey: string;
+  startAt: Date;
+  endAt: Date;
+  suitability: Suitability;
+  suitabilityReasons: SuitabilityReason[];
+  /** Moon-sign affinity: a PRIOR for ranking, never a driver of suitability. */
+  backgroundFit: "aligned" | "neutral" | "contrary";
+  /** Interval-specific sky events, already judged for this activity. */
+  transitions: { kind: string; at: Date; role: "qualification" | "internal-chapter" | "irrelevant" }[];
+}
+
+const ELEMENT_OF_SIGN_IDX = ["fire", "earth", "air", "water"] as const;
+const ELEMENT_ANTIPATHY: Record<string, string> = { fire: "water", water: "fire", air: "earth", earth: "air" };
+
+export function evaluateActivityInterval(opts: {
+  activityKey: string;
+  startAt: Date;
+  endAt: Date;
+}): ActivityAssessment | null {
+  const act = ACTIVITIES.find(a => a.key === opts.activityKey);
+  if (!act) return null;
+
+  const { startAt, endAt } = opts;
+  const midJd = julianDay(new Date((startAt.getTime() + endAt.getTime()) / 2));
+  const actMode = modeOf(act.key);
+  const sigPlanets = primarySignificatorsOf(act.key, act.planets);
+
+  const reasons: SuitabilityReason[] = [];
+
+  // ── Significator motion. Identical rules to computeElections, because they
+  //    ARE the same rules — that is the point of having one evaluator.
+  const stations = sigPlanets
+    .filter(p => TRADITIONAL_PLANETS.has(p) && p !== "Sun" && p !== "Moon")
+    .map(p => ({ planet: p, motion: motionOf(p, midJd) }))
+    .filter(x => x.motion && x.motion.phase.startsWith("stationing"));
+  for (const st of stations) {
+    const first = st.motion!.phase === "stationing-retrograde";
+    if (actMode === "inception") {
+      reasons.push(first
+        ? { kind: "primary-significator-stationing-retrograde", planet: st.planet }
+        : { kind: "primary-significator-stationing-direct", planet: st.planet });
+    } else {
+      reasons.push({ kind: "significator-station", planet: st.planet });
+    }
+  }
+  if (actMode === "inception") {
+    for (const p of sigPlanets) {
+      if (p === "Sun" || p === "Moon" || !TRADITIONAL_PLANETS.has(p)) continue;
+      if (stations.some(st => st.planet === p)) continue;
+      if (isRetrograde(p, midJd)) reasons.push({ kind: "primary-significator-retrograde", planet: p });
+    }
+  }
+  if (act.mercuryRx === "hard" && isRetrograde("Mercury", midJd)) {
+    reasons.push({ kind: "mercury-retrograde", planet: "Mercury" });
+  }
+
+  // ── Moon sign: a PRIOR. Reported, never a suitability driver — a hard filter
+  //    on something that lasts two and a half days makes an activity
+  //    unschedulable for days at a time.
+  const moonSign = SIGNS[Math.floor(norm360(moonLongitude(midJd)) / 30) % 12];
+  const signElement = ELEMENT_OF_SIGN_IDX[SIGNS.indexOf(moonSign) % 4];
+  const backgroundFit: ActivityAssessment["backgroundFit"] =
+    act.signs?.[moonSign] ? "aligned"
+    : ELEMENT_ANTIPATHY[act.element] === signElement ? "contrary"
+    : "neutral";
+
+  const suitability: Suitability =
+    reasons.some(r => DEFER_REASONS.has(r.kind)) ? "defer"
+    : reasons.some(r => QUALIFY_REASONS.has(r.kind)) ? "qualified"
+    : "clear";
+
+  return {
+    activityKey: act.key, startAt, endAt,
+    suitability, suitabilityReasons: reasons, backgroundFit,
+    transitions: [],
+  };
+}
+
 export function computeElections(opts: {
   activityKey: string;
   span: "day" | "week" | "month";
