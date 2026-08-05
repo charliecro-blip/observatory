@@ -63,7 +63,7 @@ export function ScheduleSuggest({
   const { data: bestData } = useQuery<{ windows: BestWindow[] }>({
     queryKey: ["best-times-suggest", element, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/best-times?lens=${element}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
+      const r = await fetch(`/api/tides/elemental-peaks?lens=${element}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
       return r.json();
     },
     enabled: !!assoc,

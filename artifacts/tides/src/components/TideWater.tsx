@@ -268,7 +268,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const { data: bestTimes } = useQuery<any>({
     queryKey: ["best-times", windowsLens, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/best-times?lens=${windowsLens}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
+      const r = await fetch(`/api/tides/elemental-peaks?lens=${windowsLens}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
       return r.json();
     },
     enabled: !!windowsLens && windowsLens !== "overall",
@@ -517,7 +517,11 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         const shown = ranked.slice(0, 3);
         return (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 10.5, color: "var(--color-muted)" }}>
-            <span style={{ color: "var(--text-3)" }}>Best this week for {String(bestTimes.windows[0].label).split(" — ")[0]}:</span>
+            {/* Names the ELEMENT, not an activity. "Best this week for X" read as a
+                recommendation for whatever X was, from a route that has never
+                seen an activity — the lens is fire/earth/air/water and nothing
+                more. Activity timing lives in the Compass. */}
+            <span style={{ color: "var(--text-3)" }}>When the {windowsLens} tide runs highest:</span>
             {shown.map((w: any, i: number) => {
               const fits = chronotype ? isWithinFreeWindow(w, chronotype) : null;
               const awake = isAwakeDuring(w, chronotype);

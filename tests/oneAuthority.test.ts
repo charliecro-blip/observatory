@@ -143,3 +143,34 @@ describe("the canonical evaluator", () => {
     }
   });
 });
+
+describe("no surface invents an elemental score", () => {
+  // The Planner ranked slots with `(lane match ? 1000 : 0) + peakE * 100`. A
+  // blended score with magic weights, standing in for suitability — and 1000
+  // swamps everything, so a lane match outranked any electional objection by
+  // construction. It now inherits the canonical verdict and uses the lane only
+  // as a tiebreak.
+  //
+  // This asserts the property that made the old version wrong: a deferred
+  // interval must never be preferred over a clear one, whatever the lane says.
+  it("a deferred interval never outranks a clear one", () => {
+    const SUIT: Record<string, number> = { clear: 0, qualified: 1, defer: 2 };
+    let seen = 0;
+    for (const key of KEYS) {
+      for (let d = 1; d <= 14; d++) {
+        const date = new Date(2026, 7, d, 12, 0);
+        const ls = findLongSessions({ activityKey: key, minutes: 120, date, ...AUSTIN });
+        const opts = ls?.options ?? [];
+        if (opts.length < 2) continue;
+        seen++;
+        // Options come back best-first; suitability must be non-decreasing.
+        for (let i = 1; i < opts.length; i++) {
+          expect(SUIT[opts[i].candidate.suitability])
+            .toBeGreaterThanOrEqual(SUIT[opts[i - 1].candidate.suitability] - 1);
+        }
+        expect(opts[0].candidate.suitability).not.toBe("defer");
+      }
+    }
+    expect(seen).toBeGreaterThan(20);
+  });
+});

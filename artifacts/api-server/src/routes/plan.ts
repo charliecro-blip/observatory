@@ -25,6 +25,8 @@ import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
 import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { evaluateActivityInterval } from "../lib/electionEngine.js";
+import { rankActivities } from "../lib/activityCorrespondences.js";
 
 const router: IRouter = Router();
 
@@ -339,11 +341,45 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
           : Date.parse(t.dueDate) + 86400000 + tz * 60000)
       : Infinity;
 
-    // Prefer slots in the task's own elemental lane; fall back to any lane.
-    const rank = (s: Slot) => (s.element === t.assoc.element ? 1000 : 0) + s.peakE * 100;
+    // THE ASTROLOGICAL VERDICT IS INHERITED, NOT INVENTED.
+    //
+    // This was `(s.element === t.assoc.element ? 1000 : 0) + s.peakE * 100` — a
+    // blended score with magic weights, standing in for suitability, and a
+    // third independent astrological authority alongside the election engine
+    // and the session finder. The same defect that had two of those disagreeing
+    // on 20% of activity-days.
+    //
+    // The canonical evaluator now decides. A `defer` slot is removed outright;
+    // `clear` beats `qualified`; and only then does the elemental lane break
+    // the tie. Lexicographic, so a strong lane match can never outrank a real
+    // electional objection — which the multiply-and-add version did by
+    // construction, since 1000 swamps everything.
+    //
+    // Tasks here carry an element, not an activity key, so the activity is
+    // resolved from the title at the same confidence bar the weavers use. When
+    // it cannot be resolved there is no verdict to inherit and the ordering
+    // falls back to the elemental lane alone — no invented judgment either way.
+    const ranked = rankActivities(t.title ?? "", 1)[0];
+    const activityKey = ranked && ranked.score >= 2.0 ? ranked.activity.key : null;
+    const SUIT_RANK: Record<string, number> = { clear: 0, qualified: 1, defer: 2 };
+    const verdictOf = (s: Slot) => {
+      if (!activityKey) return null;
+      return evaluateActivityInterval({
+        activityKey,
+        startAt: new Date(s.startMs),
+        endAt: new Date(s.startMs + durMs),
+      });
+    };
+    const laneRank = (s: Slot) => (s.element === t.assoc.element ? 0 : 1);
     const candidates = slots
       .filter((s) => s.startMs >= nowMs && s.startMs + durMs <= Math.min(s.endMs + 30 * 60000, dueMs))
-      .sort((a, b) => rank(b) - rank(a));
+      .map((s) => ({ s, v: verdictOf(s) }))
+      .filter(({ v }) => v?.suitability !== "defer")
+      .sort((a, b) =>
+        (SUIT_RANK[a.v?.suitability ?? "clear"] - SUIT_RANK[b.v?.suitability ?? "clear"]) ||
+        (laneRank(a.s) - laneRank(b.s)) ||
+        (b.s.peakE - a.s.peakE))
+      .map(({ s }) => s);
 
     const push = (start: number, date: string, matchedLane: boolean, tier: Tier, note?: string) => {
       reserved.push({ s: start, e: start + durMs });

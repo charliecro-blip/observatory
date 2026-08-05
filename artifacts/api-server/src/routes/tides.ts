@@ -731,7 +731,20 @@ const BEST_TIMES_LABEL: Record<string, string> = {
   water: "feeling & rest — heal, dream, restore",
 };
 
-router.get("/tides/best-times", (req, res) => {
+/**
+ * GET /tides/elemental-peaks — when each ELEMENT's tide runs highest.
+ *
+ * Renamed from `/tides/best-times`, which was a claim it could not support.
+ * This route takes a `lens` — fire, earth, air, water — and never an activity.
+ * It answers "when is the fire tide highest this week", which is a real
+ * question and a different one from "when should I do this work". The old name
+ * let a client render "Best this week for X" from an elemental curve, putting
+ * activity-level authority on a route that has never seen an activity.
+ *
+ * Activity timing is `evaluateActivityInterval` / `/elections/times`. Nothing
+ * here should be used to answer it.
+ */
+router.get("/tides/elemental-peaks", (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const lens = (req.query.lens as string) ?? "overall";
