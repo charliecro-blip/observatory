@@ -744,6 +744,64 @@ const BEST_TIMES_LABEL: Record<string, string> = {
  * Activity timing is `evaluateActivityInterval` / `/elections/times`. Nothing
  * here should be used to answer it.
  */
+/**
+ * GET /tides/planetary-hours?dates=YYYY-MM-DD,…&lat&lon
+ *
+ * One source of truth for the hour grid. Calendar reimplemented the Chaldean
+ * sequence and its own solar geometry client-side, and a local copy of a shared
+ * astronomical fact diverges eventually even when both start correct — this one
+ * already had: the client returned null above the polar circles while the
+ * server fabricated a symmetric twelve-hour day, so for a few weeks the two
+ * disagreed about whether Tromsø had hours at all.
+ *
+ * `hours: null` for a date means genuinely unavailable — polar day or night,
+ * where there is no daylight span to divide into twelve. Withheld rather than
+ * captioned, the same as when the location is a guess.
+ */
+router.get("/tides/planetary-hours", (req, res) => {
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  // getTimezoneOffset() convention: minutes to ADD to local to reach UTC.
+  const tzOffsetMin = Number.isFinite(parseInt((req.query.tz as string) ?? "", 10))
+    ? parseInt((req.query.tz as string), 10) : 0;
+  const dates = String(req.query.dates ?? "").split(",").filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 14);
+  if (!dates.length) { res.status(400).json({ error: "dates required" }); return; }
+
+  const out: Record<string, { ruler: string; startAt: string; endAt: string; isDayHour: boolean; hourNumber: number }[] | null> = {};
+  for (const d of dates) {
+    const [y, m, day] = d.split("-").map(Number);
+    const noon = new Date(Date.UTC(y, m - 1, day, 12, 0, 0) + tzOffsetMin * 60000);
+    if (getSunriseSunset(julianDay(noon), lat, lon).polar) { out[d] = null; continue; }
+    const hours: typeof out[string] = [];
+    // Walk the local day. Bounded by the guard rather than by an assumed count:
+    // hour LENGTH varies with season and latitude, so the number spanning a
+    // civil day is not a constant to hard-code.
+    // The VIEWER's day, not the server's. Walking from UTC midnight returns
+    // Aug 4 19:00 -> Aug 5 19:00 local for Austin, while the client keys this
+    // map by its own local date string — every band displaced by the offset.
+    // That is the exact bug the old client/server agreement test existed to
+    // catch ("anchors to UTC midnight, not local midnight"), reintroduced on
+    // the server side while removing it from the client.
+    let cursor = new Date(Date.UTC(y, m - 1, day, 0, 0, 0) + tzOffsetMin * 60000);
+    const end = new Date(cursor.getTime() + 86400000);
+    let guard = 0;
+    while (cursor < end && guard++ < 40) {
+      const h = getPlanetaryHour(cursor, lat, lon);
+      if (!h?.endTime) break;
+      hours.push({
+        ruler: h.ruler,
+        startAt: h.startTime.toISOString(),
+        endAt: h.endTime.toISOString(),
+        isDayHour: h.isDayHour,
+        hourNumber: h.hourNumber,
+      });
+      cursor = new Date(h.endTime.getTime() + 1000);
+    }
+    out[d] = hours;
+  }
+  res.json({ hours: out });
+});
+
 router.get("/tides/elemental-peaks", (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");

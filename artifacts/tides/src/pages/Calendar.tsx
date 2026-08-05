@@ -92,7 +92,6 @@ const WINDOW_COLORS: Record<string,string> = {
 };
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const CHALDEAN: string[] = ["Saturn","Jupiter","Mars","Sun","Venus","Mercury","Moon"];
 const WEEKDAY_RULERS: string[] = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
 
 type CalView = "agenda" | "month" | "week" | "day";
@@ -108,94 +107,16 @@ interface PlanetHour {
 
 // ── Astro Helpers ─────────────────────────────────────────────────────────────
 
-function approxSunriseSunset(dateStr: string, lat: number, lon: number): { sunrise: Date; sunset: Date } | null {
-  const base = new Date(dateStr + "T12:00:00");
-  const jd = base.getTime() / 86400000 + 2440587.5;
-  const n = jd - 2451545.0;
-  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
-  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
-  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
-  const cosDec = Math.cos(Math.asin(sinDec));
-  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
-               (Math.cos(lat * Math.PI / 180) * cosDec);
-  if (Math.abs(cosH) > 1) return null;
-  const H = Math.acos(cosH) * 180 / Math.PI;
-  const B = (360 / 365) * (n - 81) * Math.PI / 180;
-  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
-  const lstNoon = 12 - lon / 15 - EqT / 60;
-  const sunriseH = lstNoon - H / 15;
-  const sunsetH  = lstNoon + H / 15;
-  // `lstNoon` is a UTC hour-of-day (it is 12 minus the longitude offset), so
-  // the anchor must be UTC midnight. This used to add it to `new Date(dateStr
-  // + "T00:00:00")` — LOCAL midnight — which silently added the viewer's UTC
-  // offset to every result: New York on 2026-08-02 came out as sunrise 09:53
-  // and sunset 00:09 the next morning. Correct only for a viewer sitting in
-  // UTC, and wrong by whole hours for everyone else, which shifted every
-  // planetary-hour band on this page away from the ones the server computes
-  // for Today and Plan.
-  const [yy, mm, dd] = dateStr.split("-").map(Number);
-  const utcMidnight = Date.UTC(yy, mm - 1, dd);
-  return {
-    sunrise: new Date(utcMidnight + sunriseH * 3600000),
-    sunset:  new Date(utcMidnight + sunsetH  * 3600000),
-  };
-}
+// Planetary hours and the solar geometry behind them USED to be computed here,
+// in a client copy of the Chaldean sequence and its own sunrise/sunset. They
+// now come from /api/tides/planetary-hours via usePlanetaryHours, because a
+// local reimplementation of a shared astronomical fact diverges eventually even
+// when both start correct — and these two already had, disagreeing about
+// whether the polar circles have hours at all.
+//
+// Roughly ninety lines removed rather than left dormant: a second correct
+// implementation is a second thing to keep correct.
 
-function computeAllPlanetaryHours(dateStr: string, lat: number, lon: number): PlanetHour[] {
-  const ss   = approxSunriseSunset(dateStr, lat, lon);
-  const ss1  = approxSunriseSunset(addDays(dateStr, 1), lat, lon);
-  const ssP  = approxSunriseSunset(addDays(dateStr, -1), lat, lon);
-  if (!ss || !ss1 || !ssP) return [];
-  const { sunrise, sunset } = ss;
-  const { sunrise: nextSunrise } = ss1;
-  const { sunset: prevSunset } = ssP;
-
-  const dayRuler = WEEKDAY_RULERS[sunrise.getDay()];
-  const dayRulerIdx = CHALDEAN.indexOf(dayRuler);
-  const prevDayRuler = WEEKDAY_RULERS[prevSunset.getDay()];
-  const prevRulerIdx = CHALDEAN.indexOf(prevDayRuler);
-
-  const dayLen   = sunset.getTime() - sunrise.getTime();
-  const dayH     = dayLen / 12;
-  const nightLen = nextSunrise.getTime() - sunset.getTime();
-  const nightH   = nightLen / 12;
-
-  // Night hours before sunrise (last night = prevDay ruler offset 12)
-  const preHours: PlanetHour[] = [];
-  const preDur = sunrise.getTime() - prevSunset.getTime();
-  const preH   = preDur / 12;
-  for (let i = 0; i < 12; i++) {
-    const s = prevSunset.getTime() + i * preH;
-    const e = prevSunset.getTime() + (i + 1) * preH;
-    if (e > sunrise.getTime()) break;
-    if (localDateStr(new Date(e)) !== dateStr) continue;
-    preHours.push({
-      ruler: CHALDEAN[(prevRulerIdx + 12 + i) % 7],
-      startTime: new Date(s), endTime: new Date(e),
-      isDayHour: false, hourNumber: 12 + i + 1,
-    });
-  }
-
-  const hours: PlanetHour[] = [...preHours];
-  for (let i = 0; i < 12; i++) {
-    hours.push({
-      ruler: CHALDEAN[(dayRulerIdx + i) % 7],
-      startTime: new Date(sunrise.getTime() + i * dayH),
-      endTime:   new Date(sunrise.getTime() + (i + 1) * dayH),
-      isDayHour: true, hourNumber: i + 1,
-    });
-  }
-  for (let i = 0; i < 12; i++) {
-    hours.push({
-      ruler: CHALDEAN[(dayRulerIdx + 12 + i) % 7],
-      startTime: new Date(sunset.getTime() + i * nightH),
-      endTime:   new Date(sunset.getTime() + (i + 1) * nightH),
-      isDayHour: false, hourNumber: i + 1,
-    });
-  }
-  return hours;
-}
 
 // ── General Helpers ───────────────────────────────────────────────────────────
 
@@ -495,6 +416,48 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
 
 // ── TimeGrid (week + day) ─────────────────────────────────────────────────────
 
+/**
+ * ONE SOURCE OF TRUTH FOR THE HOUR GRID.
+ *
+ * Calendar built these locally, from a client copy of the Chaldean sequence and
+ * its own solar geometry. A local reimplementation of a shared astronomical
+ * fact diverges eventually even when both start correct — and these already
+ * had: the client returned null above the polar circles while the server
+ * fabricated a symmetric twelve-hour day, so the two disagreed about whether
+ * Tromsø had planetary hours at all.
+ *
+ * A hook rather than a query in each component, because TimeGrid and the
+ * Agenda both need them and two copies of the fetch is how the two copies of
+ * the MATHS started. At most seven dates are ever requested — the month view
+ * shows no hours — so this is one small call.
+ */
+function usePlanetaryHours(dates: string[], lat: number, lon: number) {
+  const key = dates.join(",");
+  return useQuery<{ hours: Record<string, PlanetHour[] | null> }>({
+    queryKey: ["planetary-hours", key, lat, lon],
+    queryFn: async () => {
+      const r = await fetch(`/api/tides/planetary-hours?dates=${key}&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}`);
+      if (!r.ok) throw new Error("hours unavailable");
+      const j = await r.json();
+      const hours: Record<string, PlanetHour[] | null> = {};
+      for (const [d, list] of Object.entries(j.hours ?? {})) {
+        // `null` means genuinely unavailable — polar day or night, where there
+        // is no daylight span to divide. Different from "none loaded yet".
+        hours[d] = list === null ? null : (list as any[]).map(h => ({
+          ruler: h.ruler,
+          startTime: new Date(h.startAt),
+          endTime: new Date(h.endAt),
+          isDayHour: h.isDayHour,
+          hourNumber: h.hourNumber,
+        }));
+      }
+      return { hours };
+    },
+    enabled: dates.length > 0,
+    staleTime: 3_600_000,
+  });
+}
+
 function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
   dates: string[];
   dataMap: Map<string, WeekDay>;
@@ -530,11 +493,13 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   const [pinnedCross, setPinnedCross] = useState<{ x: number; y: number; text: string; color: string } | null>(null);
   const shownCross = pinnedCross ?? hoverCross;
 
+  const { data: hoursData } = usePlanetaryHours(dates, lat, lon);
+
   const planetaryHoursMap = useMemo(() => {
     const m = new Map<string, PlanetHour[]>();
-    for (const d of dates) m.set(d, computeAllPlanetaryHours(d, lat, lon));
+    for (const d of dates) m.set(d, hoursData?.hours?.[d] ?? []);
     return m;
-  }, [dates, lat, lon]);
+  }, [dates, hoursData]);
 
   // Planetary hours legend height (day view only, fixed below grid)
   const LEGEND_H = isDay ? 108 : 0;
@@ -1171,9 +1136,12 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 // opt-in layers so the essentials read first (#13b, #20).
 interface AgendaMoment { min: number; time: string; glyph: string; label: string; sub?: string; color: string; faded?: boolean; onDelete?: () => void; }
 
-function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat, lon, showHours, showCrossings, onAddEvent, onDeleteWindow }: {
+function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[]; lat: number; lon: number; showHours: boolean; showCrossings: boolean;
+  /** Canonical hours for this date, from the server. `null` means genuinely
+   *  unavailable (polar day or night), which is different from "none yet". */
+  hours?: PlanetHour[] | null;
   onAddEvent: (hour?: number) => void; onDeleteWindow: (id: number) => void;
 }) {
   const fmtTime = useTimeFormat();
@@ -1217,8 +1185,11 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
   }
 
   // Planetary hours (advanced layer) — the sky clock, woven in here (#20)
+  // Handed down rather than recomputed — the parent already holds the
+  // canonical hours for this date, and a second local implementation is how
+  // the client and server came to disagree about the polar case.
   if (showHours) {
-    for (const ph of computeAllPlanetaryHours(dateStr, lat, lon)) {
+    for (const ph of (hours ?? [])) {
       moments.push({
         min: minOf(ph.startTime), time: fmtTime(ph.startTime), glyph: PLANET_ICONS[ph.ruler] ?? "·",
         label: `${ph.ruler} hour`, color: PLANET_COLORS[ph.ruler] ?? "var(--color-muted)", faded: true,
@@ -1308,6 +1279,9 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showSignNames, setShowSignNames] = useState(true);
+  // Same hook as the grid — one implementation, so the agenda and the week
+  // can never disagree about what hour it is.
+  const agendaHours = usePlanetaryHours([selectedDate], lat, lon).data;
   // Month view defaults to SIMPLE — the big/slow essentials only (element tint,
   // phase, moon sign, day ruler, VoC). Detailed adds the granular aspect times.
   // Nesting principle: an absolute beginner should meet the slow layer first.
@@ -1550,6 +1524,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
         {/* Agenda — the day as a plain schedule of key sky moments (#13b/#20) */}
         {calView==="agenda" && (
           <AgendaView
+            hours={agendaHours?.hours?.[selectedDate] ?? []}
             dateStr={selectedDate} today={today}
             dayData={dataMap.get(selectedDate)}
             events={eventsMap.get(selectedDate) ?? []}
