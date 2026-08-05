@@ -19,6 +19,7 @@ import { computeNatalChart, computeNatalHealthInsights, computeTransitAspects, t
 import { requireTesterId } from "../middlewares/testerId.js";
 import { selectOracleContext } from "../lib/knowledge.js";
 import { logger } from "../lib/logger.js";
+import { dateIn } from "../lib/localClock.js";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -269,10 +270,14 @@ User's natal chart (birth data on file):
 `;
   }
 
+  // Labelled UTC on purpose. This surface has no client sending a timezone —
+  // nothing in Compass calls /openai/* — so there is no viewer offset to use.
+  // Naming the frame is honest; formatting in whatever zone the server happens
+  // to run in and calling it "Today" is not.
   return `You are AstroHealth Oracle, a warm and perceptive personal wellness guide with deep knowledge of medical astrology.
 ${natalSection}${knowledgeBlock}
 Today's sky:
-- Date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+- Date (UTC): ${dateIn(new Date(), 0)}
 - Moon: ${astro.moonPhase} in ${astro.moonSign}
 - Sun in ${astro.sunSign}
 - Planets: ${todayPlanets}

@@ -291,7 +291,10 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
           "Content-Type": "application/json",
           ...(testerId ? { "x-tester-id": testerId } : {}),
         },
-        body: JSON.stringify({ message: message.trim(), history, lat, lon, gcalEvents, weekSummary,
+        // Without this the advisor reasons in the server's zone (UTC in
+        // production) — for anyone west of Greenwich in the evening that is
+        // tomorrow, so it advised confidently about the wrong day.
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, tzOffsetMin: new Date().getTimezoneOffset(), gcalEvents, weekSummary,
           ...(electionContext ? { electionContext } : {}),
           ...(strongestFit ? { strongestFit } : {}) }),
       });

@@ -33,6 +33,7 @@
  */
 
 import type { SessionCandidate } from "./longSession.js";
+import { clockIn } from "./localClock.js";
 
 export interface SessionNarration {
   /** "Sun → Venus → Mercury → Moon", or null when hours are withheld. */
@@ -45,24 +46,8 @@ export interface SessionNarration {
   suggestedBreakAt: Date | null;
 }
 
-/**
- * Clock time in the VIEWER's timezone, not the server's.
- *
- * `toLocaleTimeString` without an explicit zone formats in the process's local
- * zone. On Railway that is UTC, so a block running 2:15PM–6:15PM in Austin was
- * narrated as "7:15PM–11:15PM" — the prose and the ISO instants in the same
- * response disagreed by five hours, and only the prose is what the user reads.
- *
- * `tzOffsetMin` is what `Date.prototype.getTimezoneOffset()` returns on the
- * client: minutes to ADD to local time to reach UTC, so positive west of
- * Greenwich. Shifting by it and formatting in UTC gives the viewer's wall clock
- * on any server.
- */
-const clockIn = (d: Date, tzOffsetMin: number) =>
-  new Date(d.getTime() - tzOffsetMin * 60000)
-    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" })
-    .replace(/\s/g, "");
-
+// Clock formatting lives in lib/localClock — the same fix was needed in the
+// advisor's prompts, so it is one helper rather than two copies drifting.
 /** A break is only worth suggesting in a session long enough to need one. */
 const BREAK_MIN_SESSION = 150;
 /** …and only if an hour boundary lands within this of the midpoint. */

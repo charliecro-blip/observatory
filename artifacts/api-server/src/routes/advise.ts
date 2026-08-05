@@ -24,6 +24,7 @@ import {
 } from "../lib/astro.js";
 import { dayReading } from "../lib/synthesis.js";
 import { computeNatalChart } from "../lib/natal.js";
+import { clockIn, stampIn } from "../lib/localClock.js";
 
 const router: IRouter = Router();
 
@@ -49,11 +50,14 @@ router.post("/advise", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(400).json({ error: "Missing x-tester-id" }); return; }
 
-  const { message, history = [], lat = 40.7, lon = -74.0, gcalEvents = [], weekSummary = "", electionContext, strongestFit } = req.body as {
+  const { message, history = [], lat = 40.7, lon = -74.0, tzOffsetMin = 0, gcalEvents = [], weekSummary = "", electionContext, strongestFit } = req.body as {
     message: string;
     history?: { role: "user" | "assistant"; content: string }[];
     lat?: number;
     lon?: number;
+    /** getTimezoneOffset() from the client. Without it the advisor reasons in
+     *  UTC and, for anyone west of Greenwich in the evening, about tomorrow. */
+    tzOffsetMin?: number;
     gcalEvents?: { title: string; start: string; end: string; allDay: boolean }[];
     weekSummary?: string;
     // Optional: the user came from Auspice (the election engine) with a real
@@ -170,8 +174,8 @@ router.post("/advise", async (req, res) => {
   const calSection = gcalEvents.length
     ? `TODAY'S CALENDAR:\n${gcalEvents.map(e => {
         if (e.allDay) return `• ${e.title} (all day)`;
-        const startStr = new Date(e.start).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-        const endStr = new Date(e.end).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+        const startStr = clockIn(new Date(e.start), tzOffsetMin, { hour: "2-digit" });
+        const endStr = clockIn(new Date(e.end), tzOffsetMin, { hour: "2-digit" });
         return `• ${startStr}–${endStr} ${e.title}`;
       }).join("\n")}`
     : "";
@@ -231,7 +235,7 @@ You may ask one clarifying question when it would meaningfully sharpen your advi
 
 If the user has enough to act on, say so and let them go. Do not manufacture reasons to keep consulting you.
 
-CURRENT MOMENT (${now.toLocaleString("en-US", { weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" })}):
+CURRENT MOMENT (${stampIn(now, tzOffsetMin)}):
 • Planetary hour: ${planHour.ruler} — supports ${hourSupports.slice(0,4).join(", ")}
 • Moon: ${moonPhaseName} in ${moonSign}${voc ? " (void of course)" : ""}
 • Element emphasis: ${elemEmph.element} — ${elemQuality}
