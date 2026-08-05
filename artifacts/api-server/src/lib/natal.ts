@@ -5,6 +5,7 @@
 
 import { julianDay, getPlanetPositions, lunarNodes, getAsteroids, sunLongitude, moonLongitude } from "./astro.js";
 import { computeCusps, assignHouse, type HouseSystem } from "./houses.js";
+import { an } from "./article.js";
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -229,18 +230,18 @@ function buildTransitHealthNote(
 
   // Health-relevant house notes — specific to domain and tracking suggestion
   if (natalHouse === 6) {
-    if (isStress) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 6th house. This aspect may correspond with pressure on your health routines, digestion, or daily rhythm. It is worth tracking energy dips, stress-related symptoms, and any disruptions to sleep or digestion during this period.`;
-    if (isFlow) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 6th house. This supportive aspect can describe a period where health practices feel more accessible. Consider initiating or deepening a routine you have been putting off.`;
+    if (isStress) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 6th house. This aspect may correspond with pressure on your health routines, digestion, or daily rhythm. It is worth tracking energy dips, stress-related symptoms, and any disruptions to sleep or digestion during this period.`;
+    if (isFlow) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 6th house. This supportive aspect can describe a period where health practices feel more accessible. Consider initiating or deepening a routine you have been putting off.`;
     return `${transitPlanet} is conjunct your natal ${natalPlanet} in the 6th house. Conjunctions here can intensify whatever is active in your health and daily life domain. Track your energy, digestion, and routine quality during this window.`;
   }
   if (natalHouse === 1) {
-    if (isStress) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 1st house. This aspect may correspond with a period of lower physical resilience or challenge to your usual energy baseline. Prioritizing rest, grounding practices, and body awareness is especially useful now.`;
-    if (isFlow) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 1st house. This aspect can describe a period where the body feels more aligned and responsive. New health practices initiated now may take root more easily.`;
+    if (isStress) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 1st house. This aspect may correspond with a period of lower physical resilience or challenge to your usual energy baseline. Prioritizing rest, grounding practices, and body awareness is especially useful now.`;
+    if (isFlow) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 1st house. This aspect can describe a period where the body feels more aligned and responsive. New health practices initiated now may take root more easily.`;
     return `${transitPlanet} is conjunct your natal ${natalPlanet} in the 1st house. Conjunctions here can correspond with notable shifts in physical vitality or body awareness. Track how your constitution responds during this window.`;
   }
   if (natalHouse === 10) {
-    if (isStress) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 10th house. This aspect may correspond with work-related depletion or role pressure affecting your energy. Monitoring stress levels and protecting recovery time is especially relevant now.`;
-    if (isFlow) return `${transitPlanet} is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in the 10th house. This aspect may describe a period where professional purpose and physical wellbeing feel more aligned — work engagement may feel renewing rather than draining.`;
+    if (isStress) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 10th house. This aspect may correspond with work-related depletion or role pressure affecting your energy. Monitoring stress levels and protecting recovery time is especially relevant now.`;
+    if (isFlow) return `${transitPlanet} is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in the 10th house. This aspect may describe a period where professional purpose and physical wellbeing feel more aligned — work engagement may feel renewing rather than draining.`;
     return `${transitPlanet} is conjunct your natal ${natalPlanet} in the 10th house. This can correspond with a significant vocational moment with downstream effects on energy and health. Track how work demands are affecting your body.`;
   }
 
@@ -248,53 +249,53 @@ function buildTransitHealthNote(
   type PlanetEntry = { stress: string; flow: string; conjunct: string };
   const planetNotes: Record<string, PlanetEntry> = {
     Saturn: {
-      stress: `Saturn is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Saturn stress aspects can correspond with increased pressure, fatigue from responsibility, or a feeling of restriction. Consistent sleep, nutrition, and pacing tend to be the most useful support during Saturn transits.`,
-      flow: `Saturn is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Saturn flow aspects can describe a period of consolidation. Health practices that require discipline and patience tend to take hold well during this window.`,
+      stress: `Saturn is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Saturn stress aspects can correspond with increased pressure, fatigue from responsibility, or a feeling of restriction. Consistent sleep, nutrition, and pacing tend to be the most useful support during Saturn transits.`,
+      flow: `Saturn is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Saturn flow aspects can describe a period of consolidation. Health practices that require discipline and patience tend to take hold well during this window.`,
       conjunct: `Saturn is conjunct your natal ${natalPlanet} in House ${natalHouse}. This can mark a period of sustained pressure or strengthening in the area of your chart this planet governs. Steady, sustainable effort tends to be rewarded.`,
     },
     Mars: {
-      stress: `Mars is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Mars stress aspects can correspond with energy volatility, irritability, or inflammation-adjacent patterns. Watch for overexertion or stress-driven symptoms in the coming days.`,
-      flow: `Mars is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. This aspect can describe a period of heightened physical drive. Physical activity and assertive action tend to feel natural and productive now.`,
+      stress: `Mars is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Mars stress aspects can correspond with energy volatility, irritability, or inflammation-adjacent patterns. Watch for overexertion or stress-driven symptoms in the coming days.`,
+      flow: `Mars is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. This aspect can describe a period of heightened physical drive. Physical activity and assertive action tend to feel natural and productive now.`,
       conjunct: `Mars is conjunct your natal ${natalPlanet} in House ${natalHouse}. This can correspond with a surge of energy or urgency. Channeling this deliberately — through exercise or focused effort — may prevent it from turning into agitation.`,
     },
     Jupiter: {
-      stress: `Jupiter is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Jupiter stress aspects can correspond with excess tendencies — overindulgence, overcommitment, or overlooking physical limits. Moderation is especially useful to monitor now.`,
-      flow: `Jupiter is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Jupiter flow aspects can describe a period where healing and recovery feel more accessible than usual. Restorative practices may yield stronger results.`,
+      stress: `Jupiter is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Jupiter stress aspects can correspond with excess tendencies — overindulgence, overcommitment, or overlooking physical limits. Moderation is especially useful to monitor now.`,
+      flow: `Jupiter is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Jupiter flow aspects can describe a period where healing and recovery feel more accessible than usual. Restorative practices may yield stronger results.`,
       conjunct: `Jupiter is conjunct your natal ${natalPlanet} in House ${natalHouse}. This can describe a period of growth or increased capacity — but also a tendency to overextend. Notice if you are doing too much and neglecting maintenance.`,
     },
     Neptune: {
-      stress: `Neptune is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Neptune stress aspects can correspond with diffuse symptoms, sensitivity, or signals that are hard to name. Sleep quality, hydration, and emotional clarity are worth tracking carefully during this longer-moving transit.`,
-      flow: `Neptune is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Neptune flow aspects can describe a period of heightened intuition and receptivity. Restful, low-stimulation practices may feel especially nourishing.`,
+      stress: `Neptune is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Neptune stress aspects can correspond with diffuse symptoms, sensitivity, or signals that are hard to name. Sleep quality, hydration, and emotional clarity are worth tracking carefully during this longer-moving transit.`,
+      flow: `Neptune is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Neptune flow aspects can describe a period of heightened intuition and receptivity. Restful, low-stimulation practices may feel especially nourishing.`,
       conjunct: `Neptune is conjunct your natal ${natalPlanet} in House ${natalHouse}. This is a slow, longer transit that can correspond with subtle and sometimes elusive shifts. Tracking patterns over weeks rather than days will reveal more.`,
     },
     Pluto: {
-      stress: `Pluto is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Pluto stress aspects are slow-moving and can correspond with deep pressure to transform or release something. Psychological and somatic practices alongside physical care are often the most effective support.`,
-      flow: `Pluto is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Pluto flow aspects can describe a period of quiet but lasting transformation. Deep healing work initiated now may have long-term effects.`,
+      stress: `Pluto is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Pluto stress aspects are slow-moving and can correspond with deep pressure to transform or release something. Psychological and somatic practices alongside physical care are often the most effective support.`,
+      flow: `Pluto is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Pluto flow aspects can describe a period of quiet but lasting transformation. Deep healing work initiated now may have long-term effects.`,
       conjunct: `Pluto is conjunct your natal ${natalPlanet} in House ${natalHouse}. This significant, slow transit can correspond with fundamental shifts in how this part of your chart operates. Long-term pattern tracking is more useful than single-day readings.`,
     },
     Uranus: {
-      stress: `Uranus is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Uranus stress aspects can correspond with sudden changes, disrupted patterns, or heightened nervous system sensitivity. Flexibility and grounding practices are useful during Uranus transits.`,
-      flow: `Uranus is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Uranus flow aspects can describe a period where breaking old patterns feels natural. Experimenting with new health approaches may work especially well now.`,
+      stress: `Uranus is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Uranus stress aspects can correspond with sudden changes, disrupted patterns, or heightened nervous system sensitivity. Flexibility and grounding practices are useful during Uranus transits.`,
+      flow: `Uranus is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Uranus flow aspects can describe a period where breaking old patterns feels natural. Experimenting with new health approaches may work especially well now.`,
       conjunct: `Uranus is conjunct your natal ${natalPlanet} in House ${natalHouse}. This can correspond with sudden shifts in energy or routine. Building in adaptability and tracking what changes is more useful than trying to maintain strict consistency.`,
     },
     Moon: {
-      stress: `The Moon is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Moon stress aspects can correspond with emotional sensitivity, fluid retention, or bodily rhythms feeling off. This transit passes quickly — logging how you feel now builds useful lunar cycle pattern awareness over time.`,
-      flow: `The Moon is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Moon flow aspects can describe a brief window where emotional and physical rhythms feel more aligned. Nourishing practices and early rest tend to feel especially restorative.`,
+      stress: `The Moon is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Moon stress aspects can correspond with emotional sensitivity, fluid retention, or bodily rhythms feeling off. This transit passes quickly — logging how you feel now builds useful lunar cycle pattern awareness over time.`,
+      flow: `The Moon is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Moon flow aspects can describe a brief window where emotional and physical rhythms feel more aligned. Nourishing practices and early rest tend to feel especially restorative.`,
       conjunct: `The Moon is conjunct your natal ${natalPlanet} in House ${natalHouse}. This brief transit can correspond with heightened body awareness or emotional sensitivity. Logging how you feel now may reveal useful lunar cycle patterns over time.`,
     },
     Sun: {
-      stress: `The Sun is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Sun stress aspects can correspond with tension between current life demands and the needs symbolized by your natal ${natalPlanet}. Notice where you feel pulled in conflicting directions.`,
-      flow: `The Sun is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Sun flow aspects can describe a period where your current focus naturally supports what your natal ${natalPlanet} represents. Identity and vitality may feel more integrated than usual.`,
+      stress: `The Sun is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Sun stress aspects can correspond with tension between current life demands and the needs symbolized by your natal ${natalPlanet}. Notice where you feel pulled in conflicting directions.`,
+      flow: `The Sun is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Sun flow aspects can describe a period where your current focus naturally supports what your natal ${natalPlanet} represents. Identity and vitality may feel more integrated than usual.`,
       conjunct: `The Sun is conjunct your natal ${natalPlanet} in House ${natalHouse}. This annual transit can correspond with increased attention to whatever this planet governs in your chart. A good moment to check in intentionally with that area of your health and life.`,
     },
     Mercury: {
-      stress: `Mercury is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Mercury stress aspects can correspond with scattered thinking, communication friction, or nervous system overload. Slowing down and reducing mental demands is often the most useful support.`,
-      flow: `Mercury is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Mercury flow aspects can describe a period where thinking and communication feel sharper. Good timing for health research, planning, or articulating what you have been noticing.`,
+      stress: `Mercury is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Mercury stress aspects can correspond with scattered thinking, communication friction, or nervous system overload. Slowing down and reducing mental demands is often the most useful support.`,
+      flow: `Mercury is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Mercury flow aspects can describe a period where thinking and communication feel sharper. Good timing for health research, planning, or articulating what you have been noticing.`,
       conjunct: `Mercury is conjunct your natal ${natalPlanet} in House ${natalHouse}. This brief transit can correspond with increased mental activity in the area of your chart this planet governs. A useful moment to process information and articulate what you have been observing.`,
     },
     Venus: {
-      stress: `Venus is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Venus stress aspects can correspond with tension in relationships, values, or pleasure patterns — sometimes showing up as comfort eating, social friction, or neglected self-care.`,
-      flow: `Venus is forming a ${aspect.toLowerCase()} to your natal ${natalPlanet} in House ${natalHouse}. Venus flow aspects can describe a period of ease, pleasure, and relational warmth. Restorative and enjoyable health practices feel especially nourishing now.`,
+      stress: `Venus is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Venus stress aspects can correspond with tension in relationships, values, or pleasure patterns — sometimes showing up as comfort eating, social friction, or neglected self-care.`,
+      flow: `Venus is forming ${an(aspect.toLowerCase())} to your natal ${natalPlanet} in House ${natalHouse}. Venus flow aspects can describe a period of ease, pleasure, and relational warmth. Restorative and enjoyable health practices feel especially nourishing now.`,
       conjunct: `Venus is conjunct your natal ${natalPlanet} in House ${natalHouse}. This can correspond with a period of harmony or increased social connection in the area this planet governs. Nourishing, pleasurable activities tend to feel more accessible.`,
     },
   };

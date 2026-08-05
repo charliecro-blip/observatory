@@ -29,6 +29,7 @@ import {
   getPlanetaryHour,
 } from "./astro.js";
 import { SIGN_RULERS } from "./natal.js";
+import { an } from "./article.js";
 
 function normalize360(deg: number): number {
   return ((deg % 360) + 360) % 360;
@@ -292,8 +293,8 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     passed: !frictionCarriesForward,
     detail: lastAspect
       ? frictionCarriesForward
-        ? `The Moon's last perfected aspect was a ${lastAspect.aspect} to ${lastAspect.planet} (${lastAspect.hoursAgo}h ago) with no easy aspect following soon — friction carries forward.`
-        : `The Moon's last perfected aspect was a ${lastAspect.aspect} to ${lastAspect.planet}${nextIsRelief ? `, and her next applying aspect (${nextApplying!.aspect} to ${nextApplying!.planet1 === "Moon" ? nextApplying!.planet2 : nextApplying!.planet1}) offers relief` : ""}.`
+        ? `The Moon's last perfected aspect was ${an(lastAspect.aspect)} to ${lastAspect.planet} (${lastAspect.hoursAgo}h ago) with no easy aspect following soon — friction carries forward.`
+        : `The Moon's last perfected aspect was ${an(lastAspect.aspect)} to ${lastAspect.planet}${nextIsRelief ? `, and her next applying aspect (${nextApplying!.aspect} to ${nextApplying!.planet1 === "Moon" ? nextApplying!.planet2 : nextApplying!.planet1}) offers relief` : ""}.`
       : "No recent perfected Moon aspect found in the lookback window.",
   });
 
@@ -375,8 +376,8 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     passed: benefitApplying,
     detail: nextApplying
       ? benefitApplying
-        ? `The Moon's first applying aspect is a ${nextApplying.aspect} to ${nextApplying.planet1 === "Moon" ? nextApplying.planet2 : nextApplying.planet1} — the strongest single good omen in the tradition.`
-        : `The Moon's next applying aspect is a ${nextApplying.aspect} to ${nextApplying.planet1 === "Moon" ? nextApplying.planet2 : nextApplying.planet1} — not a benefic soft aspect.`
+        ? `The Moon's first applying aspect is ${an(nextApplying.aspect)} to ${nextApplying.planet1 === "Moon" ? nextApplying.planet2 : nextApplying.planet1} — the strongest single good omen in the tradition.`
+        : `The Moon's next applying aspect is ${an(nextApplying.aspect)} to ${nextApplying.planet1 === "Moon" ? nextApplying.planet2 : nextApplying.planet1} — not a benefic soft aspect.`
       : "No applying Moon aspect found in the near term.",
   });
 

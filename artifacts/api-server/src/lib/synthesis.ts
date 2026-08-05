@@ -18,6 +18,7 @@
 import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidOfCourse, julianDay, getSunriseSunset } from "./astro.js";
 import type { PlanetAspect } from "./astro.js";
 import { dignity } from "./dignity.js";
+import { an } from "./article.js";
 import { matchPatterns, type NamedPattern } from "./patterns.js";
 import { SIGN_GUIDE } from "./interpretation.js";
 
@@ -413,7 +414,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     // the day's most RELIABLE voice, a standing condition of the whole day;
     // the lead is the loudest thing happening NOW. Two facts, so the fix is
     // wording that cannot be mistaken for a rival claim to the same throne.
-    carriedBy: `${hero} underneath it — the ${m.isDay ? "day" : "night"}'s most reliable voice, ${hTheme.verb}`,
+    carriedBy: `${hero} steady underneath — ${hTheme.verb}`,
     note: `${hero} is the ${m.isDay ? "day" : "night"}'s most reliable voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best all day` });
   const mw = dig(sect.malefic);
   push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
@@ -444,8 +445,8 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   if (sg) push({ source: "moonSign", element: sg.element as Element, activities: sg.favors.slice(0, 3), weight: dig("Moon"), salience: 0.45, polarity: 1,
     facts: { kind: "moonSign", planet: "Moon", sign: m.moonSign, dignity: dig("Moon") },
     gift: ELEMENT_ROADS[sg.element as Element].gift, shadow: ELEMENT_ROADS[sg.element as Element].shadow,
-    carriedBy: `a ${m.moonSign} Moon — ${sg.feel}`,
-    note: `a ${m.moonSign} Moon — ${sg.feel}` });
+    carriedBy: `${an(m.moonSign)} Moon — ${sg.feel}`,
+    note: `${an(m.moonSign)} Moon — ${sg.feel}` });
 
   // Applying Moon aspects — the day's engine. Nature sets polarity + strength;
   // salience scales with exactness × the aspect's strength; weight from the
