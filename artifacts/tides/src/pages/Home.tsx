@@ -33,7 +33,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
-import { useNorthStars } from "@/hooks/useTides";
+import { useNorthStars, useTidesNow } from "@/hooks/useTides";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import type { AskElectionContext } from "@/App";
@@ -48,12 +48,23 @@ interface Task {
   startedAt?: string | null;
 }
 
+// `overflow: hidden` used to be here, to keep the group rows' full-bleed
+// dividers inside the rounded corners. It also CLIPPED the Compass — the
+// activity picker is taller than its parent expected, so the last row of
+// pills ("Intimacy & sex") was cut off at the card edge with no scrollbar and
+// no hint that anything was missing. Rounded corners are not worth silently
+// eating content; the rows clip themselves instead, below.
 const card: React.CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
   borderRadius: 12,
-  overflow: "hidden",
 };
+
+// A column has a comfortable measure. Task rows were running the full 1250px
+// of a desktop window with a 15px checkbox stranded at the far left, so the
+// eye had to cross the screen to get from the control to the text. This is
+// what made a correct list feel awkward.
+const COLUMN_MAX = 760;
 
 function SectionTitle({ children, note }: { children: React.ReactNode; note?: string }) {
   return (
@@ -87,6 +98,7 @@ export default function Home({
     enabled: !!testerId,
   });
   const { data: northStars } = useNorthStars(testerId);
+  const { data: now } = useTidesNow(testerId, lat, lon);
 
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
@@ -164,14 +176,49 @@ export default function Home({
     );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "14px 0 40px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "14px 0 40px", maxWidth: COLUMN_MAX, margin: "0 auto", width: "100%" }}>
+
+      {/* 0 · RIGHT NOW — only when there is something that changes what to do.
+          The owner, looking at this page while the Moon was void: "the hero
+          should reflect what is most important right now, which is the VoC
+          quality." The rail knew she was void and Home said nothing.
+
+          It appears and disappears rather than always holding a headline. A
+          permanent hero here would either duplicate Today's woven reading or
+          get filled with something true-but-inert on the ~85% of days nothing
+          is gating — and a banner that is always present is one people stop
+          seeing, which would waste it on the days it matters. */}
+      {now?.voc?.isVOC && now.voc.reading && (
+        <div style={{
+          ...card,
+          // Benign is Lilly's four (Taurus, Cancer, Sagittarius, Pisces), where
+          // the tradition says the void is not so malevolent. Colouring those
+          // like a warning would contradict the sentence inside them.
+          borderLeft: `3px solid ${now.voc.reading.benign ? "#6f6a90" : "#a08040"}`,
+          padding: "12px 18px",
+        }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 4 }}>
+            Right now · the Moon is void
+            {now.voc.nextIngress && <span style={{ textTransform: "none", letterSpacing: 0 }}> until {now.voc.nextIngress}</span>}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.5 }}>{now.voc.reading.feel}</div>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.reading.instead}</div>
+        </div>
+      )}
 
       {/* 1 · THE COMPASS — the point of the app. Convergence for a particular
           activity, globally and personally, is the thing the owner named as
           "the really important thing", so it opens the page rather than
           sitting behind a tab. */}
-      <div style={card}>
-        <SectionTitle note="when the sky actually backs what you're deciding">The Compass</SectionTitle>
+      {/* No card wrapper either: ElectionPicker draws its own bordered panel,
+          so wrapping it produced a box inside a box with a strip of dead
+          background between the two borders. */}
+      <div>
+        {/* No SectionTitle here on purpose. ElectionPicker already titles
+            itself "Find the time for anything · Auspice" with its own
+            one-line explanation, so a wrapper heading produced two titles and
+            two subtitles stacked, both saying the same thing. One name per
+            surface — the same rule the terminology audit applied to features. */}
         <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
       </div>
 

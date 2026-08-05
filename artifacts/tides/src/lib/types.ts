@@ -50,7 +50,11 @@ export interface TidesNow {
   elementEmphasis?: string;
   planetaryHour: { planet: string; began: string; ends: string; quality: string; archetype?: string };
   upcomingHours: { planet: string; time: string }[];
-  voc?: { isVOC: boolean; lastAspect?: string; nextIngress?: string };
+  voc?: {
+    isVOC: boolean; lastAspect?: string; nextIngress?: string;
+    /** Sign-specific reading; `benign` marks Lilly's four exempt signs. */
+    reading?: { feel: string; instead: string; benign: boolean } | null;
+  };
   qualityScore?: number;
   personalTransits?: PersonalTransit[];
   moonAspects?: SkyAspect[];

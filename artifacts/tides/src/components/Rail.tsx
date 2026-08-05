@@ -100,6 +100,25 @@ function PlanetReading({ planet, planets }: { planet: string; planets?: any[] })
   );
 }
 
+/**
+ * What the Moon sign favours — UNLESS she is void, in which case she does not
+ * deliver it.
+ *
+ * The rail read "favors start the thing you've been circling" while the void
+ * banner two inches above said "Start nothing you'd have to defend tomorrow".
+ * Both came from real doctrine and they flatly contradicted each other on one
+ * screen: SIGN_MYTHOS.favors says what an Aries Moon inclines toward, and the
+ * void says she will make no further contact to bring any of it about. The
+ * sign describes the appetite; the void decides whether it lands.
+ *
+ * Same failure as the carried-by/led-by collision — two true statements, each
+ * answering a different question, with nothing on screen saying so.
+ */
+function moonFavours(sm: any, voc?: { isVOC?: boolean; reading?: { instead: string } | null }) {
+  if (voc?.isVOC && voc.reading) return { label: "instead", text: voc.reading.instead };
+  return { label: "favors", text: sm.favors.slice(0, 3).join(" · ") };
+}
+
 // A collapsed section: one dense clickable row (label + glyphs/values), the
 // instrument a fluent user reads at a glance. Click anywhere to expand.
 function GlyphRow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
@@ -245,8 +264,9 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
     }
     if (open === "moon") {
       const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
-      const takes = sm ? [
-        { l: "favors", t: sm.favors.slice(0, 3).join(" · ") },
+      const mf = sm ? moonFavours(sm, now?.voc) : null;
+      const takes = sm && mf ? [
+        { l: mf.label, t: mf.text },
         { l: "the feel", t: sm.feel },
         { l: "watch for", t: sm.shadow },
       ] : [];
@@ -732,7 +752,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
             if (!sm) return null;
             const takes: { label: string; text: string }[] = [
-              { label: "favors", text: sm.favors.slice(0, 3).join(" · ") },
+              moonFavours(sm, now?.voc),
               { label: "the feel", text: sm.feel },
               { label: "watch for", text: sm.shadow },
               { label: "essence", text: sm.essence },
