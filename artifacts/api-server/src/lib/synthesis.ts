@@ -19,6 +19,7 @@ import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidO
 import type { PlanetAspect } from "./astro.js";
 import { dignity } from "./dignity.js";
 import { an } from "./article.js";
+import { voidReading } from "./voidOfCourse.js";
 import { matchPatterns, type NamedPattern } from "./patterns.js";
 import { SIGN_GUIDE } from "./interpretation.js";
 
@@ -525,10 +526,24 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     note: `${m.phaseName} — ${waxing ? "waxing: build and begin" : "waning: finish and release"}` });
 
   // Void of course — a cautionary gate.
-  if (m.voc) push({ source: "voc", activities: ["finish", "rest", "tidy"], weight: 1.3, salience: 0.7, polarity: -1,
-    facts: { kind: "voc", planet: "Moon", sign: m.moonSign },
-    shadow: "beginning something you want to last",
-    note: "the Moon is void of course — slack water; begin nothing you want to last" });
+  if (m.voc) {
+    // Sign-specific, because a void in Taurus and a void in Capricorn are not
+    // the same afternoon — and because Lilly exempts four signs outright, which
+    // changes the counsel from "wait it out" to "use it".
+    const vr = voidReading(m.moonSign);
+    // Salience above every other testimony (the next highest is 0.9). When the
+    // Moon makes no further contact, that fact governs what the rest of the
+    // reading MEANS — a "fire day, courage to spend" over a void Moon is not a
+    // second opinion, it is advice that will not work.
+    push({ source: "voc", activities: vr?.benign ? ["rest", "tend", "finish"] : ["finish", "rest", "tidy"],
+      weight: 1.3, salience: 1.0, polarity: -1,
+      facts: { kind: "voc", planet: "Moon", sign: m.moonSign },
+      shadow: "beginning something you want to last",
+      carriedBy: vr ? `the Moon void in ${m.moonSign} — ${vr.instead}` : undefined,
+      note: vr
+        ? `the Moon is void in ${m.moonSign} — ${vr.feel}`
+        : "the Moon is void of course — slack water; begin nothing you want to last" });
+  }
 
   // Personal layer — transits to the natal chart, when a chart is present.
   if (opts.natal) T.push(...collectPersonal(m, opts.natal));
@@ -555,7 +570,17 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   // flavour names the element as a resource to spend (Forrest's "treasure"), then
   // the voice that carries it.
   const bySalience = [...T].sort((a, b) => b.salience - a.salience);
-  const lead = bySalience.find(t => t.polarity > 0 && t.element === topElement[0]) ?? bySalience.find(t => t.polarity > 0) ?? T[0];
+  // A void Moon PRE-EMPTS the lead. The filter below requires polarity > 0, so
+  // before this the hero was structurally incapable of headlining the one fact
+  // that most changes what to do with the next few hours — the reading would
+  // open "a fire day — courage to spend" and mention the void, if at all, down
+  // in the counterpoint. Salience alone could not fix that: no amount of it
+  // gets a negative-polarity testimony past a positive-polarity filter.
+  const voc = T.find(t => t.source === "voc");
+  const lead = voc
+    ?? bySalience.find(t => t.polarity > 0 && t.element === topElement[0])
+    ?? bySalience.find(t => t.polarity > 0)
+    ?? T[0];
   const ELEMENT_WORD: Record<Element, string> = {
     fire: "a fire day", earth: "an earth day", air: "an air day", water: "a water day",
   };
@@ -564,7 +589,12 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
   // STANDING condition of the whole day; the READ zone's LED BY names what is
   // loudest right now. Both were reading as the headline claim, so the hero
   // said the day was carried by the Sun immediately above LED BY Venus.
-  const flavour = `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, with ${lead.carriedBy ?? lead.note}` : ""}.`;
+  // A void reads as the day's condition, not as something it is carried with —
+  // "a fire day, with the Moon void in Aries" makes the void sound like an
+  // accompaniment to the courage. It governs the sentence instead.
+  const flavour = voc
+    ? `${voc.carriedBy ?? voc.note}.`
+    : `${ELEMENT_WORD[topElement[0]] ?? "a mixed day"}${gift ? ` — ${gift} to spend` : ""}${lead ? `, with ${lead.carriedBy ?? lead.note}` : ""}.`;
 
   // Counterpoint: the strongest testimony that cuts against the grain (opposite
   // polarity, or a strong voice in a different element) — named with its shadow.
