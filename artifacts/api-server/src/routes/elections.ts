@@ -77,7 +77,7 @@ router.get("/elections/lines-up", async (req, res) => {
     const openTasks = await db.select().from(tasks).where(eq(tasks.testerId, testerId));
     for (const t of openTasks) {
       if (t.done === "true") continue;
-      held.push({ id: `task-${t.id}`, title: t.title, kind: "task" });
+      held.push({ id: `task-${t.id}`, title: t.title, kind: "task", activityKey: t.activityKey });
     }
     // Guiding Stars are directional, so the STEP is what gets timed, not the
     // aim. "Get fit" has no window; "long run" does.
@@ -165,6 +165,7 @@ router.get("/elections/shape-day", async (req, res) => {
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
+        activityKey: t.activityKey,
       });
     }
     for (const g of await db.select().from(goals).where(eq(goals.testerId, testerId))) {
@@ -208,6 +209,7 @@ router.get("/elections/shape-week", async (req, res) => {
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate,
         startedAt: t.startedAt ? String(t.startedAt) : null,
+        activityKey: t.activityKey,
         starId: t.goalId != null ? `goal-${t.goalId}` : null,
       });
     }
@@ -236,7 +238,8 @@ router.get("/elections/needs-resolution", async (req, res) => {
   try {
     const rows = (await db.select().from(tasks).where(eq(tasks.testerId, testerId)))
       .filter(t => t.done !== "true")
-      .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes, activityKey: null }));
+      // A confirmed key is the person's own answer and outranks the matcher.
+      .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes, activityKey: t.activityKey }));
     res.json(needsResolution(rows));
   } catch {
     res.status(503).json({ error: "could not read your inventory" });

@@ -45,3 +45,34 @@ describe("what blocks placement", () => {
     expect(deep.chips).not.toEqual(unknown.chips);
   });
 });
+
+describe("a confirmed activity outranks the matcher", () => {
+  // The question used to be read-only: Compass asked "what kind of work is
+  // this?" and had nowhere to put the reply, so the same question came back
+  // every time. Tasks now carry `activity_key`, and a confirmed answer is used
+  // rather than re-derived.
+  it("stops asking once the person has answered", () => {
+    const before = needsResolution([{ id: "1", title: "Call the accountant back" }]);
+    expect(before.needsActivity.length).toBe(1);
+
+    const after = needsResolution([{ id: "1", title: "Call the accountant back", activityKey: "call-family" }]);
+    expect(after.needsActivity).toEqual([]);
+  });
+
+  // ...and the answer must actually shape what follows, not merely silence the
+  // question — the duration chips are chosen from the activity's window type.
+  it("uses the confirmed activity for the duration chips", () => {
+    const generic = needsResolution([{ id: "1", title: "Some unrecognisable errand" }]).needsDuration[0];
+    const confirmed = needsResolution([{ id: "1", title: "Some unrecognisable errand", activityKey: "deep-work" }]).needsDuration[0];
+    expect(generic.activityLabel).toBe("no particular kind");
+    expect(confirmed.activityLabel).toBe("Deep work sprint");
+    expect(confirmed.chips).not.toEqual(generic.chips);
+  });
+
+  // A key that no longer exists is stale, not authoritative.
+  it("falls back to matching when the stored key is unknown", () => {
+    const r = needsResolution([{ id: "1", title: "Deep work sprint", activityKey: "no-such-activity" }]);
+    const d = r.needsDuration[0];
+    expect(d.activityLabel).toBe("Deep work sprint");
+  });
+});

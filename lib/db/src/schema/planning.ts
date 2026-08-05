@@ -101,6 +101,14 @@ export const tasks = pgTable("tasks", {
   // Set once, on the first roll; never overwritten by later rolls.
   originalDueDate: text("original_due_date"),
   bestWindowType: text("best_window_type"), // deep_work | creative | social | etc.
+  // The matched activity correspondence, when the person has confirmed one.
+  //
+  // Goals have carried this since planet-diagnosis; tasks did not, so the
+  // scheduler re-derived it from the title on every call and a correction had
+  // nowhere to live — "what kind of work is this?" was a question the UI could
+  // ask and never record the answer to. Nullable: most tasks never need it, and
+  // an unset value means "not confirmed", never "no activity".
+  activityKey: text("activity_key"),
   // A task's own ruling planet — auto-diagnosed from its title, so specific
   // tasks under a star can each time to a different planet (the star may be
   // Mars, but its "write the plan" step reads Mercury). Drives its timing.

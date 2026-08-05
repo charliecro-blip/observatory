@@ -187,6 +187,25 @@ export default function Home({
     },
   });
 
+  // Records the person's own answer. Without this the question below was
+  // read-only — Compass asked "what kind of work is this?" and had nowhere to
+  // put the reply, so the same question came back every time. A confirmed key
+  // outranks the matcher everywhere it is read.
+  const setActivity = useMutation({
+    mutationFn: ({ id, activityKey }: { id: string; activityKey: string }) =>
+      fetchJson(`/api/tasks/${id.replace("task-", "")}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify({ activityKey }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["needs-resolution"] });
+      qc.invalidateQueries({ queryKey: ["shape-day"] });
+      qc.invalidateQueries({ queryKey: ["shape-week"] });
+      qc.invalidateQueries({ queryKey: ["lines-up"] });
+    },
+  });
+
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
     queryKey: ["shape-day", testerId, lat, lon],
     queryFn: () => fetchJson<ShapedDay>(
@@ -519,9 +538,18 @@ export default function Home({
                   what kind of work are these?
                 </div>
                 {resolution.needsActivity.slice(0, 4).map((n) => (
-                  <div key={n.id} style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
-                    {n.title}
-                    {n.options.length > 0 && <> — {n.options.map(o => o.label).join(" · ")}?</>}
+                  <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, flex: 1, minWidth: 150 }}>{n.title}</span>
+                    {/* Answerable, not just askable. */}
+                    {n.options.map((o) => (
+                      <button key={o.key} disabled={setActivity.isPending}
+                        onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
+                        style={{
+                          fontSize: 10.5, padding: "2px 9px", borderRadius: 999, cursor: "pointer",
+                          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                          color: "var(--color-foreground)",
+                        }}>{o.label}</button>
+                    ))}
                   </div>
                 ))}
               </div>
