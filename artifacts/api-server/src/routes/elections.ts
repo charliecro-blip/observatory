@@ -16,6 +16,7 @@ import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
 import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
+import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals } from "@workspace/db";
 import { computeNatalChart } from "../lib/natal.js";
 
@@ -220,6 +221,26 @@ router.get("/elections/shape-week", async (req, res) => {
   }
 
   res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days }));
+});
+
+/**
+ * GET /elections/needs-resolution — what still blocks placement.
+ *
+ * Asked when the person opens a scheduling surface, never at capture. The two
+ * uncertainties are returned SEPARATELY because they are different questions:
+ * what kind of work is this, and how much room should it get.
+ */
+router.get("/elections/needs-resolution", async (req, res) => {
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+  if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
+  try {
+    const rows = (await db.select().from(tasks).where(eq(tasks.testerId, testerId)))
+      .filter(t => t.done !== "true")
+      .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes, activityKey: null }));
+    res.json(needsResolution(rows));
+  } catch {
+    res.status(503).json({ error: "could not read your inventory" });
+  }
 });
 
 // The engine: activity → tiered times. Personalizes when the tester has a

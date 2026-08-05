@@ -95,6 +95,13 @@ interface ShapedDay {
   warnings: string[];
 }
 
+
+interface Resolution {
+  needsActivity: { id: string; title: string; options: { key: string; label: string }[] }[];
+  needsDuration: { id: string; title: string; activityKey: string; activityLabel: string; chips: number[] }[];
+  ready: number;
+}
+
 const card: React.CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
@@ -157,6 +164,29 @@ export default function Home({
   // how to spend their time, which is a different product from one that answers
   // when asked.
   const [shapeOpen, setShapeOpen] = useState(false);
+  const { data: resolution } = useQuery<Resolution>({
+    queryKey: ["needs-resolution", testerId],
+    queryFn: () => fetchJson<Resolution>("/api/elections/needs-resolution", { headers }),
+    enabled: !!testerId && shapeOpen,
+  });
+  // Storing the picked duration is what turns a SUGGESTION into a commitment.
+  // Nothing is reserved until this runs — a chip on screen has committed
+  // nothing, which is the difference between offering a duration and assuming
+  // one.
+  const setDuration = useMutation({
+    mutationFn: ({ id, minutes }: { id: string; minutes: number }) =>
+      fetchJson(`/api/tasks/${id.replace("task-", "")}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify({ estMinutes: minutes }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["needs-resolution"] });
+      qc.invalidateQueries({ queryKey: ["shape-day"] });
+      qc.invalidateQueries({ queryKey: ["shape-week"] });
+    },
+  });
+
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
     queryKey: ["shape-day", testerId, lat, lon],
     queryFn: () => fetchJson<ShapedDay>(
@@ -453,6 +483,49 @@ export default function Home({
         ) : (
           <>
             <SectionTitle note={shaping ? "working…" : undefined}>Today, shaped</SectionTitle>
+
+            {/* ONE BATCH, ASKED AT SCHEDULING TIME.
+                Capture stays one line; this is the minimum information the
+                operation just requested actually needs. Chips are proposals —
+                nothing is stored and no block is held until one is picked. */}
+            {resolution && resolution.needsDuration.length > 0 && (
+              <div style={{ padding: "6px 18px 10px", borderTop: "1px solid var(--color-border)" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 5 }}>
+                  how much room should these get?
+                </div>
+                {resolution.needsDuration.map((n) => (
+                  <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, flex: 1, minWidth: 150 }}>{n.title}</span>
+                    {n.chips.map((m) => (
+                      <button key={m} disabled={setDuration.isPending}
+                        onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
+                        style={{
+                          fontSize: 10.5, padding: "2px 9px", borderRadius: 999, cursor: "pointer",
+                          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                          color: "var(--color-foreground)",
+                        }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* The other uncertainty, asked separately — its answer shapes the
+                duration chips, so it comes first in the flow even though it
+                renders below. */}
+            {resolution && resolution.needsActivity.length > 0 && (
+              <div style={{ padding: "6px 18px 10px", borderTop: "1px solid var(--color-border)" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                  what kind of work are these?
+                </div>
+                {resolution.needsActivity.slice(0, 4).map((n) => (
+                  <div key={n.id} style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
+                    {n.title}
+                    {n.options.length > 0 && <> — {n.options.map(o => o.label).join(" · ")}?</>}
+                  </div>
+                ))}
+              </div>
+            )}
             {shaped?.placed.map((p) => (
               <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "6px 18px", borderTop: "1px solid var(--color-border)" }}>
                 <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 92 }}>

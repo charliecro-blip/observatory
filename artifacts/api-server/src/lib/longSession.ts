@@ -33,7 +33,7 @@
 
 import { dayTimeline, containers, type TimelineEvent, type Commitment } from "./dayTimeline.js";
 import { activityByKey, modeOf } from "./activityCorrespondences.js";
-import { evaluateActivityInterval } from "./electionEngine.js";
+import { evaluateActivityInterval, skyEventRole } from "./electionEngine.js";
 import { SIGNS, moonLongitude, julianDay, getPlanetaryHour, getSunriseSunset } from "./astro.js";
 
 /** Classical antipathy: fire opposes water, air opposes earth. */
@@ -227,9 +227,11 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
 
       const arc = hoursReal ? arcOf(startAt, endAt, lat, lon, preferred) : [];
       const covered = arc.filter(a => a.preferred);
-      const anchorEvent = inside.find(e => e.role === "anchor" &&
-        preferred.has(String(e.detail?.planet ?? "")) )
-        ?? inside.find(e => e.role === "anchor");
+      // Which events are anchors is decided by the evaluator now, per activity —
+      // a perfection is only worth building around when the activity has some
+      // relationship to lunar contact at all.
+      const anchors = inside.filter(e => skyEventRole(e.kind, activityKey) === "anchor");
+      const anchorEvent = anchors.find(e => preferred.has(String(e.detail?.planet ?? ""))) ?? anchors[0];
 
       candidates.push({
         startAt, endAt, durationMinutes: minutes,

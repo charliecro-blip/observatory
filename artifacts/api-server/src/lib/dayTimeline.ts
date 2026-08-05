@@ -43,7 +43,23 @@ import {
 } from "./astro.js";
 import { wakingSegments } from "./waking.js";
 
-export type EventRole = "hard-boundary" | "qualification" | "anchor" | "chapter";
+/**
+ * Only two roles, and only one of them is a judgment.
+ *
+ * `hard-boundary` is PRACTICAL — a meeting, the edge of the waking day. It is
+ * the same fact for every activity, so this module can and must decide it.
+ *
+ * `sky-event` is everything astrological, and it deliberately carries NO
+ * interpretation. What a void or an ingress MEANS is activity-relative: a void
+ * is a serious objection to an inception, a useful shift for finishing, and
+ * close to irrelevant to an already-running deep-work session. This file used
+ * to stamp `qualification`, `anchor` and `chapter` universally, which is the
+ * same mistake that made longSession and the election engine disagree on 20%
+ * of activity-days — a judgment made where the activity is not known.
+ *
+ * `skyEventRole(kind, activityKey)` in electionEngine assigns the real role.
+ */
+export type EventRole = "hard-boundary" | "sky-event";
 
 export type EventKind =
   | "waking-start" | "waking-end"
@@ -90,14 +106,12 @@ const ROLE_OF: Record<EventKind, EventRole> = {
   "commitment-start": "hard-boundary",
   "commitment-end": "hard-boundary",
   "horizon-end": "hard-boundary",
-  "void-begins": "qualification",
-  "void-ends": "qualification",
-  "moon-ingress": "chapter",
-  "hour-change": "chapter",
-  // The best idea in the design, and the reason `anchor` exists as a role: a
-  // perfection has a CLOCK TIME, so a long block should be positioned around
-  // it rather than merely scored for containing it somewhere that afternoon.
-  "moon-perfects": "anchor",
+  // Facts, not judgments. See EventRole.
+  "void-begins": "sky-event",
+  "void-ends": "sky-event",
+  "moon-ingress": "sky-event",
+  "hour-change": "sky-event",
+  "moon-perfects": "sky-event",
 };
 
 const jdToDate = (jd: number) => new Date((jd - 2440587.5) * 86400000);

@@ -250,6 +250,50 @@ const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
  * can be met, whether a duration is known. Those are practical, and higher
  * layers own them entirely.
  */
+/**
+ * What a sky event MEANS for a given activity.
+ *
+ * The role a void or an ingress plays is not a property of the event — it
+ * depends entirely on what you intend to do. A void beginning is:
+ *
+ *   · a serious objection to an inception meant to last;
+ *   · a useful shift for finishing and refining;
+ *   · close to irrelevant to a deep-work session already under way;
+ *   · positively suitable for clearing, retreat, or rest.
+ *
+ * `dayTimeline` used to stamp these roles universally, which put a judgment
+ * where the activity is unknown — the same defect that had two modules
+ * disagreeing about suitability on 20% of activity-days.
+ */
+export type SkyEventRole = "anchor" | "qualification" | "internal-chapter" | "irrelevant";
+
+export function skyEventRole(kind: string, activityKey: string): SkyEventRole {
+  const act = ACTIVITIES.find(a => a.key === activityKey);
+  if (!act) return "irrelevant";
+  const mode = modeOf(act.key);
+
+  if (kind === "moon-perfects") {
+    // A perfection has a clock time worth building around — but only when the
+    // activity has some relationship to lunar contact at all.
+    return Object.keys(act.planets ?? {}).length ? "anchor" : "internal-chapter";
+  }
+
+  if (kind === "void-begins" || kind === "void-ends") {
+    if (act.voc === "favor") return "internal-chapter";   // the void suits this
+    if (act.voc === "neutral") return "irrelevant";
+    // "avoid": how much it bites depends on whether this is a BEGINNING.
+    return mode === "inception" ? "qualification" : "internal-chapter";
+  }
+
+  if (kind === "moon-ingress") return "internal-chapter";
+  if (kind === "hour-change") {
+    // An hour change matters to activities that name preferred rulers, and is
+    // texture to everything else.
+    return (act.hourRulers ?? []).length ? "internal-chapter" : "irrelevant";
+  }
+  return "irrelevant";
+}
+
 export interface ActivityAssessment {
   activityKey: string;
   startAt: Date;

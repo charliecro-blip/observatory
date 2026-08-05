@@ -94,28 +94,49 @@ describe("containers", () => {
   });
 });
 
-describe("anchors", () => {
-  // `anchor` was declared as a role and nothing emitted it — a variant that
-  // could not occur, which is the same defect as a flag that never turns on.
-  // Downstream cannot position a session around an exactitude the timeline
-  // never reports.
-  it("emits perfections as anchors, and often enough to be usable", () => {
-    let days = 0, withAnchor = 0, total = 0;
+describe("perfections, and who decides what they mean", () => {
+  // The timeline emits perfections as FACTS. It used to stamp them "anchor"
+  // universally, which put a judgment where the activity is unknown — the same
+  // defect that had two modules disagreeing about suitability. What a
+  // perfection is worth depends on what you intend to do with the block.
+  it("emits perfections often enough to be usable, as plain sky events", () => {
+    let days = 0, withPerfection = 0, total = 0;
     for (let d = 1; d <= 28; d++) {
       days++;
-      const anchors = dayTimeline({ date: new Date(2026, 7, d, 12, 0), lat: 30.27, lon: -97.74 })
-        .filter(e => e.role === "anchor");
-      if (anchors.length) withAnchor++;
-      total += anchors.length;
-      for (const a of anchors) {
-        expect(a.kind).toBe("moon-perfects");
-        expect(a.detail?.planet).toBeTruthy();
-        expect(a.detail?.aspect).toBeTruthy();
+      const perfections = dayTimeline({ date: new Date(2026, 7, d, 12, 0), lat: 30.27, lon: -97.74 })
+        .filter(e => e.kind === "moon-perfects");
+      if (perfections.length) withPerfection++;
+      total += perfections.length;
+      for (const p of perfections) {
+        expect(p.role).toBe("sky-event");     // a fact, not a verdict
+        expect(p.detail?.planet).toBeTruthy();
+        expect(p.detail?.aspect).toBeTruthy();
       }
     }
-    // The Moon contacts something most days; a month with almost none would
-    // mean the lookup is broken rather than the sky being quiet.
-    expect(withAnchor).toBeGreaterThan(days / 2);
+    expect(withPerfection).toBeGreaterThan(days / 2);
     expect(total).toBeGreaterThan(days);
+  });
+
+  it("assigns no astrological role of its own", () => {
+    for (let d = 1; d <= 14; d++) {
+      for (const e of dayTimeline({ date: new Date(2026, 7, d, 12, 0), lat: 30.27, lon: -97.74 })) {
+        expect(["hard-boundary", "sky-event"]).toContain(e.role);
+      }
+    }
+  });
+
+  // ...and the evaluator does assign one, per activity. Without this the change
+  // above would just be deletion.
+  it("the evaluator turns a perfection into an anchor for an activity that wants one", async () => {
+    const { skyEventRole } = await import("../artifacts/api-server/src/lib/electionEngine.js");
+    expect(skyEventRole("moon-perfects", "deep-work")).toBe("anchor");
+    // A void reads differently per activity, which is the whole point. Checked
+    // against the real policies rather than guessed: sign-contract is an
+    // `avoid` inception, so a void qualifies it; deep-work is `neutral`, so the
+    // same event is genuinely irrelevant to it. Both are correct answers to the
+    // same sky, which is why no universal role could have been right.
+    expect(skyEventRole("void-begins", "sign-contract")).toBe("qualification");
+    expect(skyEventRole("void-begins", "deep-work")).toBe("irrelevant");
+    expect(skyEventRole("moon-perfects", "no-such-activity")).toBe("irrelevant");
   });
 });
