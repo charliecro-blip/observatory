@@ -451,7 +451,7 @@ export function getSunriseSunset(
   jd: number,
   latDeg: number,
   lonDeg: number,
-): { sunrise: Date; sunset: Date } {
+): { sunrise: Date; sunset: Date; polar: "day" | "night" | null } {
   const T     = (jd - 2451545.0) / 36525;
   const L0    = normalize360(280.46646 + 36000.76983 * T);
   const M     = normalize360(357.52911 + 35999.05029 * T) * DEG2RAD;
@@ -479,8 +479,18 @@ export function getSunriseSunset(
 
   let riseMinutes: number;
   let setMinutes: number;
+  // Above the Arctic/Antarctic circles the Sun may not rise or set at all.
+  // The fallback below invents a symmetric twelve-hour day so that callers
+  // wanting a Date always get one — but that day is FICTION, and callers that
+  // divide it into planetary hours were consuming it as fact. Tromsø on the
+  // winter solstice reported 12.00h of daylight and a full set of ~60-minute
+  // hours. `polar` exists so those callers can withhold instead, which is the
+  // treatment hours already get when the LOCATION is a guess: the app's
+  // standing rule is that fiction dressed as a schedule needs removing, not a
+  // caption.
+  let polar: "day" | "night" | null = null;
   if (Math.abs(cosH) > 1) {
-    // Midnight sun or polar night — use 6h offset
+    polar = cosH > 1 ? "night" : "day";   // cosH > 1 → never rises
     riseMinutes = noonMinutes - 360;
     setMinutes  = noonMinutes + 360;
   } else {
@@ -495,6 +505,7 @@ export function getSunriseSunset(
   return {
     sunrise: new Date(baseDateMs + riseMinutes * 60000),
     sunset:  new Date(baseDateMs + setMinutes  * 60000),
+    polar,
   };
 }
 

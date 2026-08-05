@@ -324,7 +324,11 @@ router.get("/tides/now", async (req, res) => {
   // and where we are in the light-year (solstice-to-solstice). ─────────────
   const sunNow = getSunriseSunset(jd, lat, lon);
   const sunYest = getSunriseSunset(jd - 1, lat, lon);
-  const isDaySect = date >= sunNow.sunrise && date < sunNow.sunset;
+  // Polar day/night has no sunrise to compare against — getSunriseSunset
+  // substitutes a symmetric twelve-hour day, and comparing to that would flip
+  // sect (and therefore the dignity labels it drives) for half of every polar
+  // day. Sect is answerable there even though planetary hours are not.
+  const isDaySect = sunNow.polar ? sunNow.polar === "day" : (date >= sunNow.sunrise && date < sunNow.sunset);
   const lenMin = Math.round((sunNow.sunset.getTime() - sunNow.sunrise.getTime()) / 60000);
   const deltaMin = Math.round((lenMin * 60000 - (sunYest.sunset.getTime() - sunYest.sunrise.getTime())) / 60000);
   // Light phase from the Sun's ecliptic longitude (season-accurate, hemisphere-aware)

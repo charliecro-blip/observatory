@@ -207,8 +207,14 @@ export function dayTimeline(opts: DayTimelineOpts): TimelineEvent[] {
 
   // ── Planetary hour changes. Withheld entirely on a guessed meridian: every
   //    boundary would be fiction, and captioning fiction is not a fix.
-  if (locationKnown) {
-    const sun = getSunriseSunset(jdStart, lat, lon);
+  //
+  //    Withheld for the same reason under POLAR day or night: above the polar
+  //    circles the Sun may not rise or set, and getSunriseSunset substitutes a
+  //    symmetric twelve-hour day so its callers always get a Date. Dividing
+  //    that substitute into twelve gives twelve fictional hours. Unknown
+  //    location and polar night are different causes of the same problem.
+  const sun = getSunriseSunset(jdStart, lat, lon);
+  if (locationKnown && !sun.polar) {
     if (sun?.sunrise && sun?.sunset) {
       let cursor = new Date(dayStart);
       let guard = 0;

@@ -368,8 +368,18 @@ function gather(date: Date, lat: number, lon: number, opts: ReadingOptions = {})
   const sunLon = lonOf("Sun");
   // Sect from the REAL horizon — day iff the Sun is between sunrise and sunset
   // at this place. (The classical definition, not a clock proxy.)
-  const { sunrise, sunset } = getSunriseSunset(jd, lat, lon);
-  const isDay = date >= sunrise && date < sunset;
+  //
+  // Under polar day or night there is no sunrise to compare against, and
+  // getSunriseSunset substitutes a symmetric twelve-hour day so callers always
+  // get a Date. Comparing to that substitute would put a Tromsø user in
+  // December on the wrong side of sect for half of every day — and sect drives
+  // dignity, so exaltation and triplicity would be wrong with it.
+  //
+  // Unlike planetary hours, sect is ANSWERABLE here rather than fictional: in
+  // polar night the Sun is below the horizon the whole time, in polar day it is
+  // above. So this is corrected, not withheld.
+  const { sunrise, sunset, polar } = getSunriseSunset(jd, lat, lon);
+  const isDay = polar ? polar === "day" : (date >= sunrise && date < sunset);
   const dig = (name: string) => dignity(name, lonOf(name), { retrograde: retroOf(name), sunLongitude: sunLon, isDay }).weight;
   const aspects = getMajorAspects(jd);
   // Day-of-week ruler in the VIEWER's calendar (matches the /tides/now convention).
