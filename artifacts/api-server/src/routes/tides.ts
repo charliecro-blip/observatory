@@ -21,7 +21,7 @@ import { computeDayArc, findPeakWindows, nextIngressAfterMs } from "../lib/dayar
 import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
-import { voidReading } from "../lib/voidOfCourse.js";
+import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
 
 const router: IRouter = Router();
 
@@ -372,7 +372,7 @@ router.get("/tides/now", async (req, res) => {
     // changes the counsel from "wait it out" to "use it". Only computed when
     // she is actually void; a reading attached to a non-void Moon would be a
     // fact about nothing.
-    voc: { isVOC: voc, nextIngress, reading: voc ? voidReading(moonSign) : null },
+    voc: { isVOC: voc, nextIngress, scope: voc ? VOID_SCOPE : null, reading: voc ? voidReading(moonSign) : null },
     moonPhase: moonPhaseName,
     moonFraction: fraction,
     moonIllumination: fraction, // alias for Rail component

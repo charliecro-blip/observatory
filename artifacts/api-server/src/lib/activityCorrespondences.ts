@@ -611,6 +611,36 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
 // Deliberately transparent: keyword containment scored by specificity, with
 // label words counting too. Returns null below a confidence floor — the AI
 // layer can take over from there, grounded by this table's vocabulary.
+/**
+ * Ranked activity candidates, best first.
+ *
+ * `matchActivity` returns only the winner, which is fine for a probe and wrong
+ * for anything that has to admit doubt: "Prepare keynote" could be drafting,
+ * designing slides, rehearsing, or presenting, and a caller that sees one
+ * answer cannot tell that from a clean match. Home needs the MARGIN to decide
+ * whether to time a task or ask about it.
+ */
+/** Look up an activity by its key. Null when the key is stale or unknown. */
+export function activityByKey(key: string): ActivityCorrespondence | null {
+  return ACTIVITIES.find(a => a.key === key) ?? null;
+}
+
+export function rankActivities(text: string, limit = 3): { activity: ActivityCorrespondence; score: number }[] {
+  const t = ` ${text.toLowerCase()} `;
+  const scored: { activity: ActivityCorrespondence; score: number }[] = [];
+  for (const a of ACTIVITIES) {
+    let score = 0;
+    for (const k of a.keywords) {
+      if (t.includes(k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
+    }
+    for (const w of a.label.toLowerCase().split(/[^a-z]+/)) {
+      if (w.length >= 4 && t.includes(w)) score += 0.5;
+    }
+    if (score > 0) scored.push({ activity: a, score });
+  }
+  return scored.sort((x, y) => y.score - x.score).slice(0, limit);
+}
+
 export function matchActivity(text: string): { activity: ActivityCorrespondence; score: number } | null {
   const t = ` ${text.toLowerCase()} `;
   let best: { activity: ActivityCorrespondence; score: number } | null = null;

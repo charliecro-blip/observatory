@@ -36,6 +36,7 @@ import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow } from "@/hooks/useTides";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
+import { useTester } from "@/contexts/tester-context";
 import type { AskElectionContext } from "@/App";
 
 interface Task {
@@ -54,6 +55,24 @@ interface Task {
 // pills ("Intimacy & sex") was cut off at the card edge with no scrollbar and
 // no hint that anything was missing. Rounded corners are not worth silently
 // eating content; the rows clip themselves instead, below.
+
+interface LinesUpResult {
+  held: { id: string; title: string; kind: string };
+  activityKey: string; activityLabel: string;
+  alternative?: { key: string; label: string };
+  startClock: string; endClock: string;
+  supportLevel: string; suitability: string;
+  personal: boolean; why: string;
+}
+interface LinesUp {
+  results: LinesUpResult[];
+  clarify: { held: { id: string; title: string }; candidates: { key: string; label: string }[] }[];
+  quiet: "supported-only" | "nothing-singled-out" | "thin-inventory" | null;
+  nextOpening: { activityLabel: string; date: string; startClock: string } | null;
+  notPriced: number;
+  chartAvailable: boolean;
+}
+
 const card: React.CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
@@ -99,6 +118,14 @@ export default function Home({
   });
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
+  const { locationKnown } = useTester();
+  const { data: lines } = useQuery<LinesUp>({
+    queryKey: ["lines-up", testerId, lat, lon],
+    queryFn: () => fetchJson<LinesUp>(
+      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
+      { headers }),
+    enabled: !!testerId,
+  });
 
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
@@ -203,23 +230,125 @@ export default function Home({
           </div>
           <div style={{ fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.5 }}>{now.voc.reading.feel}</div>
           <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.reading.instead}</div>
+          {/* The scope line, so "start nothing" cannot read as a veto over the
+              computed results directly below it. */}
+          {now.voc.scope && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginTop: 5 }}>{now.voc.scope}</div>
+          )}
         </div>
       )}
 
-      {/* 1 · THE COMPASS — the point of the app. Convergence for a particular
-          activity, globally and personally, is the thing the owner named as
-          "the really important thing", so it opens the page rather than
-          sitting behind a tab. */}
-      {/* No card wrapper either: ElectionPicker draws its own bordered panel,
-          so wrapping it produced a box inside a box with a strip of dead
-          background between the two borders. */}
-      <div>
-        {/* No SectionTitle here on purpose. ElectionPicker already titles
-            itself "Find the time for anything · Auspice" with its own
-            one-line explanation, so a wrapper heading produced two titles and
-            two subtitles stacked, both saying the same thing. One name per
-            surface — the same rule the terminology audit applied to features. */}
-        <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
+      {/* 1 · WHAT LINES UP — the primary module, and the product's actual
+          claim. Home used to show a timing engine and the task list side by
+          side with no way for either to know the other existed, which left the
+          join to the reader: read a task, hold it in your head, scroll up,
+          find it again in a category tree.
+
+          It leads with RELEVANT TIMING, not with convergence. Leading with
+          convergence would force one of two bad outcomes — a usually-blank
+          module, or a definition quietly widened until there was enough to
+          show. `convergent` stays an earned label inside it. */}
+      <div style={card}>
+        <SectionTitle note={lines?.results.length ? "timing for what you're holding" : undefined}>
+          What lines up
+        </SectionTitle>
+
+        {lines?.results.map((r) => (
+          <div key={r.held.id} style={{ padding: "8px 18px 12px", borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <span style={{
+                fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", fontWeight: 700,
+                color: r.supportLevel === "convergent" ? "#4a8050" : "var(--text-3)",
+              }}>{r.supportLevel === "convergent" ? "several factors converge" : "supported"}</span>
+              {r.suitability === "qualified" && (
+                <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a08040" }}>qualified</span>
+              )}
+              {r.personal && (
+                <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#6f6a90" }}>your chart</span>
+              )}
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--color-foreground)", marginTop: 3 }}>{r.held.title}</div>
+            <div style={{ fontSize: 12, color: "var(--color-primary)", marginTop: 2 }}>
+              {r.startClock}–{r.endClock}
+            </div>
+            {/* The receipt. An astro-literate reader has to be able to see what
+                established this and disagree with it — a computed surface is
+                only as serious as its provenance. */}
+            {r.why && (
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.45 }}>
+                {r.why}
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
+              read as <b style={{ fontWeight: 600 }}>{r.activityLabel}</b>
+              {r.alternative && (
+                <> · <button onClick={() => onNavigate("launch")} style={{
+                  fontSize: 10, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--color-primary)", textDecoration: "underline",
+                }}>not {r.alternative.label.toLowerCase()}?</button></>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Ambiguity is output, not a gap. Timing the first guess for
+            "Prepare keynote" would manufacture confidence exactly where the
+            engine should be most careful. */}
+        {lines?.clarify.map((c) => (
+          <div key={c.held.id} style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)" }}>
+              needs one clarification
+            </div>
+            <div style={{ fontSize: 12.5, marginTop: 2 }}>{c.held.title}</div>
+            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
+              {c.candidates.map(x => x.label).join(" or ")}? Compass won't time it until it knows which.
+            </div>
+          </div>
+        ))}
+
+        {lines?.quiet && (
+          <div style={{ padding: "6px 18px 12px", borderTop: lines.results.length ? "1px solid var(--color-border)" : "none" }}>
+            <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>
+              {lines.quiet === "thin-inventory"
+                ? "Compass doesn't have enough to time yet."
+                : lines.quiet === "supported-only"
+                ? "Nothing strongly converges today."
+                : "Nothing you're holding is especially singled out today."}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 2 }}>
+              {lines.quiet === "thin-inventory"
+                ? "Add something you're holding, or look up an activity below."
+                : lines.quiet === "supported-only"
+                ? "What's above still has ordinary support — that's a real answer, not a lesser one."
+                : "Use the day by priority or momentum instead."}
+            </div>
+            {/* One line, never a forecast. It gives the absence temporal shape:
+                the engine is working and today's quiet is a result rather than
+                missing data. The full horizon belongs in the Compass. */}
+            {lines.nextOpening && (
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
+                Next notable opening — {lines.nextOpening.activityLabel}, {lines.nextOpening.date} at {lines.nextOpening.startClock}.
+              </div>
+            )}
+          </div>
+        )}
+
+        {lines && lines.notPriced > 0 && (
+          <div style={{ fontSize: 10, color: "var(--text-3)", padding: "0 18px 10px" }}>
+            {lines.notPriced} more held {lines.notPriced === 1 ? "item wasn't" : "items weren't"} timed this load.
+          </div>
+        )}
+
+        {/* The picker is the QUERY INTERFACE, not the page's intelligence. It
+            belongs to the bottom of this module rather than being a section. */}
+        <details style={{ borderTop: "1px solid var(--color-border)" }}>
+          <summary style={{ padding: "9px 18px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
+            Find a time for something else →
+          </summary>
+          <div style={{ padding: "0 6px 6px" }}>
+            <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
+          </div>
+        </details>
       </div>
 
       {/* 2 · THE DUMP */}

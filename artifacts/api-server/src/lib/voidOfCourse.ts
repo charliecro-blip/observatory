@@ -36,6 +36,22 @@
  * Lilly, Christian Astrology: the Moon void of course is not so malevolent in
  * these four. Inherited doctrine — do not add signs to this list on taste.
  */
+/**
+ * What a void does and does not govern.
+ *
+ * Home puts this banner directly above computed timing for the person's own
+ * work, so a bare "begin nothing" reads as a veto over everything below it — a
+ * user would see "several factors converge for revising the proposal at 2pm"
+ * under a line telling them to start nothing. Those are compatible in doctrine
+ * (revision is execution; the void is thin for INCEPTIONS meant to establish
+ * themselves) but the compatibility has to be legible in the content itself
+ * rather than explained by a caption, which would be the disclaimer smell.
+ *
+ * So the banner states its own scope, and the results below need no defending.
+ */
+export const VOID_SCOPE =
+  "Good for finishing, refining, and work already underway; thin for beginnings meant to last.";
+
 export const LILLY_EXEMPT = new Set(["Taurus", "Cancer", "Sagittarius", "Pisces"]);
 
 export interface VoidReading {

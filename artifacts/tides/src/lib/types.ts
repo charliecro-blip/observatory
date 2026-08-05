@@ -52,6 +52,8 @@ export interface TidesNow {
   upcomingHours: { planet: string; time: string }[];
   voc?: {
     isVOC: boolean; lastAspect?: string; nextIngress?: string;
+    /** What the void governs — stated so results below need no disclaimer. */
+    scope?: string | null;
     /** Sign-specific reading; `benign` marks Lilly's four exempt signs. */
     reading?: { feel: string; instead: string; benign: boolean } | null;
   };
