@@ -9,10 +9,19 @@
  *
  * So the order here is an argument, not a layout preference:
  *
- *   1. THE COMPASS      what you are deciding about, and when the sky backs it
+ *   0. RIGHT NOW        conditional — only when a real condition is gating
+ *   1. WHAT LINES UP    timing computed for what you already hold
  *   2. THE DUMP         everything you are holding, in one view
  *   3. GUIDING STARS    visible, not central
  *   4. THE LOG          only once you have actually done something today
+ *
+ * The picker is NOT the first module. It sat where the page's intelligence
+ * belongs and left the actual join — read a task, hold it in your head, scroll
+ * up, find it again in a category tree — to the reader, which withheld the
+ * product's central claim. It is still essential, and it is still a query
+ * interface, so it lives at the bottom of module 1.
+ *
+ * Home notices. The Compass lets you investigate. Today puts it on the clock.
  *
  * Today keeps the day laid out in time. This page is what you are steering.
  *

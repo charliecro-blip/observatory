@@ -33,10 +33,6 @@
  */
 
 /**
- * Lilly, Christian Astrology: the Moon void of course is not so malevolent in
- * these four. Inherited doctrine — do not add signs to this list on taste.
- */
-/**
  * What a void does and does not govern.
  *
  * Home puts this banner directly above computed timing for the person's own
@@ -52,6 +48,10 @@
 export const VOID_SCOPE =
   "Good for finishing, refining, and work already underway; thin for beginnings meant to last.";
 
+/**
+ * Lilly, Christian Astrology: the Moon void of course is not so malevolent in
+ * these four. Inherited doctrine — do not add signs to this list on taste.
+ */
 export const LILLY_EXEMPT = new Set(["Taurus", "Cancer", "Sagittarius", "Pisces"]);
 
 export interface VoidReading {
