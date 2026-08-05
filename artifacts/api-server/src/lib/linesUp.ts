@@ -84,6 +84,13 @@ export interface LinesUpResult {
   alternative?: { key: string; label: string };
   startClock: string;
   endClock: string;
+  /**
+   * True when the testimony holds for the whole day rather than naming an hour
+   * — the Moon's sign, say. Rendered as "all day", never as a clock range: a
+   * standing condition printed as "7 AM–11 PM" claims a precision it does not
+   * have, and this module's job is to answer WHEN.
+   */
+  allDay: boolean;
   supportLevel: string;
   suitability: string;
   /** True when the person's own chart contributed testimony. */
@@ -111,6 +118,16 @@ export interface LinesUp {
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   /** Held items not priced because of MAX_PRICED. Never silently dropped. */
   notPriced: number;
+  /**
+   * How many election computations this call actually ran.
+   *
+   * Elections are memoised per ACTIVITY, so ten tasks that all read as deep
+   * work cost one run rather than ten — the difference between a six-second
+   * Home load and a fast one. Reporting it makes that property directly
+   * observable instead of inferable from a stopwatch, which is what a test in a
+   * parallel suite cannot measure reliably.
+   */
+  electionsComputed: number;
   chartAvailable: boolean;
 }
 
@@ -146,7 +163,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   // basis for a computed answer and should be told so directly rather than
   // shown a blank module.
   if (held.length === 0) {
-    return { results: [], clarify: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, chartAvailable: !!natal };
+    return { results: [], clarify: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
   }
 
   const clarify: Clarification[] = [];
@@ -209,6 +226,11 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     const w = [...out.windows].sort((a: any, b: any) =>
       (RANK[a.supportLevel] ?? 9) - (RANK[b.supportLevel] ?? 9) ||
       (SUIT[a.suitability] ?? 9) - (SUIT[b.suitability] ?? 9) ||
+      // A BOUNDED window beats an all-day one at equal strength. Both are real
+      // testimony, but only one of them answers the question — "the Moon is in
+      // Taurus, which suits finishing" is true from 7 AM to 11 PM and tells you
+      // nothing about which hour to pick.
+      (a.allDay ? 1 : 0) - (b.allDay ? 1 : 0) ||
       (b.score ?? 0) - (a.score ?? 0))[0] as any;
     if (!w) continue;
     // "defer" is the engine saying the matter itself is not suited now. It is
@@ -224,7 +246,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     if (w.supportLevel === "supported") sawSupported = true;
     results.push({
       held: t.item, activityKey: t.key, activityLabel: t.label, alternative: t.alt,
-      startClock: w.startClock, endClock: w.endClock,
+      startClock: w.startClock, endClock: w.endClock, allDay: !!w.allDay,
       supportLevel: w.supportLevel, suitability: w.suitability,
       personal: !!w.personal,
       why: typeof w.why === "string" ? w.why : "",
@@ -251,6 +273,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     quiet,
     nextOpening: quiet ? nextOpeningFor(priced, opts) : null,
     notPriced,
+    electionsComputed: byActivity.size,
     chartAvailable: !!natal,
   };
 }

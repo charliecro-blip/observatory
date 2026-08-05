@@ -54,27 +54,55 @@ describe("what lines up", () => {
 
   // This started as a 5s test timeout and was a real performance finding: ten
   // held items meant ten full ephemeris runs at ~600ms each, so anyone with ten
-  // open tasks waited six seconds on every Home load. Elections are now
-  // memoised per ACTIVITY, since the computation does not depend on which task
-  // asked.
+  // open tasks waited six seconds on every Home load. Elections are memoised
+  // per ACTIVITY, since the computation does not depend on which task asked.
   //
-  // Asserted as a RATIO, not a wall-clock budget. A fixed millisecond ceiling
-  // measures the machine rather than the code, and it duly passed alone and
-  // failed under the parallel suite. Twelve identical items should cost about
-  // what one costs; without memoisation the ratio would be ~12.
+  // Asserted by COUNTING, not by timing. A millisecond budget measured the
+  // machine and failed under the parallel suite; so did a ratio, because the
+  // one-item baseline is a few milliseconds and jitter swamps it. The result
+  // now reports how many elections it ran, which is exact and load-independent.
   it("prices each activity once, not each item", () => {
-    const one = [held("Deep work sprint number 0")];
     const many = Array.from({ length: 12 }, (_, i) => held(`Deep work sprint number ${i}`));
+    const r = linesUp({ ...base, held: many });
+    expect(r.electionsComputed).toBe(1);           // twelve items, one activity
+  });
 
-    linesUp({ ...base, held: one });          // warm anything lazily initialised
-    const t0 = performance.now();
-    linesUp({ ...base, held: one });
-    const single = performance.now() - t0;
+  it("prices distinct activities separately", () => {
+    const mixed = [held("Deep work sprint"), held("Long run"), held("Sign a contract"), held("Deep work sprint again")];
+    const r = linesUp({ ...base, held: mixed });
+    expect(r.electionsComputed).toBeGreaterThan(1);
+    expect(r.electionsComputed).toBeLessThanOrEqual(3);
+  });
+});
 
-    const t1 = performance.now();
-    linesUp({ ...base, held: many });
-    const twelve = performance.now() - t1;
+describe("all-day testimony", () => {
+  // The engine returns windows with allDay:true — the Moon's sign, say — whose
+  // clock range is just the waking day. Rendering "7 AM–11 PM" as a
+  // recommendation dressed a standing condition up as an appointment, and this
+  // module exists to answer WHEN.
+  it("prefers a bounded window over an all-day one at equal strength", () => {
+    let sawBounded = 0, sawAllDay = 0;
+    for (const title of ["Deep work sprint", "Finish & ship the last 10%", "Sign a contract", "Long run"]) {
+      const r = linesUp({ ...base, held: [held(title)] });
+      for (const x of r.results) (x.allDay ? sawAllDay++ : sawBounded++);
+    }
+    // If this only ever saw all-day rows the preference would be untested.
+    expect(sawBounded + sawAllDay).toBeGreaterThan(0);
+    expect(sawBounded).toBeGreaterThanOrEqual(sawAllDay);
+  });
 
-    expect(twelve / Math.max(single, 1)).toBeLessThan(4);
+  // `expect(typeof x.allDay).toBe("boolean")` was here, which asserts nothing —
+  // the fourth instance of that pattern in this session. And the loop ran six
+  // IDENTICAL iterations, so it was six full election computations proving one
+  // thing once and timing out. Both replaced with the actual claim: whatever a
+  // row says, the flag and the clock range agree about it.
+  it("never prints the waking day as if it were an hour", () => {
+    const r = linesUp({ ...base, held: [held("Deep work sprint"), held("Long run"), held("Sign a contract")] });
+    for (const x of r.results) {
+      const spansWholeDay = /^7 ?AM$/.test(x.startClock) && /^11 ?PM$/.test(x.endClock);
+      // A whole-day span is only allowed to appear when the row admits it is
+      // an all-day condition, which is what lets the UI say "all day" instead.
+      if (spansWholeDay) expect(x.allDay).toBe(true);
+    }
   });
 });

@@ -69,7 +69,7 @@ interface LinesUpResult {
   held: { id: string; title: string; kind: string };
   activityKey: string; activityLabel: string;
   alternative?: { key: string; label: string };
-  startClock: string; endClock: string;
+  startClock: string; endClock: string; allDay: boolean;
   supportLevel: string; suitability: string;
   personal: boolean; why: string;
 }
@@ -80,6 +80,18 @@ interface LinesUp {
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   notPriced: number;
   chartAvailable: boolean;
+}
+
+
+interface ShapedDay {
+  placed: {
+    item: { id: string; title: string; kind: string };
+    startAt: string; endAt: string; minutes: number;
+    assumedDuration: boolean; activityKey: string | null; basis: string;
+  }[];
+  unplaced: { item: { id: string; title: string }; reason: string }[];
+  openTime: { startAt: string; endAt: string; minutes: number }[];
+  warnings: string[];
 }
 
 const card: React.CSSProperties = {
@@ -93,6 +105,10 @@ const card: React.CSSProperties = {
 // eye had to cross the screen to get from the control to the text. This is
 // what made a correct list feel awkward.
 const COLUMN_MAX = 760;
+
+/** ISO instant → the viewer's wall clock. The API returns instants. */
+const clockOf = (iso: string) =>
+  new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
 function SectionTitle({ children, note }: { children: React.ReactNode; note?: string }) {
   return (
@@ -134,6 +150,17 @@ export default function Home({
       `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
       { headers }),
     enabled: !!testerId,
+  });
+
+  // Opt-in. A day plan that appears unasked would be the app telling someone
+  // how to spend their time, which is a different product from one that answers
+  // when asked.
+  const [shapeOpen, setShapeOpen] = useState(false);
+  const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
+    queryKey: ["shape-day", testerId, lat, lon],
+    queryFn: () => fetchJson<ShapedDay>(
+      `/api/elections/shape-day?lat=${lat}&lon=${lon}&locationKnown=${locationKnown}`, { headers }),
+    enabled: !!testerId && shapeOpen,
   });
 
   const [newTitle, setNewTitle] = useState("");
@@ -278,7 +305,9 @@ export default function Home({
             </div>
             <div style={{ fontSize: 13.5, color: "var(--color-foreground)", marginTop: 3 }}>{r.held.title}</div>
             <div style={{ fontSize: 12, color: "var(--color-primary)", marginTop: 2 }}>
-              {r.startClock}–{r.endClock}
+              {/* An all-day condition is not a window. Printing "7 AM–11 PM"
+                  dressed a standing fact up as an appointment. */}
+              {r.allDay ? "all day" : `${r.startClock}–${r.endClock}`}
             </div>
             {/* The receipt. An astro-literate reader has to be able to see what
                 established this and disagree with it — a computed surface is
@@ -395,6 +424,70 @@ export default function Home({
             {open.length === 0 && tasks && (
               <div style={{ padding: "4px 18px 14px", fontSize: 11.5, color: "var(--text-3)" }}>
                 Nothing on the list.
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 2b · SHAPE THE DAY — opt-in, and it renders its own gaps.
+          The output deliberately carries `openTime` and `unplaced`: a day with
+          three placements and a lot of white space is a real plan, and the one
+          thing this must never look like is a scheduler that failed to fill
+          the day. Occupancy is not the target. */}
+      <div style={card}>
+        {!shapeOpen ? (
+          <button onClick={() => setShapeOpen(true)} style={{
+            width: "100%", textAlign: "left", padding: "12px 18px", background: "none",
+            border: "none", cursor: "pointer", fontSize: 12.5, color: "var(--color-primary)",
+          }}>
+            Shape today around what you're holding →
+          </button>
+        ) : (
+          <>
+            <SectionTitle note={shaping ? "working…" : undefined}>Today, shaped</SectionTitle>
+            {shaped?.placed.map((p) => (
+              <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "6px 18px", borderTop: "1px solid var(--color-border)" }}>
+                <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 92 }}>
+                  {clockOf(p.startAt)}–{clockOf(p.endAt)}
+                </span>
+                <span style={{ fontSize: 12.5, flex: 1, minWidth: 0 }}>
+                  {p.item.title}
+                  {/* Said out loud: the person did not specify this length. */}
+                  {p.assumedDuration && (
+                    <span style={{ fontSize: 9.5, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>
+                  )}
+                </span>
+              </div>
+            ))}
+
+            {shaped?.openTime.map((o, i) => (
+              <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "5px 18px", borderTop: "1px solid var(--color-border)" }}>
+                <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 92 }}>
+                  {clockOf(o.startAt)}–{clockOf(o.endAt)}
+                </span>
+                <span style={{ fontSize: 11.5, color: "var(--color-muted)" }}>
+                  open · nothing you hold needed placing here
+                </span>
+              </div>
+            ))}
+
+            {shaped?.unplaced.length ? (
+              <div style={{ padding: "8px 18px 12px", borderTop: "1px solid var(--color-border)" }}>
+                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 3 }}>
+                  didn't fit today
+                </div>
+                {shaped.unplaced.map((u) => (
+                  <div key={u.item.id} style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+                    {u.item.title} — {u.reason}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {shaped && !shaped.placed.length && !shaped.unplaced.length && (
+              <div style={{ padding: "4px 18px 14px", fontSize: 11.5, color: "var(--text-3)" }}>
+                Nothing to place. The day is yours.
               </div>
             )}
           </>

@@ -23,5 +23,23 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    /**
+     * Vitest's 5s default is too tight for this suite and made it FLAKY under
+     * parallel load — three files failed one run and passed the next, all with
+     * "Test timed out", none with a real assertion failure.
+     *
+     * That matters more here than in most projects: Railway runs `pnpm test` as
+     * part of the deploy, so a suite that fails one run in five blocks a deploy
+     * for no reason. This session already lost a deploy to a genuinely broken
+     * test; losing one to a slow machine would be worse, because there is
+     * nothing to fix.
+     *
+     * The timing tests that motivated this have themselves been replaced with
+     * counts, which is the real answer — several tests here legitimately run
+     * hundreds of full ephemeris computations, and a wall-clock ceiling was
+     * measuring the CI box rather than the code either way. A genuine hang
+     * still fails; it just takes 30 seconds to say so.
+     */
+    testTimeout: 30_000,
   },
 });
