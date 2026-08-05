@@ -96,3 +96,49 @@ describe("week weaver", () => {
     expect(w.unplaced).toEqual([]);
   });
 });
+
+describe("overdue work", () => {
+  // EVERY fixture above uses a future due date, which is exactly why this bug
+  // survived a green suite: `k <= dueDate` matches no day in the week when the
+  // date has already passed, so all five overdue items came back "due
+  // 2026-08-01, which is before this week starts" and the week rendered as
+  // seven empty days. On real data — where being behind is the normal state —
+  // the feature was useless.
+  const overdue: WeekItem[] = [
+    { id: "o1", title: "Send the contract", kind: "task", estMinutes: 30, dueDate: "2026-08-01" },
+    { id: "o2", title: "Deep work: rewrite the onboarding sequence", kind: "task", estMinutes: 240, dueDate: "2026-08-03" },
+    { id: "o3", title: "Call the accountant back", kind: "task", estMinutes: 20, dueDate: "2026-08-04" },
+  ];
+
+  it("schedules work whose deadline has passed", () => {
+    const w = weaveWeek({ items: overdue, startDate, ...AUSTIN });
+    const placedIds = new Set(w.days.flatMap(d => d.woven.placed.map(p => p.item.id)));
+    expect([...placedIds].sort()).toEqual(["o1", "o2", "o3"]);
+    expect(w.unplaced).toEqual([]);
+  });
+
+  // A debt is not scheduled at leisure. Overdue goes earliest, even though the
+  // spreading rule would otherwise send it to the emptiest day.
+  it("puts overdue work as early as it fits, not wherever there is room", () => {
+    const w = weaveWeek({ items: overdue, startDate, ...AUSTIN });
+    const firstKey = w.days[0].key;
+    for (const d of w.days.slice(1)) {
+      for (const p of d.woven.placed) {
+        expect(p.item.dueDate, `${p.item.title} drifted off day one`).toBeFalsy();
+      }
+    }
+    expect(w.days[0].woven.placed.length).toBeGreaterThan(0);
+    expect(w.days[0].key).toBe(firstKey);
+  });
+
+  // The one case that IS impossible must still say so plainly, rather than the
+  // fix swallowing every deadline complaint.
+  it("still reports an item due before a future-dated week", () => {
+    const w = weaveWeek({
+      items: [{ id: "x", title: "Send the contract", kind: "task", estMinutes: 30, dueDate: "2026-08-04" }],
+      startDate, ...AUSTIN,
+    });
+    // startDate IS 2026-08-05, so this is overdue and should be placed.
+    expect(w.unplaced).toEqual([]);
+  });
+});

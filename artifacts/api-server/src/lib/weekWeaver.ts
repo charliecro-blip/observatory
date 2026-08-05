@@ -149,10 +149,23 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
 
   for (const item of ordered) {
     const demand = demandOf(item);
-    // A deadline is a wall: never schedule past it, and never before today.
-    const eligible = keys.filter(k => !item.dueDate || k <= item.dueDate);
+
+    // OVERDUE IS URGENT, NOT IMPOSSIBLE.
+    //
+    // A deadline filter of `k <= dueDate` drops every item whose date has
+    // already passed, because no day in the week satisfies it. On real data
+    // that was catastrophic and silent: five of eight items — including every
+    // task the person was actually late on — came back "due 2026-08-01, which
+    // is before this week starts", and the week rendered as seven empty days.
+    // The day weaver had this right all along (overdue sits at priority 1);
+    // only the week treated a past deadline as a wall rather than a debt.
+    //
+    // Every fixture in the tests used FUTURE dates, which is why the suite was
+    // green while the feature was useless.
+    const overdue = !!item.dueDate && item.dueDate < keys[0];
+    const eligible = overdue ? keys : keys.filter(k => !item.dueDate || k <= item.dueDate);
     if (!eligible.length) {
-      unplaced.push({ item, reason: `due ${item.dueDate}, which is before this week starts` });
+      unplaced.push({ item, reason: `due ${item.dueDate}, and there is no day left before then` });
       continue;
     }
 
@@ -175,8 +188,12 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
     // Deadlines still bind, because `eligible` is already capped at the due
     // date — spreading can only move work earlier within that window, never
     // past it.
+    // Overdue work goes EARLIEST, not wherever there is most room — spreading
+    // it would be scheduling a debt at leisure.
     const target = [...viable].sort((a, b) =>
-      loadOn[a] - loadOn[b] || keys.indexOf(a) - keys.indexOf(b))[0];
+      overdue
+        ? keys.indexOf(a) - keys.indexOf(b)
+        : (loadOn[a] - loadOn[b] || keys.indexOf(a) - keys.indexOf(b)))[0];
 
     if (!target) {
       unplaced.push({

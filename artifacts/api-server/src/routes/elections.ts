@@ -15,6 +15,7 @@ import { linesUp, type HeldItem } from "../lib/linesUp.js";
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
+import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
 import { tasks, goals } from "@workspace/db";
 import { computeNatalChart } from "../lib/natal.js";
 
@@ -175,6 +176,50 @@ router.get("/elections/shape-day", async (req, res) => {
   }
 
   res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown }));
+});
+
+/**
+ * GET /elections/shape-week — the week's work distributed across days.
+ *
+ * Distribution is the one thing this does that shaping each day separately
+ * cannot: seven days optimised independently will happily carry five
+ * consecutive major blocks, because each day alone had room.
+ *
+ * Days deliberately left open are part of the answer, not a failure to fill.
+ */
+router.get("/elections/shape-week", async (req, res) => {
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+  if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
+
+  const hasCoords = req.query.lat != null && req.query.lon != null;
+  const locationKnown = hasCoords && req.query.locationKnown !== "false";
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const wakeHour = req.query.wake != null ? parseFloat(req.query.wake as string) : undefined;
+  const sleepHour = req.query.sleep != null ? parseFloat(req.query.sleep as string) : undefined;
+  const days = Math.min(14, Math.max(2, parseInt((req.query.days as string) ?? "7", 10) || 7));
+
+  const items: WeekItem[] = [];
+  try {
+    for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
+      if (t.done === "true") continue;
+      items.push({
+        id: `task-${t.id}`, title: t.title, kind: "task",
+        estMinutes: t.estMinutes, dueDate: t.dueDate,
+        startedAt: t.startedAt ? String(t.startedAt) : null,
+        starId: t.goalId != null ? `goal-${t.goalId}` : null,
+      });
+    }
+    for (const g of await db.select().from(goals).where(eq(goals.testerId, testerId))) {
+      if (g.status === "done" || g.status === "paused") continue;
+      items.push({ id: `star-${g.id}`, title: g.title, kind: "star-step", activityKey: g.activityKey, starId: `goal-${g.id}` });
+    }
+  } catch {
+    res.status(503).json({ error: "could not read your inventory" });
+    return;
+  }
+
+  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days }));
 });
 
 // The engine: activity → tiered times. Personalizes when the tester has a

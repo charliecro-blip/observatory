@@ -1,4 +1,6 @@
 import { ElectionPicker } from "@/components/ElectionPicker";
+import { WeekWeave, useWeekShape } from "@/components/WeekShape";
+import { useTester } from "@/contexts/tester-context";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import type { AskElectionContext } from "@/App";
 import React, { useState } from "react";
@@ -325,6 +327,13 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
   // venture). A switcher instead of one long scroll, so each mode gets the
   // whole surface and neither buries the other.
   const [mode, setMode] = useState<"schedule" | "breakdown" | "begin">("schedule");
+  // The week weave lives in SCHEDULE because that room already exists to
+  // "weave the week's tasks into good windows" — this is that, computed.
+  // Opt-in: a proposed week appearing unasked is the app telling someone how to
+  // spend seven days.
+  const [weekOpen, setWeekOpen] = useState(false);
+  const { locationKnown } = useTester();
+  const { data: week, isFetching: weaving } = useWeekShape(testerId, lat, lon, locationKnown, weekOpen);
   // A dump arriving from quick capture always lands in Schedule mode.
   React.useEffect(() => { if (plannerSeed) setMode("schedule"); }, [plannerSeed]);
   const { data: catData } = useElectionCategories();
@@ -362,7 +371,40 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
         {mode === "schedule" && <ConnectCalendarPrompt testerId={testerId} />}
 
         {/* SCHEDULE — "when should I do all of this?" */}
-        {mode === "schedule" && <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />}
+        {mode === "schedule" && (
+          <>
+            <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />
+
+            {/* THE WEEK. Distribution is the one thing shaping each day
+                separately cannot do: seven days optimised independently will
+                carry five consecutive major blocks, because each day alone had
+                room. */}
+            <div style={{ marginTop: 22, borderTop: "1px solid var(--color-border)", paddingTop: 16 }}>
+              {!weekOpen ? (
+                <button onClick={() => setWeekOpen(true)} style={{
+                  fontSize: 12.5, background: "none", border: "none", padding: 0,
+                  cursor: "pointer", color: "var(--color-primary)",
+                }}>
+                  Shape the whole week around what you're holding →
+                </button>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>Your week</div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>
+                      {weaving ? "working…" : "spread by deadline, demand and recovery"}
+                    </div>
+                  </div>
+                  {week ? <WeekWeave week={week} /> : !weaving && (
+                    <div style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                      Couldn't shape the week just now — that's a connection problem, not an empty week.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
 
         {/* BREAK DOWN — "this goal is too big; give me the steps" (#3: the PM
             breakdown, also reachable from Aims, surfaced here in Plan). */}

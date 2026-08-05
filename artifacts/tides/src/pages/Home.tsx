@@ -46,6 +46,7 @@ import { useNorthStars, useTidesNow } from "@/hooks/useTides";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
+import { WeekStrip, useWeekShape } from "@/components/WeekShape";
 import type { AskElectionContext } from "@/App";
 
 interface Task {
@@ -162,6 +163,12 @@ export default function Home({
       `/api/elections/shape-day?lat=${lat}&lon=${lon}&locationKnown=${locationKnown}`, { headers }),
     enabled: !!testerId && shapeOpen,
   });
+
+  // The week strip loads with the page rather than on demand: it is a shape,
+  // not a plan, and it is the answer to Home being thin on a day when nothing
+  // converges and nothing is void. Cheap enough — the same memoised elections
+  // the day shaping uses.
+  const { data: week } = useWeekShape(testerId, lat, lon, locationKnown, true);
 
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
@@ -493,6 +500,19 @@ export default function Home({
           </>
         )}
       </div>
+
+      {/* 2c · THE WEEK — where your work actually sits over seven days.
+          This is NOT a sky forecast, which Home was explicitly not to become:
+          it is your own load, distributed. It earns its place because the rest
+          of Home is conditional — no void, no convergence, no stars and no log
+          leaves a picker and a task list — and this is real content that is
+          true every day. */}
+      {week && week.days.some(d => d.woven.placed.length) && (
+        <div style={card}>
+          <SectionTitle note="your work across seven days">Your week</SectionTitle>
+          <WeekStrip week={week} onOpen={() => onNavigate("launch")} />
+        </div>
+      )}
 
       {/* 3 · GUIDING STARS — "visible but not central". One row, no progress
           bars, no weekly targets: the Stars tab owns all of that. */}
