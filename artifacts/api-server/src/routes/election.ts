@@ -5,7 +5,7 @@
  * GET /api/election/scan       — ranked windows for a category across a date range
  */
 import { Router, type IRouter } from "express";
-import { ELECTION_CATEGORIES, scanElection } from "../lib/election.js";
+import { ELECTION_CATEGORIES, scanElection } from "../lib/inceptionElection.js";
 
 const router: IRouter = Router();
 

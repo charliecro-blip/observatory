@@ -10,7 +10,7 @@
  * is byte-stable anywhere — no browser, no system fonts.
  */
 
-import { ELECTION_CATEGORIES, scanElection } from "../lib/election.js";
+import { ELECTION_CATEGORIES, scanElection } from "../lib/inceptionElection.js";
 import { Router, type IRouter } from "express";
 import path from "node:path";
 import { readFileSync, readdirSync } from "node:fs";

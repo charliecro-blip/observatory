@@ -1,4 +1,32 @@
 /**
+ * STRICT INCEPTION ELECTION — a different question from activity timing.
+ *
+ * Renamed from `election.ts`, where it sat as an ambiguously older answer to
+ * the same question the canonical engine answers. It is not that. The two ask
+ * genuinely different things:
+ *
+ *   activity timing (electionEngine)
+ *     "When does this recurring work fit?"
+ *     Judges an interval for something you do repeatedly — deep work, a run,
+ *     a difficult conversation. Most objections are qualifications.
+ *
+ *   strict election (this file)
+ *     "What chart should this consequential beginning carry?"
+ *     Judges a MOMENT for something begun once, whose inception chart is
+ *     expected to describe how the matter unfolds. Classical objections apply
+ *     in force.
+ *
+ * It serves `/api/election/*`, which is Plan's "Pick a day" room — the
+ * electional surface for starting one specific venture. That boundary already
+ * existed in practice; it just was not named, so the file read as a duplicate.
+ *
+ * THE RULE: this file must never answer "when should I do this work". If a
+ * consumer wants that, it wants `evaluateActivityInterval`. Two engines
+ * answering one question is a trust problem before it is a duplication problem
+ * — measured elsewhere in this codebase at 20% disagreement.
+ */
+
+/**
  * Electional astrology ("Launch") scoring engine.
  *
  * Implements the v1 ruleset in knowledge/electional-astrology-v1/. Scores a
