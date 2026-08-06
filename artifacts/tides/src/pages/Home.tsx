@@ -118,11 +118,67 @@ const COLUMN_MAX = 760;
 const clockOf = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-function SectionTitle({ children, note }: { children: React.ReactNode; note?: string }) {
+/**
+ * THREE LEVELS, NOT FOUR EQUAL PANELS.
+ *
+ * The page read as "here are four features" because every module was the same
+ * white rounded rectangle with the same heading, padding and border — the
+ * product's primary intelligence carried exactly as much visual weight as an
+ * empty task input. There are three jobs here and they should not look alike:
+ *
+ *   ANSWER   what lines up — the reason to open Compass
+ *   WORK     what you hold, and the action that acts on it
+ *   CONTEXT  the week, the stars, the log
+ */
+const ANSWER: React.CSSProperties = {
+  background: "var(--color-card)",
+  border: "1px solid var(--color-border)",
+  borderRadius: 14,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+};
+const PANEL: React.CSSProperties = {
+  background: "var(--color-card)",
+  border: "1px solid var(--color-border)",
+  borderRadius: 12,
+};
+
+/**
+ * Badge colours are HEX, never CSS variables.
+ *
+ * The tint is built by concatenating an alpha suffix — `${color}16` — and
+ * `var(--text-3)16` is not a colour. It fails SILENTLY to transparent, so the
+ * badges rendered as bare uppercase text and the judgment the hero exists to
+ * show became invisible. The dark-mode sweep hit this exact trap across 134
+ * sites and settled on hex for the same reason; this is that rule, re-learned.
+ *
+ * Green is reserved for actual convergence and used nowhere decoratively.
+ */
+const CONVERGENT = "#3f7a4a";
+const QUALIFIED = "#a08040";
+const PERSONAL = "#6f6a90";
+const NEUTRAL = "#8a8780";
+
+function Badge({ text, color }: { text: string; color: string }) {
   return (
-    <div style={{ padding: "12px 18px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>{children}</div>
-      {note && <div style={{ fontSize: 9.5, color: "var(--text-3)" }}>{note}</div>}
+    <span style={{
+      fontSize: 9.5, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
+      padding: "3px 9px", borderRadius: 999, color, background: `${color}18`,
+      border: `1px solid ${color}33`, whiteSpace: "nowrap",
+    }}>{text}</span>
+  );
+}
+
+function SectionTitle({ children, note, action }: {
+  children: React.ReactNode; note?: string; action?: React.ReactNode;
+}) {
+  return (
+    <div style={{ padding: "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
+      <div style={{
+        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
+        color: "var(--text-3)",
+      }}>{children}</div>
+      {note && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{note}</div>}
+      {action && <div style={{ marginLeft: "auto" }}>{action}</div>}
     </div>
   );
 }
@@ -257,397 +313,391 @@ export default function Home({
   // review card on a day you have not started is a chore, not a reflection.
   const engagedToday = doneToday.length > 0 || all.some((t) => t.startedAt && t.startedAt.startsWith(today));
 
-  const Row = ({ t, muted }: { t: Task; muted?: boolean }) => (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 9, padding: "7px 18px",
-      borderTop: "1px solid var(--color-border)",
-    }}>
-      <button
-        onClick={() => toggleTask.mutate({ id: t.id, done: t.done !== "true" })}
-        aria-label={t.done === "true" ? `Reopen ${t.title}` : `Complete ${t.title}`}
-        style={{
-          width: 15, height: 15, borderRadius: 4, flexShrink: 0, cursor: "pointer", padding: 0,
-          border: `1.5px solid ${t.done === "true" ? "#60a060" : "var(--color-border)"}`,
-          background: t.done === "true" ? "#60a060" : "transparent",
-          color: "#fff", fontSize: 10, lineHeight: 1,
-        }}
-      >{t.done === "true" ? "✓" : ""}</button>
-      <span style={{
-        fontSize: 12.5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        color: muted ? "var(--text-3)" : "var(--color-foreground)",
-        textDecoration: t.done === "true" ? "line-through" : "none",
-      }}>{t.title}</span>
-      {t.bestWindowType && (
-        <span style={{ fontSize: 9, color: "var(--text-3)", flexShrink: 0 }}>{t.bestWindowType.replace("_", " ")}</span>
-      )}
-    </div>
-  );
+  // THE JOIN. A timing result and a task row used to repeat each other word for
+  // word — the hero said "a time for deep focus on board exam prep" and the
+  // list below said it again. Repetition does not communicate connection; it
+  // just makes the page feel sparse. The result stays the answer, and the task
+  // row carries a small indicator pointing back at it.
+  const timingFor = new Map<number, LinesUpResult>();
+  for (const r of lines?.results ?? []) {
+    const id = Number(r.held.id.replace("task-", ""));
+    if (!Number.isNaN(id)) timingFor.set(id, r);
+  }
+  const needsDuration = new Set((resolution?.needsDuration ?? []).map(n => Number(n.id.replace("task-", ""))));
+  const needsActivity = new Set((resolution?.needsActivity ?? []).map(n => Number(n.id.replace("task-", ""))));
+
+  const Row = ({ t, muted }: { t: Task; muted?: boolean }) => {
+    const timing = timingFor.get(t.id);
+    return (
+      <div style={{ padding: "7px 16px", borderTop: "1px solid var(--color-border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <button
+            onClick={() => toggleTask.mutate({ id: t.id, done: t.done !== "true" })}
+            aria-label={t.done === "true" ? `Reopen ${t.title}` : `Complete ${t.title}`}
+            style={{
+              width: 15, height: 15, borderRadius: 4, flexShrink: 0, cursor: "pointer", padding: 0,
+              border: `1.5px solid ${t.done === "true" ? CONVERGENT : "var(--color-border)"}`,
+              background: t.done === "true" ? CONVERGENT : "transparent",
+              color: "#fff", fontSize: 10, lineHeight: 1,
+            }}
+          >{t.done === "true" ? "✓" : ""}</button>
+          <span style={{
+            fontSize: 12.5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            color: muted ? "var(--text-3)" : "var(--color-foreground)",
+            textDecoration: t.done === "true" ? "line-through" : "none",
+          }}>{t.title}</span>
+        </div>
+        {/* The task's TIMING STATE, on the task. This is what finally joins the
+            inventory to the engine — previously a task row knew nothing about
+            whether the engine had anything to say about it. */}
+        {t.done !== "true" && (timing || needsDuration.has(t.id) || needsActivity.has(t.id)) && (
+          <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
+            {timing ? (
+              <>
+                <span style={{ color: timing.supportLevel === "convergent" ? CONVERGENT : "var(--color-muted)" }}>
+                  {timing.activityLabel}
+                </span>
+                {" · "}
+                {timing.allDay ? "supported all day" : `window ${timing.startClock}–${timing.endClock}`}
+              </>
+            ) : needsActivity.has(t.id) ? "needs a kind of work before it can be timed"
+              : "needs a rough duration before it can be placed"}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const Group = ({ label, items, muted }: { label: string; items: Task[]; muted?: boolean }) =>
     items.length === 0 ? null : (
       <>
         <div style={{
           fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
-          padding: "8px 18px 2px", borderTop: "1px solid var(--color-border)",
+          padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
         }}>{label} · {items.length}</div>
         {items.map((t) => <Row key={t.id} t={t} muted={muted} />)}
       </>
     );
 
+  const lead = lines?.results?.[0];
+  const secondary = (lines?.results ?? []).slice(1);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "14px 0 40px", maxWidth: COLUMN_MAX, margin: "0 auto", width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "14px 0 40px", maxWidth: 980, margin: "0 auto", width: "100%" }}>
 
-      {/* 0 · RIGHT NOW — only when there is something that changes what to do.
-          The owner, looking at this page while the Moon was void: "the hero
-          should reflect what is most important right now, which is the VoC
-          quality." The rail knew she was void and Home said nothing.
-
-          It appears and disappears rather than always holding a headline. A
-          permanent hero here would either duplicate Today's woven reading or
-          get filled with something true-but-inert on the ~85% of days nothing
-          is gating — and a banner that is always present is one people stop
-          seeing, which would waste it on the days it matters. */}
+      {/* ── RIGHT NOW · conditional. Only when a real condition is gating. */}
       {now?.voc?.isVOC && now.voc.reading && (
         <div style={{
-          ...card,
-          // Benign is Lilly's four (Taurus, Cancer, Sagittarius, Pisces), where
-          // the tradition says the void is not so malevolent. Colouring those
-          // like a warning would contradict the sentence inside them.
-          borderLeft: `3px solid ${now.voc.reading.benign ? "#6f6a90" : "#a08040"}`,
-          padding: "12px 18px",
+          ...PANEL,
+          borderLeft: `3px solid ${now.voc.reading.benign ? PERSONAL : QUALIFIED}`,
+          borderRadius: 0, padding: "11px 16px",
         }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 4 }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 3 }}>
             Right now · the Moon is void
             {now.voc.nextIngress && <span style={{ textTransform: "none", letterSpacing: 0 }}> until {now.voc.nextIngress}</span>}
           </div>
-          <div style={{ fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.5 }}>{now.voc.reading.feel}</div>
-          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.reading.instead}</div>
-          {/* The scope line, so "start nothing" cannot read as a veto over the
-              computed results directly below it. */}
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{now.voc.reading.feel}</div>
+          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 3 }}>{now.voc.reading.instead}</div>
           {now.voc.scope && (
-            <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginTop: 5 }}>{now.voc.scope}</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.scope}</div>
           )}
         </div>
       )}
 
-      {/* 1 · WHAT LINES UP — the primary module, and the product's actual
-          claim. Home used to show a timing engine and the task list side by
-          side with no way for either to know the other existed, which left the
-          join to the reader: read a task, hold it in your head, scroll up,
-          find it again in a category tree.
+      {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
+          A moment becoming available, not a row returned from an API. The
+          task title is the visual centre; the judgment reads as badges; the
+          interpretation comes BEFORE the technical receipt. */}
+      <div style={ANSWER}>
+        <SectionTitle
+          action={
+            <details style={{ display: "inline" }}>
+              <summary style={{ fontSize: 11, color: "var(--color-primary)", cursor: "pointer", listStyle: "none" }}>
+                Find another activity →
+              </summary>
+            </details>
+          }
+        >What lines up</SectionTitle>
 
-          It leads with RELEVANT TIMING, not with convergence. Leading with
-          convergence would force one of two bad outcomes — a usually-blank
-          module, or a definition quietly widened until there was enough to
-          show. `convergent` stays an earned label inside it. */}
-      <div style={card}>
-        <SectionTitle note={lines?.results.length ? "timing for what you're holding" : undefined}>
-          What lines up
-        </SectionTitle>
+        {lead ? (
+          <div style={{ padding: "2px 20px 18px" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              <Badge
+                text={lead.supportLevel === "convergent" ? "Several factors converge" : "Supported"}
+                color={lead.supportLevel === "convergent" ? CONVERGENT : NEUTRAL}
+              />
+              {/* Suitability shown BESIDE support, not folded into it — they
+                  answer different questions: the sky, and the matter. */}
+              <Badge
+                text={lead.suitability}
+                color={lead.suitability === "clear" ? NEUTRAL : QUALIFIED}
+              />
+              {lead.personal && <Badge text="Personal reinforcement" color={PERSONAL} />}
+            </div>
 
-        {lines?.results.map((r) => (
-          <div key={r.held.id} style={{ padding: "8px 18px 12px", borderTop: "1px solid var(--color-border)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-              <span style={{
-                fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", fontWeight: 700,
-                color: r.supportLevel === "convergent" ? "#4a8050" : "var(--text-3)",
-              }}>{r.supportLevel === "convergent" ? "several factors converge" : "supported"}</span>
-              {r.suitability === "qualified" && (
-                <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#a08040" }}>qualified</span>
-              )}
-              {r.personal && (
-                <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "#6f6a90" }}>your chart</span>
-              )}
+            <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.4px", color: "var(--color-foreground)" }}>
+              {lead.held.title}
             </div>
-            <div style={{ fontSize: 13.5, color: "var(--color-foreground)", marginTop: 3 }}>{r.held.title}</div>
-            <div style={{ fontSize: 12, color: "var(--color-primary)", marginTop: 2 }}>
-              {/* An all-day condition is not a window. Printing "7 AM–11 PM"
-                  dressed a standing fact up as an appointment. */}
-              {r.allDay ? "all day" : `${r.startClock}–${r.endClock}`}
+            <div style={{ fontSize: 15, color: "var(--color-primary)", marginTop: 4, fontWeight: 500 }}>
+              {lead.allDay ? "Supported all day" : `Today, ${lead.startClock}–${lead.endClock}`}
             </div>
-            {/* The receipt. An astro-literate reader has to be able to see what
-                established this and disagree with it — a computed surface is
-                only as serious as its provenance. */}
-            {r.why && (
-              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.45 }}>
-                {r.why}
-              </div>
+
+            {/* The receipt, behind a disclosure. An astro-literate reader must
+                be able to inspect it; nobody should have to read it first. */}
+            {lead.why && (
+              <details style={{ marginTop: 9 }}>
+                <summary style={{
+                  fontSize: 11.5, color: "var(--color-primary)", cursor: "pointer", listStyle: "none",
+                  display: "inline-block", padding: "3px 10px", borderRadius: 7,
+                  border: "1px solid var(--color-border)",
+                }}>
+                  See the evidence
+                </summary>
+                <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>{lead.why}</div>
+              </details>
             )}
-            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
-              read as <b style={{ fontWeight: 600 }}>{r.activityLabel}</b>
-              {r.alternative && (
-                <> · <button onClick={() => onNavigate("launch")} style={{
-                  fontSize: 10, background: "none", border: "none", padding: 0, cursor: "pointer",
-                  color: "var(--color-primary)", textDecoration: "underline",
-                }}>not {r.alternative.label.toLowerCase()}?</button></>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+              <button onClick={() => setShapeOpen(true)} style={{
+                fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+                border: "none", background: "var(--color-primary)", color: "var(--color-card)",
+              }}>Put on today</button>
+              <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                {lead.activityLabel}
+                {lead.alternative && (
+                  <> · <button onClick={() => onNavigate("launch")} style={{
+                    fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer",
+                    color: "var(--color-primary)", textDecoration: "underline",
+                  }}>change</button></>
+                )}
+              </span>
+            </div>
+          </div>
+        ) : (
+          /* The quiet day CONTRACTS rather than disappearing. */
+          <div style={{ padding: "2px 20px 18px" }}>
+            <div style={{ fontSize: 17, lineHeight: 1.35, color: "var(--color-foreground)" }}>
+              {lines?.quiet === "thin-inventory"
+                ? "Compass doesn't have enough to time yet."
+                : "Nothing you're holding is especially singled out today."}
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
+              {lines?.quiet === "thin-inventory"
+                ? "Add something below, or look up an activity."
+                : "Use priority, momentum, or simple necessity."}
+              {lines?.nextOpening && (
+                <> The next notable opening is {lines.nextOpening.activityLabel.toLowerCase()} on {lines.nextOpening.date} at {lines.nextOpening.startClock}.</>
               )}
             </div>
           </div>
+        )}
+
+        {/* Two or three results: compact rows beneath the lead, never three heroes. */}
+        {secondary.map((r) => (
+          <div key={r.held.id} style={{
+            display: "flex", alignItems: "baseline", gap: 10, padding: "7px 20px",
+            borderTop: "1px solid var(--color-border)",
+          }}>
+            <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {r.held.title}
+            </span>
+            {r.supportLevel === "convergent" && <Badge text="converges" color={CONVERGENT} />}
+            <span style={{ fontSize: 11.5, color: "var(--color-primary)", flexShrink: 0 }}>
+              {r.allDay ? "all day" : `${r.startClock}–${r.endClock}`}
+            </span>
+          </div>
         ))}
 
-        {/* Ambiguity is output, not a gap. Timing the first guess for
-            "Prepare keynote" would manufacture confidence exactly where the
-            engine should be most careful. */}
         {lines?.clarify.map((c) => (
-          <div key={c.held.id} style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)" }}>
-              needs one clarification
-            </div>
-            <div style={{ fontSize: 12.5, marginTop: 2 }}>{c.held.title}</div>
-            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
+          <div key={c.held.id} style={{ padding: "7px 20px", borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ fontSize: 12 }}>{c.held.title}</div>
+            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1 }}>
               {c.candidates.map(x => x.label).join(" or ")}? Compass won't time it until it knows which.
             </div>
           </div>
         ))}
 
-        {lines?.quiet && (
-          <div style={{ padding: "6px 18px 12px", borderTop: lines.results.length ? "1px solid var(--color-border)" : "none" }}>
-            <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>
-              {lines.quiet === "thin-inventory"
-                ? "Compass doesn't have enough to time yet."
-                : lines.quiet === "supported-only"
-                ? "Nothing strongly converges today."
-                : "Nothing you're holding is especially singled out today."}
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 2 }}>
-              {lines.quiet === "thin-inventory"
-                ? "Add something you're holding, or look up an activity below."
-                : lines.quiet === "supported-only"
-                ? "What's above still has ordinary support — that's a real answer, not a lesser one."
-                : "Use the day by priority or momentum instead."}
-            </div>
-            {/* One line, never a forecast. It gives the absence temporal shape:
-                the engine is working and today's quiet is a result rather than
-                missing data. The full horizon belongs in the Compass. */}
-            {lines.nextOpening && (
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
-                Next notable opening — {lines.nextOpening.activityLabel}, {lines.nextOpening.date} at {lines.nextOpening.startClock}.
-              </div>
-            )}
-          </div>
-        )}
-
-        {lines && lines.notPriced > 0 && (
-          <div style={{ fontSize: 10, color: "var(--text-3)", padding: "0 18px 10px" }}>
-            {lines.notPriced} more held {lines.notPriced === 1 ? "item wasn't" : "items weren't"} timed this load.
-          </div>
-        )}
-
-        {/* The picker is the QUERY INTERFACE, not the page's intelligence. It
-            belongs to the bottom of this module rather than being a section. */}
-        <details style={{ borderTop: "1px solid var(--color-border)" }}>
-          <summary style={{ padding: "9px 18px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
-            Find a time for something else →
-          </summary>
-          <div style={{ padding: "0 6px 6px" }}>
+        <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
+          <details>
+            <summary style={{ padding: "6px 14px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
+              Find a time for something else →
+            </summary>
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
-          </div>
-        </details>
+          </details>
+        </div>
       </div>
 
-      {/* 2 · THE DUMP */}
-      <div style={card}>
-        <SectionTitle note={open.length ? `${open.length} open` : undefined}>Everything you're holding</SectionTitle>
+      {/* ══ LEVEL 2 · THE WORK, and LEVEL 3 · CONTEXT beside it ═══════════ */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
 
-        <div style={{ padding: "0 18px 10px" }}>
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
-            placeholder="Dump it here — one line, no ceremony"
-            style={{
-              width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
-              border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-              color: "var(--color-foreground)",
-            }}
-          />
-          {addTask.isError && (
-            <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>
+        {/* YOUR WORK — capture, inventory and the action that acts on them,
+            together. The standalone "Shape today" card is gone: an action
+            separated from its object was too much real estate for one line. */}
+        <div style={PANEL}>
+          <SectionTitle
+            note={open.length ? `${open.length} open` : undefined}
+            action={
+              <button onClick={() => setShapeOpen(v => !v)} style={{
+                fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                color: "var(--color-primary)",
+              }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
+            }
+          >Your work</SectionTitle>
+
+          <div style={{ padding: "0 16px 10px" }}>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
+              placeholder="Add something — one line, no ceremony"
+              style={{
+                width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
+                border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                color: "var(--color-foreground)",
+              }}
+            />
+            {addTask.isError && <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>}
+          </div>
+
+          {/* Resolution chips live here now, with the work they act on. */}
+          {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                how much room should these get?
+              </div>
+              {resolution.needsDuration.map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.chips.map((m) => (
+                    <button key={m} disabled={setDuration.isPending}
+                      onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                what kind of work are these?
+              </div>
+              {resolution.needsActivity.slice(0, 4).map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.options.map((o) => (
+                    <button key={o.key} disabled={setActivity.isPending}
+                      onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{o.label}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* The shaped day, when asked for. */}
+          {shapeOpen && shaped && (
+            <div style={{ borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
+                {shaping ? "shaping…" : "today, shaped"}
+              </div>
+              {shaped.placed.map((p) => (
+                <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(p.startAt)}–{clockOf(p.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
+                    {p.item.title}
+                    {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
+                  </span>
+                </div>
+              ))}
+              {shaped.openTime.map((o, i) => (
+                <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(o.startAt)}–{clockOf(o.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing you hold needed placing here</span>
+                </div>
+              ))}
+              <div style={{ height: 6 }} />
+            </div>
+          )}
+
+          {tasksFailed ? (
+            <div style={{ padding: "10px 16px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
+              I couldn't load your tasks. This is a connection problem, not an empty list.
+            </div>
+          ) : (
+            <>
+              <Group label="overdue" items={overdue} />
+              <Group label="today" items={dueToday} />
+              <Group label="no date" items={undated} />
+              <Group label="later" items={later} muted />
+              {open.length === 0 && tasks && (
+                <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
+              )}
+            </>
           )}
         </div>
 
-        {/* A failed request must not render as a clear plate. */}
-        {tasksFailed ? (
-          <div style={{ padding: "10px 18px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
-            I couldn't load your tasks. This is a connection problem, not an empty list.
-          </div>
-        ) : (
-          <>
-            <Group label="overdue" items={overdue} />
-            <Group label="today" items={dueToday} />
-            <Group label="no date" items={undated} />
-            <Group label="later" items={later} muted />
-            {open.length === 0 && tasks && (
-              <div style={{ padding: "4px 18px 14px", fontSize: 11.5, color: "var(--text-3)" }}>
-                Nothing on the list.
+        {/* ── CONTEXT column ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* THIS WEEK — answers a question rather than drawing seven slots. */}
+          {week && (
+            <div style={PANEL}>
+              <SectionTitle
+                action={
+                  <button onClick={() => onNavigate("launch")} style={{
+                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                    color: "var(--color-primary)",
+                  }}>See week →</button>
+                }
+              >This week</SectionTitle>
+              <WeekStrip week={week} />
+            </div>
+          )}
+
+          {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
+            <div style={PANEL}>
+              <SectionTitle note="open the tab to work on them">Guiding Stars</SectionTitle>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 14px" }}>
+                {(northStars ?? [])
+                  .filter((g: any) => g.status !== "done" && g.status !== "paused")
+                  .map((g: any) => (
+                    <button key={g.id} onClick={() => onNavigate("work")} style={{
+                      fontSize: 11, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
+                      border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                      color: "var(--color-foreground)",
+                    }}>{g.title}</button>
+                  ))}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
+
+          {engagedToday && (
+            <div style={PANEL}>
+              <SectionTitle note={`${doneToday.length} crossed off`}>Today's log</SectionTitle>
+              {doneToday.map((t) => <Row key={t.id} t={t} />)}
+              <div style={{ padding: "9px 16px 12px", borderTop: "1px solid var(--color-border)" }}>
+                <button onClick={() => onNavigate("log")} style={{
+                  fontSize: 11, background: "none", border: "none", cursor: "pointer",
+                  color: "var(--color-primary)", padding: 0,
+                }}>Add a note about how it went →</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* 2b · SHAPE THE DAY — opt-in, and it renders its own gaps.
-          The output deliberately carries `openTime` and `unplaced`: a day with
-          three placements and a lot of white space is a real plan, and the one
-          thing this must never look like is a scheduler that failed to fill
-          the day. Occupancy is not the target. */}
-      <div style={card}>
-        {!shapeOpen ? (
-          <button onClick={() => setShapeOpen(true)} style={{
-            width: "100%", textAlign: "left", padding: "12px 18px", background: "none",
-            border: "none", cursor: "pointer", fontSize: 12.5, color: "var(--color-primary)",
-          }}>
-            Shape today around what you're holding →
-          </button>
-        ) : (
-          <>
-            <SectionTitle note={shaping ? "working…" : undefined}>Today, shaped</SectionTitle>
-
-            {/* ONE BATCH, ASKED AT SCHEDULING TIME.
-                Capture stays one line; this is the minimum information the
-                operation just requested actually needs. Chips are proposals —
-                nothing is stored and no block is held until one is picked. */}
-            {resolution && resolution.needsDuration.length > 0 && (
-              <div style={{ padding: "6px 18px 10px", borderTop: "1px solid var(--color-border)" }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 5 }}>
-                  how much room should these get?
-                </div>
-                {resolution.needsDuration.map((n) => (
-                  <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, flex: 1, minWidth: 150 }}>{n.title}</span>
-                    {n.chips.map((m) => (
-                      <button key={m} disabled={setDuration.isPending}
-                        onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
-                        style={{
-                          fontSize: 10.5, padding: "2px 9px", borderRadius: 999, cursor: "pointer",
-                          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                          color: "var(--color-foreground)",
-                        }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* The other uncertainty, asked separately — its answer shapes the
-                duration chips, so it comes first in the flow even though it
-                renders below. */}
-            {resolution && resolution.needsActivity.length > 0 && (
-              <div style={{ padding: "6px 18px 10px", borderTop: "1px solid var(--color-border)" }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
-                  what kind of work are these?
-                </div>
-                {resolution.needsActivity.slice(0, 4).map((n) => (
-                  <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, flex: 1, minWidth: 150 }}>{n.title}</span>
-                    {/* Answerable, not just askable. */}
-                    {n.options.map((o) => (
-                      <button key={o.key} disabled={setActivity.isPending}
-                        onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
-                        style={{
-                          fontSize: 10.5, padding: "2px 9px", borderRadius: 999, cursor: "pointer",
-                          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                          color: "var(--color-foreground)",
-                        }}>{o.label}</button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-            {shaped?.placed.map((p) => (
-              <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "6px 18px", borderTop: "1px solid var(--color-border)" }}>
-                <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 92 }}>
-                  {clockOf(p.startAt)}–{clockOf(p.endAt)}
-                </span>
-                <span style={{ fontSize: 12.5, flex: 1, minWidth: 0 }}>
-                  {p.item.title}
-                  {/* Said out loud: the person did not specify this length. */}
-                  {p.assumedDuration && (
-                    <span style={{ fontSize: 9.5, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>
-                  )}
-                </span>
-              </div>
-            ))}
-
-            {shaped?.openTime.map((o, i) => (
-              <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "5px 18px", borderTop: "1px solid var(--color-border)" }}>
-                <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 92 }}>
-                  {clockOf(o.startAt)}–{clockOf(o.endAt)}
-                </span>
-                <span style={{ fontSize: 11.5, color: "var(--color-muted)" }}>
-                  open · nothing you hold needed placing here
-                </span>
-              </div>
-            ))}
-
-            {shaped?.unplaced.length ? (
-              <div style={{ padding: "8px 18px 12px", borderTop: "1px solid var(--color-border)" }}>
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 3 }}>
-                  didn't fit today
-                </div>
-                {shaped.unplaced.map((u) => (
-                  <div key={u.item.id} style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-                    {u.item.title} — {u.reason}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {shaped && !shaped.placed.length && !shaped.unplaced.length && (
-              <div style={{ padding: "4px 18px 14px", fontSize: 11.5, color: "var(--text-3)" }}>
-                Nothing to place. The day is yours.
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* 2c · THE WEEK — where your work actually sits over seven days.
-          This is NOT a sky forecast, which Home was explicitly not to become:
-          it is your own load, distributed. It earns its place because the rest
-          of Home is conditional — no void, no convergence, no stars and no log
-          leaves a picker and a task list — and this is real content that is
-          true every day. */}
-      {week && week.days.some(d => d.woven.placed.length) && (
-        <div style={card}>
-          <SectionTitle note="your work across seven days">Your week</SectionTitle>
-          <WeekStrip week={week} onOpen={() => onNavigate("launch")} />
-        </div>
-      )}
-
-      {/* 3 · GUIDING STARS — "visible but not central". One row, no progress
-          bars, no weekly targets: the Stars tab owns all of that. */}
-      {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
-        <div style={card}>
-          <SectionTitle note="the long aims — open the tab to work on them">Guiding Stars</SectionTitle>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 18px 14px" }}>
-            {(northStars ?? [])
-              .filter((g: any) => g.status !== "done" && g.status !== "paused")
-              .map((g: any) => (
-                <button key={g.id} onClick={() => onNavigate("work")} style={{
-                  fontSize: 11, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
-                  border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                  color: "var(--color-foreground)",
-                }}>{g.title}</button>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* 4 · THE LOG — gated on having actually done something today, and shaped
-          like the crossing-off above rather than like a journal prompt. */}
-      {engagedToday && (
-        <div style={card}>
-          <SectionTitle note={`${doneToday.length} crossed off today`}>Today's log</SectionTitle>
-          {doneToday.map((t) => <Row key={t.id} t={t} />)}
-          <div style={{ padding: "10px 18px 14px", borderTop: "1px solid var(--color-border)" }}>
-            <button onClick={() => onNavigate("log")} style={{
-              fontSize: 11.5, background: "none", border: "none", cursor: "pointer",
-              color: "var(--color-primary)", padding: 0,
-            }}>Add a note about how it went →</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

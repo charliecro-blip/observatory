@@ -638,9 +638,22 @@ export function computeElections(opts: {
       const endMs = Math.min(ev.timeMs + 2.5 * 3600000, dayStartMs + 23 * 3600000);
       if (endMs - startMs < 1.5 * 3600000) continue;
       const hard = ev.aspect in HARD_W;
+      // APPLYING, not "exact at".
+      //
+      // The candidate spans exact ± 2.5h, but windows are INTERSECTED with
+      // other candidates before display, so a five-hour lunar span routinely
+      // narrows to under an hour — and then "exact 7:49 PM" sits under a window
+      // that ends at 6:06 PM and reads as a contradiction. The number was right
+      // and the phrasing asserted something false about it.
+      //
+      // What is true across the whole span is that the Moon is APPLYING toward
+      // that moment: the aspect tightens through the window and perfects later.
+      // Said that way it explains the window instead of arguing with it.
+      const applying = ev.timeMs > startMs;
+      const when = clockOf(ev.timeMs, tzOffsetMin);
       cands.push({
         startMs, endMs, score: aw * pw,
-        why: [`Moon ${ev.aspect} ${ev.planet} · exact ${clockOf(ev.timeMs, tzOffsetMin)}${hard ? " · raw fuel" : ""}`],
+        why: [`Moon–${ev.planet} ${ev.aspect}, ${applying ? `applying toward exactitude at ${when}` : `exact at ${when}`}${hard ? " · raw fuel" : ""}`],
         sources: ["moon"],
       });
     }

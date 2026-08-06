@@ -50,41 +50,74 @@ export function useWeekShape(testerId: string | null, lat: number, lon: number, 
   });
 }
 
-/** The compact strip: one row per day, load only. For Home. */
+/**
+ * The week, as an answer rather than a chart.
+ *
+ * The first version drew seven bars: one black rectangle and six near-invisible
+ * lines. A reader could not tell whether the dark one meant booked, active,
+ * pressured, current, selected or unavailable — and a row of unlabelled slots
+ * does not earn a card. It also buried the one genuinely useful fact ("6 of 7
+ * days open") under decoration.
+ *
+ * Now it names the days, names what is placed on them, and states the shape in
+ * a sentence. White space is still the output; it is just legible as deliberate
+ * openness rather than as something that failed to render.
+ */
 export function WeekStrip({ week, onOpen }: { week: WovenWeek; onOpen?: () => void }) {
-  const busiest = Math.max(60, ...week.days.map(d => d.woven.placed.reduce((n, p) => n + p.minutes, 0)));
+  const placedDays = week.days.filter(d => d.woven.placed.length);
+  const openDays = week.days.filter(d => d.light);
+  const blocks = placedDays.reduce((n, d) => n + d.woven.placed.length, 0);
+  const todayKey = week.days[0]?.key;
+
   return (
-    <div style={{ padding: "2px 18px 12px" }}>
-      <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 46 }}>
+    <div style={{ padding: "0 16px 12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${week.days.length}, 1fr)`, gap: 3 }}>
         {week.days.map((d) => {
-          const mins = d.woven.placed.reduce((n, p) => n + p.minutes, 0);
-          // A bar with no height is indistinguishable from a missing bar, so an
-          // open day gets a visible floor and its own colour rather than
-          // rendering as nothing.
-          const h = mins ? Math.max(8, Math.round((mins / busiest) * 40)) : 3;
+          const first = d.woven.placed[0];
+          const isToday = d.key === todayKey;
           return (
-            <div key={d.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-              <div title={mins ? `${Math.round(mins / 60 * 10) / 10}h placed` : "open"} style={{
-                width: "100%", height: h, borderRadius: 2,
-                background: mins ? "var(--color-primary)" : "var(--color-border)",
-                opacity: mins ? 0.85 : 1,
+            <div key={d.key} style={{ minWidth: 0 }}>
+              <div style={{
+                fontSize: 9, fontWeight: isToday ? 700 : 500,
+                color: isToday ? "var(--color-foreground)" : "var(--text-3)",
+              }}>{dayName(d.key)}</div>
+              {/* A bar that means one thing: minutes of placed work. An open day
+                  gets a visible floor rather than nothing, because nothing and
+                  missing look identical. */}
+              <div style={{
+                height: 3, marginTop: 3, borderRadius: 2,
+                background: first ? "var(--color-primary)" : "var(--color-border)",
               }}/>
-              <div style={{ fontSize: 8.5, color: "var(--text-3)" }}>{dayName(d.key)[0]}</div>
+              <div style={{
+                fontSize: 8.5, marginTop: 3, color: first ? "var(--color-primary)" : "var(--text-3)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {first ? clock(first.startAt).replace(/:00/, "") : "open"}
+              </div>
+              {first && (
+                <div style={{
+                  fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.25, marginTop: 1,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{first.item.title}</div>
+              )}
             </div>
           );
         })}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 }}>
-        <span style={{ fontSize: 10.5, color: "var(--color-muted)" }}>
-          {week.days.filter(d => d.light).length} of {week.days.length} days open
-        </span>
-        {onOpen && (
-          <button onClick={onOpen} style={{
-            fontSize: 10.5, background: "none", border: "none", padding: 0,
-            cursor: "pointer", color: "var(--color-primary)",
-          }}>See the week →</button>
-        )}
+
+      {/* The sentence the bars were failing to say. */}
+      <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 10, lineHeight: 1.5 }}>
+        {blocks === 0
+          ? "Nothing placed yet this week."
+          : `${blocks} ${blocks === 1 ? "block" : "blocks"} placed · ${openDays.length} ${openDays.length === 1 ? "day" : "days"} deliberately open`}
       </div>
+
+      {onOpen && (
+        <button onClick={onOpen} style={{
+          fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
+          cursor: "pointer", color: "var(--color-primary)",
+        }}>See the week →</button>
+      )}
     </div>
   );
 }

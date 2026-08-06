@@ -119,6 +119,17 @@ function moonFavours(sm: any, voc?: { isVOC?: boolean; reading?: { instead: stri
   return { label: "favors", text: sm.favors.slice(0, 3).join(" · ") };
 }
 
+/**
+ * The rail's width.
+ *
+ * Narrowed from 210. At that width it took nearly a fifth of a laptop screen,
+ * and the effect was not just spatial: the rail has glyphs, colour, progress
+ * bars and live times, so the supposedly SECONDARY sky instrument read as more
+ * alive than the product's central answer. Home now carries its own visual
+ * event; this gives it the room to.
+ */
+const RAIL_W = 186;
+
 // A collapsed section: one dense clickable row (label + glyphs/values), the
 // instrument a fluent user reads at a glance. Click anywhere to expand.
 function GlyphRow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
@@ -607,7 +618,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // "not ready yet" — show the skeleton rather than crashing on now.planetaryHour.
   if (!now || !now.planetaryHour) {
     return (
-      <aside style={{ width: 210, minWidth: 210, background: "var(--color-rail)", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 0 }}>
+      <aside style={{ width: RAIL_W, minWidth: RAIL_W, background: "var(--color-rail)", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
           <Skeleton width={60} height={16} style={{ marginBottom: 6 }} />
           <Skeleton width={100} height={10} />
@@ -632,7 +643,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
 
   return (
     <aside style={{
-      width: 210, minWidth: 210, background: "var(--color-rail)",
+      width: RAIL_W, minWidth: RAIL_W, background: "var(--color-rail)",
       display: "flex", flexDirection: "column", overflowY: "auto", fontSize: 12,
       flex: 1, minHeight: 0,
     }}>
