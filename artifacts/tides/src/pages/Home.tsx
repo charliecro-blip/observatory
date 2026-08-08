@@ -326,16 +326,37 @@ export default function Home({
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown } = useTester();
-  const {
-    data: lines, isError: linesFailed,
-    error: linesError, refetch: refetchLines, isFetching: linesFetching,
-  } = useQuery<LinesUp>({
+  const linesQ = useQuery<LinesUp>({
     queryKey: ["lines-up", testerId, lat, lon],
     queryFn: () => fetchJson<LinesUp>(
       `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
       { headers }),
     enabled: !!testerId,
   });
+  const { data: lines, error: linesError, refetch: refetchLines, isFetching: linesFetching } = linesQ;
+
+  /**
+   * A PAUSED QUERY IS UNREACHABLE, NOT LOADING.
+   *
+   * `isError` alone was not enough, and the gap is not small. When a fetch
+   * fails, react-query consults its `onlineManager` before retrying; if that
+   * says offline, the retry is PAUSED rather than run. A paused query sits at
+   * `status: "pending"` indefinitely — `isError` never becomes true, no error
+   * is ever surfaced, and a spinner spins forever.
+   *
+   * Measured with the API stopped: `fetchStatus: "paused"`, `failureCount: 1`,
+   * `status: "pending"`, unchanged after ten seconds, while a hand-rolled
+   * `fetch()` to the same URL returned 500 in 12ms. So the outage module built
+   * for exactly this situation could not be reached in the situation it was
+   * built for, because the flag it keyed on is the one flag that never flips.
+   *
+   * Both are the same admission — Compass could not get an answer — so both
+   * lead to the same state. `fetchStatus` is checked rather than `isPaused` so
+   * that a pause DURING a background refresh, when we still hold good data,
+   * does not throw away a perfectly valid reading.
+   */
+  const linesUnreachable = linesQ.fetchStatus === "paused" && !lines;
+  const linesFailed = linesQ.isError || linesUnreachable;
 
   // WHICH read failed, and WHEN it failed — both from the server.
   //
@@ -837,20 +858,44 @@ export default function Home({
                 fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1.25,
                 color: "var(--color-foreground)",
               }}>
-                {failure.reason === "inventory-unread"
-                  ? "Compass couldn't read what you're holding."
+                {/* Three different admissions, because they are three different
+                    facts. Not reaching Compass at all is not the same as
+                    Compass failing to read the sky, and neither is the same as
+                    not knowing what you hold — and only the last two mean a
+                    reading was actually attempted. */}
+                {linesUnreachable ? "Compass couldn't reach the reading."
+                  : failure.reason === "inventory-unread" ? "Compass couldn't read what you're holding."
                   : "Compass couldn't read the sky for today."}
               </div>
               <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 6 }}>
                 {/* The failure time is stated only when the server sent one. An
                     invented timestamp would be a fabricated observation, and
                     this module exists precisely to stop Compass asserting
-                    things it did not observe. */}
+                    things it did not observe. An unreachable server never sent
+                    one, so nothing is claimed about when it happened. */}
                 {failure.at && `The reading didn't answer at ${new Date(failure.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. `}
+                {linesUnreachable && "The connection didn't hold long enough to ask. "}
                 Nothing has been judged either way.
               </div>
               <button
-                onClick={() => refetchLines()}
+                // `refetch()` does not rescue a PAUSED query, and neither does
+                // telling the online manager it is online.
+                //
+                // Measured, with the API restored: `onlineManager.isOnline()`
+                // was already `true` while the query sat at
+                // `fetchStatus: "paused"`. The retryer parked itself when the
+                // network was down and only wakes on an online *event*; the
+                // value being correct now is not one. So both earlier attempts
+                // — `setOnline(navigator.onLine)`, then flipping it through
+                // false — left a button that looked like it worked and changed
+                // nothing.
+                //
+                // Removing the query drops the parked retryer with it. The
+                // mounted observer then creates a fresh query, which starts
+                // unpaused because the manager reports online. This depends on
+                // no retryer internals, which is why it is the version that
+                // survives a react-query upgrade.
+                onClick={() => { qc.removeQueries({ queryKey: ["lines-up"] }); void refetchLines(); }}
                 disabled={linesFetching}
                 style={{
                   marginTop: 12, fontSize: 12, padding: "7px 14px", borderRadius: 8,
