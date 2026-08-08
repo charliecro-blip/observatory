@@ -71,6 +71,8 @@ interface LinesUpResult {
   activityKey: string; activityLabel: string;
   alternative?: { key: string; label: string };
   startClock: string; endClock: string; allDay: boolean;
+  startAt: string; endAt: string;
+  state: "open-now" | "ahead" | "passed";
   supportLevel: string; suitability: string;
   personal: boolean; why: string;
 }
@@ -158,6 +160,46 @@ const QUALIFIED = "#a08040";
 const PERSONAL = "#6f6a90";
 const NEUTRAL = "#8a8780";
 
+/**
+ * Where a window sits relative to NOW, in words.
+ *
+ * The hero read "Today, 9:14 PM–10:06 PM" identically at seven in the morning
+ * and at twenty past nine at night. Those are different pieces of information —
+ * one is a plan and one is an instruction — and the owner's note was that the
+ * page should answer for the MOMENT, not only for the day.
+ *
+ * The part of day is named rather than the raw clock where that reads more
+ * naturally: people orient by "this evening", not by 21:14.
+ */
+function partOfDay(d: Date): string {
+  const h = d.getHours();
+  if (h < 5) return "tonight";
+  if (h < 12) return "this morning";
+  if (h < 14) return "around midday";
+  if (h < 18) return "this afternoon";
+  if (h < 22) return "this evening";
+  return "tonight";
+}
+
+function whenPhrase(r: { state: string; startAt: string; endAt: string; startClock: string; endClock: string; allDay: boolean }) {
+  if (r.allDay) return { lead: "Supported all day", sub: null as string | null };
+  const start = new Date(r.startAt);
+  const mins = Math.round((start.getTime() - Date.now()) / 60000);
+
+  if (r.state === "open-now") {
+    return { lead: `Open now, until ${r.endClock}`, sub: null };
+  }
+  if (r.state === "passed") {
+    // Said plainly rather than hidden: it was the day's best window and it has
+    // gone, which is worth knowing.
+    return { lead: `${r.startClock}–${r.endClock}`, sub: "that window has passed" };
+  }
+  if (mins <= 90) {
+    return { lead: `In ${mins < 60 ? `${Math.max(1, mins)} min` : "about an hour"}, ${r.startClock}–${r.endClock}`, sub: null };
+  }
+  return { lead: `${partOfDay(start).replace(/^this |^around /, (m) => m)}, ${r.startClock}–${r.endClock}`, sub: null };
+}
+
 function Badge({ text, color }: { text: string; color: string }) {
   return (
     <span style={{
@@ -208,7 +250,7 @@ export default function Home({
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown } = useTester();
-  const { data: lines } = useQuery<LinesUp>({
+  const { data: lines, isError: linesFailed, isLoading: linesLoading } = useQuery<LinesUp>({
     queryKey: ["lines-up", testerId, lat, lon],
     queryFn: () => fetchJson<LinesUp>(
       `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
@@ -438,9 +480,20 @@ export default function Home({
             <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.4px", color: "var(--color-foreground)" }}>
               {lead.held.title}
             </div>
-            <div style={{ fontSize: 15, color: "var(--color-primary)", marginTop: 4, fontWeight: 500 }}>
-              {lead.allDay ? "Supported all day" : `Today, ${lead.startClock}–${lead.endClock}`}
-            </div>
+            {(() => {
+              const w = whenPhrase(lead);
+              return (
+                <>
+                  <div style={{
+                    fontSize: 15, marginTop: 4, fontWeight: 500,
+                    color: lead.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
+                  }}>
+                    {w.lead.charAt(0).toUpperCase() + w.lead.slice(1)}
+                  </div>
+                  {w.sub && <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>{w.sub}</div>}
+                </>
+              );
+            })()}
 
             {/* The receipt, behind a disclosure. An astro-literate reader must
                 be able to inspect it; nobody should have to read it first. */}
@@ -473,6 +526,24 @@ export default function Home({
               </span>
             </div>
           </div>
+        ) : linesFailed ? (
+          /* AN OUTAGE IS NOT A QUIET DAY.
+             Found by accident: with the API down, this hero said "Nothing
+             you're holding is especially singled out today" — a confident,
+             false statement, and exactly the defect the codebase already has a
+             rule against ("a failed request stops looking like an empty life").
+             Reintroduced here because a thrown query and an empty result both
+             leave `lines` undefined, and the quiet branch caught both. */
+          <div style={{ padding: "2px 20px 18px" }}>
+            <div style={{ fontSize: 17, lineHeight: 1.35, color: "#a03030" }}>
+              I couldn't read the sky just now.
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
+              This is a connection problem, not a quiet day — the difference matters, so it says so.
+            </div>
+          </div>
+        ) : linesLoading ? (
+          <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>Reading the sky…</div>
         ) : (
           /* The quiet day CONTRACTS rather than disappearing. */
           <div style={{ padding: "2px 20px 18px" }}>
@@ -502,8 +573,11 @@ export default function Home({
               {r.held.title}
             </span>
             {r.supportLevel === "convergent" && <Badge text="converges" color={CONVERGENT} />}
-            <span style={{ fontSize: 11.5, color: "var(--color-primary)", flexShrink: 0 }}>
-              {r.allDay ? "all day" : `${r.startClock}–${r.endClock}`}
+            <span style={{
+              fontSize: 11.5, flexShrink: 0,
+              color: r.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
+            }}>
+              {r.allDay ? "all day" : r.state === "open-now" ? `now, until ${r.endClock}` : `${r.startClock}–${r.endClock}`}
             </span>
           </div>
         ))}

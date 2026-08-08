@@ -106,3 +106,42 @@ describe("all-day testimony", () => {
     }
   });
 });
+
+describe("the moment, not just the day", () => {
+  // The owner's note: the page should answer for the exact moment, not only
+  // for the quality of the day. A window that closed at noon is not the answer
+  // to "what should I do now" at four o'clock, however strong it was — and it
+  // was leading the page.
+  it("never leads with a window that has already passed when one is still ahead", () => {
+    for (const title of ["Deep work sprint", "Long run", "Sign a contract"]) {
+      const r = linesUp({ ...base, held: [held(title)] });
+      if (r.results.length < 2) continue;
+      const states = r.results.map(x => x.state);
+      // Ordered: open-now, then ahead, then passed. Never a passed one above
+      // a live one.
+      const rank: Record<string, number> = { "open-now": 0, ahead: 1, passed: 2 };
+      for (let i = 1; i < states.length; i++) {
+        expect(rank[states[i]]).toBeGreaterThanOrEqual(rank[states[i - 1]]);
+      }
+    }
+  });
+
+  it("labels every result with where it sits relative to now", () => {
+    let seen = 0;
+    for (const title of ["Deep work sprint", "Long run", "Sign a contract", "Finish & ship the last 10%"]) {
+      for (const x of linesUp({ ...base, held: [held(title)] }).results) {
+        seen++;
+        expect(["open-now", "ahead", "passed"]).toContain(x.state);
+        // The instants must actually agree with the label they carry.
+        const startMs = Date.parse(x.startAt);
+        const endMs = Date.parse(x.endAt);
+        expect(Number.isNaN(startMs)).toBe(false);
+        if (!x.allDay) {
+          if (x.state === "ahead") expect(startMs).toBeGreaterThan(Date.now());
+          if (x.state === "passed") expect(endMs).toBeLessThanOrEqual(Date.now());
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+});

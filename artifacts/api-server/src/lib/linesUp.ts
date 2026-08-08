@@ -84,6 +84,18 @@ export interface LinesUpResult {
   alternative?: { key: string; label: string };
   startClock: string;
   endClock: string;
+  /** Instants, so the client can say where this sits relative to now. */
+  startAt: string;
+  endAt: string;
+  /**
+   * Where the window sits relative to NOW.
+   *
+   * A window is not one piece of information — "9:14 PM" read at 7am is a plan
+   * and read at 9:20pm is an instruction, and the page was showing both the
+   * same way. It also let a window that had already closed lead the page, which
+   * is worse than saying nothing.
+   */
+  state: "open-now" | "ahead" | "passed";
   /**
    * True when the testimony holds for the whole day rather than naming an hour
    * — the Moon's sign, say. Rendered as "all day", never as a clock range: a
@@ -244,19 +256,37 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     // is the floor that keeps "supported" meaning something.
     if (!hasRealTestimony(w)) continue;
     if (w.supportLevel === "supported") sawSupported = true;
+    const startMs = Date.parse(w.startAt);
+    const endMs = Date.parse(w.endAt);
+    const nowMs = Date.now();
+    const state: LinesUpResult["state"] =
+      w.allDay ? "open-now"
+      : nowMs >= startMs && nowMs < endMs ? "open-now"
+      : nowMs < startMs ? "ahead"
+      : "passed";
     results.push({
       held: t.item, activityKey: t.key, activityLabel: t.label, alternative: t.alt,
       startClock: w.startClock, endClock: w.endClock, allDay: !!w.allDay,
+      startAt: w.startAt, endAt: w.endAt, state,
       supportLevel: w.supportLevel, suitability: w.suitability,
       personal: !!w.personal,
       why: typeof w.why === "string" ? w.why : "",
     });
   }
 
+  // THE MOMENT ORDERS BEFORE THE STRENGTH.
+  //
+  // A convergent window that closed at noon is not the answer to "what should I
+  // do now" at four o'clock, however strong it was — and it was leading the
+  // page. Open now first, then what is still ahead, then what has passed; only
+  // within a group does support level decide.
+  const WHEN: Record<LinesUpResult["state"], number> = { "open-now": 0, ahead: 1, passed: 2 };
   results.sort((a, b) =>
+    WHEN[a.state] - WHEN[b.state] ||
     (RANK[a.supportLevel] ?? 9) - (RANK[b.supportLevel] ?? 9) ||
     (SUIT[a.suitability] ?? 9) - (SUIT[b.suitability] ?? 9) ||
-    Number(b.personal) - Number(a.personal));
+    Number(b.personal) - Number(a.personal) ||
+    Date.parse(a.startAt) - Date.parse(b.startAt));
 
   const top = results.slice(0, 3);
   const anyConvergent = top.some(r => r.supportLevel === "convergent");

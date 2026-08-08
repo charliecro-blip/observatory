@@ -1215,27 +1215,40 @@ function Shell() {
             background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
         >✦ Ask</button>
+        {/* + task keeps its border. It is an ACTION, and it and Ask are the two
+            controls a person actually reaches for. */}
+        <button onClick={() => setCapture(true)} style={{
+          fontSize:10, padding:"4px 11px", borderRadius:8, border:"1px solid #c0bab0",
+          background:"var(--color-card)", color:"var(--text-2)", cursor:"pointer",
+          fontWeight:500, marginRight:10,
+        }}>+ task</button>
+
+        {/* UTILITIES, visually quieted.
+            Six controls with identical borders and backgrounds competed with
+            the page — the mobile-layout preview carried the same weight as Ask.
+            These three are things you touch rarely and never as the point of
+            opening the app, so they lose their chrome and keep their function. */}
         {window.matchMedia("(min-width: 769px)").matches && (
           <button onClick={() => setForceMobile(!getForceMobile())}
+            aria-label={getForceMobile() ? "Back to desktop layout" : "Preview the mobile layout"}
             title={getForceMobile() ? "Back to desktop layout" : "Preview the mobile layout"} style={{
-            fontSize:11, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-            background: getForceMobile() ? "var(--color-border)" : "var(--color-card)",
-            color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
+            fontSize:11, padding:"4px 6px", borderRadius:6, border:"none",
+            background: getForceMobile() ? "var(--color-border)" : "transparent",
+            color:"var(--text-3)", cursor:"pointer", opacity: getForceMobile() ? 1 : 0.72,
           }}>📱</button>
         )}
-        <button onClick={toggleTheme} title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
-          fontSize:12, padding:"4px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-          background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
+        <button onClick={toggleTheme}
+          aria-label={theme === "light" ? "Switch to dark" : "Switch to light"}
+          title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
+          fontSize:12, padding:"4px 6px", borderRadius:6, border:"none",
+          background:"transparent", color:"var(--text-3)", cursor:"pointer", opacity:0.72,
         }}>{theme === "light" ? "☾" : "☀"}</button>
-        <button onClick={() => setCapture(true)} style={{
-          fontSize:10, padding:"4px 11px", borderRadius:6, border:"1px solid var(--color-border)",
-          background:"var(--color-card)", color:"var(--color-foreground)", cursor:"pointer", marginRight:6,
-        }}>+ task</button>
         <button onClick={() => setView("settings")} style={{
           display:"flex", alignItems:"center", gap:4,
-          fontSize:11, padding:"5px 12px", borderRadius:6, border:"none",
+          fontSize:11, padding:"5px 9px", borderRadius:6, border:"none",
           background: view==="settings" ? "var(--color-border)" : "transparent",
-          color: view==="settings" ? "var(--color-foreground)" : "var(--color-muted)", cursor:"pointer", marginBottom:-1,
+          color: view==="settings" ? "var(--color-foreground)" : "var(--text-3)", cursor:"pointer", marginBottom:-1,
+          opacity: view==="settings" ? 1 : 0.72,
           borderBottom: view==="settings" ? "2px solid var(--color-primary)" : "2px solid transparent",
         }}>{isMobile ? "⚙" : "⚙ Settings"}</button>
       </div>
