@@ -77,7 +77,11 @@ router.get("/elections/lines-up", async (req, res) => {
     const openTasks = await db.select().from(tasks).where(eq(tasks.testerId, testerId));
     for (const t of openTasks) {
       if (t.done === "true") continue;
-      held.push({ id: `task-${t.id}`, title: t.title, kind: "task", activityKey: t.activityKey });
+      held.push({
+        id: `task-${t.id}`, title: t.title, kind: "task", activityKey: t.activityKey,
+        // The reserved block, if there is one.
+        scheduledFor: t.planningWindowId != null ? String(t.planningWindowId) : null,
+      });
     }
     // Guiding Stars are directional, so the STEP is what gets timed, not the
     // aim. "Get fit" has no window; "long run" does.

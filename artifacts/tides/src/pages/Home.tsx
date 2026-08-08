@@ -39,7 +39,7 @@
  * building a settings shape nobody can reach.
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow } from "@/hooks/useTides";
@@ -74,11 +74,12 @@ interface LinesUpResult {
   startAt: string; endAt: string;
   state: "open-now" | "ahead" | "passed";
   supportLevel: string; suitability: string;
-  personal: boolean; why: string;
+  personal: boolean; why: string; evidence: string[];
 }
 interface LinesUp {
   results: LinesUpResult[];
   clarify: { held: { id: string; title: string }; candidates: { key: string; label: string }[] }[];
+  alreadyScheduled: { id: string; title: string }[];
   quiet: "supported-only" | "nothing-singled-out" | "thin-inventory" | null;
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   notPriced: number;
@@ -317,6 +318,19 @@ export default function Home({
   // the day shaping uses.
   const { data: week } = useWeekShape(testerId, lat, lon, locationKnown, true);
 
+  // CROSS-HIGHLIGHT. The hero and the task row are two views of one object, not
+  // two statements of the same fact — clicking either shows you the other. This
+  // is the answer to the duplication the page had: the connection is made by
+  // the interaction rather than by repeating the sentence.
+  const [focusedTask, setFocusedTask] = useState<number | null>(null);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const focusTimer = useRef<number | null>(null);
+  const flashRow = (id: number) => {
+    setFocusedTask(id);
+    if (focusTimer.current) window.clearTimeout(focusTimer.current);
+    focusTimer.current = window.setTimeout(() => setFocusedTask(null), 2400);
+  };
+
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
     mutationFn: (title: string) =>
@@ -366,12 +380,21 @@ export default function Home({
     if (!Number.isNaN(id)) timingFor.set(id, r);
   }
   const needsDuration = new Set((resolution?.needsDuration ?? []).map(n => Number(n.id.replace("task-", ""))));
+  const scheduled = new Set((lines?.alreadyScheduled ?? []).map(n => Number(n.id.replace("task-", ""))));
   const needsActivity = new Set((resolution?.needsActivity ?? []).map(n => Number(n.id.replace("task-", ""))));
 
   const Row = ({ t, muted }: { t: Task; muted?: boolean }) => {
     const timing = timingFor.get(t.id);
+    const isHero = lead ? Number(lead.held.id.replace("task-", "")) === t.id : false;
+    const focused = focusedTask === t.id;
     return (
-      <div style={{ padding: "7px 16px", borderTop: "1px solid var(--color-border)" }}>
+      <div style={{
+        padding: "7px 16px", borderTop: "1px solid var(--color-border)",
+        // A transparent rule on every row, so highlighting never shifts layout.
+        borderLeft: `2px solid ${focused ? CONVERGENT : "transparent"}`,
+        background: focused ? "var(--color-card-2)" : "transparent",
+        transition: "background 140ms ease, border-color 140ms ease",
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <button
             onClick={() => toggleTask.mutate({ id: t.id, done: t.done !== "true" })}
@@ -392,18 +415,36 @@ export default function Home({
         {/* The task's TIMING STATE, on the task. This is what finally joins the
             inventory to the engine — previously a task row knew nothing about
             whether the engine had anything to say about it. */}
-        {t.done !== "true" && (timing || needsDuration.has(t.id) || needsActivity.has(t.id)) && (
+        {t.done !== "true" && (timing || scheduled.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id)) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
-            {timing ? (
-              <>
-                <span style={{ color: timing.supportLevel === "convergent" ? CONVERGENT : "var(--color-muted)" }}>
-                  {timing.activityLabel}
+            {scheduled.has(t.id) ? (
+              <span style={{ color: "var(--color-muted)" }}>already scheduled</span>
+            ) : timing ? (
+              /* The verdict is the OTHER end of the cross-highlight: clicking it
+                 opens the hero's evidence and marks this row, so the two stop
+                 being separate statements of one fact. */
+              <button
+                onClick={() => { setEvidenceOpen(true); if (isHero) flashRow(t.id); }}
+                style={{
+                  background: "none", border: "none", padding: 0, textAlign: "left",
+                  font: "inherit", cursor: isHero ? "pointer" : "default",
+                  color: timing.supportLevel === "convergent" ? CONVERGENT : "var(--color-muted)",
+                }}>
+                {timing.supportLevel === "convergent" && "✦ "}
+                {timing.activityLabel}
+                <span style={{ color: "var(--color-muted)" }}>
+                  {" · "}
+                  {timing.allDay ? "supported all day"
+                    : timing.state === "open-now" ? `open now, until ${timing.endClock}`
+                    : timing.state === "passed" ? `${timing.startClock}–${timing.endClock}, passed`
+                    : `${timing.startClock}–${timing.endClock}`}
                 </span>
-                {" · "}
-                {timing.allDay ? "supported all day" : `window ${timing.startClock}–${timing.endClock}`}
-              </>
-            ) : needsActivity.has(t.id) ? "needs a kind of work before it can be timed"
-              : "needs a rough duration before it can be placed"}
+              </button>
+            ) : needsActivity.has(t.id) ? (
+              <span style={{ color: QUALIFIED }}>needs a kind of work before it can be timed</span>
+            ) : (
+              <span style={{ color: QUALIFIED }}>needs a rough duration before it can be placed</span>
+            )}
           </div>
         )}
       </div>
@@ -477,44 +518,80 @@ export default function Home({
               {lead.personal && <Badge text="Personal reinforcement" color={PERSONAL} />}
             </div>
 
-            <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.4px", color: "var(--color-foreground)" }}>
+            <div
+              onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) flashRow(id); }}
+              title="Show this in your work"
+              style={{
+                fontSize: 26, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.4px",
+                color: "var(--color-foreground)", cursor: "pointer",
+                textDecoration: focusedTask === Number(lead.held.id.replace("task-", "")) ? "underline" : "none",
+                textDecorationColor: "var(--color-border)", textUnderlineOffset: 5,
+              }}>
               {lead.held.title}
             </div>
             {(() => {
               const w = whenPhrase(lead);
+              const mins = lead.allDay ? 0
+                : Math.round((Date.parse(lead.endAt) - Date.parse(lead.startAt)) / 60000);
               return (
-                <>
-                  <div style={{
-                    fontSize: 15, marginTop: 4, fontWeight: 500,
-                    color: lead.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
-                  }}>
-                    {w.lead.charAt(0).toUpperCase() + w.lead.slice(1)}
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginTop: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13.5, fontWeight: 500,
+                      color: lead.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
+                    }}>
+                      {w.lead.charAt(0).toUpperCase() + w.lead.slice(1)}
+                    </div>
+                    {w.sub && <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>{w.sub}</div>}
                   </div>
-                  {w.sub && <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>{w.sub}</div>}
-                </>
+                  {/* The window at display size, with its LENGTH. We had both
+                      instants and never showed how long the block was — and
+                      "51 minutes" changes what a person does with it. */}
+                  {!lead.allDay && (
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 22, lineHeight: 1.1, letterSpacing: "-0.3px", whiteSpace: "nowrap",
+                        color: lead.state === "passed" ? "var(--text-3)" : "var(--color-foreground)" }}>
+                        {lead.startClock}–{lead.endClock}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+                        {mins < 60 ? `${mins} minutes` : `${Math.round(mins / 6) / 10} hours`}
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })()}
 
             {/* The receipt, behind a disclosure. An astro-literate reader must
                 be able to inspect it; nobody should have to read it first. */}
-            {lead.why && (
-              <details style={{ marginTop: 9 }}>
-                <summary style={{
-                  fontSize: 11.5, color: "var(--color-primary)", cursor: "pointer", listStyle: "none",
-                  display: "inline-block", padding: "3px 10px", borderRadius: 7,
-                  border: "1px solid var(--color-border)",
-                }}>
-                  See the evidence
-                </summary>
-                <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>{lead.why}</div>
-              </details>
+            {/* One testimony per line, in an inset panel. The engine computes
+                them separately and used to join them into a single blur; three
+                facts a reader can weigh is a different thing from one sentence
+                they can only accept. */}
+            {evidenceOpen && (lead.evidence?.length ?? 0) > 0 && (
+              <div style={{
+                background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+                borderRadius: 8, padding: "13px 15px", marginTop: 11, maxWidth: 720,
+                display: "flex", flexDirection: "column", gap: 7,
+              }}>
+                {lead.evidence.map((e, i) => (
+                  <div key={i} style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>{e}</div>
+                ))}
+              </div>
             )}
 
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
               <button onClick={() => setShapeOpen(true)} style={{
-                fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+                fontSize: 12, fontWeight: 600, padding: "7px 15px", borderRadius: 8, cursor: "pointer",
                 border: "none", background: "var(--color-primary)", color: "var(--color-card)",
               }}>Put on today</button>
+              {(lead.evidence?.length ?? 0) > 0 && (
+                <button onClick={() => setEvidenceOpen(v => !v)} style={{
+                  fontSize: 12, padding: "7px 13px", borderRadius: 8, cursor: "pointer",
+                  border: "1px solid var(--color-border)", background: "var(--color-card)",
+                  color: "var(--color-foreground)",
+                }}>{evidenceOpen ? "Hide evidence" : "See evidence"}</button>
+              )}
               <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
                 {lead.activityLabel}
                 {lead.alternative && (

@@ -109,6 +109,8 @@ export interface ElectionWindow {
   suitability: Suitability;
   /** Structured, so the surface can explain rather than just demote. */
   suitabilityReasons: SuitabilityReason[];
+  /** The same testimonies as `why`, unjoined, one per line of reasoning. */
+  evidence?: string[];
 }
 
 export interface ElectionResult {
@@ -837,7 +839,14 @@ export function computeElections(opts: {
         startAt: new Date(c.startMs).toISOString(), endAt: new Date(c.endMs).toISOString(),
         startClock: clockOf(c.startMs, tzOffsetMin), endClock: clockOf(c.endMs, tzOffsetMin),
         allDay: c.allDay, tier, score: parseFloat(score.toFixed(3)),
+        // Joined for callers that want one line, and kept APART for the ones
+        // that want to show the reasoning. Every testimony is computed
+        // separately and the join was throwing that structure away — a panel
+        // showing "the Moon is applying to Mercury… / Saturn's hour contains
+        // the window… / your 10th house is reinforced…" is three facts a reader
+        // can weigh, where the joined string is one blur they can only accept.
         why: [...c.why, ...dayWhy].join(" · "),
+        evidence: [...c.why, ...dayWhy],
         sources: [...new Set([...c.sources, ...daySources])],
         families,
         personal: personalFamilies.length > 0,

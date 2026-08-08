@@ -66,6 +66,15 @@ export interface HeldItem {
   /** Where it came from, so the UI can say so and link back. */
   kind: "task" | "star-step" | "pinned";
   /**
+   * Set when this item already has a reserved block.
+   *
+   * Without it, Compass offered to find a time for work the person had already
+   * committed to — the column has existed and been backfilled for days, and
+   * nothing read it. An item that is already placed does not need timing; it
+   * needs to be left alone.
+   */
+  scheduledFor?: string | null;
+  /**
    * An activity already assigned to this item — Guiding Stars carry one from
    * the planet-diagnosis flow, and tasks can be corrected by hand.
    *
@@ -109,6 +118,8 @@ export interface LinesUpResult {
   personal: boolean;
   /** The evidence receipt — drawn from the engine, not written here. */
   why: string;
+  /** The same testimonies, one per line, for the expanded panel. */
+  evidence: string[];
 }
 
 export interface Clarification {
@@ -128,6 +139,8 @@ export interface LinesUp {
   quiet: QuietReason | null;
   /** At most one. The full horizon belongs in the Compass, not on Home. */
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
+  /** Held items that already hold a block, so they were not timed. */
+  alreadyScheduled: HeldItem[];
   /** Held items not priced because of MAX_PRICED. Never silently dropped. */
   notPriced: number;
   /**
@@ -175,13 +188,17 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   // basis for a computed answer and should be told so directly rather than
   // shown a blank module.
   if (held.length === 0) {
-    return { results: [], clarify: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
+    return { results: [], clarify: [], alreadyScheduled: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
   }
 
   const clarify: Clarification[] = [];
+  const alreadyScheduled: HeldItem[] = [];
   const timeable: { item: HeldItem; key: string; label: string; alt?: { key: string; label: string } }[] = [];
 
   for (const item of held) {
+    // Already placed → not a timing question. Reported so the UI can say
+    // "already scheduled at 3:00 PM" rather than offering a window for it.
+    if (item.scheduledFor) { alreadyScheduled.push(item); continue; }
     if (item.activityKey) {
       const known = activityByKey(item.activityKey);
       if (known) { timeable.push({ item, key: known.key, label: known.label }); continue; }
@@ -271,6 +288,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
       supportLevel: w.supportLevel, suitability: w.suitability,
       personal: !!w.personal,
       why: typeof w.why === "string" ? w.why : "",
+      evidence: Array.isArray(w.evidence) ? w.evidence : (typeof w.why === "string" && w.why ? [w.why] : []),
     });
   }
 
@@ -300,6 +318,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   return {
     results: top,
     clarify: clarify.slice(0, 2),
+    alreadyScheduled,
     quiet,
     nextOpening: quiet ? nextOpeningFor(priced, opts) : null,
     notPriced,

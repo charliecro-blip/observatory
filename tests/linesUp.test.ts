@@ -145,3 +145,41 @@ describe("the moment, not just the day", () => {
     expect(seen).toBeGreaterThan(0);
   });
 });
+
+describe("already scheduled work is not a timing question", () => {
+  // tasks.planning_window_id has existed and been backfilled for days, and
+  // nothing read it — so Compass offered to find a time for work the person had
+  // already committed to.
+  it("does not time an item that already holds a block", () => {
+    const r = linesUp({ ...base, held: [held("Deep work sprint", { scheduledFor: "412" })] });
+    expect(r.results).toEqual([]);
+    expect(r.alreadyScheduled.map(x => x.title)).toEqual(["Deep work sprint"]);
+  });
+
+  it("still times the same item when nothing is reserved", () => {
+    const r = linesUp({ ...base, held: [held("Deep work sprint")] });
+    expect(r.alreadyScheduled).toEqual([]);
+  });
+});
+
+describe("evidence is kept apart, not joined", () => {
+  // Each testimony is computed separately and was then joined into one string.
+  // Three facts a reader can weigh is a different thing from one blur they can
+  // only accept.
+  it("returns one line per testimony", () => {
+    let sawMulti = 0, seen = 0;
+    for (const title of ["Deep work sprint", "Long run", "Sign a contract", "Finish & ship the last 10%"]) {
+      for (const x of linesUp({ ...base, held: [held(title)] }).results) {
+        seen++;
+        expect(Array.isArray(x.evidence)).toBe(true);
+        // The joined string and the array must agree about content.
+        if (x.why) expect(x.evidence.length).toBeGreaterThan(0);
+        if (x.evidence.length > 1) sawMulti++;
+        for (const line of x.evidence) expect(line).not.toContain(" · ");
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+    // If nothing ever had more than one testimony the split would be untested.
+    expect(sawMulti).toBeGreaterThan(0);
+  });
+});
