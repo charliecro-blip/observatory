@@ -94,11 +94,30 @@ router.get("/elections/lines-up", async (req, res) => {
       held.push({ id: `star-${g.id}`, title: g.title, kind: "star-step", activityKey: g.activityKey });
     }
   } catch {
-    res.status(503).json({ error: "could not read your inventory" });
+    res.status(503).json({ error: "could not read your inventory", reason: "inventory-unread" });
     return;
   }
 
-  res.json(linesUp({ held, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown }));
+  // AN OUTAGE IS NOT A QUIET DAY.
+  //
+  // Unprotected, a throw in here became a generic 500, and the client could
+  // only report "a connection problem" — which is a guess, and the wrong one
+  // when the request arrived fine and the sky read is what failed. Worse, the
+  // two failures need different words: not knowing what someone holds and not
+  // having judged the sky are different admissions.
+  //
+  // The failure time is carried out because the surface states it, and a time
+  // the client invents is not evidence of anything.
+  try {
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown }));
+  } catch (err) {
+    req.log?.error({ err }, "lines-up: sky read failed");
+    res.status(503).json({
+      error: "could not read the sky",
+      reason: "sky-unread",
+      at: new Date().toISOString(),
+    });
+  }
 });
 
 /**

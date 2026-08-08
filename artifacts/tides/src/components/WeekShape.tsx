@@ -33,6 +33,9 @@ export interface WovenWeek {
   warnings: string[];
 }
 
+/** The convergence green, matching Home's `CONVERGENT`. Hex, so alpha suffixes work. */
+const PLACED = "#3f7a4a";
+
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 const dayName = (key: string) => {
@@ -88,14 +91,28 @@ export function WeekStrip({ week, onOpen }: { week: WovenWeek; onOpen?: () => vo
                   "nothing here on purpose", where an absence reads as a
                   rendering failure. Occupancy is not the target, so the empty
                   state has to look deliberate. */}
+              {/* A placed day is tinted with the convergence green rather than
+                  outlined in ink: at this size a 1px border reads as a box,
+                  and a fill reads as a day with something in it. The dashed
+                  cell beside it stays empty on purpose — the two states have to
+                  be distinguishable at a glance, from across a room. */}
+              {/* Tinted with the convergence green rather than outlined in ink:
+                  at this size a 1px border reads as a box, and a fill reads as
+                  a day with something in it.
+
+                  The tint is the green at low ALPHA, not an opaque pale green.
+                  A fixed light fill is only light against a light card — in
+                  dark mode it becomes a glowing block, which is how a quiet
+                  accent turns into the loudest thing on the page. Translucent
+                  means the card underneath decides the value in both themes. */}
               <div style={{
-                height: 26, marginTop: 3, borderRadius: 4,
-                border: first ? "1px solid var(--color-primary)" : "1px dashed var(--color-border)",
-                background: first ? "var(--color-card-2)" : "transparent",
+                height: 26, marginTop: 3, borderRadius: 5,
+                border: first ? `1px solid ${PLACED}55` : "1px dashed var(--color-border)",
+                background: first ? `${PLACED}1e` : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {first && (
-                  <span style={{ fontSize: 8.5, fontWeight: 600, color: "var(--color-primary)" }}>
+                  <span style={{ fontSize: 8.5, fontWeight: 600, color: PLACED }}>
                     {clock(first.startAt).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
                   </span>
                 )}

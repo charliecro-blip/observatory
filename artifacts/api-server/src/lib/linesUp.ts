@@ -31,7 +31,7 @@
  * question instead of a recommendation, which is often the more valuable row.
  */
 
-import { computeElections } from "./electionEngine.js";
+import { computeElections, type Evidence } from "./electionEngine.js";
 import { rankActivities, activityByKey } from "./activityCorrespondences.js";
 import type { ComputedNatalChart } from "./natal.js";
 
@@ -118,8 +118,10 @@ export interface LinesUpResult {
   personal: boolean;
   /** The evidence receipt — drawn from the engine, not written here. */
   why: string;
-  /** The same testimonies, one per line, for the expanded panel. */
-  evidence: string[];
+  /** The same testimonies, one per line and carrying their family. */
+  evidence: Evidence[];
+  /** The engine's own absence claim. See `ElectionWindow.noObjections`. */
+  noObjections: boolean;
 }
 
 export interface Clarification {
@@ -288,7 +290,12 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
       supportLevel: w.supportLevel, suitability: w.suitability,
       personal: !!w.personal,
       why: typeof w.why === "string" ? w.why : "",
-      evidence: Array.isArray(w.evidence) ? w.evidence : (typeof w.why === "string" && w.why ? [w.why] : []),
+      // The fallback keeps the family honest rather than convenient: a window
+      // that predates structured evidence gets `unattributed`, not a guessed
+      // family. A wrong label on a testimony is worse than an unlabelled one.
+      evidence: Array.isArray(w.evidence) ? w.evidence
+        : (typeof w.why === "string" && w.why ? [{ family: "unattributed", text: w.why }] : []),
+      noObjections: w.noObjections === true,
     });
   }
 

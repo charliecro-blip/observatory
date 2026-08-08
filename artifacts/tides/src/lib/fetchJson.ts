@@ -16,7 +16,17 @@
  */
 
 export class HttpError extends Error {
-  constructor(public status: number, public url: string, message?: string) {
+  /**
+   * The error body, parsed, when the server sent JSON.
+   *
+   * Some failures are not interchangeable and the surface has to tell them
+   * apart: "could not read your inventory" and "could not read the sky" need
+   * different words, and only the server knows which happened. Without this,
+   * the caller's only handle was `message` — the body as a truncated string —
+   * so distinguishing them meant pattern-matching prose, which breaks the
+   * moment the wording changes.
+   */
+  constructor(public status: number, public url: string, message?: string, public body?: unknown) {
     super(message ?? `Request failed (${status})`);
     this.name = "HttpError";
   }
@@ -40,8 +50,15 @@ export async function fetchJson<T>(
   if (!r.ok) {
     if (absentStatuses?.includes(r.status)) return absentValue as T;
     let detail = "";
-    try { detail = (await r.text()).slice(0, 200); } catch { /* body already gone */ }
-    throw new HttpError(r.status, String(input), detail || undefined);
+    let parsed: unknown;
+    try {
+      detail = (await r.text()).slice(0, 200);
+      // Best effort only. An error body that is not JSON is normal (a proxy's
+      // HTML, an empty 502) and must not turn a failed request into a thrown
+      // parse on top of it.
+      if (detail) { try { parsed = JSON.parse(detail); } catch { /* not JSON */ } }
+    } catch { /* body already gone */ }
+    throw new HttpError(r.status, String(input), detail || undefined, parsed);
   }
   return r.json() as Promise<T>;
 }

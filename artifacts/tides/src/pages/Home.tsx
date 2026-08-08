@@ -39,11 +39,11 @@
  * building a settings shape nobody can reach.
  */
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow } from "@/hooks/useTides";
-import { fetchJson } from "@/lib/fetchJson";
+import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
 import { WeekStrip, useWeekShape } from "@/components/WeekShape";
@@ -74,7 +74,9 @@ interface LinesUpResult {
   startAt: string; endAt: string;
   state: "open-now" | "ahead" | "passed";
   supportLevel: string; suitability: string;
-  personal: boolean; why: string; evidence: string[];
+  personal: boolean; why: string;
+  evidence: { family: string; text: string }[];
+  noObjections: boolean;
 }
 interface LinesUp {
   results: LinesUpResult[];
@@ -196,32 +198,6 @@ function partOfDay(d: Date): string {
 }
 
 /**
- * The window's relation to NOW — never its clock times.
- *
- * Every branch here used to end in `startClock–endClock`, because this phrase
- * was once the only place the window appeared. It no longer is: the hero's
- * right-hand block states the range at display size. Repeating it gave the
- * card two sentences making one claim ("This evening, 8:12 PM–9:19 PM" beside
- * "8:12 PM–9:19 PM"), which reads as a rendering mistake rather than emphasis.
- *
- * So the division is: this says *when, relative to you*; the block beside it
- * says *when, absolutely*. Neither is complete alone and neither repeats the
- * other.
- */
-function whenPhrase(r: { state: string; startAt: string; endAt: string; startClock: string; endClock: string; allDay: boolean }) {
-  if (r.allDay) return { lead: "Supported all day", sub: null as string | null };
-  const start = new Date(r.startAt);
-  const mins = Math.round((start.getTime() - Date.now()) / 60000);
-
-  if (r.state === "open-now") return { lead: "Open now", sub: null };
-  // Said plainly rather than hidden: it was the day's best window and it has
-  // gone, which is worth knowing.
-  if (r.state === "passed") return { lead: "That window has passed", sub: null };
-  if (mins <= 90) return { lead: `In ${mins < 60 ? `${Math.max(1, mins)} min` : "about an hour"}`, sub: null };
-  return { lead: partOfDay(start), sub: null };
-}
-
-/**
  * "1 hr 7 min", not "1.1 hours".
  *
  * Decimal hours are a unit the reader has to convert before they can act, and
@@ -232,6 +208,72 @@ function durationPhrase(mins: number): string {
   if (mins < 60) return `${mins} minutes`;
   const h = Math.floor(mins / 60), m = mins % 60;
   return `${h} hr${h === 1 ? "" : "s"}${m ? ` ${m} min` : ""}`;
+}
+
+/** A coarse distance in time. Deliberately rounded — nobody acts on "in 187 min". */
+function roughGap(mins: number): string {
+  if (mins < 60) return `${Math.max(1, mins)} min`;
+  const h = Math.round(mins / 60);
+  return `${h} hour${h === 1 ? "" : "s"}`;
+}
+
+/**
+ * The hero's window, as label / clock / meta / elapsed.
+ *
+ * THE CLOCK LEADS AND THE PHRASE BECOMES THE LABEL. The reverse — giving the
+ * moment-relative phrase the display size and demoting the times — reads
+ * better in four of the five moments and worse in the one that matters: while
+ * a window is open, "Open now" is a weaker headline than the time you have
+ * left in it. Since the open case is the only one someone acts on immediately,
+ * it decides the layout for all five.
+ *
+ * The clock itself changes shape when open: the start time has stopped being
+ * actionable, so it becomes "until 6:10 PM" rather than "5:19–6:10 PM".
+ *
+ * A passed window keeps its size and loses its ink. It is history, not an
+ * error — shrinking it, hiding it or colouring it amber would all make a
+ * finished window look like a fault.
+ */
+function momentBlock(r: { state: string; startAt: string; endAt: string; startClock: string; endClock: string; allDay: boolean }) {
+  const now = Date.now();
+  const startMs = Date.parse(r.startAt), endMs = Date.parse(r.endAt);
+  const mins = Math.round((endMs - startMs) / 60000);
+
+  if (r.allDay) return { label: "TODAY", clock: "All day", meta: "supported start to finish", elapsed: null };
+
+  if (r.state === "open-now") {
+    const left = Math.max(0, Math.round((endMs - now) / 60000));
+    return {
+      label: "OPEN NOW",
+      clock: `until ${r.endClock}`,
+      meta: `${durationPhrase(mins)} · ${left} left`,
+      // The one place a progress bar is honest: it measures a window that is
+      // actually running, against two instants the engine supplied.
+      elapsed: Math.min(1, Math.max(0, (now - startMs) / (endMs - startMs))),
+    };
+  }
+  if (r.state === "passed") {
+    return {
+      label: "PASSED",
+      clock: `${r.startClock}–${r.endClock}`,
+      meta: `${durationPhrase(mins)} · ended ${roughGap(Math.round((now - endMs) / 60000))} ago`,
+      elapsed: null,
+    };
+  }
+
+  const until = Math.round((startMs - now) / 60000);
+  if (until <= 90) {
+    return { label: `IN ${roughGap(until).toUpperCase()}`, clock: `${r.startClock}–${r.endClock}`, meta: durationPhrase(mins), elapsed: null };
+  }
+  return {
+    // partOfDay rather than a flat "LATER TODAY": "this evening" and "around
+    // midday" are the terms people actually orient by, and the label slot is
+    // wide enough to carry them.
+    label: partOfDay(new Date(startMs)).toUpperCase(),
+    clock: `${r.startClock}–${r.endClock}`,
+    meta: `${durationPhrase(mins)} · starts in ${roughGap(until)}`,
+    elapsed: null,
+  };
 }
 
 function Badge({ text, color }: { text: string; color: string }) {
@@ -284,13 +326,29 @@ export default function Home({
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown } = useTester();
-  const { data: lines, isError: linesFailed, isLoading: linesLoading } = useQuery<LinesUp>({
+  const {
+    data: lines, isError: linesFailed,
+    error: linesError, refetch: refetchLines, isFetching: linesFetching,
+  } = useQuery<LinesUp>({
     queryKey: ["lines-up", testerId, lat, lon],
     queryFn: () => fetchJson<LinesUp>(
       `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
       { headers }),
     enabled: !!testerId,
   });
+
+  // WHICH read failed, and WHEN it failed — both from the server.
+  //
+  // Not knowing what someone holds and not having judged the sky are different
+  // admissions, and the surface says different things for each. The timestamp
+  // is the server's because a time the client makes up is not evidence: it
+  // would say "didn't answer at 4:02 PM" about a moment nothing happened at.
+  const failure = (() => {
+    const body = linesError instanceof HttpError ? linesError.body as Record<string, unknown> : null;
+    const reason = typeof body?.reason === "string" ? body.reason : null;
+    const at = typeof body?.at === "string" ? body.at : null;
+    return { reason, at };
+  })();
 
   // Opt-in. A day plan that appears unasked would be the app telling someone
   // how to spend their time, which is a different product from one that answers
@@ -355,14 +413,19 @@ export default function Home({
   // two statements of the same fact — clicking either shows you the other. This
   // is the answer to the duplication the page had: the connection is made by
   // the interaction rather than by repeating the sentence.
+  //
+  // PERSISTENT AND DISMISSED BY HAND, never on a timer.
+  //
+  // This began as a 2400ms auto-clear, which fails in two ordinary ways: it
+  // expires while someone is still reading the evidence it opened, and it
+  // cannot survive a scroll — on a page where the hero and the row are far
+  // apart, the highlight is often over before the reader arrives. A link the
+  // user ends is also a link the user can trust is still there.
   const [focusedTask, setFocusedTask] = useState<number | null>(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const focusTimer = useRef<number | null>(null);
-  const flashRow = (id: number) => {
-    setFocusedTask(id);
-    if (focusTimer.current) window.clearTimeout(focusTimer.current);
-    focusTimer.current = window.setTimeout(() => setFocusedTask(null), 2400);
-  };
+  /** Sets the link. Symmetric: the row's verdict and the hero title both call it. */
+  const linkRow = (id: number) => { setFocusedTask(id); setEvidenceOpen(true); };
+  const clearLink = () => { setFocusedTask(null); setEvidenceOpen(false); };
 
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
@@ -451,16 +514,27 @@ export default function Home({
         {/* The task's TIMING STATE, on the task. This is what finally joins the
             inventory to the engine — previously a task row knew nothing about
             whether the engine had anything to say about it. */}
-        {t.done !== "true" && (timing || scheduled.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id)) && (
+        {t.done !== "true" && (timing || scheduled.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
             {scheduled.has(t.id) ? (
+              /* Survives the outage on purpose: this one does not depend on the
+                 sky, so it is still true when the sky read failed. */
               <span style={{ color: "var(--color-muted)" }}>already scheduled</span>
+            ) : linesFailed ? (
+              /* WITHHELD, not blank. "No particular timing today" says Compass
+                 looked and found nothing; this says it never looked. Rendering
+                 an outage as the former is the false statement the whole state
+                 exists to prevent. Italic is used nowhere else in the app, so
+                 the difference is visible without reading the words. */
+              <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>
+                not judged — no reading for today
+              </span>
             ) : timing ? (
               /* The verdict is the OTHER end of the cross-highlight: clicking it
                  opens the hero's evidence and marks this row, so the two stop
                  being separate statements of one fact. */
               <button
-                onClick={() => { setEvidenceOpen(true); if (isHero) flashRow(t.id); }}
+                onClick={() => { if (isHero) (focused ? clearLink() : linkRow(t.id)); }}
                 style={{
                   background: "none", border: "none", padding: 0, textAlign: "left",
                   font: "inherit", cursor: isHero ? "pointer" : "default",
@@ -481,6 +555,15 @@ export default function Home({
             ) : (
               <span style={{ color: QUALIFIED }}>needs a rough duration before it can be placed</span>
             )}
+          </div>
+        )}
+        {/* THE WORDS, not just the colour. A green edge means nothing to
+            someone who has not learned what green means here, and the link is
+            the page's least obvious affordance. Saying where the thing went and
+            what happened is what makes it legible on first encounter. */}
+        {focused && (
+          <div style={{ fontSize: 10, marginLeft: 24, marginTop: 2, color: "var(--text-3)" }}>
+            Shown above · reasoning open
           </div>
         )}
       </div>
@@ -536,21 +619,57 @@ export default function Home({
           A moment becoming available, not a row returned from an API. The
           task title is the visual centre; the judgment reads as badges; the
           interpretation comes BEFORE the technical receipt. */}
-      <div style={{ ...ANSWER, overflow: "hidden" }}>
+      {/* The hero's left edge is the other half of the link — the row carries
+          the same 2px green rule, so the two cards read as one object seen
+          twice rather than as two statements of the same fact. The edge is
+          always drawn so that setting the link never shifts layout. */}
+      <div style={{
+        ...ANSWER, overflow: "hidden",
+        borderLeft: `3px solid ${focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? CONVERGENT : "var(--color-border)"}`,
+        transition: "border-color 140ms ease",
+      }}>
         {/* A 3px seam across the top of the only elevated surface on the page.
             The one piece of pure decoration here, and it earns its place by
-            marking which card is the answer without another border or label. */}
-        <div style={{
-          height: 3,
-          background: `linear-gradient(90deg, ${CONVERGENT}, ${CONVERGENT}66 55%, var(--color-border))`,
-        }}/>
+            marking which card is the answer without another border or label.
+            ACTIVE STATE ONLY. The seam is built from the convergence green, and
+            green is never decorative here — drawing it above a cold start, a
+            quiet day or an outage would dress up a card that has nothing to
+            report, which is how an empty state starts lying. */}
+        {lead && (
+          <div style={{
+            height: 3,
+            background: `linear-gradient(90deg, ${CONVERGENT}, ${CONVERGENT}66 55%, var(--color-border))`,
+          }}/>
+        )}
         <SectionTitle
           action={
-            <details style={{ display: "inline" }}>
-              <summary style={{ fontSize: 11, color: "var(--color-primary)", cursor: "pointer", listStyle: "none" }}>
-                Find another activity →
-              </summary>
-            </details>
+            linesFailed ? (
+              /* Amber, not green: this is a needs-input state, and it belongs
+                 in the header rather than inside the empty slot so that the
+                 module is identifiable as unread before you read a word of it. */
+              // The existing Badge, in the needs-input colour. Reusing it beats
+              // fresh hexes: Badge already builds its fill as an alpha suffix
+              // on the same ink, so the chip survives dark mode, and an amber
+              // pill already means "needs input" everywhere else on the page.
+              <Badge text="no reading" color={QUALIFIED} />
+            ) : focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? (
+              /* The link ends by hand. Since nothing expires it, there must be
+                 a visible way out — and naming the state ("Linked to your
+                 work") is what tells someone the green edge below is a
+                 relationship rather than a status. */
+              <button onClick={clearLink} style={{
+                fontSize: 10.5, background: "none", border: "none", padding: 0,
+                cursor: "pointer", color: CONVERGENT,
+              }}>
+                Linked to your work <span style={{ color: "var(--text-3)" }}>✕</span>
+              </button>
+            ) : (
+              <details style={{ display: "inline" }}>
+                <summary style={{ fontSize: 11, color: "var(--color-primary)", cursor: "pointer", listStyle: "none" }}>
+                  Find another activity →
+                </summary>
+              </details>
+            )
           }
         >What lines up</SectionTitle>
 
@@ -571,7 +690,7 @@ export default function Home({
             </div>
 
             <div
-              onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) flashRow(id); }}
+              onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) (focusedTask === id ? clearLink() : linkRow(id)); }}
               title="Show this in your work"
               style={{
                 fontFamily: "var(--font-display)",
@@ -597,37 +716,26 @@ export default function Home({
               {lead.held.title}
             </div>
             {(() => {
-              const w = whenPhrase(lead);
-              const mins = lead.allDay ? 0
-                : Math.round((Date.parse(lead.endAt) - Date.parse(lead.startAt)) / 60000);
+              const m = momentBlock(lead);
+              const passed = lead.state === "passed";
               return (
-                // `baseline`, not `flex-end`. The right column is two lines and
-                // the left is one, so bottom-alignment dropped "This evening"
-                // to the foot of a tall row and opened a hole under the title.
-                // Baseline sits the phrase on the same line as the window it
-                // describes, which is also what they mean to each other.
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
-                  <div style={{ minWidth: 0 }}>
+                <div style={{ marginTop: 12 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 500, letterSpacing: "0.1em",
+                    color: passed ? "var(--text-3)" : "var(--color-muted)",
+                  }}>{m.label}</div>
+                  <div style={{
+                    fontFamily: "var(--font-display)", fontSize: 32, lineHeight: 1.15,
+                    whiteSpace: "nowrap", marginTop: 2,
+                    color: passed ? "var(--text-3)" : "var(--color-foreground)",
+                  }}>{m.clock}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 3 }}>{m.meta}</div>
+                  {m.elapsed != null && (
                     <div style={{
-                      fontSize: 13.5, fontWeight: 500,
-                      color: lead.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
+                      height: 3, borderRadius: 2, marginTop: 9, maxWidth: 320,
+                      background: "var(--color-border)", overflow: "hidden",
                     }}>
-                      {w.lead.charAt(0).toUpperCase() + w.lead.slice(1)}
-                    </div>
-                    {w.sub && <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>{w.sub}</div>}
-                  </div>
-                  {/* The window at display size, with its LENGTH. We had both
-                      instants and never showed how long the block was — and
-                      "51 minutes" changes what a person does with it. */}
-                  {!lead.allDay && (
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.1, whiteSpace: "nowrap",
-                        color: lead.state === "passed" ? "var(--text-3)" : "var(--color-foreground)" }}>
-                        {lead.startClock}–{lead.endClock}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
-                        {durationPhrase(mins)}
-                      </div>
+                      <div style={{ height: "100%", width: `${m.elapsed * 100}%`, background: CONVERGENT }}/>
                     </div>
                   )}
                 </div>
@@ -643,12 +751,44 @@ export default function Home({
             {evidenceOpen && (lead.evidence?.length ?? 0) > 0 && (
               <div style={{
                 background: "var(--color-card-2)", border: "1px solid var(--color-border)",
-                borderRadius: 8, padding: "13px 15px", marginTop: 11, maxWidth: 720,
-                display: "flex", flexDirection: "column", gap: 7,
+                borderRadius: 8, padding: "15px 17px", marginTop: 11, maxWidth: 720,
+                display: "flex", flexDirection: "column", gap: 12,
               }}>
+                {/* Two columns: the KIND of claim, then the claim. Knowing you
+                    are about to read a lunar testimony rather than a personal
+                    one changes how it lands, and the family was already known
+                    at the point each testimony was computed — the join was the
+                    only thing throwing it away. The label set is deliberately
+                    NOT an enum here: a family this view has never heard of
+                    renders as itself rather than vanishing. */}
                 {lead.evidence.map((e, i) => (
-                  <div key={i} style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>{e}</div>
+                  <div key={i} style={{
+                    display: "flex", gap: 12,
+                    borderTop: i === 0 ? "none" : "1px solid var(--color-border)",
+                    paddingTop: i === 0 ? 0 : 12,
+                  }}>
+                    <div style={{
+                      width: 78, flexShrink: 0, paddingTop: 3,
+                      fontSize: 9.5, fontWeight: 500, letterSpacing: "0.12em",
+                      textTransform: "uppercase", color: "var(--text-3)",
+                    }}>{e.family}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55, minWidth: 0 }}>
+                      {e.text}
+                    </div>
+                  </div>
                 ))}
+                {/* THE ABSENCE LINE. A claim about Compass's own reasons list,
+                    not about the sky — see `ElectionWindow.noObjections`. It is
+                    rendered only when the engine asserts it, because the view
+                    is not in a position to know. */}
+                {lead.noObjections && (
+                  <div style={{
+                    borderTop: "1px solid var(--color-border)", paddingTop: 11,
+                    fontSize: 11.5, color: "var(--text-3)",
+                  }}>
+                    No qualifying objections were recorded.
+                  </div>
+                )}
               </div>
             )}
 
@@ -683,19 +823,60 @@ export default function Home({
              rule against ("a failed request stops looking like an empty life").
              Reintroduced here because a thrown query and an empty result both
              leave `lines` undefined, and the quiet branch caught both. */
-          <div style={{ padding: "2px 20px 18px" }}>
-            <div style={{ fontSize: 17, lineHeight: 1.35, color: "#a03030" }}>
-              I couldn't read the sky just now.
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
-              This is a connection problem, not a quiet day — the difference matters, so it says so.
+          /* Separated from a quiet day by STRUCTURE, not by a caption. The
+             answer slot is drawn and left empty, exactly where the answer would
+             have been, so the shape of the missing thing is visible. A quiet day
+             has no such hole: it has an answer, and the answer is "nothing in
+             particular". A caption saying "this isn't a quiet day" would be the
+             disclaimer the rules already forbid. */
+          <div style={{ padding: "2px 20px 20px" }}>
+            <div style={{
+              border: "1px dashed var(--color-border)", borderRadius: 8, padding: 18,
+            }}>
+              <div style={{
+                fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1.25,
+                color: "var(--color-foreground)",
+              }}>
+                {failure.reason === "inventory-unread"
+                  ? "Compass couldn't read what you're holding."
+                  : "Compass couldn't read the sky for today."}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 6 }}>
+                {/* The failure time is stated only when the server sent one. An
+                    invented timestamp would be a fabricated observation, and
+                    this module exists precisely to stop Compass asserting
+                    things it did not observe. */}
+                {failure.at && `The reading didn't answer at ${new Date(failure.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. `}
+                Nothing has been judged either way.
+              </div>
+              <button
+                onClick={() => refetchLines()}
+                disabled={linesFetching}
+                style={{
+                  marginTop: 12, fontSize: 12, padding: "7px 14px", borderRadius: 8,
+                  cursor: linesFetching ? "default" : "pointer",
+                  border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                  color: "var(--color-foreground)", opacity: linesFetching ? 0.6 : 1,
+                }}>
+                {linesFetching ? "Reading…" : "Try again"}
+              </button>
             </div>
           </div>
-        ) : linesLoading ? (
+        ) : !lines ? (
+          /* NO DATA IN HAND IS NOT A QUIET DAY EITHER.
+             This was `linesLoading`, and it let the false statement back in by
+             a second route. react-query reports `isLoading: false` for a
+             DISABLED query, and this one is disabled until `testerId` resolves
+             — so with the API down, the tester lookup never returns, the query
+             never runs, and the page fell through to "nothing is especially
+             singled out today": maximally confident, entirely unfounded.
+             Gating on the presence of DATA rather than on the absence of a
+             loading flag is what makes that unrepresentable, because every way
+             of not having an answer now lands here. */
           <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>Reading the sky…</div>
         ) : (
           /* The quiet day CONTRACTS rather than disappearing. */
-          lines?.quiet === "thin-inventory" ? (
+          lines.quiet === "thin-inventory" ? (
             /* COLD START is its own state, not a thinner quiet day.
                Compass can only point at what someone holds, so with an empty
                inventory the honest move is to say that and open three doors —
@@ -708,22 +889,38 @@ export default function Home({
               }}>
                 Compass can only point toward things you actually hold.
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 14 }}>
-                <button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder^="Add something"]')?.focus()}
-                  style={{
-                    fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: 8, cursor: "pointer",
-                    border: "none", background: "var(--color-primary)", color: "var(--color-card)",
-                  }}>Paste today's list</button>
-                <button onClick={() => onNavigate("work")} style={{
-                  fontSize: 12.5, padding: "8px 15px", borderRadius: 8, cursor: "pointer",
-                  border: "1px solid var(--color-border)", background: "var(--color-card)",
-                  color: "var(--color-foreground)",
-                }}>Choose recurring activities</button>
-                <button onClick={() => onNavigate("launch")} style={{
-                  fontSize: 12.5, padding: "8px 15px", borderRadius: 8, cursor: "pointer",
-                  border: "1px solid var(--color-border)", background: "var(--color-card)",
-                  color: "var(--color-foreground)",
-                }}>Find a time for one activity</button>
+              {/* DOORS, not buttons — and each one states its cost.
+                  What stalls people here is not being unable to choose; it is
+                  not knowing what they are agreeing to. "Choose recurring
+                  activities" sounds like a setup wizard until it says it sets
+                  up timing for good, and "paste your list" sounds like the
+                  start of an onboarding interview until it says nothing else
+                  is asked for. The sub-line is the whole point of the shape. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14, maxWidth: 520 }}>
+                {[
+                  { title: "Paste today's list", sub: "One line each. Nothing else asked for.",
+                    go: () => document.querySelector<HTMLInputElement>('input[placeholder^="Add something"]')?.focus() },
+                  { title: "Choose recurring activities", sub: "Pick from a list. Sets up timing for good.",
+                    go: () => onNavigate("work") },
+                  { title: "Find a time for one thing", sub: "Name it, get a window. No account of your life.",
+                    go: () => onNavigate("launch") },
+                ].map((d) => (
+                  <button key={d.title} onClick={d.go}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-card-2)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+                      padding: "13px 15px", borderRadius: 8, cursor: "pointer",
+                      border: "1px solid var(--color-border)", background: "transparent",
+                      transition: "background 140ms ease",
+                    }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 13.5, color: "var(--color-foreground)" }}>{d.title}</span>
+                      <span style={{ display: "block", fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>{d.sub}</span>
+                    </span>
+                    <span style={{ color: "var(--text-3)", fontSize: 13 }}>→</span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -808,10 +1005,20 @@ export default function Home({
           <SectionTitle
             note={open.length ? `${open.length} open` : undefined}
             action={
-              <button onClick={() => setShapeOpen(v => !v)} style={{
-                fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
-                color: "var(--color-primary)",
-              }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
+              /* Said ONCE, at the top, rather than repeated down every row. The
+                 person's work is unaffected by a failed sky read and must not
+                 look broken — but "Shape today" would be an offer Compass
+                 cannot currently honour, so it stands down. */
+              linesFailed ? (
+                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                  Unaffected — timing lines are held back
+                </span>
+              ) : (
+                <button onClick={() => setShapeOpen(v => !v)} style={{
+                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--color-primary)",
+                }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
+              )
             }
           >Your work</SectionTitle>
 

@@ -110,7 +110,40 @@ export interface ElectionWindow {
   /** Structured, so the surface can explain rather than just demote. */
   suitabilityReasons: SuitabilityReason[];
   /** The same testimonies as `why`, unjoined, one per line of reasoning. */
-  evidence?: string[];
+  evidence?: Evidence[];
+  /**
+   * Whether the reasons list finished with nothing qualifying it.
+   *
+   * Deliberately NOT "nothing in the window is contradicted" — that is a claim
+   * about the sky, and it would require knowing the search was exhaustive. A
+   * false negative there reads as a guarantee and becomes indefensible the
+   * moment the orb table changes. This is the narrower thing Compass can
+   * actually know: it examined its own reasons and recorded no objection.
+   *
+   * It lives here rather than in the view because it is an assertion, and
+   * assertions belong to the engine that can justify them.
+   */
+  noObjections: boolean;
+}
+
+/**
+ * One testimony, with the KIND of claim it makes attached.
+ *
+ * The testimonies were always computed separately and then joined into a single
+ * `why` string; the join was what threw the structure away. Carrying the family
+ * buys three things a joined string cannot: the reader knows what kind of claim
+ * they are reading before they read it, order becomes controllable without
+ * string surgery, and — the decisive one — a surface can DERIVE its short
+ * verdict line from the first testimony instead of maintaining a second,
+ * hand-written copy that drifts from this one.
+ *
+ * `family` is an open set, not an enum. Views must render whatever arrives
+ * rather than switch on a fixed list, so a new kind of testimony shows up
+ * instead of vanishing.
+ */
+export interface Evidence {
+  family: string;
+  text: string;
 }
 
 export interface ElectionResult {
@@ -515,7 +548,7 @@ export function computeElections(opts: {
 
     // ── Day-level GREAT signals ─────────────────────────────────────────────
     const daySources: string[] = [];
-    const dayWhy: string[] = [];
+    const dayWhy: Evidence[] = [];
     let dayBoost = 1;
 
     const positions = getPlanetPositions(jdNoon);
@@ -534,14 +567,14 @@ export function computeElections(opts: {
         const house = assignHouse(tl, cusps);
         if (act.houses.includes(house)) {
           daySources.push("natal-house"); dayBoost *= 1.2;
-          dayWhy.push(`${p} is moving through your ${house}${house === 1 ? "st" : house === 2 ? "nd" : house === 3 ? "rd" : "th"} — this matter's own house`);
+          dayWhy.push({ family: "personal", text: `${p} is moving through your ${house}${house === 1 ? "st" : house === 2 ? "nd" : house === 3 ? "rd" : "th"} — this matter's own house` });
           break;
         }
       }
       const moonHouse = assignHouse(norm360(moonLongitude(jdNoon)), cusps);
       if (act.houses.includes(moonHouse)) {
         daySources.push("natal-house"); dayBoost *= 1.15;
-        dayWhy.push(`the Moon crosses your ${moonHouse}${moonHouse === 1 ? "st" : moonHouse === 2 ? "nd" : moonHouse === 3 ? "rd" : "th"} today`);
+        dayWhy.push({ family: "personal", text: `the Moon crosses your ${moonHouse}${moonHouse === 1 ? "st" : moonHouse === 2 ? "nd" : moonHouse === 3 ? "rd" : "th"} today` });
       }
       // Transit-to-natal return: a significator softly touching its own natal place.
       for (const p of Object.keys(act.planets)) {
@@ -555,7 +588,7 @@ export function computeElections(opts: {
         const near = [0, 60, 120].find(A => Math.abs(s - A) <= 2);
         if (near != null) {
           daySources.push("natal-contact"); dayBoost *= 1.15;
-          dayWhy.push(`${p} ${near === 0 ? "conjoins" : near === 120 ? "trines" : "sextiles"} your natal ${p}`);
+          dayWhy.push({ family: "personal", text: `${p} ${near === 0 ? "conjoins" : near === 120 ? "trines" : "sextiles"} your natal ${p}` });
           break;
         }
       }
@@ -594,7 +627,7 @@ export function computeElections(opts: {
     }
   }
   if (tempoMatch?.fits) {
-    dayWhy.push(tempoMatch.note);
+    dayWhy.push({ family: "tempo", text: tempoMatch.note });
     if (MOTION_COUNTS) daySources.push("motion");
   }
 
@@ -604,17 +637,17 @@ export function computeElections(opts: {
       sigs.includes(pa.planet1) && sigs.includes(pa.planet2) && pa.planet1 !== pa.planet2);
     if (pair) {
       daySources.push("sky"); dayBoost *= 1.2;
-      dayWhy.push(`${pair.planet1}–${pair.planet2} ${pair.aspect} standing in the sky`);
+      dayWhy.push({ family: "sky", text: `${pair.planet1}–${pair.planet2} ${pair.aspect} standing in the sky` });
     }
     const phaseMatch = act.phase === null ? null : (act.phase === "waxing" ? waxing : act.phase === "waning" ? !waxing : null);
-    if (phaseMatch === true) { dayBoost *= 1.1; dayWhy.push(act.phase === "waxing" ? "waxing, as this wants" : "waning, as this wants"); }
+    if (phaseMatch === true) { dayBoost *= 1.1; dayWhy.push({ family: "moon", text: act.phase === "waxing" ? "waxing, as this wants" : "waning, as this wants" }); }
     if (phaseMatch === false) dayBoost *= 0.9;
 
     const dayMatch = (act.planets[dayRuler] ?? 0) > 0;
-    if (dayMatch) { dayBoost *= 1.1; dayWhy.push(`${dayRuler}'s day`); }
+    if (dayMatch) { dayBoost *= 1.1; dayWhy.push({ family: "day", text: `${dayRuler}'s day` }); }
 
     // ── Candidates ──────────────────────────────────────────────────────────
-    interface Cand { startMs: number; endMs: number; score: number; why: string[]; sources: string[]; allDay?: boolean }
+    interface Cand { startMs: number; endMs: number; score: number; why: Evidence[]; sources: string[]; allDay?: boolean }
     const cands: Cand[] = [];
 
     // Planetary hours (waking, matching rulers). Suppressed entirely when the
@@ -628,7 +661,7 @@ export function computeElections(opts: {
       const startMs = Math.max(h.startMs, dayStartMs + 7 * 3600000);
       const endMs = Math.min(h.endMs, dayStartMs + 23 * 3600000);
       if (endMs - startMs < 30 * 60000) continue;
-      cands.push({ startMs, endMs, score: 0.5, why: [`${h.ruler} hour`], sources: ["hour"] });
+      cands.push({ startMs, endMs, score: 0.5, why: [{ family: "hour", text: `${h.ruler} hour` }], sources: ["hour"] });
     }
 
     // Moon-aspect swells
@@ -655,7 +688,20 @@ export function computeElections(opts: {
       const when = clockOf(ev.timeMs, tzOffsetMin);
       cands.push({
         startMs, endMs, score: aw * pw,
-        why: [`Moon–${ev.planet} ${ev.aspect}, ${applying ? `applying toward exactitude at ${when}` : `exact at ${when}`}${hard ? " · raw fuel" : ""}`],
+        // Three cases, because "exact at 7:49 PM" under a window ending 6:10 PM
+        // read as a contradiction. Which one applies is a fact about this
+        // window, so it is computed rather than phrased generically: the
+        // aspect can perfect after the window shuts (still gathering while you
+        // work), perfect inside it, or already have perfected.
+        why: [{
+          family: "moon",
+          text: `Moon–${ev.planet} ${ev.aspect}, ${
+            !applying ? `exact at ${when}`
+            : ev.timeMs > endMs
+              ? `reaches exactitude at ${when}, after the window closes but while the aspect is still gathering`
+              : `applying toward exactitude at ${when}, inside the window`
+          }${hard ? " · raw fuel" : ""}`,
+        }],
         sources: ["moon"],
       });
     }
@@ -664,7 +710,7 @@ export function computeElections(opts: {
     const gloss = act.signs[moonSign];
     if (gloss) cands.push({
       startMs: dayStartMs + 7 * 3600000, endMs: dayStartMs + 23 * 3600000,
-      score: 0.45, why: [`Moon in ${moonSign} · ${gloss}`], sources: ["sign"], allDay: true,
+      score: 0.45, why: [{ family: "moon", text: `Moon in ${moonSign} · ${gloss}` }], sources: ["sign"], allDay: true,
     });
 
     // The void: a window for void-favoring activities, a filter for avoiders
@@ -674,7 +720,7 @@ export function computeElections(opts: {
         const b = Math.min(e, dayStartMs + 23 * 3600000);
         a = Math.max(a, b - 4 * 3600000);
         if (b - a < 1.5 * 3600000) continue;
-        cands.push({ startMs: a, endMs: b, score: 0.55, why: ["void of course · slack water"], sources: ["voc"] });
+        cands.push({ startMs: a, endMs: b, score: 0.55, why: [{ family: "moon", text: "void of course · slack water" }], sources: ["voc"] });
       }
     }
 
@@ -845,7 +891,7 @@ export function computeElections(opts: {
         // showing "the Moon is applying to Mercury… / Saturn's hour contains
         // the window… / your 10th house is reinforced…" is three facts a reader
         // can weigh, where the joined string is one blur they can only accept.
-        why: [...c.why, ...dayWhy].join(" · "),
+        why: [...c.why, ...dayWhy].map(e => e.text).join(" · "),
         evidence: [...c.why, ...dayWhy],
         sources: [...new Set([...c.sources, ...daySources])],
         families,
@@ -858,6 +904,11 @@ export function computeElections(opts: {
         stackedHourMoon,
         suitability,
         suitabilityReasons,
+        // The whole assertion, and its whole justification: the reasons list
+        // ran and came back empty. Note what this is NOT derived from — the
+        // absence of aspects, orbs, or malefics anywhere in the sky. Compass
+        // does not search for those exhaustively and must not imply it did.
+        noObjections: suitabilityReasons.length === 0,
       });
     }
   }
