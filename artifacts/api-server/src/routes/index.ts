@@ -19,7 +19,6 @@ import tidesRouter from "./tides";
 import planningRouter from "./planning";
 import tasksRouter from "./tasks";
 import habitsRouter from "./habits";
-import icalRouter from "./ical";
 import pushRouter from "./push";
 import googleCalRouter from "./googleCal";
 import adviseRouter from "./advise";
@@ -64,7 +63,12 @@ router.use(tidesRouter);
 router.use(planningRouter);
 router.use(tasksRouter);
 router.use(habitsRouter);
-router.use(icalRouter);
+// `icalRouter` (routes/ical.ts) is deliberately GONE, not just unimported.
+// It accepted the tester id from `?tid=` — the exact account-credential-in-URL
+// pattern the feed-token withdrawal of 2026-07-30 closed — and this barrel
+// kept it mounted after that withdrawal, invisibly: nothing in the client
+// linked to it, so it only ever served whoever knew to ask. /export/ical with
+// a feed token is the one calendar surface.
 router.use(pushRouter);
 router.use(googleCalRouter);
 router.use(adviseRouter);

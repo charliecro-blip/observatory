@@ -56,3 +56,4 @@ Thumbs.db
 .env.local
 .env*.local
 tools/out/
+.claude/settings.local.json

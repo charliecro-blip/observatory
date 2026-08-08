@@ -1379,7 +1379,6 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
 }
 
 function ExportSection({ testerId }: { testerId: string | null }) {
-  const [copied, setCopied] = useState(false);
   // Feed token — the secret is returned ONCE at issue, so it's held in memory
   // only. Reload and you must reset the link to see a URL again, which is the
   // correct trade for not storing it.
@@ -1426,32 +1425,27 @@ function ExportSection({ testerId }: { testerId: string | null }) {
     if (!feedUrl) { await issueFeed(true); return; }
     try { await navigator.clipboard.writeText(feedUrl); setFeedCopied(true); setTimeout(() => setFeedCopied(false), 2500); } catch { /* selectable above */ }
   }
-  const tid = testerId ?? (typeof localStorage !== "undefined" ? localStorage.getItem("obs_tester_id") : null);
-  const icalPath = `/api/export/ical?testerId=${encodeURIComponent(tid ?? "")}`;
-
-  function downloadIcal() {
-    const a = document.createElement("a");
-    a.href = icalPath;
-    a.download = "compass-events.ics";
-    a.click();
-  }
-
   // The download is a SNAPSHOT — it goes stale the moment you schedule
-  // anything else. A webcal:// subscription is the same route, but the
-  // calendar app re-polls it, so Compass's blocks stay live in Apple/Google
-  // Calendar. Calendar clients can't send auth headers, so the tester id
-  // rides in the URL (it already does for the download) — hence the
-  // "treat it like a password" note rather than a share button.
-  const subscribeUrl = typeof window !== "undefined"
-    ? `webcal://${window.location.host}${icalPath}`
-    : "";
-
-  async function copySubscribe() {
+  // anything else; the feed link above is the live version.
+  //
+  // Fetched with the auth HEADER, not a `?testerId=` URL. This button used to
+  // build `/api/export/ical?testerId=…` and click an <a> at it — but the
+  // server deliberately stopped accepting the id from the query string when
+  // that same pattern turned subscription links into account credentials, so
+  // the anchor had been downloading an error for as long as the withdrawal
+  // has been live. An anchor click cannot carry a header; a fetch can, and
+  // the blob URL keeps the one-click behaviour.
+  async function downloadIcal() {
     try {
-      await navigator.clipboard.writeText(subscribeUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch { /* clipboard blocked — the field is selectable */ }
+      const r = await fetch("/api/export/ical", { headers: testerId ? { "x-tester-id": testerId } : undefined });
+      if (!r.ok) return;
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "compass-events.ics";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* the button stays; a failed download is retryable */ }
   }
 
   return (
