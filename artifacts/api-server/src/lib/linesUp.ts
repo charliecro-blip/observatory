@@ -31,9 +31,25 @@
  * question instead of a recommendation, which is often the more valuable row.
  */
 
-import { computeElections, type Evidence } from "./electionEngine.js";
+import { computeElections, type Evidence, type SuitabilityReason } from "./electionEngine.js";
 import { rankActivities, activityByKey } from "./activityCorrespondences.js";
 import type { ComputedNatalChart } from "./natal.js";
+
+/**
+ * Why the engine deferred, in words, from the structured reasons it recorded.
+ *
+ * Derived rather than written, so a refusal can never state a cause the engine
+ * did not actually find. If the reason list is empty the phrase says only that
+ * the day was judged unsuitable — which is the honest floor, and better than
+ * inventing a plausible-sounding planet.
+ */
+function deferPhrase(reasons: SuitabilityReason[] | undefined): string {
+  const named = (reasons ?? []).map(r =>
+    `${r.kind.replace(/-/g, " ")}${(r as { planet?: string }).planet ? ` (${(r as { planet?: string }).planet})` : ""}`);
+  return named.length
+    ? `better deferred — ${named.join(", ")}`
+    : "better deferred today";
+}
 
 /** Above this, the top match is trustworthy enough to time. */
 const CONFIDENT_SCORE = 2.0;
@@ -143,6 +159,21 @@ export interface LinesUp {
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   /** Held items that already hold a block, so they were not timed. */
   alreadyScheduled: HeldItem[];
+  /**
+   * Items the engine timed and then WITHHELD, each with the reason.
+   *
+   * These were four bare `continue`s. Every one is a defensible editorial
+   * judgment — a deferred matter is not a recommendation, an hour-only case is
+   * not news — but the item then vanished from the surface entirely, and a task
+   * showing no timing line is indistinguishable from a task Compass never
+   * looked at. That is precisely the confusion the whole module is built to
+   * prevent, reappearing one level down.
+   *
+   * The house rule is that gaps and refusals are output, with reasons, never
+   * silent drops. A refusal that carries its reason is often the more useful
+   * row: "no window today" is an answer.
+   */
+  heldBack: { item: HeldItem; reason: string }[];
   /** Held items not priced because of MAX_PRICED. Never silently dropped. */
   notPriced: number;
   /**
@@ -190,11 +221,12 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   // basis for a computed answer and should be told so directly rather than
   // shown a blank module.
   if (held.length === 0) {
-    return { results: [], clarify: [], alreadyScheduled: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
+    return { results: [], clarify: [], alreadyScheduled: [], heldBack: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
   }
 
   const clarify: Clarification[] = [];
   const alreadyScheduled: HeldItem[] = [];
+  const heldBack: { item: HeldItem; reason: string }[] = [];
   const timeable: { item: HeldItem; key: string; label: string; alt?: { key: string; label: string } }[] = [];
 
   for (const item of held) {
@@ -252,7 +284,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
 
   for (const t of priced) {
     const out = electFor(t.key);
-    if (!out?.windows?.length) continue;
+    if (!out?.windows?.length) { heldBack.push({ item: t.item, reason: "no window today" }); continue; }
     // Best window for THIS item: strongest support, then cleanest suitability.
     const w = [...out.windows].sort((a: any, b: any) =>
       (RANK[a.supportLevel] ?? 9) - (RANK[b.supportLevel] ?? 9) ||
@@ -263,17 +295,25 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
       // nothing about which hour to pick.
       (a.allDay ? 1 : 0) - (b.allDay ? 1 : 0) ||
       (b.score ?? 0) - (a.score ?? 0))[0] as any;
-    if (!w) continue;
+    if (!w) { heldBack.push({ item: t.item, reason: "no window today" }); continue; }
     // "defer" is the engine saying the matter itself is not suited now. It is
-    // an honest answer but not a recommendation, so it does not go in the feed.
-    if (w.suitability === "defer") continue;
+    // an honest answer but not a recommendation, so it stays out of the feed —
+    // but it is REPORTED, because "today is not the day, and here is why" is
+    // more use than the row disappearing.
+    if (w.suitability === "defer") {
+      heldBack.push({ item: t.item, reason: deferPhrase(w.suitabilityReasons) });
+      continue;
+    }
     // A window whose ENTIRE case is "there is a Mercury hour" is not news.
     // The census put `planetary-time` at 99% frequency — it is the one family
     // barred from establishing convergence precisely because it is always
     // there. Headlining it would give every held item a row every day, and a
     // module that says the same thing daily is one people stop reading. This
     // is the floor that keeps "supported" meaning something.
-    if (!hasRealTestimony(w)) continue;
+    if (!hasRealTestimony(w)) {
+      heldBack.push({ item: t.item, reason: "only a planetary hour today — not enough to single it out" });
+      continue;
+    }
     if (w.supportLevel === "supported") sawSupported = true;
     const startMs = Date.parse(w.startAt);
     const endMs = Date.parse(w.endAt);
@@ -326,6 +366,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     results: top,
     clarify: clarify.slice(0, 2),
     alreadyScheduled,
+    heldBack,
     quiet,
     nextOpening: quiet ? nextOpeningFor(priced, opts) : null,
     notPriced,

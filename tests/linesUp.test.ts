@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { linesUp, type HeldItem } from "../artifacts/api-server/src/lib/linesUp.js";
+import { ACTIVITIES } from "../artifacts/api-server/src/lib/activityCorrespondences.js";
 
 const base = { lat: 30.27, lon: -97.74, tzOffsetMin: 300, natal: null, timeKnown: true, locationKnown: true };
 const held = (title: string, extra: Partial<HeldItem> = {}): HeldItem =>
@@ -175,11 +176,71 @@ describe("evidence is kept apart, not joined", () => {
         // The joined string and the array must agree about content.
         if (x.why) expect(x.evidence.length).toBeGreaterThan(0);
         if (x.evidence.length > 1) sawMulti++;
-        for (const line of x.evidence) expect(line).not.toContain(" · ");
+        // `.text`, not the entry. This line used to read `expect(line)` when
+        // evidence was `string[]`; once entries became `{family, text}` the
+        // assertion silently stopped testing anything — `toContain` on an
+        // object cannot find a substring, so it passed for the wrong reason and
+        // the "no joined strings" guarantee quietly lapsed.
+        for (const line of x.evidence) {
+          expect(typeof line.text, "a testimony must carry text").toBe("string");
+          expect(line.text).not.toContain(" · ");
+        }
       }
     }
     expect(seen).toBeGreaterThan(0);
     // If nothing ever had more than one testimony the split would be untested.
     expect(sawMulti).toBeGreaterThan(0);
   });
+});
+
+/**
+ * The house rule the module is named for: gaps and refusals are OUTPUT.
+ *
+ * Four bare `continue`s used to drop a priced item on the floor — no window
+ * today, the matter better deferred, an hour-only case — and the surface then
+ * showed a task with no timing line, which is indistinguishable from a task
+ * Compass never looked at.
+ */
+describe("a priced item is never dropped silently", () => {
+  // Asserted as an INVARIANT rather than against a specific verdict, because
+  // `linesUp` reads today's sky: whether a given activity is timed, deferred or
+  // barren changes daily, so pinning one outcome would be a test that passes
+  // until the Moon moves.
+  //
+  // The sweep is EVERY activity, not a hand-picked five. The first draft used
+  // five and all five were timeable that day, so the test asserted an accounting
+  // rule while never once reaching the branch it was written for. Across the
+  // whole palette some activity is always short of a window, which is what makes
+  // the coverage assertion below safe to demand.
+  //
+  // COST: ~35s, one election per activity, and the breadth is what buys the
+  // coverage — batching into fewer `linesUp` calls saves nothing, since the
+  // memo is per call and the same 62 computations still run. Kept in the deploy
+  // gate because "never drop an item silently" is a product constraint rather
+  // than a nicety. If the suite gets tight, this is the one to move to `tools/`
+  // alongside the fire-rate sweep — but move it, do not narrow it, or it goes
+  // back to passing without testing anything.
+  it("accounts for every item that reached the pricing loop", () => {
+    let heldBackSeen = 0;
+    for (const a of ACTIVITIES) {
+      const item = held(`held item for ${a.key}`, { activityKey: a.key });
+      const r = linesUp({ ...base, held: [item] });
+      const inResults = r.results.some(x => x.held.id === item.id);
+      const inHeldBack = r.heldBack.some(x => x.item.id === item.id);
+      const inScheduled = r.alreadyScheduled.some(x => x.id === item.id);
+      expect(
+        [inResults, inHeldBack, inScheduled].filter(Boolean).length,
+        `${a.key}: an item with a real activityKey must land in exactly one bucket`,
+      ).toBe(1);
+      if (inHeldBack) {
+        heldBackSeen++;
+        const reason = r.heldBack.find(x => x.item.id === item.id)!.reason;
+        expect(reason.trim(), `${a.key}: a refusal must carry its reason`).not.toBe("");
+      }
+    }
+    // Without this the accounting rule could be satisfied entirely by the
+    // results path, and the refusal path would go untested on any day the sky
+    // happened to be generous.
+    expect(heldBackSeen, "the refusal path must actually be exercised").toBeGreaterThan(0);
+  }, 120_000);
 });

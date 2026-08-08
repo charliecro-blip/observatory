@@ -82,6 +82,7 @@ interface LinesUp {
   results: LinesUpResult[];
   clarify: { held: { id: string; title: string }; candidates: { key: string; label: string }[] }[];
   alreadyScheduled: { id: string; title: string }[];
+  heldBack: { item: { id: string; title: string }; reason: string }[];
   quiet: "supported-only" | "nothing-singled-out" | "thin-inventory" | null;
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   notPriced: number;
@@ -498,6 +499,10 @@ export default function Home({
   }
   const needsDuration = new Set((resolution?.needsDuration ?? []).map(n => Number(n.id.replace("task-", ""))));
   const scheduled = new Set((lines?.alreadyScheduled ?? []).map(n => Number(n.id.replace("task-", ""))));
+  // The engine looked and declined, with a reason. Carried per item so the row
+  // can say so instead of showing the blank line that used to mean both
+  // "declined" and "never considered".
+  const heldBack = new Map((lines?.heldBack ?? []).map(h => [Number(h.item.id.replace("task-", "")), h.reason]));
   const needsActivity = new Set((resolution?.needsActivity ?? []).map(n => Number(n.id.replace("task-", ""))));
 
   const Row = ({ t, muted }: { t: Task; muted?: boolean }) => {
@@ -535,7 +540,7 @@ export default function Home({
         {/* The task's TIMING STATE, on the task. This is what finally joins the
             inventory to the engine — previously a task row knew nothing about
             whether the engine had anything to say about it. */}
-        {t.done !== "true" && (timing || scheduled.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
+        {t.done !== "true" && (timing || scheduled.has(t.id) || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
             {scheduled.has(t.id) ? (
               /* Survives the outage on purpose: this one does not depend on the
@@ -571,6 +576,11 @@ export default function Home({
                     : `${timing.startClock}–${timing.endClock}`}
                 </span>
               </button>
+            ) : heldBack.has(t.id) ? (
+              /* A refusal that carries its reason. Amber rather than faint,
+                 because this is a judgment Compass made and stands behind —
+                 "no window today" is an answer, not an absence of one. */
+              <span style={{ color: QUALIFIED }}>held back — {heldBack.get(t.id)}</span>
             ) : needsActivity.has(t.id) ? (
               <span style={{ color: QUALIFIED }}>needs a kind of work before it can be timed</span>
             ) : (
