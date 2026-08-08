@@ -133,16 +133,29 @@ const clockOf = (iso: string) =>
  *   WORK     what you hold, and the action that acts on it
  *   CONTEXT  the week, the stars, the log
  */
+/**
+ * Both levels carry `flexShrink: 0`, and it is load-bearing rather than
+ * defensive. Home's root is a flex column, so every card is a flex item — and
+ * a flex item's automatic minimum size (the floor that normally stops it
+ * shrinking below its own content) applies ONLY while its overflow is
+ * `visible`. The hero sets `overflow: hidden` to clip the gradient seam to its
+ * rounded corners, which silently switches that floor off: the card collapsed
+ * to 1.67px while its 350px of children painted over the grid below it, and
+ * the page read as though the hero had failed to render at all. Cards without
+ * `overflow` were unaffected, which is what made it look like a hero bug.
+ */
 const ANSWER: React.CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
   borderRadius: 14,
   boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+  flexShrink: 0,
 };
 const PANEL: React.CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
   borderRadius: 12,
+  flexShrink: 0,
 };
 
 /**
@@ -182,23 +195,43 @@ function partOfDay(d: Date): string {
   return "tonight";
 }
 
+/**
+ * The window's relation to NOW — never its clock times.
+ *
+ * Every branch here used to end in `startClock–endClock`, because this phrase
+ * was once the only place the window appeared. It no longer is: the hero's
+ * right-hand block states the range at display size. Repeating it gave the
+ * card two sentences making one claim ("This evening, 8:12 PM–9:19 PM" beside
+ * "8:12 PM–9:19 PM"), which reads as a rendering mistake rather than emphasis.
+ *
+ * So the division is: this says *when, relative to you*; the block beside it
+ * says *when, absolutely*. Neither is complete alone and neither repeats the
+ * other.
+ */
 function whenPhrase(r: { state: string; startAt: string; endAt: string; startClock: string; endClock: string; allDay: boolean }) {
   if (r.allDay) return { lead: "Supported all day", sub: null as string | null };
   const start = new Date(r.startAt);
   const mins = Math.round((start.getTime() - Date.now()) / 60000);
 
-  if (r.state === "open-now") {
-    return { lead: `Open now, until ${r.endClock}`, sub: null };
-  }
-  if (r.state === "passed") {
-    // Said plainly rather than hidden: it was the day's best window and it has
-    // gone, which is worth knowing.
-    return { lead: `${r.startClock}–${r.endClock}`, sub: "that window has passed" };
-  }
-  if (mins <= 90) {
-    return { lead: `In ${mins < 60 ? `${Math.max(1, mins)} min` : "about an hour"}, ${r.startClock}–${r.endClock}`, sub: null };
-  }
-  return { lead: `${partOfDay(start).replace(/^this |^around /, (m) => m)}, ${r.startClock}–${r.endClock}`, sub: null };
+  if (r.state === "open-now") return { lead: "Open now", sub: null };
+  // Said plainly rather than hidden: it was the day's best window and it has
+  // gone, which is worth knowing.
+  if (r.state === "passed") return { lead: "That window has passed", sub: null };
+  if (mins <= 90) return { lead: `In ${mins < 60 ? `${Math.max(1, mins)} min` : "about an hour"}`, sub: null };
+  return { lead: partOfDay(start), sub: null };
+}
+
+/**
+ * "1 hr 7 min", not "1.1 hours".
+ *
+ * Decimal hours are a unit the reader has to convert before they can act, and
+ * the conversion is the whole point of showing the length at all — someone
+ * deciding whether a window fits a piece of work needs minutes, not tenths.
+ */
+function durationPhrase(mins: number): string {
+  if (mins < 60) return `${mins} minutes`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `${h} hr${h === 1 ? "" : "s"}${m ? ` ${m} min` : ""}`;
 }
 
 function Badge({ text, color }: { text: string; color: string }) {
@@ -388,7 +421,10 @@ export default function Home({
     const isHero = lead ? Number(lead.held.id.replace("task-", "")) === t.id : false;
     const focused = focusedTask === t.id;
     return (
-      <div style={{
+      <div
+        onMouseEnter={(e) => { if (!focused) e.currentTarget.style.background = "var(--color-card-2)"; }}
+        onMouseLeave={(e) => { if (!focused) e.currentTarget.style.background = "transparent"; }}
+        style={{
         padding: "7px 16px", borderTop: "1px solid var(--color-border)",
         // A transparent rule on every row, so highlighting never shifts layout.
         borderLeft: `2px solid ${focused ? CONVERGENT : "transparent"}`,
@@ -466,7 +502,16 @@ export default function Home({
   const secondary = (lines?.results ?? []).slice(1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "14px 0 40px", maxWidth: 980, margin: "0 auto", width: "100%" }}>
+    // `flex: 1` + `overflowY: auto` make Home its own scroll region, the same
+    // shape Today uses. Without it Home was merely stretched to the content
+    // row's height and never scrolled, so anything past the fold had nowhere
+    // to go — which is why a taller hero pushed the page into collapsing
+    // rather than into scrolling.
+    <div style={{
+      flex: 1, minHeight: 0, overflowY: "auto",
+      display: "flex", flexDirection: "column", gap: 14,
+      padding: "14px 0 40px", maxWidth: 980, margin: "0 auto", width: "100%",
+    }}>
 
       {/* ── RIGHT NOW · conditional. Only when a real condition is gating. */}
       {now?.voc?.isVOC && now.voc.reading && (
@@ -491,7 +536,14 @@ export default function Home({
           A moment becoming available, not a row returned from an API. The
           task title is the visual centre; the judgment reads as badges; the
           interpretation comes BEFORE the technical receipt. */}
-      <div style={ANSWER}>
+      <div style={{ ...ANSWER, overflow: "hidden" }}>
+        {/* A 3px seam across the top of the only elevated surface on the page.
+            The one piece of pure decoration here, and it earns its place by
+            marking which card is the answer without another border or label. */}
+        <div style={{
+          height: 3,
+          background: `linear-gradient(90deg, ${CONVERGENT}, ${CONVERGENT}66 55%, var(--color-border))`,
+        }}/>
         <SectionTitle
           action={
             <details style={{ display: "inline" }}>
@@ -522,10 +574,25 @@ export default function Home({
               onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) flashRow(id); }}
               title="Show this in your work"
               style={{
-                fontSize: 26, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.4px",
+                fontFamily: "var(--font-display)",
+                fontSize: 29, fontWeight: 400, lineHeight: 1.18, letterSpacing: "0.01em",
                 color: "var(--color-foreground)", cursor: "pointer",
-                textDecoration: focusedTask === Number(lead.held.id.replace("task-", "")) ? "underline" : "none",
-                textDecorationColor: "var(--color-border)", textUnderlineOffset: 5,
+                // Shorthand WITH the colour in it, not the longhand pair.
+                //
+                // The earlier note here claimed longhand had fixed React's
+                // "don't mix shorthand and non-shorthand" warning. It had not:
+                // the warning still fired ~10 times on every cold load, because
+                // React reuses this DOM node across renders in which the same
+                // position is styled with the `textDecoration` shorthand, and
+                // the collision is between renders rather than within one style
+                // object. `textDecoration: "underline <color>"` carries the
+                // colour itself, so no longhand exists to collide with — and
+                // these were the only two longhand uses in the app.
+                // (`textUnderlineOffset` is not part of the shorthand and is
+                // safe to keep alongside it.)
+                textDecoration: focusedTask === Number(lead.held.id.replace("task-", ""))
+                  ? "underline var(--color-border)" : "none",
+                textUnderlineOffset: 5,
               }}>
               {lead.held.title}
             </div>
@@ -534,7 +601,12 @@ export default function Home({
               const mins = lead.allDay ? 0
                 : Math.round((Date.parse(lead.endAt) - Date.parse(lead.startAt)) / 60000);
               return (
-                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginTop: 8 }}>
+                // `baseline`, not `flex-end`. The right column is two lines and
+                // the left is one, so bottom-alignment dropped "This evening"
+                // to the foot of a tall row and opened a hole under the title.
+                // Baseline sits the phrase on the same line as the window it
+                // describes, which is also what they mean to each other.
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{
                       fontSize: 13.5, fontWeight: 500,
@@ -549,12 +621,12 @@ export default function Home({
                       "51 minutes" changes what a person does with it. */}
                   {!lead.allDay && (
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 22, lineHeight: 1.1, letterSpacing: "-0.3px", whiteSpace: "nowrap",
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.1, whiteSpace: "nowrap",
                         color: lead.state === "passed" ? "var(--text-3)" : "var(--color-foreground)" }}>
                         {lead.startClock}–{lead.endClock}
                       </div>
                       <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
-                        {mins < 60 ? `${mins} minutes` : `${Math.round(mins / 6) / 10} hours`}
+                        {durationPhrase(mins)}
                       </div>
                     </div>
                   )}
@@ -623,31 +695,78 @@ export default function Home({
           <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>Reading the sky…</div>
         ) : (
           /* The quiet day CONTRACTS rather than disappearing. */
+          lines?.quiet === "thin-inventory" ? (
+            /* COLD START is its own state, not a thinner quiet day.
+               Compass can only point at what someone holds, so with an empty
+               inventory the honest move is to say that and open three doors —
+               rather than report an absence of convergence, which would blame
+               the sky for a thing the sky has nothing to do with. */
+            <div style={{ padding: "2px 20px 20px" }}>
+              <div style={{
+                fontFamily: "var(--font-display)", fontSize: 24, lineHeight: 1.28,
+                color: "var(--color-foreground)", maxWidth: 560,
+              }}>
+                Compass can only point toward things you actually hold.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginTop: 14 }}>
+                <button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder^="Add something"]')?.focus()}
+                  style={{
+                    fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: 8, cursor: "pointer",
+                    border: "none", background: "var(--color-primary)", color: "var(--color-card)",
+                  }}>Paste today's list</button>
+                <button onClick={() => onNavigate("work")} style={{
+                  fontSize: 12.5, padding: "8px 15px", borderRadius: 8, cursor: "pointer",
+                  border: "1px solid var(--color-border)", background: "var(--color-card)",
+                  color: "var(--color-foreground)",
+                }}>Choose recurring activities</button>
+                <button onClick={() => onNavigate("launch")} style={{
+                  fontSize: 12.5, padding: "8px 15px", borderRadius: 8, cursor: "pointer",
+                  border: "1px solid var(--color-border)", background: "var(--color-card)",
+                  color: "var(--color-foreground)",
+                }}>Find a time for one activity</button>
+              </div>
+            </div>
+          ) : (
           <div style={{ padding: "2px 20px 18px" }}>
-            <div style={{ fontSize: 17, lineHeight: 1.35, color: "var(--color-foreground)" }}>
-              {lines?.quiet === "thin-inventory"
-                ? "Compass doesn't have enough to time yet."
-                : "Nothing you're holding is especially singled out today."}
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.3, color: "var(--color-foreground)" }}>
+              Nothing you're holding is especially singled out today.
             </div>
             <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
-              {lines?.quiet === "thin-inventory"
-                ? "Add something below, or look up an activity."
-                : "Use priority, momentum, or simple necessity."}
+              Use priority, momentum, or simple necessity.
               {lines?.nextOpening && (
                 <> The next notable opening is {lines.nextOpening.activityLabel.toLowerCase()} on {lines.nextOpening.date} at {lines.nextOpening.startClock}.</>
               )}
             </div>
           </div>
+          )
         )}
 
-        {/* Two or three results: compact rows beneath the lead, never three heroes. */}
-        {secondary.map((r) => (
+        {/* Two or three results: compact rows beneath the lead, never three heroes.
+            CONTENTION. Two activities can legitimately elect the same interval —
+            a single night planetary hour suited both `deep-work` and
+            `sign-contract` here, and the engine is right to return both. But
+            listing two windows that are in fact ONE window, with nothing said,
+            offers the same 53 minutes twice and lets someone accept both. The
+            overlap is computable from what is already on screen, so the honest
+            move is to name it rather than to let the reader discover it by
+            double-booking. */}
+        {secondary.map((r, i) => {
+          const clash = [lead, ...secondary.slice(0, i)].find(
+            (p) => p && !p.allDay && !r.allDay &&
+              Date.parse(p.startAt) < Date.parse(r.endAt) &&
+              Date.parse(r.startAt) < Date.parse(p.endAt));
+          return (
           <div key={r.held.id} style={{
             display: "flex", alignItems: "baseline", gap: 10, padding: "7px 20px",
             borderTop: "1px solid var(--color-border)",
           }}>
             <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {r.held.title}
+              {clash && (
+                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                  {" · same window as "}{clash.held.title.length > 22 ? `${clash.held.title.slice(0, 22)}…` : clash.held.title}
+                </span>
+              )}
             </span>
             {r.supportLevel === "convergent" && <Badge text="converges" color={CONVERGENT} />}
             <span style={{
@@ -657,7 +776,8 @@ export default function Home({
               {r.allDay ? "all day" : r.state === "open-now" ? `now, until ${r.endClock}` : `${r.startClock}–${r.endClock}`}
             </span>
           </div>
-        ))}
+          );
+        })}
 
         {lines?.clarify.map((c) => (
           <div key={c.held.id} style={{ padding: "7px 20px", borderTop: "1px solid var(--color-border)" }}>

@@ -84,15 +84,27 @@ export function WeekStrip({ week, onOpen }: { week: WovenWeek; onOpen?: () => vo
               {/* A bar that means one thing: minutes of placed work. An open day
                   gets a visible floor rather than nothing, because nothing and
                   missing look identical. */}
+              {/* An open day is DRAWN, not left blank — a dashed cell reads as
+                  "nothing here on purpose", where an absence reads as a
+                  rendering failure. Occupancy is not the target, so the empty
+                  state has to look deliberate. */}
               <div style={{
-                height: 3, marginTop: 3, borderRadius: 2,
-                background: first ? "var(--color-primary)" : "var(--color-border)",
-              }}/>
+                height: 26, marginTop: 3, borderRadius: 4,
+                border: first ? "1px solid var(--color-primary)" : "1px dashed var(--color-border)",
+                background: first ? "var(--color-card-2)" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {first && (
+                  <span style={{ fontSize: 8.5, fontWeight: 600, color: "var(--color-primary)" }}>
+                    {clock(first.startAt).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
+                  </span>
+                )}
+              </div>
               <div style={{
-                fontSize: 8.5, marginTop: 3, color: first ? "var(--color-primary)" : "var(--text-3)",
+                fontSize: 8.5, marginTop: 3, color: "var(--text-3)", textAlign: "center",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                {first ? clock(first.startAt).replace(/:00/, "") : "open"}
+                {first ? "" : "open"}
               </div>
               {first && (
                 <div style={{
