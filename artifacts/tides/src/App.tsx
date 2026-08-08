@@ -120,6 +120,26 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
+      /**
+       * FAIL LOUDLY, NEVER PAUSE SILENTLY.
+       *
+       * react-query's default `networkMode: "online"` consults its own
+       * onlineManager before fetching or retrying; if that reports offline,
+       * the query PAUSES — `status: "pending"` indefinitely, `isError` never
+       * fires, and every error branch in the app keyed on `isError` becomes
+       * unreachable in the one situation it was written for. Home's outage
+       * state was measured unreachable this way: `fetchStatus: "paused"`,
+       * `failureCount: 1`, spinner forever, while a hand-rolled fetch to the
+       * same URL answered 500 in 12ms.
+       *
+       * "always" lets the fetch run and FAIL, which reaches the error states
+       * the app has spent weeks building. This is the house rule — "a failed
+       * request stops looking like an empty life" — applied to the transport:
+       * a browser that thinks it is offline is a hypothesis, and an actual
+       * failed request is the fact. The retry policy below still bounds the
+       * cost at one retry.
+       */
+      networkMode: "always",
       // A 4xx is a fact about the request, not a transient failure — retrying
       // a missing natal chart three more times cannot make it exist. Retry
       // only genuine server/network errors, and only once.
@@ -131,6 +151,13 @@ const queryClient = new QueryClient({
       // Coming back to the tab shouldn't re-run twenty queries; staleTime
       // already governs when the data is genuinely old enough to refresh.
       refetchOnWindowFocus: false,
+    },
+    // Mutations pause the same way, and a paused mutation is worse: the user
+    // acted, the write is parked, and the ✓ they are waiting for never comes —
+    // with no error either. The write-status sprint made every mutation check
+    // `r.ok`; that check can only run if the request is allowed to happen.
+    mutations: {
+      networkMode: "always",
     },
   },
 });
