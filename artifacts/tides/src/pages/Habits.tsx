@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
@@ -115,15 +116,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
     enabled: !!testerId,
   });
 
-  const { data: habits = [] } = useQuery<Habit[]>({
+  const { data: habits = [], isError: habitsError, isLoading: habitsLoading } = useQuery<Habit[]>({
     queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => {
       // ?today= is the viewer's LOCAL date — without it the server falls back
       // to its own UTC day and the whole streak/cadence window shifts for
       // evening users (the 8pm-ET rollover).
       const r = await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: authH(testerId) });
-      const j = await r.json();
-      return Array.isArray(j) ? j : []; // 429/500 error bodies must not crash .map
+      // THROWS on failure. The old line here — `Array.isArray(j) ? j : []` —
+      // turned a 500 into an empty list, so a failed fetch rendered as "No
+      // habits yet. Add one above." to someone who has habits: the exact
+      // failed-request-as-empty-life defect jsonArray() was built to end,
+      // hand-rolled back into existence one page over.
+      return jsonArray<Habit>(r);
     },
     enabled: !!testerId,
     refetchInterval: 60_000,
@@ -494,7 +499,13 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
         {habits.length === 0 && !showAdd && (
           <div style={{textAlign:"center",padding:"48px 0",color:"var(--text-3)",fontSize:13}}>
-            {testerId ? "No habits yet. Add one above." : "Set up your profile first."}
+            {/* empty / unavailable / loading are three different sentences. */}
+            {(() => {
+              const st = listState({ data: habits, isError: habitsError, isLoading: habitsLoading });
+              if (st === "unavailable") return <span style={{color:"#a05050"}}>Couldn't load your habits — this is a connection problem, not an empty list.</span>;
+              if (habitsLoading) return "Loading…";
+              return testerId ? "No habits yet. Add one above." : "Set up your profile first.";
+            })()}
           </div>
         )}
       </div>

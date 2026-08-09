@@ -2399,7 +2399,12 @@ function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => void }) {
       options: hourActs,
       seed: new Date().getHours(),
       source: `${hourPlanet} hour`,
-      color: PLANET_THEMES[hourPlanet]?.color ?? "var(--color-muted)",
+      // Hex fallback, because this value is later concatenated with an alpha
+      // suffix (`${s.color}30`) — `var(--color-muted)30` is not a colour and
+      // fails silently, leaving the card borderless for any ruler missing
+      // from PLANET_THEMES. The blue matches the sibling builders' fallback
+      // rather than a neutral grey, which the raw-grey guard rightly bans.
+      color: PLANET_THEMES[hourPlanet]?.color ?? "#4a6a90",
       title: PLANET_MYTHOS[hourPlanet]?.whenLoud,
     });
   }

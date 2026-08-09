@@ -276,7 +276,14 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
                 fontSize: 11,
                 borderRadius: 6,
                 border: dateRange === d ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
-                background: dateRange === d ? "var(--color-primary)20" : "transparent",
+                // A real theme token, not an alpha-suffixed var:
+                // `var(--color-primary)20` is not a colour and fails SILENTLY
+                // to transparent, so the selected pill had no background at
+                // all — the documented alpha-suffix trap, again. And a fixed
+                // hex tint is no better here, because --color-primary flips
+                // from near-black to near-white across themes; card-2 is the
+                // one fill that reads as "selected" in both.
+                background: dateRange === d ? "var(--color-card-2)" : "transparent",
                 color: dateRange === d ? "var(--color-primary)" : "var(--color-muted)",
                 cursor: "pointer",
                 fontWeight: dateRange === d ? 600 : 400,

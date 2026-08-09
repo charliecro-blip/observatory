@@ -98,7 +98,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   onFocusConsumed?: () => void;
 }) {
   const qc = useQueryClient();
-  const { data: stars, isLoading } = useNorthStars(testerId);
+  const { data: stars, isLoading, isError: starsError } = useNorthStars(testerId);
   const { unlocked: premiumUnlocked } = usePremium();
   const { profile } = useTester();
   const { data: currentsData } = useCurrents(testerId, houseSystemPref());
@@ -801,7 +801,18 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         )}
 
         {/* Active Guiding Stars — each with explicit task/habit breakdown right here */}
-        {list.length === 0 && !showForm && (
+        {/* A FAILED fetch is not a first run. Without this branch, a 500 on
+            the stars query rendered "Set your first Guiding Star" — the
+            onboarding pitch — to someone who has stars, which is the
+            failed-request-as-empty-life defect on the page where it stings
+            most: it looks like their stars were deleted. */}
+        {list.length === 0 && starsError && !showForm && (
+          <div style={{ textAlign: "center", padding: "44px 24px", color: "#a05050", fontSize: 13, lineHeight: 1.6 }}>
+            Couldn't load your Guiding Stars just now — they're still there.
+            This is a connection problem, not an empty page.
+          </div>
+        )}
+        {list.length === 0 && !starsError && !showForm && (
           <div style={{ textAlign: "center", padding: "44px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>

@@ -50,7 +50,11 @@ export const ELEMENT_COLORS: Record<Element, string> = {
  *
  * Deep in both modes, so it never needs a compromise.
  */
-export const ELEMENT_SURFACE: Record<Element, string> = LIGHT;
+// A COPY, not an alias. `= LIGHT` was the same object reference, so a future
+// mutation of either table would silently change both — the opposite of the
+// "separate rather than one table with a compromise in it" the comment above
+// promises. The spread makes the separation structural.
+export const ELEMENT_SURFACE: Record<Element, string> = { ...LIGHT };
 
 /**
  * Same hue, for callers that hold an element as a plain `string` (a value off
