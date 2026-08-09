@@ -10,7 +10,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects, computePlanetarySensitivity } from "../lib/natal.js";
 import { computeProfection, computeTransitsByHouse } from "../lib/currents.js";
-import { HOUSE_SYSTEMS, type HouseSystem } from "../lib/houses.js";
+import { HOUSE_SYSTEMS, PolarLatitudeError, type HouseSystem } from "../lib/houses.js";
 
 const router: IRouter = Router();
 
@@ -105,6 +105,8 @@ router.get("/currents", async (req, res) => {
       cautionWindows,
     });
   } catch (err) {
+    // Placidus refuses beyond the polar circle rather than fabricating cusps.
+    if (err instanceof PolarLatitudeError) return res.status(422).json({ error: err.message, houseSystem });
     return res.status(500).json({ error: "failed to compute currents", detail: String(err) });
   }
 });
@@ -187,6 +189,7 @@ router.get("/currents/caution-days", async (req, res) => {
 
     return res.json({ hasChart: true, days });
   } catch (err) {
+    if (err instanceof PolarLatitudeError) return res.status(422).json({ error: err.message, houseSystem });
     return res.status(500).json({ error: "failed to compute caution days", detail: String(err) });
   }
 });
