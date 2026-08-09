@@ -37,14 +37,45 @@ app.use(
   }),
 );
 app.use(cors());
+// The security headers vercel.json used to send — and stopped sending the day
+// the app moved to Railway, because that file's headers only exist on Vercel's
+// edge. Express ships them itself now, so they survive the next migration too.
+// Set by hand rather than via helmet: helmet's default bundle includes a CSP,
+// and this app's inline styles would need a permissive one that says nothing —
+// three headers we mean are better than ten we would have to disclaim.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// AI endpoints: 30 requests per hour per IP
+/**
+ * LIMITER KEYS ARE THE IP, FULL STOP.
+ *
+ * These used to key on `x-tester-id` when present, and that header is
+ * attacker-chosen: rotating it per request minted a fresh bucket every time
+ * and walked past the AI cap, the general cap, and the 5/hour deletion cap
+ * (which exists precisely to stop a leaked id being used for bulk wipes).
+ *
+ * And the first fix here was wrong in a way worth recording: keying on
+ * `ip·testerId` reads like "IP-first" but is still one bucket PER ID —
+ * measured with 40 rotated ids from one IP, `ratelimit-remaining` never
+ * moved. Any key that varies with attacker-chosen input preserves the
+ * bypass no matter what it is prefixed with. The cost of IP-only keys is
+ * that people behind one NAT share a bucket; at 1000/15min that is
+ * headroom for a floor of an office, and it is the only key the caller
+ * cannot choose.
+ */
+const limiterKey = (req: express.Request): string => ipKeyGenerator(req.ip ?? "anon");
+
+// AI endpoints: 30 requests per hour
 const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
-  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
+  keyGenerator: limiterKey,
   message: { error: "Too many AI requests — please wait a while before trying again." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -62,7 +93,7 @@ const generalLimiter = rateLimit({
   // getting error objects back. 1000 gives real headroom; the AI limiter above
   // (30/hr) still guards the one endpoint that actually costs money.
   max: 1000,
-  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
+  keyGenerator: limiterKey,
   message: { error: "Too many requests — slow down a little." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -75,7 +106,7 @@ const generalLimiter = rateLimit({
 const deleteAccountLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
-  keyGenerator: (req) => (req.headers["x-tester-id"] as string) ?? ipKeyGenerator(req.ip ?? "anon"),
+  keyGenerator: limiterKey,
   message: { error: "Too many deletion attempts — please wait a while, or email charliecro@gmail.com." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -108,6 +139,10 @@ app.use("/api/planning/breakdown", aiLimiter);
 app.use("/api/chart/explicate", aiLimiter);
 app.use("/api/natal-chart/blueprint/generate", aiLimiter);
 app.use("/api/body-weather/regenerate", aiLimiter);
+// The GET is behind the cap too: /today calls the model on a cache miss, and
+// posting a check-in invalidates that cache — so alternating the two drove
+// uncapped inference through the "read" route while only "regenerate" paid.
+app.use("/api/body-weather/today", aiLimiter);
 app.use("/api/account/recover", recoverLimiter);
 // Method-scoped on purpose: /api/account/sync is called on every profile
 // change, so a path-wide limiter here would throttle ordinary use.

@@ -186,10 +186,20 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
           <span style={{ fontSize: 9.5, color: "#8a7a5e" }}>
             ⚓ {data.streak}d at the helm · {data.winsWeek} this week · {data.winsCycle} this cycle
           </span>
-          <a href={`/api/studio/cycle.png?tester=${encodeURIComponent(testerId ?? "")}&tz=${new Date().getTimezoneOffset()}`}
-            target="_blank" rel="noreferrer"
-            style={{ fontSize: 9.5, color: "#8a6a20", textDecoration: "none", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
-            title="Your lunation in wins, as a card">↗ cycle card</a>
+          <button
+            onClick={async () => {
+              // Header-authenticated fetch, then a blob URL in a new tab. An
+              // <a href> put the tester id — the account credential — in the
+              // URL, where it outlives the click in history and referrers.
+              try {
+                const r = await fetch(`/api/studio/cycle.png?tz=${new Date().getTimezoneOffset()}`,
+                  { headers: testerId ? { "x-tester-id": testerId } : undefined });
+                if (!r.ok) return;
+                window.open(URL.createObjectURL(await r.blob()), "_blank");
+              } catch { /* retryable */ }
+            }}
+            style={{ fontSize: 9.5, color: "#8a6a20", background: "none", cursor: "pointer", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
+            title="Your lunation in wins, as a card">↗ cycle card</button>
         </div>
       </div>
       <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>

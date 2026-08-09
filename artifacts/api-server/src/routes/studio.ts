@@ -243,12 +243,16 @@ router.get("/studio/day.png", async (req, res) => {
   }
 });
 
-// The personal cycle-in-wins card. Private data → the tester id rides in the
-// query (?tester=) so the link is openable/bookmarkable from the app; ids are
-// the app's existing bearer credential (the recovery-key account model).
+// The personal cycle-in-wins card. Private data → the HEADER, like every
+// other personal route. This used to read `?tester=` "so the link is
+// openable/bookmarkable" — but the id IS the account's bearer credential, and
+// a credential in a URL lands in browser history, referrer headers, and
+// whatever scrapes the DOM. It is the same pattern the calendar-feed
+// withdrawal closed, and the client now fetches with the header and shows the
+// blob, which keeps the open-in-new-tab behaviour without the leak.
 router.get("/studio/cycle.png", async (req, res) => {
   try {
-    const tester = (req.query.tester as string) || "";
+    const tester = (req.headers["x-tester-id"] as string) || "";
     if (!tester) { res.status(401).json({ error: "tester required" }); return; }
     const base = parseOpts(req);
     const m = await computeMomentum(tester, base.tzOffsetMin, base.lat, base.lon);
