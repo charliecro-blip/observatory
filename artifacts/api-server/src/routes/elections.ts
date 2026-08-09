@@ -149,7 +149,7 @@ router.get("/elections/long-session", (req, res) => {
   // VIEWER's zone — the server's is UTC in production.
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
 
-  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown });
+  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
 
   res.json({
@@ -179,6 +179,9 @@ router.get("/elections/shape-day", async (req, res) => {
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const wakeHour = req.query.wake != null ? parseFloat(req.query.wake as string) : undefined;
   const sleepHour = req.query.sleep != null ? parseFloat(req.query.sleep as string) : undefined;
+  // The weaver decides what "today" means with this; without it, a UTC server
+  // rolls the user's evening into tomorrow and marks today's work overdue.
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
   const date = new Date();
 
   const items: WeaveItem[] = [];
@@ -200,7 +203,7 @@ router.get("/elections/shape-day", async (req, res) => {
     return;
   }
 
-  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown }));
+  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin }));
 });
 
 /**
@@ -223,6 +226,7 @@ router.get("/elections/shape-week", async (req, res) => {
   const wakeHour = req.query.wake != null ? parseFloat(req.query.wake as string) : undefined;
   const sleepHour = req.query.sleep != null ? parseFloat(req.query.sleep as string) : undefined;
   const days = Math.min(14, Math.max(2, parseInt((req.query.days as string) ?? "7", 10) || 7));
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
 
   const items: WeekItem[] = [];
   try {
@@ -245,7 +249,7 @@ router.get("/elections/shape-week", async (req, res) => {
     return;
   }
 
-  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days }));
+  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin }));
 });
 
 /**

@@ -29,6 +29,7 @@
  */
 
 import { dayTimeline, containers, type Commitment } from "./dayTimeline.js";
+import { dayKeyIn, dayBoundsIn } from "./localClock.js";
 import { findLongSessions } from "./longSession.js";
 import { rankActivities, activityByKey } from "./activityCorrespondences.js";
 
@@ -99,6 +100,9 @@ export interface WeaveOpts {
   sleepHour?: number;
   commitments?: Commitment[];
   locationKnown?: boolean;
+  /** The viewer's zone (getTimezoneOffset semantics). Decides what "today"
+   *  and the day's bounds mean; 0 = UTC, the old prod behaviour. */
+  tzOffsetMin?: number;
   /**
    * How much of the waking day may be committed to placed work. A scheduler
    * with no ceiling will happily book every waking minute, which is the
@@ -152,13 +156,17 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   const {
     items, date, lat, lon, wakeHour = 7, sleepHour = 23,
     commitments = [], locationKnown = true, maxLoadFraction = 0.6,
+    tzOffsetMin = 0,
   } = opts;
 
-  const today = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+  // In the USER'S zone, not the server's. Built from local getters, this was
+  // UTC in production — so from ~7 PM Austin time, "today" was tomorrow and
+  // everything due today was judged overdue. The module that decides what is
+  // overdue was the one place the day boundary was wrong.
+  const today = dayKeyIn(date, tzOffsetMin);
+  const [dayStart, dayEnd] = dayBoundsIn(date, tzOffsetMin);
 
-  const events = dayTimeline({ date, lat, lon, wakeHour, sleepHour, commitments, locationKnown });
+  const events = dayTimeline({ date, lat, lon, wakeHour, sleepHour, commitments, locationKnown, tzOffsetMin });
   // Free stretches start as the containers between hard boundaries and get
   // carved as placements land.
   // A placement that ends at the exact minute sleep begins is ergonomically

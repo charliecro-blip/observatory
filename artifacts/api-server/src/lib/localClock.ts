@@ -47,3 +47,33 @@ export function stampIn(d: Date, tzOffsetMin: number, opts: Intl.DateTimeFormatO
     ...opts, timeZone: "UTC",
   });
 }
+
+/**
+ * The calendar date `d` falls on IN THE USER'S ZONE, as "YYYY-MM-DD".
+ *
+ * The weavers were building this string from local `Date` getters — the same
+ * disease as the formatting above, but in date ARITHMETIC, where it decides
+ * which tasks are overdue. On a UTC server, an Austin user's evening is
+ * already "tomorrow": at 7:01 PM local the day weaver started treating
+ * everything due today as due yesterday.
+ */
+export function dayKeyIn(d: Date, tzOffsetMin: number): string {
+  const s = shifted(d, tzOffsetMin);
+  return `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-${String(s.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * [local midnight, next local midnight] for the day `d` falls on in the
+ * user's zone — as real instants, usable for interval math against events.
+ *
+ * The offset is a snapshot, so a boundary that crosses a DST change can be an
+ * hour off for that one day. That is the same convention every `*In` helper
+ * here already accepts, and it is an hour once a year versus five hours every
+ * evening.
+ */
+export function dayBoundsIn(d: Date, tzOffsetMin: number): [Date, Date] {
+  const s = shifted(d, tzOffsetMin);
+  const startShifted = Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
+  const start = new Date(startShifted + tzOffsetMin * 60000);
+  return [start, new Date(start.getTime() + 86400000)];
+}

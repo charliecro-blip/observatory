@@ -27,6 +27,7 @@
 
 import { weaveDay, type WeaveItem, type WovenDay, type Placement } from "./dayWeaver.js";
 import type { Commitment } from "./dayTimeline.js";
+import { dayKeyIn, dayBoundsIn } from "./localClock.js";
 import { activityByKey, rankActivities } from "./activityCorrespondences.js";
 
 /** What a piece of work costs in attention, independent of the clock. */
@@ -80,10 +81,11 @@ export interface WeaveWeekOpts {
   commitmentsByDay?: Record<string, Commitment[]>;
   locationKnown?: boolean;
   days?: number;
+  /** The viewer's zone; decides where each of the seven days begins. */
+  tzOffsetMin?: number;
 }
 
-const keyOf = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Day keys are the user's calendar dates — `dayKeyIn`, not local getters.
 
 function resolveActivity(item: WeekItem): string | null {
   if (item.activityKey && activityByKey(item.activityKey)) return item.activityKey;
@@ -108,17 +110,18 @@ export function demandOf(item: WeekItem): Demand {
 export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   const {
     items, startDate, lat, lon, wakeHour = 7, sleepHour = 23,
-    commitmentsByDay = {}, locationKnown = true, days = 7,
+    commitmentsByDay = {}, locationKnown = true, days = 7, tzOffsetMin = 0,
   } = opts;
 
+  // Each date is NOON IN THE USER'S ZONE, derived from their midnight rather
+  // than set with server-local `setHours` — otherwise the whole week is
+  // anchored a few hours off and its first day can be the wrong day.
+  const [day0Start] = dayBoundsIn(startDate, tzOffsetMin);
   const dates: Date[] = [];
   for (let i = 0; i < days; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    d.setHours(12, 0, 0, 0);
-    dates.push(d);
+    dates.push(new Date(day0Start.getTime() + i * 86400000 + 12 * 3600000));
   }
-  const keys = dates.map(keyOf);
+  const keys = dates.map(d => dayKeyIn(d, tzOffsetMin));
 
   // ── Assign items to days. Deadlines bind; demand and recovery shape.
   const assigned: Record<string, WeekItem[]> = Object.fromEntries(keys.map(k => [k, []]));
@@ -221,7 +224,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
     const woven = weaveDay({
       items: assigned[key],
       date: dates[i],
-      lat, lon, wakeHour, sleepHour,
+      lat, lon, wakeHour, sleepHour, tzOffsetMin,
       commitments: commitmentsByDay[key] ?? [],
       locationKnown,
       maxLoadFraction: recovering ? RECOVERY_LOAD : NORMAL_LOAD,

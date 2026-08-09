@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { dayTimeline, containers } from "../artifacts/api-server/src/lib/dayTimeline.js";
 
-const AUSTIN = { lat: 30.27, lon: -97.74 };
+// Every date in this file is built with LOCAL constructors, so the viewer is
+// the machine's zone — and since the weavers now take the viewer's offset
+// rather than assuming the server's, that has to be said out loud. Without
+// it, the timeline computes a UTC day and the local `new Date(...)` bounds
+// below stop describing the same day on any non-UTC machine.
+const TZ = new Date(2026, 7, 5).getTimezoneOffset();
+const AUSTIN = { lat: 30.27, lon: -97.74, tzOffsetMin: TZ };
 const day = (d: number) => new Date(2026, 7, d, 12, 0, 0);
 
 describe("day timeline", () => {

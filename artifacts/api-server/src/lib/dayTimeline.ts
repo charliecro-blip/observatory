@@ -41,6 +41,7 @@ import {
   julianDay, getSunriseSunset, getPlanetaryHour, voidOfCourse,
   moonFinalAspectInSign, moonLongitude, SIGNS, getMoonContacts,
 } from "./astro.js";
+import { dayBoundsIn } from "./localClock.js";
 import { wakingSegments } from "./waking.js";
 
 /**
@@ -86,6 +87,12 @@ export interface DayTimelineOpts {
   date: Date;
   lat: number;
   lon: number;
+  /**
+   * The viewer's zone (getTimezoneOffset semantics). Day boundaries and
+   * waking edges are computed in it; 0 means UTC, which is also what the old
+   * server-local code silently meant in production.
+   */
+  tzOffsetMin?: number;
   /** Local waking hours, 0–24. Defaults are the app's ordinary chronotype. */
   wakeHour?: number;
   sleepHour?: number;
@@ -117,14 +124,8 @@ const ROLE_OF: Record<EventKind, EventRole> = {
 const jdToDate = (jd: number) => new Date((jd - 2440587.5) * 86400000);
 const signOf = (lon: number) => SIGNS[Math.floor((((lon % 360) + 360) % 360) / 30)];
 
-/** Local midnight-to-midnight for the calendar date `date` falls on. */
-function localDayBounds(date: Date): [Date, Date] {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return [start, end];
-}
+// Day bounds come from `dayBoundsIn` — the user's midnight, not the
+// server's. The old local helper here was UTC midnight in production.
 
 /**
  * When the Moon next changes sign, found by stepping and watching the sign
@@ -153,8 +154,9 @@ function nextIngress(fromJd: number, limitJd: number): { at: Date; from: string;
 }
 
 export function dayTimeline(opts: DayTimelineOpts): TimelineEvent[] {
-  const { date, lat, lon, wakeHour = 7, sleepHour = 23, commitments = [], locationKnown = true } = opts;
-  const [dayStart, dayEnd] = localDayBounds(date);
+  const { date, lat, lon, wakeHour = 7, sleepHour = 23, commitments = [], locationKnown = true, tzOffsetMin = 0,
+  } = opts;
+  const [dayStart, dayEnd] = dayBoundsIn(date, tzOffsetMin);
   const events: TimelineEvent[] = [];
 
   const push = (at: Date, kind: EventKind, label: string, detail?: TimelineEvent["detail"]) => {
@@ -165,8 +167,10 @@ export function dayTimeline(opts: DayTimelineOpts): TimelineEvent[] {
   // ── Waking edges. Overnight chronotypes give two segments, which is why
   //    this uses the shared helper rather than assuming wake < sleep.
   for (const [lo, hi] of wakingSegments(wakeHour, sleepHour)) {
-    const a = new Date(dayStart); a.setHours(Math.floor(lo), Math.round((lo % 1) * 60), 0, 0);
-    const b = new Date(dayStart); b.setHours(Math.floor(hi), Math.round((hi % 1) * 60), 0, 0);
+    // Offsets from the USER'S midnight. `setHours` here would set the
+    // server's local hour on an instant that is no longer server-midnight.
+    const a = new Date(dayStart.getTime() + lo * 3600000);
+    const b = new Date(dayStart.getTime() + hi * 3600000);
     if (lo > 0) push(a, "waking-start", "awake");
     if (hi < 24) push(b, "waking-end", "asleep");
   }

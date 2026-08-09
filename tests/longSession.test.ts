@@ -3,7 +3,10 @@ import { findLongSessions } from "../artifacts/api-server/src/lib/longSession.js
 import { getSunriseSunset, julianDay } from "../artifacts/api-server/src/lib/astro.js";
 import { dayTimeline } from "../artifacts/api-server/src/lib/dayTimeline.js";
 
-const AUSTIN = { lat: 30.27, lon: -97.74 };
+// Local-constructor dates → the viewer is the machine's zone, stated
+// explicitly now that the weavers no longer assume it. See dayTimeline.test.
+const TZ = new Date(2026, 7, 5).getTimezoneOffset();
+const AUSTIN = { lat: 30.27, lon: -97.74, tzOffsetMin: TZ };
 const TROMSO = { lat: 69.65, lon: 18.96 };
 const aug = (d: number) => new Date(2026, 7, d, 12, 0);
 const dec = (d: number) => new Date(2026, 11, d, 12, 0);

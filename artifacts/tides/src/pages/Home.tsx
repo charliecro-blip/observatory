@@ -421,7 +421,7 @@ export default function Home({
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
     queryKey: ["shape-day", testerId, lat, lon],
     queryFn: () => fetchJson<ShapedDay>(
-      `/api/elections/shape-day?lat=${lat}&lon=${lon}&locationKnown=${locationKnown}`, { headers }),
+      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`, { headers }),
     enabled: !!testerId && shapeOpen,
   });
 

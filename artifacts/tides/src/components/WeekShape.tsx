@@ -47,7 +47,7 @@ export function useWeekShape(testerId: string | null, lat: number, lon: number, 
   return useQuery<WovenWeek>({
     queryKey: ["shape-week", testerId, lat, lon],
     queryFn: () => fetchJson<WovenWeek>(
-      `/api/elections/shape-week?lat=${lat}&lon=${lon}&locationKnown=${locationKnown}`,
+      `/api/elections/shape-week?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : undefined }),
     enabled: !!testerId && enabled,
   });
