@@ -25,6 +25,7 @@ import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
   getMajorAspects, isRetrograde, SIGNS, moonFinalAspectInSign, eclipseWindow,
+  getSunriseSunset,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
 import { scanMoonPerfections } from "./studioCard.js";
@@ -654,7 +655,18 @@ export function computeElections(opts: {
     // location is a guess — see `locationKnown`. Not merely hidden: an hour
     // computed on the wrong meridian must not create a window or count toward
     // convergence.
-    const hours = locationKnown
+    //
+    // ALSO suppressed under a polar day or night. getSunriseSunset invents a
+    // symmetric twelve-hour day when the Sun neither rises nor sets, and
+    // exposes `polar` precisely so callers can withhold — which dayTimeline,
+    // longSession and synthesis all do. This file, the canonical authority
+    // and the one that most loudly documents the no-fabrication rule, was the
+    // one consumer that skipped the check: at a KNOWN polar location it built
+    // hour candidates on the fabricated sunrise and counted them toward the
+    // planetary-time family. Hours are the one family the poles genuinely
+    // cannot answer; the Moon, sign and natal testimony below survive.
+    const polar = getSunriseSunset(julianDay(new Date(dayStartMs + 12 * 3600000)), lat, lon).polar;
+    const hours = locationKnown && !polar
       ? dayHours(dayStartMs, lat, lon).filter(h => act.hourRulers.includes(h.ruler))
       : [];
     for (const h of hours) {

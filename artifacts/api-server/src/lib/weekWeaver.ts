@@ -209,7 +209,16 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
     }
 
     assigned[target].push(item);
-    loadOn[target] += item.estMinutes ?? 45;
+    // Charge load only for items the day weaver can actually place. An item
+    // with no duration and no recognisable kind of work will be REFUSED at the
+    // day level (dayWeaver's durationOf returns null) — but this line used to
+    // bill 45 invented minutes for it anyway, and since `target` is chosen by
+    // least load, phantom minutes from items that will never land were
+    // steering the real ones toward the wrong days. The warning a few lines
+    // down names exactly this population; the code knew these items had no
+    // basis and charged for them regardless.
+    const chargeable = item.estMinutes ?? (resolveActivity(item) ? 45 : 0);
+    loadOn[target] += chargeable;
     if (demand === "major") majorOn[target]++;
     if (star) starOn[target].add(star);
   }

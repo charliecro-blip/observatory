@@ -76,3 +76,39 @@ describe("noObjections is a claim about the reasons list, not about the sky", ()
     expect(qualified.every(w => w.noObjections === false), "a qualified window claims no absence").toBe(true);
   }, 30_000);
 });
+
+describe("the poles get no fictional hours", () => {
+  // getSunriseSunset invents a symmetric 12-hour day under polar day/night and
+  // exposes `polar` so callers can withhold. Every sibling module checked it;
+  // the canonical authority did not, and built hour candidates on the
+  // fabricated sunrise at a KNOWN polar location. Tromsø in midwinter: the Sun
+  // never rises, so there are no planetary hours to speak of — and now the
+  // engine says nothing about them rather than something false.
+  it("emits no planetary-time testimony under a polar night", () => {
+    const r = computeElections({
+      activityKey: "deep-work", span: "day",
+      lat: 69.65, lon: 18.96, tzOffsetMin: -60,       // Tromsø
+      startAt: new Date(Date.UTC(2026, 11, 21, 12, 0, 0)),
+      locationKnown: true,
+    } as any)!;
+    for (const w of r.windows) {
+      expect(w.families, `${w.startAt} must not carry hours the Sun never made`)
+        .not.toContain("planetary-time");
+      expect((w.evidence ?? []).map(e => e.family)).not.toContain("hour");
+    }
+  }, 20_000);
+
+  // The same latitude in equinox weather has real sunrises — the gate must be
+  // about POLAR conditions, not about latitude. If this stops producing hour
+  // testimony the gate has overreached into a place with a perfectly good sky.
+  it("still emits hours at the same latitude when the Sun rises", () => {
+    const r = computeElections({
+      activityKey: "deep-work", span: "week",
+      lat: 69.65, lon: 18.96, tzOffsetMin: -60,
+      startAt: new Date(Date.UTC(2026, 8, 20, 12, 0, 0)),  // late September
+      locationKnown: true,
+    } as any)!;
+    const hourWindows = r.windows.filter(w => w.families.includes("planetary-time"));
+    expect(hourWindows.length, "equinox Tromsø has real planetary hours").toBeGreaterThan(0);
+  }, 30_000);
+});

@@ -862,16 +862,29 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
   const currentAspects = getMajorAspects(jd);
   for (const asp of currentAspects) {
     if (asp.applying) continue;
-    const planet = asp.planet1 === "Moon" ? asp.planet2 : asp.planet1 === "Moon" ? asp.planet2 : null;
-    if (!planet || (asp.planet1 !== "Moon" && asp.planet2 !== "Moon")) continue;
+    if (asp.planet1 !== "Moon" && asp.planet2 !== "Moon") continue;
     const p = asp.planet1 === "Moon" ? asp.planet2 : asp.planet1;
     if (asp.orb < 0.5 && asp.orb < (best?.orbAtExact ?? 999)) {
+      // The perfection time is FOUND, not derived. This used to be
+      // `orb / 0.5` — hours back-computed from a constant half-degree-per-hour
+      // lunar separation, when the Moon actually runs 11–15°/day (±25% on the
+      // constant), and the result was printed to users as "(3.4h ago)". The
+      // hourly scan above reports a real scanned value; this branch reported a
+      // guess in the same field and the same units. A two-minute backward walk
+      // over the last two hours finds the actual orb minimum for ~60 cheap
+      // longitude evaluations, so both branches now mean the same thing.
+      let minOrb = Infinity, minMinutes = 0;
+      for (let m = 0; m <= 120; m += 2) {
+        const t = jd - m / (24 * 60);
+        const o = nearestAspectDiff(moonLongitude(t), bodyLongitude(p, t));
+        if (o < minOrb) { minOrb = o; minMinutes = m; }
+      }
       best = {
         planet: p,
         aspect: asp.aspect,
         nature: asp.nature,
-        orbAtExact: parseFloat(asp.orb.toFixed(2)),
-        hoursAgo: parseFloat((asp.orb / 0.5).toFixed(1)), // approximate
+        orbAtExact: parseFloat(minOrb.toFixed(2)),
+        hoursAgo: parseFloat((minMinutes / 60).toFixed(1)),
         benefic: BENEFICS.has(p),
         malefic: MALEFICS.has(p),
       };
