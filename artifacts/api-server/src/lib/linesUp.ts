@@ -202,6 +202,61 @@ export interface LinesUpOpts {
 const RANK: Record<string, number> = { convergent: 0, supported: 1 };
 const SUIT: Record<string, number> = { clear: 0, qualified: 1, defer: 2 };
 
+/** The subset of an ElectionWindow the picker actually looks at. */
+export interface PickableWindow {
+  startAt: string; endAt: string; allDay?: boolean;
+  supportLevel: string; suitability: string; score?: number;
+}
+
+/**
+ * The one item this list of windows will surface: ACTIONABLE before strong.
+ *
+ * Extracted to a pure function so the ordering can be tested against
+ * constructed windows rather than the live sky. The bug this exists to
+ * prevent is specifically about TIME — "does a passed window ever beat an
+ * actionable one" — and the real ephemeris changes what it answers every
+ * time the suite runs, which is exactly the wrong foundation for a test
+ * whose entire claim is about temporal ordering.
+ *
+ * Actionability used to be decided AFTER the pick — the sort ran on
+ * supportLevel/suitability/score alone, and only once a window was chosen
+ * did anything ask whether it had already happened. So a convergent window
+ * that closed at noon could beat a merely-supported window still open this
+ * evening, and the noon window — unusable — is what the item carried onto
+ * the page. An item is only allowed to surface a passed window when EVERY
+ * window it has is passed, and even then only because saying so plainly is
+ * more honest than the item vanishing.
+ */
+/**
+ * Does this task belong in a WEAVE at all?
+ *
+ * `shape-day` and `shape-week` build their item list straight from the tasks
+ * table and never checked `planningWindowId` — the exact field `linesUp`
+ * already reads to keep an already-scheduled task out of its own feed
+ * (`alreadyScheduled`). So a task with a reserved block could still be handed
+ * to the weaver and placed a SECOND time, displacing or duplicating the slot
+ * it already holds. `done` was already excluded here; this is the same
+ * exclusion for "already placed", pulled out as a pure predicate so both
+ * routes share one answer and it can be tested without a database.
+ */
+export function needsWeaving(t: { done: string | null; planningWindowId: number | null | undefined }): boolean {
+  return t.done !== "true" && t.planningWindowId == null;
+}
+
+export function pickBestWindow<T extends PickableWindow>(windows: T[], nowMs: number): T | undefined {
+  const isPassed = (x: T) => !x.allDay && nowMs >= Date.parse(x.endAt);
+  return [...windows].sort((a, b) =>
+    (isPassed(a) ? 1 : 0) - (isPassed(b) ? 1 : 0) ||
+    (RANK[a.supportLevel] ?? 9) - (RANK[b.supportLevel] ?? 9) ||
+    (SUIT[a.suitability] ?? 9) - (SUIT[b.suitability] ?? 9) ||
+    // A BOUNDED window beats an all-day one at equal strength. Both are real
+    // testimony, but only one of them answers the question — "the Moon is in
+    // Taurus, which suits finishing" is true from 7 AM to 11 PM and tells you
+    // nothing about which hour to pick.
+    (a.allDay ? 1 : 0) - (b.allDay ? 1 : 0) ||
+    (b.score ?? 0) - (a.score ?? 0))[0];
+}
+
 /**
  * Is there anything here beyond the ever-present planetary hour?
  *
@@ -285,16 +340,10 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   for (const t of priced) {
     const out = electFor(t.key);
     if (!out?.windows?.length) { heldBack.push({ item: t.item, reason: "no window today" }); continue; }
-    // Best window for THIS item: strongest support, then cleanest suitability.
-    const w = [...out.windows].sort((a: any, b: any) =>
-      (RANK[a.supportLevel] ?? 9) - (RANK[b.supportLevel] ?? 9) ||
-      (SUIT[a.suitability] ?? 9) - (SUIT[b.suitability] ?? 9) ||
-      // A BOUNDED window beats an all-day one at equal strength. Both are real
-      // testimony, but only one of them answers the question — "the Moon is in
-      // Taurus, which suits finishing" is true from 7 AM to 11 PM and tells you
-      // nothing about which hour to pick.
-      (a.allDay ? 1 : 0) - (b.allDay ? 1 : 0) ||
-      (b.score ?? 0) - (a.score ?? 0))[0] as any;
+    // Best window for THIS item. See `pickBestWindow` — actionable before
+    // strong, so a passed convergent window can no longer beat a merely
+    // supported window still open this evening.
+    const w = pickBestWindow(out.windows, Date.now()) as any;
     if (!w) { heldBack.push({ item: t.item, reason: "no window today" }); continue; }
     // "defer" is the engine saying the matter itself is not suited now. It is
     // an honest answer but not a recommendation, so it stays out of the feed —

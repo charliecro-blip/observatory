@@ -327,10 +327,19 @@ export default function Home({
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown } = useTester();
+  // Read once and reused in both the key and the fetch. Every value the
+  // response depends on belongs in the cache identity — this one didn't:
+  // `tz` and `locationKnown` rode in the URL but not the key, so a change in
+  // either (a DST transition mid-session, toggling location permission)
+  // could serve the OLD answer from cache with no refetch, because
+  // react-query had no way to see the input had changed. `ElectionPicker`
+  // already learned this lesson once; this makes it a repository rule rather
+  // than a fix applied one query at a time.
+  const tz = new Date().getTimezoneOffset();
   const linesQ = useQuery<LinesUp>({
-    queryKey: ["lines-up", testerId, lat, lon],
+    queryKey: ["lines-up", testerId, lat, lon, tz, locationKnown],
     queryFn: () => fetchJson<LinesUp>(
-      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
+      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`,
       { headers }),
     enabled: !!testerId,
   });
@@ -419,9 +428,9 @@ export default function Home({
   });
 
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
-    queryKey: ["shape-day", testerId, lat, lon],
+    queryKey: ["shape-day", testerId, lat, lon, tz, locationKnown],
     queryFn: () => fetchJson<ShapedDay>(
-      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`, { headers }),
+      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`, { headers }),
     enabled: !!testerId && shapeOpen,
   });
 

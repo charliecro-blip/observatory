@@ -11,7 +11,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
-import { linesUp, type HeldItem } from "../lib/linesUp.js";
+import { linesUp, type HeldItem, needsWeaving } from "../lib/linesUp.js";
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
@@ -187,7 +187,7 @@ router.get("/elections/shape-day", async (req, res) => {
   const items: WeaveItem[] = [];
   try {
     for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
-      if (t.done === "true") continue;
+      if (!needsWeaving(t)) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
@@ -231,7 +231,7 @@ router.get("/elections/shape-week", async (req, res) => {
   const items: WeekItem[] = [];
   try {
     for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
-      if (t.done === "true") continue;
+      if (!needsWeaving(t)) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate,

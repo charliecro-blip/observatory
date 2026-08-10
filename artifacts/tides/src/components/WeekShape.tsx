@@ -44,10 +44,15 @@ const dayName = (key: string) => {
 };
 
 export function useWeekShape(testerId: string | null, lat: number, lon: number, locationKnown: boolean, enabled: boolean) {
+  // Every input the response depends on belongs in the cache identity — `tz`
+  // and `locationKnown` rode in the URL but not the key, so a DST transition
+  // or a location-permission toggle could serve the stale answer with no
+  // refetch. Same rule as Home's lines-up/shape-day queries.
+  const tz = new Date().getTimezoneOffset();
   return useQuery<WovenWeek>({
-    queryKey: ["shape-week", testerId, lat, lon],
+    queryKey: ["shape-week", testerId, lat, lon, tz, locationKnown],
     queryFn: () => fetchJson<WovenWeek>(
-      `/api/elections/shape-week?lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&locationKnown=${locationKnown}`,
+      `/api/elections/shape-week?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : undefined }),
     enabled: !!testerId && enabled,
   });
