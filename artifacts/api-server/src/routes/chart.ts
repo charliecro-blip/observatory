@@ -12,6 +12,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
+import { PolarLatitudeError } from "../lib/houses.js";
 import { getPlanetPositions, julianDay, getMajorAspects, SIGNS } from "../lib/astro.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
@@ -32,7 +33,15 @@ router.get("/chart/now", requireTesterId, async (req, res) => {
 
   const timeKnown = stored.timeKnown !== false;
   const houseSystem = (req.query.houseSystem as any) ?? "whole-sign";
-  const natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset, houseSystem);
+  let natal;
+  try {
+    natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset, houseSystem);
+  } catch (err) {
+    // Placidus refuses beyond the polar circle rather than fabricating cusps —
+    // tell the user to pick another system instead of returning a generic 500.
+    if (err instanceof PolarLatitudeError) { res.status(422).json({ error: err.message, houseSystem }); return; }
+    throw err;
+  }
 
   const now = new Date();
   const jd = julianDay(now);
@@ -92,7 +101,13 @@ router.post("/chart/explicate", requireTesterId, async (req, res) => {
   // Same house system as the wheel (/chart/now), or the house number a
   // practitioner reads in the stack won't match the one in the reading.
   const houseSystem = (req.body?.houseSystem as any) ?? "whole-sign";
-  const natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset, houseSystem);
+  let natal;
+  try {
+    natal = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset, houseSystem);
+  } catch (err) {
+    if (err instanceof PolarLatitudeError) { res.status(422).json({ error: err.message, houseSystem }); return; }
+    throw err;
+  }
   const target = computeTransitAspects(natal, new Date(), 40).find(
     (a) => a.transitPlanet === transitPlanet && a.natalPlanet === natalPlanet && a.aspect === aspect,
   );

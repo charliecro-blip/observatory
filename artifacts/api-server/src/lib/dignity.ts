@@ -170,8 +170,11 @@ export function accidentalDignity(planet: string, ctx: AccidentalContext): Accid
 
   // Combustion / cazimi / under the beams (Sun-relative)
   if (ctx.sunLongitude != null && ctx.longitude != null && planet !== "Sun") {
-    const d = Math.abs((((ctx.longitude - ctx.sunLongitude) % 360) + 540) % 360 - 180); // 0..180
-    const sep = 180 - d; // separation from the Sun, 0 = conjunct
+    // Shortest angular separation from the Sun, 0..180, 0 = conjunct. This is
+    // the standard wrap-safe formula; it must NOT be flipped with `180 − d` —
+    // that inversion once awarded cazimi at opposition and "free of the beams"
+    // at exact conjunction (tests/dignity.test.ts pins both directions).
+    const sep = Math.abs((((ctx.longitude - ctx.sunLongitude) % 360) + 540) % 360 - 180);
     if (sep <= 0.283) { score += 5; factors.push("cazimi"); }            // 0°17′
     else if (sep <= 8.5) { score -= 5; factors.push("combust"); }        // 8°30′
     else if (sep <= 17) { score -= 4; factors.push("under the beams"); }

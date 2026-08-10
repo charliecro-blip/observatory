@@ -28,6 +28,24 @@ export const HOUSE_SYSTEM_LABEL: Record<HouseSystem, string> = {
 function norm360(d: number): number { return ((d % 360) + 360) % 360; }
 function clamp(n: number, lo = -1, hi = 1): number { return Math.max(lo, Math.min(hi, n)); }
 
+/**
+ * Placidus is undefined above the polar circle: ecliptic degrees there can be
+ * circumpolar (they never rise or set), so the semi-arc being trisected does
+ * not exist. Refuse rather than fabricate — callers that let a user choose
+ * Placidus catch this and say so, instead of returning plausible-looking cusps.
+ */
+export class PolarLatitudeError extends Error {
+  readonly code = "PLACIDUS_POLAR_LATITUDE";
+  constructor(lat: number, limit: number) {
+    super(
+      `Placidus houses are undefined at latitude ${lat.toFixed(1)}° ` +
+      `(beyond the polar circle at ±${limit.toFixed(1)}°) — some ecliptic degrees never rise or set there. ` +
+      `Choose whole-sign, equal, porphyry, or regiomontanus.`,
+    );
+    this.name = "PolarLatitudeError";
+  }
+}
+
 // Ecliptic longitude of the point on the ecliptic at a given right ascension.
 function lonFromRA(raDeg: number, epsRad: number): number {
   const ra = norm360(raDeg) * DEG2RAD;
@@ -78,10 +96,16 @@ function porphyryCusps(ascLon: number, mcLon: number): number[] {
 // ── Placidus: proportional trisection of the semi-arcs (iterative)
 function placidusCusps(input: CuspInput): number[] {
   const { ascLon, mcLon, ramc, eps, lat } = input;
+  // Beyond ±(90° − ε) the ascensional-difference asin() has no real solution
+  // for solstitial declinations and the clamp below would silently invent one.
+  const polarLimit = 90 - eps;
+  if (Math.abs(lat) >= polarLimit) throw new PolarLatitudeError(lat, polarLimit);
   const epsR = eps * DEG2RAD;
   const phiR = lat * DEG2RAD;
 
   // Cusp above the horizon (11,12): RA = RAMC + f·(90 + AD), measured from MC.
+  // Below the polar limit |tanφ·tanδ| < 1 always holds, so the clamp inside
+  // asin() only absorbs float noise — it can no longer fabricate cusps.
   function above(f: number): number {
     let ra = ramc + f * 90;
     for (let i = 0; i < 40; i++) {
@@ -128,9 +152,15 @@ function regiomontanusCusps(input: CuspInput): number[] {
   const latR = lat * DEG2RAD;
   const epsR = eps * DEG2RAD;
   function cusp(offset: number): number {
+    // Ecliptic intersection of the great circle through the horizon's north/
+    // south points and the equator at RA = RAMC + offset. The latitude term
+    // MUST be modulated by sin(offset): it vanishes on the meridian (offset 0
+    // → the MC formula) and is full at the horizon (offset 90 → the ASC
+    // formula). An unmodulated tanφ·sinε here once skewed every intermediate
+    // cusp and broke opposite-cusp symmetry (tests/houses.test.ts pins both).
     const theta = (ramc + offset) * DEG2RAD;
     const num = Math.sin(theta);
-    const den = Math.cos(theta) * Math.cos(epsR) - Math.tan(latR) * Math.sin(epsR);
+    const den = Math.cos(theta) * Math.cos(epsR) - Math.tan(latR) * Math.sin(offset * DEG2RAD) * Math.sin(epsR);
     return norm360(Math.atan2(num, den) * RAD2DEG);
   }
   // Oblique-ascension offsets from RAMC: MC=0, h11=30, h12=60, ASC=90,
