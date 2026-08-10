@@ -9,7 +9,7 @@ import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
 import ChartWheel from "@/components/ChartWheel";
 import { PremiumGate } from "@/components/PremiumGate";
-import { ReferenceSection } from "@/pages/Sky";
+import { ReferenceSection } from "@/components/ReferenceSection";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
@@ -168,9 +168,10 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
       <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 8 }}>
         The ten drives you're made of. Visit one to see what it means, how it lives in your chart, and how the sky is moving it right now.
       </div>
-      {/* (The orrery chart is parked for now — owner found it distracting on
-          this page. The component survives at components/Orrery.tsx for a
-          future "sky map" surface.) */}
+      {/* (The orrery chart is retired — owner found it distracting on this
+          page, and after a year unmounted the component was deleted in the
+          2026-08-08 dead-code sweep. Git history has it if a "sky map"
+          surface ever wants it back.) */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22, marginTop: 8 }}>
         {ORDER.map((p) => {
           const active = p === selected, pc = COLOR[p] ?? "#888";

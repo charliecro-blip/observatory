@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
-import { QualityStrip } from "@/pages/Sky";
+import { QualityStrip } from "@/components/QualityStrip";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
