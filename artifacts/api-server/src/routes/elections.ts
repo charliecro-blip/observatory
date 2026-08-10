@@ -61,6 +61,13 @@ router.get("/elections/lines-up", async (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // The viewer's IANA zone, e.g. "America/Chicago" — optional, sent alongside
+  // the numeric offset. Corrects the offset for the SPECIFIC day in question
+  // rather than trusting a snapshot, which is wrong by up to an hour on the
+  // day a DST clock changes and stays wrong for a multi-day scan that runs
+  // past one. Absent for any client that hasn't been updated yet, which is
+  // exactly why every callee treats it as optional.
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
   let natal = null;
   let timeKnown = true;
@@ -109,7 +116,7 @@ router.get("/elections/lines-up", async (req, res) => {
   // The failure time is carried out because the surface states it, and a time
   // the client invents is not evidence of anything.
   try {
-    res.json(linesUp({ held, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown }));
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown }));
   } catch (err) {
     req.log?.error({ err }, "lines-up: sky read failed");
     res.status(503).json({
@@ -148,8 +155,15 @@ router.get("/elections/long-session", (req, res) => {
   // The narration embeds clock times in prose, so it must be written in the
   // VIEWER's zone — the server's is UTC in production.
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // The viewer's IANA zone, e.g. "America/Chicago" — optional, sent alongside
+  // the numeric offset. Corrects the offset for the SPECIFIC day in question
+  // rather than trusting a snapshot, which is wrong by up to an hour on the
+  // day a DST clock changes and stays wrong for a multi-day scan that runs
+  // past one. Absent for any client that hasn't been updated yet, which is
+  // exactly why every callee treats it as optional.
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
-  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin });
+  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
 
   res.json({
@@ -182,6 +196,13 @@ router.get("/elections/shape-day", async (req, res) => {
   // The weaver decides what "today" means with this; without it, a UTC server
   // rolls the user's evening into tomorrow and marks today's work overdue.
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // The viewer's IANA zone, e.g. "America/Chicago" — optional, sent alongside
+  // the numeric offset. Corrects the offset for the SPECIFIC day in question
+  // rather than trusting a snapshot, which is wrong by up to an hour on the
+  // day a DST clock changes and stays wrong for a multi-day scan that runs
+  // past one. Absent for any client that hasn't been updated yet, which is
+  // exactly why every callee treats it as optional.
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
   const date = new Date();
 
   const items: WeaveItem[] = [];
@@ -203,7 +224,7 @@ router.get("/elections/shape-day", async (req, res) => {
     return;
   }
 
-  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin }));
+  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone }));
 });
 
 /**
@@ -227,6 +248,13 @@ router.get("/elections/shape-week", async (req, res) => {
   const sleepHour = req.query.sleep != null ? parseFloat(req.query.sleep as string) : undefined;
   const days = Math.min(14, Math.max(2, parseInt((req.query.days as string) ?? "7", 10) || 7));
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // The viewer's IANA zone, e.g. "America/Chicago" — optional, sent alongside
+  // the numeric offset. Corrects the offset for the SPECIFIC day in question
+  // rather than trusting a snapshot, which is wrong by up to an hour on the
+  // day a DST clock changes and stays wrong for a multi-day scan that runs
+  // past one. Absent for any client that hasn't been updated yet, which is
+  // exactly why every callee treats it as optional.
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
   const items: WeekItem[] = [];
   try {
@@ -249,7 +277,7 @@ router.get("/elections/shape-week", async (req, res) => {
     return;
   }
 
-  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin }));
+  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin, timeZone }));
 });
 
 /**
@@ -286,6 +314,13 @@ router.get("/elections/times", async (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
   const lon = parseFloat((req.query.lon as string) ?? "-74.0");
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // The viewer's IANA zone, e.g. "America/Chicago" — optional, sent alongside
+  // the numeric offset. Corrects the offset for the SPECIFIC day in question
+  // rather than trusting a snapshot, which is wrong by up to an hour on the
+  // day a DST clock changes and stays wrong for a multi-day scan that runs
+  // past one. Absent for any client that hasn't been updated yet, which is
+  // exactly why every callee treats it as optional.
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
   let natal = null;
   let timeKnown = true;
@@ -304,7 +339,7 @@ router.get("/elections/times", async (req, res) => {
     } catch { /* chartless is fine — GOOD tier only */ }
   }
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown });
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });

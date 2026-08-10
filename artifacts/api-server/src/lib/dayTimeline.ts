@@ -41,7 +41,7 @@ import {
   julianDay, getSunriseSunset, getPlanetaryHour, voidOfCourse,
   moonFinalAspectInSign, moonLongitude, SIGNS, getMoonContacts,
 } from "./astro.js";
-import { dayBoundsIn } from "./localClock.js";
+import { dayBoundsIn, dayBoundsInZone } from "./localClock.js";
 import { wakingSegments } from "./waking.js";
 
 /**
@@ -93,6 +93,10 @@ export interface DayTimelineOpts {
    * server-local code silently meant in production.
    */
   tzOffsetMin?: number;
+  /** The viewer's IANA zone. Optional; when present, day bounds recompute
+   *  the correct offset for THIS day rather than trusting the `tzOffsetMin`
+   *  snapshot, which is wrong by up to an hour on a DST-transition day. */
+  timeZone?: string;
   /** Local waking hours, 0–24. Defaults are the app's ordinary chronotype. */
   wakeHour?: number;
   sleepHour?: number;
@@ -154,9 +158,9 @@ function nextIngress(fromJd: number, limitJd: number): { at: Date; from: string;
 }
 
 export function dayTimeline(opts: DayTimelineOpts): TimelineEvent[] {
-  const { date, lat, lon, wakeHour = 7, sleepHour = 23, commitments = [], locationKnown = true, tzOffsetMin = 0,
+  const { date, lat, lon, wakeHour = 7, sleepHour = 23, commitments = [], locationKnown = true, tzOffsetMin = 0, timeZone,
   } = opts;
-  const [dayStart, dayEnd] = dayBoundsIn(date, tzOffsetMin);
+  const [dayStart, dayEnd] = timeZone ? dayBoundsInZone(date, timeZone) : dayBoundsIn(date, tzOffsetMin);
   const events: TimelineEvent[] = [];
 
   const push = (at: Date, kind: EventKind, label: string, detail?: TimelineEvent["detail"]) => {

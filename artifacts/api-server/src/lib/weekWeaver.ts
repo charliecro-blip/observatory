@@ -27,7 +27,7 @@
 
 import { weaveDay, type WeaveItem, type WovenDay, type Placement } from "./dayWeaver.js";
 import type { Commitment } from "./dayTimeline.js";
-import { dayKeyIn, dayBoundsIn } from "./localClock.js";
+import { dayKeyIn, dayBoundsIn, dayKeyInZone, civilDayOffsetIn } from "./localClock.js";
 import { activityByKey, rankActivities } from "./activityCorrespondences.js";
 
 /** What a piece of work costs in attention, independent of the clock. */
@@ -83,6 +83,14 @@ export interface WeaveWeekOpts {
   days?: number;
   /** The viewer's zone; decides where each of the seven days begins. */
   tzOffsetMin?: number;
+  /**
+   * The viewer's IANA zone, e.g. "America/Chicago". Optional — a caller with
+   * only `tzOffsetMin` keeps its exact current behavior. When present, the
+   * week's seven dates step by CALENDAR days rather than `i * 86400000`ms,
+   * which drifts by an hour across any DST transition inside the span — and
+   * a seven-day window crosses one twice a year, not rarely.
+   */
+  timeZone?: string;
 }
 
 // Day keys are the user's calendar dates — `dayKeyIn`, not local getters.
@@ -110,18 +118,25 @@ export function demandOf(item: WeekItem): Demand {
 export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   const {
     items, startDate, lat, lon, wakeHour = 7, sleepHour = 23,
-    commitmentsByDay = {}, locationKnown = true, days = 7, tzOffsetMin = 0,
+    commitmentsByDay = {}, locationKnown = true, days = 7, tzOffsetMin = 0, timeZone,
   } = opts;
 
   // Each date is NOON IN THE USER'S ZONE, derived from their midnight rather
   // than set with server-local `setHours` — otherwise the whole week is
   // anchored a few hours off and its first day can be the wrong day.
-  const [day0Start] = dayBoundsIn(startDate, tzOffsetMin);
-  const dates: Date[] = [];
-  for (let i = 0; i < days; i++) {
-    dates.push(new Date(day0Start.getTime() + i * 86400000 + 12 * 3600000));
-  }
-  const keys = dates.map(d => dayKeyIn(d, tzOffsetMin));
+  //
+  // Stepped by CALENDAR days when a zone is available (`civilDayOffsetIn`),
+  // not `i * 86400000`ms — the raw-ms version drifts an hour across any DST
+  // transition inside the span, silently relabeling every day after it.
+  // Falls back to the ms step for callers with only a numeric offset, so
+  // nothing already using this changes behavior without opting in.
+  const dates: Date[] = timeZone
+    ? Array.from({ length: days }, (_, i) => civilDayOffsetIn(startDate, i, timeZone))
+    : (() => {
+        const [day0Start] = dayBoundsIn(startDate, tzOffsetMin);
+        return Array.from({ length: days }, (_, i) => new Date(day0Start.getTime() + i * 86400000 + 12 * 3600000));
+      })();
+  const keys = timeZone ? dates.map(d => dayKeyInZone(d, timeZone)) : dates.map(d => dayKeyIn(d, tzOffsetMin));
 
   // ── Assign items to days. Deadlines bind; demand and recovery shape.
   const assigned: Record<string, WeekItem[]> = Object.fromEntries(keys.map(k => [k, []]));
@@ -233,7 +248,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
     const woven = weaveDay({
       items: assigned[key],
       date: dates[i],
-      lat, lon, wakeHour, sleepHour, tzOffsetMin,
+      lat, lon, wakeHour, sleepHour, tzOffsetMin, timeZone,
       commitments: commitmentsByDay[key] ?? [],
       locationKnown,
       maxLoadFraction: recovering ? RECOVERY_LOAD : NORMAL_LOAD,

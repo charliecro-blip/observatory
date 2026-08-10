@@ -336,10 +336,14 @@ export default function Home({
   // already learned this lesson once; this makes it a repository rule rather
   // than a fix applied one query at a time.
   const tz = new Date().getTimezoneOffset();
+  // The IANA zone, alongside the numeric offset — corrects the day boundary
+  // for the specific day in question (a DST-transition day, most of all)
+  // rather than trusting a snapshot offset for the whole session.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const linesQ = useQuery<LinesUp>({
-    queryKey: ["lines-up", testerId, lat, lon, tz, locationKnown],
+    queryKey: ["lines-up", testerId, lat, lon, tz, zone, locationKnown],
     queryFn: () => fetchJson<LinesUp>(
-      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`,
+      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`,
       { headers }),
     enabled: !!testerId,
   });
@@ -428,9 +432,9 @@ export default function Home({
   });
 
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
-    queryKey: ["shape-day", testerId, lat, lon, tz, locationKnown],
+    queryKey: ["shape-day", testerId, lat, lon, tz, zone, locationKnown],
     queryFn: () => fetchJson<ShapedDay>(
-      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`, { headers }),
+      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`, { headers }),
     enabled: !!testerId && shapeOpen,
   });
 

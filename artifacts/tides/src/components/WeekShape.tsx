@@ -49,10 +49,14 @@ export function useWeekShape(testerId: string | null, lat: number, lon: number, 
   // or a location-permission toggle could serve the stale answer with no
   // refetch. Same rule as Home's lines-up/shape-day queries.
   const tz = new Date().getTimezoneOffset();
+  // The IANA zone, alongside the numeric offset — this is the week-scan
+  // endpoint, and a seven-day span is the one most likely to actually
+  // straddle a DST transition.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return useQuery<WovenWeek>({
-    queryKey: ["shape-week", testerId, lat, lon, tz, locationKnown],
+    queryKey: ["shape-week", testerId, lat, lon, tz, zone, locationKnown],
     queryFn: () => fetchJson<WovenWeek>(
-      `/api/elections/shape-week?lat=${lat}&lon=${lon}&tz=${tz}&locationKnown=${locationKnown}`,
+      `/api/elections/shape-week?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : undefined }),
     enabled: !!testerId && enabled,
   });

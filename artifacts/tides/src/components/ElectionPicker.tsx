@@ -36,6 +36,10 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
   // Read ONCE per render: the cache key and the request must not be able to
   // disagree about which timezone they meant.
   const tzOffset = new Date().getTimezoneOffset();
+  // The IANA zone, alongside the numeric offset — corrects the day
+  // boundary for the specific day in question rather than trusting a
+  // snapshot, which drifts by an hour across a DST transition.
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { locationKnown } = useTester();
   const [category, setCategory] = useState<string>("body");
   const [activityKey, setActivityKey] = useState<string | null>(null);
@@ -61,9 +65,9 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
     // "when should I do this here?" with times computed for somewhere else.
     // Rounded to 2dp so trivial GPS jitter does not thrash the cache while a
     // real move always does.
-    queryKey: ["election-times", activityKey, span, testerId, lat.toFixed(2), lon.toFixed(2), tzOffset, locationKnown],
+    queryKey: ["election-times", activityKey, span, testerId, lat.toFixed(2), lon.toFixed(2), tzOffset, zone, locationKnown],
     queryFn: async () => (await fetch(
-      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${tzOffset}&locationKnown=${locationKnown}`,
+      `/api/elections/times?activity=${activityKey}&span=${span}&lat=${lat}&lon=${lon}&tz=${tzOffset}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} },
     )).json(),
     enabled: !!activityKey,

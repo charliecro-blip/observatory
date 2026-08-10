@@ -28,6 +28,7 @@ import {
   getSunriseSunset,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
+import { civilDayOffsetIn } from "./localClock.js";
 import { scanMoonPerfections } from "./studioCard.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
@@ -443,6 +444,15 @@ export function computeElections(opts: {
    */
   locationKnown?: boolean;
   startAt?: Date;
+  /**
+   * The viewer's IANA zone, e.g. "America/Chicago". Optional so every caller
+   * that only has `tzOffsetMin` keeps its exact current behavior — but a
+   * multi-day span stepped by raw milliseconds silently drifts across any DST
+   * transition inside it, and a week/month scan crosses one far more often
+   * than a single day does. When present, this is what makes each day in
+   * the scan land on the correct CIVIL date rather than "24 hours later".
+   */
+  timeZone?: string;
 }): ElectionResult | null {
   const act = ACTIVITIES.find(a => a.key === opts.activityKey);
   if (!act) return null;
@@ -500,13 +510,32 @@ export function computeElections(opts: {
   const finalAspectMemo = new Map<string, ReturnType<typeof moonFinalAspectInSign>>();
 
   for (let d = 0; d < days; d++) {
-    const instant = new Date(start.getTime() + d * 86400000);
-    const arc = computeDayArc(instant, lat, lon, tzOffsetMin);
+    // Civil-day stepping when a zone is available: `civilDayOffsetIn` adds
+    // CALENDAR days, so a week/month scan crossing a DST transition still
+    // lands on the correct date for every day after it. `+ d * 86400000`
+    // (kept as the fallback for callers with only a numeric offset) drifts
+    // by an hour at the transition and stays drifted for the rest of the
+    // scan — a month spanning "spring forward" was reading day 20 as if it
+    // were day 20 minus an hour, which can be the wrong civil day entirely
+    // near a boundary.
+    const instant = opts.timeZone
+      ? civilDayOffsetIn(start, d, opts.timeZone)
+      : new Date(start.getTime() + d * 86400000);
+    const arc = computeDayArc(instant, lat, lon, tzOffsetMin, opts.timeZone);
     const dayStartMs = new Date(arc.dayStart).getTime();
-    const local = new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000);
-    const dateLabel = local.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-    const dow = local.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
-    const jdNoon = julianDay(new Date(dayStartMs + 12 * 3600000));
+    const noonInstant = new Date(dayStartMs + 12 * 3600000);
+    // Zone-aware labeling asks the REAL zone what date this is, rather than
+    // reconstructing it from the numeric-offset snapshot — the same snapshot
+    // that made the day boundary itself wrong near a transition. Cosmetic
+    // (a mislabeled date string, not a wrong window), but free to fix once
+    // the zone is already in hand.
+    const dateLabel = opts.timeZone
+      ? noonInstant.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: opts.timeZone })
+      : new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const dow = opts.timeZone
+      ? noonInstant.toLocaleDateString("en-US", { weekday: "short", timeZone: opts.timeZone })
+      : new Date(dayStartMs - tzOffsetMin * 60000 + 12 * 3600000).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+    const jdNoon = julianDay(noonInstant);
     // Was: mercRx/ecl/rxSigs computed once at the SCAN's start date and reused
     // for every day's tier gating below — a week/month scan spanning a real
     // eclipse or a Mercury station saw it on day 0 only, so e.g. a month scan
@@ -543,7 +572,11 @@ export function computeElections(opts: {
     .filter(x => x.motion && x.motion.phase.startsWith("stationing"));
     const moonSign = SIGNS[Math.floor(norm360(moonLongitude(jdNoon)) / 30) % 12];
     const waxing = norm360(moonLongitude(jdNoon) - sunLongitude(jdNoon)) < 180;
-    const dayRuler = WEEKDAY_RULERS[local.getUTCDay()];
+    // Reuses `dow` (already computed above, zone-aware when a zone is given)
+    // rather than re-deriving a weekday from a separate `local` Date — one
+    // computation of "what weekday is this civil day" instead of two that
+    // could disagree near a transition.
+    const dayRuler = WEEKDAY_RULERS[["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(dow)];
     const vocSpans = (arc.vocWindows ?? []).map(v => [Date.parse(v.start), Date.parse(v.end)] as [number, number]);
     const inVoc = (a: number, b: number) => vocSpans.some(([s, e]) => a < e && b > s);
 

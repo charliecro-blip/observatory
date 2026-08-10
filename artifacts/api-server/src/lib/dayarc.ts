@@ -12,6 +12,7 @@
 
 import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour, getNextAngularCrossings, voidOfCourse } from "./astro.js";
 import { SIGN_TO_ELEMENT } from "./tide.js";
+import { dayBoundsInZone } from "./localClock.js";
 
 const SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
 const ELEMENT_CHAR: Record<string,string> = { fire:"surge", earth:"building", air:"clear", water:"deep" };
@@ -195,15 +196,28 @@ function refineCrossing(lo: number, hi: number, isPast: (t: number) => boolean):
   return new Date(Math.round(hi / 1000) * 1000);
 }
 
-export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0): DayArc {
+export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0, timeZone?: string): DayArc {
   // Anchor the day to the viewer's local midnight (not the server's, which is UTC on
   // Railway). Shift the instant into viewer-local wall time, read its Y/M/D, then map
   // that local midnight back to a UTC instant.
-  const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
-  const dayStart = new Date(
-    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 0, 0, 0) + tzOffsetMin * 60000,
-  );
-  const dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
+  //
+  // Two paths, chosen so every existing caller that doesn't pass `timeZone`
+  // is byte-for-byte unaffected. The numeric-offset path below is a SNAPSHOT:
+  // `tzOffsetMin` is one number for the whole call, so it is wrong by up to
+  // an hour on the day a DST clock changes, and the flat `+ 24h` below is
+  // wrong on that same day (23 or 25 hours, never 24). When an IANA zone is
+  // available, `dayBoundsInZone` recomputes the offset for THIS specific day
+  // and derives the end from the next civil date rather than a fixed span.
+  let dayStart: Date, dayEnd: Date;
+  if (timeZone) {
+    [dayStart, dayEnd] = dayBoundsInZone(now, timeZone);
+  } else {
+    const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
+    dayStart = new Date(
+      Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 0, 0, 0) + tzOffsetMin * 60000,
+    );
+    dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
+  }
   const STEP_MS = 10 * 60000; // 10-minute resolution
 
   // Precompute all VOC/aspect planet longitudes are cheap enough per step.

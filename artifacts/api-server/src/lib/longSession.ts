@@ -32,7 +32,7 @@
  */
 
 import { dayTimeline, containers, type TimelineEvent, type Commitment } from "./dayTimeline.js";
-import { dayBoundsIn } from "./localClock.js";
+import { dayBoundsIn, dayBoundsInZone } from "./localClock.js";
 import { activityByKey, modeOf } from "./activityCorrespondences.js";
 import { evaluateActivityInterval, skyEventRole } from "./electionEngine.js";
 import { SIGNS, moonLongitude, julianDay, getPlanetaryHour, getSunriseSunset } from "./astro.js";
@@ -137,15 +137,18 @@ export interface FindLongSessionsOpts {
   locationKnown?: boolean;
   /** The viewer's zone; flows through to the timeline's day bounds. */
   tzOffsetMin?: number;
+  /** The viewer's IANA zone; see dayTimeline — corrects the snapshot-offset
+   *  DST gap when present. Flows through via the spread below. */
+  timeZone?: string;
 }
 
 export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult | null {
-  const { activityKey, minutes, date, lat, lon, commitments = [], locationKnown = true, tzOffsetMin = 0 } = opts;
+  const { activityKey, minutes, date, lat, lon, commitments = [], locationKnown = true, tzOffsetMin = 0, timeZone } = opts;
   const activity = activityByKey(activityKey);
   if (!activity) return null;
 
   const events = dayTimeline({ ...opts, commitments, locationKnown });
-  const [dayStart, dayEnd] = dayBoundsIn(date, tzOffsetMin);
+  const [dayStart, dayEnd] = timeZone ? dayBoundsInZone(date, timeZone) : dayBoundsIn(date, tzOffsetMin);
   const cs = containers(events, dayStart, dayEnd);
 
   // Background: the Moon's sign holds for ~2.5 days, so it cannot discriminate

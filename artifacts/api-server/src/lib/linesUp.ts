@@ -194,6 +194,9 @@ export interface LinesUpOpts {
   lat: number;
   lon: number;
   tzOffsetMin: number;
+  /** The viewer's IANA zone. Optional; corrects the day boundary on the rare
+   *  day it's actually a DST transition — `tzOffsetMin` alone is a snapshot. */
+  timeZone?: string;
   natal: ComputedNatalChart | null;
   timeKnown: boolean;
   locationKnown: boolean;
@@ -270,7 +273,7 @@ function hasRealTestimony(w: { establishingFamilies?: string[]; reinforcingFamil
 }
 
 export function linesUp(opts: LinesUpOpts): LinesUp {
-  const { held, lat, lon, tzOffsetMin, natal, timeKnown, locationKnown } = opts;
+  const { held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown } = opts;
 
   // Thin inventory is its own state, not an empty list. A new account has no
   // basis for a computed answer and should be told so directly rather than
@@ -331,7 +334,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   const electFor = (key: string) => {
     if (!byActivity.has(key)) {
       byActivity.set(key, computeElections({
-        activityKey: key, span: "day", lat, lon, tzOffsetMin, natal, timeKnown, locationKnown,
+        activityKey: key, span: "day", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
       }));
     }
     return byActivity.get(key)!;
@@ -435,7 +438,7 @@ function nextOpeningFor(
   priced: { key: string; label: string }[],
   opts: LinesUpOpts,
 ): LinesUp["nextOpening"] {
-  const { lat, lon, tzOffsetMin, natal, timeKnown, locationKnown } = opts;
+  const { lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown } = opts;
   let best: { activityLabel: string; date: string; startClock: string } | null = null;
   // DISTINCT activities, not held items. Twelve tasks that all read as deep
   // work would otherwise run the same week-long computation twelve times — the
@@ -444,7 +447,7 @@ function nextOpeningFor(
   const distinct = [...new Map(priced.map(t => [t.key, t])).values()];
   for (const t of distinct.slice(0, 4)) {   // bounded: this runs on every Home load
     const out = computeElections({
-      activityKey: t.key, span: "week", lat, lon, tzOffsetMin, natal, timeKnown, locationKnown,
+      activityKey: t.key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
     });
     const hit = (out?.windows ?? []).find((w: any) => w.supportLevel === "convergent" && w.suitability !== "defer");
     if (!hit) continue;
