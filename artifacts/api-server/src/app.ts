@@ -36,7 +36,46 @@ app.use(
     },
   }),
 );
-app.use(cors());
+/**
+ * CORS, restricted to origins that are actually ours — not wildcard.
+ *
+ * `x-tester-id` is a custom header, which means every request carrying it
+ * triggers a CORS preflight, and a wildcard `cors()` answers that preflight
+ * "yes, any origin may read this response." Since `x-tester-id` is already
+ * the app's de facto bearer credential (no session, no cookie — the audit's
+ * own finding), a wildcard here meant a malicious page, anywhere, could run
+ * `fetch("https://compass.day/api/...", {headers: {"x-tester-id": leakedId}})`
+ * from a visitor's browser and read the personal response back into its own
+ * JS. Restricting the origin doesn't touch server-to-server callers (the
+ * external Engine API, `curl`, another backend) — CORS is enforced by
+ * browsers against browser-initiated JS, never against a non-browser HTTP
+ * client, so `/engine/*`'s bearer-token consumers are unaffected either way.
+ */
+const ALLOWED_ORIGINS = [
+  "https://compass.day",
+  "https://www.compass.day",
+];
+app.use(cors({
+  origin(origin, callback) {
+    // No Origin header at all — a server-to-server call, curl, or a same-origin
+    // request a browser doesn't bother sending one for. Always allowed; CORS
+    // exists to restrict cross-origin BROWSER reads, and there is no browser
+    // read to restrict here.
+    if (!origin) { callback(null, true); return; }
+    if (ALLOWED_ORIGINS.includes(origin)) { callback(null, true); return; }
+    // Any localhost/127.0.0.1 port, for the Vite dev server talking to the API
+    // on a different port — an allowlist of exact ports would need updating
+    // every time either dev port changes.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) { callback(null, true); return; }
+    // `callback(null, false)`, not an Error — the `cors` package's own
+    // documented way to deny. Throwing turned every disallowed origin into a
+    // 500, which is a false server-fault signal for what is ordinary blocked
+    // traffic, not a crash. This still denies correctly: the response simply
+    // carries no Access-Control-Allow-Origin header, which is what actually
+    // stops a browser reading it.
+    callback(null, false);
+  },
+}));
 // The security headers vercel.json used to send — and stopped sending the day
 // the app moved to Railway, because that file's headers only exist on Vercel's
 // edge. Express ships them itself now, so they survive the next migration too.
@@ -49,8 +88,16 @@ app.use((_req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   next();
 });
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// 50mb was never a real requirement — nothing in this app accepts a file
+// upload; every POST body is text (a pasted task list, a journal entry, a
+// settings blob). Checked against the largest legitimate body in the app
+// before picking a number: `plan/parse`'s pasted list, split line by line, is
+// still plain text at any realistic size. 2mb leaves generous room for an
+// enormous paste while closing an easy amplification vector — `POST
+// /api/events` in particular is UNAUTHENTICATED (ingest has to stay open),
+// so a 50mb ceiling there was an invitation.
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 /**
  * LIMITER KEYS ARE THE IP, FULL STOP.
