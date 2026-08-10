@@ -1,7 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { weaveDay, type WeaveItem } from "../artifacts/api-server/src/lib/dayWeaver.js";
 
-const AUSTIN = { lat: 30.27, lon: -97.74 };
+// `date`/`at()` below use LOCAL Date constructors, so the viewer is whatever
+// zone the test PROCESS runs in — and `weaveDay` defaulted `tzOffsetMin` to 0
+// (UTC) when this fixture omitted it, which is only correct when the process
+// itself happens to be UTC. CI also runs this suite under America/Chicago and
+// Asia/Kolkata (.github/workflows/ci.yml); in Kolkata the mismatch is 5.5
+// hours, and a test comparing an end-of-day cutoff crossed the boundary. Same
+// fix as dayTimeline.test.ts/longSession.test.ts: say the viewer's zone out
+// loud rather than let it default to an assumption only true on some machines.
+const TZ = new Date(2026, 7, 5).getTimezoneOffset();
+const AUSTIN = { lat: 30.27, lon: -97.74, tzOffsetMin: TZ };
 const date = new Date(2026, 7, 5, 12, 0);
 const at = (h: number, m = 0) => new Date(2026, 7, 5, h, m);
 
