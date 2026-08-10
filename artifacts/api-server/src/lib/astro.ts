@@ -441,6 +441,101 @@ export function eclipseWindow(jd: number): { active: boolean; kind?: "solar" | "
   return { active: false };
 }
 
+// ── Moon-aspect perfection scan ────────────────────────────────────────────
+// Moved from studioCard.ts, 2026-08-10 ("one authority" ruling): the canonical
+// election engine imported this FROM the presentation layer that also
+// consumes it — the astronomy underneath the product's ranking depended on
+// the module that renders shareable cards. It belongs with its siblings
+// (eclipseWindow, getMajorAspects) instead: one shared computation, two
+// consumers, neither upstream of the other.
+
+// Full aspect set for the Moon scan. Weights are the aspect's base voltage for
+// election purposes; per-activity palettes then say which ones qualify.
+const MOON_ANGLES: { deg: number; name: string }[] = [
+  { deg: 0, name: "conjunction" }, { deg: 30, name: "semi-sextile" }, { deg: 45, name: "semi-square" },
+  { deg: 60, name: "sextile" }, { deg: 72, name: "quintile" }, { deg: 90, name: "square" },
+  { deg: 120, name: "trine" }, { deg: 135, name: "sesquiquadrate" }, { deg: 144, name: "biquintile" },
+  { deg: 150, name: "quincunx" }, { deg: 180, name: "opposition" },
+];
+// Every aspect angle expressed as a SIGNED separation (0..360), the same trick
+// voidOfCourse uses: sep180's folded 0..180 distance only *touches* 0 and 180
+// without a sign change crossing them, so a product-sign crossing test never
+// fires for a conjunction or opposition — the app's Moon-conjunction and
+// Moon-opposition perfections were never detected at all (audit finding F2).
+// A non-symmetric angle (everything but 0/180) appears on both sides of the
+// circle (e.g. sextile at 60° widening AND 300° = 360-60° narrowing).
+const SIGNED_MOON_ANGLES: { deg: number; name: string }[] = MOON_ANGLES.flatMap(({ deg, name }) =>
+  deg === 0 || deg === 180 ? [{ deg, name }] : [{ deg, name }, { deg: 360 - deg, name }]
+);
+const MOON_TARGETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+
+export interface MoonPerfection { timeMs: number; planet: string; aspect: string }
+
+// Scan one local day for Moon-aspect perfections across the full angle set —
+// the day-arc engine only tracks majors (they feed the app's tide curve), so
+// callers needing the full set do their own sweep. 10-minute steps, crossing
+// detection via the SIGNED separation (Moon longitude minus target longitude),
+// which increases monotonically because the Moon outruns every classical
+// planet — so every angle, including 0 and 180, is a clean crossing (see
+// voidOfCourse).
+export function scanMoonPerfections(dayStartMs: number): MoonPerfection[] {
+  const out: MoonPerfection[] = [];
+  const STEP = 10 * 60000;
+  let prevJd = julianDay(new Date(dayStartMs));
+  let prevMoon = normalize360(moonLongitude(prevJd));
+  const lonOf = (jd: number): Record<string, number> => {
+    const pos = getPlanetPositions(jd);
+    const m: Record<string, number> = {};
+    for (const p of pos) m[p.planet] = SIGNS.indexOf(p.sign) * 30 + p.degree;
+    return m;
+  };
+  let prevLons = lonOf(prevJd);
+  const prevDelta: Record<string, number> = {};
+  for (const t of MOON_TARGETS) prevDelta[t] = normalize360(prevMoon - (prevLons[t] ?? 0));
+
+  // The exact instant the signed separation reaches the aspect angle, refined
+  // off the 10-minute grid. `timeMs` is not only the centre of an election
+  // swell (where 10 minutes would be harmless) — it is printed verbatim as
+  // "Moon trine Venus · exact 3:20 PM" in the election's reasoning, and on the
+  // Studio cards. A clock time to the minute, taken from a ten-minute bucket.
+  const perfectionAt = (lo: number, hi: number, planet: string, angle: number) => {
+    const deltaAt = (ms: number) => {
+      const j = julianDay(new Date(ms));
+      return normalize360(normalize360(moonLongitude(j)) - (lonOf(j)[planet] ?? 0));
+    };
+    // The signed delta rises monotonically across a step (the Moon outruns
+    // every target). Bisect on PROGRESS FROM THE STEP START rather than on the
+    // raw delta — that way the 360°→0° wrap needs no special case, which is
+    // where a hand-rolled wrap test got one bisection stuck a minute out.
+    const d0 = deltaAt(lo);
+    const target = normalize360(angle - d0);
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      if (normalize360(deltaAt(mid) - d0) >= target) hi = mid; else lo = mid;
+    }
+    return Math.round(hi / 1000) * 1000;
+  };
+
+  for (let t = dayStartMs + STEP; t <= dayStartMs + 24 * 3600000; t += STEP) {
+    const jd = julianDay(new Date(t));
+    const mLon = normalize360(moonLongitude(jd));
+    const lons = lonOf(jd);
+    for (const p of MOON_TARGETS) {
+      const d = normalize360(mLon - (lons[p] ?? 0));
+      const prev = prevDelta[p];
+      if (d >= prev) {
+        for (const A of SIGNED_MOON_ANGLES) if (prev < A.deg && A.deg <= d) { out.push({ timeMs: perfectionAt(t - STEP, t, p, A.deg), planet: p, aspect: A.name }); break; }
+      } else {
+        // Wrapped past 360 → 0.
+        for (const A of SIGNED_MOON_ANGLES) if (A.deg > prev || A.deg <= d) { out.push({ timeMs: perfectionAt(t - STEP, t, p, A.deg), planet: p, aspect: A.name }); break; }
+      }
+      prevDelta[p] = d;
+    }
+    prevMoon = mLon; prevLons = lons; prevJd = jd;
+  }
+  return out;
+}
+
 // ── Sunrise / Sunset ──────────────────────────────────────────────────────────
 
 /**

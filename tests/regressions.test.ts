@@ -1788,13 +1788,24 @@ describe("ephemeris time granularity", () => {
   });
 
   it("moon perfections are bisected, not reported as a 10-minute grid step", () => {
+    // `scanMoonPerfections` moved from studioCard.ts to astro.ts on 2026-08-10
+    // (the "one authority" ruling: electionEngine imported this FROM the
+    // presentation layer that also used it — a backwards dependency, now
+    // closed by giving it a shared home next to eclipseWindow). This test
+    // pins the SAME behavior at its new address rather than the old one —
+    // the exact source-text-tests-pin-dead-code trap this codebase has hit
+    // before: a regex over a file is a claim about where the code IS, and it
+    // has to move when the code does, not become a reason to leave a corpse
+    // behind for the string to keep matching.
     const src = readFileSync(
-      join(process.cwd(), "artifacts/api-server/src/lib/studioCard.ts"), "utf-8");
+      join(process.cwd(), "artifacts/api-server/src/lib/astro.ts"), "utf-8");
     expect(src).toMatch(/const perfectionAt =/);
     expect(src).toMatch(/timeMs: perfectionAt\(t - STEP, t, p, A\.deg\)/);
     // Bisecting on progress-from-step-start rather than the raw delta is what
     // removes the 360°→0° special case a hand-rolled wrap test got wrong.
-    expect(src).toMatch(/norm360\(deltaAt\(mid\) - d0\) >= target/);
+    // `normalize360`, not `norm360` — astro.ts's own name for the same
+    // function, reused instead of duplicated now that the code lives here.
+    expect(src).toMatch(/normalize360\(deltaAt\(mid\) - d0\) >= target/);
   });
 });
 
@@ -2235,6 +2246,57 @@ describe("re-homing suggestions", () => {
     // …but SELECTED on fit: no pick may be worse than a rejected slot that
     // would have fitted the same gap.
     expect(picks.every((p) => p.verdict.tier !== "against")).toBe(true);
+  });
+
+  // "One authority" ruling, 2026-08-10: tierForMoment's great/workable/against
+  // was never itself the false-authority problem — nothing gates on it, only
+  // ranks and captions. The real gap was that NOTHING here ever asked the
+  // canonical engine at all, so a slot could rank "great" on the elemental
+  // curve while sitting inside a moment `evaluateActivityInterval` would call
+  // `defer` — a real electional objection, not a curve-fit preference.
+  //
+  // Pinned to a REAL date rather than a synthetic one, matching how this
+  // suite already treats DST and polar fixtures: `sign-contract`'s primary
+  // significator (Mercury) stations retrograde starting 2026-02-25, and the
+  // suitability is `defer` for the entire waking day that follows — found by
+  // scanning real output, not asserted from documentation.
+  describe("never proposes a moment the canonical engine would call defer", () => {
+    const deferDay = arcFor(new Date("2026-02-25T18:00:00Z"), LAT, LON, TZ);
+    const deferDayStartMs = new Date(deferDay.dayStart).getTime();
+    const deferBase = { ...base, dayStartMs: deferDayStartMs, arc: deferDay, nowMs: deferDayStartMs };
+
+    it("returns nothing for an activity whose entire waking day is defer", () => {
+      // Confirmed by direct measurement before writing this fixture: every
+      // hour of 2026-02-25 Austin-waking-hours evaluates to `defer` for
+      // sign-contract (Mercury stationing retrograde). No slot survives.
+      const picks = pickRehomeSlots({ ...deferBase, durMs: 60 * 60_000, activityKey: "sign-contract" });
+      expect(picks).toEqual([]);
+    });
+
+    it("is the activityKey filter causing that, not coincidence — the same day offers slots with no activity given", () => {
+      // Without `activityKey`, the canonical objection is never asked (the
+      // module can't judge an activity it wasn't told), so the elemental
+      // curve alone still offers its usual picks. This is what proves the
+      // empty result above is the filter working, not an unrelated reason
+      // (e.g. the whole day being busy) — the SAME day, SAME hours, produces
+      // real slots the moment the activity context is withheld.
+      const picks = pickRehomeSlots({ ...deferBase, durMs: 60 * 60_000 });
+      expect(picks.length).toBeGreaterThan(0);
+    });
+
+    it("does not filter an activity that is NOT deferred that same day", () => {
+      // Same date, a different (execution-mode) activity — deep-work has no
+      // primary-significator-station rule, so it is never subject to
+      // `defer` at all. Proves the filter is scoped to what the canonical
+      // engine actually objects to, not a blanket "nothing today" fallback.
+      const picks = pickRehomeSlots({ ...deferBase, durMs: 60 * 60_000, activityKey: "deep-work" });
+      expect(picks.length).toBeGreaterThan(0);
+    });
+
+    it("skips the filter honestly when no activity is known, rather than guessing", () => {
+      const picks = pickRehomeSlots({ ...deferBase, durMs: 60 * 60_000, activityKey: null });
+      expect(picks.length).toBeGreaterThan(0);
+    });
   });
 });
 

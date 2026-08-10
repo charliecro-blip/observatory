@@ -25,11 +25,10 @@ import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
   getMajorAspects, isRetrograde, SIGNS, moonFinalAspectInSign, eclipseWindow,
-  getSunriseSunset,
+  getSunriseSunset, scanMoonPerfections,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
 import { civilDayOffsetIn } from "./localClock.js";
-import { scanMoonPerfections } from "./studioCard.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
 

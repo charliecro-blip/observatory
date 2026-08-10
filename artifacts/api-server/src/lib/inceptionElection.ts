@@ -55,6 +55,7 @@ import {
   getLastMoonAspect,
   getLocalAngles,
   getPlanetaryHour,
+  eclipseWindow,
 } from "./astro.js";
 import { SIGN_RULERS } from "./natal.js";
 import { an } from "./article.js";
@@ -66,25 +67,6 @@ function normalize360(deg: number): number {
 function angularDiff(a: number, b: number): number {
   const d = Math.abs(normalize360(a - b));
   return d > 180 ? 360 - d : d;
-}
-
-// ── Eclipses ──────────────────────────────────────────────────────────────
-// Small rolling table, mirrored from artifacts/tides/src/lib/conditions.ts
-// (frontend keeps its own copy for the Currents display; this is the
-// backend's copy for scoring). Source: NASA eclipse canon.
-const ECLIPSE_DATES = [
-  "2026-02-17", "2026-03-03", "2026-08-12", "2026-08-28",
-  "2027-02-06", "2027-07-18", "2027-08-02",
-];
-
-function nearestEclipseDays(date: Date): number {
-  const t = date.getTime();
-  let best = Infinity;
-  for (const iso of ECLIPSE_DATES) {
-    const days = Math.abs((new Date(iso + "T12:00:00Z").getTime() - t) / 86400000);
-    if (days < best) best = days;
-  }
-  return best;
 }
 
 // ── Categories ────────────────────────────────────────────────────────────
@@ -357,12 +339,21 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
   });
 
   // 6. Eclipse within ~3 days — hard
-  const eclipseDays = nearestEclipseDays(date);
-  const nearEclipse = eclipseDays <= 3;
+  //
+  // Was a small hardcoded date list — "mirrored from
+  // artifacts/tides/src/lib/conditions.ts... Source: NASA eclipse canon" —
+  // covering exactly 2026-2027 and silently wrong (reads as "no eclipse
+  // within 3 days" rather than refusing to answer) the moment the calendar
+  // runs past it. `eclipseWindow()` computes eclipse proximity from lunar
+  // node geometry instead of listing dates, so it has no expiry and is the
+  // same fact `electionEngine.ts` already uses — one authority for "is there
+  // an eclipse near this instant," not two copies that can drift or expire.
+  const eclipse = eclipseWindow(jd);
+  const nearEclipse = eclipse.active && (eclipse.daysAway ?? 99) <= 3;
   rules.push({
     key: "eclipse_proximity", label: "Near an eclipse", severity: "hard", passed: !nearEclipse,
     detail: nearEclipse
-      ? `Within ${eclipseDays.toFixed(1)} days of an eclipse — a launch this close tends to run hot and change shape faster than planned.`
+      ? `Within ${eclipse.daysAway} day${eclipse.daysAway === 1 ? "" : "s"} of a${eclipse.kind === "solar" ? " solar" : " lunar"} eclipse — a launch this close tends to run hot and change shape faster than planned.`
       : "No eclipse within the 3-day caution window.",
     // Near-universal across traditions — no dispute note, because inventing
     // controversy where there is none is its own kind of dishonesty.

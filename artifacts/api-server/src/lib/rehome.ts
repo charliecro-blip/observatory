@@ -10,8 +10,27 @@
  *   · never proposes options that overlap EACH OTHER (otherwise it is one
  *     option offered three times)
  *   · stays inside waking hours
+ *   · never proposes a moment the canonical engine would call `defer`
+ *
+ * That last one is new, and the reasoning behind it is the actual "one
+ * authority" ruling on this file: `tierForMoment`'s great/workable/against is
+ * NOT a competing astrological judgment — it never gated a placement, only
+ * ranked and captioned one, using the same elemental energy curve the day/
+ * week weavers already place work against. It is legitimate for THAT: "is
+ * this slot better or worse than that one, on the axis the weaver itself
+ * uses" is a real, different question from "is this activity well-supported
+ * right now", and letting it answer the first one is not the false-authority
+ * problem the audit was pointing at.
+ *
+ * What WAS a real gap: nothing here ever asked the canonical engine at all.
+ * A slot could rank "great" on the elemental curve while sitting inside a
+ * moment `evaluateActivityInterval` would call `defer` — a real electional
+ * objection, the kind classical practice treats as a genuine reason not to
+ * begin. Filter first, on the question that can actually forbid a moment;
+ * rank second, on the question that only compares two permitted ones.
  */
 import { tierForMoment, type MomentVerdict } from "./timingTier.js";
+import { evaluateActivityInterval } from "./electionEngine.js";
 import type { DayArc } from "./dayarc.js";
 
 export interface Slot {
@@ -35,6 +54,14 @@ export interface RehomeInput {
   tzOffsetMin: number;
   arc: DayArc;
   limit?: number;
+  /**
+   * The matched activity correspondence for the block being re-homed, if
+   * one was ever recorded (`planning_windows.activity_key`). Optional and
+   * genuinely so: a window with no matched activity has nothing for the
+   * canonical engine to judge, and skipping the filter is the honest move —
+   * not a fabricated "clear" standing in for an unanswerable question.
+   */
+  activityKey?: string | null;
 }
 
 const RANK = { great: 2, workable: 1, against: 0 } as const;
@@ -43,7 +70,7 @@ const RANK = { great: 2, workable: 1, against: 0 } as const;
 const STEP_MS = 15 * 60_000;
 
 export function pickRehomeSlots(input: RehomeInput): Slot[] {
-  const { dayStartMs, durMs, element, busy, wakeHour, sleepHour, nowMs, lat, lon, tzOffsetMin, arc } = input;
+  const { dayStartMs, durMs, element, busy, wakeHour, sleepHour, nowMs, lat, lon, tzOffsetMin, arc, activityKey } = input;
   const limit = input.limit ?? 3;
 
   const scored: Slot[] = [];
@@ -52,6 +79,12 @@ export function pickRehomeSlots(input: RehomeInput): Slot[] {
     if (startMs < nowMs) continue;
     const endMs = startMs + durMs;
     if (busy.some((b) => startMs < b.endMs && endMs > b.startMs)) continue;
+    // The canonical objection, asked FIRST — it can forbid a moment; the
+    // elemental curve below can only rank among what survives.
+    if (activityKey) {
+      const assessment = evaluateActivityInterval({ activityKey, startAt: new Date(startMs), endAt: new Date(endMs) });
+      if (assessment?.suitability === "defer") continue;
+    }
     scored.push({
       startMs, endMs,
       verdict: tierForMoment({ element, startMs, durMs, lat, lon, tzOffsetMin, arc }),

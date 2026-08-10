@@ -5,10 +5,35 @@ import { requireTesterId } from "../middlewares/testerId.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { computeDayArc } from "../lib/dayarc.js";
 import { tierForMoment, compareTiers, WINDOW_ELEMENT } from "../lib/timingTier.js";
+import { evaluateActivityInterval } from "../lib/electionEngine.js";
 import { pickRehomeSlots } from "../lib/rehome.js";
 import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
+
+/**
+ * The activity a planning window is actually FOR, when that's knowable.
+ *
+ * `planning_windows` carries no `activityKey` column of its own — only
+ * `windowType` (a coarser, six-value vocabulary: deep_work/admin/creative/…).
+ * Reading `windowType` as if it were an `activityKey` would be exactly the
+ * fabricated-precision failure this session keeps closing elsewhere: the two
+ * vocabularies aren't the same shape, and a window typed "deep_work" could be
+ * any of several real activities. The real answer, when there is one, lives
+ * one hop away — on the goal that owns the window, or on the task that
+ * claimed it (`tasks.planning_window_id`, the same column `linesUp` already
+ * reads for "already scheduled"). Returns null rather than guess.
+ */
+async function resolveActivityKey(w: { id: number; goalId: number | null }, testerId: string): Promise<string | null> {
+  if (w.goalId != null) {
+    const g = (await db.select({ activityKey: goals.activityKey }).from(goals)
+      .where(eq(goals.id, w.goalId)).limit(1))[0];
+    if (g?.activityKey) return g.activityKey;
+  }
+  const t = (await db.select({ activityKey: tasks.activityKey }).from(tasks)
+    .where(and(eq(tasks.planningWindowId, w.id), eq(tasks.testerId, testerId))).limit(1))[0];
+  return t?.activityKey ?? null;
+}
 
 // ── AI milestone breakdown ──────────────────────────────────────────────────
 // "Break this Guiding Star into steps": propose 4–7 ordered milestones for a
@@ -501,7 +526,7 @@ router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
   // keeps every verdict below on a single reading of the sky.
   const arc = computeDayArc(ranUntil, lat, lon, tzOffsetMin);
 
-  const affected = pending.map((w) => {
+  const affected = await Promise.all(pending.map(async (w) => {
     const startMs = new Date(w.startTime).getTime();
     const durMs = new Date(w.endTime).getTime() - startMs;
     const element = WINDOW_ELEMENT[w.windowType] ?? "earth";
@@ -511,6 +536,16 @@ router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
     const after = tierForMoment({ element, startMs: shifted, durMs, lat, lon, tzOffsetMin, arc });
 
     const delta = compareTiers(after.tier, before.tier);
+    // The elemental-curve delta answers "does the FIT get better or worse" —
+    // a real, different question from "does the canonical engine object to
+    // the new moment", and one it can't ask on its own. A push that lands
+    // inside a `defer` interval is a real electional objection regardless of
+    // how the curve reads, so it can escalate the verdict; the curve alone
+    // can never downgrade past what the canonical engine actually found.
+    const activityKey = await resolveActivityKey(w, testerId);
+    const afterSuitability = activityKey
+      ? evaluateActivityInterval({ activityKey, startAt: new Date(shifted), endAt: new Date(shifted + durMs) })?.suitability
+      : null;
     return {
       id: w.id,
       title: w.title,
@@ -519,13 +554,13 @@ router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
       from: { startAt: new Date(startMs).toISOString(), endAt: new Date(startMs + durMs).toISOString(), ...before },
       to: { startAt: new Date(shifted).toISOString(), endAt: new Date(shifted + durMs).toISOString(), ...after },
       // What the move costs, in one word the UI can lead with.
-      verdict: delta >= 0 ? "holds" : after.tier === "against" ? "breaks" : "weakens",
+      verdict: afterSuitability === "defer" ? "breaks" : delta >= 0 ? "holds" : after.tier === "against" ? "breaks" : "weakens",
       // A block pushed past the end of the day isn't a scheduling question any
       // more, and silently parking it at 1am would be the exact silent-move
       // behaviour this feature exists to refuse.
       runsPastDay: (after.startHour + durMs / 3600000) > 24,
     };
-  });
+  }));
 
   res.json({ overrunMinutes: Math.round(overrunMs / 60_000), affected });
 });
@@ -589,6 +624,7 @@ router.post("/planning/rehome/suggest", requireTesterId, async (req, res) => {
       endMs: new Date(b.endTime).getTime(),
     })),
     wakeHour, sleepHour, nowMs: Date.now(), lat, lon, tzOffsetMin, arc,
+    activityKey: await resolveActivityKey(w, testerId),
   });
 
   res.json({
