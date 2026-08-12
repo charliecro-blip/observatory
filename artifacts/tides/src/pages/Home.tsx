@@ -47,6 +47,8 @@ import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
 import { WeekStrip, useWeekShape } from "@/components/WeekShape";
+import NewMoonCheckIn from "@/components/NewMoonCheckIn";
+import { useUiDensity } from "@/contexts/preferences-context";
 import type { AskElectionContext } from "@/App";
 
 interface Task {
@@ -327,6 +329,9 @@ export default function Home({
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown } = useTester();
+  // Same dial Today uses — one mental model for "how much is on screen",
+  // shared across pages rather than a second Home-only preference.
+  const { essential, setDensity } = useUiDensity();
   // Read once and reused in both the key and the fetch. Every value the
   // response depends on belongs in the cache identity — this one didn't:
   // `tz` and `locationKnown` rode in the URL but not the key, so a change in
@@ -607,23 +612,38 @@ export default function Home({
             what happened is what makes it legible on first encounter. */}
         {focused && (
           <div style={{ fontSize: 10, marginLeft: 24, marginTop: 2, color: "var(--text-3)" }}>
-            Shown above · reasoning open
+            Shown in the answer above
           </div>
         )}
       </div>
     );
   };
 
-  const Group = ({ label, items, muted }: { label: string; items: Task[]; muted?: boolean }) =>
-    items.length === 0 ? null : (
+  // Overdue/today are naturally small (bounded by "how far behind or how
+  // busy is today"). Undated/later are the open-ended backlog buckets — on a
+  // landing page, an unbounded list there is the one real accumulation risk
+  // in this panel, so only those two get capped, with a link to the full
+  // list rather than a silent truncation.
+  const Group = ({ label, items, muted, cap }: { label: string; items: Task[]; muted?: boolean; cap?: number }) => {
+    if (items.length === 0) return null;
+    const shown = cap ? items.slice(0, cap) : items;
+    const hidden = items.length - shown.length;
+    return (
       <>
         <div style={{
           fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
           padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
         }}>{label} · {items.length}</div>
-        {items.map((t) => <Row key={t.id} t={t} muted={muted} />)}
+        {shown.map((t) => <Row key={t.id} t={t} muted={muted} />)}
+        {hidden > 0 && (
+          <button onClick={() => onNavigate("work")} style={{
+            display: "block", width: "100%", textAlign: "left", padding: "6px 16px 8px",
+            background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-3)",
+          }}>+{hidden} more →</button>
+        )}
       </>
     );
+  };
 
   const lead = lines?.results?.[0];
   const secondary = (lines?.results ?? []).slice(1);
@@ -658,6 +678,16 @@ export default function Home({
           )}
         </div>
       )}
+
+      {/* ── TURNING POINT · the check-in prompt during a cycle window, or the
+          kept one-pager after. Renders nothing on ordinary days.
+          ONE BANNER AT A TIME: when the VOC strip above is live, it holds
+          Home's banner slot and the offer waits for the next render without
+          it — a live condition outranks an invitation, and two stacked
+          banners is how Today got to eight. The kept card is content, not a
+          banner, and shows regardless. */}
+      <NewMoonCheckIn testerId={testerId} onNavigate={onNavigate}
+        suppressPrompt={!!(now?.voc?.isVOC && now.voc.reading)} />
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The
@@ -721,16 +751,21 @@ export default function Home({
           <div style={{ padding: "2px 20px 18px" }}>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               <Badge
-                text={lead.supportLevel === "convergent" ? "Several factors converge" : "Supported"}
+                text={lead.supportLevel === "convergent" ? "Several things line up" : "Supported"}
                 color={lead.supportLevel === "convergent" ? CONVERGENT : NEUTRAL}
               />
               {/* Suitability shown BESIDE support, not folded into it — they
-                  answer different questions: the sky, and the matter. */}
-              <Badge
-                text={lead.suitability}
-                color={lead.suitability === "clear" ? NEUTRAL : QUALIFIED}
-              />
-              {lead.personal && <Badge text="Personal reinforcement" color={PERSONAL} />}
+                  answer different questions: the sky, and the matter. A clear
+                  matter gets no chip: unqualified is the default state, and a
+                  badge announcing normality is noise. An unknown value renders
+                  as itself rather than vanishing. */}
+              {lead.suitability !== "clear" && (
+                <Badge
+                  text={lead.suitability === "qualified" ? "Useful, with a catch" : lead.suitability}
+                  color={QUALIFIED}
+                />
+              )}
+              {lead.personal && <Badge text="Your chart agrees" color={PERSONAL} />}
             </div>
 
             <div
@@ -830,7 +865,7 @@ export default function Home({
                     borderTop: "1px solid var(--color-border)", paddingTop: 11,
                     fontSize: 11.5, color: "var(--text-3)",
                   }}>
-                    No qualifying objections were recorded.
+                    Compass found nothing against it.
                   </div>
                 )}
               </div>
@@ -886,9 +921,9 @@ export default function Home({
                     Compass failing to read the sky, and neither is the same as
                     not knowing what you hold — and only the last two mean a
                     reading was actually attempted. */}
-                {linesUnreachable ? "Compass couldn't reach the reading."
-                  : failure.reason === "inventory-unread" ? "Compass couldn't read what you're holding."
-                  : "Compass couldn't read the sky for today."}
+                {linesUnreachable ? "Today's reading didn't load."
+                  : failure.reason === "inventory-unread" ? "Compass couldn't load your list."
+                  : "Compass couldn't read the sky today."}
               </div>
               <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 6 }}>
                 {/* The failure time is stated only when the server sent one. An
@@ -896,9 +931,9 @@ export default function Home({
                     this module exists precisely to stop Compass asserting
                     things it did not observe. An unreachable server never sent
                     one, so nothing is claimed about when it happened. */}
-                {failure.at && `The reading didn't answer at ${new Date(failure.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. `}
-                {linesUnreachable && "The connection didn't hold long enough to ask. "}
-                Nothing has been judged either way.
+                {failure.at && `No answer at ${new Date(failure.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. `}
+                {linesUnreachable && "The connection dropped before Compass could ask. "}
+                Compass hasn't judged anything either way.
               </div>
               <button
                 // `refetch()` does not rescue a PAUSED query, and neither does
@@ -955,7 +990,7 @@ export default function Home({
                 fontFamily: "var(--font-display)", fontSize: 24, lineHeight: 1.28,
                 color: "var(--color-foreground)", maxWidth: 560,
               }}>
-                Compass can only point toward things you actually hold.
+                Compass times the things on your list. There's nothing on it yet.
               </div>
               {/* DOORS, not buttons — and each one states its cost.
                   What stalls people here is not being unable to choose; it is
@@ -966,11 +1001,11 @@ export default function Home({
                   is asked for. The sub-line is the whole point of the shape. */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14, maxWidth: 520 }}>
                 {[
-                  { title: "Paste today's list", sub: "One line each. Nothing else asked for.",
-                    go: () => document.querySelector<HTMLInputElement>('input[placeholder^="Add something"]')?.focus() },
-                  { title: "Choose recurring activities", sub: "Pick from a list. Sets up timing for good.",
+                  { title: "Paste today's list", sub: "One line per thing.",
+                    go: () => document.querySelector<HTMLInputElement>('input[placeholder^="Add a task"]')?.focus() },
+                  { title: "Choose recurring activities", sub: "Pick once; timing works from then on.",
                     go: () => onNavigate("work") },
-                  { title: "Find a time for one thing", sub: "Name it, get a window. No account of your life.",
+                  { title: "Find a time for one thing", sub: "Name it and get a window.",
                     go: () => onNavigate("launch") },
                 ].map((d) => (
                   <button key={d.title} onClick={d.go}
@@ -994,10 +1029,10 @@ export default function Home({
           ) : (
           <div style={{ padding: "2px 20px 18px" }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.3, color: "var(--color-foreground)" }}>
-              Nothing you're holding is especially singled out today.
+              Nothing stands out today.
             </div>
             <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
-              Use priority, momentum, or simple necessity.
+              Pick by what matters most; the sky has no preference.
               {lines?.nextOpening && (
                 <> The next notable opening is {lines.nextOpening.activityLabel.toLowerCase()} on {lines.nextOpening.date} at {lines.nextOpening.startClock}.</>
               )}
@@ -1033,7 +1068,7 @@ export default function Home({
                 </span>
               )}
             </span>
-            {r.supportLevel === "convergent" && <Badge text="converges" color={CONVERGENT} />}
+            {r.supportLevel === "convergent" && <Badge text="lines up" color={CONVERGENT} />}
             <span style={{
               fontSize: 11.5, flexShrink: 0,
               color: r.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
@@ -1079,7 +1114,7 @@ export default function Home({
                  cannot currently honour, so it stands down. */
               linesFailed ? (
                 <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                  Unaffected — timing lines are held back
+                  Timing is unavailable. Your list is fine.
                 </span>
               ) : (
                 <button onClick={() => setShapeOpen(v => !v)} style={{
@@ -1095,7 +1130,7 @@ export default function Home({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
-              placeholder="Add something — one line, no ceremony"
+              placeholder="Add a task. One line is enough."
               style={{
                 width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
                 border: "1px solid var(--color-border)", background: "var(--color-card-2)",
@@ -1171,7 +1206,7 @@ export default function Home({
                   <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
                     {clockOf(o.startAt)}–{clockOf(o.endAt)}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing you hold needed placing here</span>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing needed placing here</span>
                 </div>
               ))}
               <div style={{ height: 6 }} />
@@ -1180,14 +1215,14 @@ export default function Home({
 
           {tasksFailed ? (
             <div style={{ padding: "10px 16px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
-              I couldn't load your tasks. This is a connection problem, not an empty list.
+              Your tasks didn't load. The list is intact; it's the connection.
             </div>
           ) : (
             <>
               <Group label="overdue" items={overdue} />
               <Group label="today" items={dueToday} />
-              <Group label="no date" items={undated} />
-              <Group label="later" items={later} muted />
+              <Group label="no date" items={undated} cap={5} />
+              <Group label="later" items={later} muted cap={5} />
               {open.length === 0 && tasks && (
                 <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
               )}
@@ -1230,7 +1265,10 @@ export default function Home({
             </div>
           )}
 
-          {engagedToday && (
+          {/* Expanded only: the day's wins are a look backward, and the
+              landing page's essential job is forward. The Log tab holds the
+              full record either way. */}
+          {engagedToday && !essential && (
             <div style={PANEL}>
               <SectionTitle note={`${doneToday.length} crossed off`}>Today's log</SectionTitle>
               {doneToday.map((t) => <Row key={t.id} t={t} />)}
@@ -1242,6 +1280,11 @@ export default function Home({
               </div>
             </div>
           )}
+
+          <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
+            fontSize: 11, background: "none", border: "none", cursor: "pointer",
+            color: "var(--text-3)", padding: "2px 0", textAlign: "left",
+          }}>{essential ? "Show more ↓" : "Show less ↑"}</button>
         </div>
       </div>
     </div>
