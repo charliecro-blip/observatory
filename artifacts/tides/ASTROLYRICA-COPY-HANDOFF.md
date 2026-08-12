@@ -10,6 +10,78 @@ shapes, rewritten in the Astrolyrica voice. Keys and structure are load-bearing
 
 ---
 
+## ADDENDUM — 2026-08-12 (read this first)
+
+The tables below are unchanged and still current. This addendum adds two new
+surfaces and one vocabulary consult. Same rules apply throughout.
+
+### A1. New surface: the turning-point check-in (live today)
+
+A one-page reset offered at real astrological turning points (new moons,
+eclipses, solstices, retrograde stations). Today's, verbatim:
+
+- Banner: **"Today is a new moon and a solar eclipse in Leo. Ten minutes to
+  reset?"** · buttons "Take ten minutes →" / "Not now"
+- Page title: **"New Moon in Leo · Solar Eclipse"** · subtitle "About ten
+  minutes. Yours to keep or skip."
+- The read, ¶1: **"Today's new moon is a solar eclipse in Leo, near the
+  Moon's south node. A new moon opens a cycle. An eclipse turns the volume
+  up. The south node points backward — this one favors letting go over
+  launching."**
+- The read, ¶2: **"Keep the reset small: name what you're done carrying,
+  check that your stars still point somewhere true, and call one shot for
+  the month."**
+- Prompt 1 label: "What are you done carrying?" · hint "One line. It doesn't
+  have to be graceful."
+- Prompt 2 label: "Your stars — still true?" · per-star buttons "still true"
+  / "needs a look"
+- Prompt 3 label: "One shot for this cycle" · hint "One thing, by the next
+  new moon"
+- Submit: "Keep this" · disabled note "Write at least one line to keep it."
+  · enabled note "Stays on your homepage until the next new moon."
+- Kept card: eyebrow "This cycle · set at the Leo eclipse" · sub "Setting
+  down: {their line}" · "{n} stars marked for a look →" · "edit"
+
+Specific asks, beyond a general read:
+1. **"An eclipse turns the volume up"** — is there a truer image? It must
+   amplify without threatening (rules 1–2).
+2. **"The south node points backward"** — astrologically loose on purpose.
+   Offer 2–3 alternate framings of south-node release for a stranger.
+3. The prompts themselves: keep the questions this plain, but offer sharper
+   verbs if you have them.
+
+### A2. Vocabulary consult: the weather layer (WORLDBOOK.md, new)
+
+Compass's layer-1 forecast language is moving from tide words to weather
+words. The binding rule: **dynamics, never valence** — weather's motion
+words yes (still, building, clearing), weather's judgment words never (fair,
+foul, good, bad), because "fair" is favorability sneaking back in. Every
+word must land for a stranger with no glossary. Current candidates, one
+word-family per engine axis:
+
+| Axis | Candidates | Question for you |
+|---|---|---|
+| Energy (how charged) | still · stirring · full | better height-words with no valence? |
+| Trend (direction) | building · holding · clearing | does "holding" read as a direction? |
+| Coherence (agreement) | settled · mixed · unsettled | is "unsettled" too negative-coded? |
+| Standing conditions | "a Mercury advisory" | advisory vs watch vs plainer? |
+| Personal overlay | "…and gusty where you are" | keep or better? |
+
+A composed forecast should read like: *"Full and building, settled — gusty
+where you are."* React to the composition shape too, not just the words.
+
+### A3. Draft request: the next cycle (Aug 28 — lunar eclipse, Pisces 5°)
+
+The next turning point is a full-moon lunar eclipse, 16 days after this
+solar one. Full-moon check-ins are HARVEST, not intention: the prompts pull
+what actually happened ("What came through since the new moon?" · "What's
+now visible that wasn't?") and never set new goals. Draft the read (two
+short paragraphs, same shape as A1) for a Pisces full-moon lunar eclipse,
+under all ten rules. Node polarity deliberately unstated — the owner will
+curate that detail against the engine before it ships.
+
+---
+
 ## What Compass is, in one paragraph
 
 Compass reads the sky around a moment and turns it into a plain suggestion —
