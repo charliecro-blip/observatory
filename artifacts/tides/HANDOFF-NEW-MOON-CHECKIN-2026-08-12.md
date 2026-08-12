@@ -180,6 +180,28 @@ own span.** What varies is the verbs:
 Marks, same construction grammar as the eclipse mark: full-moon disc,
 station loop, solstice/equinox sun-angle.
 
+### 8c. Aug 28 draft read (AstroLyrica voice pass, 2026-08-12 — awaiting owner curation)
+
+Drafted under the harvest frame and all ten copy rules; node polarity
+deliberately left for the owner to curate against the engine before it
+ships. Spelling normalized to house American:
+
+> ¶1: "This full moon is a lunar eclipse in Pisces. A full moon brings a
+> cycle to its peak — what you set in motion becomes visible. An eclipse
+> makes that visibility hard to look away from. In Pisces, what surfaces
+> tends to be felt before it's understood: a mood, a tiredness, a knowing
+> you can't quite argue with."
+>
+> ¶2: "This is a harvest, not a beginning. Notice what actually came
+> through since the new moon, and what's now plain that wasn't. You don't
+> have to fix it or name a next thing — today is for letting it be seen,
+> and letting some of it go."
+
+Prompts: "What came through since the new moon?" · "What's now visible that
+wasn't?" — and deliberately **no goal-setting prompt** (full moons harvest,
+they don't plant). Alternate sharper verbs on file in
+ASTROLYRICA-COPY-HANDOFF.md if these read flat on screen.
+
 ## 8. Explicitly open / unresolved
 
 - No UI has been designed. No data model has been proposed. This doc is

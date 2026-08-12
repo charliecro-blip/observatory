@@ -43,19 +43,31 @@ offers two vocabularies: **dynamics** (still, building, full, clearing) and
 dynamics and refuses the valence — "fair" is favorability wearing a raincoat,
 and no element or day is inherently "good."
 
-The §5 axes map cleanly, one axis one word-family:
+The §5 axes map cleanly, one axis one word-family. Candidates below carry
+the 2026-08-12 AstroLyrica voice-pass verdicts (two words replaced, both for
+real defects):
 
 | Engine axis | Weather family | Words (PROPOSED) |
 |---|---|---|
-| Energy (height) | stillness → fullness | still · stirring · full |
-| Trend (direction) | motion | building · holding · clearing |
-| Coherence (agreement) | settledness | settled · mixed · unsettled |
-| Conditions (standing) | advisories | "Mercury advisory through Sep 14" |
-| Personal (yours) | local sky | "…and gusty where you are" |
+| Energy (height) | stillness → height | still · stirring · high *(was "full" — but "full and building" contradicts itself: if it's full it isn't still rising. Height and direction must stay independent.)* |
+| Trend (direction) | motion | building · holding · clearing *(holding = the null direction, verdict: keep)* |
+| Coherence (agreement) | gathered ↔ dispersed | settled · mixed · scattered *(was "unsettled" — the one valence leak: "unsettled weather" codes bad. Scattered is pure motion.)* |
+| Conditions (standing) | advisories | "a standing Mercury advisory" *(advisory, never watch/warning — those escalate to threat)* |
+| Personal (yours) | local sky | "…and gusty where you are" *(keep — a gust is local and non-valent)* |
 
-A day's forecast composes from these: *"Full and building, settled — a
-Mercury advisory stands. Gusty where you are."* Each word carries exactly
-one axis; none of them says "good."
+The composition template: **`[energy] and [trend], [coherence] — gusty where
+you are.`** — *"High and building, settled — gusty where you are."* It reads
+like a real forecast, and it degrades to a clean quiet day with no special
+casing: *"Still and holding, settled."* Each word carries exactly one axis;
+none of them says "good."
+
+One structural honesty note from the same pass, worth keeping visible:
+three of the axes are weather-native, but **coherence — whether the sky's
+layers agree — is not a weather phenomenon**; weather doesn't agree with
+itself. That mismatch is what kept pulling its words toward valence, and it
+is the one place the metaphor strains. "Scattered" is the safest word found;
+if it ever still reads as judgment in testing, the fallback is a clarity
+family (clear · mixed) rather than a weather one.
 
 What happens to existing vocabulary:
 - **Elements stay** — they're identity vocabulary (treaty: elements are

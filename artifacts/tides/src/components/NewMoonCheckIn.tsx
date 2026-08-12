@@ -25,14 +25,17 @@ const CYCLE = {
   opens: "2026-08-12",
   closes: "2026-08-16", // last day the prompt offers itself
   name: "New Moon in Leo · Solar Eclipse",
+  // The read went through the AstroLyrica voice pass 2026-08-12: "turns the
+  // volume up" coded intensity/threat where the true axis is visibility, and
+  // "the south node points backward" was jargon half-translated. Both fixed.
   read: [
-    "Today's new moon is a solar eclipse in Leo, near the Moon's south node. A new moon opens a cycle. An eclipse turns the volume up. The south node points backward — this one favors letting go over launching.",
-    "Keep the reset small: name what you're done carrying, check that your stars still point somewhere true, and call one shot for the month.",
+    "Today's new moon is also a solar eclipse in Leo. A new moon opens a cycle; an eclipse is that same opening with the lights turned up — you notice more of it than usual. And this one leans backward: it favors setting something down over starting something new.",
+    "Keep the reset small. Name what you're done carrying, check your stars still point somewhere true, and call one shot for the cycle.",
   ],
   releaseLabel: "What are you done carrying?",
   releaseHint: "One line. It doesn't have to be graceful.",
   oneShotLabel: "One shot for this cycle",
-  oneShotHint: "One thing, by the next new moon",
+  oneShotHint: "One thing to aim at by the next new moon",
 };
 
 interface Saved {
