@@ -120,6 +120,66 @@ distinct ideas here, worth separating when this gets designed:
   retrograde check-in should not look like a Venus retrograde check-in, which
   should not look like an eclipse reset).
 
+## 8a. The curation calendar (computed 2026-08-12, `tools/turning-points-scan.ts`)
+
+From the app's own ephemeris, not from memory — the engine independently
+confirms today's moment (new moon 2026-08-12, Leo 20°, solar eclipse). The
+next eight months of trigger moments:
+
+| When | Moment | Notes |
+|---|---|---|
+| **2026-08-28** | **Full moon, Pisces 5° — LUNAR ECLIPSE** | **The next check-in is 16 days out and is eclipse-tier again.** Curate it with the owner this month. |
+| 2026-09-11 | New moon, Virgo 18° | First *ordinary* baseline cycle — the repeatability test. |
+| ~2026-09-22 | Venus enters her station approach (≤2.5°) | Collides with the equinox the next day — first overlap case. |
+| 2026-09-23 | Fall equinox | |
+| 2026-10-03 | Venus stations retrograde, Scorpio 8° | Direct 2026-11-14 in Libra. |
+| ~2026-10-18 | Mercury enters approach | |
+| 2026-10-24 | Mercury stations retrograde, Scorpio 21° | Direct 2026-11-13 — Venus and Mercury retrograde **concurrently** Oct 24–Nov 13. |
+| 2026-12-21 | Winter solstice | Mars's approach begins ~Dec 22 — another overlap. |
+| 2027-01-10 | Mars stations retrograde, Virgo 10° | Direct 2027-04-01 in Leo — a season-long span. |
+| 2027-02-06 | New moon, Aquarius 17° — SOLAR ECLIPSE | |
+
+Measured approach lead-times (2.5° from the station degree): **Mercury ~6
+days, Venus ~11, Mars ~19** — the owner's "a few days ahead" intuition,
+now with real per-planet numbers to trigger on.
+
+Two structural findings the calendar forces:
+- **Collisions are normal, not edge cases** (equinox+Venus in September,
+  double retrograde in November, solstice+Mars in December). The Home banner
+  queue needs a rarity-priority rule; policy OPEN.
+- Every trigger type occurs within the beta window — the whole taxonomy gets
+  a live rehearsal by spring.
+
+## 8b. Per-trigger one-pager frameworks (PROPOSED, sketched 2026-08-12)
+
+Shared anatomy stays what v1 shipped: **a curated read (two short
+paragraphs) → two or three prompts → a kept card on Home for the trigger's
+own span.** What varies is the verbs:
+
+- **New moon** (the monthly baseline, shipped): release · stars still-true ·
+  one shot. Kept until the next new moon.
+- **Full moon** — the harvest. Engagement-aware per §1: pull the wake/wins
+  ledger since the last new moon as material. Prompts: *what came through?*
+  · *what's now visible that wasn't?* · optional adjustment of the standing
+  one-shot. Short span (~3 days); keeps a named win, not a new intention.
+- **Eclipse** — the amplified case of whichever lunation it rides, weighted
+  by node: south node leans release, north node leans commitment. Always
+  owner-curated (§5 seam).
+- **Equinox / solstice** — the season page, quarter horizon: name the
+  season's one theme · choose which star leads the quarter · adjust rhythm
+  to the changing light (chronotype tie-in). Kept ~90 days as a quiet season
+  line, not a second hero.
+- **Stations** — a brace-list, not intentions. Opens at the measured
+  approach date, and the verbs differ by planet: **Mercury** = finish, send,
+  back up, sign-before-the-turn; **Venus** = re-appraise (relationships,
+  values, purchases), commit to nothing new; **Mars** = finish rather than
+  launch, pace the drive. During the retrograde the kept card shows the turn
+  date ("direct Nov 13"). Personalized per §3: sign, natal house, aspects at
+  the station degree.
+
+Marks, same construction grammar as the eclipse mark: full-moon disc,
+station loop, solstice/equinox sun-angle.
+
 ## 8. Explicitly open / unresolved
 
 - No UI has been designed. No data model has been proposed. This doc is
