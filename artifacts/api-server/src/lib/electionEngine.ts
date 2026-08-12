@@ -754,7 +754,9 @@ export function computeElections(opts: {
     const gloss = act.signs[moonSign];
     if (gloss) cands.push({
       startMs: dayStartMs + 7 * 3600000, endMs: dayStartMs + 23 * 3600000,
-      score: 0.45, why: [{ family: "moon", text: `Moon in ${moonSign} · ${gloss}` }], sources: ["sign"], allDay: true,
+      // One testimony, not a middot-join: " · " inside evidence text is the
+      // joined-blur the linesUp contract forbids (tests/linesUp.test.ts).
+      score: 0.45, why: [{ family: "moon", text: `Moon in ${moonSign} — ${gloss}` }], sources: ["sign"], allDay: true,
     });
 
     // The void: a window for void-favoring activities, a filter for avoiders
@@ -764,7 +766,7 @@ export function computeElections(opts: {
         const b = Math.min(e, dayStartMs + 23 * 3600000);
         a = Math.max(a, b - 4 * 3600000);
         if (b - a < 1.5 * 3600000) continue;
-        cands.push({ startMs: a, endMs: b, score: 0.55, why: [{ family: "moon", text: "void of course · slack water" }], sources: ["voc"] });
+        cands.push({ startMs: a, endMs: b, score: 0.55, why: [{ family: "moon", text: "the Moon is void of course — slack water" }], sources: ["voc"] });
       }
     }
 
