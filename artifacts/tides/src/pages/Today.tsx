@@ -819,9 +819,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   interface SimpleTask { id: number; title: string; done: string; bestWindowType?: string; planet?: string | null; goalId?: number | null; startedAt?: string | null; }
   const { data: todayTasks = [] } = useQuery<SimpleTask[]>({
-    queryKey: ["tasks-today", testerId, today],
+    // tz rides along so the server can include tasks SCHEDULED today, not
+    // just those due today — a woven task carries no deadline, and without
+    // the offset the server cannot know which instants are this local day.
+    queryKey: ["tasks-today", testerId, today, new Date().getTimezoneOffset()],
     queryFn: async () => {
-      const r = await fetch(`/api/tasks?date=${today}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
+      const r = await fetch(`/api/tasks?date=${today}&tz=${new Date().getTimezoneOffset()}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
       const j = await r.json();
       return Array.isArray(j) ? j : []; // a transient error object must not crash .filter/.map
     },

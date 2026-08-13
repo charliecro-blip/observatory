@@ -558,9 +558,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // whole app via the ErrorBoundary (audit P0 #8). Today.tsx already guards
   // its equivalent queries this way; Rail (which mounts first) didn't.
   const { data: tasks = [] } = useQuery<any[]>({
-    queryKey: ["tasks-today", testerId, today],
+    // Same key AND same params as Today's copy on purpose: they share the
+    // cache, so a mismatch would have the rail and the page disagreeing
+    // about what is on today.
+    queryKey: ["tasks-today", testerId, today, new Date().getTimezoneOffset()],
     queryFn: async () => {
-      const r = await fetch(`/api/tasks?date=${today}`, { headers: testerId ? {"x-tester-id": testerId} : {} });
+      const r = await fetch(`/api/tasks?date=${today}&tz=${new Date().getTimezoneOffset()}`, { headers: testerId ? {"x-tester-id": testerId} : {} });
       const j = await r.json();
       return Array.isArray(j) ? j : [];
     },

@@ -49,6 +49,7 @@ import { useTester } from "@/contexts/tester-context";
 import { WeekStrip, useWeekShape } from "@/components/WeekShape";
 import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
 import RareMomentBanner from "@/components/RareMomentBanner";
+import DayAhead from "@/components/DayAhead";
 import { useUiDensity } from "@/contexts/preferences-context";
 import type { AskElectionContext } from "@/App";
 
@@ -1251,6 +1252,11 @@ export default function Home({
 
         {/* ── CONTEXT column ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* YOUR DAY — what is actually on today, in order, with now marked.
+              Above This week because the day you are standing in outranks
+              the one ahead of it; renders nothing when the day is empty. */}
+          <DayAhead testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
 
           {/* THIS WEEK — answers a question rather than drawing seven slots. */}
           {week && (

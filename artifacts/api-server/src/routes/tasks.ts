@@ -20,9 +20,40 @@ router.get("/tasks", async (req, res) => {
   const goalId = req.query.goalId ? parseInt(req.query.goalId as string, 10) : undefined;
   const milestoneId = req.query.milestoneId ? parseInt(req.query.milestoneId as string, 10) : undefined;
   const conds = [eq(tasks.testerId, testerId)];
-  if (date) conds.push(eq(tasks.dueDate, date));
   if (goalId) conds.push(eq(tasks.goalId, goalId));
   if (milestoneId) conds.push(eq(tasks.milestoneId, milestoneId));
+
+  // "TODAY'S TASKS" MEANS DUE TODAY *OR* SCHEDULED TODAY.
+  //
+  // This filtered on dueDate alone, which quietly excluded everything the
+  // weaver places: a task woven into this afternoon carries no deadline
+  // unless the user typed one, so its dueDate is null. The whole plan was
+  // committed, the windows existed, and Today still said "nothing is on
+  // today's list yet — and with nothing to place, the sky has nothing to
+  // time" (owner, 2026-08-13). The list was not empty; the question was.
+  //
+  // A task's scheduled moment lives on its linked planning window, so the
+  // day filter has to reach through `planningWindowId`. The viewer's offset
+  // decides which instants are "today" — absent it, the local day is
+  // unknowable here and only the dueDate half of the question can be
+  // answered honestly, which is the pre-existing behaviour.
+  if (date) {
+    const tzMin = Number.parseInt((req.query.tz as string) ?? "", 10);
+    if (Number.isFinite(tzMin)) {
+      // getTimezoneOffset() convention: minutes to ADD to local to get UTC.
+      const startMs = Date.parse(`${date}T00:00:00Z`) + tzMin * 60000;
+      const endMs = startMs + 86400000;
+      conds.push(sql`(${tasks.dueDate} = ${date} OR EXISTS (
+        SELECT 1 FROM planning_windows pw
+        WHERE pw.id = ${tasks.planningWindowId}
+          AND pw.start_time >= ${new Date(startMs)}
+          AND pw.start_time <  ${new Date(endMs)}
+      ))`);
+    } else {
+      conds.push(eq(tasks.dueDate, date));
+    }
+  }
+
   const rows = await db.select().from(tasks)
     .where(and(...conds))
     .orderBy(tasks.sortOrder, tasks.createdAt);

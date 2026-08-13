@@ -13,6 +13,7 @@
 // Home simply keeps being Home.
 
 import React, { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { localDateStr } from "@/lib/dates";
@@ -125,6 +126,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
    *  the other side). The kept card shows regardless — it is content. */
   suppressPrompt?: boolean;
 }) {
+  const qc = useQueryClient();
   const { data: starsData } = useNorthStars(testerId);
   const stars = (Array.isArray(starsData) ? starsData : [])
     .filter((g: any) => g.status !== "done" && g.status !== "paused");
@@ -185,6 +187,26 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch { /* private mode */ }
     setSaved(s);
     setOpen(false);
+
+    // ONE INTENTION PER CYCLE, NOT TWO.
+    //
+    // The ledger (Momentum) keeps cycle intentions server-side and asks for
+    // one whenever none is set. Left alone, someone who had just written a
+    // one shot here was asked for an intention again on Today — the same
+    // question, from a surface that could not see this answer (owner,
+    // 2026-08-13). The one shot IS the cycle's intention, so it is written
+    // to the canonical store as well.
+    //
+    // Fire-and-forget: the check-in is kept locally the moment it is saved,
+    // and a failed sync must never cost someone the reset they just wrote.
+    const oneShotText = oneShot.trim();
+    if (oneShotText && testerId && !editing) {
+      void fetch("/api/planning/intentions", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: oneShotText, tz: new Date().getTimezoneOffset() }),
+      }).then(() => qc.invalidateQueries({ queryKey: ["momentum"] })).catch(() => { /* kept locally regardless */ });
+    }
   };
   const canKeep = release.trim().length > 0 || reclaim.trim().length > 0 || oneShot.trim().length > 0;
   const looks = saved ? Object.values(saved.stars).filter((v) => v === "look").length : 0;
