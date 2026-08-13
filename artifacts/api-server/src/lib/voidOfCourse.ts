@@ -85,8 +85,13 @@ const BY_SIGN: Record<string, { feel: string; instead: string }> = {
     instead: "Make the thing instead of announcing it. Keep the launch and the ask for a Moon still making contacts.",
   },
   Virgo: {
+    // "Real work with nothing riding on it" barred more than the doctrine
+    // does — it reads as "do only trivia today", when a void is thin for
+    // BEGINNINGS and neutral-to-good for everything already underway
+    // (VOID_SCOPE, right below). The owner planning a full day's work read
+    // this as a veto over the lot (2026-08-13).
     feel: "Fixing what doesn't need fixing. Careful attention with nowhere useful to point.",
-    instead: "Aim it at maintenance — the files, the admin, the drawer. Real work with nothing riding on it, rather than the audit you keep meaning to start.",
+    instead: "Good hours for the work already in front of you — editing, admin, the careful pass over something that exists. Save the launch, not the effort.",
   },
   Libra: {
     feel: "Weighing, and nothing settles the scale. Agreements made now tend not to hold.",

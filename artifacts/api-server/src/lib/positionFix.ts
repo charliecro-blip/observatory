@@ -66,11 +66,15 @@ export interface PositionFix {
     monthHouse: number;
     monthTheme: string;
     lordActivations: { date: string; label: string }[];  // the year's power days (next ~90d)
+    /** What a profected year IS — shown on demand, never as a caption. */
+    explain: string;
   };
   chapter: {
     saturnStage: string;
     nextWaypoint: { name: string; date: string } | null;
     renovations: { line: string; note: string }[];       // slow transits in progress
+    /** What the Saturn stage is measuring, and from what. */
+    explain: string;
   };
 }
 
@@ -129,6 +133,17 @@ export function positionFix(natal: ComputedNatalChart, birthDate: string, now = 
       note: transitMeaning(t.transitPlanet, t.aspect, t.natalPlanet),
     }));
 
+  // WHAT EACH PHRASE IS TIED TO, in plain words.
+  //
+  // "an 11th-house year" and "consolidation corridor" arrived with no way to
+  // ask what they meant or where they came from (owner, 2026-08-13: "I don't
+  // know what this means — or what it's tied to astrologically. Each of
+  // these should have options to explore more, otherwise it's too much
+  // data"). DESIGN.md §17.3 already requires a concept be explained where it
+  // is introduced; this card predates the rule. The explanation ships as
+  // data so the surface can reveal it on demand rather than inventing its
+  // own account of the mechanism.
+  const yearsIn = Math.round((phase / 360) * 29.5 * 10) / 10;
   return {
     year: {
       age: prof.age,
@@ -140,11 +155,13 @@ export function positionFix(natal: ComputedNatalChart, birthDate: string, now = 
       monthHouse: prof.monthHouse,
       monthTheme: HOUSE_THEME[prof.monthHouse] ?? "",
       lordActivations: lordHits,
+      explain: `An annual profection: the year's focus moves one house each birthday and comes back around every twelve. At ${prof.age} it sits in your ${prof.house}${prof.house === 1 ? "st" : prof.house === 2 ? "nd" : prof.house === 3 ? "rd" : "th"} house (${prof.sign}), so ${prof.timeLord}, which rules ${prof.sign}, carries the year — its transits are the year's turning points.`,
     },
     chapter: {
       saturnStage: stage,
       nextWaypoint: wpDate ? { name: nextWp[1], date: wpDate } : null,
       renovations,
+      explain: `Where you are in Saturn's roughly 29-year lap of your chart. Transiting Saturn is ${Math.round(phase)}° past the place it held when you were born — about ${yearsIn} years into the cycle — and each stage is named for what that stretch asks of the things you're building. The waypoints are the angles it makes on the way round.`,
     },
   };
 }

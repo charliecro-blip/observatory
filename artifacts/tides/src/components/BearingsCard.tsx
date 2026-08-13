@@ -6,8 +6,37 @@
  * renovations in progress). Dated landmarks, not analysis — a trail map's
  * "you are here", not a reading.
  */
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+
+/**
+ * "What is this?" — the mechanism behind a phrase, on request.
+ *
+ * DESIGN.md §17.3: a concept is explained where it is introduced, one tap
+ * away, and never as a caption nobody asked for. Closed, it is a single
+ * quiet mark; open, it is the plain account the engine shipped with the
+ * number.
+ */
+function Explain({ text, open, onToggle }: { text?: string; open: boolean; onToggle: () => void }) {
+  if (!text) return null;
+  return (
+    <>
+      <button onClick={onToggle} aria-expanded={open}
+        title={open ? "Hide" : "What does this mean?"}
+        style={{
+          background: "none", border: "none", padding: "0 3px", cursor: "pointer",
+          color: open ? "var(--color-primary)" : "var(--text-3)", fontSize: 10.5, lineHeight: 1,
+        }}>{open ? "✕" : "?"}</button>
+      {open && (
+        <div style={{
+          fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6, marginTop: 4,
+          paddingLeft: 9, borderLeft: "2px solid var(--color-border)",
+        }}>{text}</div>
+      )}
+    </>
+  );
+}
 
 interface Activation { date: string; label: string }
 interface Fix {
@@ -15,11 +44,13 @@ interface Fix {
     age: number; house: number; sign: string; lord: string; theme: string;
     yearEnd: string; monthHouse: number; monthTheme: string;
     lordActivations: Activation[];
+    explain?: string;
   };
   chapter: {
     saturnStage: string;
     nextWaypoint: { name: string; date: string } | null;
     renovations: { line: string; note: string }[];
+    explain?: string;
   };
 }
 
@@ -37,6 +68,13 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
     enabled: !!testerId,
     staleTime: 6 * 3600 * 1000, // bearings change daily at most
   });
+  // ABOVE the early returns. Placed below them, this hook only ran on the
+  // renders that got past "no chart yet", so the hook count changed between
+  // renders and React threw "Rendered more hooks than during the previous
+  // render" — the whole Stars page replaced by an error card. The same
+  // violation this project hit once before in the app Shell; the rule is
+  // that every hook precedes every conditional return, without exception.
+  const [open, setOpen] = useState<"year" | "chapter" | null>(null);
 
   if (!testerId || !data) return null;
   if (!data.available) {
@@ -77,6 +115,7 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
           {nextHit && (
             <span style={{ color: "#8a6a30" }}> · next power day {fmtDate(nextHit.date)} ({nextHit.label})</span>
           )}
+          <Explain text={fix.year.explain} open={open === "year"} onToggle={() => setOpen(open === "year" ? null : "year")} />
         </div>
       </div>
 
@@ -88,6 +127,7 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
           {fix.chapter.nextWaypoint && (
             <span style={{ color: "var(--color-muted)" }}> · next waypoint: {fix.chapter.nextWaypoint.name}, {fmtMonthYear(fix.chapter.nextWaypoint.date)}</span>
           )}
+          <Explain text={fix.chapter.explain} open={open === "chapter"} onToggle={() => setOpen(open === "chapter" ? null : "chapter")} />
         </div>
       </div>
 
