@@ -1,0 +1,117 @@
+# Integration audit — do the features talk to each other?
+
+Owner's question, 2026-08-13, after a day in which four separate defects
+turned out to have the same shape: one surface writing something another
+surface could not see.
+
+Method: inventory every persisted fact (28 tables, ~30 localStorage keys),
+then ask of each — **who writes it, who reads it, and who ought to.** A fact
+written by one feature and read by nobody is a false affordance; a fact read
+by one surface and not its sibling is how two screens end up disagreeing.
+
+Fixed earlier today, all the same class, listed so the pattern is legible:
+Today couldn't see tasks the weaver scheduled · the hero said "nothing on
+your list" to someone whose list was fully placed · the check-in's intention
+was invisible to the ledger that asks for one · three surfaces answered
+"what should I do now" independently.
+
+---
+
+## 1. Habits are invisible to every timing engine — the worst of these
+
+**The data:** `habits` carries `favoredElements`, `favoredPhases`,
+`favoredPlanets`, `bestWindowType`, `solarAnchor`, `minimumViable`, and
+`goalId`. That is a complete timing signature, and the form asks for all of
+it.
+
+**The reality:** neither `linesUp` (the "what should I do right now" engine)
+nor the weaver (`plan.ts`) reads the habits table at all. Confirmed: zero
+references in either. `linesUp` builds its inventory from tasks and goals
+only.
+
+**Why it matters most:** the owner spent today filling in exactly these
+fields. Everything asked for on that form is currently write-only as far as
+timing is concerned — the app collects a preference and then never consults
+it. Under WORLDBOOK §1b the fields are correctly optional, but "optional"
+was supposed to mean *the suggestion is skipped*, not *the answer is
+discarded*.
+
+**The fix, roughly:** habits become held items in `linesUp` (kind:
+`"habit"`), gated on being due today per their cadence, with their favored
+signature mapped onto the same activity-correspondence shape tasks use. The
+Home day-view already surfaces habits; the engine simply needs the same
+inventory the display has.
+
+## 2. The reflect-don't-predict loop never closes
+
+**The data:** felt ratings and daily check-ins are written by Log/Today and
+read back for display in Log.
+
+**The reality:** no engine reads them. `electionEngine`, `linesUp` and
+`rareWindows` contain zero references to felt ratings.
+
+**Why it matters:** DESIGN.md §7 calls this "the only empirical calibration
+data in the category" and the app's stickiest possible feature — the thing
+that turns falsifiability from a liability into an asset. Today it is a
+diary the engine cannot read. Note the honest constraint: using ratings to
+*tune* the astrology is a research project, but using them to *report a
+pattern back to the person* ("your highest-rated days this month were mostly
+Building tides") is the shipped promise in §7 and needs no model at all.
+
+## 3. The check-in's answers mostly go nowhere
+
+**The data:** the turning-point check-in collects a release line, a reclaim
+line, per-star "still true / needs a look" marks, and the one shot.
+
+**The reality:** only the one shot reaches the server (wired today, into
+`intentions`). Release, reclaim and the star marks live in localStorage
+under `compass-nm-checkin-*` and no other surface can read them —
+`GuidingStarsHub` has no idea which stars you flagged for a look, though
+that is precisely the page you would act on it from.
+
+**Consequence:** the marks are lost on another device, and the star page
+cannot show the flag the user set an hour earlier. The kept card's own
+"N stars marked for a look →" link goes to a page that then shows nothing
+about them.
+
+## 4. The rare-moment notice doesn't know what you hold
+
+**The reality:** `rareToday` scores all ~60 activities in the correspondence
+table. It has no access to the user's tasks or stars.
+
+**Consequence:** the homepage can announce that today is exceptional for
+"haircut / grooming" to someone who has never mentioned a haircut. It is
+true, and it is unasked-for — the same complaint that produced the
+"Compass never invents work" rule.
+
+**The fix:** rank or filter hits by whether the activity matches something
+held (task, star, or habit). Keep the unheld ones behind a "also
+exceptional for…" line rather than leading with them.
+
+---
+
+## What is genuinely well connected (so this reads as an audit, not a list of complaints)
+
+- **The schema anticipated most of this.** `wins.goalId`, `intentions.goalId`,
+  `habits.goalId`, `tasks.goalId`, `planningWindows.goalId` all exist — the
+  links are modelled, the surfaces just have not all been taught to use
+  them. Star-linking through the planner was closed today.
+- **Tasks ↔ windows ↔ Today ↔ Home** now share one query and one cache key,
+  after today's fixes.
+- **One authority for the verdict** holds: `evaluateActivityInterval` and
+  `computeElections` now share `supportLevelFrom`, and flow protection lives
+  in `linesUp` where both Home and Today read it.
+- **`usage_events`, `cultivations`, `habit_logs`, `daily_check_ins`** are all
+  genuinely wired to routes (an earlier snake_case grep suggested otherwise;
+  the code uses camelCase identifiers).
+
+## Suggested order
+
+1. **Habits into `linesUp`** — largest gap, and it makes an existing form mean
+   something.
+2. **Check-in star marks to the server** — small, and it closes a link the UI
+   already promises.
+3. **Rare notice consults inventory** — small, and it is a values fix as much
+   as a feature one.
+4. **The reflection retrospective** — the §7 promise, biggest product upside,
+   deserves its own session.
