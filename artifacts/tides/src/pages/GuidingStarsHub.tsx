@@ -17,6 +17,7 @@ import Glyph from "@/components/Glyph";
 import { aiErrorMessage } from "@/lib/aiError";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { starsNeedingLook } from "@/lib/checkInState";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -170,6 +171,9 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   }, [seedElement]);
 
   const list: any[] = stars ?? [];
+  // Read once per render rather than held in state: the check-in can be
+  // edited in another tab, and a stale copy here would contradict it.
+  const needsLook = starsNeedingLook();
   // useNorthStars only returns active goals server-side today — fetch all so
   // paused ones can be shown/resumed here too, without a separate tab.
   const { data: allGoals = [] } = useQuery<any[]>({
@@ -839,6 +843,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           const adding = quickAdd && quickAdd.goalId === g.id ? quickAdd.kind : null;
           const dLeft = daysUntil(g.anchorUntil);
           const closing = dLeft != null && dLeft >= 0 && dLeft <= 30;
+          // Flagged at the turning-point check-in. Its kept card links here
+          // saying "N stars marked for a look →"; until now this page had no
+          // idea which ones (integration audit, gap 3).
+          const flagged = needsLook.has(g.id);
 
           return (
             <div key={g.id} ref={el => { cardRefs.current[g.id] = el; }} style={{
@@ -857,6 +865,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{g.title}</span>
+                      {flagged && (
+                        <span title="You marked this for a second look at the new moon" style={{
+                          fontSize: 9, padding: "2px 7px", borderRadius: 999, whiteSpace: "nowrap",
+                          border: "1px solid #b8703a55", background: "#b8703a12", color: "#a05f2c",
+                        }}>needs a look</span>
+                      )}
                       {(g as any).planet && (() => {
                         const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
                         return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;

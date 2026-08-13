@@ -321,6 +321,8 @@ export interface RareTodayHit {
   percentile: number;
   reasons: string[];
   against: string[];
+  /** True when this is something the person actually holds. */
+  held?: boolean;
 }
 
 /**
@@ -343,6 +345,20 @@ export function rareToday(fromMs: number, opts: {
   minPercentile?: number;
   tzOffsetMin?: number;
   limit?: number;
+  /**
+   * Activity keys the person actually holds — from their tasks, stars and
+   * habits.
+   *
+   * The notice scored all sixty activities blind, so it could announce a
+   * once-in-two-years day for "haircut / grooming" to someone who has never
+   * mentioned a haircut (integration audit 2026-08-13, gap 4). True, and
+   * unasked-for: the same shape as inventing work.
+   *
+   * Held activities lead. Unheld ones are still returned — a genuinely
+   * exceptional day is worth knowing about — but they are marked so the
+   * surface can put them second rather than in the headline.
+   */
+  heldActivityKeys?: string[];
 } = {}): { date: string; hits: RareTodayHit[] } {
   const horizonDays = opts.horizonDays ?? 730;
   const minPercentile = opts.minPercentile ?? 99;
@@ -388,6 +404,10 @@ export function rareToday(fromMs: number, opts: {
     });
   }
 
-  hits.sort((a, b) => b.percentile - a.percentile);
+  // Held first, then by rarity within each group — so the headline is
+  // something the person is actually carrying whenever one qualifies.
+  const held = new Set(opts.heldActivityKeys ?? []);
+  for (const h of hits) h.held = held.has(h.activityKey);
+  hits.sort((a, b) => Number(b.held) - Number(a.held) || b.percentile - a.percentile);
   return { date: fmtDate(fromMs, tzOffsetMin), hits: hits.slice(0, limit) };
 }

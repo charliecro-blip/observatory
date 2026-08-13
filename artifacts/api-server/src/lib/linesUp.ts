@@ -80,7 +80,7 @@ export interface HeldItem {
   id: string;
   title: string;
   /** Where it came from, so the UI can say so and link back. */
-  kind: "task" | "star-step" | "pinned";
+  kind: "task" | "star-step" | "pinned" | "habit";
   /**
    * Set when this item already has a reserved block.
    *
@@ -345,9 +345,25 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
       // fall through and match, rather than dropping the item silently.
     }
     const ranked = rankActivities(item.title, 3);
-    if (!ranked.length) continue;                     // nothing to say; not an error
-    const [best, runner] = ranked;
-    if (best.score < CONFIDENT_SCORE) continue;   // nothing credible; stay silent
+    const [best, runner] = ranked ?? [];
+    // NOT CREDIBLE IS STILL AN ANSWER.
+    //
+    // Both of these were bare `continue`s, so an item the matcher could not
+    // read vanished from every surface — indistinguishable from one Compass
+    // had never been given. That is the exact confusion `heldBack` exists to
+    // prevent, and it surfaced the moment habits joined the inventory: a
+    // habit called "Morning run" scores below the confidence bar, so it
+    // silently disappeared while its owner could plainly see it on the
+    // Habits page. The bar is right — guessing is worse — but the silence
+    // was not, and the reason is actionable: naming the kind of work fixes
+    // it, and only the person can do that.
+    if (!ranked.length || best.score < CONFIDENT_SCORE) {
+      heldBack.push({
+        item,
+        reason: "Compass can't tell what kind of work this is — name it to get timing",
+      });
+      continue;
+    }
     const contested = !!runner && runner.score >= RIVAL_SCORE &&
       best.score - runner.score < DECISIVE_MARGIN;
     if (contested) {

@@ -18,7 +18,7 @@ import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
 import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
 import { needsResolution } from "../lib/needsResolution.js";
-import { tasks, goals } from "@workspace/db";
+import { tasks, goals, habits, habitLogs } from "@workspace/db";
 import { computeNatalChart } from "../lib/natal.js";
 
 const router: IRouter = Router();
@@ -103,6 +103,52 @@ router.get("/elections/lines-up", async (req, res) => {
       // classification came from the planet-diagnosis flow and the user can see
       // and change it, so the keyword matcher must not overrule it.
       held.push({ id: `star-${g.id}`, title: g.title, kind: "star-step", activityKey: g.activityKey });
+    }
+
+    // ── HABITS ARE WORK TOO (integration audit 2026-08-13, gap 1).
+    //
+    // The habits table carries a complete timing signature — favoured
+    // elements, phases, planets, a kind of work, a solar anchor — and the
+    // timing engine had never read the table at all. Someone filled that
+    // form in and nothing consumed a word of it. Optional was meant to mean
+    // "the suggestion is skipped", not "the answer is discarded".
+    //
+    // Only what is genuinely OUTSTANDING is offered: a habit already done
+    // today needs no window, and one whose cadence does not want it today
+    // is not owed a slot. `occasional` habits are tracked and never scored,
+    // so they are never chased here either.
+    const habitRows = await db.select().from(habits).where(eq(habits.testerId, testerId));
+    if (habitRows.length) {
+      // The viewer's civil day, not the server's — habit logs are keyed to
+      // the local date, and a server in UTC would ask about tomorrow all
+      // evening for anyone west of it.
+      const todayStr = new Date(Date.now() - tzOffsetMin * 60000).toISOString().slice(0, 10);
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+      const logs = await db.select().from(habitLogs).where(eq(habitLogs.testerId, testerId));
+      const doneToday = new Set(logs.filter(l => l.date === todayStr).map(l => l.habitId));
+      const thisWeek = new Map<number, number>();
+      for (const l of logs) {
+        if (l.date >= weekAgo) thisWeek.set(l.habitId, (thisWeek.get(l.habitId) ?? 0) + 1);
+      }
+      for (const h of habitRows) {
+        if (h.status !== "active") continue;
+        if (doneToday.has(h.id)) continue;              // already kept today
+        if (h.cadence === "occasional") continue;       // tracked, never chased
+        if (h.cadence === "weekly") {
+          // A weekly habit that has already met its target this week is not
+          // outstanding — pressing it again is the manufactured obligation
+          // the cadence model exists to prevent.
+          const target = h.targetPerWeek ?? 3;
+          if ((thisWeek.get(h.id) ?? 0) >= target) continue;
+        }
+        held.push({
+          id: `habit-${h.id}`, title: h.name, kind: "habit",
+          // No stored activityKey on habits — the title is matched the same
+          // way a task's is, so the correspondence table stays the one
+          // classifier rather than habits growing a private scheme.
+          activityKey: null,
+        });
+      }
     }
   } catch {
     res.status(503).json({ error: "could not read your inventory", reason: "inventory-unread" });
@@ -359,9 +405,39 @@ router.get("/elections/times", async (req, res) => {
  * across every category. Strict by construction (see rareToday): most days
  * answer with an empty list, which is the point.
  */
-router.get("/elections/rare-today", (req, res) => {
+router.get("/elections/rare-today", async (req, res) => {
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
-  res.json(rareToday(Date.now(), { tzOffsetMin, limit: 3 }));
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+
+  // What the person actually holds, so a once-in-two-years day for their own
+  // work leads over one for an activity they have never mentioned. Failure
+  // here degrades to the unranked notice rather than losing it: knowing the
+  // sky is still worth something when the inventory read fails.
+  const heldActivityKeys: string[] = [];
+  if (testerId) {
+    try {
+      const rows = await db.select().from(tasks).where(eq(tasks.testerId, testerId));
+      for (const t of rows) {
+        if (t.done === "true") continue;
+        const key = t.activityKey ?? matchActivity(t.title ?? "")?.activity.key;
+        if (key) heldActivityKeys.push(key);
+      }
+      const starRows = await db.select().from(goals).where(eq(goals.testerId, testerId));
+      for (const g of starRows) {
+        if (g.status === "done" || g.status === "paused") continue;
+        const key = g.activityKey ?? matchActivity(g.title ?? "")?.activity.key;
+        if (key) heldActivityKeys.push(key);
+      }
+      const habitRows = await db.select().from(habits).where(eq(habits.testerId, testerId));
+      for (const h of habitRows) {
+        if (h.status !== "active") continue;
+        const key = matchActivity(h.name ?? "")?.activity.key;
+        if (key) heldActivityKeys.push(key);
+      }
+    } catch { /* unranked is still true */ }
+  }
+
+  res.json(rareToday(Date.now(), { tzOffsetMin, limit: 3, heldActivityKeys }));
 });
 
 router.get("/elections/rare", (req, res) => {

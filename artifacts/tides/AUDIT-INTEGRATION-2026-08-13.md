@@ -105,6 +105,24 @@ exceptional for…" line rather than leading with them.
   genuinely wired to routes (an earlier snake_case grep suggested otherwise;
   the code uses camelCase identifiers).
 
+## Executed 2026-08-13 (same day)
+
+| Gap | Status |
+|---|---|
+| 1 · Habits invisible to timing | **Closed.** Habits enter `linesUp` as held items, gated on cadence (done-today skipped, `occasional` never chased, a weekly habit at target left alone). Verified live: a habit now receives a real verdict. |
+| 3 · Check-in answers stranded | **Partly closed.** `lib/checkInState.ts` gives the saved answers one owner, and Guiding Stars now shows a "needs a look" flag on the stars marked at the turning point. Ceiling stated in the file: localStorage is per-device; the durable fix is a `goals` column and a migration. |
+| 4 · Rare notice ignores inventory | **Closed.** `/elections/rare-today` gathers activity keys from tasks, stars and habits; held activities lead, unheld ones are marked so the surface can rank them second. Inventory failure degrades to the unranked notice rather than losing it. |
+| 2 · Reflection loop | **Open by choice** — see below. |
+
+**Found while closing gap 1, and worth its own line:** `linesUp` dropped
+unmatched items with a bare `continue`, so an item the matcher could not
+read vanished from every surface — the exact confusion `heldBack` exists to
+prevent. It surfaced immediately once habits joined the inventory (a habit
+named "Morning run" scores 1.375 against a 2.0 confidence bar). The bar is
+right; guessing would be worse. The silence was the defect, and the reason
+is actionable: "Compass can't tell what kind of work this is — name it to
+get timing."
+
 ## Suggested order
 
 1. **Habits into `linesUp`** — largest gap, and it makes an existing form mean

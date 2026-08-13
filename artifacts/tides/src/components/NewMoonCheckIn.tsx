@@ -17,12 +17,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { localDateStr } from "@/lib/dates";
+import { CHECKIN_SAVE_KEY, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
 
 const ACCENT = ELEMENT_COLORS.fire; // Leo. Each cycle names its own accent.
 
 // ── The cycle — owner-edited, one block per lunation ─────────────────────
 const CYCLE = {
-  key: "2026-08-12-leo-eclipse",
+  // Single-sourced so the save key and this block can never name different
+  // cycles — the failure would be silent, and would look like lost data.
+  key: CHECKIN_CYCLE_KEY,
   opens: "2026-08-12",
   closes: "2026-08-16", // last day the prompt offers itself
   name: "New Moon in Leo · Solar Eclipse",
@@ -63,7 +66,10 @@ interface Saved {
 
 // Inside the `compass-` namespace so purgeLocalData() wipes them on account
 // deletion (tests/regressions.test.ts derives every written key and checks).
-const SAVE_KEY = `compass-nm-checkin-${CYCLE.key}`;
+//
+// The save key is defined in lib/checkInState so the Guiding Stars page can
+// read the same answers — one owner, not two copies that drift.
+const SAVE_KEY = CHECKIN_SAVE_KEY;
 const DISMISS_KEY = `compass-nm-dismiss-${CYCLE.key}`;
 
 /**
