@@ -202,6 +202,33 @@ wasn't?" — and deliberately **no goal-setting prompt** (full moons harvest,
 they don't plant). Alternate sharper verbs on file in
 ASTROLYRICA-COPY-HANDOFF.md if these read flat on screen.
 
+## 8d. Push: "now is a good hour for this aim" (owner 2026-08-12, NOT built)
+
+The kept aim is a standing intention with no time attached — and Compass
+already computes which hours suit which work. Closing that loop is the
+feature: **a push notification when an hour genuinely fits the cycle's one
+shot.** Not a reminder on a schedule; a notification the engine earned.
+
+What exists: VAPID push is built and wired, and the longitude-as-timezone
+bug that would have fired every ping at the wrong hour is fixed (BACKLOG
+§owner-actions — still needs `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` set on
+Railway). The election engine already answers "does this hour suit X."
+
+What's missing, and the design questions:
+- The aim is free text; timing needs an activity. Reuse the same
+  live-text→activity diagnosis the Guiding Star creation flow uses, run
+  once at keep-time and stored with the entry.
+- **Frequency is the whole risk.** A cycle is ~29 days; a suiting hour may
+  occur weekly. One push per cycle? Only for convergent windows? The
+  refusal instinct applies — a notification that fires often teaches people
+  to ignore it, and Compass's whole stance is that an empty day is a valid
+  answer.
+- Wording must be an offer, not a summons ("this hour suits the beta
+  invites — 4:10–5:30"), consistent with the check-in's own no-guilt rule.
+- Interacts with the standing rule that notifications need a real
+  transition (DESIGN.md §8) — a fitting hour IS an edge, so this fits the
+  existing architecture rather than bolting on a second notifier.
+
 ## 8. Explicitly open / unresolved
 
 - No UI has been designed. No data model has been proposed. This doc is

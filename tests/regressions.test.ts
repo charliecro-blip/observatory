@@ -1398,7 +1398,17 @@ describe("void of course windows", () => {
     const arc = D.computeDayArc(new Date(truthMs), 30.27, -97.74, tz);
     const windows = arc.vocWindows ?? [];
     if (!windows.length) return; // no void that day — nothing to check
-    const appEnd = Date.parse(windows[windows.length - 1].end);
+    // The window that ENDS at this ingress is the last one that STARTED
+    // before it — selected by start, asserted on end, so the check stays
+    // honest. Taking windows.at(-1) was wrong and only looked right on the
+    // majority of days: a civil day can hold a second void that opens in the
+    // evening and runs to the NEXT sign change (2026-08-13 had exactly that —
+    // 05:00→10:17:30 ending at the Virgo ingress, then 19:23:30→Aug 15), and
+    // on those days the old selector compared this ingress against the next
+    // one and failed by ~52 hours while the engine was correct to the second.
+    const ended = windows.filter((w: any) => Date.parse(w.start) < truthMs);
+    if (!ended.length) return; // the day's only void opens after the ingress
+    const appEnd = Date.parse(ended[ended.length - 1].end);
     // The old 10-minute scan drifted up to 600s. Anything over a minute would
     // be visible to someone timing a start against it.
     expect(Math.abs(appEnd - truthMs) / 1000).toBeLessThan(60);

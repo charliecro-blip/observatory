@@ -29,20 +29,33 @@ const CYCLE = {
   // volume up" coded intensity/threat where the true axis is visibility, and
   // "the south node points backward" was jargon half-translated. Both fixed.
   read: [
-    "Today's new moon is also a solar eclipse in Leo. A new moon opens a cycle; an eclipse is that same opening with the lights turned up — you notice more of it than usual. And this one leans backward: it favors setting something down over starting something new.",
-    "Keep the reset small. Name what you're done carrying, check your stars still point somewhere true, and call one shot for the cycle.",
+    "Today's new moon is also a solar eclipse in Leo. A new moon opens a cycle; an eclipse is that same opening with the lights turned up — you notice more of it than usual. And this one leans backward: toward what you've already lived rather than what's next.",
+    "That backward lean cuts two ways — some of it is weight to set down, and some of it is something of yours worth picking back up. Keep the reset small: name what you're done carrying, check your stars still point somewhere true, and call one shot for the cycle.",
   ],
   releaseLabel: "What are you done carrying?",
   releaseHint: "One line. It doesn't have to be graceful.",
+  reclaimLabel: "Anything worth picking back up?",
+  reclaimHint: "Something of yours you set aside. Skip if nothing comes.",
   oneShotLabel: "One shot for this cycle",
   oneShotHint: "One thing to aim at by the next new moon",
+  // What's coming, so the cycle has a shape rather than a single date. Dates
+  // from the app's own ephemeris (tools/turning-points-scan.ts); the owner
+  // curates them per cycle with the rest of this block.
+  ahead: [
+    { when: "Aug 28", what: "Full moon in Pisces — a lunar eclipse. The harvest of this one." },
+    { when: "Sep 11", what: "New moon in Virgo. This cycle closes; the next opens." },
+  ],
 };
 
 interface Saved {
   release: string;
+  /** The south node's other face — something of yours worth reclaiming. */
+  reclaim?: string;
   oneShot: string;
   stars: Record<string, "true" | "look">;
   savedAt: string;
+  /** Last edit, when the aim has been adjusted mid-cycle. */
+  revisedAt?: string;
   /** Local date the featured card stops showing (≈ next new moon). */
   until: string;
 }
@@ -106,8 +119,12 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
   });
   const [open, setOpen] = useState(false);
   const [release, setRelease] = useState("");
+  const [reclaim, setReclaim] = useState("");
   const [oneShot, setOneShot] = useState("");
   const [starMarks, setStarMarks] = useState<Record<string, "true" | "look">>({});
+  /** Editing an existing entry rather than writing a fresh one — the aim is
+   *  meant to move as the cycle does, so the page says so when you return. */
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -119,10 +136,16 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
   const today = localDateStr();
   const inWindow = today >= CYCLE.opens && today <= CYCLE.closes;
 
-  const beginFresh = () => { setRelease(""); setOneShot(""); setStarMarks({}); setOpen(true); };
+  const beginFresh = () => {
+    setRelease(""); setReclaim(""); setOneShot(""); setStarMarks({});
+    setEditing(false); setOpen(true);
+  };
   const beginEdit = () => {
-    if (saved) { setRelease(saved.release); setOneShot(saved.oneShot); setStarMarks(saved.stars); }
-    setOpen(true);
+    if (saved) {
+      setRelease(saved.release); setReclaim(saved.reclaim ?? "");
+      setOneShot(saved.oneShot); setStarMarks(saved.stars);
+    }
+    setEditing(true); setOpen(true);
   };
   const dismiss = () => {
     const d = localDateStr();
@@ -133,14 +156,19 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
     const until = new Date();
     until.setDate(until.getDate() + 29); // ≈ one lunation; engine-derived later
     const s: Saved = {
-      release: release.trim(), oneShot: oneShot.trim(), stars: starMarks,
-      savedAt: new Date().toISOString(), until: localDateStr(until),
+      release: release.trim(), reclaim: reclaim.trim(), oneShot: oneShot.trim(),
+      stars: starMarks,
+      // The original savedAt survives an edit — when you first sat down with
+      // the cycle is a different fact from when you last moved the aim.
+      savedAt: editing && saved ? saved.savedAt : new Date().toISOString(),
+      ...(editing ? { revisedAt: new Date().toISOString() } : {}),
+      until: editing && saved ? saved.until : localDateStr(until),
     };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch { /* private mode */ }
     setSaved(s);
     setOpen(false);
   };
-  const canKeep = release.trim().length > 0 || oneShot.trim().length > 0;
+  const canKeep = release.trim().length > 0 || reclaim.trim().length > 0 || oneShot.trim().length > 0;
   const looks = saved ? Object.values(saved.stars).filter((v) => v === "look").length : 0;
 
   const overlay = open && (
@@ -161,7 +189,9 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
               <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-foreground)" }}>
                 {CYCLE.name}
               </div>
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>About ten minutes. Yours to keep or skip.</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                {editing ? "Change anything. The aim is meant to move." : "About ten minutes. Yours to keep or skip."}
+              </div>
             </div>
           </div>
           <button onClick={() => setOpen(false)} aria-label="Close" style={{
@@ -170,7 +200,9 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
           }}>✕</button>
         </div>
 
-        {CYCLE.read.map((p, i) => (
+        {/* The read is for the first sitting. Coming back to move the aim,
+            you want the form, not the sermon — so it steps aside on edit. */}
+        {!editing && CYCLE.read.map((p, i) => (
           <p key={i} style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, margin: "10px 0 0" }}>{p}</p>
         ))}
 
@@ -178,6 +210,14 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
           <div style={LABEL}>{CYCLE.releaseLabel}</div>
           <input value={release} onChange={(e) => setRelease(e.target.value)}
             placeholder={CYCLE.releaseHint} style={INPUT} />
+        </div>
+
+        {/* The south node's other face. Optional on purpose — a prompt that
+            demands an answer would manufacture one. */}
+        <div style={{ marginTop: 16 }}>
+          <div style={LABEL}>{CYCLE.reclaimLabel}</div>
+          <input value={reclaim} onChange={(e) => setReclaim(e.target.value)}
+            placeholder={CYCLE.reclaimHint} style={INPUT} />
         </div>
 
         {stars.length > 0 && (
@@ -210,15 +250,31 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
             placeholder={CYCLE.oneShotHint} style={INPUT} />
         </div>
 
+        {/* The cycle gets a shape: what's coming, and when this one closes.
+            A preview, not a plan — no action attached to either line. */}
+        {CYCLE.ahead.length > 0 && (
+          <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid var(--color-border)" }}>
+            <div style={LABEL}>The cycle ahead</div>
+            {CYCLE.ahead.map((a, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, padding: "3px 0", alignItems: "baseline" }}>
+                <span style={{ fontSize: 11, color: ACCENT, flexShrink: 0, minWidth: 44, fontVariantNumeric: "tabular-nums" }}>{a.when}</span>
+                <span style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5 }}>{a.what}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
           <button onClick={keep} disabled={!canKeep} style={{
             fontSize: 12.5, fontWeight: 600, padding: "8px 18px", borderRadius: 8,
             border: "none", cursor: canKeep ? "pointer" : "default",
             background: canKeep ? "var(--color-primary)" : "var(--color-border)",
             color: "var(--color-card)",
-          }}>Keep this</button>
+          }}>{editing ? "Save changes" : "Keep this"}</button>
           <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-            {canKeep ? "Stays on your homepage until the next new moon." : "Write at least one line to keep it."}
+            {!canKeep ? "Write at least one line to keep it."
+              : editing ? "Adjust it as often as the cycle asks."
+              : "Stays on your homepage until the next new moon."}
           </span>
         </div>
       </div>
@@ -241,7 +297,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
             <button onClick={beginEdit} style={{
               fontSize: 10.5, background: "none", border: "none", padding: 0,
               cursor: "pointer", color: "var(--color-primary)",
-            }}>edit</button>
+            }}>adjust</button>
           </div>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 19, lineHeight: 1.3, color: "var(--color-foreground)", marginTop: 5 }}>
             {headline}
@@ -251,11 +307,24 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
               Setting down: {saved.release}
             </div>
           )}
+          {saved.reclaim && (
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 2 }}>
+              Picking back up: {saved.reclaim}
+            </div>
+          )}
           {looks > 0 && (
             <button onClick={onNavigate ? () => onNavigate("work") : undefined} style={{
               fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
               cursor: onNavigate ? "pointer" : "default", color: ACCENT,
             }}>{looks} star{looks === 1 ? "" : "s"} marked for a look →</button>
+          )}
+          {/* The next turning point, so the kept card knows where it's headed
+              and the cycle reads as a span rather than a note on a fridge. */}
+          {CYCLE.ahead.length > 0 && (
+            <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 7, paddingTop: 7, borderTop: "1px solid var(--color-border)" }}>
+              Next: {CYCLE.ahead[0].when} · {CYCLE.ahead[0].what}
+              {saved.revisedAt && <span> · adjusted {new Date(saved.revisedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+            </div>
           )}
         </div>
         {overlay}
