@@ -16,6 +16,12 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 const ENERGIES = ["low", "medium", "high"] as const;
+/** What the energy setting actually decides, said where it is set. */
+const ENERGY_HINT: Record<string, string> = {
+  low: "Can be done tired — placed in the day's quieter stretches",
+  medium: "Ordinary focus",
+  high: "Needs you at your best — placed at the day's peaks",
+};
 
 interface Card {
   title: string; estimatedMinutes: number; energy: string; dueDate: string | null;
@@ -55,6 +61,12 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   const [cards, setCards] = useState<Card[] | null>(null);   // editable, after parse
   const [result, setResult] = useState<WeaveResult | null>(null);
   const [dropped, setDropped] = useState<Set<number>>(new Set());
+  // What the minute field currently READS, per card, while it is being typed
+  // in. Clamping on every keystroke made the field impossible to edit: typing
+  // "6" toward "60" parsed as 6, was floored to the 15 minimum, and the
+  // caret landed after a number nobody typed — so backspace appeared to stick
+  // at 15 and no other value could be reached. The clamp belongs on blur.
+  const [minDraft, setMinDraft] = useState<Record<number, string>>({});
   const [committed, setCommitted] = useState(false);
   // Set when a restored draft's schedule had already gone stale.
   const [staleWeave, setStaleWeave] = useState(false);
@@ -338,13 +350,34 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-                    <input type="number" min={15} max={240} step={15} value={c.estimatedMinutes}
-                      onChange={(e) => editCard(i, { estimatedMinutes: Math.max(15, Math.min(240, parseInt(e.target.value) || 45)) })}
-                      style={{ width: 52, padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} /> min
+                    {/* Free typing: any minute count is allowed, not just the
+                        15-minute steps the arrows offer. The clamp runs on
+                        blur so a half-typed number is never rewritten under
+                        the caret. */}
+                    <input type="number" min={1} max={480} step={5} inputMode="numeric"
+                      value={minDraft[i] ?? String(c.estimatedMinutes)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setMinDraft((d) => ({ ...d, [i]: raw }));
+                        const n = parseInt(raw, 10);
+                        if (Number.isFinite(n) && n >= 1 && n <= 480) editCard(i, { estimatedMinutes: n });
+                      }}
+                      onBlur={() => {
+                        const n = parseInt(minDraft[i] ?? "", 10);
+                        const settled = Number.isFinite(n) ? Math.max(1, Math.min(480, n)) : c.estimatedMinutes;
+                        editCard(i, { estimatedMinutes: settled });
+                        setMinDraft((d) => { const next = { ...d }; delete next[i]; return next; });
+                      }}
+                      style={{ width: 58, padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} /> min
                   </label>
-                  <div style={{ display: "flex", gap: 3 }}>
+                  {/* The row said "low medium high" with nothing naming what
+                      was being set — three bare adjectives beside a duration
+                      read as anything at all. */}
+                  <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "var(--color-muted)", marginRight: 1 }}>energy</span>
                     {ENERGIES.map((en) => (
-                      <button key={en} onClick={() => editCard(i, { energy: en })} style={{
+                      <button key={en} onClick={() => editCard(i, { energy: en })}
+                        title={ENERGY_HINT[en]} style={{
                         fontSize: 10, padding: "3px 9px", borderRadius: 8, cursor: "pointer",
                         border: c.energy === en ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
                         background: c.energy === en ? "#1a2a3a10" : "var(--color-card-2)", color: c.energy === en ? "var(--color-foreground)" : "var(--text-3)",

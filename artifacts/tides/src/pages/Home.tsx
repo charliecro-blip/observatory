@@ -306,13 +306,15 @@ function SectionTitle({ children, note, action }: {
 }
 
 export default function Home({
-  testerId, lat, lon, onNavigate, onAskAboutElection,
+  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture,
 }: {
   testerId: string | null;
   lat: number;
   lon: number;
   onNavigate: (v: string) => void;
   onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void;
+  /** Opens the multi-line capture sheet — what "paste today's list" means. */
+  onQuickCapture?: () => void;
 }) {
   const qc = useQueryClient();
   const today = localToday();
@@ -1012,8 +1014,14 @@ export default function Home({
                   is asked for. The sub-line is the whole point of the shape. */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14, maxWidth: 520 }}>
                 {[
+                  // "Paste a list" has to OPEN somewhere to paste it. This
+                  // focused the one-line field far below instead, which read
+                  // as the click having failed — a door that only scrolls is
+                  // not a door. The capture sheet takes a whole dump at once.
                   { title: "Paste today's list", sub: "One line per thing.",
-                    go: () => document.querySelector<HTMLInputElement>('input[placeholder^="Add a task"]')?.focus() },
+                    go: () => onQuickCapture
+                      ? onQuickCapture()
+                      : document.querySelector<HTMLInputElement>('input[placeholder^="Add a task"]')?.focus() },
                   { title: "Choose recurring activities", sub: "Pick once; timing works from then on.",
                     go: () => onNavigate("work") },
                   { title: "Find a time for one thing", sub: "Name it and get a window.",

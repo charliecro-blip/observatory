@@ -1294,7 +1294,7 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onAskAboutElection={askAboutElection}/>}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
