@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -96,11 +96,40 @@ function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|
 const TIMING_COLORS = { resonant:"#3a6020", supported:ELEMENT_COLORS.water, neutral:"#888", soften:"#8a5020", protect:"#8a5020" };
 const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", soften:"#f0e0c0", protect:"#f0e0c0" };
 
-export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number }) {
+export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavigate }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number; onNavigate?:(v:string)=>void }) {
   const qc = useQueryClient();
   const today = localToday();
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset" });
+  // A half-filled habit form used to die on any tab change: the form is
+  // component state, and leaving Habits unmounts the page. Someone who had
+  // named a habit and set its cadence came back to an empty form with no
+  // indication anything had been lost (owner, 2026-08-13). The draft now
+  // survives on disk until it is submitted or explicitly discarded.
+  const HABIT_DRAFT_KEY = `compass-habit-draft-${testerId ?? "anon"}`;
+  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset" };
+  const readHabitDraft = () => {
+    try {
+      const raw = localStorage.getItem(HABIT_DRAFT_KEY);
+      if (!raw) return null;
+      return { ...BLANK_FORM, ...JSON.parse(raw) } as typeof BLANK_FORM;
+    } catch { return null; }
+  };
+  const [showAdd, setShowAdd] = useState(() => {
+    const d = readHabitDraft();
+    return !!(d && (d.name.trim() || d.emoji.trim()));
+  });
+  const [form, setForm] = useState(() => readHabitDraft() ?? BLANK_FORM);
+  // Written on every keystroke rather than on unmount: a tab change can
+  // unmount without a cleanup pass running in time, and the whole point is
+  // to survive leaving unexpectedly.
+  useEffect(() => {
+    const worth = form.name.trim() || form.emoji.trim() || form.minimumViable.trim()
+      || form.favoredElements.length || form.favoredPhases.length || form.favoredPlanets.length;
+    try {
+      if (showAdd && worth) localStorage.setItem(HABIT_DRAFT_KEY, JSON.stringify(form));
+      else if (!worth) localStorage.removeItem(HABIT_DRAFT_KEY);
+    } catch { /* private mode */ }
+  }, [form, showAdd, HABIT_DRAFT_KEY]);
+
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
@@ -159,6 +188,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:""});
       setNewGoalId(""); setNewProjectId("");
+      // Saved for real — the draft has nothing left to protect.
+      try { localStorage.removeItem(HABIT_DRAFT_KEY); } catch { /* private mode */ }
     },
   });
 
@@ -248,12 +279,21 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
 
         {/* New-moon review — the lunation's reset point, the natural moment to
             re-choose habits at the cycle scale habits actually live on. */}
+        {/* Clickable through to THIS new moon's own check-in, rather than a
+            standing note about new moons in general (owner, 2026-08-13) —
+            the reset it describes is the one the check-in actually runs. */}
         {now?.moonPhase === "New Moon" && habits.length > 0 && (
           <div style={{background:"#50608a08",border:"1px solid #7080a040",borderLeft:"3px solid #7080a0",borderRadius:10,padding:"10px 14px"}}>
             <div style={{fontSize:11,fontWeight:600,color:"#50608a",marginBottom:2}}>New moon — a natural reset</div>
             <div style={{fontSize:10.5,color:"#60709a",lineHeight:1.5}}>
               The lunation begins again. A good moment to look down this list and ask which habits still serve — retire what doesn't, recommit to what does.
             </div>
+            {onNavigate && (
+              <button onClick={() => onNavigate("home")} style={{
+                marginTop: 6, fontSize: 10.5, background: "none", border: "none", padding: 0,
+                cursor: "pointer", color: "#50608a", fontWeight: 600,
+              }}>Open this new moon's check-in →</button>
+            )}
           </div>
         )}
 
@@ -272,9 +312,15 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
         {/* Add form */}
         {showAdd && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"16px"}}>
-            <div style={{display:"flex",gap:8,marginBottom:10}}>
+            {/* The emoji box read as decoration nobody could change — it sat
+                unlabelled beside the name, so a sprout appeared on the habit
+                and looked like something the app had assigned (owner,
+                2026-08-13). It is yours; the label and title say so. */}
+            <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
               <input value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} placeholder="🌿" maxLength={2}
-                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",outline:"none"}}/>
+                title="Pick any emoji for this habit — tap and type or paste one"
+                aria-label="Habit icon"
+                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",outline:"none",cursor:"text"}}/>
               <input autoFocus value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
                 onKeyDown={e=>e.key==="Enter"&&form.name.trim()&&addHabit.mutate()}
                 placeholder="Habit name…"
@@ -335,6 +381,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
               )}
             </div>
 
+            {/* THE TIMING IS SECONDARY TO DOING THE THING (owner, 2026-08-13).
+                Everything below this line is optional and says so once, at the
+                top, rather than leaving a reader to guess whether a habit is
+                incomplete without an element, a phase and a planet. A habit
+                with none of it set is a perfectly good habit; the sky just
+                has less to say about when it suits. */}
+            <div style={{
+              fontSize:10.5, color:"var(--color-muted)", lineHeight:1.5,
+              borderTop:"1px solid var(--color-border)", paddingTop:9, marginTop:4, marginBottom:8,
+            }}>
+              <b style={{fontWeight:600}}>Timing — all optional.</b> Skip it and the habit works exactly the same; fill any of it in and Compass can suggest when it fits.
+            </div>
+
             <div style={{marginBottom:8}}>
               <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best elements</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -384,7 +443,10 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
               <select value={form.bestWindowType} onChange={e=>setForm(f=>({...f,bestWindowType:e.target.value}))}
                 style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"var(--text-2)"}}>
-                <option value="">Best time of day: any</option>
+                {/* Not a time of day — every option in this list is a KIND OF
+                    WORK (deep work, creative, social). The old label promised
+                    hours and delivered categories. */}
+                <option value="">Kind of work: any</option>
                 {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
               </select>
             </div>
@@ -474,17 +536,21 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0 }: { tes
                 <button onClick={()=>removeHabit.mutate(h.id)} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
               </div>
 
-              {/* 14-day streak dots */}
-              <div style={{display:"flex",gap:3,alignItems:"center"}}>
-                {h.days.map((d,i) => (
-                  <div key={d.date} title={d.date} style={{
+              {/* 14-day streak dots. "14d" alone named nothing — a row of
+                  dots beside an unexplained abbreviation is a mark the reader
+                  has to decode (owner, 2026-08-13). Each dot now says its own
+                  date and whether it was done, and the label says what the
+                  row is. */}
+              <div style={{display:"flex",gap:3,alignItems:"center"}} title="The last fourteen days — filled means done">
+                {h.days.map((d) => (
+                  <div key={d.date} title={`${new Date(d.date + "T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${d.done ? " — done" : d.isToday ? " — today, not yet" : " — not done"}`} style={{
                     width:d.isToday?10:7, height:d.isToday?10:7, borderRadius:"50%", flexShrink:0,
                     background:d.done?"#80b870":d.isToday?"var(--color-card-2)":"var(--color-card-2)",
                     border:d.isToday?`1.5px solid ${h.doneToday?"#60a050":"#c0bab0"}`:"none",
                     opacity:d.done||d.isToday?1:0.4,
                   }}/>
                 ))}
-                <div style={{fontSize:8,color:"var(--text-3)",marginLeft:4}}>14d</div>
+                <div style={{fontSize:8.5,color:"var(--text-3)",marginLeft:5}}>last 14 days</div>
               </div>
 
               {/* Timing note — the merged practices intelligence, in plain words */}

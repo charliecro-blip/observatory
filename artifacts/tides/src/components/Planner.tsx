@@ -214,6 +214,30 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
     },
   });
 
+  /**
+   * Keep ONE item, without taking the whole plan.
+   *
+   * All-or-nothing was the only option, so a plan that was right about eight
+   * of nine things had to be accepted wholesale or abandoned. The same
+   * /plan/commit endpoint takes a list, so a list of one is a legitimate
+   * commit — no new server surface.
+   */
+  const [keptOne, setKeptOne] = useState<Set<number>>(new Set());
+  const commitOne = useMutation({
+    mutationFn: async ({ idx }: { idx: number }) => {
+      const item = result?.planned[idx];
+      if (!item) throw new Error("nothing to keep");
+      const r = await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: [item] }) });
+      if (!r.ok) throw new Error("couldn't schedule that one");
+      return r.json();
+    },
+    onSuccess: (_d, { idx }) => {
+      invalidateWindows(qc);
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      setKeptOne((s) => new Set(s).add(idx));
+    },
+  });
+
   // Which row has its alternatives open. The plan is a proposal until commit,
   // so moving one is local state — no endpoint, nothing written.
   const [movingIdx, setMovingIdx] = useState<number | null>(null);
@@ -510,7 +534,19 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       {result && (
         <div>
           {keptCount > 0 ? (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Proposed schedule · {keptCount} task{keptCount === 1 ? "" : "s"}</div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Proposed schedule · {keptCount} task{keptCount === 1 ? "" : "s"}</div>
+              {/* NOTHING IS SAVED YET, said where the plan appears rather than
+                  only on the button at the bottom. Weaving reads as the act
+                  that did the thing — a full schedule is on screen — so a
+                  reader who stops here believes their list is on the calendar
+                  and later finds Tasks empty (owner, 2026-08-13). */}
+              {!committed && (
+                <div style={{ fontSize: 11, color: "#8a7a50", marginTop: 3 }}>
+                  A proposal — nothing is on your calendar or in Tasks until you keep it, below or per task.
+                </div>
+              )}
+            </div>
           ) : (
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10 }}>Nothing scheduled.</div>
           )}
@@ -614,6 +650,17 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         </div>
                       )}
                     </div>
+                    {/* Keep just this one. A plan that is right about eight of
+                        nine should not have to be taken whole or abandoned. */}
+                    {!committed && (
+                      keptOne.has(idx)
+                        ? <span style={{ fontSize: 10, color: "#3a6020", fontWeight: 600, flexShrink: 0 }}>✓ kept</span>
+                        : <button onClick={() => commitOne.mutate({ idx })} disabled={commitOne.isPending}
+                            title="Put just this one on the calendar" style={{
+                              fontSize: 9.5, padding: "3px 9px", borderRadius: 7, cursor: "pointer", flexShrink: 0,
+                              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", fontWeight: 600,
+                            }}>{commitOne.isPending && commitOne.variables?.idx === idx ? "…" : "keep"}</button>
+                    )}
                     <button onClick={() => setDropped((prev) => new Set(prev).add(idx))} title="Drop this one" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1 }}>✕</button>
                   </div>
                 );
