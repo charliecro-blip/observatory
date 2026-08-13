@@ -110,15 +110,38 @@ function fmtDate(ms: number, tzOffsetMin: number): string {
   return `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, "0")}-${String(local.getUTCDate()).padStart(2, "0")}`;
 }
 
+/** One day's sky, computed once and shared by every activity scored on it. */
+interface DaySky {
+  ms: number;
+  positions: ReturnType<typeof getPlanetPositions>;
+  byName: Map<string, ReturnType<typeof getPlanetPositions>[number]>;
+  waxing: boolean;
+}
+
+function skyFor(ms: number): DaySky {
+  const jd = sampleFor(ms);
+  const positions = getPlanetPositions(jd);
+  const phase = moonPhase(jd);
+  const name = phase.name.toLowerCase();
+  return {
+    ms,
+    positions,
+    byName: new Map(positions.map((p) => [p.planet, p])),
+    waxing: name.includes("waxing") || name.includes("new"),
+  };
+}
+
 /**
  * Score one day for one activity. Everything here is about STANDING
  * conditions — the slow layer that makes a day unusual — never the hour,
  * which the canonical engine owns.
+ *
+ * Takes a precomputed sky because the across-everything scan (`rareToday`)
+ * scores sixty activities against the same day, and recomputing the
+ * ephemeris per activity made that sixty times more expensive than it is.
  */
-function scoreDay(act: ActivityCorrespondence, ms: number, tzOffsetMin: number): DayScore {
-  const jd = sampleFor(ms);
-  const positions = getPlanetPositions(jd);
-  const byName = new Map(positions.map((p) => [p.planet, p]));
+function scoreDay(act: ActivityCorrespondence, sky: DaySky, tzOffsetMin: number): DayScore {
+  const { ms, positions, byName } = sky;
   const reasons: string[] = [];
   const against: string[] = [];
   let score = 0;
@@ -195,8 +218,7 @@ function scoreDay(act: ActivityCorrespondence, ms: number, tzOffsetMin: number):
   // ── Moon phase, where the activity declares a preference. A launch wants a
   // waxing Moon; a release wants a waning one. Modest weight — it recurs
   // monthly, so it cannot be what makes a day rare.
-  const phase = moonPhase(jd);
-  const waxing = phase.name.toLowerCase().includes("waxing") || phase.name.toLowerCase().includes("new");
+  const waxing = sky.waxing;
   if (act.phase === "waxing" && waxing) { score += 0.8; }
   else if (act.phase === "waxing" && !waxing) { score -= 0.5; against.push("the Moon is waning"); }
   else if (act.phase === "waning" && !waxing) { score += 0.8; }
@@ -245,7 +267,7 @@ export function findRareWindows(activityKey: string, fromMs: number, opts: RareO
 
   const all: DayScore[] = [];
   for (let d = 0; d < horizonDays; d++) {
-    all.push(scoreDay(act, fromMs + d * 86400000, tzOffsetMin));
+    all.push(scoreDay(act, skyFor(fromMs + d * 86400000), tzOffsetMin));
   }
 
   const sorted = all.map((d) => d.score).sort((a, b) => a - b);
@@ -287,4 +309,85 @@ export function findRareWindows(activityKey: string, fromMs: number, opts: RareO
     scan.topPercentile = Math.max(...days.map((d) => d.percentile));
   }
   return scan;
+}
+
+/** How far either side a day must lead to count as its occasion's crest. */
+const PEAK_RADIUS = 4;
+
+export interface RareTodayHit {
+  activityKey: string;
+  activityLabel: string;
+  category: string;
+  percentile: number;
+  reasons: string[];
+  against: string[];
+}
+
+/**
+ * "Is TODAY exceptional for anything?" — the across-every-category question,
+ * for the homepage.
+ *
+ * Deliberately strict. This is the one surface nobody opts into, so the bar
+ * is higher than the picker's: an activity qualifies only in the top
+ * `minPercentile` of a two-year horizon, which for most activities means a
+ * handful of days a year. Most days return nothing, and that is the correct
+ * behaviour — a banner that fires often is a banner people stop reading, and
+ * Compass's whole stance is that an ordinary day is a valid answer.
+ *
+ * One sky per day, shared across every activity: the naive version recomputed
+ * the ephemeris once per activity per day (sixty times the work) and took
+ * seconds.
+ */
+export function rareToday(fromMs: number, opts: {
+  horizonDays?: number;
+  minPercentile?: number;
+  tzOffsetMin?: number;
+  limit?: number;
+} = {}): { date: string; hits: RareTodayHit[] } {
+  const horizonDays = opts.horizonDays ?? 730;
+  const minPercentile = opts.minPercentile ?? 99;
+  const tzOffsetMin = opts.tzOffsetMin ?? 0;
+  const limit = opts.limit ?? 3;
+
+  // The horizon's skies, computed once for all activities.
+  const skies: DaySky[] = [];
+  for (let d = 0; d < horizonDays; d++) skies.push(skyFor(fromMs + d * 86400000));
+
+  // The days on either side of today, so "is today the crest" can be asked.
+  // Without them a stretch of Venus in Libra fires the banner every morning
+  // for a week, which is how a rare-moment notice becomes wallpaper.
+  const before: DaySky[] = [];
+  for (let d = PEAK_RADIUS; d >= 1; d--) before.push(skyFor(fromMs - d * 86400000));
+
+  const hits: RareTodayHit[] = [];
+  for (const act of ACTIVITIES) {
+    const scores = skies.map((s) => scoreDay(act, s, tzOffsetMin));
+    const sorted = scores.map((s) => s.score).sort((a, b) => a - b);
+    const today = scores[0];
+    const pct = percentileOf(sorted, today.score);
+    if (pct < minPercentile) continue;
+
+    // ── THE CREST RULE. A multi-day configuration is ONE occasion. Today
+    // earns the banner only if it is the strongest day of its own stretch —
+    // strictly better than the days behind it (so the notice fires once, on
+    // the way up) and at least as good as the days ahead.
+    const neighbours = [
+      ...before.map((s) => scoreDay(act, s, tzOffsetMin).score),
+      ...scores.slice(1, PEAK_RADIUS + 1).map((s) => s.score),
+    ];
+    const priorMax = Math.max(...before.map((s) => scoreDay(act, s, tzOffsetMin).score), -Infinity);
+    const aheadMax = Math.max(...scores.slice(1, PEAK_RADIUS + 1).map((s) => s.score), -Infinity);
+    if (neighbours.length && (today.score <= priorMax || today.score < aheadMax)) continue;
+    hits.push({
+      activityKey: act.key,
+      activityLabel: act.label,
+      category: act.category,
+      percentile: Math.round(pct * 10) / 10,
+      reasons: [...new Set(today.reasons)].slice(0, 3),
+      against: [...new Set(today.against)].slice(0, 2),
+    });
+  }
+
+  hits.sort((a, b) => b.percentile - a.percentile);
+  return { date: fmtDate(fromMs, tzOffsetMin), hits: hits.slice(0, limit) };
 }

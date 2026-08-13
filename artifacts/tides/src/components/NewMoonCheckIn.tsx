@@ -65,6 +65,22 @@ interface Saved {
 const SAVE_KEY = `compass-nm-checkin-${CYCLE.key}`;
 const DISMISS_KEY = `compass-nm-dismiss-${CYCLE.key}`;
 
+/**
+ * Whether the turning-point offer is currently claiming Home's banner slot.
+ *
+ * Exported so the banner queue has ONE authority for this question rather
+ * than a second copy of the window/dismissal/saved logic living in Home. A
+ * turning point outranks a rare-moment notice: eclipses and new moons are
+ * rarer than exceptional days, and two banners stacked is the failure this
+ * queue exists to prevent.
+ */
+export function turningPointPromptOpen(): boolean {
+  const today = localDateStr();
+  if (today < CYCLE.opens || today > CYCLE.closes) return false;
+  if (readSaved()) return false;                       // already answered
+  try { return localStorage.getItem(DISMISS_KEY) !== today; } catch { return true; }
+}
+
 function readSaved(): Saved | null {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -103,8 +119,10 @@ function EclipseMark({ size = 24 }: { size?: number }) {
 export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }: {
   testerId: string | null;
   onNavigate?: (v: string) => void;
-  /** True when a higher-priority banner (a live condition) holds Home's one
-   *  banner slot this render — the offer waits; the kept card still shows. */
+  /** True when something RARER holds the notice slot. Nothing currently
+   *  outranks a turning point, so Home leaves this unset; it stays for the
+   *  day something does (`turningPointPromptOpen` is the same question from
+   *  the other side). The kept card shows regardless — it is content. */
   suppressPrompt?: boolean;
 }) {
   const { data: starsData } = useNorthStars(testerId);

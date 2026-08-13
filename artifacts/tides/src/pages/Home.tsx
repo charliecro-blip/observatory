@@ -47,7 +47,8 @@ import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
 import { WeekStrip, useWeekShape } from "@/components/WeekShape";
-import NewMoonCheckIn from "@/components/NewMoonCheckIn";
+import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
+import RareMomentBanner from "@/components/RareMomentBanner";
 import { useUiDensity } from "@/contexts/preferences-context";
 import type { AskElectionContext } from "@/App";
 
@@ -686,8 +687,18 @@ export default function Home({
           it — a live condition outranks an invitation, and two stacked
           banners is how Today got to eight. The kept card is content, not a
           banner, and shows regardless. */}
-      <NewMoonCheckIn testerId={testerId} onNavigate={onNavigate}
-        suppressPrompt={!!(now?.voc?.isVOC && now.voc.reading)} />
+      {/* ── THE NOTICE QUEUE, ordered by RARITY — the rarer thing wins the
+          slot, because the whole value of an interruption is how seldom it
+          comes. Turning points (monthly; eclipse-tier rarer still) outrank
+          exceptional days (~14 a year), so only one of these two ever shows.
+
+          The void strip above is deliberately NOT in this queue. It is a
+          condition — information about the hour you are already in — not an
+          offer competing for attention, and it occurs on a large share of
+          days. An earlier version let it suppress both of these, which had
+          the common thing silencing the rare ones: exactly backwards. */}
+      <NewMoonCheckIn testerId={testerId} onNavigate={onNavigate} />
+      <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen()} />
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The

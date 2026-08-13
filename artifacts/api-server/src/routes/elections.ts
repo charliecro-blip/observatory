@@ -11,7 +11,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
-import { findRareWindows } from "../lib/rareWindows.js";
+import { findRareWindows, rareToday } from "../lib/rareWindows.js";
 import { linesUp, type HeldItem, needsWeaving } from "../lib/linesUp.js";
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
@@ -351,6 +351,16 @@ router.get("/elections/times", async (req, res) => {
  * one worth moving a week around. Day-scale by design; the hour inside a
  * returned day still comes from the canonical engine above.
  */
+/**
+ * "Is today exceptional for anything at all?" — the homepage's question,
+ * across every category. Strict by construction (see rareToday): most days
+ * answer with an empty list, which is the point.
+ */
+router.get("/elections/rare-today", (req, res) => {
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  res.json(rareToday(Date.now(), { tzOffsetMin, limit: 3 }));
+});
+
 router.get("/elections/rare", (req, res) => {
   const activityKey = (req.query.activity as string) ?? "";
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
