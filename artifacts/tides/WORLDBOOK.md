@@ -21,6 +21,28 @@ the owner found the tide *language* unintuitive as the product's main voice
 *function* stays loved. So: weather speaks first, and the tide goes back to
 being an instrument — which is where tides live in a real almanac anyway.
 
+## 1b. The timing is secondary to doing the thing (RATIFIED 2026-08-13)
+
+> "Being able to set goals and track them should almost be independent of
+> the timing — the timing can be a parallel suggestion." — owner, after an
+> hour of real use.
+
+Compass is a timing instrument bolted onto a perfectly ordinary way of
+keeping track of your work, and the ordinary part has to stand on its own.
+A habit with no element, no phase, no planet and no favoured hour is a
+complete habit. A task with no window is a complete task. The sky's reading
+runs alongside and offers; it never gates.
+
+The test, applied to any surface: **can a person set this up, and use it,
+without answering a single astrological question?** If not, the astrology
+has stopped being a suggestion and become a toll. Every timing input is
+optional, says so where it is asked, and its absence costs nothing but the
+suggestion itself.
+
+This is why the habit form now carries one line above its whole astro
+block — "Timing — all optional. Skip it and the habit works exactly the
+same" — and why that line is a template rather than a one-off.
+
 ## 2. The three registers (extends DESIGN.md §16's treaty)
 
 | Register | Job | Where |
