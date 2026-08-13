@@ -87,7 +87,7 @@ interface LinesUp {
   clarify: { held: { id: string; title: string }; candidates: { key: string; label: string }[] }[];
   alreadyScheduled: { id: string; title: string }[];
   heldBack: { item: { id: string; title: string }; reason: string }[];
-  quiet: "supported-only" | "nothing-singled-out" | "thin-inventory" | null;
+  quiet: "supported-only" | "nothing-singled-out" | "all-placed" | "thin-inventory" | null;
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   notPriced: number;
   chartAvailable: boolean;
@@ -993,7 +993,35 @@ export default function Home({
           <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>Reading the sky…</div>
         ) : (
           /* The quiet day CONTRACTS rather than disappearing. */
-          lines.quiet === "thin-inventory" ? (
+          lines.quiet === "all-placed" ? (
+            /* EVERYTHING IS ALREADY PLACED. Not a cold start — the opposite.
+               This state used to render the cold-start doors above a fully
+               scheduled list, telling someone their list was empty while it
+               sat one panel below. */
+            <div style={{ padding: "2px 20px 20px" }}>
+              <div style={{
+                fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.3,
+                color: "var(--color-foreground)", maxWidth: 560,
+              }}>
+                Everything you're holding already has a time.
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
+                {(lines.alreadyScheduled?.length ?? 0) > 0
+                  ? `${lines.alreadyScheduled.length} thing${lines.alreadyScheduled.length === 1 ? "" : "s"} on the calendar. Add something new and Compass will find it a window.`
+                  : "Add something new and Compass will find it a window."}
+              </div>
+              <div className="cta-row" style={{ display: "flex", gap: 16, marginTop: 14 }}>
+                <button onClick={() => onNavigate("calendar")} style={{
+                  fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--color-primary)",
+                }}>See the day →</button>
+                <button onClick={() => onQuickCapture?.()} style={{
+                  fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--text-3)",
+                }}>Add something</button>
+              </div>
+            </div>
+          ) : lines.quiet === "thin-inventory" ? (
             /* COLD START is its own state, not a thinner quiet day.
                Compass can only point at what someone holds, so with an empty
                inventory the honest move is to say that and open three doors —

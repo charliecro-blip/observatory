@@ -4,9 +4,11 @@ import { aiErrorMessage } from "@/lib/aiError";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { restorePlannerDraft } from "@/lib/plannerDraft";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNorthStars } from "@/hooks/useTides";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import PlanCalendar from "@/components/PlanCalendar";
 
 // The Planner — dump everything you need to do, and it weaves each task into the
 // calendar at the time the sky best supports it (GTD + astrology). Two steps:
@@ -28,6 +30,8 @@ interface Card {
   element: string; windowType: string; planets: string[]; rationale: string;
   /** Every lane this work suits, primary first. Absent means just `element`. */
   elements?: string[];
+  /** The Guiding Star this serves, when one is named. */
+  goalId?: number | null;
 }
 interface Alternative { startAt: string; endAt: string; date: string; tier: string; tierNote: string; planetaryHour: string; }
 interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; alternatives?: Alternative[]; }
@@ -69,6 +73,12 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   // caret landed after a number nobody typed — so backspace appeared to stick
   // at 15 and no other value could be reached. The clamp belongs on blur.
   const [minDraft, setMinDraft] = useState<Record<number, string>>({});
+  // The stars a task can be hung on. The intake is where someone knows what
+  // a piece of work is in service of — asking later, on a different page,
+  // is asking after the moment has passed.
+  const { data: starsRaw } = useNorthStars(testerId);
+  const stars = (Array.isArray(starsRaw) ? starsRaw : [])
+    .filter((g: any) => g.status !== "done" && g.status !== "paused");
   const [committed, setCommitted] = useState(false);
   // Set when a restored draft's schedule had already gone stale.
   const [staleWeave, setStaleWeave] = useState(false);
@@ -488,6 +498,21 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       + due date
                     </button>
                   )}
+                  {/* Hang it on a star. Only offered when stars exist —
+                      an empty picker is a question about something the
+                      person hasn't got. */}
+                  {stars.length > 0 && (
+                    <select value={c.goalId ?? ""} onChange={(e) => editCard(i, { goalId: e.target.value ? Number(e.target.value) : null })}
+                      title="The Guiding Star this serves"
+                      style={{
+                        padding: "3px 6px", borderRadius: 6, fontSize: 10.5, maxWidth: 150,
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: c.goalId ? "var(--color-foreground)" : "var(--text-3)",
+                      }}>
+                      <option value="">no star</option>
+                      {stars.map((g: any) => <option key={g.id} value={g.id}>{g.title}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 {/* Only offered on cards big enough to actually contain
@@ -591,6 +616,12 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               . Worth dropping a couple below before you commit — you can always weave them into next week.
             </div>
           )}
+
+          {/* The shape first, then the detail: whether the week is stacked
+              on Wednesday and empty on Thursday is the question a list
+              cannot answer. Same `planned` array as the rows below, so the
+              picture and the plan can never drift apart. */}
+          <PlanCalendar items={result.planned as any} dropped={dropped} />
 
           {/* Sorted at RENDER, not once at weave time. The array was ordered
               chronologically when it arrived, so grouping followed it — but a

@@ -149,7 +149,8 @@ export interface Clarification {
 export type QuietReason =
   | "supported-only"      // nothing convergent, but usable windows exist
   | "nothing-singled-out" // the sky says nothing in particular about these
-  | "thin-inventory";     // not enough held to time
+  | "all-placed"          // everything held already has a block — nothing left to time
+  | "thin-inventory";     // nothing held at all
 
 export interface LinesUp {
   results: LinesUpResult[];
@@ -411,7 +412,22 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   // The quiet states are distinct because they mean different things and want
   // different responses from the reader.
   let quiet: QuietReason | null = null;
-  if (!top.length) quiet = timeable.length ? "nothing-singled-out" : "thin-inventory";
+  if (!top.length) {
+    // "NOTHING TO TIME" IS NOT "NOTHING ON YOUR LIST".
+    //
+    // `timeable` excludes everything already holding a block, so a person
+    // whose whole list was woven onto the calendar hit the thin-inventory
+    // branch and Home told them "Compass times the things on your list.
+    // There's nothing on it yet" — with the list sitting one panel below,
+    // fully scheduled (owner, 2026-08-13). Those are opposite facts, and
+    // the cold-start doors it opens are the wrong offer entirely.
+    //
+    // Thin inventory now means what it says: nothing held at all. Holding
+    // work that is already placed is its own state.
+    quiet = timeable.length ? "nothing-singled-out"
+      : (alreadyScheduled.length || clarify.length || heldBack.length) ? "all-placed"
+      : "thin-inventory";
+  }
   else if (!anyConvergent && sawSupported) quiet = "supported-only";
 
   return {

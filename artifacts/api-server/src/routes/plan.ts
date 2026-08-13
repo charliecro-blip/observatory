@@ -38,6 +38,8 @@ interface ParsedTask {
   estimatedMinutes: number;
   energy: Energy;
   dueDate: string | null; // YYYY-MM-DD
+  /** The Guiding Star this serves, when the intake named one. */
+  goalId?: number | null;
   /**
    * The classification as REVIEWED BY THE USER, when the request came from the
    * edit pass rather than a raw dump.
@@ -278,6 +280,9 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         energy: normEnergy(t.energy),
         dueDate: /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate ?? "") ? t.dueDate : null,
         assoc,
+        // Rides through the weave so commit can attach it; the intake is
+        // where a person knows what a task is in service of.
+        goalId: Number.isFinite(Number(t.goalId)) && Number(t.goalId) > 0 ? Number(t.goalId) : null,
         classificationSource: (edited ? "user" : "deterministic") as "user" | "deterministic",
       };
     });
@@ -411,6 +416,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         estimatedMinutes: t.estimatedMinutes,
         energy: t.energy,
         dueDate: t.dueDate,
+        ...(t.goalId ? { goalId: t.goalId } : {}),
         element: t.assoc.element,
         ...(t.assoc.elements?.length ? { elements: t.assoc.elements } : {}),
         windowType: t.assoc.windowType,
@@ -574,14 +580,24 @@ router.post("/plan/commit", requireTesterId, async (req, res) => {
 
       // Window first, so the task can point at it in one write rather than
       // needing an update — no window is ever briefly orphaned.
+      // The Guiding Star this belongs to, when the intake named one. Carried
+      // on BOTH rows: the window so a session counts toward the star, the
+      // task so the star's own page can see it. Dropped here previously, so
+      // work dumped into the planner arrived unattached to anything it was
+      // actually in service of (owner, 2026-08-13).
+      const goalId = Number.isFinite(Number(it.goalId)) && Number(it.goalId) > 0
+        ? Number(it.goalId) : null;
+
       const [win] = await tx.insert(planningWindows).values({
         testerId, title: it.title.trim(), windowType,
         startTime: new Date(it.startAt), endTime: new Date(it.endAt),
         notes: "Planned by the weaver",
+        ...(goalId ? { goalId } : {}),
       }).returning();
       const [task] = await tx.insert(tasks).values({
         testerId, title: it.title.trim(), dueDate, bestWindowType: windowType,
         planningWindowId: win.id,
+        ...(goalId ? { goalId } : {}),
       }).returning();
       out.push({ taskId: task.id, windowId: win.id });
     }
