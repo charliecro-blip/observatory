@@ -46,8 +46,12 @@ describe("the reviewed card is authoritative", () => {
 describe("but request input is still validated", () => {
   it("only accepts the four real elements", () => {
     // Trusting the card must not mean trusting arbitrary POST bodies into the
-    // scheduler.
-    expect(src).toMatch(/\["fire", "earth", "air", "water"\] as const\)\.includes/);
+    // scheduler. The four-element literal moved into a named constant when
+    // multi-lane arrived (2026-08-13); both the single element and every
+    // member of the `elements` array are still validated against it.
+    expect(src).toMatch(/const EL = \["fire", "earth", "air", "water"\] as const/);
+    expect(src).toMatch(/EL\.includes\(t\.element\)/);
+    expect(src).toMatch(/\(EL as readonly string\[\]\)\.includes\(e\)/);
   });
 
   it("only accepts known window types", () => {
@@ -55,7 +59,10 @@ describe("but request input is still validated", () => {
   });
 
   it("falls back to the deterministic read when a field is unrecognised", () => {
-    expect(src).toMatch(/element \?\? derived\.element/);
+    // With multi-lane, a card may name lanes without naming a primary — the
+    // first lane stands in before the deterministic read is reached, and the
+    // read is still the final fallback when neither was given.
+    expect(src).toMatch(/element \?\? elements\[0\] \?\? derived\.element/);
     expect(src).toMatch(/windowType \?\? derived\.windowType/);
   });
 });

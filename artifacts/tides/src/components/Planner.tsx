@@ -26,6 +26,8 @@ const ENERGY_HINT: Record<string, string> = {
 interface Card {
   title: string; estimatedMinutes: number; energy: string; dueDate: string | null;
   element: string; windowType: string; planets: string[]; rationale: string;
+  /** Every lane this work suits, primary first. Absent means just `element`. */
+  elements?: string[];
 }
 interface Alternative { startAt: string; endAt: string; date: string; tier: string; tierNote: string; planetaryHour: string; }
 interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; alternatives?: Alternative[]; }
@@ -235,6 +237,60 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   const editCard = (i: number, patch: Partial<Card>) => setCards((cs) => cs!.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const removeCard = (i: number) => setCards((cs) => cs!.filter((_, j) => j !== i));
 
+  /**
+   * Break one big card into the moments it is actually made of.
+   *
+   * A three-hour card is not a three-hour act — it is several, and the sky
+   * suits them differently. This reuses the same /planning/breakdown the
+   * Guiding Stars use, but keeps the result HERE as cards rather than
+   * committing steps to a goal: the intake's job is to make the list true
+   * before anything is scheduled, not to start a project.
+   *
+   * The parent's estimate is divided among the parts, so a broken-down task
+   * does not silently triple the time it claims on the week.
+   */
+  const breakDown = useMutation({
+    mutationFn: async ({ card }: { card: Card; index: number }) => {
+      const r = await fetch("/api/planning/breakdown", {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ title: card.title }),
+      });
+      if (!r.ok) throw new Error(await aiErrorMessage(r));
+      return (await r.json()).milestones as { title: string; element: string }[];
+    },
+    onSuccess: (steps, { card, index }) => {
+      const parts = (steps ?? []).filter((s) => s.title?.trim());
+      if (!parts.length) return;
+      const each = Math.max(15, Math.round(card.estimatedMinutes / parts.length));
+      setCards((cs) => {
+        if (!cs) return cs;
+        const made: Card[] = parts.map((s) => ({
+          ...card,
+          title: s.title.trim(),
+          estimatedMinutes: each,
+          element: ["fire", "earth", "air", "water"].includes(s.element) ? s.element : card.element,
+          elements: undefined,
+        }));
+        return [...cs.slice(0, index), ...made, ...cs.slice(index + 1)];
+      });
+    },
+  });
+
+  /** A card's lanes, primary first. Absent `elements` means the single one. */
+  const cardElements = (c: Card): string[] => (c.elements?.length ? c.elements : [c.element]);
+
+  /**
+   * Add or remove a lane. The last one cannot be removed — a task with no
+   * element has nothing to be scheduled against, and silently falling back
+   * to a guess would undo the correction the user just made.
+   */
+  const toggleElement = (i: number, c: Card, el: string) => {
+    const cur = cardElements(c);
+    const next = cur.includes(el) ? cur.filter((x) => x !== el) : [...cur, el];
+    if (!next.length) return;
+    editCard(i, { elements: next, element: next[0] });
+  };
+
   const keptCount = (result?.planned.length ?? 0) - dropped.size;
   const byDay: Record<string, { item: PlannedItem; idx: number }[]> = {};
   (result?.planned ?? []).forEach((item, idx) => {
@@ -334,12 +390,19 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                 {/* The read is a guess, not a verdict — every element stays one
                     tap away (a list of unrecognized tasks once came back
                     uniformly "earth" with no way to disagree). */}
-                <div style={{ display: "flex", gap: 4, marginBottom: 7 }}>
+                {/* Several lanes at once, because some work honestly belongs
+                    in more than one: filming is the performance AND the
+                    making. The scheduler treats them as alternatives — any
+                    lane counts as a match — so naming a second one widens
+                    the hours that suit, it does not dilute them. The first
+                    stays primary for colour and for display. */}
+                <div style={{ display: "flex", gap: 4, marginBottom: 7, flexWrap: "wrap", alignItems: "center" }}>
                   {(["fire", "earth", "air", "water"] as const).map((el) => {
                     const ec = ELEMENT_COLOR[el];
-                    const active = c.element === el;
+                    const chosen = cardElements(c);
+                    const active = chosen.includes(el);
                     return (
-                      <button key={el} onClick={() => editCard(i, { element: el })} style={{
+                      <button key={el} onClick={() => toggleElement(i, c, el)} style={{
                         fontSize: 10, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                         border: active ? `1.5px solid ${ec}` : "1px solid var(--color-border)",
                         background: active ? `${ec}14` : "var(--color-card-2)",
@@ -347,6 +410,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       }}>● {el}</button>
                     );
                   })}
+                  {cardElements(c).length > 1 && (
+                    <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>any of these suits it</span>
+                  )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
@@ -399,6 +465,33 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                     </button>
                   )}
                 </div>
+
+                {/* Only offered on cards big enough to actually contain
+                    parts. A 45-minute task broken into three fifteens is
+                    bookkeeping, not planning. */}
+                {c.estimatedMinutes >= 90 && (
+                  <div style={{ marginTop: 7 }}>
+                    <button
+                      onClick={() => breakDown.mutate({ card: c, index: i })}
+                      disabled={breakDown.isPending}
+                      style={{
+                        fontSize: 10.5, color: "#7a6cae", background: "none", border: "none",
+                        cursor: "pointer", padding: 0, textDecoration: "underline", fontWeight: 600,
+                      }}>
+                      {breakDown.isPending && breakDown.variables?.index === i
+                        ? "thinking it through…"
+                        : "✦ break into moments"}
+                    </button>
+                    <span style={{ fontSize: 9.5, color: "var(--text-3)", marginLeft: 8 }}>
+                      {Math.round(c.estimatedMinutes / 60 * 10) / 10}h — the sky may suit its parts differently
+                    </span>
+                    {breakDown.isError && breakDown.variables?.index === i && (
+                      <div style={{ fontSize: 9.5, color: "#a03030", marginTop: 3 }}>
+                        {(breakDown.error as Error)?.message ?? "Couldn't break that down — try again."}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

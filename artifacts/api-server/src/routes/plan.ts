@@ -62,7 +62,11 @@ const DEFAULT_MINUTES = 45;
 function clampMinutes(n: unknown): number {
   const v = typeof n === "number" ? n : parseInt(String(n ?? ""), 10);
   if (!Number.isFinite(v)) return DEFAULT_MINUTES;
-  return Math.max(15, Math.min(240, Math.round(v / 15) * 15));
+  // Kept to a sane range, but NOT rounded to quarter-hours. The estimate is
+  // the user's own read of their work — snapping 50 minutes to 45 changes
+  // what they said while the field goes on displaying what they typed, which
+  // is the field lying about what was saved.
+  return Math.max(1, Math.min(480, Math.round(v)));
 }
 
 function normEnergy(e: unknown): Energy {
@@ -247,12 +251,20 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       // An unrecognised element or window type falls back to the deterministic
       // read rather than being passed through into scheduling.
       const derived = associateDeterministic(title);
-      const element = (["fire", "earth", "air", "water"] as const).includes(t.element) ? t.element as Association["element"] : null;
+      const EL = ["fire", "earth", "air", "water"] as const;
+      const element = EL.includes(t.element) ? t.element as Association["element"] : null;
+      // A task may name several lanes. Validated the same way as the single
+      // one — anything unrecognised is dropped rather than passed through.
+      const elements = Array.isArray(t.elements)
+        ? [...new Set((t.elements as unknown[]).filter((e): e is Association["element"] =>
+            typeof e === "string" && (EL as readonly string[]).includes(e)))]
+        : [];
       const windowType = WINDOW_TYPES.includes(t.windowType) ? t.windowType : null;
-      const edited = element != null || windowType != null;
+      const edited = element != null || windowType != null || elements.length > 0;
       const assoc: Association | undefined = edited ? {
         ...derived,
-        element: element ?? derived.element,
+        element: element ?? elements[0] ?? derived.element,
+        elements: elements.length ? elements : undefined,
         windowType: (windowType ?? derived.windowType) as typeof derived.windowType,
         planets: Array.isArray(t.planets) && t.planets.length
           ? (t.planets as unknown[]).filter((p): p is string => typeof p === "string").slice(0, 3)
@@ -293,7 +305,10 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     gte(planningWindows.startTime, new Date(nowMs)),
     lte(planningWindows.startTime, new Date(horizonEndMs)),
   ));
-  const placementCtx: { index: number; candidates: Slot[]; durMs: number; dueMs: number; element: string; chosen: number }[] = [];
+  // `lanes` rather than one element: the alternatives pass has to grade a
+  // slot the same way the original placement did, and a multi-lane task
+  // matches in any of its lanes.
+  const placementCtx: { index: number; candidates: Slot[]; durMs: number; dueMs: number; lanes: Set<string>; chosen: number }[] = [];
   const reserved: { s: number; e: number }[] = existing.map((w) => ({
     s: new Date(w.startTime).getTime(), e: new Date(w.endTime).getTime(),
   }));
@@ -370,7 +385,11 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         endAt: new Date(s.startMs + durMs),
       });
     };
-    const laneRank = (s: Slot) => (s.element === t.assoc.element ? 0 : 1);
+    // The lanes this task accepts. A multi-element task matches in ANY of
+    // them — that is the whole point of naming more than one — so the rank
+    // is set membership rather than equality with the primary.
+    const lanes = new Set<string>(t.assoc.elements?.length ? t.assoc.elements : [t.assoc.element]);
+    const laneRank = (s: Slot) => (lanes.has(s.element) ? 0 : 1);
     const candidates = slots
       .filter((s) => s.startMs >= nowMs && s.startMs + durMs <= Math.min(s.endMs + 30 * 60000, dueMs))
       .map((s) => ({ s, v: verdictOf(s) }))
@@ -386,13 +405,14 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       // Kept so a second pass can offer alternatives once every item has been
       // placed. Computing them here would be wrong: `reserved` is still
       // growing, so a slot that looks free now may be taken by the next task.
-      placementCtx.push({ index: planned.length, candidates, durMs, dueMs, element: t.assoc.element, chosen: start });
+      placementCtx.push({ index: planned.length, candidates, durMs, dueMs, lanes, chosen: start });
       planned.push({
         title: t.title,
         estimatedMinutes: t.estimatedMinutes,
         energy: t.energy,
         dueDate: t.dueDate,
         element: t.assoc.element,
+        ...(t.assoc.elements?.length ? { elements: t.assoc.elements } : {}),
         windowType: t.assoc.windowType,
         planets: t.assoc.planets,
         rationale: t.assoc.rationale,
@@ -435,7 +455,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       if (placed) break;
       const start = s.startMs;
       if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
-      const matched = s.element === t.assoc.element;
+      const matched = lanes.has(s.element);
       push(start, s.date, matched, matched ? "great" : "workable");
       placed = true;
       break;
@@ -452,7 +472,10 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
           if (start < nowMs) continue;
           if (start + durMs > dueMs) break outer; // past the deadline — later days won't help
           if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
-          const e = energyAt(grid, t.assoc.element, h);
+          // The best of its lanes: a task that is both fire and water should
+          // be graded on whichever curve is actually strong at this hour,
+          // not on whichever lane happens to be listed first.
+          const e = Math.max(...[...lanes].map((el) => energyAt(grid, el, h)));
           push(start, grid.date, false, e >= 0.35 ? "workable" : "against");
           placed = true;
           break outer;
@@ -510,7 +533,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       if (claimed.some((k) => overlaps(start, start + ctx.durMs, k.s, k.e))) continue;
       seenDays.add(c.date);
       claimed.push({ s: start, e: start + ctx.durMs });
-      const matched = c.element === ctx.element;
+      const matched = ctx.lanes.has(c.element);
       const tier: Tier = matched ? "great" : "workable";
       alts.push({
         startAt: new Date(start).toISOString(),

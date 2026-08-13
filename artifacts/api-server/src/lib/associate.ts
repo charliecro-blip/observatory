@@ -17,6 +17,16 @@ export type WindowType =
 
 export interface Association {
   element: "fire" | "earth" | "air" | "water";
+  /**
+   * Every elemental lane this work legitimately belongs in, primary first.
+   *
+   * Most tasks have one. Some genuinely have several — filming a series is
+   * fire (the performance) and water (the making) and air (the writing) at
+   * once, and forcing a single lane means the scheduler rejects two thirds
+   * of the hours that actually suit it. Absent or empty means `[element]`,
+   * so every existing caller keeps its exact behaviour.
+   */
+  elements?: Array<"fire" | "earth" | "air" | "water">;
   planets: string[];       // strongest first, up to 2
   windowType: WindowType;
   rationale: string;       // one plain sentence, no jargon required to read
