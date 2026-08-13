@@ -208,3 +208,39 @@ of why, and — if DECLARE DIFFERENT — the specific invariant (shared table,
 shared weight, shared test) that should hold anyway. Then an order of
 operations for whatever gets RECONCILE, sized by risk and effort, not just
 severity.
+
+---
+
+## ADDENDUM — Pass 3 done, 2026-08-13
+
+`ActivityAssessment` now carries the agreement axis. What changed:
+
+- **`supportLevelFrom(families)` is exported and shared.** The rule — at
+  least one establishing testimony at the centre; two converge alone, one
+  plus two reinforcing also does — existed only as an expression inline in
+  `computeElections`. It is now a pure function that `computeElections` and
+  `evaluateActivityInterval` both call, so the two cannot drift on what
+  "convergent" means. `computeElections`'s behaviour is unchanged, which the
+  full suite confirms verdict-for-verdict.
+- **`evaluateActivityInterval` returns `families` and `supportLevel`.**
+  Active families are computed for the interval in the same taxonomy:
+  `planetary-time` (the hour's ruler is one the activity names),
+  `lunar-condition` (the Moon's sign is favoured), `lunar-contact` (the Moon
+  perfects to a significator INSIDE the interval — an event, so establishing).
+
+**Deliberately still absent: the natal families.** `evaluateActivityInterval`
+is given no chart, and claiming personal reinforcement from a chart it cannot
+see would be a fabrication. Callers holding a chart still get
+`natal-house`/`natal-contact` from `computeElections`. Closing that gap means
+giving the assessment an optional natal parameter — the remaining piece, and
+a smaller one now that the axis exists.
+
+**A performance trap worth recording.** The first version called
+`scanMoonPerfections` per interval. That function sweeps a whole day in
+ten-minute steps, and `evaluateActivityInterval` runs in tight loops (once
+per candidate slot in the planner, once per option in the session finder) —
+so the suite went from seconds to timeouts, and `oneAuthority` failed while
+passing in isolation. Diagnosed by stashing: clean HEAD passed the full run,
+the change did not. Fixed with a per-day memo capped at 16 entries. Same
+shape as the rare-window scan's `getMajorAspects` problem: a helper that is
+cheap once is not cheap in a loop.

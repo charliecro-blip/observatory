@@ -258,6 +258,51 @@ const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
   ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
 
 /**
+ * THE AGREEMENT RULE, in one place.
+ *
+ * "How many independent testimonies agree" is the second axis of the
+ * canonical verdict (suitability being the first), and until now it existed
+ * only as an expression inline in `computeElections` — so anything else
+ * wanting the same answer had to restate it, which is how a codebase ends
+ * up with two modules quietly disagreeing about convergence.
+ *
+ * Exported and pure: at least one ESTABLISHING testimony must sit at the
+ * centre. Two of them converge on their own; one plus two reinforcing
+ * conditions also does. A pile of reinforcing conditions never does,
+ * however tall.
+ */
+/**
+ * One day's Moon perfections, computed once.
+ *
+ * `scanMoonPerfections` sweeps a whole day in ten-minute steps, and
+ * `evaluateActivityInterval` is called in tight loops — once per candidate
+ * slot in the planner, once per option in the session finder. Calling it
+ * per interval made the assessment quadratic in a way the unit tests found
+ * immediately (every suite that assesses many intervals went from seconds
+ * to timeouts), which is the same defect the rare-window scan had before
+ * its geometry was made local.
+ *
+ * Keyed by local day-start, capped so a long-running process cannot grow it
+ * without bound.
+ */
+const moonPerfCache = new Map<number, ReturnType<typeof scanMoonPerfections>>();
+function moonPerfectionsForDay(dayStartMs: number): ReturnType<typeof scanMoonPerfections> {
+  const hit = moonPerfCache.get(dayStartMs);
+  if (hit) return hit;
+  const scan = scanMoonPerfections(dayStartMs);
+  if (moonPerfCache.size > 16) moonPerfCache.clear();
+  moonPerfCache.set(dayStartMs, scan);
+  return scan;
+}
+
+export function supportLevelFrom(families: SourceFamily[]): SupportLevel {
+  const establishing = families.filter(f => roleOf(f) === "establishing");
+  const reinforcing = families.filter(f => roleOf(f) === "reinforcing");
+  return establishing.length >= 2 || (establishing.length >= 1 && reinforcing.length >= 2)
+    ? "convergent" : "supported";
+}
+
+/**
  * THE CANONICAL ACTIVITY VERDICT.
  *
  * One interval plus one activity has exactly one astrological judgment, and it
@@ -338,6 +383,23 @@ export interface ActivityAssessment {
   suitabilityReasons: SuitabilityReason[];
   /** Moon-sign affinity: a PRIOR for ranking, never a driver of suitability. */
   backgroundFit: "aligned" | "neutral" | "contrary";
+  /**
+   * The testimony families active over this interval — the receipt behind
+   * `supportLevel`, in the same taxonomy the window engine uses.
+   *
+   * Natal families never appear here: this function is given no chart, and
+   * claiming personal reinforcement it cannot see would be a fabrication.
+   */
+  families: SourceFamily[];
+  /**
+   * The agreement axis: how much independent testimony converges.
+   *
+   * Second of the two axes, alongside `suitability`. They answer different
+   * questions and must never be fused — a retrograde significator does not
+   * make the supporting testimonies disappear, it changes what acting on
+   * their agreement is worth.
+   */
+  supportLevel: SupportLevel;
   /** Interval-specific sky events, already judged for this activity. */
   transitions: { kind: string; at: Date; role: "qualification" | "internal-chapter" | "irrelevant" }[];
 }
@@ -402,9 +464,45 @@ export function evaluateActivityInterval(opts: {
     : reasons.some(r => QUALIFY_REASONS.has(r.kind)) ? "qualified"
     : "clear";
 
+  // ── THE AGREEMENT AXIS (Pass 3 of the one-authority migration).
+  //
+  // The assessment answered "what is acting on this worth" but not "how much
+  // agrees", so every caller wanting the second had to go back to
+  // computeElections and recompute it on the same internals — the gap the
+  // August handoff called the highest-leverage architecture step.
+  //
+  // Which families are ACTIVE over this interval, using the same taxonomy
+  // and the same rule as the window engine:
+  //
+  //   planetary-time  — the hour's ruler is one this activity names
+  //   lunar-contact   — the Moon perfects an aspect to a significator inside
+  //                     the interval (an event, with a time: establishing)
+  //   lunar-condition — the Moon's sign is one this activity favours
+  //
+  // Natal families are absent by construction: this function takes no chart,
+  // and inventing personal reinforcement from a chart it cannot see would be
+  // exactly the fabrication the house rules forbid. A caller holding a chart
+  // still gets those from computeElections.
+  const families: SourceFamily[] = [];
+  const hourRuler = act.hourRulers?.length
+    ? getPlanetaryHour(new Date((startAt.getTime() + endAt.getTime()) / 2)).ruler
+    : null;
+  if (hourRuler && act.hourRulers.includes(hourRuler)) families.push("planetary-time");
+  if (act.signs?.[moonSign]) families.push("lunar-condition");
+  const sigSet = new Set(sigPlanets);
+  if (sigSet.size) {
+    const dayStart = new Date(startAt); dayStart.setHours(0, 0, 0, 0);
+    const perfects = moonPerfectionsForDay(dayStart.getTime())
+      .some(ev => sigSet.has(ev.planet)
+        && ev.timeMs >= startAt.getTime() && ev.timeMs <= endAt.getTime());
+    if (perfects) families.push("lunar-contact");
+  }
+
   return {
     activityKey: act.key, startAt, endAt,
     suitability, suitabilityReasons: reasons, backgroundFit,
+    families,
+    supportLevel: supportLevelFrom(families),
     transitions: [],
   };
 }
@@ -839,11 +937,9 @@ export function computeElections(opts: {
       // converge on their own; one plus two reinforcing conditions also does.
       // A pile of reinforcing conditions never does, however tall.
       const allFamilies = familiesOf([...c.sources, ...daySources]);
-      const establishing = allFamilies.filter(f => roleOf(f) === "establishing");
-      const reinforcing = allFamilies.filter(f => roleOf(f) === "reinforcing");
-      const supportLevel: SupportLevel =
-        establishing.length >= 2 || (establishing.length >= 1 && reinforcing.length >= 2)
-          ? "convergent" : "supported";
+      // The shared rule — same function `evaluateActivityInterval` calls, so
+      // the two can no longer drift apart on what "convergent" means.
+      const supportLevel: SupportLevel = supportLevelFrom(allFamilies);
 
       // Kept as a MODIFIER, not a promotion. The hour x Moon overlap is still
       // the thing that turns a several-hour lunar swell into a window with a
@@ -945,8 +1041,8 @@ export function computeElections(opts: {
         personalDecidedTier,
         cappedBy,
         supportLevel,
-        establishingFamilies: establishing,
-        reinforcingFamilies: reinforcing,
+        establishingFamilies: allFamilies.filter(f => roleOf(f) === "establishing"),
+        reinforcingFamilies: allFamilies.filter(f => roleOf(f) === "reinforcing"),
         stackedHourMoon,
         suitability,
         suitabilityReasons,
