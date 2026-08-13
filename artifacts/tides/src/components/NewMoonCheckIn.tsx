@@ -29,21 +29,21 @@ const CYCLE = {
   // volume up" coded intensity/threat where the true axis is visibility, and
   // "the south node points backward" was jargon half-translated. Both fixed.
   read: [
-    "Today's new moon is also a solar eclipse in Leo. A new moon opens a cycle; an eclipse is that same opening with the lights turned up — you notice more of it than usual. And this one leans backward: toward what you've already lived rather than what's next.",
-    "That backward lean cuts two ways — some of it is weight to set down, and some of it is something of yours worth picking back up. Keep the reset small: name what you're done carrying, check your stars still point somewhere true, and call one shot for the cycle.",
+    "Today's new moon is also a solar eclipse in Leo, which means the cycle it opens comes with the lights turned up — you'll notice more of this one than you usually would. It leans backward too, toward what you've already lived rather than toward what's next, and that lean runs in both directions at once: some of what's behind you is weight you can finally set down, and some of it is yours and worth carrying forward again.",
+    "So keep the reset small. Name what you're done carrying, check your stars still point somewhere true, and call one shot for the cycle.",
   ],
   releaseLabel: "What are you done carrying?",
-  releaseHint: "One line. It doesn't have to be graceful.",
+  releaseHint: "One line, and it doesn't have to be graceful",
   reclaimLabel: "Anything worth picking back up?",
-  reclaimHint: "Something of yours you set aside. Skip if nothing comes.",
+  reclaimHint: "Something of yours you set aside — skip it if nothing comes to mind",
   oneShotLabel: "One shot for this cycle",
   oneShotHint: "One thing to aim at by the next new moon",
   // What's coming, so the cycle has a shape rather than a single date. Dates
   // from the app's own ephemeris (tools/turning-points-scan.ts); the owner
   // curates them per cycle with the rest of this block.
   ahead: [
-    { when: "Aug 28", what: "Full moon in Pisces — a lunar eclipse. The harvest of this one." },
-    { when: "Sep 11", what: "New moon in Virgo. This cycle closes; the next opens." },
+    { when: "Aug 28", what: "A lunar eclipse on the full moon in Pisces, where this cycle comes to its harvest" },
+    { when: "Sep 11", what: "New moon in Virgo, closing this cycle and opening the next" },
   ],
 };
 
@@ -190,7 +190,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
                 {CYCLE.name}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-                {editing ? "Change anything. The aim is meant to move." : "About ten minutes. Yours to keep or skip."}
+                {editing ? "Change whatever needs changing." : "About ten minutes, and yours to keep or skip."}
               </div>
             </div>
           </div>
@@ -272,9 +272,9 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
             color: "var(--color-card)",
           }}>{editing ? "Save changes" : "Keep this"}</button>
           <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-            {!canKeep ? "Write at least one line to keep it."
-              : editing ? "Adjust it as often as the cycle asks."
-              : "Stays on your homepage until the next new moon."}
+            {!canKeep ? "Write at least one line to keep it"
+              : editing ? "You can come back and change it whenever you need to"
+              : "This stays on your homepage until the next new moon"}
           </span>
         </div>
       </div>

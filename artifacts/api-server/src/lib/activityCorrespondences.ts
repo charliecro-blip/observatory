@@ -92,6 +92,12 @@ const MODE_BY_KEY: Record<string, ActivityMode> = {
   "sign-contract": "inception",
   "begin-partnership": "inception",
   "move-home": "inception",
+  // A profile is published and then lived with — the same shape as any other
+  // release, and the reason it sits under love but scores like a launch.
+  "dating-profile": "inception",
+  // Asking is a real beginning: it happens once, at a moment, and the answer
+  // carries from it. Small stakes, but the tradition's logic applies.
+  "ask-someone-out": "inception",
 
   // ── execution: doing the work ────────────────────────────────────────────
   "train-hard": "execution",
@@ -106,6 +112,12 @@ const MODE_BY_KEY: Record<string, ActivityMode> = {
   "negotiate": "execution",
   "hard-conversation": "execution",
   "deepen-bond": "execution",
+  // Going out to meet people is repeatable and low-stakes — you can do it
+  // again next week, so no inception cap belongs on it.
+  "meet-someone-new": "execution",
+  // The DTR talk is a conversation, filed with hard-conversation rather than
+  // with the beginnings: it names something that already exists.
+  "define-relationship": "execution",
   "host": "execution",
   "network": "execution",
   "call-family": "execution",
@@ -469,6 +481,35 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     aspects: "soft", signs: { Libra: "the balance restored", Cancer: "the soft approach", Pisces: "grace" },
     houses: [7, 4], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "relationship",
     gloss: "Rx and the waning moon both favor going back over old ground gently." }),
+  // Putting yourself in the market is a LAUNCH wearing Venus's clothes — the
+  // profile is a thing you publish and then live with, so it wants a waxing
+  // Moon, a clean Venus and Mercury (the words are Mercury's), and none of
+  // the void. Filed under love because that is where a person looks for it.
+  A({ key: "dating-profile", label: "Start a dating profile", category: "love",
+    keywords: ["dating profile", "dating app", "start dating", "put myself out there",
+      "online dating", "hinge", "bumble", "tinder", "back on the apps", "photos for my profile"],
+    element: "air", planets: { Venus: 1.0, Mercury: 0.8, Sun: 0.6 }, hourRulers: ["Venus", "Mercury"],
+    aspects: "soft", signs: { Libra: "the meeting-place", Leo: "warm and seen", Gemini: "the words that land", Taurus: "unforced appeal" },
+    houses: [7, 1, 5], phase: "waxing", voc: "avoid", mercuryRx: "hard", windowType: "launch",
+    gloss: "A profile is published, not spoken — Venus for the appeal, Mercury for the words, and not under Rx." }),
+  A({ key: "ask-someone-out", label: "Ask someone out", category: "love",
+    keywords: ["ask out", "make a move", "shoot my shot", "slide into", "first message", "ask her out", "ask him out", "ask them out"],
+    element: "fire", planets: { Venus: 1.0, Mars: 0.7, Mercury: 0.6 }, hourRulers: ["Venus", "Mars"],
+    aspects: "soft", signs: { Leo: "the nerve", Libra: "the graceful ask", Aries: "first move", Sagittarius: "the open shot" },
+    houses: [5, 7], phase: "waxing", voc: "avoid", mercuryRx: "soft", windowType: "relationship",
+    gloss: "Venus carries the asking; Mars supplies the nerve to send it." }),
+  A({ key: "meet-someone-new", label: "Meet someone new", category: "love",
+    keywords: ["meet someone", "singles", "set up", "blind date", "matchmaking", "go out looking"],
+    element: "air", planets: { Venus: 1.0, Jupiter: 0.7, Moon: 0.5 }, hourRulers: ["Venus", "Jupiter"],
+    aspects: "soft", signs: { Libra: "the introduction", Gemini: "easy talk", Leo: "the room warm", Sagittarius: "the wider net" },
+    houses: [5, 11, 7], phase: "waxing", voc: "avoid", mercuryRx: null, windowType: "social",
+    gloss: "Jupiter widens the field Venus works in — fifth-house weather with company." }),
+  A({ key: "define-relationship", label: "Have the where-is-this-going talk", category: "love",
+    keywords: ["dtr", "define the relationship", "exclusive", "where is this going", "the talk", "commit"],
+    element: "air", planets: { Venus: 1.0, Mercury: 0.8, Saturn: 0.6 }, hourRulers: ["Venus", "Mercury"],
+    aspects: "soft", signs: { Libra: "the honest scales", Capricorn: "what will hold", Taurus: "steady ground" },
+    houses: [7], phase: null, voc: "avoid", mercuryRx: "soft", windowType: "relationship",
+    gloss: "Saturn is welcome here — it is the conversation that asks a thing to hold shape." }),
 
   // ── SOCIAL ──────────────────────────────────────────────────────────────────
   A({ key: "host", label: "Host a gathering", category: "social",

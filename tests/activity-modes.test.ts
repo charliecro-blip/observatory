@@ -28,7 +28,10 @@ describe("every activity has a mode chosen for it", () => {
   });
 
   it("puts the binding beginnings in inception", () => {
-    for (const k of ["launch-venture", "sign-contract", "begin-partnership", "publish", "move-home"]) {
+    for (const k of ["launch-venture", "sign-contract", "begin-partnership", "publish", "move-home",
+      // A published profile and a sent ask both happen once and carry their
+      // moment with them — the same shape the rule was written for.
+      "dating-profile", "ask-someone-out"]) {
       expect(modeOf(k), k).toBe("inception");
     }
   });
@@ -61,6 +64,12 @@ const EXPLICIT_EXECUTION = new Set([
   "strategize", "teach-present", "deep-work", "negotiate", "hard-conversation",
   "deepen-bond", "host", "network", "call-family", "cook", "beautify", "garden",
   "divination",
+  // Added with the dating activities (2026-08-13). Both are repeatable and
+  // carry no binding start: going out to meet people can be done again next
+  // week, and the where-is-this-going talk names a thing that already exists
+  // rather than beginning one. (dating-profile and ask-someone-out ARE
+  // beginnings and are asserted as inception below.)
+  "meet-someone-new", "define-relationship",
 ]);
 
 describe("the cap no longer reaches where the doctrine never went", () => {

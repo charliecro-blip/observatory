@@ -285,8 +285,70 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
               }}>✦ Ask which one — and how to make the most of it</button>
             )}
           </div>
+
+          {/* The rare question, asked separately because it is a different
+              question: the windows above are the good hours in the next week
+              or month, and this is the uncommon DAY worth moving a week
+              around. Opt-in — a two-year scan offered unasked would push
+              every ordinary choice into waiting for a better one. */}
+          <RareWindows activityKey={activityKey!} label={selected?.label ?? ""} tzOffset={tzOffset} />
         </div>
       )}
+    </div>
+  );
+}
+
+interface RareDayT { date: string; percentile: number; reasons: string[]; against: string[] }
+
+function RareWindows({ activityKey, label, tzOffset }: { activityKey: string; label: string; tzOffset: number }) {
+  const [open, setOpen] = useState(false);
+  const { data, isFetching } = useQuery<{ days: RareDayT[]; none?: string; horizonDays: number }>({
+    queryKey: ["election-rare", activityKey, tzOffset],
+    queryFn: async () => (await fetch(`/api/elections/rare?activity=${activityKey}&tz=${tzOffset}`)).json(),
+    enabled: open,
+    staleTime: 1000 * 60 * 60,
+  });
+
+  if (!open) {
+    return (
+      <div style={{ borderTop: "1px dashed var(--color-border)", marginTop: 11, paddingTop: 9 }}>
+        <button onClick={() => setOpen(true)} style={{
+          fontSize: 10, background: "none", border: "none", color: "#6a7a8a", cursor: "pointer", padding: 0, fontWeight: 500,
+        }}>☆ When is the rare one? · scan the next two years</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ borderTop: "1px dashed var(--color-border)", marginTop: 11, paddingTop: 9 }}>
+      <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        Exceptional days for {label.toLowerCase()}
+      </div>
+      {isFetching && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Reading the next two years…</div>}
+      {data?.none && <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5 }}>{data.none}</div>}
+      {(data?.days ?? []).map((d) => {
+        const when = new Date(d.date + "T12:00:00");
+        return (
+          <div key={d.date} style={{ padding: "6px 0", borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-foreground)" }}>
+                {when.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+              </span>
+              {/* The claim states its own basis — "top 1% of two years" is
+                  checkable in a way that a star rating is not. */}
+              <span style={{ fontSize: 9.5, color: "#8a7a50" }}>
+                top {Math.max(0.1, Math.round((100 - d.percentile) * 10) / 10)}% of two years
+              </span>
+            </div>
+            {d.reasons.map((r, i) => (
+              <div key={i} style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 1 }}>· {r}</div>
+            ))}
+            {d.against.map((a, i) => (
+              <div key={`x${i}`} style={{ fontSize: 10.5, color: "#8a7a50", marginTop: 1 }}>· against: {a}</div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

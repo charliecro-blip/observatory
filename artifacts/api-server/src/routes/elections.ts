@@ -11,6 +11,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
+import { findRareWindows } from "../lib/rareWindows.js";
 import { linesUp, type HeldItem, needsWeaving } from "../lib/linesUp.js";
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
@@ -342,6 +343,26 @@ router.get("/elections/times", async (req, res) => {
   const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
+});
+
+/**
+ * The rare-window question: not "when is the next good hour for this" (that
+ * is /elections/times) but "when is the next EXCEPTIONAL day for it" — the
+ * one worth moving a week around. Day-scale by design; the hour inside a
+ * returned day still comes from the canonical engine above.
+ */
+router.get("/elections/rare", (req, res) => {
+  const activityKey = (req.query.activity as string) ?? "";
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  // Two years by default: long enough that a Jupiter or Saturn sign change
+  // falls inside it, which is what produces the rarest windows of all.
+  const horizonDays = Math.min(1460, Math.max(30, parseInt((req.query.days as string) ?? "730", 10) || 730));
+  const limit = Math.min(10, Math.max(1, parseInt((req.query.limit as string) ?? "5", 10) || 5));
+  try {
+    res.json(findRareWindows(activityKey, Date.now(), { horizonDays, limit, tzOffsetMin }));
+  } catch {
+    res.status(404).json({ error: "unknown activity" });
+  }
 });
 
 export default router;
