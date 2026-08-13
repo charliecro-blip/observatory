@@ -89,6 +89,9 @@ router.get("/elections/lines-up", async (req, res) => {
         id: `task-${t.id}`, title: t.title, kind: "task", activityKey: t.activityKey,
         // The reserved block, if there is one.
         scheduledFor: t.planningWindowId != null ? String(t.planningWindowId) : null,
+        // When it was started — what lets the engine say "keep going" rather
+        // than proposing a switch off work already underway.
+        startedAt: t.startedAt ? new Date(t.startedAt).toISOString() : null,
       });
     }
     // Guiding Stars are directional, so the STEP is what gets timed, not the

@@ -91,6 +91,17 @@ export interface HeldItem {
    */
   scheduledFor?: string | null;
   /**
+   * When this was started, if it was. The one fact a stateless engine cannot
+   * derive from the sky.
+   *
+   * Flow protection used to live only in Today's own card, computed on the
+   * client from a separate query — so Home's hero would cheerfully propose
+   * switching you off work already underway while Today, two taps away, said
+   * "keep going". Two answers to one question. The engine owns it now; both
+   * surfaces read the same one.
+   */
+  startedAt?: string | null;
+  /**
    * An activity already assigned to this item — Guiding Stars carry one from
    * the planet-diagnosis flow, and tasks can be corrected by hand.
    *
@@ -152,10 +163,45 @@ export type QuietReason =
   | "all-placed"          // everything held already has a block — nothing left to time
   | "thin-inventory";     // nothing held at all
 
+/**
+ * THE LOOP — one act, and the one after it.
+ *
+ * A window is not an instruction. "Finish the album · 12:45–5:45" tells you
+ * when something is possible; it does not tell you what to do with the next
+ * five minutes, which is the question people actually open the app holding
+ * (owner, 2026-08-13: "what should I do right now — that's the central,
+ * main feature").
+ *
+ * So the engine names the act, and names what follows it, and says plainly
+ * when you are already inside something and should not be moved off it. The
+ * surfaces render this; they no longer each decide it.
+ */
+export interface Loop {
+  /** What to do with this moment. */
+  now: {
+    /** The held item's title — the thing itself, not a category. */
+    title: string;
+    /** The held item's id, so a surface can act on it. */
+    heldId: string;
+    /** Why now: the plain sentence, already composed. */
+    why: string;
+    /** When this window closes, local clock, when it has an end. */
+    until: string | null;
+    /** True when this is work already underway rather than a fresh pick. */
+    inFlow: boolean;
+    /** Minutes elapsed, when inFlow. */
+    elapsedMin?: number;
+  } | null;
+  /** What comes after — named so the moment has a horizon, never an order. */
+  then: { title: string; heldId: string; startClock: string } | null;
+}
+
 export interface LinesUp {
   results: LinesUpResult[];
   clarify: Clarification[];
   quiet: QuietReason | null;
+  /** The one-act loop, composed from the same results the list shows. */
+  loop: Loop;
   /** At most one. The full horizon belongs in the Compass, not on Home. */
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   /** Held items that already hold a block, so they were not timed. */
@@ -280,7 +326,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   // basis for a computed answer and should be told so directly rather than
   // shown a blank module.
   if (held.length === 0) {
-    return { results: [], clarify: [], alreadyScheduled: [], heldBack: [], quiet: "thin-inventory", nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
+    return { results: [], clarify: [], alreadyScheduled: [], heldBack: [], quiet: "thin-inventory", loop: { now: null, then: null }, nextOpening: null, notPriced: 0, electionsComputed: 0, chartAvailable: !!natal };
   }
 
   const clarify: Clarification[] = [];
@@ -436,6 +482,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     alreadyScheduled,
     heldBack,
     quiet,
+    loop: composeLoop(top, held, opts),
     nextOpening: quiet ? nextOpeningFor(priced, opts) : null,
     notPriced,
     electionsComputed: byActivity.size,
@@ -450,6 +497,91 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
  * the engine is working and today's quiet is a result rather than missing data.
  * More than one and Home becomes a week forecast, which is the Compass's job.
  */
+/**
+ * How long a start stamp keeps counting, in minutes.
+ *
+ * Ported deliberately, not re-invented: the same two hours the client used,
+ * for the same reasons (longer than a planetary hour so a sitting is never
+ * cut off mid-way, short enough that a forgotten stamp expires within the
+ * same part of the day). Erring short is correct — failing to say "keep
+ * going" costs a nudge, while wrongly insisting you are mid-flow contradicts
+ * what the reader can plainly see.
+ */
+const IN_PROGRESS_CEILING_MIN = 120;
+
+const sameLocalDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** The held item currently underway, or null. Most recent start wins. */
+function inFlowItem(held: HeldItem[], at: Date): { item: HeldItem; minutes: number } | null {
+  let best: { item: HeldItem; minutes: number } | null = null;
+  for (const item of held) {
+    if (!item.startedAt) continue;
+    const began = new Date(item.startedAt);
+    if (Number.isNaN(began.getTime())) continue;
+    const minutes = Math.floor((at.getTime() - began.getTime()) / 60000);
+    if (minutes < 0 || minutes > IN_PROGRESS_CEILING_MIN) continue;
+    if (!sameLocalDay(began, at)) continue;
+    if (!best || minutes < best.minutes) best = { item, minutes };
+  }
+  return best;
+}
+
+/**
+ * Compose the loop from results already computed — never a second judgment.
+ *
+ * Flow protection OVERRIDES the sky on purpose. A better-fitting hour is not
+ * a reason to interrupt someone mid-task: the cost of the switch is real and
+ * immediate, the gain marginal and speculative.
+ */
+function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts): Loop {
+  const now = new Date();
+  const running = inFlowItem(held, now);
+
+  if (running) {
+    return {
+      now: {
+        title: running.item.title,
+        heldId: running.item.id,
+        why: "You're already in this. Compass won't move you off it — finish, or stop on purpose.",
+        until: null,
+        inFlow: true,
+        elapsedMin: running.minutes,
+      },
+      // Nothing is offered as "next" while someone is inside something: a
+      // queue shown mid-task is a second thing to think about, which is the
+      // interruption this branch exists to prevent.
+      then: null,
+    };
+  }
+
+  const open = top.find(r => r.state === "open-now") ?? top.find(r => r.state === "ahead") ?? null;
+  if (!open) return { now: null, then: null };
+
+  // Different IDENTITY is not enough — two held items can carry the same
+  // words (a star and the task named after it, or a duplicate star), and
+  // "now: Finish the album / then: Finish the album" reads as a bug even
+  // though both rows are real. The loop's job is to name two different
+  // things, so it compares what the reader actually sees.
+  const sameThing = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const after = top.find(r =>
+    r !== open && r.state !== "passed" && !sameThing(r.held.title, open.held.title)) ?? null;
+  return {
+    now: {
+      title: open.held.title,
+      heldId: open.held.id,
+      why: open.supportLevel === "convergent"
+        ? "Several things line up for this right now."
+        : open.personal
+          ? "This suits the hour, and your chart agrees."
+          : "This is what the hour suits.",
+      until: open.state === "open-now" ? open.endClock ?? null : open.startClock ?? null,
+      inFlow: false,
+    },
+    then: after ? { title: after.held.title, heldId: after.held.id, startClock: after.startClock ?? "" } : null,
+  };
+}
+
 function nextOpeningFor(
   priced: { key: string; label: string }[],
   opts: LinesUpOpts,

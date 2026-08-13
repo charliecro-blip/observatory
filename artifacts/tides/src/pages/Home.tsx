@@ -88,6 +88,11 @@ interface LinesUp {
   alreadyScheduled: { id: string; title: string }[];
   heldBack: { item: { id: string; title: string }; reason: string }[];
   quiet: "supported-only" | "nothing-singled-out" | "all-placed" | "thin-inventory" | null;
+  /** One act and the one after it — the engine's own composition. */
+  loop?: {
+    now: { title: string; heldId: string; why: string; until: string | null; inFlow: boolean; elapsedMin?: number } | null;
+    then: { title: string; heldId: string; startClock: string } | null;
+  };
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
   notPriced: number;
   chartAvailable: boolean;
@@ -763,6 +768,42 @@ export default function Home({
 
         {lead ? (
           <div style={{ padding: "2px 20px 18px" }}>
+            {/* THE LOOP — one act, and the one after it.
+                A window says when something is possible; this says what to
+                do with the next five minutes, which is the question people
+                open the app holding. Composed by the engine (linesUp.loop)
+                so Home and Today cannot answer it differently. */}
+            {lines?.loop?.now && (
+              <div style={{
+                marginBottom: 12, paddingBottom: 11,
+                borderBottom: "1px solid var(--color-border)",
+              }}>
+                <div style={{
+                  fontSize: 9, textTransform: "uppercase", letterSpacing: "0.9px",
+                  color: lines.loop.now.inFlow ? "#4a7a52" : "var(--text-3)", marginBottom: 3,
+                }}>
+                  {lines.loop.now.inFlow
+                    ? `Keep going · ${lines.loop.now.elapsedMin}m in`
+                    : "Now"}
+                </div>
+                <div style={{ fontSize: 15.5, color: "var(--color-foreground)", fontWeight: 600, lineHeight: 1.35 }}>
+                  {lines.loop.now.title}
+                  {lines.loop.now.until && !lines.loop.now.inFlow && (
+                    <span style={{ fontWeight: 400, color: "var(--color-muted)" }}> — until {lines.loop.now.until}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 2 }}>
+                  {lines.loop.now.why}
+                </div>
+                {lines.loop.then && (
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
+                    then · {lines.loop.then.title}
+                    {lines.loop.then.startClock ? ` at ${lines.loop.then.startClock}` : ""}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               <Badge
                 text={lead.supportLevel === "convergent" ? "Several things line up" : "Supported"}
