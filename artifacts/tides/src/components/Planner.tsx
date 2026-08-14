@@ -3,7 +3,8 @@ import { localToday, addDaysLocal } from "@/lib/dates";
 import { aiErrorMessage } from "@/lib/aiError";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { restorePlannerDraft } from "@/lib/plannerDraft";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/fetchJson";
 import { useNorthStars } from "@/hooks/useTides";
 import { useTester } from "@/contexts/tester-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
@@ -77,6 +78,28 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
    *  to the list — it does not replace what has already been read. */
   const [addingMore, setAddingMore] = useState(false);
   const [moreText, setMoreText] = useState("");
+  /** Step 1's dump box, when it has been asked for rather than assumed. Only
+   *  consulted once there is already an inventory to collapse in favour of. */
+  const [intakeOpen, setIntakeOpen] = useState(false);
+
+  // What the person is already holding — the same query Home reads, on the
+  // same key, so the two surfaces cannot disagree about how long the list is.
+  // Used only to decide whether Plan opens asking for a list or acknowledging
+  // one; nothing here is rendered as an inventory, which is Home's job.
+  const { data: allTasks } = useQuery<{ id: number; done: string | null }[]>({
+    queryKey: ["tasks", "all"],
+    queryFn: () => fetchJson<{ id: number; done: string | null }[]>(
+      "/api/tasks", { headers: testerId ? { "x-tester-id": testerId } : undefined }),
+    enabled: !!testerId,
+  });
+  // Undefined while it loads, and undefined is NOT zero. Treating an unread
+  // list as an empty one would flash the full cold-start pitch at someone who
+  // has a hundred things on their list, every time they open the tab.
+  const openTaskCount = !testerId
+    ? 0
+    : allTasks === undefined
+      ? -1
+      : allTasks.filter((t) => t.done !== "true").length;
   // The stars a task can be hung on. The intake is where someone knows what
   // a piece of work is in service of — asking later, on a different page,
   // is asking after the moment has passed.
@@ -100,6 +123,11 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
         const d = draft as Draft;
         setHorizon(d.horizon ?? "week");
         setRawList(d.rawList ?? "");
+        // A restored draft that is still raw text has to be VISIBLE. The
+        // collapsed intake would otherwise hide typing the person left
+        // mid-sentence, which is the draft-loss this persistence exists to
+        // prevent, arriving by a different door.
+        if (d.rawList) setIntakeOpen(true);
         setCards(d.cards ?? null);
         setDropped(new Set(d.dropped ?? []));
         setResult(d.result ?? null);
@@ -134,7 +162,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   // nothing had happened and re-reading it would have duplicated the lot
   // (owner, 2026-08-13: "after I have input a list, it should not show in
   // the place where I input things").
-  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); setStaleWeave(false); setRawList(""); setAddingMore(false); };
+  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); setStaleWeave(false); setRawList(""); setAddingMore(false); setIntakeOpen(false); };
 
   const parse = useMutation({
     // Accepts an optional list so the quick-capture seed can be parsed
@@ -375,10 +403,13 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   return (
     <div style={{ marginBottom: 30 }}>
       <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Plan</div>
+      {/* The full pitch is for someone who has never handed Compass a list.
+          Repeating it to somebody on their fortieth visit explains a tab they
+          already use, and it pushed their own work further down the page. */}
       <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
-        Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open
-        stretches of your week where the sky best supports that kind of work — deep work in focused windows,
-        outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so.
+        {openTaskCount > 0
+          ? "Compass weaves what you're holding into the stretches of your week that suit each kind of work. Nothing is scheduled until you say so."
+          : "Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open stretches of your week where the sky best supports that kind of work — deep work in focused windows, outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so."}
       </div>
 
       {/* Horizon */}
@@ -394,8 +425,36 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       </div>
       <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{HORIZONS.find((h) => h.key === horizon)?.hint}</div>
 
-      {/* Step 1 — dump */}
-      {!cards && (
+      {/* Step 1 — dump.
+
+          COLLAPSED ONCE THERE IS A LIST TO ORIENT AROUND. `cards` covers only
+          the draft in progress; someone who imported a list last week and
+          committed it has no draft, so Plan greeted them with the same
+          six-row empty box and the same "dump everything on your plate" pitch
+          as on day one — asking again for the thing they had already given it
+          (owner: "I've already imported a list, orient around it, minimal
+          prompting for new input, although a little").
+
+          The box is not removed, because "a little" prompting is the ask and
+          because a second thought needs somewhere to go. It is one click away
+          instead of occupying the top of the page. */}
+      {!cards && !intakeOpen && openTaskCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap",
+          padding: "11px 13px", borderRadius: 10,
+          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+        }}>
+          <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
+            You're holding {openTaskCount} {openTaskCount === 1 ? "thing" : "things"} already.
+          </span>
+          <button onClick={() => setIntakeOpen(true)} style={{
+            fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
+            color: "var(--color-primary)",
+          }}>Add more →</button>
+        </div>
+      )}
+
+      {!cards && (intakeOpen || openTaskCount === 0) && (
         <>
           <textarea
             value={rawList} onChange={(e) => setRawList(e.target.value)}
@@ -408,6 +467,12 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
               cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#ffffff" : "var(--text-3)",
             }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>
+            {/* A way back out, but only when there is something to go back to. */}
+            {intakeOpen && openTaskCount > 0 && (
+              <button onClick={() => { setIntakeOpen(false); setRawList(""); }} style={{
+                fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer",
+              }}>never mind</button>
+            )}
             {parse.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(parse.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
         </>
