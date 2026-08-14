@@ -540,3 +540,37 @@ short note on anything you think the *structure* gets wrong, not just the
 wording: e.g. if gift/shadow/work is the wrong decomposition, or if the three
 capacities (depleted / restless / social) are the wrong three, that is more
 valuable than better adjectives.
+
+---
+
+## Open question for AstroLyrica: the void-of-course table's frame
+
+`artifacts/api-server/src/lib/voidOfCourse.ts` holds a `feel` / `instead` pair
+per Moon sign. The Virgo entry has been rewritten three times and flagged three
+times, which suggests the problem is not the wording.
+
+Each pass kept a **deficit frame** while changing the words: "real work with
+nothing riding on it", then "the urge to tidy something that's already fine —
+Virgo's eye for detail with no new problem to solve", then "Save the launch,
+not the effort". All three open by telling the reader their attention is
+surplus to requirements. The owner's note (2026-08-14): "it should be framed
+positively."
+
+It now reads:
+
+> **feel** — Virgo's precision is running high, and it settles most naturally
+> on work that already exists.
+> **instead** — A strong stretch for editing, admin, and the careful second
+> pass: the kind of work that gets better the more attention it gets.
+
+**The structural question, which matters more than this one entry.** A void is
+thin for *beginnings* and neutral-to-good for everything already underway —
+`VOID_SCOPE` in the same file carries that scoping. So does the `feel` line
+need to name a lack at all, or should the whole table describe what each sign's
+attention is *good at* during a void and let the scope note do the limiting?
+Twelve entries currently vary in how much caution they each restate, and the
+signs that lean hardest on caution (Libra: "Be sociable and don't sign") read
+as the most useful — so the answer may not be uniform.
+
+Worth a view on whether `feel` / `instead` is even the right decomposition here,
+per the structural note above.

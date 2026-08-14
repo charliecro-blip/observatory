@@ -90,14 +90,19 @@ const BY_SIGN: Record<string, { feel: string; instead: string }> = {
     // BEGINNINGS and neutral-to-good for everything already underway
     // (VOID_SCOPE, right below). The owner planning a full day's work read
     // this as a veto over the lot (2026-08-13).
-    // Flagged twice. The first pass fixed the `instead` line and left this
-    // one, which was the half that actually stung: it opens by telling you
-    // your attention is useless, in the two-short-sentence cadence the copy
-    // rules name as the tell. A void in Virgo is a real thing to describe —
-    // the pull toward tidying something that is already fine — without
-    // opening on a verdict about the reader.
-    feel: "The urge to tidy something that's already fine — Virgo's eye for detail with no new problem to solve.",
-    instead: "Good hours for the work already in front of you: editing, admin, the careful pass over something that exists, with anything you'd call a launch better held until the Moon moves on.",
+    // Flagged three times, and the first two passes both missed the actual
+    // problem. They rewrote the phrasing while keeping the FRAME, which was
+    // a deficit one: "already fine", "no new problem to solve", "save the
+    // launch" all tell the reader their attention is surplus to requirements.
+    // A void in Virgo is not a shortage of anything. Discernment is running
+    // high and lands best on what already exists, which is a description of
+    // something available rather than something missing (owner 2026-08-14:
+    // "it should be framed positively").
+    //
+    // The void still means beginnings do not take root — VOID_SCOPE below
+    // carries that, and it does not need saying twice in the reader's face.
+    feel: "Virgo's precision is running high, and it settles most naturally on work that already exists.",
+    instead: "A strong stretch for editing, admin, and the careful second pass — the kind of work that gets better the more attention it gets.",
   },
   Libra: {
     feel: "Weighing, and nothing settles the scale. Agreements made now tend not to hold.",
