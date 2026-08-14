@@ -97,7 +97,7 @@ const BY_SIGN: Record<string, { feel: string; instead: string }> = {
     // the pull toward tidying something that is already fine — without
     // opening on a verdict about the reader.
     feel: "The urge to tidy something that's already fine — Virgo's eye for detail with no new problem to solve.",
-    instead: "Good hours for the work already in front of you — editing, admin, the careful pass over something that exists. Save the launch, not the effort.",
+    instead: "Good hours for the work already in front of you: editing, admin, the careful pass over something that exists, with anything you'd call a launch better held until the Moon moves on.",
   },
   Libra: {
     feel: "Weighing, and nothing settles the scale. Agreements made now tend not to hold.",

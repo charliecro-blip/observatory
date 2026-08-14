@@ -174,8 +174,12 @@ export const VOC_FORMS: Record<string, string[]> = {
             "return to a record you haven't played in years", "tidy the room you actually sit in"],
   Mars:    ["finish what's already moving", "clear the decks, open no front",
             "walk a route you know", "put the body through something familiar"],
-  Jupiter: ["go back to the bigger plan and revise it", "re-read what you meant to learn",
-            "return to a place that widened you once", "retell the story to someone who wasn't there"],
+  // All four of these used to open on a "re-" verb — revise, re-read, return,
+  // retell — which read as one idea spelled four ways (owner, 2026-08-14: "the
+  // jupiter themes are all about re- verbs"). The void still means returning
+  // rather than launching; only the verbs vary now.
+  Jupiter: ["go back to the bigger plan and revise it", "sit with something you meant to learn",
+            "spend an hour somewhere that widened you once", "tell the story to someone who wasn't there"],
   Saturn:  ["close out an old obligation", "repair rather than rebuild",
             "return to a practice you let lapse", "rest without earning it first"],
 };
