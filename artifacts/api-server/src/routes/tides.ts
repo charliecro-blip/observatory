@@ -10,7 +10,7 @@ import {
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects, getAspectOrbs, getLocalAngles, getAngularPlanets,
   getLastMoonAspect, getNextAngularCrossings, getSunriseSunset,
-  SIGNS,
+  SIGNS, sunLongitude, moonLongitude, isRetrograde, eclipseWindow,
 } from "../lib/astro.js";
 import { db } from "@workspace/db";
 import { natalCharts } from "@workspace/db";
@@ -22,6 +22,7 @@ import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
 import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
+import { buildAlmanac } from "../lib/almanac.js";
 
 const router: IRouter = Router();
 
@@ -1131,16 +1132,18 @@ router.get("/tides/events", (req, res) => {
 
   // Crossings: benefic/malefic at ASC/MC, Moon at all angles.
   //
-  // NOTE (2026-08-13): this whole route is pathologically slow — MEASURED on
-  // a cold server at 13.2s for 7 days, 42.2s for 30, and >90s for the 90
-  // days Calendar requests on load. It is synchronous, so Node blocks for the
-  // duration and every other request queues behind it, which is why a
-  // calendar holding real windows can render empty.
+  // RESOLVED 2026-08-13. This route was measured at 13.2s for 7 days, 42.2s
+  // for 30, and >90s for the 90 days Calendar requests on load; being
+  // synchronous, it blocked Node for the duration and every other request
+  // queued behind it, which is why a calendar holding real windows rendered
+  // empty. Now 0.20s / 0.38s / 0.73s.
   //
-  // The obvious suspect was this hour-by-hour crossings scan, but gating it
-  // behind a flag changed nothing (99.0s off vs 97.7s on), so the cost is
-  // elsewhere in the route and wants a profiling pass, not another guess.
-  // Recorded in AUDIT-INTEGRATION-2026-08-13.md rather than half-fixed here.
+  // The cost was NOT this crossings scan — gating it behind a flag moved
+  // nothing (99.0s off vs 97.7s on). It was getMajorAspects called once per
+  // hour in the Moon-aspect loop below, each call running a 14-day station
+  // sweep whose momentum fields that loop then discarded. getAspectOrbs is
+  // the cheap half. Leaving the wrong suspect named here on purpose: the
+  // measurement that cleared it is the reason to measure rather than re-guess.
   const startJd = julianDay(now);
   const significantCrossings = getNextAngularCrossings(startJd, lat, lon, 80, numDays * 24)
     .filter(c => {
@@ -1368,6 +1371,14 @@ router.get("/tides/events", (req, res) => {
   });
 
   res.json({ asOf: now.toISOString(), events });
+});
+
+// The almanac's computation lives in lib/almanac.ts so it can be tested
+// against a fixed moment. The route is the transport and nothing else.
+router.get("/tides/almanac", (req, res) => {
+  const days = Math.min(Math.max(parseInt((req.query.days as string) ?? "45"), 1), 120);
+  const now = new Date();
+  res.json({ asOf: now.toISOString(), days, entries: buildAlmanac(now, days) });
 });
 
 export default router;

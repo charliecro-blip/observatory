@@ -9,6 +9,7 @@ import { useElectionCategories, useElectionScan, type ElectionResult, type Elect
 import { useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
 import AlreadyWoven from "@/components/AlreadyWoven";
+import Almanac from "@/components/Almanac";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -301,6 +302,13 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
                 </>
               )}
             </div>
+
+            {/* THE ALMANAC. Plan places work against your inventory; this is
+                the sky's own calendar underneath that, so the fixed dates of
+                the season are visible in the tab where work gets placed
+                rather than only in Calendar. Reference, so it is collapsed
+                and fetches nothing until opened. */}
+            <Almanac />
           </>
         )}
 
