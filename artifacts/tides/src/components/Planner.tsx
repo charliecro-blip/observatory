@@ -73,6 +73,10 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
   // caret landed after a number nobody typed — so backspace appeared to stick
   // at 15 and no other value could be reached. The clamp belongs on blur.
   const [minDraft, setMinDraft] = useState<Record<number, string>>({});
+  /** The "add more" box, open only when asked for. A second thought APPENDS
+   *  to the list — it does not replace what has already been read. */
+  const [addingMore, setAddingMore] = useState(false);
+  const [moreText, setMoreText] = useState("");
   // The stars a task can be hung on. The intake is where someone knows what
   // a piece of work is in service of — asking later, on a different page,
   // is asking after the moment has passed.
@@ -125,7 +129,12 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
 
   const chrono: any = profile?.chronotype ?? {};
   const authHeaders = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) };
-  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); setStaleWeave(false); };
+  // `rawList` is cleared too. Without it, starting over after a commit put
+  // the already-scheduled list back in the box, so the tab looked as though
+  // nothing had happened and re-reading it would have duplicated the lot
+  // (owner, 2026-08-13: "after I have input a list, it should not show in
+  // the place where I input things").
+  const reset = () => { setCards(null); setResult(null); setDropped(new Set()); setCommitted(false); setStaleWeave(false); setRawList(""); setAddingMore(false); };
 
   const parse = useMutation({
     // Accepts an optional list so the quick-capture seed can be parsed
@@ -138,7 +147,16 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       if (!r.ok) throw new Error(await aiErrorMessage(r));
       return (await r.json()).tasks;
     },
-    onSuccess: (t) => { setCards(t); setResult(null); setCommitted(false); },
+    // APPEND when this was an "add more" pass, replace when it was the first
+    // read. A second thought is an addition; treating it as a replacement
+    // would silently drop everything already reviewed and edited.
+    onSuccess: (t) => {
+      setCards(prev => (addingMore && prev ? [...prev, ...t] : t));
+      setResult(null);
+      setCommitted(false);
+      setAddingMore(false);
+      setMoreText("");
+    },
   });
 
   // Arrived from quick capture's "dump & schedule": prefill the list and read
@@ -544,6 +562,34 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               </div>
             );
           })}
+          {/* ADD MORE — the box comes back empty, on request, and appends.
+              The dump box itself stays hidden once its list is read: leaving
+              the submitted text on screen made the page look as though
+              nothing had happened. */}
+          {addingMore ? (
+            <div style={{ marginTop: 10 }}>
+              <textarea
+                autoFocus value={moreText} onChange={(e) => setMoreText(e.target.value)}
+                placeholder={"anything else? one line each"}
+                rows={3}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", outline: "none", fontFamily: "inherit" }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 7 }}>
+                <button onClick={() => moreText.trim() && parse.mutate(moreText)} disabled={parse.isPending || !moreText.trim()} style={{
+                  padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600,
+                  cursor: moreText.trim() ? "pointer" : "default",
+                  background: moreText.trim() ? "#1a2a3a" : "var(--color-border)", color: moreText.trim() ? "#fff" : "var(--text-3)",
+                }}>{parse.isPending ? "Reading…" : "Add to the list"}</button>
+                <button onClick={() => { setAddingMore(false); setMoreText(""); }} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setAddingMore(true)} style={{
+              marginTop: 10, fontSize: 11.5, color: "var(--color-primary)", background: "none",
+              border: "1px dashed var(--color-border)", borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+            }}>+ add more to the list</button>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
             <button onClick={() => weave.mutate()} disabled={weave.isPending || cards.length === 0} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",

@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
 import { useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
+import AlreadyWoven from "@/components/AlreadyWoven";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -210,7 +211,7 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
   );
 }
 
-export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void; onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void }) {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void; onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void; onNavigate?: (v: string) => void }) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
   const [showCrossings, setShowCrossings] = useState(false);
@@ -266,6 +267,11 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
         {mode === "schedule" && (
           <>
             <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />
+
+            {/* Plan's memory: what has actually been committed, in the tab
+                that committed it. Without this the page could place a week
+                and then say nothing about the week it had placed. */}
+            <AlreadyWoven testerId={testerId} onNavigate={onNavigate} />
 
             {/* THE WEEK. Distribution is the one thing shaping each day
                 separately cannot do: seven days optimised independently will

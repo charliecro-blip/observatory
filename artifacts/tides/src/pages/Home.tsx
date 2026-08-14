@@ -50,6 +50,7 @@ import { WeekStrip, useWeekShape } from "@/components/WeekShape";
 import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
+import CompassNow from "@/components/CompassNow";
 import { useUiDensity } from "@/contexts/preferences-context";
 import type { AskElectionContext } from "@/App";
 
@@ -669,6 +670,34 @@ export default function Home({
       padding: "14px 0 40px", maxWidth: 980, margin: "0 auto", width: "100%",
     }}>
 
+      {/* ══ COMPASS · the answer, first ═══════════════════════════════════
+          "What should I do right now" is the app's central question, and it
+          was arriving fifth — inside a card, under a section title and a
+          badge row. It leads now, above the reading it came from and above
+          the conditions that qualify it: a qualification read before the
+          thing it qualifies is backwards.
+
+          Renders nothing when there is nothing to loop over; Home's
+          cold-start doors and its all-placed state each say that better,
+          with the right offer attached. */}
+      <CompassNow
+        loop={lines?.loop}
+        onOpenWork={(heldId) => {
+          const id = Number(heldId.replace("task-", ""));
+          if (!Number.isNaN(id)) linkRow(id);
+        }}
+        // The advisor is handed the same facts the card shows, so it reasons
+        // from the engine's answer rather than re-deriving one of its own.
+        onAsk={onAskAboutElection && lead ? (seed) => onAskAboutElection({
+          activity: lead.activityLabel,
+          windows: [{
+            label: lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`,
+            tier: lead.supportLevel,
+            why: lines?.loop?.now?.why,
+          }],
+        }, seed) : undefined}
+      />
+
       {/* ── RIGHT NOW · conditional. Only when a real condition is gating. */}
       {now?.voc?.isVOC && now.voc.reading && (
         <div style={{
@@ -768,42 +797,10 @@ export default function Home({
 
         {lead ? (
           <div style={{ padding: "2px 20px 18px" }}>
-            {/* THE LOOP — one act, and the one after it.
-                A window says when something is possible; this says what to
-                do with the next five minutes, which is the question people
-                open the app holding. Composed by the engine (linesUp.loop)
-                so Home and Today cannot answer it differently. */}
-            {lines?.loop?.now && (
-              <div style={{
-                marginBottom: 12, paddingBottom: 11,
-                borderBottom: "1px solid var(--color-border)",
-              }}>
-                <div style={{
-                  fontSize: 9, textTransform: "uppercase", letterSpacing: "0.9px",
-                  color: lines.loop.now.inFlow ? "#4a7a52" : "var(--text-3)", marginBottom: 3,
-                }}>
-                  {lines.loop.now.inFlow
-                    ? `Keep going · ${lines.loop.now.elapsedMin}m in`
-                    : "Now"}
-                </div>
-                <div style={{ fontSize: 15.5, color: "var(--color-foreground)", fontWeight: 600, lineHeight: 1.35 }}>
-                  {lines.loop.now.title}
-                  {lines.loop.now.until && !lines.loop.now.inFlow && (
-                    <span style={{ fontWeight: 400, color: "var(--color-muted)" }}> — until {lines.loop.now.until}</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 2 }}>
-                  {lines.loop.now.why}
-                </div>
-                {lines.loop.then && (
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
-                    then · {lines.loop.then.title}
-                    {lines.loop.then.startClock ? ` at ${lines.loop.then.startClock}` : ""}
-                  </div>
-                )}
-              </div>
-            )}
-
+            {/* The loop moved OUT of this card and up to CompassNow — one
+                copy, at the top, where the question is actually asked. What
+                stays here is what someone comes to this card for: the
+                badges, the evidence, the alternatives, the horizon. */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               <Badge
                 text={lead.supportLevel === "convergent" ? "Several things line up" : "Supported"}
