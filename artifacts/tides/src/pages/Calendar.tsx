@@ -1290,10 +1290,21 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
   const qc = useQueryClient();
 
-  // 120 forward + 45 back covers a month grid's overflow weeks in both
-  // directions, however far the user has paged. Asking for 90 got 30,
-  // silently, and always starting today — so half of every month was blank.
-  const { data: weekData }   = useTidesWeek(120, lat, lon, 45);
+  // A MONTH GRID IS 42 CELLS. Ask for that, not for a season.
+  //
+  // The first fix for the blank past-days asked for 120 forward + 45 back,
+  // which is ~165 days of ephemeris — MEASURED at 11.7s, and this route is
+  // synchronous, so Node's single thread blocked and every other request on
+  // Calendar load queued behind it (the Log's timeline, the felt pattern and
+  // the wins ledger all sat at "Loading…" forever). The blank cells were
+  // real, the cure was worse than the disease.
+  //
+  // `days` is the TOTAL returned and `back` only shifts where it starts, so
+  // 42 total starting 14 days back is exactly the six-week grid, centred on
+  // the part of the month a person is usually looking at. Measured ~4s cold
+  // against ~3s for the old 30-day window — a fair price for cells that are
+  // no longer blank, and a third of what the first attempt cost.
+  const { data: weekData }   = useTidesWeek(42, lat, lon, 14);
   const { data: eventsData } = useSkyEvents(90, lat, lon);
 
   // Caution days — ⚠ marks from the user's self-reported sensitivity (Currents

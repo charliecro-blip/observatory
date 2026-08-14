@@ -440,15 +440,32 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               </div>
             </div>
 
-            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-              <select value={form.bestWindowType} onChange={e=>setForm(f=>({...f,bestWindowType:e.target.value}))}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"var(--text-2)"}}>
-                {/* Not a time of day — every option in this list is a KIND OF
-                    WORK (deep work, creative, social). The old label promised
-                    hours and delivered categories. */}
-                <option value="">Kind of work: any</option>
-                {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
-              </select>
+            {/* MULTIPLE KINDS, because a practice can be more than one thing —
+                a morning sit is recovery and study at once (owner asked twice:
+                "i also want to be able to select multiple of them").
+                Stored comma-separated in the same column, which is the
+                convention the sibling fields already use (favoredElements,
+                favoredPhases), so this needs no migration. */}
+            <div style={{marginBottom:8}}>
+              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Kind of work</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {WINDOW_TYPES.map(t => {
+                  const chosen = form.bestWindowType ? form.bestWindowType.split(",").filter(Boolean) : [];
+                  const on = chosen.includes(t);
+                  return (
+                    <button key={t} onClick={() => setForm(f => {
+                      const cur = f.bestWindowType ? f.bestWindowType.split(",").filter(Boolean) : [];
+                      const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
+                      return { ...f, bestWindowType: next.join(",") };
+                    })} style={{
+                      fontSize:10,padding:"3px 9px",borderRadius:10,cursor:"pointer",
+                      border: on ? "1px solid #5a6a8a" : "1px solid var(--color-border)",
+                      background: on ? "#5a6a8a14" : "transparent",
+                      color: on ? "#4a5a7a" : "var(--color-muted)", fontWeight: on ? 600 : 400,
+                    }}>{WINDOW_LABELS[t]}</button>
+                  );
+                })}
+              </div>
             </div>
             {(goalsList.length > 0 || projectsList.length > 0) && (
               <div style={{display:"flex",gap:8,marginBottom:8}}>

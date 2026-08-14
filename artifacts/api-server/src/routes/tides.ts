@@ -443,10 +443,18 @@ router.get("/tides/week", (req, res) => {
   // as "nothing is populating" (owner, 2026-08-13). The cap was a sensible
   // guard against an unbounded scan, not a statement about what a calendar
   // needs; 120 covers a month grid with both its overflow weeks.
-  const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 120);
+  // The cap is a REAL guard, not a formality: this route costs roughly 70ms
+  // per day and runs synchronously, so a caller asking for a season blocks
+  // the event loop for ten seconds and starves every other request. 60 is
+  // comfortably more than a month grid needs and still under two seconds
+  // above what the page already paid.
+  const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 60);
   // How many days BEFORE today to include. A calendar showing a month must
   // be able to draw the part of it that has already happened.
-  const backDays = Math.min(Math.max(parseInt((req.query.back as string) ?? "0", 10) || 0, 0), 45);
+  // Same cost per day as forward, so capped in the same spirit. Together the
+  // two bound one request at ~80 days, which is the ceiling this synchronous
+  // route can carry without holding the event loop long enough to be felt.
+  const backDays = Math.min(Math.max(parseInt((req.query.back as string) ?? "0", 10) || 0, 0), 20);
   // Viewer timezone offset — days must be the VIEWER's calendar days. On UTC
   // day boundaries, a US viewer's "today" straddles two UTC dates: a void
   // period midday their time fell outside the old 9am/noon/3pm UTC samples,
@@ -1121,7 +1129,18 @@ router.get("/tides/events", (req, res) => {
 
   const events: SkyEvent[] = [];
 
-  // Crossings: benefic/malefic at ASC/MC, Moon at all angles
+  // Crossings: benefic/malefic at ASC/MC, Moon at all angles.
+  //
+  // NOTE (2026-08-13): this whole route is pathologically slow — MEASURED on
+  // a cold server at 13.2s for 7 days, 42.2s for 30, and >90s for the 90
+  // days Calendar requests on load. It is synchronous, so Node blocks for the
+  // duration and every other request queues behind it, which is why a
+  // calendar holding real windows can render empty.
+  //
+  // The obvious suspect was this hour-by-hour crossings scan, but gating it
+  // behind a flag changed nothing (99.0s off vs 97.7s on), so the cost is
+  // elsewhere in the route and wants a profiling pass, not another guess.
+  // Recorded in AUDIT-INTEGRATION-2026-08-13.md rather than half-fixed here.
   const startJd = julianDay(now);
   const significantCrossings = getNextAngularCrossings(startJd, lat, lon, 80, numDays * 24)
     .filter(c => {

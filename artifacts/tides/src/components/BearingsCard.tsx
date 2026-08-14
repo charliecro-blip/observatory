@@ -75,6 +75,9 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
   // violation this project hit once before in the app Shell; the rule is
   // that every hook precedes every conditional return, without exception.
   const [open, setOpen] = useState<"year" | "chapter" | null>(null);
+  // Which slow transit has its meaning unfolded. Above the early returns for
+  // the same reason as `open` — hooks precede every conditional return.
+  const [openTransit, setOpenTransit] = useState<number | null>(null);
 
   if (!testerId || !data) return null;
   if (!data.available) {
@@ -135,10 +138,31 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
       {fix.chapter.renovations.length > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline" }}>
           <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>IN PROGRESS</span>
+          {/* Each transit opens its own meaning. These carried a `note` the
+              engine had already written and showed it only as a hover title —
+              invisible on a phone, and undiscoverable anywhere. "Each of
+              these astrological aspects should have options to explore more"
+              (owner, 2026-08-13) applies to this row as much as to the two
+              above it. */}
           <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.6 }}>
             {fix.chapter.renovations.map((r, i) => (
-              <span key={i} title={r.note}>{r.line}{i < fix.chapter.renovations.length - 1 ? " · " : ""}</span>
+              <span key={i}>
+                <button onClick={() => setOpenTransit(openTransit === i ? null : i)}
+                  aria-expanded={openTransit === i}
+                  style={{
+                    background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer",
+                    color: openTransit === i ? "var(--color-primary)" : "var(--text-2)",
+                    textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3,
+                  }}>{r.line}</button>
+                {i < fix.chapter.renovations.length - 1 ? " · " : ""}
+              </span>
             ))}
+            {openTransit != null && fix.chapter.renovations[openTransit] && (
+              <div style={{
+                fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6, marginTop: 5,
+                paddingLeft: 9, borderLeft: "2px solid var(--color-border)",
+              }}>{fix.chapter.renovations[openTransit].note}</div>
+            )}
           </div>
         </div>
       )}

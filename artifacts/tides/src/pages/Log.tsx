@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { WakeList } from "@/components/Momentum";
+import FeltPattern from "@/components/FeltPattern";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -441,6 +442,14 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
         /* No day selected → the Wake: the continual wins ledger is the Log's
            default view (owner 2026-07-17: tracking progress, emphasized). */
         <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}>
+          {/* The felt loop, finally shown. The endpoint that computes it has
+              existed for weeks with nothing rendering it — a trust engine
+              nobody can see is a diary (integration audit, gap 2). It belongs
+              here rather than on Home: this is the reflective surface, and
+              the finding is month-scale where Home is daily. */}
+          <div style={{ marginBottom: 16 }}>
+            <FeltPattern testerId={testerId} />
+          </div>
           <WakeList testerId={testerId} />
           <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 20 }}>
             ← or select a day to read its full log

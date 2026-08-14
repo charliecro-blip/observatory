@@ -133,3 +133,40 @@ get timing."
    as a feature one.
 4. **The reflection retrospective** — the §7 promise, biggest product upside,
    deserves its own session.
+
+---
+
+## 5. `/api/tides/events` is pathologically slow — the empty-calendar cause
+
+Found while verifying the felt-pattern card, which never rendered because
+nothing on the page did. MEASURED on a cold server, no other load:
+
+| range | result |
+|---|---|
+| `days=7` | 13.2s |
+| `days=30` | 42.2s |
+| `days=90` | >90s (client times out) |
+
+**Calendar requests `days=90` on every load.** The route is synchronous, so
+Node's single thread is held for the whole duration and every other request
+queues behind it — the Log's timeline, the wins ledger, the felt pattern,
+`planning/windows`. A calendar holding real committed windows therefore
+renders empty, which is exactly what the owner reported ("nothing is
+populating on the monthly view … even though i already put a lot in plan").
+
+**The obvious suspect was wrong.** `getNextAngularCrossings` scans hour by
+hour across the range (2,160 hours at 90 days), so it looked like the
+culprit; gating it behind a flag changed nothing — 99.0s with it off versus
+97.7s on. The cost is elsewhere in the route. That change was reverted
+rather than shipped as an inert fix with a comment claiming otherwise.
+
+**Next step is a profiling pass**, not another guess: instrument the route's
+sections, find what actually costs ~1.4s per requested day, and fix that.
+Until then Calendar's `days=90` request is the single most expensive thing
+the app does.
+
+**Caveat worth carrying:** these numbers come from the local `api-scratch`
+dev server (tsx, unbundled) against a remote database. Production runs
+compiled code and may be faster — the FIRST step of the profiling pass
+should be reproducing the timings against the built server, so the fix is
+aimed at a real cost rather than a dev-mode artifact.
