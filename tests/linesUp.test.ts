@@ -2,7 +2,16 @@ import { describe, it, expect } from "vitest";
 import { linesUp, type HeldItem } from "../artifacts/api-server/src/lib/linesUp.js";
 import { ACTIVITIES } from "../artifacts/api-server/src/lib/activityCorrespondences.js";
 
-const base = { lat: 30.27, lon: -97.74, tzOffsetMin: 300, natal: null, timeKnown: true, locationKnown: true };
+// AT pins the moment, because the sky does not repeat.
+//
+// Without it these tests answered for whatever day they happened to run on,
+// and three went red on 2026-08-09 with the engine working exactly as
+// designed: that day's only testimony for these activities was planetary
+// hours, and the planetary-time floor correctly refused to headline them.
+// The anchor is noon in Austin on a day measured to carry real testimony, so
+// the assertions below test the engine rather than the calendar.
+const AT = new Date(Date.UTC(2026, 7, 8, 17)); // noon in Austin (UTC-5)
+const base = { lat: 30.27, lon: -97.74, tzOffsetMin: 300, natal: null, timeKnown: true, locationKnown: true, now: AT };
 const held = (title: string, extra: Partial<HeldItem> = {}): HeldItem =>
   ({ id: title.slice(0, 8), title, kind: "task", ...extra });
 
@@ -170,8 +179,8 @@ describe("the moment, not just the day", () => {
       const endMs = Date.parse(x.endAt);
       expect(Number.isNaN(startMs)).toBe(false);
       if (!x.allDay) {
-        if (x.state === "ahead") expect(startMs).toBeGreaterThan(Date.now());
-        if (x.state === "passed") expect(endMs).toBeLessThanOrEqual(Date.now());
+        if (x.state === "ahead") expect(startMs).toBeGreaterThan(AT.getTime());
+        if (x.state === "passed") expect(endMs).toBeLessThanOrEqual(AT.getTime());
       }
     }
   }, 120_000);

@@ -247,6 +247,17 @@ export interface LinesUpOpts {
   natal: ComputedNatalChart | null;
   timeKnown: boolean;
   locationKnown: boolean;
+  /**
+   * The moment to answer for. Defaults to the real now, which is what the
+   * route wants; tests pass an anchor, which is what determinism wants.
+   *
+   * This module was the one engine entry that read the wall clock directly,
+   * so its tests inherited the sky of whatever day they ran on — green on a
+   * busy day, red on a quiet one, when the only testimony for the test
+   * activities was planetary hours and the floor below correctly held. The
+   * engine underneath has taken `startAt` for exactly this reason all along.
+   */
+  now?: Date;
 }
 
 const RANK: Record<string, number> = { convergent: 0, supported: 1 };
@@ -321,6 +332,7 @@ function hasRealTestimony(w: { establishingFamilies?: string[]; reinforcingFamil
 
 export function linesUp(opts: LinesUpOpts): LinesUp {
   const { held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown } = opts;
+  const now = opts.now ?? new Date();
 
   // Thin inventory is its own state, not an empty list. A new account has no
   // basis for a computed answer and should be told so directly rather than
@@ -398,6 +410,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     if (!byActivity.has(key)) {
       byActivity.set(key, computeElections({
         activityKey: key, span: "day", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
+        startAt: now,
       }));
     }
     return byActivity.get(key)!;
@@ -409,7 +422,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     // Best window for THIS item. See `pickBestWindow` — actionable before
     // strong, so a passed convergent window can no longer beat a merely
     // supported window still open this evening.
-    const w = pickBestWindow(out.windows, Date.now()) as any;
+    const w = pickBestWindow(out.windows, now.getTime()) as any;
     if (!w) { heldBack.push({ item: t.item, reason: "no window today" }); continue; }
     // "defer" is the engine saying the matter itself is not suited now. It is
     // an honest answer but not a recommendation, so it stays out of the feed —
@@ -432,7 +445,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
     if (w.supportLevel === "supported") sawSupported = true;
     const startMs = Date.parse(w.startAt);
     const endMs = Date.parse(w.endAt);
-    const nowMs = Date.now();
+    const nowMs = now.getTime();
     const state: LinesUpResult["state"] =
       w.allDay ? "open-now"
       : nowMs >= startMs && nowMs < endMs ? "open-now"
@@ -551,7 +564,7 @@ function inFlowItem(held: HeldItem[], at: Date): { item: HeldItem; minutes: numb
  * immediate, the gain marginal and speculative.
  */
 function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts): Loop {
-  const now = new Date();
+  const now = opts.now ?? new Date();
   const running = inFlowItem(held, now);
 
   if (running) {
