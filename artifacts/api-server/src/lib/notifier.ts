@@ -147,9 +147,21 @@ async function tick() {
   // so this stays behind an env opt-in until per-user prefs sync server-side.
   if (process.env["PUSH_HOUR_SHIFTS"] === "1") {
     try {
+      // A PLANETARY HOUR IS A LOCAL FACT, so without coordinates there is no
+      // answer to send. This defaulted to New York, which meant anyone
+      // without a saved location received an hour boundary computed for a
+      // city they may never have been to — stated as fact, at a time that
+      // was simply wrong for them. Same class as the invented polar day: the
+      // honest move is to withhold, not to guess and sound certain.
       const firstSub = subs[0];
-      const lat = firstSub?.lat ? parseFloat(firstSub.lat) : 40.7;
-      const lon = firstSub?.lon ? parseFloat(firstSub.lon) : -74.0;
+      const lat = firstSub?.lat ? parseFloat(firstSub.lat) : NaN;
+      const lon = firstSub?.lon ? parseFloat(firstSub.lon) : NaN;
+      // Scoped to THIS block, never `return` — an early return here would
+      // leave tick() before the void-of-course check below, so withholding
+      // one honest notification would have silently cancelled another.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        logger.info("notifier: hour shift skipped — no coordinates, and a planetary hour without a place is a guess");
+      } else {
       const ph = getPlanetaryHour(now, lat, lon);
       const secFromStart = (now.getTime() - ph.startTime.getTime()) / 1000;
       if (secFromStart < 90) {
@@ -171,6 +183,7 @@ async function tick() {
             await sendPushToTester(sub.testerId, payload);
           }
         }
+      }
       }
     } catch (e) {
       logger.warn({ e }, "notifier: hour shift check failed");
