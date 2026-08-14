@@ -1,5 +1,4 @@
 import React from "react";
-import { ELEMENT_COLORS } from "@/lib/elements";
 import { yourDay, type DayTask } from "@/lib/your-day";
 import { currentlyInProgress } from "@/lib/in-progress";
 import type { ZoneFraming } from "@/lib/modes";
@@ -15,14 +14,9 @@ import type { ZoneFraming } from "@/lib/modes";
 // unused, costing two API requests on every Today load against a measured
 // problem of 27 requests per cold load. Removed with the rest of the residue.
 
-const ELEMENT_COLOR: Record<string, string> = {
-  fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air,
-  water: ELEMENT_COLORS.water, spirit: "#6f6a90",
-};
-
-function Card({ title, icon, onOpen, tourId, children }: { title: string; icon: string; onOpen?: () => void; tourId?: string; children: React.ReactNode }) {
+function Card({ title, icon, onOpen, children }: { title: string; icon: string; onOpen?: () => void; children: React.ReactNode }) {
   return (
-    <div onClick={onOpen} data-tour={tourId} style={{
+    <div onClick={onOpen} style={{
       background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 15px",
       cursor: onOpen ? "pointer" : "default", display: "flex", flexDirection: "column", minWidth: 0,
     }}>
@@ -44,8 +38,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function Dashboard({ northStars, windows, todayTasks, onNavigate, framing }: {
-  northStars: any[] | undefined;
+export default function Dashboard({ windows, todayTasks, onNavigate, framing }: {
   windows: any[] | undefined;
   todayTasks?: DayTask[];
   onNavigate?: (v: string) => void;
@@ -53,7 +46,6 @@ export default function Dashboard({ northStars, windows, todayTasks, onNavigate,
    *  in the morning, "How the day went" at night. Same data throughout. */
   framing: ZoneFraming;
 }) {
-  const stars = (northStars ?? []).slice(0, 3);
   // Both this card and the Keep-going card above read the SAME in-progress
   // answer. They disagreed once — "you're already in this" directly above
   // "still loose: the same task" — and one shared call is the fix.
@@ -64,28 +56,15 @@ export default function Dashboard({ northStars, windows, todayTasks, onNavigate,
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
 
-        {/* tourId: the walkthrough's "set a direction" stop lands here. */}
-        <Card title="Guiding stars" icon="✦" tourId="today-stars" onOpen={onNavigate ? () => onNavigate("work") : undefined}>
-          {stars.length > 0 ? stars.map((g: any, i: number) => {
-            const col = ELEMENT_COLOR[g.element ?? ""] ?? "#8a8278";
-            // Report what HAPPENED, never a target the user didn't set. This
-            // read `{done}/{max(scheduled, 2)}` — so a star with nothing
-            // scheduled showed "0/2", an obligation invented by the app and
-            // then scored against. Movement is worth reflecting; a denominator
-            // nobody chose is just a quiet accusation.
-            const done = g.completedCount ?? 0;
-            const scheduled = g.scheduledCount ?? 0;
-            return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0" }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: col, flexShrink: 0 }} />
-                <span style={{ fontSize: 12.5, color: "var(--color-foreground)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 10, color: "var(--text-3)" }}>
-                  {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "—"}
-                </span>
-              </div>
-            );
-          }) : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Set a guiding star to steer by →</div>}
-        </Card>
+        {/* The Guiding stars card moved to Home (2026-08-14, the Home/Today
+            split). A star's progress is measured in weeks, and this page
+            answers "what do I do next?" — so a week-scale figure sat here as
+            standing reference on a surface about the next hour. Home is the
+            panoramic view and now carries it, with the same rule about
+            denominators intact.
+
+            The walkthrough's "set a direction" stop moved with it, to the
+            Home tab in the nav (lib/tour.ts). */}
 
         {/* Zone 3 — YOUR DAY. Was "On deck · today", which listed scheduled
             windows only: a day holding six unscheduled things rendered as

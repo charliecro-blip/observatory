@@ -42,7 +42,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
-import { useNorthStars, useTidesNow } from "@/hooks/useTides";
+import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
+import { QualityStrip } from "@/components/QualityStrip";
+import CroppingUp from "@/components/CroppingUp";
+import RhythmProgress from "@/components/RhythmProgress";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
@@ -459,6 +462,13 @@ export default function Home({
   // the day shaping uses.
   const { data: week } = useWeekShape(testerId, lat, lon, locationKnown, true);
 
+  // The sky's own fortnight, for the horizon row below. `back = 0` matters:
+  // Calendar fetches back-days so its month grid can draw the days either side
+  // of the first, and a strip titled "the water ahead" that includes them opens
+  // half-spent. QualityStrip filters to today onward as well, so this is belt
+  // and braces rather than the only guard.
+  const { data: water } = useTidesWeek(14, lat, lon, 0);
+
   // CROSS-HIGHLIGHT. The hero and the task row are two views of one object, not
   // two statements of the same fact — clicking either shows you the other. This
   // is the answer to the duplication the page had: the connection is made by
@@ -476,6 +486,12 @@ export default function Home({
   /** Sets the link. Symmetric: the row's verdict and the hero title both call it. */
   const linkRow = (id: number) => { setFocusedTask(id); setEvidenceOpen(true); };
   const clearLink = () => { setFocusedTask(null); setEvidenceOpen(false); };
+
+  // Which task groups are showing everything. Held HERE rather than inside
+  // `Group`, because `Group` is redefined on every render — React sees a new
+  // component type each time and remounts the subtree, so any state living
+  // inside it would reset on the next keystroke in the input above.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const [newTitle, setNewTitle] = useState("");
   const addTask = useMutation({
@@ -508,6 +524,15 @@ export default function Home({
   const dueToday = open.filter((t) => t.dueDate === today);
   const later = open.filter((t) => t.dueDate && t.dueDate > today);
   const undated = open.filter((t) => !t.dueDate);
+
+  // The label of the one group that has anything in it, when there is exactly
+  // one. Drives the bare (unheaded) rendering below.
+  const soleGroup = (() => {
+    const filled = ([
+      ["overdue", overdue], ["today", dueToday], ["no date", undated], ["later", later],
+    ] as const).filter(([, items]) => items.length > 0);
+    return filled.length === 1 ? filled[0][0] : null;
+  })();
 
   // The Log appears only after you have engaged today. The owner's rule: "the
   // log should only come if someone has already engaged with the app that day —
@@ -629,27 +654,52 @@ export default function Home({
     );
   };
 
-  // Overdue/today are naturally small (bounded by "how far behind or how
-  // busy is today"). Undated/later are the open-ended backlog buckets — on a
-  // landing page, an unbounded list there is the one real accumulation risk
-  // in this panel, so only those two get capped, with a link to the full
-  // list rather than a silent truncation.
-  const Group = ({ label, items, muted, cap }: { label: string; items: Task[]; muted?: boolean; cap?: number }) => {
+  /**
+   * THE LIST IS THE SUBJECT OF THIS COLUMN, so it is shown.
+   *
+   * This used to cap "no date" and "later" at five each and mute "later" —
+   * which meant a freshly imported list of ten landed almost entirely inside
+   * two small, dimmed, bottom groups behind a "+5 more →" that navigated to
+   * another tab. The owner reported not seeing the list he had just imported
+   * while every one of its rows was in the DOM. The data was never the bug.
+   *
+   * Caps survive, because Home is panoramic and an unbounded backlog would
+   * make it the everything-page again — but they are now generous, and they
+   * open IN PLACE. Sending someone to a different tab to see the rest of the
+   * list they are looking at is what made a cap read as a disappearance.
+   */
+  const GROUP_CAP = 12;
+  const Group = ({ label, items, muted, cap, bare }: {
+    label: string; items: Task[]; muted?: boolean; cap?: number;
+    /** The only group with anything in it. Its label states nothing the reader
+     *  doesn't already know, and a header above the whole list makes a single
+     *  dump look like a category rather than the inventory it is. */
+    bare?: boolean;
+  }) => {
     if (items.length === 0) return null;
-    const shown = cap ? items.slice(0, cap) : items;
+    const open = expandedGroups.has(label);
+    const shown = cap && !open ? items.slice(0, cap) : items;
     const hidden = items.length - shown.length;
     return (
       <>
-        <div style={{
-          fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
-          padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
-        }}>{label} · {items.length}</div>
+        {!bare && (
+          <div style={{
+            fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
+            padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
+          }}>{label} · {items.length}</div>
+        )}
         {shown.map((t) => <Row key={t.id} t={t} muted={muted} />)}
-        {hidden > 0 && (
-          <button onClick={() => onNavigate("work")} style={{
-            display: "block", width: "100%", textAlign: "left", padding: "6px 16px 8px",
-            background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-3)",
-          }}>+{hidden} more →</button>
+        {(hidden > 0 || open) && (
+          <button
+            onClick={() => setExpandedGroups((prev) => {
+              const next = new Set(prev);
+              if (next.has(label)) next.delete(label); else next.add(label);
+              return next;
+            })}
+            style={{
+              display: "block", width: "100%", textAlign: "left", padding: "6px 16px 8px",
+              background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-3)",
+            }}>{open ? "Show fewer ↑" : `Show all ${items.length} ↓`}</button>
         )}
       </>
     );
@@ -713,6 +763,16 @@ export default function Home({
           <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 3 }}>{now.voc.reading.instead}</div>
           {now.voc.scope && (
             <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.scope}</div>
+          )}
+          {/* THE CITATION, LAST AND SMALLEST. Six signs carry one; the other
+              six render nothing here rather than a hedge. It sits below the
+              counsel because it is the source of the claim rather than part
+              of it — this used to open the lead sentence in the four Lilly
+              signs, which spent the best line on bookkeeping. */}
+          {now.voc.reading.provenance && (
+            <div style={{ fontSize: 10.5, color: "var(--text-3)", lineHeight: 1.5, marginTop: 6, fontStyle: "italic" }}>
+              {now.voc.reading.provenance}
+            </div>
           )}
         </div>
       )}
@@ -866,10 +926,15 @@ export default function Home({
             </div>
           ) : (
             <>
-              <Group label="overdue" items={overdue} />
-              <Group label="today" items={dueToday} />
-              <Group label="no date" items={undated} cap={5} />
-              <Group label="later" items={later} muted cap={5} />
+              {/* A single-group list drops its heading. Almost every imported
+                  dump is one group — ten undated lines — and labelling it
+                  "no date · 10" filed the whole inventory under a caveat. */}
+              <Group label="overdue" items={overdue} bare={soleGroup === "overdue"} />
+              <Group label="today" items={dueToday} bare={soleGroup === "today"} />
+              <Group label="no date" items={undated} cap={GROUP_CAP} bare={soleGroup === "no date"} />
+              {/* Not muted any more. Dimming a whole group made the backlog
+                  read as disabled, and "later" is still work you are holding. */}
+              <Group label="later" items={later} cap={GROUP_CAP} bare={soleGroup === "later"} />
               {open.length === 0 && tasks && (
                 <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
               )}
@@ -900,22 +965,55 @@ export default function Home({
             </div>
           )}
 
+          {/* GUIDING STARS, with their movement — the card that used to live on
+              Today (Dashboard's "Guiding stars"). A star's progress is measured
+              in weeks, so it was answering a question Today never asks; here it
+              is one of the standing things Home exists to show.
+
+              Chips became rows to make room for the figure. What each row
+              reports is what HAPPENED — the count done, or the count with a
+              time on it — never a denominator nobody set. A star with nothing
+              scheduled used to render "0/2", an obligation the app invented and
+              then scored the person against. */}
           {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
             <div style={PANEL}>
-              <SectionTitle note="open the tab to work on them">Guiding Stars</SectionTitle>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 14px" }}>
+              <SectionTitle
+                action={
+                  <button onClick={() => onNavigate("work")} style={{
+                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                    color: "var(--color-primary)",
+                  }}>Open Stars →</button>
+                }
+              >Guiding Stars</SectionTitle>
+              <div style={{ padding: "0 16px 12px" }}>
                 {(northStars ?? [])
                   .filter((g: any) => g.status !== "done" && g.status !== "paused")
-                  .map((g: any) => (
-                    <button key={g.id} onClick={() => onNavigate("work")} style={{
-                      fontSize: 11, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
-                      border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                      color: "var(--color-foreground)",
-                    }}>{g.title}</button>
-                  ))}
+                  .map((g: any) => {
+                    const done = g.completedCount ?? 0;
+                    const scheduled = g.scheduledCount ?? 0;
+                    return (
+                      <button key={g.id} onClick={() => onNavigate("work")} style={{
+                        display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
+                        padding: "4px 0", background: "none", border: "none", cursor: "pointer",
+                      }}>
+                        <span style={{
+                          fontSize: 12, flex: 1, minWidth: 0, color: "var(--color-foreground)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{g.title}</span>
+                        <span style={{ fontSize: 10, color: done > 0 ? CONVERGENT : "var(--text-3)", flexShrink: 0 }}>
+                          {done > 0 ? `${done} this week`
+                            : scheduled > 0 ? `${scheduled} scheduled`
+                            : "nothing yet"}
+                        </span>
+                      </button>
+                    );
+                  })}
               </div>
             </div>
           )}
+
+          {/* THE RHYTHM — habits at the scale they actually move at. */}
+          <RhythmProgress testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
 
           {/* Expanded only: the day's wins are a look backward, and the
               landing page's essential job is forward. The Log tab holds the
@@ -938,6 +1036,34 @@ export default function Home({
             color: "var(--text-3)", padding: "2px 0", textAlign: "left",
           }}>{essential ? "Show more ↓" : "Show less ↑"}</button>
         </div>
+      </div>
+
+      {/* ══ THE HORIZON ═══════════════════════════════════════════════════
+          Home's second question — "what's coming?" — which nothing on the
+          page looked far enough ahead to answer. Two facts at two scales:
+          the fortnight's shape, and the fixed dates beyond it.
+
+          BREADTH AT LOW RESOLUTION, which is the whole guard against Home
+          becoming the everything-page again. Neither of these explains
+          itself; both hand you a door to the tab that owns the detail.
+
+          `auto-fit` rather than two fixed columns, because `CroppingUp`
+          renders nothing on a genuinely quiet stretch and a fixed grid
+          would leave a hole where a card declined to speak. */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: 14, alignItems: "start", flexShrink: 0,
+      }}>
+        {water && (
+          // `overflow: hidden` clips QualityStrip's own full-bleed bottom rule
+          // to the rounded corners. Safe here in a way it is not on the page's
+          // flex column: this is a GRID item, so it has no flex auto-minimum
+          // to switch off — the trap that once collapsed the hero to 1.67px.
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
+          </div>
+        )}
+        <CroppingUp onNavigate={onNavigate} />
       </div>
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════

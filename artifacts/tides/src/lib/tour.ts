@@ -17,9 +17,16 @@ export interface TourStep {
   cta?: string;
 }
 
-// Five stops, one per job, all on Today — the tour never navigates away
-// mid-flight (a route change under a spotlight is disorienting; the last
-// step's CTA is the one deliberate exit).
+// Five stops, one per job, all reachable from Today — the tour never navigates
+// away mid-flight (a route change under a spotlight is disorienting; the last
+// step's CTA is the one deliberate exit). Stops that describe another surface
+// anchor to its nav tab rather than to the surface itself, for that reason.
+//
+// "Set a direction" moved from Today's Guiding Stars card to the Home tab when
+// the Home/Today split sent star progress to Home. SpotlightTour survives a
+// missing anchor by advancing past it, which is the right behaviour and also
+// the reason this needed catching by hand: the tour would have gone on working
+// while quietly teaching four things instead of five.
 export const TOUR_STEPS: TourStep[] = [
   {
     anchor: "today-hero",
@@ -27,9 +34,9 @@ export const TOUR_STEPS: TourStep[] = [
     body: "This is the current moment — what kind of time it is, how strong it is, and what it favors. Conditions, not fate: the sky describes the weather, you steer.",
   },
   {
-    anchor: "today-stars",
+    anchor: "nav-home",
     title: "Set a direction",
-    body: "Guiding Stars are the longer things you're steering toward. Days that suit one get flagged, and its next step surfaces here, so today stays connected to somewhere.",
+    body: "Guiding Stars are the longer things you're steering toward, and Home keeps their progress in view alongside your list, so today stays connected to somewhere.",
   },
   {
     anchor: "nav-plan",

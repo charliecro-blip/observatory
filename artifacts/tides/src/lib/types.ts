@@ -55,7 +55,9 @@ export interface TidesNow {
     /** What the void governs — stated so results below need no disclaimer. */
     scope?: string | null;
     /** Sign-specific reading; `benign` marks Lilly's four exempt signs. */
-    reading?: { feel: string; instead: string; benign: boolean } | null;
+    /** `provenance` is present only where the tradition has something to cite
+     *  — Lilly's four exempt signs, plus the Moon's fall and detriment. */
+    reading?: { feel: string; instead: string; provenance?: string; benign: boolean } | null;
   };
   qualityScore?: number;
   personalTransits?: PersonalTransit[];

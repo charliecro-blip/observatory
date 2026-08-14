@@ -16,6 +16,7 @@ describe("no invented obligations", () => {
   const FILES = [
     "artifacts/tides/src/components/Dashboard.tsx",
     "artifacts/tides/src/components/Rail.tsx",
+    "artifacts/tides/src/pages/Home.tsx",
     "artifacts/tides/src/pages/Today.tsx",
     "artifacts/tides/src/pages/GuidingStarsHub.tsx",
   ];
@@ -64,11 +65,16 @@ describe("no invented obligations", () => {
     }
   });
 
-  it("Dashboard reports movement without a denominator at all", () => {
-    // The live Today surface for star progress is Dashboard's card, which now
-    // states what happened rather than drawing a ratio.
-    const d = read("artifacts/tides/src/components/Dashboard.tsx");
-    expect(d).toMatch(/done > 0 \? `\$\{done\} this week`/);
+  it("star progress reports movement without a denominator at all", () => {
+    // Asserted against whichever file actually DRAWS star progress, which is
+    // the only version of this test worth having. It moved once already: the
+    // card lived on Today (Dashboard.tsx) until the Home/Today split on
+    // 2026-08-14 sent week-scale figures to Home, and pinning the old path
+    // would have failed for the reason the file no longer draws the thing —
+    // the exact "source-text test defends dead code" trap this file's other
+    // case was rewritten to avoid.
+    const home = read("artifacts/tides/src/pages/Home.tsx");
+    expect(home).toMatch(/done > 0 \? `\$\{done\} this week`/);
   });
 });
 

@@ -1578,7 +1578,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             The education layer belongs where someone goes looking for it. */}
         {/* No longer gated on `now`: this card shows your own stars and tasks,
             which have nothing to do with whether the sky has finished loading. */}
-        <Dashboard northStars={northStars} windows={windows} todayTasks={todayTasks} onNavigate={onNavigate} framing={framing} />
+        <Dashboard windows={windows} todayTasks={todayTasks} onNavigate={onNavigate} framing={framing} />
 
         {/* The month's water (30-day view) was removed from Today (owner
             2026-07-15): the day view stays about today; the month lives in the

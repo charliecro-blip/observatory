@@ -35,8 +35,17 @@ import Home from "@/pages/Home";
 
 type WorkTab = "overview" | "tasks" | "habits";
 
-function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed, onOpenSettings, onLeaveWork }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void; onOpenSettings?: ()=>void; onLeaveWork?: (v: string)=>void }) {
+function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed, onOpenSettings, onLeaveWork, seedTab, onSeedTabConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void; onOpenSettings?: ()=>void; onLeaveWork?: (v: string)=>void; seedTab?: WorkTab|null; onSeedTabConsumed?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
+  // Arriving from a summary elsewhere in the app (Home's habit progress, for
+  // one) lands on the sub-tab that owns the detail. Without this a door
+  // labelled "All habits →" put you on Guiding Stars, which is the kind of
+  // small lie that teaches people not to trust the links.
+  useEffect(() => {
+    if (!seedTab) return;
+    setTab(seedTab);
+    onSeedTabConsumed?.();
+  }, [seedTab, onSeedTabConsumed]);
   // Arriving with an element seed (from the Almanac reference) always lands on
   // Guiding Stars, where the pre-filled creation form opens.
   useEffect(() => { if (seedElement) setTab("overview"); }, [seedElement]);
@@ -1063,6 +1072,8 @@ function Shell() {
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
   const [calendarSeed, setCalendarSeed] = useState<string | null>(null);
+  // Same idea one level down: which sub-tab of Stars to open on arrival.
+  const [workSeedTab, setWorkSeedTab] = useState<WorkTab | null>(null);
   // The nav is just the loop — TOP_TABS carries all four core tabs, so the
   // old essential-density "⋯" reveal (which held Log and Planets) is gone.
   const navTabs = TOP_TABS;
@@ -1215,7 +1226,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button data-tour={t.id === "launch" ? "nav-plan" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1294,7 +1305,10 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {/* "habits" is not a view — it is the Stars tab opened on its habits
+            sub-tab. Home's summaries name where they go, so the door has to
+            actually land there. */}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
@@ -1303,7 +1317,7 @@ function Shell() {
               : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
           </SubTabbed>
         )}
-        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)}/>}
+        {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)} seedTab={workSeedTab} onSeedTabConsumed={()=>setWorkSeedTab(null)}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
@@ -1317,7 +1331,7 @@ function Shell() {
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
           {navTabs.map(t => (
-            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : undefined} onClick={() => setView(t.id)} style={{
+            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : undefined} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
