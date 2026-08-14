@@ -153,14 +153,31 @@ const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
  * sign, and the tradition's whole counsel is: finish, don't begin. So these
  * are deliberately re-verbs — nothing here starts anything.
  */
-const VOC_FORMS: Record<string, string[]> = {
-  Sun:     ["revisit what you already put your name to", "read it once more before it goes out"],
-  Moon:    ["rest, tidy, tend what's already yours", "return to something that comforts"],
-  Mercury: ["revise and re-send", "clear the backlog, open nothing new"],
-  Venus:   ["get back to someone you've meant to", "re-make something you already love"],
-  Mars:    ["finish what's already moving", "clear the decks, open no front"],
-  Jupiter: ["go back to the bigger plan and revise it", "re-read what you meant to learn"],
-  Saturn:  ["close out an old obligation", "repair rather than rebuild"],
+// NOT ALL OF LIFE IS WORK, and a void is not an instruction to do admin.
+//
+// Each planet had two entries and both were office verbs, so a void hour
+// read as "clear the backlog" whatever the hour's character actually was —
+// jarring under a Mercury in Leo that had just been described as speaking
+// with conviction (owner, 2026-08-13: "the Mercury bit seems discordant …
+// they also should not just be solely work-focused"). Every planet now
+// carries a wider range — the body, people, home, rest — while every entry
+// still obeys the one hard rule: nothing here begins anything.
+export const VOC_FORMS: Record<string, string[]> = {
+  Sun:     ["revisit what you already put your name to", "read it once more before it goes out",
+            "sit in the sun with something you've already made", "tell someone about a thing you finished"],
+  Moon:    ["rest, tidy, tend what's already yours", "return to something that comforts",
+            "cook a dish you know by heart", "call the person you always mean to call"],
+  Mercury: ["revise and re-send", "clear the backlog, open nothing new",
+            "re-read the book you keep meaning to finish", "go back over a conversation and say the clearer version",
+            "put the notes in order — no new threads"],
+  Venus:   ["get back to someone you've meant to", "re-make something you already love",
+            "return to a record you haven't played in years", "tidy the room you actually sit in"],
+  Mars:    ["finish what's already moving", "clear the decks, open no front",
+            "walk a route you know", "put the body through something familiar"],
+  Jupiter: ["go back to the bigger plan and revise it", "re-read what you meant to learn",
+            "return to a place that widened you once", "retell the story to someone who wasn't there"],
+  Saturn:  ["close out an old obligation", "repair rather than rebuild",
+            "return to a practice you let lapse", "rest without earning it first"],
 };
 
 /** Stable rotation without randomness — same conditions give the same answer,

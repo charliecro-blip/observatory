@@ -206,7 +206,16 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
         fontFamily: "inherit", ...style,
       }}
     >
-      <span style={{ color: "var(--text-3)" }}>{prefix}</span>{" "}
+      {/* A LABEL, not the first word of the sentence.
+          Rendered inline and lowercase, "instead" ran straight into a
+          capitalised value — "instead Good hours for the work already in
+          front of you" — which reads as broken grammar rather than a
+          labelled field (owner, 2026-08-13). The rail already has a
+          micro-label idiom (SEASON, MOON, THIS HOUR); these now use it. */}
+      <span style={{
+        display: "block", color: "var(--text-3)", fontSize: 8,
+        textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
+      }}>{prefix}</span>
       <span key={start} className="phrase-in">{shown.join(" · ")}</span>
       <span style={{ marginLeft: 5, color: "var(--text-3)", fontSize: 8.5, whiteSpace: "nowrap" }}>
         ⟳ {show === 1 ? `${start + 1}/${n}` : "more"}
@@ -697,7 +706,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const t = takes[seasonTakeIdx % takes.length];
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
-                <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
+                <span style={{
+                  display: "block", color: "var(--text-3)", fontSize: 8,
+                  textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
+                }}>{t.label}</span>{t.text}
                 <button onClick={() => setSeasonTakeIdx(i => i + 1)} title="Another take on this season"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
@@ -799,7 +811,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     }} />
                   </div>
                 )}
-                <span style={{ color: "var(--text-3)" }}>{t.label}</span> {t.text}
+                <span style={{
+                  display: "block", color: "var(--text-3)", fontSize: 8,
+                  textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
+                }}>{t.label}</span>{t.text}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>

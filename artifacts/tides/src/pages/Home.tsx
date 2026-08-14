@@ -737,6 +737,209 @@ export default function Home({
       <NewMoonCheckIn testerId={testerId} onNavigate={onNavigate} />
       <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen()} />
 
+      {/* THE WORK comes BEFORE the reading now.
+          Compass answers "what now" at the top of the page, so the big
+          reading card is no longer the answer — it is the why, the
+          alternatives and the horizon, which is depth on request. Leaving
+          it between the answer and the person's own list pushed the list
+          ~1400 characters down the page, below the fold (owner,
+          2026-08-13: "on the home page i want to be able to see my to do
+          list"). Answer, then what you're holding, then the evidence. */}
+      {/* ══ LEVEL 2 · THE WORK, and LEVEL 3 · CONTEXT beside it ═══════════ */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
+
+        {/* YOUR WORK — capture, inventory and the action that acts on them,
+            together. The standalone "Shape today" card is gone: an action
+            separated from its object was too much real estate for one line. */}
+        <div style={PANEL}>
+          <SectionTitle
+            note={open.length ? `${open.length} open` : undefined}
+            action={
+              /* Said ONCE, at the top, rather than repeated down every row. The
+                 person's work is unaffected by a failed sky read and must not
+                 look broken — but "Shape today" would be an offer Compass
+                 cannot currently honour, so it stands down. */
+              linesFailed ? (
+                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                  Timing is unavailable. Your list is fine.
+                </span>
+              ) : (
+                <button onClick={() => setShapeOpen(v => !v)} style={{
+                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--color-primary)",
+                }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
+              )
+            }
+          >Your work</SectionTitle>
+
+          <div style={{ padding: "0 16px 10px" }}>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
+              placeholder="Add a task. One line is enough."
+              style={{
+                width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
+                border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                color: "var(--color-foreground)",
+              }}
+            />
+            {addTask.isError && <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>}
+          </div>
+
+          {/* Resolution chips live here now, with the work they act on. */}
+          {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                how much room should these get?
+              </div>
+              {resolution.needsDuration.map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.chips.map((m) => (
+                    <button key={m} disabled={setDuration.isPending}
+                      onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                what kind of work are these?
+              </div>
+              {resolution.needsActivity.slice(0, 4).map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.options.map((o) => (
+                    <button key={o.key} disabled={setActivity.isPending}
+                      onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{o.label}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* The shaped day, when asked for. */}
+          {shapeOpen && shaped && (
+            <div style={{ borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
+                {shaping ? "shaping…" : "today, shaped"}
+              </div>
+              {shaped.placed.map((p) => (
+                <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(p.startAt)}–{clockOf(p.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
+                    {p.item.title}
+                    {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
+                  </span>
+                </div>
+              ))}
+              {shaped.openTime.map((o, i) => (
+                <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(o.startAt)}–{clockOf(o.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing needed placing here</span>
+                </div>
+              ))}
+              <div style={{ height: 6 }} />
+            </div>
+          )}
+
+          {tasksFailed ? (
+            <div style={{ padding: "10px 16px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
+              Your tasks didn't load. The list is intact; it's the connection.
+            </div>
+          ) : (
+            <>
+              <Group label="overdue" items={overdue} />
+              <Group label="today" items={dueToday} />
+              <Group label="no date" items={undated} cap={5} />
+              <Group label="later" items={later} muted cap={5} />
+              {open.length === 0 && tasks && (
+                <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── CONTEXT column ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* YOUR DAY — what is actually on today, in order, with now marked.
+              Above This week because the day you are standing in outranks
+              the one ahead of it; renders nothing when the day is empty. */}
+          <DayAhead testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
+
+          {/* THIS WEEK — answers a question rather than drawing seven slots. */}
+          {week && (
+            <div style={PANEL}>
+              <SectionTitle
+                action={
+                  <button onClick={() => onNavigate("launch")} style={{
+                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                    color: "var(--color-primary)",
+                  }}>See week →</button>
+                }
+              >This week</SectionTitle>
+              <WeekStrip week={week} />
+            </div>
+          )}
+
+          {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
+            <div style={PANEL}>
+              <SectionTitle note="open the tab to work on them">Guiding Stars</SectionTitle>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 14px" }}>
+                {(northStars ?? [])
+                  .filter((g: any) => g.status !== "done" && g.status !== "paused")
+                  .map((g: any) => (
+                    <button key={g.id} onClick={() => onNavigate("work")} style={{
+                      fontSize: 11, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
+                      border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                      color: "var(--color-foreground)",
+                    }}>{g.title}</button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Expanded only: the day's wins are a look backward, and the
+              landing page's essential job is forward. The Log tab holds the
+              full record either way. */}
+          {engagedToday && !essential && (
+            <div style={PANEL}>
+              <SectionTitle note={`${doneToday.length} crossed off`}>Today's log</SectionTitle>
+              {doneToday.map((t) => <Row key={t.id} t={t} />)}
+              <div style={{ padding: "9px 16px 12px", borderTop: "1px solid var(--color-border)" }}>
+                <button onClick={() => onNavigate("log")} style={{
+                  fontSize: 11, background: "none", border: "none", cursor: "pointer",
+                  color: "var(--color-primary)", padding: 0,
+                }}>Add a note about how it went →</button>
+              </div>
+            </div>
+          )}
+
+          <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
+            fontSize: 11, background: "none", border: "none", cursor: "pointer",
+            color: "var(--text-3)", padding: "2px 0", textAlign: "left",
+          }}>{essential ? "Show more ↓" : "Show less ↑"}</button>
+        </div>
+      </div>
+
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The
           task title is the visual centre; the judgment reads as badges; the
@@ -1181,201 +1384,6 @@ export default function Home({
             </summary>
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
           </details>
-        </div>
-      </div>
-
-      {/* ══ LEVEL 2 · THE WORK, and LEVEL 3 · CONTEXT beside it ═══════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
-
-        {/* YOUR WORK — capture, inventory and the action that acts on them,
-            together. The standalone "Shape today" card is gone: an action
-            separated from its object was too much real estate for one line. */}
-        <div style={PANEL}>
-          <SectionTitle
-            note={open.length ? `${open.length} open` : undefined}
-            action={
-              /* Said ONCE, at the top, rather than repeated down every row. The
-                 person's work is unaffected by a failed sky read and must not
-                 look broken — but "Shape today" would be an offer Compass
-                 cannot currently honour, so it stands down. */
-              linesFailed ? (
-                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                  Timing is unavailable. Your list is fine.
-                </span>
-              ) : (
-                <button onClick={() => setShapeOpen(v => !v)} style={{
-                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
-                  color: "var(--color-primary)",
-                }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
-              )
-            }
-          >Your work</SectionTitle>
-
-          <div style={{ padding: "0 16px 10px" }}>
-            <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
-              placeholder="Add a task. One line is enough."
-              style={{
-                width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
-                border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                color: "var(--color-foreground)",
-              }}
-            />
-            {addTask.isError && <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>}
-          </div>
-
-          {/* Resolution chips live here now, with the work they act on. */}
-          {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
-            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
-                how much room should these get?
-              </div>
-              {resolution.needsDuration.map((n) => (
-                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
-                  {n.chips.map((m) => (
-                    <button key={m} disabled={setDuration.isPending}
-                      onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
-                      style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                        color: "var(--color-foreground)",
-                      }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-          {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
-            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
-                what kind of work are these?
-              </div>
-              {resolution.needsActivity.slice(0, 4).map((n) => (
-                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
-                  {n.options.map((o) => (
-                    <button key={o.key} disabled={setActivity.isPending}
-                      onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
-                      style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                        color: "var(--color-foreground)",
-                      }}>{o.label}</button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* The shaped day, when asked for. */}
-          {shapeOpen && shaped && (
-            <div style={{ borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
-                {shaping ? "shaping…" : "today, shaped"}
-              </div>
-              {shaped.placed.map((p) => (
-                <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
-                  <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
-                    {clockOf(p.startAt)}–{clockOf(p.endAt)}
-                  </span>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
-                    {p.item.title}
-                    {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
-                  </span>
-                </div>
-              ))}
-              {shaped.openTime.map((o, i) => (
-                <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
-                    {clockOf(o.startAt)}–{clockOf(o.endAt)}
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing needed placing here</span>
-                </div>
-              ))}
-              <div style={{ height: 6 }} />
-            </div>
-          )}
-
-          {tasksFailed ? (
-            <div style={{ padding: "10px 16px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
-              Your tasks didn't load. The list is intact; it's the connection.
-            </div>
-          ) : (
-            <>
-              <Group label="overdue" items={overdue} />
-              <Group label="today" items={dueToday} />
-              <Group label="no date" items={undated} cap={5} />
-              <Group label="later" items={later} muted cap={5} />
-              {open.length === 0 && tasks && (
-                <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* ── CONTEXT column ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* YOUR DAY — what is actually on today, in order, with now marked.
-              Above This week because the day you are standing in outranks
-              the one ahead of it; renders nothing when the day is empty. */}
-          <DayAhead testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
-
-          {/* THIS WEEK — answers a question rather than drawing seven slots. */}
-          {week && (
-            <div style={PANEL}>
-              <SectionTitle
-                action={
-                  <button onClick={() => onNavigate("launch")} style={{
-                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
-                    color: "var(--color-primary)",
-                  }}>See week →</button>
-                }
-              >This week</SectionTitle>
-              <WeekStrip week={week} />
-            </div>
-          )}
-
-          {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
-            <div style={PANEL}>
-              <SectionTitle note="open the tab to work on them">Guiding Stars</SectionTitle>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 14px" }}>
-                {(northStars ?? [])
-                  .filter((g: any) => g.status !== "done" && g.status !== "paused")
-                  .map((g: any) => (
-                    <button key={g.id} onClick={() => onNavigate("work")} style={{
-                      fontSize: 11, padding: "4px 11px", borderRadius: 999, cursor: "pointer",
-                      border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                      color: "var(--color-foreground)",
-                    }}>{g.title}</button>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* Expanded only: the day's wins are a look backward, and the
-              landing page's essential job is forward. The Log tab holds the
-              full record either way. */}
-          {engagedToday && !essential && (
-            <div style={PANEL}>
-              <SectionTitle note={`${doneToday.length} crossed off`}>Today's log</SectionTitle>
-              {doneToday.map((t) => <Row key={t.id} t={t} />)}
-              <div style={{ padding: "9px 16px 12px", borderTop: "1px solid var(--color-border)" }}>
-                <button onClick={() => onNavigate("log")} style={{
-                  fontSize: 11, background: "none", border: "none", cursor: "pointer",
-                  color: "var(--color-primary)", padding: 0,
-                }}>Add a note about how it went →</button>
-              </div>
-            </div>
-          )}
-
-          <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
-            fontSize: 11, background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", padding: "2px 0", textAlign: "left",
-          }}>{essential ? "Show more ↓" : "Show less ↑"}</button>
         </div>
       </div>
     </div>

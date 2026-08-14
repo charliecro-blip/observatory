@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { approachOptions, suggestApproach, dayPartFor } from "../artifacts/tides/src/lib/approach";
+import { approachOptions, suggestApproach, dayPartFor, VOC_FORMS } from "../artifacts/tides/src/lib/approach";
 
 /**
  * Same quality, different way in.
@@ -90,9 +90,15 @@ describe("Mars is still Mars, but not a workout before bed", () => {
 
 describe("void of course forbids beginnings", () => {
   it("overrides the day part entirely", () => {
+    // Asserts the RULE — under a void the suggestion comes from the void
+    // list rather than the day-part list — instead of one phrasing from it.
+    // The old version matched two literal strings, which only worked while
+    // each planet had exactly two options; widening the lists so a void hour
+    // stops sounding like an admin task (2026-08-13) broke the assertion
+    // while the rule it was defending held perfectly.
     const a = suggestApproach({ planet: "Mars", at: at(9), voc: true, ...RHYTHM })!;
     expect(a.basis).toBe("voc");
-    expect(a.text).toMatch(/finish|clear the decks/);
+    expect(VOC_FORMS.Mars).toContain(a.text);
   });
 
   it("never says begin, launch or start under a void", () => {
@@ -106,7 +112,17 @@ describe("void of course forbids beginnings", () => {
 
   it("leans on re-verbs, which is the whole counsel", () => {
     const a = suggestApproach({ planet: "Mercury", at: at(11), voc: true, ...RHYTHM })!;
-    expect(a.text).toMatch(/revise|re-send|backlog/);
+    expect(VOC_FORMS.Mercury).toContain(a.text);
+  });
+
+  it("offers more than office work — a void is not an instruction to do admin", () => {
+    // The complaint that widened these lists: every planet's void options
+    // were work verbs, so a void hour read as "clear the backlog" whatever
+    // the hour's character was. Each planet needs enough range to answer a
+    // person who is not at a desk.
+    for (const p of ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]) {
+      expect(VOC_FORMS[p].length, p).toBeGreaterThanOrEqual(4);
+    }
   });
 });
 

@@ -90,7 +90,13 @@ const BY_SIGN: Record<string, { feel: string; instead: string }> = {
     // BEGINNINGS and neutral-to-good for everything already underway
     // (VOID_SCOPE, right below). The owner planning a full day's work read
     // this as a veto over the lot (2026-08-13).
-    feel: "Fixing what doesn't need fixing. Careful attention with nowhere useful to point.",
+    // Flagged twice. The first pass fixed the `instead` line and left this
+    // one, which was the half that actually stung: it opens by telling you
+    // your attention is useless, in the two-short-sentence cadence the copy
+    // rules name as the tell. A void in Virgo is a real thing to describe —
+    // the pull toward tidying something that is already fine — without
+    // opening on a verdict about the reader.
+    feel: "The urge to tidy something that's already fine — Virgo's eye for detail with no new problem to solve.",
     instead: "Good hours for the work already in front of you — editing, admin, the careful pass over something that exists. Save the launch, not the effort.",
   },
   Libra: {

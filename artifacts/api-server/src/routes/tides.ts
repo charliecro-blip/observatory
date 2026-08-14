@@ -434,7 +434,19 @@ const WEEK_ELEMENT_TONES: Record<string, string> = {
 router.get("/tides/week", (req, res) => {
   const lat   = parseFloat((req.query.lat as string) ?? "40.7");
   const lon   = parseFloat((req.query.lon as string) ?? "-74.0");
-  const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 30);
+  // A MONTH GRID NEEDS MORE THAN THIRTY FORWARD DAYS.
+  //
+  // The Calendar asks for 90 and silently received 30, always starting at
+  // today — so the first half of the current month rendered blank (its days
+  // are in the past) and so did anything past the cap. To someone looking at
+  // August on the 13th, that is a month grid two-thirds empty, which reads
+  // as "nothing is populating" (owner, 2026-08-13). The cap was a sensible
+  // guard against an unbounded scan, not a statement about what a calendar
+  // needs; 120 covers a month grid with both its overflow weeks.
+  const numDays = Math.min(parseInt((req.query.days as string) ?? "7"), 120);
+  // How many days BEFORE today to include. A calendar showing a month must
+  // be able to draw the part of it that has already happened.
+  const backDays = Math.min(Math.max(parseInt((req.query.back as string) ?? "0", 10) || 0, 0), 45);
   // Viewer timezone offset — days must be the VIEWER's calendar days. On UTC
   // day boundaries, a US viewer's "today" straddles two UTC dates: a void
   // period midday their time fell outside the old 9am/noon/3pm UTC samples,
@@ -447,7 +459,8 @@ router.get("/tides/week", (req, res) => {
   // Start from the viewer's local midnight (as a UTC instant).
   const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
   const todayUtc = new Date(
-    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) + tzOffsetMin * 60000,
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) + tzOffsetMin * 60000
+    - backDays * 86400000,
   );
 
   const DAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];

@@ -1290,7 +1290,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
   const qc = useQueryClient();
 
-  const { data: weekData }   = useTidesWeek(90, lat, lon);
+  // 120 forward + 45 back covers a month grid's overflow weeks in both
+  // directions, however far the user has paged. Asking for 90 got 30,
+  // silently, and always starting today — so half of every month was blank.
+  const { data: weekData }   = useTidesWeek(120, lat, lon, 45);
   const { data: eventsData } = useSkyEvents(90, lat, lon);
 
   // Caution days — ⚠ marks from the user's self-reported sensitivity (Currents

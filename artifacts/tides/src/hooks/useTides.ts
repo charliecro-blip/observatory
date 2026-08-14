@@ -106,11 +106,16 @@ function localizeClock(at: string | undefined, fallback: string): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0) {
+/**
+ * @param back  days BEFORE today to include. A month grid needs them: on the
+ *              13th, the first twelve cells are in the past and rendered
+ *              blank until the route learned to look backwards.
+ */
+export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0, back = 0) {
   return useQuery<TidesWeek>({
-    queryKey: ["tides-week", days, lat, lon],
+    queryKey: ["tides-week", days, lat, lon, back],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/week?days=${days}&${loc(lat, lon)}&${tzParam()}`);
+      const r = await fetch(`/api/tides/week?days=${days}&back=${back}&${loc(lat, lon)}&${tzParam()}`);
       const data: TidesWeek = await r.json();
       for (const day of data.days ?? []) {
         if (day.crossings) {
