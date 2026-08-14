@@ -6,6 +6,10 @@ import {
   julianDay, moonPhase, getPlanetPositions, getDailyElementEmphasis,
   getPlanetaryHour, getMajorAspects, voidOfCourse, getSunriseSunset,
 } from "../lib/astro.js";
+// Habit timing lives in a lib, not here: routes/habits.ts imports the database
+// at module load, so scoring kept in this file could not be tested without
+// provisioning Postgres — and so was not tested at all.
+import { csv, phaseQuadrant, scoreHabitTiming } from "../lib/habitTiming.js";
 
 const router = Router();
 
@@ -15,18 +19,6 @@ function tid(req: any, res: any): string | null {
   return id;
 }
 
-// Habits absorbed the old "practices/cultivations" timing model (2026-07-09
-// merge): each habit is scored against the current sky the way cultivations
-// were, so ONE daily-doing surface carries both the streak game and the timing
-// intelligence.
-function phaseQuadrant(name: string): string {
-  if (name.includes("New")) return "new";
-  if (name.includes("Waxing")) return "waxing";
-  if (name.includes("Full")) return "full";
-  return "waning";
-}
-const csv = (v: unknown): string[] =>
-  String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 // ── Cadence ───────────────────────────────────────────────────────────────
 // How many completions a cadence wants inside a ROLLING 7-day window. Rolling,
@@ -48,33 +40,6 @@ function windowTargetFor(cadence: Cadence, targetPerWeek: number | null): number
 const SOLAR_ANCHORS = ["sunrise", "noon", "sunset"] as const;
 const normalizeSolarAnchor = (v: unknown): string | null =>
   SOLAR_ANCHORS.includes(v as any) ? (v as string) : null;
-
-function scoreHabitTiming(
-  h: { favoredElements: string | null; favoredPhases: string | null; favoredPlanets?: string | null; minimumViable: string | null },
-  sky: { element: string; hourRuler: string; phase: string; voc: boolean; moonApplyingTo: Set<string>; retro: Set<string> },
-): { match: string; note: string } {
-  const elems = csv(h.favoredElements);
-  const phases = csv(h.favoredPhases);
-  const favored = csv(h.favoredPlanets);
-  let score = 0;
-  const why: string[] = [];
-  if (elems.includes(sky.element)) { score += 3; why.push(`it's a ${sky.element} day`); }
-  if (favored.includes(sky.hourRuler)) { score += 2; why.push(`${sky.hourRuler}'s hour is running`); }
-  for (const fp of favored) {
-    if (sky.moonApplyingTo.has(fp)) { score += 1; why.push(`the Moon is lighting up ${fp}`); }
-    if (sky.retro.has(fp)) { score -= 1; }
-  }
-  if (phases.includes(sky.phase)) { score += 1; why.push(`the ${sky.phase} moon favors it`); }
-  if (sky.voc) score -= 1;
-
-  const match = score >= 5 ? "resonant" : score >= 2 ? "supported" : score >= 0 ? "neutral" : score >= -2 ? "soften" : "protect";
-  const note =
-    match === "resonant" ? `Strongly backed right now — ${why[0] ?? "the sky is with it"}.`
-    : match === "supported" ? `Supported today${why[0] ? ` — ${why[0]}` : ""}.`
-    : match === "neutral" ? "A neutral day for this — do it if you feel like it."
-    : `Consider the minimum today${h.minimumViable ? `: ${h.minimumViable}` : ""}.`;
-  return { match, note };
-}
 
 // GET /habits — list active habits with recent streak (last 14 days) + how
 // each one sits against today's sky (the merged practices timing).

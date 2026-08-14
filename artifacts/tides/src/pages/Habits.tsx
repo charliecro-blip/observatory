@@ -445,7 +445,15 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 "i also want to be able to select multiple of them").
                 Stored comma-separated in the same column, which is the
                 convention the sibling fields already use (favoredElements,
-                favoredPhases), so this needs no migration. */}
+                favoredPhases), so this needs no migration.
+
+                THIS FIELD NOW DRIVES TIMING (2026-08-14). It sits under the
+                "Timing — all optional" heading above, beside three fields that
+                always did, and for months it was the only one nothing read:
+                choosing "deep work" looked like telling Compass when to want
+                the habit and told it nothing. Each kind maps to an element via
+                timingTier.WINDOW_ELEMENT, scored as a weaker signal than an
+                element chosen outright — see lib/habitTiming.ts. */}
             <div style={{marginBottom:8}}>
               <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Kind of work</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
