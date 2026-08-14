@@ -727,6 +727,45 @@ export interface PlanetAspect {
 }
 
 /**
+ * Orb-only aspects: WHICH pairs are in aspect right now, and how far from
+ * exact. No applying, no time-to-perfection, no station awareness.
+ *
+ * `getMajorAspects` answers a much harder question, and pays for it: it runs
+ * a fourteen-day, six-hour station-aware sweep — about fifty-six full
+ * position computations — on every call. That is the right price for "is
+ * this applying, and does it perfect before the planet turns", and completely
+ * wrong for a caller sampling one orb per day across three months, which is
+ * ninety calls and five thousand ephemeris evaluations. The `/tides/events`
+ * scan was doing exactly that and taking ninety seconds (2026-08-13); it
+ * tracks orbs across days and derives perfection itself, so it never needed
+ * the expensive half.
+ *
+ * Same shape, same tables, so a caller can swap one for the other — but the
+ * momentum fields are absent by design rather than faked.
+ */
+export function getAspectOrbs(jd: number): Array<Pick<PlanetAspect, "planet1" | "planet2" | "aspect" | "nature" | "exactAngle" | "orb">> {
+  const planets = getPlanetPositions(jd);
+  const out: Array<Pick<PlanetAspect, "planet1" | "planet2" | "aspect" | "nature" | "exactAngle" | "orb">> = [];
+  for (let i = 0; i < planets.length; i++) {
+    for (let j = i + 1; j < planets.length; j++) {
+      const raw = normalize360(planets[i].longitude - planets[j].longitude);
+      const sep = raw > 180 ? 360 - raw : raw;
+      for (const def of ASPECT_DEFS) {
+        const orb = Math.abs(sep - def.angle);
+        if (orb <= def.orb) {
+          out.push({
+            planet1: planets[i].planet, planet2: planets[j].planet,
+            aspect: def.name, nature: def.nature, exactAngle: def.angle, orb,
+          });
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Computes all current major aspects between planets.
  * "Applying" means the two bodies are moving toward the exact angle.
  * Applying aspects carry forward momentum; separating aspects describe what's completing.

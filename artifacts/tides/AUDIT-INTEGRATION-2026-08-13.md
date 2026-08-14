@@ -160,10 +160,34 @@ culprit; gating it behind a flag changed nothing — 99.0s with it off versus
 97.7s on. The cost is elsewhere in the route. That change was reverted
 rather than shipped as an inert fix with a comment claiming otherwise.
 
-**Next step is a profiling pass**, not another guess: instrument the route's
-sections, find what actually costs ~1.4s per requested day, and fix that.
-Until then Calendar's `days=90` request is the single most expensive thing
-the app does.
+**FIXED, same night — and it took two wrong guesses to find.**
+
+| range | before | after |
+|---|---|---|
+| `days=7` | 13.2s | **0.20s** |
+| `days=30` | 42.2s | **0.38s** |
+| `days=90` | >90s | **0.73s** |
+
+The cause was `getMajorAspects` called once per HOUR in the Moon-aspect
+scan — 2,160 calls across ninety days, each running its own fourteen-day
+station-aware sweep, so roughly a hundred and twenty thousand ephemeris
+evaluations for one request. A day-resolution planet-planet loop below it
+had the same defect at 1/24 the volume.
+
+Both loops track orbs across samples and derive perfection themselves, so
+neither ever read the applying/station fields they were paying for. A new
+`getAspectOrbs(jd)` in astro.ts answers the cheap question — which pairs
+are in aspect, and how far from exact — using the same tables, with the
+momentum fields absent by design rather than faked.
+
+**The two wrong guesses are the lesson.** First the hour-by-hour crossings
+scan (gating it: 99.0s → 97.7s, i.e. nothing). Then the day-resolution
+planet-planet loop (13.2s → 12.9s, i.e. nothing). Both were plausible on
+reading; only measurement found the hourly call. This is the third
+instance of the same underlying defect in one day — the rare-window scan
+and ActivityAssessment Pass 3 were the others — which makes it a rule
+worth stating: **`getMajorAspects` is a per-moment question. Calling it in
+a loop is always wrong.**
 
 **Caveat worth carrying:** these numbers come from the local `api-scratch`
 dev server (tsx, unbundled) against a remote database. Production runs

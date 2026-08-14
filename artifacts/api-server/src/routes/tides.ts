@@ -8,7 +8,7 @@ import { Router, type IRouter } from "express";
 import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
-  getMajorAspects, getLocalAngles, getAngularPlanets,
+  getMajorAspects, getAspectOrbs, getLocalAngles, getAngularPlanets,
   getLastMoonAspect, getNextAngularCrossings, getSunriseSunset,
   SIGNS,
 } from "../lib/astro.js";
@@ -1183,7 +1183,13 @@ router.get("/tides/events", (req, res) => {
 
     for (let h = 0; h <= numDays * 24; h++) {
       const scanJd = startJd + h / 24;
-      const aspects = getMajorAspects(scanJd);
+      // THE ROUTE'S REAL COST WAS HERE. This ran getMajorAspects once per
+      // HOUR — 2,160 calls across ninety days, each performing its own
+      // fourteen-day station sweep, so roughly a hundred and twenty thousand
+      // ephemeris evaluations for one request. Like the day-resolution scan
+      // below, it tracks orbs itself and reads nothing but `orb`, so the
+      // station-aware half was pure waste.
+      const aspects = getAspectOrbs(scanJd);
 
       for (const asp of aspects) {
         if (asp.planet1 !== "Moon" && asp.planet2 !== "Moon") continue;
@@ -1231,7 +1237,11 @@ router.get("/tides/events", (req, res) => {
     const prevOrbPP: Record<string, number> = {};
     for (let d = 0; d <= numDays; d++) {
       const scanJd = startJd + d;
-      for (const asp of getMajorAspects(scanJd)) {
+      // Orb-only: this loop tracks orbs across days and decides perfection
+      // itself, so it never used getMajorAspects' station-aware momentum
+      // fields — it just paid for them, fifty-six position computations per
+      // day, ninety times.
+      for (const asp of getAspectOrbs(scanJd)) {
         if (asp.planet1 === "Moon" || asp.planet2 === "Moon") continue;
         const key = `${asp.planet1}:${asp.planet2}:${asp.aspect}`;
         const prev = prevOrbPP[key];
