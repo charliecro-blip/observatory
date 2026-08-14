@@ -1270,7 +1270,7 @@ function Shell() {
           fontSize:12, padding:"4px 6px", borderRadius:6, border:"none",
           background:"transparent", color:"var(--text-3)", cursor:"pointer", opacity:0.72,
         }}>{theme === "light" ? "☾" : "☀"}</button>
-        <button onClick={() => setView("settings")} style={{
+        <button onClick={() => setView("settings")} aria-label="Open Settings" style={{
           display:"flex", alignItems:"center", gap:4,
           fontSize:11, padding:"5px 9px", borderRadius:6, border:"none",
           background: view==="settings" ? "var(--color-border)" : "transparent",

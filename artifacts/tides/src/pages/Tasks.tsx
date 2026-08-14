@@ -461,7 +461,7 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
       {task.bestWindowType && !isDone && (
         <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}
-      <button onClick={onDelete} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
+      <button onClick={onDelete} aria-label="Delete task" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
     </div>
   );
 }

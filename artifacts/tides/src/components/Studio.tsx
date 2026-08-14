@@ -367,7 +367,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
+        <button onClick={onClose} aria-label="Close the studio" style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
 
         {/* Controls */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 210, paddingTop: 6 }}>

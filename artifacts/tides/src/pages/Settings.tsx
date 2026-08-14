@@ -317,9 +317,9 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
         A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address for the bulletin"
           style={{ flex: 1, minWidth: 190, padding: "7px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
-        <select value={sendHour} onChange={e => setSendHour(parseInt(e.target.value, 10))} style={{ padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>
+        <select value={sendHour} onChange={e => setSendHour(parseInt(e.target.value, 10))} aria-label="Hour to send the bulletin" style={{ padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>
           {[5, 6, 7, 8, 9, 10].map(h => <option key={h} value={h}>{h} AM</option>)}
         </select>
       </div>
@@ -453,7 +453,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>From</span>
-                <select value={n.quietStart} onChange={e => updateNotifications({ quietStart: Number(e.target.value) })}
+                <select value={n.quietStart} onChange={e => updateNotifications({ quietStart: Number(e.target.value) })} aria-label="Quiet hours start"
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>{i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`}</option>
@@ -463,7 +463,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>to</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>Until</span>
-                <select value={n.quietEnd} onChange={e => updateNotifications({ quietEnd: Number(e.target.value) })}
+                <select value={n.quietEnd} onChange={e => updateNotifications({ quietEnd: Number(e.target.value) })} aria-label="Quiet hours end"
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>{i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`}</option>
@@ -726,7 +726,7 @@ function TimingSection() {
       </div>
 
       <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>Default window type for new tasks:</div>
-      <select value={t.defaultWindowType} onChange={e => updateTiming({ defaultWindowType: e.target.value })}
+      <select value={t.defaultWindowType} onChange={e => updateTiming({ defaultWindowType: e.target.value })} aria-label="Default window type for new tasks"
         style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", width: "100%" }}>
         <option value="">Any</option>
         {WINDOW_TYPES.map(wt => <option key={wt} value={wt}>{WINDOW_LABELS[wt]}</option>)}
@@ -745,12 +745,13 @@ interface LocResult {
 }
 
 function LocationSearchInput({
-  value, onChange, onSelect, placeholder,
+  value, onChange, onSelect, placeholder, id,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSelect: (r: LocResult) => void;
   placeholder?: string;
+  id?: string;
 }) {
   const [results, setResults] = useState<LocResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -811,7 +812,7 @@ function LocationSearchInput({
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <div style={{ position: "relative" }}>
-        <input ref={inputRef} value={value} onChange={e => handleChange(e.target.value)}
+        <input ref={inputRef} id={id} value={value} onChange={e => handleChange(e.target.value)}
           placeholder={placeholder ?? "Search city…"}
           onFocus={() => { if (results.length > 0) { updateDropPos(); setOpen(true); } }}
           style={{ width: "100%", padding: "7px 28px 7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" }}
@@ -842,10 +843,25 @@ function LocationSearchInput({
 // ---- Form helpers (module-level to avoid remount-on-render bug) ----
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const generatedId = React.useId();
+  // Wire the label to the form control so a screen reader announces the caption
+  // when focus lands in the field — this is the screen where someone types
+  // their birth data, so unlabelled inputs are worst exactly here.
+  //
+  // Deliberately NOT React.Children.only: that throws on zero or several
+  // children, so a future <Field> holding an input and a hint would crash the
+  // whole Settings render rather than merely lose its label. Wiring is a
+  // nicety; taking the page down over one is not a trade worth making. With
+  // several children there is no single control to point at, so the label
+  // stands unattached — the visible caption is unaffected either way.
+  const kids = React.Children.toArray(children);
+  const only = kids.length === 1 && React.isValidElement<{ id?: string }>(kids[0]) ? kids[0] : null;
+  const id = only ? (only.props.id ?? generatedId) : undefined;
+  const control = only && id ? React.cloneElement(only, { id }) : children;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>{label}</label>
-      {children}
+      <label htmlFor={id} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>{label}</label>
+      {control}
     </div>
   );
 }
@@ -1346,7 +1362,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
           {form.birthLat != null && (
             <div>
               <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>UTC offset at birth</div>
-              <select value={form.utcOffset} onChange={e => setForm(f => ({ ...f, utcOffset: Number(e.target.value) }))}
+              <select value={form.utcOffset} onChange={e => setForm(f => ({ ...f, utcOffset: Number(e.target.value) }))} aria-label="UTC offset at birth"
                 style={{ ...inputStyle, width: "auto" }}>
                 {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
                   <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>

@@ -435,7 +435,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             </div>
           )}
           {timeframe === "day" && (
-            <button onClick={() => setShowOpts(v => !v)} title="Chart options" style={{
+            <button onClick={() => setShowOpts(v => !v)} title="Chart options" aria-label="Chart options" style={{
               fontSize: 11, color: showOpts ? "var(--color-primary)" : "var(--text-3)", background: "none",
               border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
             }}>⚙</button>

@@ -547,7 +547,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         {formError && (
           <div style={{ background: "#fdf0ec", border: "1px solid #e8c0b0", borderRadius: 8, padding: "9px 14px", fontSize: 12, color: "#a04030", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             {formError}
-            <button onClick={() => setFormError(null)} style={{ background: "none", border: "none", color: "#a04030", cursor: "pointer", fontSize: 14 }}>×</button>
+            <button onClick={() => setFormError(null)} aria-label="Dismiss error" style={{ background: "none", border: "none", color: "#a04030", cursor: "pointer", fontSize: 14 }}>×</button>
           </div>
         )}
 
@@ -606,7 +606,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 10.5, color: ec, background: `${ec}10`, border: `1px solid ${ec}40`, borderRadius: 7, padding: "6px 10px" }}>
                   <span style={{ fontWeight: 600 }}>⏳ {pendingAnchor.label}</span>
                   {pendingAnchor.until && <span style={{ color: "var(--text-3)" }}>until {fmtMonth(pendingAnchor.until)}</span>}
-                  <button onClick={() => setPendingAnchor(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
+                  <button onClick={() => setPendingAnchor(null)} aria-label="Clear the cycle anchor" style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
                 </div>
               );
             })()}
@@ -882,7 +882,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, fontSize: 9.5, color: ec, background: `${ec}10`, border: `1px solid ${ec}30`, borderRadius: 6, padding: "2px 7px" }}>
                         <span>⏳ {anchorLabel(g)}{g.anchorUntil ? ` · until ${fmtMonth(g.anchorUntil)}` : ""}</span>
                         {closing && <span style={{ color: "#a04040", fontWeight: 700 }}>closing soon</span>}
-                        <button onClick={() => clearAnchor.mutate(g.id)} title="Unlink from this cycle" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
+                        <button onClick={() => clearAnchor.mutate(g.id)} title="Unlink from this cycle" aria-label="Unlink from this cycle" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
                       </div>
                     )}
                     {!g.element && (
@@ -1074,7 +1074,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: ELEMENT_INFO[s.element]?.color ?? "#aaa", flexShrink: 0 }} />
                         <input value={s.title} onChange={(e) => setProposedSteps((ps) => ps.map((p, j) => j === i ? { ...p, title: e.target.value } : p))}
                           style={{ flex: 1, padding: "3px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }} />
-                        <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                        <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} aria-label="Drop this step" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>✕</button>
                       </div>
                     ))}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -1100,7 +1100,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     />
                     <button onClick={() => stepTitle.trim() && addStep.mutate({ starId: g.id, starTitle: g.title, title: stepTitle.trim() })}
                       style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
-                    <button onClick={() => { setStepAdd(null); setStepTitle(""); }}
+                    <button onClick={() => { setStepAdd(null); setStepTitle(""); }} aria-label="Cancel adding a step"
                       style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                   </div>
                 )}
@@ -1119,7 +1119,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       <button onClick={() => quickTitle.trim() && createLinked.mutate({ goalId: g.id, kind: adding, title: quickTitle.trim(), element: g.element ?? undefined })}
                         disabled={createLinked.isPending}
                         style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{createLinked.isPending ? "…" : "Add"}</button>
-                      <button onClick={() => { setQuickAdd(null); setQuickTitle(""); }}
+                      <button onClick={() => { setQuickAdd(null); setQuickTitle(""); }} aria-label={adding === "task" ? "Cancel adding a task" : "Cancel adding a habit"}
                         style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                       {createLinked.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
                     </div>

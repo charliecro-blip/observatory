@@ -277,7 +277,7 @@ function EventBlock({ win, topPct, heightPct, onDelete }: {
         {win.title}
       </div>
       {heightPct>0.04 && <div style={{ fontSize:8,color:"rgba(255,255,255,0.75)",marginTop:1 }}>{shortTime}</div>}
-      <button onClick={e=>{e.stopPropagation();onDelete();}} style={{ position:"absolute",top:2,right:3,background:"none",border:"none",color:"rgba(255,255,255,0.6)",fontSize:9,cursor:"pointer",lineHeight:1,padding:0 }}>✕</button>
+      <button onClick={e=>{e.stopPropagation();onDelete();}} aria-label={`Delete "${win.title}"`} style={{ position:"absolute",top:2,right:3,background:"none",border:"none",color:"rgba(255,255,255,0.6)",fontSize:9,cursor:"pointer",lineHeight:1,padding:0 }}>✕</button>
     </div>
   );
 }
@@ -395,7 +395,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
           <span style={{ fontSize:10 }}>📅</span>
           <span>{status.email ?? "Google Cal"}</span>
         </div>
-        <button onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" style={{
+        <button onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" aria-label="Disconnect Google Calendar" style={{
           fontSize:9, padding:"2px 6px", borderRadius:5, border:"1px solid #e0ccc0",
           background:"#8a3a2012", color:"#c06040", cursor:"pointer",
         }}>✕</button>
@@ -1115,7 +1115,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                       <div style={{ fontSize:12,fontWeight:600,color:"var(--color-foreground)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{w.title}</div>
                       <div style={{ fontSize:10.5,color:"var(--color-muted)" }}>{fmtTime(s)} – {fmtTime(e)}</div>
                     </div>
-                    <button onClick={()=>del.mutate(w.id)} style={{ background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:12 }}>✕</button>
+                    <button onClick={()=>del.mutate(w.id)} aria-label={`Delete "${w.title}"`} style={{ background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:12 }}>✕</button>
                   </div>
                 );
               })}
@@ -1247,7 +1247,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
                     <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
                     {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
                   </div>
-                  {m.onDelete && <button onClick={m.onDelete} title="Remove block" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
+                  {m.onDelete && <button onClick={m.onDelete} title="Remove block" aria-label="Remove block" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
                 </div>
               );
             })}
@@ -1434,9 +1434,9 @@ export default function Calendar({ testerId, now, lat, lon }: {
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
       <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
-        <button onClick={prevPeriod} title="Previous — press ←" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>‹</button>
+        <button onClick={prevPeriod} title="Previous — press ←" aria-label={`Previous ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>‹</button>
         <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
-        <button onClick={nextPeriod} title="Next — press →" style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        <button onClick={nextPeriod} title="Next — press →" aria-label={`Next ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>›</button>
         <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>

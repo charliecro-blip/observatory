@@ -294,7 +294,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       return <>
         <b>{moonPhase?.replace(/_/g, " ")} · {moonSign}</b>{isVOC && <span style={{ color: VOC_COLOR }}> · void of course</span>}
         {tk && <div style={{ marginTop: 3 }}><span style={{ color: "var(--text-3)" }}>{tk.l}</span> {tk.t}
-          <button onClick={() => setMoonTake(i => i + 1)} style={{ marginLeft: 5, fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer" }}>↻</button></div>}
+          <button onClick={() => setMoonTake(i => i + 1)} aria-label="Another take on this Moon" style={{ marginLeft: 5, fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer" }}>↻</button></div>}
       </>;
     }
     if (open === "day" && dayRuler) {
@@ -710,7 +710,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
                 }}>{t.label}</span>{t.text}
-                <button onClick={() => setSeasonTakeIdx(i => i + 1)} title="Another take on this season"
+                <button onClick={() => setSeasonTakeIdx(i => i + 1)} title="Another take on this season" aria-label="Another take on this season"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
             );
@@ -815,7 +815,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
                 }}>{t.label}</span>{t.text}
-                <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign"
+                <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign" aria-label="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
             );
@@ -1019,7 +1019,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
                 <span style={{ color: "var(--text-3)" }}>this hour</span> {text}
                 {opts.length > 1 && (
-                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="Another way to take this hour"
+                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="Another way to take this hour" aria-label="Another way to take this hour"
                     style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
                 )}
               </div>

@@ -508,7 +508,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                     <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                       due <input type="date" value={c.dueDate} onChange={(e) => editCard(i, { dueDate: e.target.value || null })}
                         style={{ padding: "3px 5px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
-                      <button onClick={() => editCard(i, { dueDate: null })} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
+                      <button onClick={() => editCard(i, { dueDate: null })} aria-label="Clear due date" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 11, padding: 0 }}>✕</button>
                     </label>
                   ) : (
                     <button onClick={() => editCard(i, { dueDate: addDaysLocal(localToday(), 3) })}

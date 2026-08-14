@@ -550,7 +550,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     out when to schedule.' */}
                 <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
                   style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
-                <button onClick={()=>removeHabit.mutate(h.id)} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
+                <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
               </div>
 
               {/* 14-day streak dots. "14d" alone named nothing — a row of

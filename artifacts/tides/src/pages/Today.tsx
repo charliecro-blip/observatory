@@ -414,7 +414,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                 cursor: "pointer",
               }}>★ Saved ({pins.length})</button>
             )}
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+            <button onClick={onClose} aria-label="Close the advisor" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)", lineHeight: 1 }}>×</button>
           </div>
         </div>
 
@@ -573,6 +573,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
                   <button
                     onClick={() => onAddTask(m.content.slice(0, 80))}
                     title="Add as task"
+                    aria-label="Add as task"
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "var(--text-3)", padding: "1px 3px" }}
                   >→</button>
                   <button
@@ -1112,7 +1113,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 }}>
                   {locating ? "Locating…" : "📍 In a new place? Tap to update your sky"}
                 </button>
-                <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", localToday()); setDismissedTravelHint(true); }}
+                <button onClick={() => { localStorage.setItem("obs_travel_hint_dismissed", localToday()); setDismissedTravelHint(true); }} aria-label="Dismiss location hint"
                   style={{ fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}>✕</button>
               </span>
             );
@@ -1208,7 +1209,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               To your Stars →
             </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} aria-label="Dismiss this hint" style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
           </div>
@@ -1226,7 +1227,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               Explore
             </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
+            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} aria-label="Dismiss this banner" style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
           </div>
