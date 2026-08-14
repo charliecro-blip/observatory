@@ -556,7 +556,7 @@ export default function Home({
               width: 15, height: 15, borderRadius: 4, flexShrink: 0, cursor: "pointer", padding: 0,
               border: `1.5px solid ${t.done === "true" ? CONVERGENT : "var(--color-border)"}`,
               background: t.done === "true" ? CONVERGENT : "transparent",
-              color: "#fff", fontSize: 10, lineHeight: 1,
+              color: "#ffffff", fontSize: 10, lineHeight: 1,
             }}
           >{t.done === "true" ? "✓" : ""}</button>
           <span style={{

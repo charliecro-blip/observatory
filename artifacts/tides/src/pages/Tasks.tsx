@@ -22,7 +22,7 @@ const WINDOW_LABELS: Record<string,string> = {
   social:"Social",relationship:"Relationship",recovery:"Recovery",study:"Study",launch:"Launch",retreat:"Retreat",
 };
 const WINDOW_COLORS: Record<string,string> = {
-  deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#888",
+  deep_work:"#3a7aaa",creative:"#9060b0",planning:"#c08040",admin:"#888888",
   social:"#d06060",relationship:"#b04080",recovery:"#60a080",study:"#5060a0",launch:PLANET_COLORS.Mars,retreat:"#6080a0",
 };
 const HOUR_WINDOW: Record<string,string> = {
@@ -259,7 +259,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             return null;
           })()}
         </div>
-        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#fff":"var(--text-2)",cursor:"pointer"}}>
+        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
           + New task
         </button>
       </div>
@@ -276,7 +276,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 placeholder="how it went, what you noticed…"
                 style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,outline:"none",background:"var(--color-card)"}} />
               <button onClick={()=>reflectText.trim()&&saveReflection.mutate(reflectText.trim())} disabled={!reflectText.trim()||saveReflection.isPending}
-                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#fff":"var(--text-3)"}}>Log it</button>
+                style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#ffffff":"var(--text-3)"}}>Log it</button>
               <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"var(--color-muted)",cursor:"pointer",fontSize:11}}>skip</button>
             </div>
             {saveReflection.isError && <div style={{fontSize:10.5,color:"#a03030",marginTop:6}}>Couldn't save that note — try again.</div>}
@@ -359,7 +359,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
               {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
               <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
-                style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"var(--color-border)",color:newTitle.trim()?"#fff":"var(--text-3)",cursor:"pointer"}}>
+                style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"var(--color-border)",color:newTitle.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
                 {addTask.isPending ? "Adding…" : "Add task"}
               </button>
             </div>
@@ -427,7 +427,7 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
   const goalColor = goal?.element ? elementColor(goal.element) : undefined;
   return (
     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:`1px solid ${highlight?"#c0d8b0":"#e8e4de"}`,background:highlight?"#f5faf2":"var(--color-card-2)",opacity:dim?0.5:1}}>
-      <button onClick={onToggle} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${isDone?"#80b870":"#c0bab0"}`,background:isDone?"#80b870":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff"}}>
+      <button onClick={onToggle} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${isDone?"#80b870":"#c0bab0"}`,background:isDone?"#80b870":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#ffffff"}}>
         {isDone?"✓":""}
       </button>
       <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"var(--text-3)":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>

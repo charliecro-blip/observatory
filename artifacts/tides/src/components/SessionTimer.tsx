@@ -104,7 +104,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   const R = 28;
   const circ = 2 * Math.PI * R;
   const planet = planetaryHour?.planet;
-  const pColor = planet ? planetColor(planet) : "#888";
+  const pColor = planet ? planetColor(planet) : "#888888";
 
   const activeHourRemaining = secsUntilHourEnd;
 
@@ -164,7 +164,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                   <button key={p.label} onClick={() => { setDuration(p.seconds); setUseCustom(false); setUseUntilHourEnd(false); }}
                     style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
                       background: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "var(--color-card)",
-                      color: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#fff" : "var(--text-2)",
+                      color: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#ffffff" : "var(--text-2)",
                       borderColor: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "#d0cbc3",
                     }}>{p.label}</button>
                 ))}
@@ -172,14 +172,14 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                   <button onClick={() => { setUseUntilHourEnd(true); setUseCustom(false); }}
                     style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
                       background: useUntilHourEnd ? "#1a2a3a" : "var(--color-card)",
-                      color: useUntilHourEnd ? "#fff" : "var(--text-2)",
+                      color: useUntilHourEnd ? "#ffffff" : "var(--text-2)",
                       borderColor: useUntilHourEnd ? "#1a2a3a" : "#d0cbc3",
                     }}>Until hour ends</button>
                 )}
                 <button onClick={() => { setUseCustom(true); setUseUntilHourEnd(false); }}
                   style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
                     background: useCustom ? "#1a2a3a" : "var(--color-card)",
-                    color: useCustom ? "#fff" : "var(--text-2)",
+                    color: useCustom ? "#ffffff" : "var(--text-2)",
                     borderColor: useCustom ? "#1a2a3a" : "#d0cbc3",
                   }}>Custom</button>
               </div>
@@ -197,7 +197,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               />
               <button onClick={start} style={{
                 width: "100%", padding: "8px 0", borderRadius: 8, border: "none",
-                background: "#1a2a3a", color: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                background: "#1a2a3a", color: "#ffffff", fontSize: 12, fontWeight: 500, cursor: "pointer",
               }}>
                 Start session
               </button>
@@ -223,7 +223,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               <div style={{ display: "flex", gap: 6 }}>
                 {phase === "active"
                   ? <button onClick={pause} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", fontSize: 11, cursor: "pointer" }}>Pause</button>
-                  : <button onClick={resume} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Resume</button>
+                  : <button onClick={resume} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>Resume</button>
                 }
                 <button onClick={stop} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", fontSize: 11, cursor: "pointer", color: "#c05030" }}>Stop</button>
               </div>
@@ -236,7 +236,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 4 }}>Session complete</div>
               {note && <div style={{ fontSize: 11, color: "var(--color-muted)", fontStyle: "italic", marginBottom: 10 }}>"{note}"</div>}
               <button onClick={() => { setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
-                style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>
+                style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>
                 New session
               </button>
             </div>

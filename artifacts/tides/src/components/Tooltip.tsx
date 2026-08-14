@@ -150,7 +150,7 @@ export function HelpBadge({ term, style }: HelpBadgeProps) {
     <Tooltip
       content={
         <div>
-          <div style={{ fontWeight: 600, marginBottom: 5, color: "#fff" }}>{entry.title}</div>
+          <div style={{ fontWeight: 600, marginBottom: 5, color: "#ffffff" }}>{entry.title}</div>
           <div style={{ color: "var(--color-muted)", fontSize: 10.5, lineHeight: 1.55 }}>{entry.body}</div>
         </div>
       }

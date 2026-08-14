@@ -154,7 +154,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
           </select>
         )}
         <button onClick={() => text.trim() && nameWin.mutate()} disabled={!text.trim() || nameWin.isPending}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: text.trim() ? "#1a2a3a" : "var(--color-border)", color: text.trim() ? "#fff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: text.trim() ? "#1a2a3a" : "var(--color-border)", color: text.trim() ? "#ffffff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
           ★ log it
         </button>
       </div>
@@ -210,7 +210,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
           <button onClick={() => setFilter("all")} style={{
             fontSize: 9.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
             border: filter === "all" ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
-            background: filter === "all" ? "#1a2a3a" : "transparent", color: filter === "all" ? "#fff" : "var(--color-muted)",
+            background: filter === "all" ? "#1a2a3a" : "transparent", color: filter === "all" ? "#ffffff" : "var(--color-muted)",
           }}>all</button>
           {data.stars.map(s => (
             <button key={s.id} onClick={() => setFilter(s.id)} style={{
@@ -371,7 +371,7 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: 
             </select>
           )}
           <button onClick={() => intent.trim() && setIntention.mutate()} disabled={!intent.trim() || setIntention.isPending}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "var(--color-border)", color: intent.trim() ? "#fff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "var(--color-border)", color: intent.trim() ? "#ffffff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
             🌑 set it
           </button>
         </div>

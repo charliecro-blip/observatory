@@ -169,7 +169,7 @@ function ReflectComposer({ testerId, date, dayDetail }: {
           padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600,
           cursor: dirty && !saving ? "pointer" : "default",
           background: dirty && !saving ? "#1a2a3a" : "var(--color-border)",
-          color: dirty && !saving ? "#fff" : "var(--text-3)",
+          color: dirty && !saving ? "#ffffff" : "var(--text-3)",
         }}>
           {saving ? "…" : "Save"}
         </button>

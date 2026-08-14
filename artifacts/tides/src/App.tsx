@@ -343,7 +343,7 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             ✦ Dump &amp; schedule →
           </button>
           <button onClick={addAll} disabled={lines.length === 0 || adding}
-            style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "var(--color-border)", color: lines.length ? "#fff" : "var(--text-3)" }}>
+            style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "var(--color-border)", color: lines.length ? "#ffffff" : "var(--text-3)" }}>
             {adding ? "Adding…" : lines.length > 1 ? `Add ${lines.length}` : "Add"}
           </button>
         </div>
@@ -471,7 +471,7 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
             ))}
           </div>
           <button onClick={() => isLast ? onDone() : setSlide(s => s + 1)}
-            style={{ padding:"9px 22px", borderRadius:10, border:"none", background:"#1a2a3a", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+            style={{ padding:"9px 22px", borderRadius:10, border:"none", background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
             {isLast ? "See my day" : "Next →"}
           </button>
         </div>
@@ -744,7 +744,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             placeholder="What should we call you?" autoFocus
             style={{ width:"100%", padding:"10px 13px", borderRadius:9, border:"1px solid var(--color-border)", fontSize:14, marginBottom:16, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
           />
-          <button type="submit" style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#fff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer", letterSpacing:"0.1px" }}>
+          <button type="submit" style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer", letterSpacing:"0.1px" }}>
             Continue →
           </button>
         </form>
@@ -766,7 +766,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
               />
               <button onClick={handleRestore} disabled={restoring || !restoreCode.trim()}
                 style={{ padding:"9px 16px", borderRadius:8, border:"none", fontSize:12, fontWeight:600, cursor:"pointer",
-                  background: restoreCode.trim() ? "#1a2a3a" : "var(--color-border)", color: restoreCode.trim() ? "#fff" : "var(--text-3)" }}>
+                  background: restoreCode.trim() ? "#1a2a3a" : "var(--color-border)", color: restoreCode.trim() ? "#ffffff" : "var(--text-3)" }}>
                 {restoring ? "…" : "Restore"}
               </button>
             </div>
@@ -913,7 +913,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             <button type="submit" disabled={!birthDate || birthLat == null || saving}
               style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:12.5, fontWeight:600,
                 background: (!birthDate || birthLat == null) ? "var(--color-border)" : ELEMENT_COLORS.earth,
-                color: (!birthDate || birthLat == null) ? "var(--text-3)" : "#fff" }}>
+                color: (!birthDate || birthLat == null) ? "var(--text-3)" : "#ffffff" }}>
               {saving ? "Saving…" : "Add my chart"}
             </button>
           </div>
@@ -1033,7 +1033,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
               Skip for now
             </button>
             <button type="submit"
-              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#fff" }}>
+              style={{ flex:2, padding:"10px 0", borderRadius:10, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background:"#1a2a3a", color:"#ffffff" }}>
               Enter Compass
             </button>
           </div>

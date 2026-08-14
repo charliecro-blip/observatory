@@ -57,7 +57,7 @@ function SectionIntro({ title, body, strict = false }: { title: string; body: st
 function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
   const ok = rule.passed;
   const dotColor = rule.severity === "support"
-    ? (ok ? "#3a6020" : "#bbb")
+    ? (ok ? "#3a6020" : "#bbbbbb")
     : (ok ? "#3a6020" : rule.severity === "hard" ? "#a03030" : "#a05020");
   return (
     <div style={{ display: "flex", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>

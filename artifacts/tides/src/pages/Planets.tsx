@@ -102,7 +102,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
     if (initialPlanet && ORDER.includes(initialPlanet)) setSelected(initialPlanet);
   }, [initialPlanet]);
   const core = PLANET_CORE[selected] ?? { name: selected, is: "", short: "", use: "" };
-  const col = COLOR[selected] ?? "#888";
+  const col = COLOR[selected] ?? "#888888";
   const natalPos = (natal?.planets ?? []).find((p: any) => p.planet === selected);
   const sign = natalPos?.sign as string | undefined;
   const house = natalPos?.houseNumber as number | null | undefined;
@@ -174,7 +174,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           surface ever wants it back.) */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22, marginTop: 8 }}>
         {ORDER.map((p) => {
-          const active = p === selected, pc = COLOR[p] ?? "#888";
+          const active = p === selected, pc = COLOR[p] ?? "#888888";
           return (
             <button key={p} onClick={() => setSelected(p)} title={p} style={{
               display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 999, cursor: "pointer",
@@ -366,7 +366,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
 function HousesView({ natal, currents, onReflect }: { natal: any; currents: any; onReflect?: (s: string) => void }) {
   const [selected, setSelected] = useState(1);
   const meaning = HOUSE_MEANINGS[selected] ?? { title: `House ${selected}`, domains: "", keywords: [] };
-  const col = ELEMENT_COLOR[HOUSE_ELEMENT[selected - 1]] ?? "#888";
+  const col = ELEMENT_COLOR[HOUSE_ELEMENT[selected - 1]] ?? "#888888";
   const natalHere = (natal?.planets ?? []).filter((p: any) => p.houseNumber === selected);
   const transitsHere = ((currents?.transitsByHouse ?? []) as any[]).filter((t) => t.house === selected);
   const isProfected = currents?.profection?.house === selected;
@@ -379,7 +379,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 22 }}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => {
-          const active = h === selected, hc = ELEMENT_COLOR[HOUSE_ELEMENT[h - 1]] ?? "#888";
+          const active = h === selected, hc = ELEMENT_COLOR[HOUSE_ELEMENT[h - 1]] ?? "#888888";
           return (
             <button key={h} onClick={() => setSelected(h)} title={HOUSE_MEANINGS[h]?.title} style={{
               padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontSize: 12,

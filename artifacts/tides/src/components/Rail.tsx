@@ -153,7 +153,7 @@ function GlyphRow({ label, onClick, children }: { label: string; onClick: () => 
 // rather than as a second layer (beta pass §B2). One place names an element.
 function SignChip({ glyph, label, sign }: { glyph: string; label: string; sign?: string }) {
   const el = sign ? (SIGN_MYTHOS[sign.split(" ")[0]]?.element ?? "water") : "water";
-  const col = elementColor(el, "#888");
+  const col = elementColor(el, "#888888");
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11 }}>
       <span style={{ color: col }}>{glyph}</span>
@@ -265,7 +265,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
   const sunSign = (now as any).sunSign as string | undefined;
   const dayRuler = (now as any).dayRuler as string | undefined;
   const isVOC = !!(now as any).voc?.isVOC || !!(now as any).voidOfCourse;
-  const elemColor = elementColor(element?.element ?? "water", "#888");
+  const elemColor = elementColor(element?.element ?? "water", "#888888");
 
   const chipStyle = (id: string, accent: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer",
@@ -333,12 +333,12 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
     <div style={{ background: "var(--color-rail)", borderBottom: "1px solid var(--color-border)", flexShrink: 0 }}>
       <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "7px 10px" }}>
         {sunSign && (
-          <button onClick={() => setOpen(o => o === "sun" ? null : "sun")} style={chipStyle("sun", sun?.color ?? "#888")}>
+          <button onClick={() => setOpen(o => o === "sun" ? null : "sun")} style={chipStyle("sun", sun?.color ?? "#888888")}>
             <span style={{ color: sun?.color }}>☉ {sun?.glyph}</span>
             <span style={{ color: "var(--text-2)" }}>{sunSign}</span>
           </button>
         )}
-        <button onClick={() => setOpen(o => o === "moon" ? null : "moon")} style={chipStyle("moon", moon?.color ?? "#888")}>
+        <button onClick={() => setOpen(o => o === "moon" ? null : "moon")} style={chipStyle("moon", moon?.color ?? "#888888")}>
           <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={15} />
           <span style={{ color: "var(--text-2)" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
           <span style={{ color: moon?.color }}>{moon?.glyph}</span>
@@ -838,7 +838,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
             const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
             const sym = aspSym[a.aspect] ?? a.aspect;
-            const col = aspColor[a.aspect] ?? "#888";
+            const col = aspColor[a.aspect] ?? "#888888";
             const pCol = planetColor(other);
             const isExpanded = expandedAspect === i;
             const aspMeaning = ASPECT_MEANINGS[a.aspect];
@@ -1086,7 +1086,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:0 }}>
                 {nonMoon.map((a, i) => {
                   const sym = aspSym[a.aspect] ?? a.aspect;
-                  const col = aspColor[a.aspect] ?? "#888";
+                  const col = aspColor[a.aspect] ?? "#888888";
                   const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
                   const aspMeaning = ASPECT_MEANINGS[a.aspect];
                   const isExp = expandedNonMoon === i;
@@ -1136,7 +1136,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <span style={{ fontSize:9, color:"var(--color-muted)" }}>℞ {now.retrogrades.join(", ")} retrograde</span>
             <Tooltip content={
               <div>
-                <div style={{ fontWeight:600, marginBottom:5, color:"#fff" }}>Retrograde Planets</div>
+                <div style={{ fontWeight:600, marginBottom:5, color:"#ffffff" }}>Retrograde Planets</div>
                 <div style={{ color:"var(--color-muted)", fontSize:10.5, lineHeight:1.55 }}>
                   {now.retrogrades.map(p => {
                     const notes: Record<string,string> = {

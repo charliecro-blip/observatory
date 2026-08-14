@@ -83,11 +83,11 @@ const CROSSING_ACTIVITY: Record<string, string> = {
 
 
 const QUALITY_COLORS: Record<string, string> = {
-  good: "#60a060", supported: "#60a060", challenging: PLANET_COLORS.Mars, caution: "#d0a040", neutral: "#888",
+  good: "#60a060", supported: "#60a060", challenging: PLANET_COLORS.Mars, caution: "#d0a040", neutral: "#888888",
 };
 
 const WINDOW_COLORS: Record<string, string> = {
-  deep_work: "#3a7aaa", creative: "#9060b0", planning: "#c08040", admin: "#888",
+  deep_work: "#3a7aaa", creative: "#9060b0", planning: "#c08040", admin: "#888888",
   social: "#d06060", relationship: "#b04080", recovery: "#60a080", retreat: "#6080a0",
   launch: PLANET_COLORS.Mars, study: "#5060a0",
 };
@@ -564,7 +564,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               } as React.CSSProperties}>
                 {m.content}
                 {streaming && i === allMessages.length - 1 && m.role === "assistant" && (
-                  <span style={{ display: "inline-block", width: 6, height: 13, background: "#bbb", marginLeft: 3, verticalAlign: "text-bottom", animation: "blink 1s step-end infinite" }} />
+                  <span style={{ display: "inline-block", width: 6, height: 13, background: "#bbbbbb", marginLeft: 3, verticalAlign: "text-bottom", animation: "blink 1s step-end infinite" }} />
                 )}
               </div>
               {m.role === "assistant" && !streaming && (
@@ -615,7 +615,7 @@ function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents, weekSummary, o
               style={{
                 padding: "9px 16px", borderRadius: 10, border: "none",
                 background: input.trim() && !streaming ? "#1a2a3a" : "var(--color-border)",
-                color: input.trim() && !streaming ? "#fff" : "var(--text-3)",
+                color: input.trim() && !streaming ? "#ffffff" : "var(--text-3)",
                 fontSize: 12, fontWeight: 500, cursor: input.trim() && !streaming ? "pointer" : "default",
                 flexShrink: 0,
               }}
@@ -919,8 +919,8 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const soften = practices.filter(p => p.timing === "soften" || p.timing === "protect");
 
   const el = now?.element?.element ?? "water";
-  const elemColor = ELEMENT_COLORS[el as Element] ?? "#888";
-  const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888";
+  const elemColor = ELEMENT_COLORS[el as Element] ?? "#888888";
+  const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888888";
 
   // Find ALL angle crossings active right now (recent past or near future), not just
   // the single nearest one — showing only one meant a second simultaneous crossing
@@ -1267,7 +1267,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 8 }}>
                       {levelLabel}
                     </div>
-                    <div style={{ fontSize: 44, fontWeight: 700, color: "#fff", letterSpacing: "-1px", lineHeight: 1 }}>
+                    <div style={{ fontSize: 44, fontWeight: 700, color: "#ffffff", letterSpacing: "-1px", lineHeight: 1 }}>
                       {tide?.headline ?? "Tide"}
                     </div>
                     <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", marginTop: 10, maxWidth: 340, lineHeight: 1.4 }}>
@@ -1277,7 +1277,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
                     <button onClick={() => setShowTideCard(true)} title="Share today's tide" style={{
                       fontSize: 11.5, padding: "5px 14px", borderRadius: 20, cursor: "pointer",
-                      border: "1px solid rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 500,
+                      border: "1px solid rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.15)", color: "#ffffff", fontWeight: 500,
                     }}>↗ Share</button>
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", textAlign: "right", lineHeight: 1.7 }}>
                       {now?.moonSign ?? ""}<br/>{now?.planetaryHour?.planet} hour<br/>{now?.moonPhase ?? ""}
@@ -1325,7 +1325,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                         ))}
                         <div style={{ position: "absolute", left: `${mc.position * 100}%`, top: 0,
                           width: 14, height: 14, marginLeft: -7, borderRadius: "50%",
-                          background: "#fff", boxShadow: "0 0 0 3px rgba(255,255,255,0.18)" }} />
+                          background: "#ffffff", boxShadow: "0 0 0 3px rgba(255,255,255,0.18)" }} />
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9,
                         color: "rgba(255,255,255,0.55)", marginTop: 5, letterSpacing: "0.6px" }}>
@@ -1402,12 +1402,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   </div>
                   <div title="Which way the day's activation is moving — rising, steady, or ebbing."
                     style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaaaaa" }} />
                     {tide?.trend ?? "steady"}
                   </div>
                   <div title="How much the day's separate testimonies point the same way. High agreement means a clear picture — not a guarantee about the outcome."
                     style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaa" }} />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaaaaa" }} />
                     {tide?.confidence ?? "medium"} signal agreement
                   </div>
                   {now?.voc?.isVOC && (
@@ -1835,7 +1835,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)" }}
                   />
                   <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} disabled={addTask.isPending}
-                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>{addTask.isPending ? "…" : "Add"}</button>
+                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>{addTask.isPending ? "…" : "Add"}</button>
                   {addTask.isError && <span style={{ fontSize: 10, color: "#a03030", alignSelf: "center" }}>failed — retry</span>}
                 </div>
               ) : (
@@ -3044,7 +3044,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
                 color: h.doneToday ? ELEMENT_COLORS.earth : "var(--color-foreground)",
               }}>
               <span style={{
-                width: 16, height: 16, borderRadius: "50%", flexShrink: 0, fontSize: 10, color: "#fff",
+                width: 16, height: 16, borderRadius: "50%", flexShrink: 0, fontSize: 10, color: "#ffffff",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: h.doneToday ? "#80b870" : "transparent",
                 border: h.doneToday ? "none" : "1.5px solid #c0bab0",
@@ -3294,7 +3294,7 @@ const WAVE_ROW_STYLE: Record<WaveRowType, { border: string; dot: string; textCol
   "practice-resonant":  { border: "#60a060", dot: "#60a060", textColor: "#2a5020" },
   "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: ELEMENT_COLORS.water },
   "practice-soften":    { border: "#d0a060", dot: "#d0a060", textColor: "#8a5020", dim: true },
-  "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222" },
+  "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222222" },
   "goal":               { border: "#a060c0", dot: "#a060c0", textColor: ELEMENT_COLORS.air },
 };
 
@@ -3346,7 +3346,7 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
         {days.map((d) => {
           // Always a 6-digit hex (so the `${ec}55` alpha suffix stays valid) and
           // a defined color for spirit/VOC days — they were rendering as a
-          // broken white-body/grey-top bar because "spirit" fell to "#888".
+          // broken white-body/grey-top bar because "spirit" fell to "#888888".
           const MB_HEX: Record<string, string> = { fire: ELEMENT_COLORS.fire, earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water, spirit: "#7a7196" };
           const ec = MB_HEX[d.element ?? "water"] ?? "#7a7196";
           const qs = d.qualityScore ?? 4;
@@ -3370,7 +3370,7 @@ function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat
       </div>
 
       {selDay && (() => {
-        const ec = ELEMENT_COLORS[(selDay.element ?? "water") as Element] ?? "#888";
+        const ec = ELEMENT_COLORS[(selDay.element ?? "water") as Element] ?? "#888888";
         const aspects = (selDay.moonAspects ?? []) as any[];
         const d = new Date(selDay.date + "T12:00:00");
         return (
@@ -3462,7 +3462,7 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
         {days.map((day: any) => {
           const isToday = day.date === today;
-          const ec = ELEMENT_COLORS[(day.element ?? "water") as Element] ?? "#888";
+          const ec = ELEMENT_COLORS[(day.element ?? "water") as Element] ?? "#888888";
           const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
           const phaseGlyph = MOON_GLYPHS[phaseKey];
           const aspects = (day.moonAspects ?? []) as { planet: string; aspect: string; applying: boolean; orb: number }[];
@@ -3501,7 +3501,7 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 6px", flexShrink: 0 }}>
                   {aspects.slice(0,3).map((a, i) => {
                     const sym = ASP_SYM[a.aspect] ?? a.aspect;
-                    const col = ASP_COLOR[a.aspect] ?? "#888";
+                    const col = ASP_COLOR[a.aspect] ?? "#888888";
                     return (
                       <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:1, fontSize:9.5 }}>
                         <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
@@ -3534,7 +3534,7 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
                   {aspects.length > 0 && (
                     <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
                       {aspects.map((a, i) => {
-                        const col = ASP_COLOR[a.aspect] ?? "#888";
+                        const col = ASP_COLOR[a.aspect] ?? "#888888";
                         return (
                           <div key={i} style={{ fontSize:9, color:"var(--text-2)" }}>
                             <span style={{ color:col, fontWeight:600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
@@ -3548,7 +3548,7 @@ function FourteenDays({ week, today }: { week: any; today: string }) {
                   {(day.crossings ?? []).length > 0 && (
                     <div style={{ marginTop:5, display:"flex", flexWrap:"wrap", gap:"3px 10px" }}>
                       {(day.crossings as any[]).map((c: any, i: number) => {
-                        const pCol = PLANET_COLORS[c.planet] ?? "#888";
+                        const pCol = PLANET_COLORS[c.planet] ?? "#888888";
                         return (
                           <span key={i} style={{ fontSize:8.5, color:pCol }}>
                             {PLANET_ICONS[c.planet] ?? c.planet[0]} {c.planet} × {c.angle} · {c.time?.slice(0,5)}

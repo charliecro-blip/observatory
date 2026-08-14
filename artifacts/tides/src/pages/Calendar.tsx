@@ -247,7 +247,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
           <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",fontSize:12,cursor:"pointer" }}>Cancel</button>
           <button onClick={()=>save.mutate()} disabled={save.isPending}
-            style={{ flex:2,padding:"9px 0",borderRadius:8,border:"none",background:"#1a2a3a",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
+            style={{ flex:2,padding:"9px 0",borderRadius:8,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
             {save.isPending?"Saving…":"Save"}
           </button>
         </div>
@@ -262,7 +262,7 @@ function EventBlock({ win, topPct, heightPct, onDelete }: {
   win: PlanningWindow; topPct: number; heightPct: number; onDelete: () => void;
 }) {
   const fmtTime = useTimeFormat();
-  const col = WINDOW_COLORS[win.type as string] ?? "#888";
+  const col = WINDOW_COLORS[win.type as string] ?? "#888888";
   const start = new Date(win.startTime), end = new Date(win.endTime);
   const shortTime = `${fmtTime(start)} – ${fmtTime(end)}`;
   return (
@@ -273,7 +273,7 @@ function EventBlock({ win, topPct, heightPct, onDelete }: {
       borderLeft:`3px solid ${col}`,cursor:"pointer",zIndex:10,
       boxShadow:"0 1px 4px rgba(0,0,0,0.12)",
     }}>
-      <div style={{ fontSize:9.5,fontWeight:600,color:"#fff",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+      <div style={{ fontSize:9.5,fontWeight:600,color:"#ffffff",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
         {win.title}
       </div>
       {heightPct>0.04 && <div style={{ fontSize:8,color:"rgba(255,255,255,0.75)",marginTop:1 }}>{shortTime}</div>}
@@ -298,7 +298,7 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
       borderLeft:`2px solid ${col}`, zIndex:9,
       boxShadow:"0 1px 3px rgba(0,0,0,0.1)",
     }}>
-      <div style={{ fontSize:8.5, fontWeight:600, color:"#fff", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+      <div style={{ fontSize:8.5, fontWeight:600, color:"#ffffff", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
         {ev.title}
       </div>
       {heightPct > 0.03 && <div style={{ fontSize:7.5, color:"rgba(255,255,255,0.8)", marginTop:1 }}>{shortTime}</div>}
@@ -528,7 +528,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
         {dates.map(dateStr => {
           const dayData = dataMap.get(dateStr);
           const isToday = dateStr===today;
-          const ec = ELEMENT_ACCENT[dayData?.element ?? ""] ?? "#888";
+          const ec = ELEMENT_ACCENT[dayData?.element ?? ""] ?? "#888888";
           const et = ELEMENT_TINT[dayData?.element ?? ""] ?? "var(--color-card)";
           const wins = windowsMap.get(dateStr) ?? [];
           const crossings = realLocation ? ((dayData?.crossings ?? []) as any[]) : [];
@@ -562,7 +562,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                 <div style={{ height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
                   <div style={{ fontSize:isDay?10:9,color:isToday?ec:"var(--text-3)",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
                   <div style={{
-                    fontSize:isDay?18:15,fontWeight:700,color:isToday?"#fff":"var(--color-foreground)",lineHeight:1,
+                    fontSize:isDay?18:15,fontWeight:700,color:isToday?"#ffffff":"var(--color-foreground)",lineHeight:1,
                     width:isDay?28:22,height:isDay?28:22,borderRadius:"50%",
                     background:isToday?ec:"transparent",
                     display:"flex",alignItems:"center",justifyContent:"center",
@@ -618,7 +618,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                   <div style={{ fontSize:7.5,color:"var(--text-3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
                     {allHours.map((ph,i)=>{
-                      const col = PLANET_COLORS[ph.ruler]??"#888";
+                      const col = PLANET_COLORS[ph.ruler]??"#888888";
                       const isNow = now>=ph.startTime && now<ph.endTime;
                       if (!ph.isDayHour && !isNow) return null; // week: only show day hours + current night hour
                       return (
@@ -652,7 +652,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     const topPx  = Math.max(0, (startH - HOUR_START) / HOURS * HOURS * ROW_H);
                     const botPx  = Math.min(HOURS*ROW_H, (endH - HOUR_START) / HOURS * HOURS * ROW_H);
                     if (botPx<=0||topPx>=HOURS*ROW_H) return null;
-                    const col = PLANET_COLORS[ph.ruler] ?? "#888";
+                    const col = PLANET_COLORS[ph.ruler] ?? "#888888";
                     if (isDay) {
                       // Left labeled bar
                       return (
@@ -852,7 +852,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
   const dayRuler = dayData?.dayRuler ?? "";
   const bg = dayData && !isPast ? (ELEMENT_TINT[elem] ?? "var(--color-card-2)") : "var(--color-card-2)";
   const border = isSelected ? "2px solid #1a2a3a" : isToday ? "2px solid #c09040" : "2px solid transparent";
-  const rulerCol = PLANET_COLORS[dayRuler] ?? "#999";
+  const rulerCol = PLANET_COLORS[dayRuler] ?? "#999999";
 
   // Aspects lead the cell: lunar + planet-planet, with times. Ingresses keep a
   // small line; crossings/quality bars are gone (they read as unexplained
@@ -956,10 +956,10 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
           );
         })}
         {wins.slice(0,3).map(w=>{
-          const col = WINDOW_COLORS[w.type as string]??"#888";
+          const col = WINDOW_COLORS[w.type as string]??"#888888";
           const s = new Date(w.startTime);
           return (
-            <div key={w.id} style={{ fontSize:7,background:col,color:"#fff",borderRadius:2,padding:"0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:3,alignItems:"center" }}>
+            <div key={w.id} style={{ fontSize:7,background:col,color:"#ffffff",borderRadius:2,padding:"0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:3,alignItems:"center" }}>
               <span style={{ opacity:0.8 }}>{fmtTime(s)}</span>
               <span style={{ overflow:"hidden",textOverflow:"ellipsis" }}>{w.title}</span>
             </div>
@@ -1006,7 +1006,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
         <div style={{ fontSize:9,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
         {dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
-        <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
+        <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
         {!dayData && <div style={{ fontSize:11,color:"var(--text-3)",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
@@ -1067,7 +1067,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                 <div style={{ fontSize:9.5,fontWeight:600,color:"var(--text-1)",marginBottom:5 }}>Moon aspects</div>
                 {sorted.map((a:any,i:number)=>{
                   const other = a.planet ?? (a.planet1==="Moon" ? a.planet2 : a.planet1);
-                  const col = ASP_COL[a.aspect] ?? "#888";
+                  const col = ASP_COL[a.aspect] ?? "#888888";
                   return (
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
                       <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
@@ -1088,7 +1088,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                 Moments a planet crosses one of your local chart angles (rising point, midheaven) — a brief window, ~20 minutes, when that planet's themes peak.
               </div>
               {crossings.map((c:any,i:number)=>{
-                const col = PLANET_COLORS[c.planet]??"#888";
+                const col = PLANET_COLORS[c.planet]??"#888888";
                 const ANGLE_WORD: Record<string,string> = { ASC:"rises", MC:"culminates", DSC:"sets", IC:"grounds" };
                 return (
                   <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
@@ -1106,7 +1106,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:11,fontWeight:600,color:"var(--color-primary)",marginBottom:6 }}>Your schedule</div>
               {(wins as PlanningWindow[]).map(w=>{
-                const col = WINDOW_COLORS[w.type as string]??"#888";
+                const col = WINDOW_COLORS[w.type as string]??"#888888";
                 const s = new Date(w.startTime), e = new Date(w.endTime);
                 return (
                   <div key={w.id} style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5,padding:"5px 7px",borderRadius:6,background:`${col}10`,border:`1px solid ${col}25` }}>
@@ -1451,7 +1451,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
           ))}
         </div>
 
-        <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#fff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
+        <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#ffffff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
 
         {calView==="agenda" && (
           <>

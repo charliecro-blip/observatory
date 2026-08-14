@@ -147,7 +147,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
             fontSize: 10, padding: "4px 11px", borderRadius: 14, cursor: "pointer",
             border: category === c.key ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
             background: category === c.key ? "#1a2a3a" : "transparent",
-            color: category === c.key ? "#fff" : "var(--color-muted)", fontWeight: category === c.key ? 600 : 400,
+            color: category === c.key ? "#ffffff" : "var(--color-muted)", fontWeight: category === c.key ? 600 : 400,
           }}>{c.label}</button>
         ))}
       </div>
@@ -177,7 +177,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
                 <button key={s} onClick={() => setSpan(s)} style={{
                   fontSize: 9.5, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                   border: span === s ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
-                  background: span === s ? "#1a2a3a" : "transparent", color: span === s ? "#fff" : "var(--color-muted)",
+                  background: span === s ? "#1a2a3a" : "transparent", color: span === s ? "#ffffff" : "var(--color-muted)",
                 }}>{s}</button>
               ))}
             </div>

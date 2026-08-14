@@ -503,7 +503,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           <button onClick={() => setShowForm(v => !v)} disabled={atCap && !showForm} title={atCap ? `Only ${MAX_ACTIVE_STARS} active at a time — pause one first` : undefined} style={{
             fontSize: 11, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--color-border)",
             background: showForm ? "#1a2a3a" : (atCap ? "var(--color-card-2)" : "var(--color-card)"),
-            color: showForm ? "#fff" : (atCap ? "var(--text-3)" : "var(--text-2)"),
+            color: showForm ? "#ffffff" : (atCap ? "var(--text-3)" : "var(--text-2)"),
             cursor: atCap && !showForm ? "default" : "pointer", flexShrink: 0, whiteSpace: "nowrap",
           }}>
             {showForm ? "Cancel" : "+ New Guiding Star"}
@@ -586,7 +586,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 }}
                 disabled={!nextMoveTitle.trim()}
                 style={{ padding: "6px 16px", borderRadius: 7, border: "none", fontSize: 11.5, cursor: nextMoveTitle.trim() ? "pointer" : "default",
-                  background: nextMoveTitle.trim() ? "#1a2a3a" : "var(--color-border)", color: nextMoveTitle.trim() ? "#fff" : "var(--text-3)" }}>
+                  background: nextMoveTitle.trim() ? "#1a2a3a" : "var(--color-border)", color: nextMoveTitle.trim() ? "#ffffff" : "var(--text-3)" }}>
                 Find it a time
               </button>
               <button onClick={() => { setNextMoveFor(null); setNextMoveTitle(""); }} style={{
@@ -601,7 +601,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
 
             {pendingAnchor && (() => {
-              const ec = ELEMENT_INFO[pendingAnchor.element]?.color ?? "#888";
+              const ec = ELEMENT_INFO[pendingAnchor.element]?.color ?? "#888888";
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 10.5, color: ec, background: `${ec}10`, border: `1px solid ${ec}40`, borderRadius: 7, padding: "6px 10px" }}>
                   <span style={{ fontWeight: 600 }}>⏳ {pendingAnchor.label}</span>
@@ -735,7 +735,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 }}>{h}</button>
               ))}
               <button onClick={() => form.title.trim() && addGoal.mutate()} disabled={!form.title.trim()}
-                style={{ padding: "5px 18px", borderRadius: 7, border: "none", fontSize: 11, background: form.title.trim() ? "#1a2a3a" : "var(--color-border)", color: form.title.trim() ? "#fff" : "var(--text-3)", cursor: "pointer" }}>
+                style={{ padding: "5px 18px", borderRadius: 7, border: "none", fontSize: 11, background: form.title.trim() ? "#1a2a3a" : "var(--color-border)", color: form.title.trim() ? "#ffffff" : "var(--text-3)", cursor: "pointer" }}>
                 Create
               </button>
             </div>
@@ -755,7 +755,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 setForm(f => ({ ...f, horizon: horizonFromUntil(a.until), element: a.element }));
               };
               const Row = ({ a, sub, isRiding }: { a: PendingAnchor; sub: string; isRiding: boolean }) => {
-                const ec = ELEMENT_INFO[a.element]?.color ?? "#888";
+                const ec = ELEMENT_INFO[a.element]?.color ?? "#888888";
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 0", borderBottom: "1px solid var(--color-border)" }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
@@ -825,7 +825,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             </div>
             <button onClick={() => setShowForm(true)} style={{
               marginTop: 4, padding: "8px 20px", borderRadius: 9, border: "none",
-              background: "#1a2a3a", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              background: "#1a2a3a", color: "#ffffff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
             }}>✦ Name your first star</button>
           </div>
         )}
@@ -1030,7 +1030,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                                   style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10, outline: "none", background: "var(--color-card)" }} />
                                 <button onClick={() => stepTaskTitle.trim() && addTaskToStep.mutate({ milestoneId: m.id, starId: g.id, title: stepTaskTitle.trim(), element: g.element ?? undefined })}
                                   disabled={addTaskToStep.isPending}
-                                  style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{addTaskToStep.isPending ? "…" : "Add"}</button>
+                                  style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer" }}>{addTaskToStep.isPending ? "…" : "Add"}</button>
                                 {addTaskToStep.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
                               </div>
                             )}
@@ -1071,7 +1071,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <div style={{ fontSize: 10, color: "var(--color-muted)", marginBottom: 6 }}>Proposed steps — edit or drop, then keep them:</div>
                     {proposedSteps.map((s, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: ELEMENT_INFO[s.element]?.color ?? "#aaa", flexShrink: 0 }} />
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: ELEMENT_INFO[s.element]?.color ?? "#aaaaaa", flexShrink: 0 }} />
                         <input value={s.title} onChange={(e) => setProposedSteps((ps) => ps.map((p, j) => j === i ? { ...p, title: e.target.value } : p))}
                           style={{ flex: 1, padding: "3px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }} />
                         <button onClick={() => setProposedSteps((ps) => ps.filter((_, j) => j !== i))} aria-label="Drop this step" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>✕</button>
@@ -1079,7 +1079,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     ))}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                       <button onClick={() => commitBreakdown.mutate({ goalId: g.id })} disabled={commitBreakdown.isPending || proposedSteps.length === 0}
-                        style={{ fontSize: 10.5, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+                        style={{ fontSize: 10.5, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer", fontWeight: 600 }}>
                         {commitBreakdown.isPending ? "Adding…" : `Keep ${proposedSteps.length} steps`}
                       </button>
                       <button onClick={() => { setBreakdownFor(null); setProposedSteps([]); }} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>discard</button>
@@ -1099,7 +1099,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       style={{ flex: 1, padding: "4px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, outline: "none", background: "var(--color-card)" }}
                     />
                     <button onClick={() => stepTitle.trim() && addStep.mutate({ starId: g.id, starTitle: g.title, title: stepTitle.trim() })}
-                      style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>Add</button>
+                      style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer" }}>Add</button>
                     <button onClick={() => { setStepAdd(null); setStepTitle(""); }} aria-label="Cancel adding a step"
                       style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                   </div>
@@ -1118,7 +1118,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       />
                       <button onClick={() => quickTitle.trim() && createLinked.mutate({ goalId: g.id, kind: adding, title: quickTitle.trim(), element: g.element ?? undefined })}
                         disabled={createLinked.isPending}
-                        style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>{createLinked.isPending ? "…" : "Add"}</button>
+                        style={{ fontSize: 10, padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer" }}>{createLinked.isPending ? "…" : "Add"}</button>
                       <button onClick={() => { setQuickAdd(null); setQuickTitle(""); }} aria-label={adding === "task" ? "Cancel adding a task" : "Cancel adding a habit"}
                         style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-muted)", cursor: "pointer" }}>✕</button>
                       {createLinked.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}

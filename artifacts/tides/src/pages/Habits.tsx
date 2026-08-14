@@ -93,7 +93,7 @@ function timingScore(h: Habit, now: TidesNow|undefined): "resonant"|"supported"|
   return asArr(h.favoredElements).includes(el) ? "supported" : "neutral";
 }
 
-const TIMING_COLORS = { resonant:"#3a6020", supported:ELEMENT_COLORS.water, neutral:"#888", soften:"#8a5020", protect:"#8a5020" };
+const TIMING_COLORS = { resonant:"#3a6020", supported:ELEMENT_COLORS.water, neutral:"#888888", soften:"#8a5020", protect:"#8a5020" };
 const TIMING_BG = { resonant:"#d0f0c0", supported:"#d0e0f8", neutral:"#e8e4de", soften:"#f0e0c0", protect:"#f0e0c0" };
 
 export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavigate }: { testerId:string|null; now:TidesNow|undefined; lat?:number; lon?:number; onNavigate?:(v:string)=>void }) {
@@ -270,7 +270,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             );
           })()}
         </div>
-        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#fff":"var(--text-2)",cursor:"pointer"}}>
+        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
           + New habit
         </button>
       </div>
@@ -490,7 +490,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 placeholder="Minimum viable (e.g. 5 min walk)…"
                 style={{flex:1,padding:"6px 9px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",outline:"none",color:"var(--text-2)"}}/>
               <button onClick={()=>form.name.trim()&&addHabit.mutate()} disabled={!form.name.trim()}
-                style={{padding:"6px 16px",borderRadius:7,border:"none",fontSize:11,background:form.name.trim()?"#1a2a3a":"var(--color-border)",color:form.name.trim()?"#fff":"var(--text-3)",cursor:"pointer"}}>
+                style={{padding:"6px 16px",borderRadius:7,border:"none",fontSize:11,background:form.name.trim()?"#1a2a3a":"var(--color-border)",color:form.name.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
                 Add
               </button>
             </div>
@@ -508,7 +508,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <button onClick={()=>toggleLog.mutate({id:h.id,done:h.doneToday})} style={{
                   width:26,height:26,borderRadius:7,border:`2px solid ${h.doneToday?"#80b870":"#c0bab0"}`,
                   background:h.doneToday?"#80b870":"transparent",flexShrink:0,cursor:"pointer",
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#fff",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#ffffff",
                 }}>{h.doneToday?"✓":""}</button>
 
                 {h.emoji && <span style={{fontSize:18,lineHeight:1}}>{h.emoji}</span>}

@@ -406,7 +406,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
             <button onClick={() => parse.mutate(undefined)} disabled={parse.isPending || !rawList.trim()} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
-              cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#fff" : "var(--text-3)",
+              cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#ffffff" : "var(--text-3)",
             }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>
             {parse.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(parse.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
@@ -428,7 +428,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             Here's what I read — tweak the estimate, energy, or deadline, then weave it in.
           </div>
           {cards.map((c, i) => {
-            const col = ELEMENT_COLOR[c.element] ?? "#888";
+            const col = ELEMENT_COLOR[c.element] ?? "#888888";
             return (
               <div key={i} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
@@ -578,7 +578,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                 <button onClick={() => moreText.trim() && parse.mutate(moreText)} disabled={parse.isPending || !moreText.trim()} style={{
                   padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600,
                   cursor: moreText.trim() ? "pointer" : "default",
-                  background: moreText.trim() ? "#1a2a3a" : "var(--color-border)", color: moreText.trim() ? "#fff" : "var(--text-3)",
+                  background: moreText.trim() ? "#1a2a3a" : "var(--color-border)", color: moreText.trim() ? "#ffffff" : "var(--text-3)",
                 }}>{parse.isPending ? "Reading…" : "Add to the list"}</button>
                 <button onClick={() => { setAddingMore(false); setMoreText(""); }} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>cancel</button>
               </div>
@@ -593,7 +593,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
             <button onClick={() => weave.mutate()} disabled={weave.isPending || cards.length === 0} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-              background: "#1a2a3a", color: "#fff",
+              background: "#1a2a3a", color: "#ffffff",
             }}>{weave.isPending ? "Reading the sky…" : "✦ Weave it in"}</button>
             <button onClick={reset} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>start over</button>
             {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(weave.error as Error)?.message ?? "Something went wrong — try again."}</span>}
@@ -680,7 +680,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <div key={day} style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 6 }}>{fmtDayHeader(entries[0].item.startAt)}</div>
               {entries.map(({ item, idx }) => {
-                const col = ELEMENT_COLOR[item.element] ?? "#888";
+                const col = ELEMENT_COLOR[item.element] ?? "#888888";
                 return (
                   <div key={idx} style={{ display: "flex", gap: 10, padding: "9px 12px", marginBottom: 6, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -757,7 +757,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
             {keptCount > 0 && !committed && (
-              <button onClick={() => commit.mutate()} disabled={commit.isPending} style={{ padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, background: "#3a6020", color: "#fff", cursor: "pointer" }}>{commit.isPending ? "Scheduling…" : `Schedule all ${keptCount} →`}</button>
+              <button onClick={() => commit.mutate()} disabled={commit.isPending} style={{ padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, background: "#3a6020", color: "#ffffff", cursor: "pointer" }}>{commit.isPending ? "Scheduling…" : `Schedule all ${keptCount} →`}</button>
             )}
             {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Woven into your calendar (Ahead) and added to Tasks.</span>}
             <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>← back to edit</button>

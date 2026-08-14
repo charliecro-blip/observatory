@@ -12,8 +12,14 @@ export function QualityStrip({ week, days, onPick }: { week: any; days: number; 
     <div style={{ padding:"12px 20px 14px", borderBottom:"1px solid var(--color-border)", background: "var(--color-card-2)", flexShrink:0 }}>
       <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:"0.6px", color:"var(--text-3)", marginBottom:8 }}>The water ahead — next {days} days</div>
       <div style={{ display:"flex", gap:2.5, overflowX:"auto" }}>
-        {(week?.days ?? []).slice(0, days).map((day: any) => {
-          const ec = elementColor(day.element ?? "water", "#888");
+        {/* AHEAD MEANS AHEAD. Calendar fetches back-days so the month grid can
+            draw the days either side of the first of the month, and this
+            strip used to slice from index 0 — so a chart titled "the water
+            ahead" opened half-spent, with today sitting in the middle of it
+            (owner, 2026-08-14: "we're midway thru the chart it's showing").
+            Filter to today onward first, then take the count. */}
+        {(week?.days ?? []).filter((d: any) => d?.date >= today).slice(0, days).map((day: any) => {
+          const ec = elementColor(day.element ?? "water", "#888888");
           const isToday = day.date === today;
           const q = day.qualityScore ?? 5;
           const barH = Math.max(8, (q / 7) * 44);

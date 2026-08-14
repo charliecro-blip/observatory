@@ -451,7 +451,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
                 fontSize: 9.5, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                 border: style === s.key ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
                 background: style === s.key ? "#1a2a3a" : "var(--color-card-2)",
-                color: style === s.key ? "#fff" : "var(--color-foreground)",
+                color: style === s.key ? "#ffffff" : "var(--color-foreground)",
                 fontWeight: style === s.key ? 600 : 400,
               }}>{s.label}</button>
             ))}
@@ -492,7 +492,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
                 fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer",
                 border: active ? `1px solid ${ec ?? "#1a2a3a"}` : "1px solid #e0dad0",
                 background: active ? (ec ?? "#1a2a3a") : "var(--color-card-2)",
-                color: active ? "#fff" : (ec ?? "var(--color-muted)"),
+                color: active ? "#ffffff" : (ec ?? "var(--color-muted)"),
                 fontWeight: active ? 600 : 500,
               }}>{L.label}</button>
             );
@@ -627,9 +627,9 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
               <g key={i} opacity={e.past ? 0.35 : 1}>
                 {e.kind === "crossing" ? (
                   <rect x={x(h) - 2.6} y={markY - 2.6} width={5.2} height={5.2} transform={`rotate(45 ${x(h)} ${markY})`}
-                    fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.2" />
+                    fill={isNext ? col : (dark ? "#1a2233" : "#ffffff")} stroke={col} strokeWidth="1.2" />
                 ) : (
-                  <circle cx={x(h)} cy={markY} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#fff")} stroke={col} strokeWidth="1.3" />
+                  <circle cx={x(h)} cy={markY} r={isNext ? 3.4 : 2.4} fill={isNext ? col : (dark ? "#1a2233" : "#ffffff")} stroke={col} strokeWidth="1.3" />
                 )}
                 {showGlyph && (
                   <text x={x(h)} y={markY - 8} textAnchor="middle" fontSize="7.5" fontWeight="700"
@@ -664,12 +664,12 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
               <rect x={x(nowH) - 7} y={0} width={14} height={H - PAD_B} fill={nowColor} opacity="0.07" />
               <line x1={x(nowH)} y1={0} x2={x(nowH)} y2={H - PAD_B} stroke={nowColor} strokeWidth="1.2" opacity="0.55" />
               <circle className={opts.motion ? "tw-halo" : undefined} cx={x(nowH)} cy={y(energyAt(nowH))} r="10" fill={nowColor} />
-              <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4.6" fill={nowColor} stroke={dark ? "#0d1120" : "#fff"} strokeWidth="2" />
+              <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4.6" fill={nowColor} stroke={dark ? "#0d1120" : "#ffffff"} strokeWidth="2" />
             </g>
           )}
 
           <g>
-            <circle cx={x(hours[hiIdx])} cy={y(targetE[hiIdx])} r="2.6" fill={dark ? "#f0f4ff" : "#fff"} stroke="url(#twChar)" strokeWidth="1.4" />
+            <circle cx={x(hours[hiIdx])} cy={y(targetE[hiIdx])} r="2.6" fill={dark ? "#f0f4ff" : "#ffffff"} stroke="url(#twChar)" strokeWidth="1.4" />
             <text x={hiX} y={Math.max(WATER_TOP - 16, y(targetE[hiIdx]) - 12)} textAnchor="middle" fontSize="9" fontWeight="700" fill={dark ? "#dfe6f5" : "#3a3428"}>
               high water {clockAt(dayStartMs, hours[hiIdx])}
             </text>
@@ -702,7 +702,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             const cy0 = y(energyAt(h));
             return (
               <g key={i} opacity={e.past ? 0.3 : 0.7}>
-                <circle cx={x(h)} cy={cy0} r="2" fill={dark ? "#2a3142" : "#fff"} stroke={mutedNowColor} strokeWidth="1" />
+                <circle cx={x(h)} cy={cy0} r="2" fill={dark ? "#2a3142" : "#ffffff"} stroke={mutedNowColor} strokeWidth="1" />
                 {!e.past && (
                   <text x={x(h)} y={cy0 - 7} textAnchor="middle" fontSize="7" fontWeight="600"
                     fill={mutedNowColor} style={{ pointerEvents: "none" }}>{glyph}</text>
@@ -719,7 +719,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           </text>
 
           {nowH >= 0 && nowH <= 24 && (
-            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4" fill={mutedNowColor} stroke={dark ? "#141a26" : "#fff"} strokeWidth="1.6" />
+            <circle cx={x(nowH)} cy={y(energyAt(nowH))} r="4" fill={mutedNowColor} stroke={dark ? "#141a26" : "#ffffff"} strokeWidth="1.6" />
           )}
         </>)}
 
@@ -806,7 +806,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           return (
             <g pointerEvents="none">
               <line x1={px} y1={WATER_TOP - 8} x2={px} y2={H - PAD_B} stroke={dark ? "rgba(220,228,245,0.5)" : "rgba(40,50,70,0.4)"} strokeWidth="1" strokeDasharray="3 3" />
-              <circle cx={px} cy={py} r="3.6" fill={dark ? "#0d1120" : "#fff"} stroke={dark ? "#c9d4ee" : "#2a3a52"} strokeWidth="1.6" />
+              <circle cx={px} cy={py} r="3.6" fill={dark ? "#0d1120" : "#ffffff"} stroke={dark ? "#c9d4ee" : "#2a3a52"} strokeWidth="1.6" />
               <rect x={bx} y={WATER_TOP - 6} width={boxW} height={boxH} rx="6" fill={dark ? "rgba(16,20,30,0.94)" : "rgba(26,34,52,0.94)"} />
               <text x={bx + 9} y={WATER_TOP + 8} fontSize="9.5" fontWeight="700" fill={tc}>
                 {clockAt(dayStartMs, hoverH)} · charge {Math.round(eH * 100)}%

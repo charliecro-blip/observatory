@@ -189,7 +189,7 @@ export function ScheduleSuggest({
                 style={{ padding: "6px 8px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)" }} />
               <input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
                 style={{ padding: "6px 8px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)" }} />
-              <button onClick={scheduleCustom} disabled={busy} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 11, cursor: "pointer" }}>Schedule</button>
+              <button onClick={scheduleCustom} disabled={busy} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>Schedule</button>
             </div>
           )}
         </div>

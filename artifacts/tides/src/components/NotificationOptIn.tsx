@@ -78,7 +78,7 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
         }}>Not now</button>
         <button onClick={enable} disabled={busy} style={{
           fontSize: 11, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontWeight: 600,
-          border: "none", background: "#1a2a3a", color: "#fff", opacity: busy ? 0.6 : 1,
+          border: "none", background: "#1a2a3a", color: "#ffffff", opacity: busy ? 0.6 : 1,
         }}>{busy ? "Enabling…" : "Enable"}</button>
       </div>
     </div>

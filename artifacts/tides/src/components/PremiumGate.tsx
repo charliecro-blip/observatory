@@ -24,7 +24,7 @@ export function PremiumExploreModal({ onClose }: { onClose: () => void }) {
         <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 16, lineHeight: 1.5 }}>
           Premium unlocking isn't live yet — this preview shows what's coming.
         </div>
-        <button onClick={onClose} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <button onClick={onClose} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           Got it
         </button>
       </div>

@@ -157,7 +157,7 @@ function DeleteAccountSection({ testerId }: { testerId: string | null }) {
         </div>
         <button onClick={() => window.location.reload()} style={{
           marginTop: 12, padding: "8px 20px", borderRadius: 8, border: "none",
-          fontSize: 12, cursor: "pointer", background: "#1a2a3a", color: "#fff",
+          fontSize: 12, cursor: "pointer", background: "#1a2a3a", color: "#ffffff",
         }}>Start over</button>
       </SectionCard>
     );
@@ -200,7 +200,7 @@ function DeleteAccountSection({ testerId }: { testerId: string | null }) {
               padding: "8px 18px", borderRadius: 8, border: "none", fontSize: 12,
               cursor: armed ? "pointer" : "not-allowed",
               background: armed ? "#9a3030" : "var(--color-card-2)",
-              color: armed ? "#fff" : "var(--text-3)",
+              color: armed ? "#ffffff" : "var(--text-3)",
             }}>{state === "deleting" ? "Deleting…" : "Delete permanently"}</button>
             <button onClick={() => { setOpen(false); setTyped(""); setError(null); setState("idle"); }} style={{
               padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
@@ -334,7 +334,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={save} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#fff" }}>
+        <button onClick={save} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#ffffff" }}>
           {saved ? "Update" : "Turn on"}
         </button>
         {saved && (
@@ -487,7 +487,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
                   onClick={() => updateNotifications({ hourShiftPlanets: "all" })}
                   style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
                     background: hourShiftPlanetsIsAll ? "#1a2a3a" : "var(--color-card)",
-                    color: hourShiftPlanetsIsAll ? "#fff" : "var(--text-2)",
+                    color: hourShiftPlanetsIsAll ? "#ffffff" : "var(--text-2)",
                     borderColor: hourShiftPlanetsIsAll ? "#1a2a3a" : "#d0cbc3",
                   }}>All</button>
                 {ALL_PLANETS.map(p => {
@@ -520,7 +520,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
                     <button key={opt} onClick={() => updateNotifications({ crossingPlanets: opt })}
                       style={{ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: "1px solid", cursor: "pointer",
                         background: n.crossingPlanets === opt ? "#1a2a3a" : "var(--color-card)",
-                        color: n.crossingPlanets === opt ? "#fff" : "var(--text-2)",
+                        color: n.crossingPlanets === opt ? "#ffffff" : "var(--text-2)",
                         borderColor: n.crossingPlanets === opt ? "#1a2a3a" : "#d0cbc3",
                       }}>{opt === "both" ? "Both" : opt === "all" ? "All" : opt === "benefic" ? "Benefics" : "Malefics"}</button>
                   ))}
@@ -980,7 +980,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={() => save.mutate()} disabled={!form.cycleStartDate} style={{
             padding: "7px 16px", borderRadius: 7, border: "none", fontSize: 11,
-            background: form.cycleStartDate ? "#1a2a3a" : "var(--color-border)", color: form.cycleStartDate ? "#fff" : "var(--text-3)", cursor: "pointer",
+            background: form.cycleStartDate ? "#1a2a3a" : "var(--color-border)", color: form.cycleStartDate ? "#ffffff" : "var(--text-3)", cursor: "pointer",
           }}>{save.isPending ? "Saving…" : saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
           {cycle && <button onClick={() => del.mutate()} style={{ fontSize: 10, color: "#c06060", background: "none", border: "none", cursor: "pointer" }}>Remove</button>}
           {save.isError && <span style={{ fontSize: 10, color: "#a03030" }}>Couldn't save — try again.</span>}
@@ -1173,7 +1173,7 @@ function ChronotypeSection() {
                 Cancel
               </button>
             )}
-            <button onClick={save} disabled={!chronoProfile} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", background: chronoProfile ? "#1a2a3a" : "var(--color-border)", color: chronoProfile ? "#fff" : "var(--text-3)", cursor: chronoProfile ? "pointer" : "default" }}>
+            <button onClick={save} disabled={!chronoProfile} style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", background: chronoProfile ? "#1a2a3a" : "var(--color-border)", color: chronoProfile ? "#ffffff" : "var(--text-3)", cursor: chronoProfile ? "pointer" : "default" }}>
               Save
             </button>
           </div>
@@ -1384,7 +1384,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
             <button onClick={save} disabled={!form.birthDate || form.birthLat == null || saving}
               style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, border: "none", cursor: (!form.birthDate || form.birthLat == null) ? "default" : "pointer",
                 background: (!form.birthDate || form.birthLat == null) ? "var(--color-border)" : "#1a2a3a",
-                color: (!form.birthDate || form.birthLat == null) ? "var(--text-3)" : "#fff" }}>
+                color: (!form.birthDate || form.birthLat == null) ? "var(--text-3)" : "#ffffff" }}>
               {saving ? "Saving…" : "Save birth chart"}
             </button>
           </div>
@@ -1476,7 +1476,7 @@ function ExportSection({ testerId }: { testerId: string | null }) {
             {feedCopied ? "Copied ✓" : feedUrl ? "Copy link" : "Show link"}
           </button>
         ) : (
-          <button onClick={() => issueFeed()} disabled={feedBusy} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+          <button onClick={() => issueFeed()} disabled={feedBusy} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer", fontWeight: 600 }}>
             {feedBusy ? "…" : "Create link"}
           </button>
         )}
@@ -1848,7 +1848,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
           </div>
           <button onClick={() => saveNatal.mutate()} disabled={!natalForm.birthDate || saveNatal.isPending} style={{
             padding: "8px 20px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer",
-            background: natalForm.birthDate ? "#1a2a3a" : "var(--color-border)", color: natalForm.birthDate ? "#fff" : "var(--text-3)",
+            background: natalForm.birthDate ? "#1a2a3a" : "var(--color-border)", color: natalForm.birthDate ? "#ffffff" : "var(--text-3)",
           }}>
             {saveNatal.isPending ? "Saving…" : saved ? "Saved ✓" : natal ? "Update chart" : "Save chart"}
           </button>
@@ -1902,7 +1902,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
                 setLocSaved(true);
                 setTimeout(() => setLocSaved(false), 3000);
               }
-            }} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#fff", cursor: "pointer" }}>
+            }} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", cursor: "pointer" }}>
               Save location
             </button>
           </div>

@@ -103,7 +103,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
           <button onClick={onClose} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-muted)", fontSize: 12, cursor: "pointer", fontWeight: 500 }}>
             Cancel
           </button>
-          <button onClick={save} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: "#1a2a3a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={save} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Save
           </button>
         </div>

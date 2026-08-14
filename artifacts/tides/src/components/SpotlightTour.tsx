@@ -231,7 +231,7 @@ export default function SpotlightTour({ testerId, onDone, onFinalCta }: {
               finish("completed");
               if (s.cta) onFinalCta?.();
             }}
-            style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 9, cursor: "pointer", border: "none", background: "#1a2a3a", color: "#fff" }}>
+            style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 9, cursor: "pointer", border: "none", background: "#1a2a3a", color: "#ffffff" }}>
             {isLast ? (s.cta ?? "Done") : "Next"}
           </button>
         </div>

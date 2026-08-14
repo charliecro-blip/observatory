@@ -23,11 +23,17 @@ const KEYS = ["deep-work", "train-hard", "sign-contract", "finish-polish", "endu
  */
 describe("one astrological authority", () => {
   // Sampled at ten days rather than twenty-one. Measured at 18.3s over the
-  // full range — against a 30s timeout, which it duly blew once under parallel
-  // load and passed on the next six runs. A guard that fails at random on the
-  // deploy path teaches people to re-run rather than to look, and this is the
-  // most valuable guard in the suite; it needs to be trusted, not merely right.
-  // Ten days still covers two Moon-sign changes and a void cycle.
+  // full range. A guard that fails at random on the deploy path teaches people
+  // to re-run rather than to look, and this is the most valuable guard in the
+  // suite; it needs to be trusted, not merely right. Ten days still covers two
+  // Moon-sign changes and a void cycle.
+  //
+  // The 30s default left a 1.6x margin, which parallel suite load kept eating:
+  // it blew the timeout again on 2026-08-14 in a run whose only other changes
+  // were frontend files this test does not import. Shrinking the range again
+  // would buy margin by testing less, so the timeout moves instead. This is an
+  // integration guard, not a performance benchmark — if it ever gets slow
+  // enough to matter, the engine's own perf tests are where that should show.
   it("the engine and the session finder never disagree about the same day", () => {
     const disagreements: string[] = [];
     let compared = 0;
@@ -49,7 +55,7 @@ describe("one astrological authority", () => {
     // Without this the loop could pass by comparing nothing.
     expect(compared).toBeGreaterThan(40);
     expect(disagreements).toEqual([]);
-  });
+  }, 120_000);
 
   // The orchestrators may REFUSE for practical reasons, but a placement they do
   // make must carry the verdict it was given. This is what stops a day or week
