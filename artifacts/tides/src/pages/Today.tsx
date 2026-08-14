@@ -1632,8 +1632,16 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-brass)" }}>
                 Moon void of course{now.voc.nextIngress ? ` · until ${now.voc.nextIngress}` : ""}
               </div>
+              {/* THE SCOPE FROM THE ENGINE, not a second copy of it written
+                  here. This was hardcoded as "Avoid new beginnings. Good for
+                  completion, review, routine, and rest." — which said the same
+                  thing as VOID_SCOPE in different words, so the app had two
+                  sentences for one fact and they had already drifted apart:
+                  the engine's version scopes the caution to beginnings meant
+                  to LAST, and this one barred beginnings outright. One fact,
+                  one source. */}
               <div style={{ fontSize: 10, color: "#9a7050", marginTop: 2 }}>
-                Avoid new beginnings. Good for completion, review, routine, and rest.
+                {now.voc.scope ?? now.voc.reading?.instead}
               </div>
             </div>
           </div>

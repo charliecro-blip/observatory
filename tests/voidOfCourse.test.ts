@@ -36,16 +36,34 @@ describe("void of course, by sign", () => {
   // for a reason, and the copy has to give the reader that reason. This
   // catches the actual risk — someone adding a fifth sign to LILLY_EXEMPT and
   // leaving prose that never explains why it is different.
+  // Checked against `provenance` rather than `feel` since 2026-08-14. The
+  // citation used to open the lead sentence in exactly these four, which gave
+  // the reader the LIST rather than the reason and spent the first line of the
+  // four best signs on bookkeeping. It now has its own attributed field; the
+  // guard is unchanged in intent — an exempt sign must say why it is exempt.
   it("explains the exemption in each of the four exempt signs", () => {
-    const silent = [...LILLY_EXEMPT].filter(s => !/Lilly|exempt/i.test(voidReading(s)!.feel));
+    const silent = [...LILLY_EXEMPT].filter(s => !/Lilly/i.test(voidReading(s)!.provenance ?? ""));
     expect(silent).toEqual([]);
   });
 
   it("does not claim exemption in the eight that have none", () => {
     const overclaiming = SIGNS
       .filter(s => !LILLY_EXEMPT.has(s))
-      .filter(s => /Lilly|exempt/i.test(voidReading(s)!.feel + voidReading(s)!.instead));
+      .filter(s => {
+        const r = voidReading(s)!;
+        return /Lilly|exempt/i.test(r.feel + r.instead + (r.provenance ?? ""));
+      });
     expect(overclaiming).toEqual([]);
+  });
+
+  // Provenance is a citation, so it may only appear where there is something to
+  // cite. Six signs carry one (Lilly's four, plus the Moon's fall in Scorpio
+  // and her detriment in Capricorn); the other six must leave it absent rather
+  // than reach for a claim to fill the field with.
+  it("carries provenance only where the tradition actually says something", () => {
+    const withProvenance = SIGNS.filter(s => voidReading(s)!.provenance).sort();
+    expect(withProvenance).toEqual(
+      ["Cancer", "Capricorn", "Pisces", "Sagittarius", "Scorpio", "Taurus"]);
   });
 
   it("returns null rather than inventing a reading for a non-sign", () => {

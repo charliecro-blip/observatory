@@ -543,34 +543,45 @@ valuable than better adjectives.
 
 ---
 
-## Open question for AstroLyrica: the void-of-course table's frame
+## Answered: the void-of-course table's frame (2026-08-14)
 
-`artifacts/api-server/src/lib/voidOfCourse.ts` holds a `feel` / `instead` pair
-per Moon sign. The Virgo entry has been rewritten three times and flagged three
-times, which suggests the problem is not the wording.
+This was an open question for AstroLyrica. It has been decided in-house and the
+twelve entries rewritten; it is recorded here rather than deleted because the
+reasoning constrains future edits to the table.
 
-Each pass kept a **deficit frame** while changing the words: "real work with
-nothing riding on it", then "the urge to tidy something that's already fine —
-Virgo's eye for detail with no new problem to solve", then "Save the launch,
-not the effort". All three open by telling the reader their attention is
-surplus to requirements. The owner's note (2026-08-14): "it should be framed
-positively."
+**The question was:** `feel` had been rewritten three times for Virgo and
+flagged three times, each pass keeping a deficit frame while changing the
+words. Should `feel` name a lack at all, given that `VOID_SCOPE` already scopes
+the caution to beginnings?
 
-It now reads:
+**The answer: the axis was wrong.** It is not positive against negative, it is
+specific against atmospheric. Libra reads as the most useful of the twelve, and
+not because it cautions — because "agreements made now tend not to hold" names
+one particular act that particularly fails, and a person can act on that. The
+old Aquarius line ("ideas with nobody to bring them to") is just as negative and
+far less useful, because nothing follows from it. Virgo failed the same way in
+the other direction: it described a mood rather than an act.
 
-> **feel** — Virgo's precision is running high, and it settles most naturally
-> on work that already exists.
-> **instead** — A strong stretch for editing, admin, and the careful second
-> pass: the kind of work that gets better the more attention it gets.
+So the table is deliberately **not uniform**. Where a sign gives us a specific
+thing that will not take, `feel` names it. Where it does not, `feel` says what
+the attention is good for and lets `VOID_SCOPE` do the limiting.
 
-**The structural question, which matters more than this one entry.** A void is
-thin for *beginnings* and neutral-to-good for everything already underway —
-`VOID_SCOPE` in the same file carries that scoping. So does the `feel` line
-need to name a lack at all, or should the whole table describe what each sign's
-attention is *good at* during a void and let the scope note do the limiting?
-Twelve entries currently vary in how much caution they each restate, and the
-signs that lean hardest on caution (Libra: "Be sociable and don't sign") read
-as the most useful — so the answer may not be uniform.
+**A second defect, unflagged and larger.** Four entries opened with list
+membership — "this is one of the four Lilly exempts", "the last of Lilly's
+four". That is bookkeeping rather than a feeling, it met the reader first in
+exactly the four signs where the news is good, and it hands over the list
+instead of the reason. A sign is exempt because the Moon is exalted there, or
+because the sign is Jupiter's, and that is the part worth knowing.
 
-Worth a view on whether `feel` / `instead` is even the right decomposition here,
-per the structural note above.
+The citation now lives in its own `provenance` field, attributed, carried by six
+signs: Lilly's four, plus the Moon's fall in Scorpio and her detriment in
+Capricorn. The other six leave it absent rather than reach for a claim to fill
+the field. This also moved dignity vocabulary out of the layer-1 line, which
+brings the table back inside the stranger test.
+
+`feel` / `instead` survives as the decomposition, now with `provenance` beside
+it. The tests in `tests/voidOfCourse.test.ts` pin all of the above.
+
+**Still worth an outside view** on the twelve sentences themselves — the frame
+is settled, the prose is not, and the Virgo entry is the owner's own wording and
+should be left alone.
