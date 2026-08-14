@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import { recordVisit } from "@/lib/visits";
 import { jsonArray } from "@/lib/jsonArray";
-import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, ELEMENT_TAGLINE, ELEMENT_TODAY_GUIDANCE, SIGN_ELEMENTS, MODULE_ELEMENTS, moduleResonance, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
+import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal, localDayRange } from "@/lib/dates";
@@ -18,20 +18,18 @@ import { framingFor, modeFrom } from "@/lib/modes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
-import RhythmCard from "@/components/RhythmCard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
-import { usePreferences, useTimeFormat, useAstroDetail, useUiDensity } from "@/contexts/preferences-context";
+import { usePreferences, useAstroDetail, useUiDensity } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
-import { Tooltip, HelpBadge } from "@/components/Tooltip";
-import type { Goal, Crossing } from "@/lib/types";
-import { activeEclipse, RETRO_NOTES, ASPECT_GLYPH, PLANET_GLYPH } from "@/lib/conditions";
+import { Tooltip } from "@/components/Tooltip";
+import type { Crossing } from "@/lib/types";
+import { activeEclipse, RETRO_NOTES, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
 import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
-import { smoothPathD } from "@/lib/smoothPath";
-import { isWithinFreeWindow, ritualPhase } from "@/lib/chronotype";
+import { ritualPhase } from "@/lib/chronotype";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
 import ReadZone from "@/components/ReadZone";
@@ -3082,7 +3080,14 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
   );
 }
 
-// ── PlanetaryPulse ─────────────────────────────────────────────────────────────
+// ── Shared aspect + planet vocabulary ────────────────────────────────────────
+//
+// What survives the 2026-08-14 dead-code removal: `PLANET_THEMES`, read by
+// ModulePulse for its fallback colour, and the two `fmt*Exact` helpers, read by
+// BigSkyCard. All three were written for `PlanetaryPulse` and outlived it,
+// because live components several hundred lines above had reached in and
+// borrowed them — which is why deleting that component wholesale would have
+// broken two cards that do render.
 
 const PLANET_THEMES: Record<string, { themes: string; icon: string; color: string }> = {
   Sun:     { icon:"☉︎", color:PLANET_COLORS.Sun, themes:"visibility · authority · vitality · identity" },
@@ -3095,17 +3100,6 @@ const PLANET_THEMES: Record<string, { themes: string; icon: string; color: strin
   Uranus:  { icon:"♅︎", color:PLANET_COLORS.Uranus, themes:"disruption · innovation · liberation · surprise" },
   Neptune: { icon:"♆︎", color:PLANET_COLORS.Neptune, themes:"imagination · transcendence · compassion · dissolution" },
   Pluto:   { icon:"♇︎", color:PLANET_COLORS.Pluto, themes:"transformation · depth · power · shadow" },
-};
-
-const ASPECT_STRENGTH: Record<string, number> = {
-  conjunction: 1.0, trine: 0.85, sextile: 0.7, opposition: 0.75, square: 0.75,
-};
-const ASPECT_NATURE: Record<string, { label: string; note: string }> = {
-  conjunction: { label:"☌ conj",  note:"Fusion — both archetypes merge and amplify each other" },
-  trine:       { label:"△ trine", note:"Flow — energy moves easily between these themes" },
-  sextile:     { label:"⚹ sext",  note:"Opening — an invitation to blend these archetypes" },
-  opposition:  { label:"☍ opp",   note:"Tension — integration of opposing principles is the work" },
-  square:      { label:"□ sq",    note:"Friction — productive pressure to act or resolve" },
 };
 
 // Convert hours-from-now into a readable "when it perfects" label.
@@ -3128,171 +3122,6 @@ function fmtSinceExact(hours: number): string {
   if (hours < 48) return `${Math.round(hours)}h ago`;
   const days = Math.round(hours / 24);
   return days < 45 ? `${days}d ago` : `${Math.round(days / 30)}mo ago`;
-}
-
-function PlanetaryPulse({ now }: { now: any }) {
-  const moonAspects: any[] = now?.moonAspects ?? [];
-  const aspects: any[] = now?.aspects ?? [];
-
-  // Collect all active aspects, scoring by applying + aspect type
-  const allAspects = [...moonAspects, ...aspects.filter(a => a.planet1 === "Sun" || a.planet2 === "Sun")];
-  if (allAspects.length === 0) return null;
-
-  // Build planet emphasis map
-  const emphMap: Record<string, { score: number; aspects: { aspectName: string; partner: string; applying: boolean; hoursToExact: number | null; hoursSinceExact: number | null }[] }> = {};
-
-  for (const a of allAspects) {
-    const aspName = (a.aspect ?? "").toLowerCase();
-    const strength = ASPECT_STRENGTH[aspName] ?? 0.5;
-    const applyBonus = a.applying ? 0.2 : 0;
-    const score = strength + applyBonus;
-
-    for (const planet of [a.planet1, a.planet2]) {
-      if (!planet || planet === "Moon") continue; // Moon is the lens, not the emphasis
-      if (!emphMap[planet]) emphMap[planet] = { score: 0, aspects: [] };
-      emphMap[planet].score = Math.max(emphMap[planet].score, score);
-      emphMap[planet].aspects.push({
-        aspectName: aspName, partner: a.planet1 === planet ? a.planet2 : a.planet1, applying: a.applying,
-        hoursToExact: a.hoursToExact ?? null, hoursSinceExact: a.hoursSinceExact ?? null,
-      });
-    }
-  }
-
-  const emphasized = Object.entries(emphMap)
-    .filter(([, v]) => v.score > 0.5)
-    .sort(([, a], [, b]) => b.score - a.score)
-    .slice(0, 4);
-
-  if (emphasized.length === 0) return null;
-
-  // Each aspect involves two planets, so it lands in both planets' lists — but
-  // the same square shown as "Sun □ Saturn" on one row and "Saturn □ Sun" on
-  // the next reads as a duplicate. Show each pair once: the higher-emphasis
-  // planet keeps it, the partner's row falls back to its next distinct aspect.
-  const shownPairs = new Set<string>();
-  const pairKey = (a: string, b: string, asp: string) => [a, b].sort().join("-") + ":" + asp;
-  const rows = emphasized.map(([planet, data]) => {
-    const asp = data.aspects.find(x => !shownPairs.has(pairKey(planet, x.partner, x.aspectName))) ?? null;
-    if (asp) shownPairs.add(pairKey(planet, asp.partner, asp.aspectName));
-    return { planet, data, asp };
-  });
-
-  return (
-    <div style={{ background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:12, padding:"14px 18px", flexShrink:0 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-        <div style={{ fontSize:13, fontWeight:600, color: "var(--color-primary)" }}>Planetary pulse</div>
-        <div style={{ fontSize:9, color:"var(--text-3)" }}>active sky emphasis</div>
-      </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {rows.map(({ planet, data, asp }) => {
-          const info = PLANET_THEMES[planet];
-          if (!info) return null;
-          const aspInfo = ASPECT_NATURE[asp?.aspectName ?? ""] ?? null;
-          const sign = (now?.planets ?? []).find((x: any) => x.planet === planet)?.sign ?? "";
-          const intensityW = Math.min(100, Math.round(data.score * 80));
-          return (
-            <div key={planet} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-              <div style={{ width:28, height:28, borderRadius:"50%", background:`${info.color}18`, color:info.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>
-                {info.icon}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
-                  <span style={{ fontSize:11, fontWeight:600, color: "var(--color-primary)" }}>
-                    {planet}{sign && <span style={{ fontWeight:400, color:"var(--color-muted)" }}> in {sign}</span>}
-                  </span>
-                  {asp && (
-                    <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${info.color}18`, color:info.color, fontWeight:500 }}>
-                      {aspInfo?.label ?? asp.aspectName} {asp.partner}
-                      {asp.applying && <span style={{ marginLeft:4, opacity:0.7 }}>↗</span>}
-                    </span>
-                  )}
-                  {asp?.applying && asp.hoursToExact != null && (
-                    <span style={{ fontSize:8.5, color:"#b07030" }}>exact {fmtExactWhen(asp.hoursToExact)}</span>
-                  )}
-                  {asp && !asp.applying && asp.hoursSinceExact != null && (
-                    <span style={{ fontSize:8.5, color:"var(--text-3)" }}>peaked {fmtSinceExact(asp.hoursSinceExact)}</span>
-                  )}
-                </div>
-                <div style={{ fontSize:10, color:"var(--color-muted)", lineHeight:1.4, marginBottom:4 }}>{info.themes}</div>
-                <div style={{ height:3, background: "var(--color-background)", borderRadius:2, overflow:"hidden" }}>
-                  <div style={{ width:`${intensityW}%`, height:"100%", background:info.color, borderRadius:2, opacity:0.7 }} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ fontSize:8.5, color:"var(--text-3)", marginTop:10 }}>
-        Moon and Sun aspects active now · applying = ↗ building
-      </div>
-    </div>
-  );
-}
-
-// ── ElementalBalance ───────────────────────────────────────────────────────────
-
-const WINDOW_TO_ELEMENT: Record<string, string> = {
-  deep_work: "earth", study: "earth", planning: "earth", admin: "earth",
-  creative: "fire", launch: "fire",
-  social: "air", relationship: "air",
-  recovery: "water", retreat: "water", rest: "water",
-};
-
-const ELEM_INFO: Record<string, { color: string; label: string; glyph: string }> = {
-  fire:   { color: "#c04830", label: "Fire",   glyph: "🔥" },
-  earth:  { color: ELEMENT_COLORS.earth, label: "Earth",  glyph: "🌱" },
-  air:    { color: ELEMENT_COLORS.air, label: "Air",     glyph: "💨" },
-  water:  { color: ELEMENT_COLORS.water, label: "Water",  glyph: "💧" },
-  spirit: { color: "#a08060", label: "Spirit", glyph: "✦"  },
-};
-
-function ElementalBalance({ habits, tasks }: { habits: any[]; tasks: { bestWindowType?: string }[] }) {
-  const counts: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0, spirit: 0 };
-
-  for (const h of habits) {
-    // favoredElements is an array now (merged practices model); tolerate the
-    // legacy comma-string too.
-    const els = Array.isArray(h.favoredElements) ? h.favoredElements : String(h.favoredElements ?? "").split(",").map((s: string) => s.trim()).filter(Boolean);
-    for (const el of els) {
-      if (el in counts) counts[el]++;
-    }
-  }
-  for (const t of tasks) {
-    const el = WINDOW_TO_ELEMENT[t.bestWindowType ?? ""] ?? "spirit";
-    counts[el]++;
-  }
-
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-
-  const elems = Object.entries(counts).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a);
-  const max = Math.max(...elems.map(([, v]) => v));
-
-  return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 10 }}>Elemental balance</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {elems.map(([el, count]) => {
-          const info = ELEM_INFO[el];
-          const pct = (count / (max || 1)) * 100;
-          const thin = pct < 30;
-          return (
-            <div key={el} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 52, fontSize: 10, color: info.color, fontWeight: 500, flexShrink: 0 }}>
-                {info.glyph} {info.label}
-              </div>
-              <div style={{ flex: 1, height: 7, background: "var(--color-background)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: info.color, borderRadius: 4, opacity: thin ? 0.4 : 0.8, transition: "width 0.4s ease" }} />
-              </div>
-              <div style={{ width: 16, fontSize: 9, color: thin ? "var(--text-3)" : info.color, textAlign: "right", flexShrink: 0 }}>{count}</div>
-              {thin && <span style={{ fontSize: 8, color: "var(--text-3)" }}>thin</span>}
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 8 }}>Based on active habits · pending tasks</div>
-    </div>
-  );
 }
 
 // ── WaveRow ────────────────────────────────────────────────────────────────────
@@ -3324,252 +3153,6 @@ function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: stri
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 12, color: s.textColor, fontWeight: type === "practice-resonant" ? 500 : 400 }}>{label}</div>
         {sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sub}</div>}
-      </div>
-    </div>
-  );
-}
-
-// ── MonthBars — the Almanac's 30-day view, brought home and made tappable ────
-// Each bar is a day: element color, height = how charged. Tapping a bar opens
-// the day's explanation (character, moon, vibe, aspects) so the strip teaches
-// instead of just decorating.
-function MonthBars({ testerId, lat, lon, today }: { testerId: string | null; lat: number; lon: number; today: string }) {
-  const { data: month } = useTidesWeek(30, lat, lon);
-  const [sel, setSel] = useState<string | null>(null);
-  const days = (month?.days ?? []) as any[];
-  if (!days.length) return null;
-  const selDay = days.find((d) => d.date === sel);
-
-  const CHAR_WORD: Record<string, string> = { water: "Deep", fire: "Surge", earth: "Building", air: "Clear" };
-  const chargeLine = (qs: number) =>
-    qs >= 5.5 ? "high charge — a day to lean in" : qs >= 3.5 ? "steady water — this day will do for most things" : "low water — keep plans light";
-
-  return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>The month's water</span>
-        <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>next 30 days · tap a day</span>
-      </div>
-      <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 52 }}>
-        {days.map((d) => {
-          // Always a 6-digit hex (so the `${ec}55` alpha suffix stays valid) and
-          // a defined color for spirit/VOC days — they were rendering as a
-          // broken white-body/grey-top bar because "spirit" fell to "#888888".
-          const MB_HEX: Record<string, string> = { fire: ELEMENT_COLORS.fire, earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water, spirit: "#7a7196" };
-          const ec = MB_HEX[d.element ?? "water"] ?? "#7a7196";
-          const qs = d.qualityScore ?? 4;
-          const h = 10 + Math.round((qs / 7) * 38);
-          const active = sel === d.date;
-          const isToday = d.date === today;
-          return (
-            <button key={d.date} onClick={() => setSel(active ? null : d.date)}
-              title={new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-              style={{
-                flex: 1, height: h, minWidth: 0, padding: 0, cursor: "pointer",
-                background: active ? ec : `${ec}${isToday ? "88" : "55"}`,
-                border: "none", borderTop: `2px solid ${ec}`, borderRadius: 2,
-                outline: isToday ? `1.5px solid ${ec}` : "none", outlineOffset: 1,
-              }} />
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "var(--text-3)", marginTop: 3 }}>
-        <span>today</span><span>+30d</span>
-      </div>
-
-      {selDay && (() => {
-        const ec = ELEMENT_COLORS[(selDay.element ?? "water") as Element] ?? "#888888";
-        const aspects = (selDay.moonAspects ?? []) as any[];
-        const d = new Date(selDay.date + "T12:00:00");
-        return (
-          <div style={{ marginTop: 10, padding: "10px 12px", background: `${ec}0a`, borderLeft: `3px solid ${ec}`, borderRadius: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
-              {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-              <span style={{ color: ec, marginLeft: 8 }}>{CHAR_WORD[selDay.element] ?? ""} day</span>
-              <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, fontSize: 10.5 }}>· {selDay.element}</span>
-            </div>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 3 }}>{chargeLine(selDay.qualityScore ?? 4)}</div>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>{buildDayVibe(selDay)}</div>
-            {aspects.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
-                {aspects.slice(0, 3).map((a: any, i: number) => (
-                  <div key={i} style={{ fontSize: 9.5, color: "var(--text-2)" }}>
-                    <span style={{ color: ASP_COLOR[a.aspect] ?? "var(--color-muted)", fontWeight: 600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
-                    {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
-
-// ── FourteenDays ───────────────────────────────────────────────────────────────
-
-const MOON_GLYPHS: Record<string, string> = {
-  new_moon:"🌑", waxing_crescent:"🌒", first_quarter:"🌓", waxing_gibbous:"🌔",
-  full_moon:"🌕", waning_gibbous:"🌖", last_quarter:"🌗", waning_crescent:"🌘",
-};
-const ASP_SYM: Record<string, string> = { conjunction:"☌︎", trine:"△", sextile:"⚹", square:"□", opposition:"☍︎" };
-const ASP_COLOR: Record<string, string> = { trine:"#60a060", sextile:"#6090d0", conjunction:"#f0b060", square:"#e06060", opposition:"#e06060" };
-
-const ASP_MEANING_SHORT: Record<string, string> = {
-  trine: "ease + flow", sextile: "opportunity", conjunction: "fusion + intensity",
-  square: "friction + growth", opposition: "tension + awareness",
-};
-
-function buildDayVibe(day: any): string {
-  const parts: string[] = [];
-  const el = day.element ?? "water";
-  const sign = day.moonSign ?? "";
-  const phase = (day.moonPhase ?? "").replace(/_/g," ");
-  const voc = !!day.voidPeriods;
-  const aspects: any[] = day.moonAspects ?? [];
-  const q = day.quality ?? "neutral";
-
-  // Element + sign tone
-  const elTone: Record<string,string> = { fire:"vital and initiating", earth:"grounded and practical", air:"communicative and social", water:"reflective and feeling" };
-  if (sign) parts.push(`Moon in ${sign} — ${elTone[el] ?? el}`);
-  if (phase) parts.push(phase);
-  if (voc) parts.push("void of course period");
-
-  // Dominant aspect — week data uses { planet, aspect }, now data uses { planet1, planet2, aspect }
-  const mainAsp = aspects[0];
-  if (mainAsp) {
-    const other = mainAsp.planet
-      ?? (mainAsp.planet1 === "Moon" ? mainAsp.planet2 : mainAsp.planet1);
-    const aspShort: Record<string,string> = { trine:"flowing with", sextile:"opportunity via", conjunction:"merged with", square:"friction with", opposition:"tension across" };
-    if (other) parts.push(`${aspShort[mainAsp.aspect] ?? mainAsp.aspect} ${other}`);
-  }
-
-  // Quality note
-  const qNote: Record<string,string> = { excellent:"excellent overall", good:"generally favorable", workable:"workable with care", mixed:"mixed currents", avoid_if_possible:"challenging — move gently" };
-  if (qNote[q]) parts.push(qNote[q]);
-
-  return parts.join(" · ");
-}
-const ELEMENT_TONE: Record<string, string> = {
-  fire: "initiative · energy · expression", earth: "grounding · building · tending",
-  air: "connection · clarity · exchange", water: "feeling · reflection · depth", spirit: "liminal · rest · release",
-};
-
-function FourteenDays({ week, today }: { week: any; today: string }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const days = week?.days ?? [];
-  if (!days.length) return null;
-
-  return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 18px", flexShrink: 0 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, display:"flex", alignItems:"center", gap:6 }}>
-        14 days ahead
-        <HelpBadge term="moonAspects"/>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {days.map((day: any) => {
-          const isToday = day.date === today;
-          const ec = ELEMENT_COLORS[(day.element ?? "water") as Element] ?? "#888888";
-          const phaseKey = (day.moonPhase ?? "").replace(/ /g,"_").toLowerCase();
-          const phaseGlyph = MOON_GLYPHS[phaseKey];
-          const aspects = (day.moonAspects ?? []) as { planet: string; aspect: string; applying: boolean; orb: number }[];
-          const d = new Date(day.date + "T12:00:00");
-          const isOpen = expanded === day.date;
-          const qs = day.qualityScore ?? 4;
-          const qColor = qs >= 5.5 ? "#50a050" : qs >= 3.5 ? "#c8a030" : "#c06040";
-
-          return (
-            <div key={day.date} style={{ borderBottom: "1px solid #f5f2ee" }}>
-              {/* Main row — clickable */}
-              <button onClick={() => setExpanded(isOpen ? null : day.date)} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "9px 0 9px 8px", width:"100%",
-                background: isToday ? `${ec}08` : "transparent",
-                borderLeft: isToday ? `3px solid ${ec}` : "3px solid transparent",
-                border: "none", cursor: "pointer", textAlign:"left",
-              }}>
-                {/* Date */}
-                <div style={{ width: 36, flexShrink: 0 }}>
-                  <div style={{ fontSize: 8, textTransform: "uppercase", color: isToday ? ec : "var(--text-3)", fontWeight: isToday ? 700 : 400 }}>{day.label?.slice(0,3)}</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: isToday ? ec : "var(--text-1)", lineHeight: 1 }}>{d.getDate()}</div>
-                </div>
-                {/* Quality dot */}
-                <div style={{ width:6, height:6, borderRadius:"50%", background:qColor, flexShrink:0 }}/>
-                {/* Moon info */}
-                <div style={{ width: 76, flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, color: ec, fontWeight: 500 }}>{day.moonSign}</div>
-                  {phaseGlyph && <div style={{ fontSize: 8.5, color: "var(--text-3)", marginTop: 1 }}>{phaseGlyph} {day.moonPhase?.replace(/_/g," ").split(" ").slice(0,2).join(" ")}</div>}
-                  {day.voidPeriods && <div style={{ fontSize: 7.5, color: "#9a8050", marginTop: 1 }}>◌ VOC</div>}
-                </div>
-                {/* Vibe line */}
-                <div style={{ flex: 1, fontSize: 9, color: "var(--color-muted)", textAlign: "left", lineHeight: 1.4, paddingRight: 4 }}>
-                  {buildDayVibe(day)}
-                </div>
-                {/* Aspects — small, compact */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 6px", flexShrink: 0 }}>
-                  {aspects.slice(0,3).map((a, i) => {
-                    const sym = ASP_SYM[a.aspect] ?? a.aspect;
-                    const col = ASP_COLOR[a.aspect] ?? "#888888";
-                    return (
-                      <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:1, fontSize:9.5 }}>
-                        <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
-                        <span style={{ color:col, fontWeight:700 }}>{sym}</span>
-                        <span style={{ color:"var(--text-2)" }}>{a.planet?.slice(0,3)}</span>
-                      </span>
-                    );
-                  })}
-                  {aspects.length === 0 && <span style={{ fontSize:9, color:"var(--text-3)" }}>quiet</span>}
-                </div>
-                {/* Crossings */}
-                <div style={{ flexShrink:0, fontSize:7.5, color:PLANET_COLORS.Sun, textAlign:"right" }}>
-                  {(day.crossings as any[] ?? []).slice(0,2).map((c: any, i: number) => (
-                    <div key={i}>{PLANET_ICONS[c.planet] ?? c.planet[0]} {c.angle} {c.time?.slice(0,5)}</div>
-                  ))}
-                </div>
-                <span style={{ fontSize:8, color:"var(--text-3)", flexShrink:0 }}>{isOpen ? "▲" : "▾"}</span>
-              </button>
-
-              {/* Expanded detail */}
-              {isOpen && (
-                <div style={{ padding:"8px 8px 12px 18px", background:`${ec}06`, borderLeft:`2px solid ${ec}30` }}>
-                  <div style={{ fontSize:9, color:ec, fontWeight:600, marginBottom:4 }}>
-                    {day.element ? `${day.element} day` : ""} · {day.quality?.replace(/_/g," ")} · score {qs.toFixed(1)}
-                  </div>
-                  {ELEMENT_TONE[day.element] && (
-                    <div style={{ fontSize:9, color:"var(--color-muted)", marginBottom:5 }}>{ELEMENT_TONE[day.element]}</div>
-                  )}
-                  {day.tone && <div style={{ fontSize:9, color:"var(--color-muted)", fontStyle:"italic", marginBottom:5 }}>"{day.tone}"</div>}
-                  {aspects.length > 0 && (
-                    <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                      {aspects.map((a, i) => {
-                        const col = ASP_COLOR[a.aspect] ?? "#888888";
-                        return (
-                          <div key={i} style={{ fontSize:9, color:"var(--text-2)" }}>
-                            <span style={{ color:col, fontWeight:600 }}>☽ {ASP_SYM[a.aspect] ?? a.aspect} {a.planet}</span>
-                            {" — "}{ASP_MEANING_SHORT[a.aspect] ?? ""}
-                            <span style={{ color:"var(--text-3)" }}> · {a.applying ? "applying" : `${a.orb.toFixed(1)}° past`}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {(day.crossings ?? []).length > 0 && (
-                    <div style={{ marginTop:5, display:"flex", flexWrap:"wrap", gap:"3px 10px" }}>
-                      {(day.crossings as any[]).map((c: any, i: number) => {
-                        const pCol = PLANET_COLORS[c.planet] ?? "#888888";
-                        return (
-                          <span key={i} style={{ fontSize:8.5, color:pCol }}>
-                            {PLANET_ICONS[c.planet] ?? c.planet[0]} {c.planet} × {c.angle} · {c.time?.slice(0,5)}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
       </div>
     </div>
   );
