@@ -72,3 +72,36 @@ export function newMoonDates(tzOffsetMin: number, now: number = Date.now()): { c
   const prevCycleStart = found[1] ?? localDate(Date.parse(cycleStart) - 30 * 86400000);
   return { cycleStart, prevCycleStart };
 }
+
+/**
+ * The NEXT new moon, as a date on the viewer's calendar.
+ *
+ * The mirror of the walk above, forward instead of back: elongation climbs
+ * toward 360° and drops through 0°, so a sample LOWER than the one before it
+ * means the conjunction fell between them, and the same bisection finds it.
+ *
+ * This is what a cycle-scoped thing should expire on. The turning-point
+ * check-in kept its answers for a flat 29 days from whenever they were
+ * written, which is close enough to a synodic month to look right and drifts
+ * against the actual cycle every time — a card kept on the 14th outlived the
+ * following new moon by two days.
+ */
+export function nextNewMoonDate(tzOffsetMin: number, now: number = Date.now()): string {
+  const localDate = (ms: number) => new Date(ms - tzOffsetMin * 60000).toISOString().slice(0, 10);
+  let prev = elongation(julianDay(new Date(now)));
+  for (let d = 1; d <= 62; d++) {
+    const t = now + d * 86400000;
+    const e = elongation(julianDay(new Date(t)));
+    if (e < prev) {
+      let lo = t - 86400000, hi = t;
+      for (let i = 0; i < 40 && hi - lo > 1000; i++) {
+        const mid = (lo + hi) / 2;
+        if (elongation(julianDay(new Date(mid))) > 180) lo = mid; else hi = mid;
+      }
+      return localDate(hi);
+    }
+    prev = e;
+  }
+  // Unreachable for any real sky — a lunation is 29.5 days and we scan 62.
+  return localDate(now + 29.53 * 86400000);
+}

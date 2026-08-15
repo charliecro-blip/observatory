@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { newMoonDates } from "../artifacts/api-server/src/lib/lunarCycle.js";
+import { newMoonDates, nextNewMoonDate } from "../artifacts/api-server/src/lib/lunarCycle.js";
 
 /**
  * WHICH DAY THE CYCLE STARTS — and the fact that the answer does not depend
@@ -88,5 +88,27 @@ describe("newMoonDates", () => {
     const after = newMoonDates(LA, NEW_MOON_UTC + 60000).cycleStart;
     expect(before).toBe("2026-07-14");   // still the previous cycle
     expect(after).toBe("2026-08-12");    // the new one, from its first minute
+  });
+});
+
+describe("nextNewMoonDate", () => {
+  it("names the following lunation, about a month out", () => {
+    const from = NEW_MOON_UTC + 30 * H;
+    const next = nextNewMoonDate(LA, from);
+    const start = newMoonDates(LA, from).cycleStart;
+    const gap = (Date.parse(next) - Date.parse(start)) / 86400000;
+    expect(gap).toBeGreaterThanOrEqual(29);
+    expect(gap).toBeLessThanOrEqual(30);
+  });
+
+  it("is what a cycle-scoped answer should expire on", () => {
+    // The check-in kept its answers for a flat 29 days from whenever they were
+    // written. Written on the fifth day of the window, that outlived the next
+    // new moon — the finished cycle's card was still on Home while the new
+    // cycle's offer was trying to appear.
+    const writtenOn = NEW_MOON_UTC + 4 * 24 * H;          // day 5 of the window
+    const flat29 = new Date(writtenOn + 29 * 24 * H).toISOString().slice(0, 10);
+    const real = nextNewMoonDate(LA, writtenOn);
+    expect(flat29 > real).toBe(true);
   });
 });

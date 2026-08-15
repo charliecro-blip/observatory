@@ -46,6 +46,11 @@ export interface TidesNow {
     waxing: boolean;
     phase: string;
     approach: string;
+    /** Local dates of the lunation boundaries — the same ones the ledger
+     *  stamps intentions with, so no surface has to keep its own copy. */
+    cycleStart?: string;
+    prevCycleStart?: string;
+    nextCycleStart?: string;
   };
   elementEmphasis?: string;
   planetaryHour: { planet: string; began: string; ends: string; quality: string; archetype?: string };

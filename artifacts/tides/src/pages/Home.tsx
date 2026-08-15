@@ -799,8 +799,16 @@ export default function Home({
           offer competing for attention, and it occurs on a large share of
           days. An earlier version let it suppress both of these, which had
           the common thing silencing the rare ones: exactly backwards. */}
-      <NewMoonCheckIn testerId={testerId} onNavigate={onNavigate} />
-      <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen()} />
+      {/* The lunation's boundaries come from the sky, on the reading Home
+          already fetches — so the check-in's window and the cycle the ledger
+          stamps intentions with cannot drift apart. */}
+      <NewMoonCheckIn
+        testerId={testerId}
+        onNavigate={onNavigate}
+        cycleStart={now?.moonCycle?.cycleStart}
+        nextCycleStart={now?.moonCycle?.nextCycleStart}
+      />
+      <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen(now?.moonCycle?.cycleStart)} />
 
       {/* THE WORK comes BEFORE the reading now.
           Compass answers "what now" at the top of the page, so the big

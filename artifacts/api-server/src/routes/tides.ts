@@ -22,6 +22,7 @@ import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
 import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
+import { newMoonDates, nextNewMoonDate } from "../lib/lunarCycle.js";
 import { buildAlmanac } from "../lib/almanac.js";
 
 const router: IRouter = Router();
@@ -306,6 +307,19 @@ router.get("/tides/now", async (req, res) => {
       : elongation < 202.5 ? "release"
       : elongation < 292.5 ? "consolidate"
       : "recover",
+    // WHERE THIS CYCLE ACTUALLY BEGINS AND ENDS, as dates on the viewer's own
+    // calendar. Carried here rather than fetched separately because every
+    // surface that needs it already reads /tides/now, and because a second
+    // route computing the same boundary is how two surfaces come to disagree
+    // about which cycle you are in.
+    //
+    // The turning-point check-in used to hold these as two hand-typed strings
+    // per lunation, which drifted a day from the computed cycle the ledger
+    // stamps intentions with (see lib/lunarCycle.ts, 2026-08-15).
+    ...(() => {
+      const { cycleStart, prevCycleStart } = newMoonDates(tzOffset);
+      return { cycleStart, prevCycleStart, nextCycleStart: nextNewMoonDate(tzOffset) };
+    })(),
   };
 
   // Rhythm risk: VOC + low quality + hard Moon-to-disruptive-natal-planet aspects

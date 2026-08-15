@@ -22,12 +22,35 @@ import { CHECKIN_SAVE_KEY, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
 const ACCENT = ELEMENT_COLORS.fire; // Leo. Each cycle names its own accent.
 
 // ── The cycle — owner-edited, one block per lunation ─────────────────────
+/**
+ * How many days the offer stands after the new moon, the first day included.
+ * The ledger's own cycle card on Today uses three; this one is the longer
+ * ritual and "Not now" only snoozes until tomorrow, so it gets five.
+ */
+const WINDOW_DAYS = 5;
+
 const CYCLE = {
   // Single-sourced so the save key and this block can never name different
   // cycles — the failure would be silent, and would look like lost data.
   key: CHECKIN_CYCLE_KEY,
-  opens: "2026-08-12",
-  closes: "2026-08-16", // last day the prompt offers itself
+  /**
+   * WHICH LUNATION THIS CURATED BLOCK IS FOR.
+   *
+   * The window itself is no longer written here. `opens` and `closes` were two
+   * hand-typed dates per cycle, and they drifted: this said the cycle opened
+   * on 2026-08-12, which was right, while the server's own boundary said the
+   * 13th, which was wrong — and the two disagreeing is what let an intention
+   * be written under one cycle and read back under another (fixed server-side
+   * 2026-08-15, lib/lunarCycle.ts). Two sources for one date will always find
+   * a way to disagree; now the sky supplies it and this names only the cycle
+   * the writing below belongs to.
+   *
+   * It still has to be named, because everything under it is written by hand
+   * for one particular lunation. When the computed cycle moves past this date
+   * and nobody has written the next block, the offer stands down rather than
+   * showing August's eclipse read against September's new moon.
+   */
+  forCycleStart: "2026-08-12",
   name: "New Moon in Leo · Solar Eclipse",
   // The read went through the AstroLyrica voice pass 2026-08-12: "turns the
   // volume up" coded intensity/threat where the true axis is visibility, and
@@ -72,6 +95,13 @@ interface Saved {
 const SAVE_KEY = CHECKIN_SAVE_KEY;
 const DISMISS_KEY = `compass-nm-dismiss-${CYCLE.key}`;
 
+/** `cycleStart` plus n days, as a local date string. */
+function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
 /**
  * Whether the turning-point offer is currently claiming Home's banner slot.
  *
@@ -80,10 +110,15 @@ const DISMISS_KEY = `compass-nm-dismiss-${CYCLE.key}`;
  * turning point outranks a rare-moment notice: eclipses and new moons are
  * rarer than exceptional days, and two banners stacked is the failure this
  * queue exists to prevent.
+ *
+ * Takes the computed `cycleStart` rather than reading a constant, so the
+ * window and the ledger's cycle can no longer disagree. Undefined means the
+ * sky has not loaded yet, and an offer is not made on a guess.
  */
-export function turningPointPromptOpen(): boolean {
+export function turningPointPromptOpen(cycleStart: string | undefined): boolean {
+  if (!cycleStart || cycleStart !== CYCLE.forCycleStart) return false;
   const today = localDateStr();
-  if (today < CYCLE.opens || today > CYCLE.closes) return false;
+  if (today < cycleStart || today > addDays(cycleStart, WINDOW_DAYS - 1)) return false;
   if (readSaved()) return false;                       // already answered
   try { return localStorage.getItem(DISMISS_KEY) !== today; } catch { return true; }
 }
@@ -123,9 +158,13 @@ function EclipseMark({ size = 24 }: { size?: number }) {
   );
 }
 
-export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }: {
+export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextCycleStart, suppressPrompt }: {
   testerId: string | null;
   onNavigate?: (v: string) => void;
+  /** The current lunation's local start date, from `/tides/now`. */
+  cycleStart?: string;
+  /** When this cycle ends — what a cycle-scoped answer should expire on. */
+  nextCycleStart?: string;
   /** True when something RARER holds the notice slot. Nothing currently
    *  outranks a turning point, so Home leaves this unset; it stays for the
    *  day something does (`turningPointPromptOpen` is the same question from
@@ -160,7 +199,12 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
   }, [open]);
 
   const today = localDateStr();
-  const inWindow = today >= CYCLE.opens && today <= CYCLE.closes;
+  // The sky's boundary, not a typed one. `cycleStart` disagreeing with the
+  // curated block means the lunation has moved on without new writing, and
+  // the offer stands down rather than reading last month's copy over it.
+  const onThisCycle = !!cycleStart && cycleStart === CYCLE.forCycleStart;
+  const inWindow = onThisCycle
+    && today >= cycleStart! && today <= addDays(cycleStart!, WINDOW_DAYS - 1);
 
   const beginFresh = () => {
     setRelease(""); setReclaim(""); setOneShot(""); setStarMarks({});
@@ -179,8 +223,14 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
     setDismissedOn(d);
   };
   const keep = () => {
-    const until = new Date();
-    until.setDate(until.getDate() + 29); // ≈ one lunation; engine-derived later
+    // EXPIRES ON THE NEXT NEW MOON, not 29 days from whenever you happened to
+    // write it. A flat 29 is close enough to a synodic month to look right and
+    // drifts against the real cycle every time — a card kept on the fifth day
+    // of the window outlived the following new moon by four days, so the
+    // "kept" one-pager for a finished cycle was still on Home while the next
+    // cycle's offer was trying to appear.
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + 29);
     const s: Saved = {
       release: release.trim(), reclaim: reclaim.trim(), oneShot: oneShot.trim(),
       stars: starMarks,
@@ -188,7 +238,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, suppressPrompt }:
       // the cycle is a different fact from when you last moved the aim.
       savedAt: editing && saved ? saved.savedAt : new Date().toISOString(),
       ...(editing ? { revisedAt: new Date().toISOString() } : {}),
-      until: editing && saved ? saved.until : localDateStr(until),
+      until: editing && saved ? saved.until : (nextCycleStart ?? localDateStr(fallback)),
     };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch { /* private mode */ }
     setSaved(s);
