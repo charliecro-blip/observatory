@@ -33,10 +33,18 @@ const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLOR
 const elc = (el?: string | null) => EL_COLOR[el ?? ""] ?? "#8a8278";
 
 export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0) {
+  // The response carries `today` and `cycleStart`, both derived from the tz
+  // and coordinates in the URL and neither of which was in the key. With a
+  // five-minute staleTime and a tab left open, the cycle review could keep
+  // deciding whether to show against yesterday's date — which would have
+  // quietly undone the cycle-boundary fix (lib/lunarCycle.ts) from the client
+  // side. The day is read once here so the key and the URL cannot disagree.
+  const tz = new Date().getTimezoneOffset();
+  const today = new Date(Date.now() - tz * 60000).toISOString().slice(0, 10);
   return useQuery<MomentumData>({
-    queryKey: ["momentum", testerId],
+    queryKey: ["momentum", testerId, today, tz, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/planning/momentum?tz=${new Date().getTimezoneOffset()}&lat=${lat}&lon=${lon}`,
+      const r = await fetch(`/api/planning/momentum?tz=${tz}&lat=${lat}&lon=${lon}`,
         { headers: { "x-tester-id": testerId ?? "" } });
       return r.json();
     },

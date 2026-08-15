@@ -8,7 +8,7 @@ import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { suggestApproach, approachOptions } from "@/lib/approach";
 import { useTester } from "@/contexts/tester-context";
-import { useNorthStars } from "@/hooks/useTides";
+import { useNorthStars, usePractices } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
 import { CompassMark } from "@/components/CompassMark";
@@ -440,65 +440,10 @@ export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset:
   };
 }
 
-function SunArc({ lat, lon }: { lat: number; lon: number }) {
-  const sun = railSunTimes(lat, lon);
-  if (!sun) return null;
-
-  const now = new Date();
-  const midnight = new Date(localDateStr(now) + "T00:00:00");
-  const totalMs = 24 * 3600000;
-  const srPct = (sun.sunrise.getTime() - midnight.getTime()) / totalMs * 100;
-  const ssPct = (sun.sunset.getTime() - midnight.getTime()) / totalMs * 100;
-  const snPct = (sun.solarNoon.getTime() - midnight.getTime()) / totalMs * 100;
-  const nowPct = Math.min(100, Math.max(0, (now.getTime() - midnight.getTime()) / totalMs * 100));
-
-  const fmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const isDay = now > sun.sunrise && now < sun.sunset;
-
-  return (
-    <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid var(--color-border)" }}>
-      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 6 }}>Daylight · sun {isDay ? "up" : "down"}</div>
-
-      {/* Arc bar */}
-      <div style={{ position: "relative", height: 20, marginBottom: 5 }}>
-        {/* Night background */}
-        <div style={{ position: "absolute", inset: "6px 0", borderRadius: 4, background: "#1a2a3a20" }} />
-        {/* Day portion */}
-        <div style={{
-          position: "absolute", top: 4, bottom: 4, borderRadius: 3,
-          left: `${srPct}%`, width: `${ssPct - srPct}%`,
-          background: "linear-gradient(to right, #f0c060, #f0e080, #f0c060)",
-          opacity: 0.85,
-        }} />
-        {/* Solar noon tick */}
-        <div style={{ position: "absolute", top: 2, bottom: 2, left: `${snPct}%`, width: 1.5, background: "#e09020", opacity: 0.6 }} />
-        {/* Now indicator */}
-        <div style={{
-          position: "absolute", top: 0, bottom: 0, left: `${nowPct}%`,
-          width: 3, borderRadius: 2,
-          background: isDay ? "#c07010" : "#3a4a5a",
-          transform: "translateX(-50%)",
-          boxShadow: isDay ? "0 0 4px #f0a030" : "none",
-        }} />
-      </div>
-
-      {/* Labels row */}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "var(--text-3)" }}>
-        <div>☀ {fmt(sun.sunrise)}</div>
-        <div style={{ color: PLANET_COLORS.Sun, fontSize: 8 }}>noon {fmt(sun.solarNoon)}</div>
-        <div>{fmt(sun.sunset)} ☽</div>
-      </div>
-
-      {/* Day length */}
-      <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 3, textAlign: "center" }}>
-        {(() => {
-          const h = (sun.sunset.getTime() - sun.sunrise.getTime()) / 3600000;
-          return `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m daylight`;
-        })()}
-      </div>
-    </div>
-  );
-}
+// `SunArc` lived here — a daylight arc drawn from railSunTimes, and never
+// rendered by anything. Removed 2026-08-15. `railSunTimes` itself stays: it
+// is exported and TideWater draws the day's light band with it, which is the
+// reason deleting the component wholesale would have been wrong.
 
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
@@ -590,14 +535,18 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     enabled: !!testerId,
   });
 
-  const { data: practicesData } = useQuery<any>({
-    queryKey: ["practices", testerId],
-    queryFn: async () => {
-      const r = await fetch("/api/practices", { headers: testerId ? {"x-tester-id": testerId} : {} });
-      return r.json();
-    },
-    enabled: !!testerId,
-  });
+  // THE ENDPOINT IS `/api/tides/practices`. This asked for `/api/practices`,
+  // which has never existed, so every page load made a request that 404'd and
+  // `r.json()` handed back the error body — `practicesData.practices` was
+  // always undefined, and the rail's "resonant now" section below has never
+  // once rendered for anybody. A failure with no error handling does not look
+  // like a failure; it looks like a feature nobody uses.
+  //
+  // `usePractices` is the hook Today already reads this through, so this is
+  // one source rather than a second copy that was free to be wrong — and it
+  // carries lat/lon, which the bespoke query dropped from both the URL and
+  // the cache key.
+  const { data: practicesData } = usePractices(testerId, lat, lon);
 
   const toggleTask = useMutation({
     mutationFn: async (id: number) => {

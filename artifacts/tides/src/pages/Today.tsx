@@ -804,10 +804,24 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     staleTime: 3600_000,
   });
 
+  // ONE KEY, ONE URL — and the key names everything the URL sends.
+  //
+  // Three habit queries on this page shared the key `["habits", testerId]`
+  // while asking for three different things: two without coordinates and one
+  // with. React Query has no idea they differ, so whichever mounted first won
+  // and the others read its answer out of the cache. The habits route defaults
+  // an absent `lat` to 40.7 — New York — so a viewer in Los Angeles could get
+  // sunrise/sunset anchors and elemental resonance computed for a city they
+  // are not in, which is the exact defect the audit already fixed once by
+  // passing coordinates to `usePractices`. It came back through the cache.
+  //
+  // The day is in the key for the ordinary reason: `today` is in the URL, and
+  // without it a tab left open across midnight keeps yesterday's answer,
+  // including `doneToday` and the streak.
   const { data: habits = [] } = useQuery<any[]>({
-    queryKey: ["habits", testerId],
+    queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/habits?today=${localToday()}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
+      const r = await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: testerId ? { "x-tester-id": testerId } : {} });
       return jsonArray(r);
     },
     enabled: !!testerId,
@@ -2667,8 +2681,11 @@ function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayNam
   const tasks = Array.isArray(todayTasks) ? todayTasks : [];
   const wins = Array.isArray(windows) ? windows : [];
   const { data: habitsRaw = [] } = useQuery<any[]>({
-    queryKey: ["habits", testerId],
-    queryFn: async () => { const j = await fetchJson(`/api/habits?today=${today}`, { headers: { "x-tester-id": testerId ?? "" } }); return Array.isArray(j) ? j : []; },
+    // Same key and same URL as every other habits read on the page — see the
+    // note on Today's own query above for what sharing a key while asking for
+    // something different cost.
+    queryKey: ["habits", testerId, today, lat, lon],
+    queryFn: async () => { const j = await fetchJson(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: { "x-tester-id": testerId ?? "" } }); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,
   });
   const habits = Array.isArray(habitsRaw) ? habitsRaw : [];
@@ -2962,7 +2979,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
   const qc = useQueryClient();
   const today = localToday();
   const { data: habits = [] } = useQuery<any[]>({
-    queryKey: ["habits", testerId],
+    queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => jsonArray(await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: { "x-tester-id": testerId } })),
   });
 
