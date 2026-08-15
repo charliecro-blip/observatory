@@ -49,7 +49,7 @@ import RhythmProgress from "@/components/RhythmProgress";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
-import { WeekStrip, useWeekShape } from "@/components/WeekShape";
+import { CommittedWeekStrip, useCommittedWeek } from "@/components/WeekCommitted";
 import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
@@ -458,9 +458,14 @@ export default function Home({
 
   // The week strip loads with the page rather than on demand: it is a shape,
   // not a plan, and it is the answer to Home being thin on a day when nothing
-  // converges and nothing is void. Cheap enough — the same memoised elections
-  // the day shaping uses.
-  const { data: week } = useWeekShape(testerId, lat, lon, locationKnown, true);
+  // converges and nothing is void.
+  //
+  // COMMITTED, not proposed. This read `shape-week`, which only collects work
+  // that has NOT been placed — so the card emptied out the moment a week was
+  // fully woven and told the reader nothing was placed yet. See
+  // components/WeekCommitted.tsx. The proposal still lives in Plan, which is
+  // the tab that acts on it.
+  const { data: committed = [] } = useCommittedWeek(testerId, 7);
 
   // The sky's own fortnight, for the horizon row below. `back = 0` matters:
   // Calendar fetches back-days so its month grid can draw the days either side
@@ -950,20 +955,21 @@ export default function Home({
               the one ahead of it; renders nothing when the day is empty. */}
           <DayAhead testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
 
-          {/* THIS WEEK — answers a question rather than drawing seven slots. */}
-          {week && (
-            <div style={PANEL}>
-              <SectionTitle
-                action={
-                  <button onClick={() => onNavigate("launch")} style={{
-                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
-                    color: "var(--color-primary)",
-                  }}>See week →</button>
-                }
-              >This week</SectionTitle>
-              <WeekStrip week={week} />
-            </div>
-          )}
+          {/* THIS WEEK — what you have committed to, not what could be placed.
+              Always rendered: an empty committed week is a real answer and the
+              card says so, where the old proposal-driven version could only
+              go blank and blame the week. */}
+          <div style={PANEL}>
+            <SectionTitle
+              action={
+                <button onClick={() => onNavigate("launch")} style={{
+                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--color-primary)",
+                }}>See week →</button>
+              }
+            >This week</SectionTitle>
+            <CommittedWeekStrip windows={committed} onOpen={() => onNavigate("launch")} />
+          </div>
 
           {/* GUIDING STARS, with their movement — the card that used to live on
               Today (Dashboard's "Guiding stars"). A star's progress is measured

@@ -33,9 +33,6 @@ export interface WovenWeek {
   warnings: string[];
 }
 
-/** The convergence green, matching Home's `CONVERGENT`. Hex, so alpha suffixes work. */
-const PLACED = "#3f7a4a";
-
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 const dayName = (key: string) => {
@@ -62,103 +59,11 @@ export function useWeekShape(testerId: string | null, lat: number, lon: number, 
   });
 }
 
-/**
- * The week, as an answer rather than a chart.
- *
- * The first version drew seven bars: one black rectangle and six near-invisible
- * lines. A reader could not tell whether the dark one meant booked, active,
- * pressured, current, selected or unavailable — and a row of unlabelled slots
- * does not earn a card. It also buried the one genuinely useful fact ("6 of 7
- * days open") under decoration.
- *
- * Now it names the days, names what is placed on them, and states the shape in
- * a sentence. White space is still the output; it is just legible as deliberate
- * openness rather than as something that failed to render.
- */
-export function WeekStrip({ week, onOpen }: { week: WovenWeek; onOpen?: () => void }) {
-  const placedDays = week.days.filter(d => d.woven.placed.length);
-  const openDays = week.days.filter(d => d.light);
-  const blocks = placedDays.reduce((n, d) => n + d.woven.placed.length, 0);
-  const todayKey = week.days[0]?.key;
-
-  return (
-    <div style={{ padding: "0 16px 12px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${week.days.length}, 1fr)`, gap: 3 }}>
-        {week.days.map((d) => {
-          const first = d.woven.placed[0];
-          const isToday = d.key === todayKey;
-          return (
-            <div key={d.key} style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 9, fontWeight: isToday ? 700 : 500,
-                color: isToday ? "var(--color-foreground)" : "var(--text-3)",
-              }}>{dayName(d.key)}</div>
-              {/* A bar that means one thing: minutes of placed work. An open day
-                  gets a visible floor rather than nothing, because nothing and
-                  missing look identical. */}
-              {/* An open day is DRAWN, not left blank — a dashed cell reads as
-                  "nothing here on purpose", where an absence reads as a
-                  rendering failure. Occupancy is not the target, so the empty
-                  state has to look deliberate. */}
-              {/* A placed day is tinted with the convergence green rather than
-                  outlined in ink: at this size a 1px border reads as a box,
-                  and a fill reads as a day with something in it. The dashed
-                  cell beside it stays empty on purpose — the two states have to
-                  be distinguishable at a glance, from across a room. */}
-              {/* Tinted with the convergence green rather than outlined in ink:
-                  at this size a 1px border reads as a box, and a fill reads as
-                  a day with something in it.
-
-                  The tint is the green at low ALPHA, not an opaque pale green.
-                  A fixed light fill is only light against a light card — in
-                  dark mode it becomes a glowing block, which is how a quiet
-                  accent turns into the loudest thing on the page. Translucent
-                  means the card underneath decides the value in both themes. */}
-              <div style={{
-                height: 26, marginTop: 3, borderRadius: 5,
-                border: first ? `1px solid ${PLACED}55` : "1px dashed var(--color-border)",
-                background: first ? `${PLACED}1e` : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {first && (
-                  <span style={{ fontSize: 8.5, fontWeight: 600, color: PLACED }}>
-                    {clock(first.startAt).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
-                  </span>
-                )}
-              </div>
-              <div style={{
-                fontSize: 8.5, marginTop: 3, color: "var(--text-3)", textAlign: "center",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {first ? "" : "open"}
-              </div>
-              {first && (
-                <div style={{
-                  fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.25, marginTop: 1,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>{first.item.title}</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* The sentence the bars were failing to say. */}
-      <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 10, lineHeight: 1.5 }}>
-        {blocks === 0
-          ? "Nothing placed yet this week."
-          : `${blocks} ${blocks === 1 ? "block" : "blocks"} placed · ${openDays.length} ${openDays.length === 1 ? "day" : "days"} deliberately open`}
-      </div>
-
-      {onOpen && (
-        <button onClick={onOpen} style={{
-          fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
-          cursor: "pointer", color: "var(--color-primary)",
-        }}>See the week →</button>
-      )}
-    </div>
-  );
-}
+// `WeekStrip` lived here — the compact form of this proposal, rendered on
+// Home. It was removed on 2026-08-15 when Home switched to showing the week
+// it has actually COMMITTED to (components/WeekCommitted.tsx). The proposal
+// answers "where could the loose work go?", which is Plan's question, so
+// `WeekWeave` below is now its only form and this file has one consumer.
 
 /** The full weave: every day, its placements, and its open stretches. For Plan. */
 export function WeekWeave({ week }: { week: WovenWeek }) {
