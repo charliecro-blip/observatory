@@ -19,7 +19,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { goals, projects, milestones, tasks, habits, habitLogs, planningWindows, wins, intentions, dailyCheckIns } from "@workspace/db/schema";
 import { and, eq, gte, desc } from "drizzle-orm";
-import { julianDay, moonLongitude, sunLongitude } from "../lib/astro.js";
+import { newMoonDates } from "../lib/lunarCycle.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 
 const router: IRouter = Router();
@@ -30,29 +30,6 @@ function requireTesterId(req: any, res: any): string | null {
   return t;
 }
 
-const elongation = (jd: number) => (((moonLongitude(jd) - sunLongitude(jd)) % 360) + 360) % 360;
-
-// The two most recent New Moons: walk back day by day; each time the
-// elongation INCREASES going backward we just crossed 0° — a New Moon fell
-// between those days. First hit = current cycle start, second = previous.
-function newMoonDates(tzOffsetMin: number): { cycleStart: string; prevCycleStart: string } {
-  const now = Date.now();
-  const found: string[] = [];
-  let prev = elongation(julianDay(new Date(now)));
-  for (let d = 1; d <= 62 && found.length < 2; d++) {
-    const t = now - d * 86400000;
-    const e = elongation(julianDay(new Date(t)));
-    if (e > prev) {
-      found.push(new Date(now - (d - 1) * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10));
-    }
-    // After a wrap the values resume decreasing on their own — plain tracking
-    // is correct, and anything cleverer invents false crossings.
-    prev = e;
-  }
-  const cycleStart = found[0] ?? new Date(now - 29 * 86400000).toISOString().slice(0, 10);
-  const prevCycleStart = found[1] ?? new Date(Date.parse(cycleStart) - 30 * 86400000).toISOString().slice(0, 10);
-  return { cycleStart, prevCycleStart };
-}
 
 const localDateOf = (dt: Date | string | null, tzOffsetMin: number): string | null => {
   if (!dt) return null;
