@@ -55,6 +55,7 @@ import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
 import CompassNow from "@/components/CompassNow";
 import { useUiDensity } from "@/contexts/preferences-context";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { AskElectionContext } from "@/App";
 
 interface Task {
@@ -345,6 +346,7 @@ export default function Home({
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
   const { essential, setDensity } = useUiDensity();
+  const isMobile = useIsMobile();
   // Read once and reused in both the key and the fetch. Every value the
   // response depends on belongs in the cache identity — this one didn't:
   // `tz` and `locationKnown` rode in the URL but not the key, so a change in
@@ -818,8 +820,15 @@ export default function Home({
           ~1400 characters down the page, below the fold (owner,
           2026-08-13: "on the home page i want to be able to see my to do
           list"). Answer, then what you're holding, then the evidence. */}
-      {/* ══ LEVEL 2 · THE WORK, and LEVEL 3 · CONTEXT beside it ═══════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
+      {/* ══ LEVEL 2 · THE WORK, and LEVEL 3 · CONTEXT beside it ═══════════
+          One column on a phone. The two-column template had no breakpoint, so
+          at 375px each column got ~180px: task titles truncated at a dozen
+          characters, the week strip's day labels overlapped into one smear,
+          and the PAGE scrolled horizontally — the landing surface, broken on
+          exactly the screens the two retention-risk personas live on
+          (HOME study 2026-08-15, D3). The horizon row below always knew this
+          trick; the work grid just never learned it. */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
 
         {/* YOUR WORK — capture, inventory and the action that acts on them,
             together. The standalone "Shape today" card is gone: an action

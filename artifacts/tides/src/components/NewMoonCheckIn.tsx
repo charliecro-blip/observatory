@@ -439,8 +439,17 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
           <EclipseMark />
+          {/* DAY-AWARE, because the window is five days long and this line was
+              written for one of them. "Today is a new moon" was shown verbatim
+              on days 1–4 — a false sentence from the app whose whole moat is
+              refusing to say false things, hardcoded in JSX below the curated
+              block it belonged in (HOME study 2026-08-15, A3). Day 0 keeps the
+              present tense it earned; the rest of the window points back at
+              the day the cycle actually opened. */}
           <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
-            Today is a new moon and a solar eclipse in Leo. Ten minutes to reset?
+            {today === cycleStart
+              ? "Today is a new moon and a solar eclipse in Leo. Ten minutes to reset?"
+              : "This cycle opened with a new moon and solar eclipse in Leo. Ten minutes to reset?"}
           </span>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
