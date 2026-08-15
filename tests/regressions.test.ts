@@ -1411,7 +1411,18 @@ describe("void of course windows", () => {
     const appEnd = Date.parse(ended[ended.length - 1].end);
     // The old 10-minute scan drifted up to 600s. Anything over a minute would
     // be visible to someone timing a start against it.
-    expect(Math.abs(appEnd - truthMs) / 1000).toBeLessThan(60);
+    //
+    // Tightened from 60s to 10s on 2026-08-15. At 60s this failed about one
+    // full-suite run in five while passing twelve times out of twelve in
+    // isolation, and the cause was not this scan: the ephemeris memo keyed on
+    // the minute while computing at the caller's exact instant, so a position
+    // was quantised to whichever sub-minute value filled the bucket first and
+    // the answer depended on test order (see lib/ephemeris.ts). With the key
+    // and the value naming the same instant, the worst drift across 720 sampled
+    // ingresses over 90 days is 0.216s — so 10s is a wide margin that would
+    // still catch the 600s regression this exists for, and catch it far
+    // earlier than 60s would.
+    expect(Math.abs(appEnd - truthMs) / 1000).toBeLessThan(10);
   });
 
   it("a void with minutes left is not a verdict on the day", () => {
@@ -1756,25 +1767,40 @@ describe("aspect perfection times", () => {
 // printed verbatim as "Moon trine Venus · exact 3:20 PM" in an election's
 // reasoning and on the Studio cards. Now bisected: 10 min → ~60 s.
 //
-// AND THE CORRECTION THAT MATTERS MORE:
+// AND THE CORRECTION THAT MATTERS MORE — ITSELF CORRECTED, 2026-08-15:
 //
-// The ephemeris quantises time to 30 SECONDS. moonLongitude() returns an
-// identical value for every instant inside a 30-second bucket, though
-// julianDay() carries full 1-second resolution — so the quantisation is in the
-// ephemeris implementation, not in how we call it.
+// This block used to say the ephemeris quantised time to 30 seconds, that the
+// quantisation was "in the ephemeris implementation, not in how we call it",
+// that no amount of refinement would beat it, and that nobody should spend
+// another hour chasing sub-minute precision here.
 //
-// This is the floor under every timing claim in this codebase, and it means the
-// audit's headline figures ("0.64 s", "0 s drift") measured AGREEMENT BETWEEN
-// TWO SEARCHES OVER THE SAME QUANTISED DATA — not absolute accuracy. The real
-// statement is: the scan-grid error (6 to 58 minutes) is gone; what remains is
-// the ephemeris's own ±30 s, and no amount of refinement will beat it.
+// All of that was wrong, and the test below invited the correction: it said
+// that if the granularity ever dropped to 1s, the ephemeris had changed and
+// these comments needed revisiting. The ephemeris had not changed. It was
+// never quantised.
 //
-// Nobody should spend another hour chasing sub-minute precision here. If it is
-// ever genuinely needed, the ephemeris is the thing to replace.
+// Called directly, `Ecliptic(GeoVector(Body.Moon, …))` returns a different
+// longitude for every single second. The 30-second buckets came from OUR memo
+// in lib/ephemeris.ts, which keyed on `Math.round(jd * 1440)` — the minute —
+// while computing the value at the caller's full-precision instant. So a
+// bucket held whichever sub-minute answer happened to fill it first, and the
+// earlier audit measured that artefact through the cache without ever calling
+// the library on its own.
+//
+// Two consequences, now fixed by rounding the instant once and using it for
+// the key and the computation alike. Every timing number carried up to a
+// minute of invented error while presenting itself as exact; and because the
+// cache is module-level, the value depended on call ORDER, so the same query
+// could answer differently between runs. That is what made the ingress test
+// above fail roughly one full-suite run in five while passing every time in
+// isolation.
+//
+// Measured after the fix: worst void-window drift across 720 sampled ingresses
+// over 90 days is 0.216s, against 60.1s before.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("ephemeris time granularity", () => {
-  it("is 30 seconds — the floor under every timing number we print", async () => {
+  it("resolves to the second, because the memo key names the instant it computed", async () => {
     const A: any = await import("../artifacts/api-server/src/lib/astro.js");
     const base = Date.parse("2026-08-01T12:00:00Z");
     const l0 = A.moonLongitude(A.julianDay(new Date(base)));
@@ -1783,10 +1809,21 @@ describe("ephemeris time granularity", () => {
       if (A.moonLongitude(A.julianDay(new Date(base + s * 1000))) !== l0) { firstChange = s; break; }
     }
     expect(firstChange).not.toBeNull();
-    expect(firstChange).toBeLessThanOrEqual(60);
-    // If this ever drops to 1s the ephemeris has been changed, and the comments
-    // above about a 30-second floor need revisiting.
-    expect(firstChange).toBeGreaterThan(1);
+    // Anything above 1 means a coarse cache key is back, and with it both the
+    // invented error and the order-dependence.
+    expect(firstChange).toBe(1);
+  }, 60000);
+
+  it("gives the same answer regardless of what was asked before it", async () => {
+    // The order-dependence is the half that does not show up as a wrong
+    // number in isolation — it shows up as a test that passes alone and fails
+    // in a suite. Ask once cold, then scramble the cache around that instant
+    // and ask again.
+    const A: any = await import("../artifacts/api-server/src/lib/astro.js");
+    const at = Date.parse("2026-08-17T21:46:17Z");
+    const first = A.moonLongitude(A.julianDay(new Date(at)));
+    for (let s = -90; s <= 90; s += 7) A.moonLongitude(A.julianDay(new Date(at + s * 1000)));
+    expect(A.moonLongitude(A.julianDay(new Date(at)))).toBe(first);
   }, 60000);
 
   it("julianDay itself carries full second resolution", () => {
