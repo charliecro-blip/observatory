@@ -193,15 +193,26 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     },
   });
 
+  /**
+   * Mark or unmark a habit on a DAY — today by default, any of the last
+   * fourteen on request.
+   *
+   * The endpoint has always taken a date. Nothing in the app ever sent one
+   * other than today's, so a habit you did but forgot to check off was
+   * unrecordable: the day was on screen, as a dot, and there was no way to
+   * fill it in. That turns the streak into a record of remembering to tap
+   * rather than of doing the thing, which is the opposite of what it is for.
+   */
   const toggleLog = useMutation({
-    mutationFn: async ({ id, done }: { id:number; done:boolean }) => {
+    mutationFn: async ({ id, done, date }: { id:number; done:boolean; date?:string }) => {
       // Both directions must name the viewer's LOCAL date — the DELETE was
       // falling back to the server's UTC day, so an evening un-check removed
       // TOMORROW's log and left today's in place.
+      const on = date ?? today;
       if (done) {
-        await fetch(`/api/habits/${id}/log?date=${today}`, { method:"DELETE", headers: authH(testerId) });
+        await fetch(`/api/habits/${id}/log?date=${on}`, { method:"DELETE", headers: authH(testerId) });
       } else {
-        await fetch(`/api/habits/${id}/log`, { method:"POST", headers: authH(testerId), body: JSON.stringify({ date: today }) });
+        await fetch(`/api/habits/${id}/log`, { method:"POST", headers: authH(testerId), body: JSON.stringify({ date: on }) });
       }
     },
     onSuccess: () => qc.invalidateQueries({queryKey:["habits"]}),
@@ -563,19 +574,45 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
 
               {/* 14-day streak dots. "14d" alone named nothing — a row of
                   dots beside an unexplained abbreviation is a mark the reader
-                  has to decode (owner, 2026-08-13). Each dot now says its own
+                  has to decode (owner, 2026-08-13). Each dot says its own
                   date and whether it was done, and the label says what the
-                  row is. */}
-              <div style={{display:"flex",gap:3,alignItems:"center"}} title="The last fourteen days — filled means done">
-                {h.days.map((d) => (
-                  <div key={d.date} title={`${new Date(d.date + "T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}${d.done ? " — done" : d.isToday ? " — today, not yet" : " — not done"}`} style={{
-                    width:d.isToday?10:7, height:d.isToday?10:7, borderRadius:"50%", flexShrink:0,
-                    background:d.done?"#80b870":d.isToday?"var(--color-card-2)":"var(--color-card-2)",
-                    border:d.isToday?`1.5px solid ${h.doneToday?"#60a050":"#c0bab0"}`:"none",
-                    opacity:d.done||d.isToday?1:0.4,
-                  }}/>
-                ))}
-                <div style={{fontSize:8.5,color:"var(--text-3)",marginLeft:5}}>last 14 days</div>
+                  row is.
+
+                  EACH DOT IS ALSO THE CONTROL FOR ITS DAY. A habit you did
+                  yesterday and forgot to check off had nowhere to be recorded:
+                  the day was right here on screen and the only writable day
+                  was today. The dots are the obvious place for it — the row
+                  already knows every date and already shows the answer, so it
+                  only ever lacked the click. */}
+              <div style={{display:"flex",gap:3,alignItems:"center"}} title="The last fourteen days — filled means done. Click a day to change it.">
+                {h.days.map((d) => {
+                  const label = new Date(d.date + "T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+                  return (
+                    <button key={d.date}
+                      onClick={() => toggleLog.mutate({ id: h.id, done: d.done, date: d.date })}
+                      disabled={toggleLog.isPending}
+                      aria-pressed={d.done}
+                      aria-label={`${d.done ? "Unmark" : "Mark"} ${h.name} on ${label}`}
+                      title={`${label}${d.done ? " — done" : d.isToday ? " — today, not yet" : " — not done"}. Click to ${d.done ? "clear" : "mark done"}.`}
+                      style={{
+                        // The hit area is larger than the dot. A 7px target is
+                        // unhittable on a phone, and growing the dot itself
+                        // would wreck the row it has to read as.
+                        padding:4, margin:-4, background:"none", border:"none",
+                        cursor: toggleLog.isPending ? "default" : "pointer",
+                        lineHeight:0, flexShrink:0,
+                      }}>
+                      <span style={{
+                        display:"block",
+                        width:d.isToday?10:7, height:d.isToday?10:7, borderRadius:"50%",
+                        background:d.done?"#80b870":"var(--color-card-2)",
+                        border:d.isToday?`1.5px solid ${h.doneToday?"#60a050":"#c0bab0"}`:"none",
+                        opacity:d.done||d.isToday?1:0.4,
+                      }}/>
+                    </button>
+                  );
+                })}
+                <div style={{fontSize:8.5,color:"var(--text-3)",marginLeft:5}}>last 14 days · click to fill one in</div>
               </div>
 
               {/* Timing note — the merged practices intelligence, in plain words */}
