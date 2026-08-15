@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/fetchJson";
-import type { TidesNow, TidesWeek, ScoredPractice, PlanningWindow, SkyEvent } from "@/lib/types";
+import type { TidesNow, TidesWeek, PlanningWindow, SkyEvent } from "@/lib/types";
 import { localDayRange } from "@/lib/dates";
 
 function authHeaders(testerId: string | null): Record<string, string> {
@@ -111,9 +111,10 @@ function localizeClock(at: string | undefined, fallback: string): string {
  *              13th, the first twelve cells are in the past and rendered
  *              blank until the route learned to look backwards.
  */
-export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0, back = 0) {
+export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0, back = 0, enabled = true) {
   return useQuery<TidesWeek>({
     queryKey: ["tides-week", days, lat, lon, back],
+    enabled,
     queryFn: async () => {
       const r = await fetch(`/api/tides/week?days=${days}&back=${back}&${loc(lat, lon)}&${tzParam()}`);
       const data: TidesWeek = await r.json();
@@ -152,19 +153,12 @@ export function useSkyEvents(days = 30, lat = 40.7, lon = -74.0) {
   });
 }
 
-export function usePractices(testerId: string | null, lat = 40.7, lon = -74.0) {
-  // fetchJson, not a bare `r.json()`: a failed read here used to parse the
-  // error body into `data`, and every consumer's `?? []` then rendered "no
-  // practices" — the app claiming an empty rhythm when it had simply failed to
-  // ask. The route needs a tester id, so an anonymous call would 401 into that
-  // same lie; `enabled` keeps it from being made at all.
-  return useQuery<{ practices: ScoredPractice[] }>({
-    queryKey: ["tides-practices", testerId, lat, lon],
-    queryFn: () => fetchJson(`/api/tides/practices?${loc(lat, lon)}`, { headers: authHeaders(testerId) }),
-    enabled: !!testerId,
-    refetchInterval: 60_000,
-  });
-}
+// `usePractices` lived here until 2026-08-15. Its route reads the legacy
+// cultivations table — unpopulatable from the UI since the 2026-07-09 merge —
+// so the hook faithfully fetched an empty list for every post-merge account.
+// Its consumers read habit resonance now (HOME study M4); the server route
+// remains for accounts holding pre-merge cultivation data.
+
 
 export function useTodayWindows(testerId: string | null, date: string) {
   return useQuery<PlanningWindow[]>({

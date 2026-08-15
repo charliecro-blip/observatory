@@ -50,6 +50,7 @@ import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { useTester } from "@/contexts/tester-context";
 import { CommittedWeekStrip, useCommittedWeek } from "@/components/WeekCommitted";
+import { ReviewCard } from "@/components/Momentum";
 import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
@@ -345,7 +346,7 @@ export default function Home({
   const { locationKnown } = useTester();
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
-  const { essential, setDensity } = useUiDensity();
+  const { essential } = useUiDensity();
   const isMobile = useIsMobile();
   // Read once and reused in both the key and the fetch. Every value the
   // response depends on belongs in the cache identity — this one didn't:
@@ -472,12 +473,28 @@ export default function Home({
   // (HOME study W2).
   const { data: committed = [] } = useCommittedWeek(testerId, 60);
 
-  // The sky's own fortnight, for the horizon row below. `back = 0` matters:
-  // Calendar fetches back-days so its month grid can draw the days either side
-  // of the first, and a strip titled "the water ahead" that includes them opens
-  // half-spent. QualityStrip filters to today onward as well, so this is belt
-  // and braces rather than the only guard.
-  const { data: water } = useTidesWeek(14, lat, lon, 0);
+  // The sky's own fortnight — BEHIND A REVEAL since the HOME study (W3): the
+  // prominence tally gave the strip one vote in twelve, and eleven personas
+  // could not say what the bar heights meant. The one who could (the
+  // astrologer) can open it; nobody else pays for it, in pixels or in the
+  // request, which now fires only when asked for. `back = 0` matters:
+  // Calendar fetches back-days for its month grid, and a strip titled "the
+  // water ahead" that includes them opens half-spent.
+  const [waterOpen, setWaterOpen] = useState(false);
+
+  // The Sunday review's gates. `rareShowing` mirrors RareMomentBanner's own
+  // query by key, so asking here costs nothing extra and the two can't
+  // disagree about whether the slot is held.
+  const sundayToday = new Date().getDay() === 0;
+  const reviewForced = new URLSearchParams(window.location.search).get("review") === "week";
+  const { data: rareData } = useQuery<{ hits: unknown[] }>({
+    queryKey: ["rare-today", tz],
+    queryFn: async () => (await fetch(`/api/elections/rare-today?tz=${tz}`)).json(),
+    staleTime: 1000 * 60 * 60 * 6,
+    enabled: sundayToday || reviewForced,
+  });
+  const rareShowing = (rareData?.hits?.length ?? 0) > 0;
+  const { data: water } = useTidesWeek(14, lat, lon, 0, waterOpen);
 
   // CROSS-HIGHLIGHT. The hero and the task row are two views of one object, not
   // two statements of the same fact — clicking either shows you the other. This
@@ -530,10 +547,18 @@ export default function Home({
   // Overdue and undated are separated because they are different problems: one
   // is a promise you broke, the other is a thought you had. Merging them into
   // "open tasks" is what makes a list feel like an accusation.
-  const overdue = open.filter((t) => t.dueDate && t.dueDate < today);
-  const dueToday = open.filter((t) => t.dueDate === today);
-  const later = open.filter((t) => t.dueDate && t.dueDate > today);
-  const undated = open.filter((t) => !t.dueDate);
+  const scheduled = new Set((lines?.alreadyScheduled ?? []).map(n => Number(n.id.replace("task-", ""))));
+  // Placed tasks leave the date groups: their time is set, so "overdue" and
+  // "no date" stop applying, and one labelled group carries the fact the rows
+  // used to repeat. `scheduled` comes from the lines-up read, so during an
+  // outage placed tasks fall back into the date groups — visible and honest,
+  // just unlabelled until the reading returns.
+  const loose = open.filter((t) => !scheduled.has(t.id));
+  const placed = open.filter((t) => scheduled.has(t.id));
+  const overdue = loose.filter((t) => t.dueDate && t.dueDate < today);
+  const dueToday = loose.filter((t) => t.dueDate === today);
+  const later = loose.filter((t) => t.dueDate && t.dueDate > today);
+  const undated = loose.filter((t) => !t.dueDate);
 
   // The label of the one group that has anything in it, when there is exactly
   // one. Drives the bare (unheaded) rendering below.
@@ -561,7 +586,6 @@ export default function Home({
     if (!Number.isNaN(id)) timingFor.set(id, r);
   }
   const needsDuration = new Set((resolution?.needsDuration ?? []).map(n => Number(n.id.replace("task-", ""))));
-  const scheduled = new Set((lines?.alreadyScheduled ?? []).map(n => Number(n.id.replace("task-", ""))));
   // The engine looked and declined, with a reason. Carried per item so the row
   // can say so instead of showing the blank line that used to mean both
   // "declined" and "never considered".
@@ -603,13 +627,12 @@ export default function Home({
         {/* The task's TIMING STATE, on the task. This is what finally joins the
             inventory to the engine — previously a task row knew nothing about
             whether the engine had anything to say about it. */}
-        {t.done !== "true" && (timing || scheduled.has(t.id) || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
+        {/* Scheduled tasks say nothing per-row: they live under a group whose
+            label carries the fact once (HOME study D4 — ten rows each saying
+            "already scheduled" was the list narrating its own furniture). */}
+        {t.done !== "true" && !scheduled.has(t.id) && (timing || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
-            {scheduled.has(t.id) ? (
-              /* Survives the outage on purpose: this one does not depend on the
-                 sky, so it is still true when the sky read failed. */
-              <span style={{ color: "var(--color-muted)" }}>already scheduled</span>
-            ) : linesFailed ? (
+            {linesFailed ? (
               /* WITHHELD, not blank. "No particular timing today" says Compass
                  looked and found nothing; this says it never looked. Rendering
                  an outage as the former is the false statement the whole state
@@ -830,8 +853,19 @@ export default function Home({
         onNavigate={onNavigate}
         cycleStart={now?.moonCycle?.cycleStart}
         nextCycleStart={now?.moonCycle?.nextCycleStart}
+        lat={lat}
+        lon={lon}
       />
       <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen(now?.moonCycle?.cycleStart)} />
+      {/* THE SUNDAY REVIEW, third in the rarity order (HOME study W1). It
+          lived on Today, where Home-landers never met it. Monthly outranks
+          roughly-fortnightly outranks weekly, so it stands down whenever
+          either notice above holds the slot — and it renders at all only on
+          its own day, so the ledger read it depends on is not paid for on
+          the six days it would return nothing. */}
+      {(reviewForced || (sundayToday && !turningPointPromptOpen(now?.moonCycle?.cycleStart) && !rareShowing)) && (
+        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate("log")} />
+      )}
 
       {/* THE WORK comes BEFORE the reading now.
           Compass answers "what now" at the top of the page, so the big
@@ -978,6 +1012,8 @@ export default function Home({
               {/* Not muted any more. Dimming a whole group made the backlog
                   read as disabled, and "later" is still work you are holding. */}
               <Group label="later" items={later} cap={GROUP_CAP} bare={soleGroup === "later"} />
+              {/* The fact said once, as a heading, never per-row (D4). */}
+              <Group label="scheduled" items={placed} muted cap={GROUP_CAP} />
               {open.length === 0 && tasks && (
                 <div style={{ padding: "4px 16px 14px", fontSize: 11.5, color: "var(--text-3)" }}>Nothing on the list.</div>
               )}
@@ -1075,10 +1111,10 @@ export default function Home({
             </div>
           )}
 
-          <button onClick={() => setDensity(essential ? "expanded" : "essential")} style={{
-            fontSize: 11, background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", padding: "2px 0", textAlign: "left",
-          }}>{essential ? "Show more ↓" : "Show less ↑"}</button>
+          {/* The density toggle retired from Home (HOME study M5): no study
+              participant ever found it, and the only thing it revealed here
+              was the log card. Density remains a preference, set from Today,
+              and Home still honors it — it just stopped selling it. */}
         </div>
       </div>
 
@@ -1094,21 +1130,29 @@ export default function Home({
           `auto-fit` rather than two fixed columns, because `CroppingUp`
           renders nothing on a genuinely quiet stretch and a fixed grid
           would leave a hole where a card declined to speak. */}
-      <div style={{
-        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-        gap: 14, alignItems: "start", flexShrink: 0,
-      }}>
-        {water && (
-          // `overflow: hidden` clips QualityStrip's own full-bleed bottom rule
-          // to the rounded corners. Safe here in a way it is not on the page's
-          // flex column: this is a GRID item, so it has no flex auto-minimum
-          // to switch off — the trap that once collapsed the hero to 1.67px.
-          <div style={{ ...PANEL, overflow: "hidden" }}>
-            <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
-          </div>
-        )}
-        <CroppingUp onNavigate={onNavigate} />
-      </div>
+      <CroppingUp onNavigate={onNavigate} />
+
+      {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
+      {!waterOpen ? (
+        <button onClick={() => setWaterOpen(true)} style={{
+          fontSize: 11, background: "none", border: "none", cursor: "pointer",
+          color: "var(--text-3)", padding: "2px 0", textAlign: "left", flexShrink: 0,
+        }}>Show the water ahead</button>
+      ) : (
+        <div style={{ flexShrink: 0 }}>
+          {water && (
+            // `overflow: hidden` clips QualityStrip's own full-bleed bottom
+            // rule to the rounded corners — safe on a non-flex-item wrapper.
+            <div style={{ ...PANEL, overflow: "hidden" }}>
+              <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
+            </div>
+          )}
+          <button onClick={() => setWaterOpen(false)} style={{
+            fontSize: 11, background: "none", border: "none", cursor: "pointer",
+            color: "var(--text-3)", padding: "4px 0 0", textAlign: "left",
+          }}>Hide the water ahead</button>
+        </div>
+      )}
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The

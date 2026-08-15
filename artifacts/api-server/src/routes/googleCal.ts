@@ -243,6 +243,49 @@ router.get("/integrations/google-cal/events", async (req, res) => {
   res.json({ events });
 });
 
+/**
+ * Busy blocks for a tester, server-side — the calendar as commitments, not
+ * as events. For engine callers (the lines-up loop consults this before
+ * naming a time, HOME study D6), so it must never throw and must be honest
+ * about the difference between "no calendar" and "couldn't ask": a caller
+ * planning around `busy: []` needs to know which of those it holds.
+ */
+export async function fetchGcalBusy(testerId: string, startIso: string, endIso: string): Promise<{
+  ok: boolean; connected: boolean; busy: { startMs: number; endMs: number }[];
+}> {
+  try {
+    const [row] = await db.select().from(googleCalTokens).where(eq(googleCalTokens.testerId, testerId)).limit(1);
+    if (!row) return { ok: true, connected: false, busy: [] };
+    const accessToken = await refreshAccessToken(row);
+    if (!accessToken) return { ok: false, connected: true, busy: [] };
+
+    const url = new URL(EVENTS_URL);
+    url.searchParams.set("timeMin", startIso);
+    url.searchParams.set("timeMax", endIso);
+    url.searchParams.set("singleEvents", "true");
+    url.searchParams.set("orderBy", "startTime");
+    url.searchParams.set("maxResults", "100");
+
+    // Bounded: the loop is on Home's critical path, and a slow calendar must
+    // degrade to "didn't consult it", never to a hung landing page.
+    const evRes = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!evRes.ok) return { ok: false, connected: true, busy: [] };
+    const data = await evRes.json() as any;
+    const busy = (data.items ?? [])
+      // All-day entries are context, not occupancy — a birthday does not
+      // block deep work the way a 2pm meeting does.
+      .filter((item: any) => item.start?.dateTime && item.end?.dateTime)
+      .map((item: any) => ({ startMs: Date.parse(item.start.dateTime), endMs: Date.parse(item.end.dateTime) }))
+      .filter((b: any) => Number.isFinite(b.startMs) && Number.isFinite(b.endMs) && b.endMs > b.startMs);
+    return { ok: true, connected: true, busy };
+  } catch {
+    return { ok: false, connected: true, busy: [] };
+  }
+}
+
 // DELETE /api/integrations/google-cal/disconnect
 router.delete("/integrations/google-cal/disconnect", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;

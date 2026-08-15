@@ -19,6 +19,7 @@ import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
 import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
 import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals, habits, habitLogs } from "@workspace/db";
+import { fetchGcalBusy } from "./googleCal.js";
 import { computeNatalChart } from "../lib/natal.js";
 
 const router: IRouter = Router();
@@ -69,6 +70,18 @@ router.get("/elections/lines-up", async (req, res) => {
   // past one. Absent for any client that hasn't been updated yet, which is
   // exactly why every callee treats it as optional.
   const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
+
+  // Started HERE, awaited after the inventory reads: the calendar fetch (D6)
+  // rides Google's latency, and running it beside the DB work instead of
+  // after it keeps the loop's new honesty from costing the landing page the
+  // very seconds the study measured (D7). The promise never rejects — the
+  // helper returns {ok:false} on every failure path.
+  const busyPromise = (async () => {
+    try {
+      const dayStart = new Date(Date.now() - ((Date.now() - tzOffsetMin * 60000) % 86400000));
+      return await fetchGcalBusy(testerId, dayStart.toISOString(), new Date(dayStart.getTime() + 86400000).toISOString());
+    } catch { return { ok: false as const, connected: false, busy: [] }; }
+  })();
 
   let natal = null;
   let timeKnown = true;
@@ -165,8 +178,15 @@ router.get("/elections/lines-up", async (req, res) => {
   //
   // The failure time is carried out because the surface states it, and a time
   // the client invents is not evidence of anything.
+  // The calendar's commitments, consulted by the loop before it names a time
+  // (HOME study D6). Failure degrades to "didn't consult it" — an unreachable
+  // calendar must not take the landing page's answer down with it, and the
+  // fetch is bounded to 2.5s and has been running beside the DB reads above.
+  const b = await busyPromise;
+  const busy = b.ok ? b.busy : [];
+
   try {
-    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown }));
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, busy }));
   } catch (err) {
     req.log?.error({ err }, "lines-up: sky read failed");
     res.status(503).json({

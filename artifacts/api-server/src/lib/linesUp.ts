@@ -247,6 +247,11 @@ export interface LinesUpOpts {
   natal: ComputedNatalChart | null;
   timeKnown: boolean;
   locationKnown: boolean;
+  /** Google Calendar busy blocks for the day, when connected (HOME study D6).
+   *  Consulted by the LOOP only: the results list stays the sky's own answer,
+   *  but the one act named "now" must not collide with a meeting the person
+   *  already accepted. Absent or empty means "don't consult a calendar". */
+  busy?: { startMs: number; endMs: number }[];
   /**
    * The moment to answer for. Defaults to the real now, which is what the
    * route wants; tests pass an anchor, which is what determinism wants.
@@ -557,6 +562,37 @@ function inFlowItem(held: HeldItem[], at: Date): { item: HeldItem; minutes: numb
 }
 
 /**
+ * Can this candidate honestly be named as the loop's next act, given the
+ * calendar? Exported for tests — the collision rules are invisible in the
+ * output (a skipped candidate just isn't there) and would drift silently.
+ *
+ * The rules, and why they are only these two:
+ * - An open-now window whose remainder is fully consumed by the meeting the
+ *   person is currently IN cannot be started. One that outlives the meeting
+ *   can — "until 4 PM" stays true through a call that ends at 2.
+ * - An ahead window that sits entirely inside one busy block will never have
+ *   a startable minute. Partial overlaps stay: the free part is real.
+ * Anything subtler (summing fragments, gap-hunting) belongs to the weaver,
+ * which owns placement; the loop only refuses to name an impossible time.
+ */
+export function loopCandidateUsable(
+  c: { state: string; allDay: boolean; startAt: string; endAt: string },
+  busy: { startMs: number; endMs: number }[],
+  nowMs: number,
+): boolean {
+  if (!busy.length || c.allDay) return true;
+  if (c.state === "open-now") {
+    const inNow = busy.find(b => nowMs >= b.startMs && nowMs < b.endMs);
+    return !inNow || Date.parse(c.endAt) > inNow.endMs;
+  }
+  if (c.state === "ahead") {
+    const s = Date.parse(c.startAt), e = Date.parse(c.endAt);
+    return !busy.some(b => b.startMs <= s && e <= b.endMs);
+  }
+  return true;
+}
+
+/**
  * Compose the loop from results already computed — never a second judgment.
  *
  * Flow protection OVERRIDES the sky on purpose. A better-fitting hour is not
@@ -584,8 +620,16 @@ function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts):
     };
   }
 
-  const open = top.find(r => r.state === "open-now") ?? top.find(r => r.state === "ahead") ?? null;
+  const busy = opts.busy ?? [];
+  const nowMs = now.getTime();
+  const usable = (r: LinesUpResult) => loopCandidateUsable(r, busy, nowMs);
+  const open = top.find(r => r.state === "open-now" && usable(r))
+    ?? top.find(r => r.state === "ahead" && usable(r)) ?? null;
   if (!open) return { now: null, then: null };
+  // Named while the person is inside a calendar block: the window is real and
+  // outlives the meeting, and the why says so rather than pretending the
+  // meeting isn't happening.
+  const inMeeting = open.state === "open-now" && busy.some(b => nowMs >= b.startMs && nowMs < b.endMs);
 
   // Different IDENTITY is not enough — two held items can carry the same
   // words (a star and the task named after it, or a duplicate star), and
@@ -594,16 +638,17 @@ function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts):
   // things, so it compares what the reader actually sees.
   const sameThing = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   const after = top.find(r =>
-    r !== open && r.state !== "passed" && !sameThing(r.held.title, open.held.title)) ?? null;
+    r !== open && r.state !== "passed" && usable(r) && !sameThing(r.held.title, open.held.title)) ?? null;
   return {
     now: {
       title: open.held.title,
       heldId: open.held.id,
-      why: open.supportLevel === "convergent"
+      why: (open.supportLevel === "convergent"
         ? "Several things line up for this right now."
         : open.personal
           ? "This suits the hour, and your chart agrees."
-          : "This is what the hour suits.",
+          : "This is what the hour suits.")
+        + (inMeeting ? " The window outlasts what's on your calendar right now." : ""),
       until: open.state === "open-now" ? open.endClock ?? null : open.startClock ?? null,
       inFlow: false,
     },

@@ -16,14 +16,7 @@
 // full would be furniture pretending to be information.
 
 import { useTodayWindows } from "@/hooks/useTides";
-import { useQuery } from "@tanstack/react-query";
 import { localToday } from "@/lib/dates";
-import { ELEMENT_COLORS } from "@/lib/elements";
-
-interface HabitLite {
-  id: number; name: string; emoji?: string | null;
-  doneToday: boolean; dueToday?: boolean; element?: string | null;
-}
 
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -37,29 +30,16 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
   const today = localToday();
   const { data: windows } = useTodayWindows(testerId, today);
 
-  const { data: habits = [] } = useQuery<HabitLite[]>({
-    queryKey: ["habits", testerId, today, lat.toFixed(2), lon.toFixed(2)],
-    queryFn: async () => {
-      const r = await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`,
-        { headers: testerId ? { "x-tester-id": testerId } : {} });
-      const j = await r.json();
-      return Array.isArray(j) ? j : [];
-    },
-    enabled: !!testerId,
-    staleTime: 60_000,
-  });
-
+  // The habit chips are gone (HOME study D2 — one habit had four sightings on
+  // one page). A habit is not "on the day" until something places it: this
+  // card is the day's spine, and unplaced habits were a second copy of the
+  // HABITS card wearing chips. That card owns them, and its tally is tappable.
   const nowMs = Date.now();
   const scheduled = (Array.isArray(windows) ? windows : [])
     .filter((w: any) => w?.startTime)
     .sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime));
 
-  // Habits are shown as a row rather than placed on the spine: most carry no
-  // time, and inventing one would put a claim on the day that nobody made.
-  const openHabits = habits.filter((h) => !h.doneToday);
-  const doneHabits = habits.filter((h) => h.doneToday);
-
-  if (!scheduled.length && !habits.length) return null;
+  if (!scheduled.length) return null;
 
   const nextIdx = scheduled.findIndex((w: any) => Date.parse(w.startTime) > nowMs);
 
@@ -120,34 +100,6 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
         </div>
       )}
 
-      {habits.length > 0 && (
-        <div style={{
-          marginTop: scheduled.length ? 9 : 6,
-          paddingTop: scheduled.length ? 8 : 0,
-          borderTop: scheduled.length ? "1px solid var(--color-border)" : "none",
-          display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
-        }}>
-          <span style={{ fontSize: 10, color: "var(--text-3)", marginRight: 2 }}>
-            {openHabits.length === 0 ? "habits — all done" : "habits"}
-          </span>
-          {openHabits.map((h) => {
-            const col = ELEMENT_COLORS[h.element as keyof typeof ELEMENT_COLORS] ?? "var(--color-border)";
-            return (
-              <button key={h.id} onClick={onNavigate ? () => onNavigate("work") : undefined} style={{
-                fontSize: 10.5, padding: "3px 9px", borderRadius: 999, cursor: onNavigate ? "pointer" : "default",
-                border: `1px solid ${col}55`, background: "var(--color-card-2)", color: "var(--color-foreground)",
-              }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</button>
-            );
-          })}
-          {doneHabits.map((h) => (
-            <span key={h.id} style={{
-              fontSize: 10.5, padding: "3px 9px", borderRadius: 999,
-              border: "1px solid var(--color-border)", background: "transparent",
-              color: "var(--text-3)", textDecoration: "line-through",
-            }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

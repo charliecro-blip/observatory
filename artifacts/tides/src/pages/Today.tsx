@@ -16,7 +16,7 @@ import { conditionalFits } from "@/lib/alternatives";
 import { currentlyInProgress, elapsedLabel } from "@/lib/in-progress";
 import { framingFor, modeFrom } from "@/lib/modes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTidesNow, useTidesWeek, usePractices, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
+import { useTidesNow, useTidesWeek, useTodayWindows, useTidesWindows, useNorthStars } from "@/hooks/useTides";
 import Dashboard from "@/components/Dashboard";
 import { ASPECT_GEOMETRY, SIGN_INFLECTION, PLANET_CORE, composeTakes, composeEssence, composeGuidance, aspectSignificance, type AspectName } from "@/lib/sky-readings";
 import { Skeleton, SkeletonCard } from "@/components/Skeleton";
@@ -26,7 +26,7 @@ import { Tooltip } from "@/components/Tooltip";
 import type { Crossing } from "@/lib/types";
 import { activeEclipse, RETRO_NOTES, PLANET_GLYPH } from "@/lib/conditions";
 import { Studio } from "@/components/Studio";
-import { StarRows, EveningHarvest, ReviewCard } from "@/components/Momentum";
+import { StarRows, EveningHarvest } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { ritualPhase } from "@/lib/chronotype";
@@ -760,7 +760,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
   const { data: now, isLoading: nowLoading } = useTidesNow(testerId, lat, lon);
   const { data: week } = useTidesWeek(14, lat, lon);
-  const { data: practicesData } = usePractices(testerId, lat, lon);
   const { data: windows } = useTodayWindows(testerId, today);
   const { data: tidesWindowsData } = useTidesWindows(lat, lon);
 
@@ -924,11 +923,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     const ms = d.moonSign ?? "";
     return `${dayName}: ${ms}${qs ? ` · ${qs.replace(/_/g," ")}` : ""}`;
   }).join("; ");
-
-  const practices = practicesData?.practices ?? [];
-  const resonant = practices.filter(p => p.timing === "resonant");
-  const supported = practices.filter(p => p.timing === "supported");
-  const soften = practices.filter(p => p.timing === "soften" || p.timing === "protect");
 
   const el = now?.element?.element ?? "water";
   const elemColor = ELEMENT_COLORS[el as Element] ?? "#888888";
@@ -1197,10 +1191,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         )}
         {ritualMode === "evening" && reflectBlock}
 
-        {/* Review moments — Sundays (the week in the wake) and the New Moon
-            window (cycle review + next intention). Self-gating; absent
-            otherwise. ?review=week|cycle forces either for design work. */}
-        <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate?.("log")} firstRun={firstRun} />
+        {/* The review moments left this page (HOME study W1). The Sunday
+            review sits in Home's notice queue — the study found Home-landers
+            never met it here — and the cycle review folded into the
+            turning-point check-in, which had been asking its intention
+            question a second time from a surface that could not see the
+            answer. */}
 
         {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
             pushes. Self-gating — hidden once enabled, dismissed, or blocked —
@@ -2992,26 +2988,11 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
     onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
   });
 
-  // Practices fold in here — habits and practices are ONE daily-doing card
-  // now, with practice timing expressed in the app's FIT language instead of
-  // its own resonant/supported/soften dialect.
-  // Was hardcoded to New York regardless of the viewer's real location — every
-  // practice's timing (sun/moon-hour anchors) was computed for the wrong
-  // place for anyone not in NYC (audit finding).
-  const practicesQ = usePractices(testerId, lat, lon);
-  const practicesData = practicesQ.data;
-  // Only when there is nothing to show. A failed background refresh still holds
-  // a good reading, and a paused query (react-query's offline path) never sets
-  // isError at all — it sits at "pending" forever, which is the same admission
-  // as an error and has to reach the same line.
-  const practicesFailed = !practicesData && (practicesQ.isError || practicesQ.fetchStatus === "paused");
-  const practiceRows = (practicesData?.practices ?? []).filter((p: any) => p.timing !== "neutral").slice(0, 4);
-  const FIT_LABEL: Record<string, { text: string; color: string }> = {
-    resonant: { text: "✦ a great time for this", color: "#3a7040" },
-    supported: { text: "· this time will do", color: "var(--color-muted)" },
-    soften: { text: "≋ against the current — soften it", color: "#a06020" },
-    protect: { text: "≋ against the current — protect the minimum", color: "#a06020" },
-  };
+  // The separate practices list is gone (HOME study M4). It read the legacy
+  // cultivations table — one no surface can populate since the 2026-07-09
+  // merge — so for every post-merge account it was a network call rendering
+  // nothing. Habits carry their own sky timing (the ✦ on the chips below),
+  // which is the merge actually finishing.
 
   // Daily sun/moon link per habit — a concrete anchor in the day's real sky:
   // fire → sunrise, air → midday sun, earth → before sunset, water → the
@@ -3031,10 +3012,7 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
     return null;
   };
 
-  // A failed practices read keeps the card on screen: hiding it entirely would
-  // turn "couldn't ask" into "you tend nothing today", which is the one thing
-  // this card must never say on its own authority.
-  if ((!Array.isArray(habits) || habits.length === 0) && practiceRows.length === 0 && !practicesFailed) return null;
+  if (!Array.isArray(habits) || habits.length === 0) return null;
   const doneCount = habits.filter((h) => h.doneToday).length;
 
   // Resonance against the current moment, same lightweight scoring the Habits
@@ -3088,25 +3066,6 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
           );
         })}
       </div>
-      {practicesFailed && (
-        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid var(--color-border)", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-          Couldn't read your practices just now, so none are shown here.
-        </div>
-      )}
-      {practiceRows.length > 0 && (
-        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 3 }}>
-          {practiceRows.map((p: any) => {
-            const fit = FIT_LABEL[p.timing];
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 11 }}>
-                <span style={{ color: "var(--color-foreground)", fontWeight: 500 }}>{p.name}</span>
-                {fit && <span style={{ fontSize: 9.5, color: fit.color, fontWeight: 600 }}>{fit.text}</span>}
-                {p.reasons?.[0] && <span style={{ fontSize: 9, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</span>}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -405,8 +405,19 @@ sky.
 - D3 (mobile grid) and M1 (stale banner line) were fixed the same day this
   was written — they were unambiguous.
 - The owner ratified the six headline calls the same day; D1, D5, W2, M2, M3
-  and D8 shipped in `d408a9d`. Still open from the ledger: D2 (DayAhead's
-  habit chips), D4 ("already scheduled" per row), D6 (the hero consulting
-  Google Calendar), D7 (cold-load latency, to be measured on prod), W1
-  (Sunday review on Home), W3 (the water-ahead strip's prominence), M5 (the
-  density toggle), and M4 (the cultivations decision).
+  and D8 shipped in `d408a9d`.
+- The rest of the ledger shipped the same evening. D2: DayAhead dropped its
+  habit chips. D4: scheduled tasks moved into one labelled group. D6: the
+  loop consults Google Calendar busy blocks before naming a time (rules
+  pinned in `tests/loopBusy.test.ts`), with the fetch overlapped against the
+  DB reads. W1: the Sunday review joined Home's notice queue, third in the
+  rarity order, and the cycle review folded into the check-in sheet — the
+  wake now answers last cycle's intention in the same sitting that opens the
+  next. W3: the water strip collapsed behind an in-place reveal, its fetch
+  now lazy. M4: resolved toward finishing the merge — the rail's "resonant
+  now" and Today's practice rows read habit resonance; `usePractices` and
+  both cultivations readers are gone (the server route stays for pre-merge
+  data). M5: the density toggle retired from Home. D7, measured on prod
+  warm: tides/now 0.7–1.3s, lines-up floor 0.65s, almanac 0.35s — the 2.4s
+  in Grounding was cold-scratch-server inflation, so no server cache was
+  added; the lazy water fetch cut cold load to 15 calls.

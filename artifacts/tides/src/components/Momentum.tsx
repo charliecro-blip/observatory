@@ -32,7 +32,7 @@ export interface MomentumData {
 const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 const elc = (el?: string | null) => EL_COLOR[el ?? ""] ?? "#8a8278";
 
-export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0) {
+export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0, enabled = true) {
   // The response carries `today` and `cycleStart`, both derived from the tz
   // and coordinates in the URL and neither of which was in the key. With a
   // five-minute staleTime and a tab left open, the cycle review could keep
@@ -48,7 +48,7 @@ export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0) {
         { headers: { "x-tester-id": testerId ?? "" } });
       return r.json();
     },
-    enabled: !!testerId,
+    enabled: !!testerId && enabled,
     staleTime: 1000 * 60 * 5,
   });
 }
@@ -255,39 +255,30 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
   );
 }
 
-// ── Review moments: Sunday (the week) and the New Moon (the cycle) ───────────
-// The weekly review reads the wake back to you; the cycle review closes the
-// loop the New Moon opened — last cycle's intention vs. what the wake shows —
-// and invites the next intention. ?review=week|cycle forces either for design.
+// ── The Sunday review — the week in the wake ─────────────────────────────────
+// This card carried a second, New-Moon mode until the HOME study (W1). Its two
+// jobs both live in the turning-point check-in now: the intention ask was the
+// same question the check-in's one shot already answers (the "same question
+// from a surface that could not see this answer" bug, fixed once on 2026-08-13
+// and structurally this time), and the retrospective — "you set out to X, N
+// wins in the wake" — opens the check-in sheet instead, where the loop closes
+// in the same sitting that starts the next one. One ritual, one surface.
+//
+// It renders on HOME's notice queue, not on Today: the study found Home-landers
+// never met it, and a weekly retrospective is panoramic by definition.
+// ?review=week still forces it for design work.
 export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: {
   testerId: string | null; lat?: number; lon?: number; onOpenLog?: () => void;
   /** The walkthrough hasn't been answered — this account has no past to review. */
   firstRun?: boolean;
 }) {
-  const qc = useQueryClient();
   const { data } = useMomentum(testerId, lat, lon);
-  const [intent, setIntent] = useState("");
-  const [intentStar, setIntentStar] = useState<number | "">("");
-  const setIntention = useMutation({
-    mutationFn: async () => {
-      const r = await fetch("/api/planning/intentions", {
-        method: "POST",
-        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
-        body: JSON.stringify({ text: intent.trim(), goalId: intentStar || undefined, tz: new Date().getTimezoneOffset() }),
-      });
-      if (!r.ok) throw new Error(`intention save failed (${r.status})`);
-    },
-    onSuccess: () => { setIntent(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
-  });
   if (!data) return null;
 
   const force = new URLSearchParams(window.location.search).get("review");
   const isSunday = new Date().getDay() === 0;
-  const daysSinceNewMoon = Math.floor((Date.parse(data.today) - Date.parse(data.cycleStart)) / 86400000);
-  const inNewMoonWindow = daysSinceNewMoon >= 0 && daysSinceNewMoon <= 2;
-  const showCycle = force === "cycle" || inNewMoonWindow;
-  const showWeek = !showCycle && (force === "week" || isSunday);
-  if (!showCycle && !showWeek) return null;
+  const showWeek = force === "week" || isSunday;
+  if (!showWeek) return null;
   // A retrospective needs something to look back ON. This was gated purely on
   // the DATE, so an account created on a Sunday met "⚓ The week in the wake —
   // 0 wins this week · 0 days at the helm" as one of its first impressions:
@@ -303,9 +294,8 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: 
     .slice(0, 3);
   const starTitle = (id: number | null) => data.stars.find(s => s.id === id)?.title;
 
-  if (showWeek) {
-    const topNamed = named(data.weekStart);
-    return (
+  const topNamed = named(data.weekStart);
+  return (
       <div style={{ background: "linear-gradient(135deg, #8a6a2010, #8a6a2004)", border: "1px solid #c8b06a45", borderRadius: 14, padding: "13px 16px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>⚓ The week in the wake</span>
@@ -328,62 +318,5 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: 
           Read the whole wake →
         </button>
       </div>
-    );
-  }
-
-  // ── Cycle review (New Moon window) ──
-  const prevNamed = named(data.prevCycleStart, data.cycleStart);
-  const hasSetThisCycle = (data.intentions ?? []).length > 0;
-  return (
-    <div style={{ background: "linear-gradient(135deg, #1a2a3a10, #1a2a3a04)", border: "1px solid #1a2a3a30", borderRadius: 14, padding: "13px 16px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>🌑 New Moon — the cycle turns</span>
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-1)" }}>cycle review</span>
-      </div>
-
-      {/* Last cycle: intention vs. the wake */}
-      <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 6 }}>
-        Last cycle: {data.winsPrevCycle} win{data.winsPrevCycle === 1 ? "" : "s"} in the wake.
-      </div>
-      {(data.prevIntentions ?? []).map((i: any, k: number) => (
-        <div key={k} style={{ fontSize: 11, color: "var(--text-1)", marginBottom: 3, fontStyle: "italic" }}>
-          you set out to: "{i.text}"{starTitle(i.goalId) ? ` · ${starTitle(i.goalId)}` : ""}
-        </div>
-      ))}
-      {prevNamed.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, margin: "4px 0 8px" }}>
-          {prevNamed.map((w, i) => (
-            <div key={i} style={{ fontSize: 11, color: "var(--color-foreground)" }}>
-              <span style={{ color: "#c8a04a" }}>★</span> {w.text}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* This cycle: set the intention */}
-      {hasSetThisCycle ? (
-        <div style={{ fontSize: 11, color: "#4a8060", marginTop: 4 }}>
-          ✓ intention set: "{data.intentions[0].text}" — the wake will answer at the next New Moon.
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
-          <input value={intent} onChange={e => setIntent(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && intent.trim() && setIntention.mutate()}
-            placeholder="This cycle, I mean to…"
-            style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
-          {data.stars.length > 0 && (
-            <select value={intentStar} onChange={e => setIntentStar(e.target.value ? Number(e.target.value) : "")}
-              style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "var(--color-muted)", background: "var(--color-card)", maxWidth: 110 }}>
-              <option value="">no star</option>
-              {data.stars.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
-          )}
-          <button onClick={() => intent.trim() && setIntention.mutate()} disabled={!intent.trim() || setIntention.isPending}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: intent.trim() ? "#1a2a3a" : "var(--color-border)", color: intent.trim() ? "#ffffff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-            🌑 set it
-          </button>
-        </div>
-      )}
-    </div>
   );
 }

@@ -8,7 +8,7 @@ import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { suggestApproach, approachOptions } from "@/lib/approach";
 import { useTester } from "@/contexts/tester-context";
-import { useNorthStars, usePractices } from "@/hooks/useTides";
+import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
 import { CompassMark } from "@/components/CompassMark";
@@ -535,24 +535,31 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
     enabled: !!testerId,
   });
 
-  // THE ENDPOINT IS `/api/tides/practices`. This asked for `/api/practices`,
-  // which has never existed, so every page load made a request that 404'd and
-  // `r.json()` handed back the error body — `practicesData.practices` was
-  // always undefined, and the rail's "resonant now" section below has never
-  // once rendered for anybody. A failure with no error handling does not look
-  // like a failure; it looks like a feature nobody uses.
-  //
-  // `usePractices` is the hook Today already reads this through, so this is
-  // one source rather than a second copy that was free to be wrong — and it
-  // carries lat/lon, which the bespoke query dropped from both the URL and
-  // the cache key.
-  const practicesQ = usePractices(testerId, lat, lon);
-  const practicesData = practicesQ.data;
+  // RESONANT NOW reads HABITS, not the legacy practices route (HOME study
+  // M4). Two fixes ago this section pointed at a URL that never existed; one
+  // fix ago it pointed at the right URL — which reads the cultivations
+  // table, one no surface can populate since the 2026-07-09 merge, so it
+  // rendered nothing for every post-merge account anyway. Habits carry the
+  // same sky scoring now (`resonance`/`resonanceNote`, lib/habitTiming.ts),
+  // and this key matches Home's habit reads, so the answer is one cache
+  // entry shared across the page rather than another request.
+  const habitsQ = useQuery<any[]>({
+    queryKey: ["habits", testerId, today, lat, lon],
+    queryFn: async () => {
+      const r = await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`,
+        { headers: testerId ? { "x-tester-id": testerId } : {} });
+      const j = await r.json();
+      return Array.isArray(j) ? j : [];
+    },
+    enabled: !!testerId,
+    staleTime: 60_000,
+  });
+  const railHabits: any[] = habitsQ.data ?? [];
   // Only when there is nothing to show. A failed background refresh still
   // holds a good reading, and a paused query (react-query's offline path)
   // never sets isError at all — it sits at "pending" forever, which is the
   // same admission as an error and has to reach the same line.
-  const practicesFailed = !practicesData && (practicesQ.isError || practicesQ.fetchStatus === "paused");
+  const habitsFailed = !habitsQ.data && (habitsQ.isError || habitsQ.fetchStatus === "paused");
 
   const toggleTask = useMutation({
     mutationFn: async (id: number) => {
@@ -1214,19 +1221,19 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
               The doable pieces — your tasks and habits — surfaced when today's conditions support them.
             </div>
-            {/* The practices read failing is not the same as having none, and
-                the rail says which one happened rather than showing a list
-                that is missing a section without saying so. */}
-            {practicesFailed && (
+            {/* The read failing is not the same as having none, and the rail
+                says which one happened rather than showing a list that is
+                missing a section without saying so. */}
+            {habitsFailed && (
               <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
-                Couldn't read your practices just now, so none are shown below.
+                Couldn't read your habits just now, so none are shown below.
               </div>
             )}
-            {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").length > 0 && (
+            {railHabits.filter((p: any) => p.resonance === "resonant" && !p.doneToday).length > 0 && (
               <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
             )}
-            {/* Resonant practices */}
-            {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").slice(0, 3).map((p: any) => (
+            {/* Habits the current sky backs */}
+            {railHabits.filter((p: any) => p.resonance === "resonant" && !p.doneToday).slice(0, 3).map((p: any) => (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
                 borderLeft: "3px solid #60a060", background: "#60a06016",
@@ -1234,7 +1241,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#60a060", flexShrink: 0 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10.5, color: "#2a5020", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  {p.reasons?.[0] && <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.reasons[0]}</div>}
+                  {p.resonanceNote && <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.resonanceNote}</div>}
                 </div>
               </div>
             ))}

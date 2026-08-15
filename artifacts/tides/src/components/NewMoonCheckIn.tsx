@@ -18,6 +18,7 @@ import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { localDateStr } from "@/lib/dates";
 import { checkInSaveKey, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
+import { useMomentum } from "@/components/Momentum";
 
 const ACCENT = ELEMENT_COLORS.fire; // Leo. Each cycle names its own accent.
 
@@ -211,13 +212,16 @@ function EclipseMark({ size = 24, plain = false }: { size?: number; plain?: bool
   );
 }
 
-export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextCycleStart, suppressPrompt }: {
+export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextCycleStart, lat, lon, suppressPrompt }: {
   testerId: string | null;
   onNavigate?: (v: string) => void;
   /** The current lunation's local start date, from `/tides/now`. */
   cycleStart?: string;
   /** When this cycle ends — what a cycle-scoped answer should expire on. */
   nextCycleStart?: string;
+  /** For the ledger read that closes last cycle's loop inside the sheet. */
+  lat?: number;
+  lon?: number;
   /** True when something RARER holds the notice slot. Nothing currently
    *  outranks a turning point, so Home leaves this unset; it stays for the
    *  day something does (`turningPointPromptOpen` is the same question from
@@ -242,6 +246,12 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
   });
   const [dismissals, setDismissals] = useState<number>(() => dismissCount(cycle.key));
   const [open, setOpen] = useState(false);
+  // The ledger, fetched only while the sheet is open: it exists to answer the
+  // promise the old cycle-review card made — "the wake will answer at the next
+  // New Moon". That card retired to end the two-surfaces-one-ritual split
+  // (HOME study W1), so the answer now arrives HERE, in the same sitting that
+  // opens the next cycle, which is where a closed loop actually closes.
+  const { data: momentum } = useMomentum(testerId, lat, lon, open);
   const [release, setRelease] = useState("");
   const [reclaim, setReclaim] = useState("");
   const [oneShot, setOneShot] = useState("");
@@ -374,6 +384,29 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         {!editing && C.read.map((p, i) => (
           <p key={i} style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, margin: "10px 0 0" }}>{p}</p>
         ))}
+
+        {/* LAST CYCLE'S LOOP, CLOSED FIRST. The wake answering the intention
+            you set a month ago is the reason to trust the one you're about to
+            write. Only on a fresh sitting — returning to adjust an aim, you
+            already know how the cycle went. Absent when the ledger has nothing
+            to say: a first cycle has no loop to close, and inventing one would
+            be a scoreboard for a game nobody had started. */}
+        {!editing && momentum && ((momentum.prevIntentions ?? []).length > 0 || momentum.winsPrevCycle > 0) && (
+          <div style={{
+            marginTop: 14, padding: "10px 13px", borderRadius: 8,
+            background: "var(--color-card-2)", border: "1px solid var(--color-border)",
+          }}>
+            <div style={LABEL}>Last cycle, answered</div>
+            {(momentum.prevIntentions ?? []).map((i: any, k: number) => (
+              <div key={k} style={{ fontSize: 12, color: "var(--color-foreground)", fontStyle: "italic", lineHeight: 1.5 }}>
+                you set out to: "{i.text}"
+              </div>
+            ))}
+            <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 3 }}>
+              {momentum.winsPrevCycle} win{momentum.winsPrevCycle === 1 ? "" : "s"} in the wake.
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: 18 }}>
           <div style={LABEL}>{C.releaseLabel}</div>
