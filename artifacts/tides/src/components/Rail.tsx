@@ -546,7 +546,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // one source rather than a second copy that was free to be wrong — and it
   // carries lat/lon, which the bespoke query dropped from both the URL and
   // the cache key.
-  const { data: practicesData } = usePractices(testerId, lat, lon);
+  const practicesQ = usePractices(testerId, lat, lon);
+  const practicesData = practicesQ.data;
+  // Only when there is nothing to show. A failed background refresh still
+  // holds a good reading, and a paused query (react-query's offline path)
+  // never sets isError at all — it sits at "pending" forever, which is the
+  // same admission as an error and has to reach the same line.
+  const practicesFailed = !practicesData && (practicesQ.isError || practicesQ.fetchStatus === "paused");
 
   const toggleTask = useMutation({
     mutationFn: async (id: number) => {
@@ -1208,6 +1214,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
               The doable pieces — your tasks and habits — surfaced when today's conditions support them.
             </div>
+            {/* The practices read failing is not the same as having none, and
+                the rail says which one happened rather than showing a list
+                that is missing a section without saying so. */}
+            {practicesFailed && (
+              <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
+                Couldn't read your practices just now, so none are shown below.
+              </div>
+            )}
             {(practicesData?.practices ?? []).filter((p: any) => p.timing === "resonant").length > 0 && (
               <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
             )}

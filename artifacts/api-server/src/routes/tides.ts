@@ -1069,12 +1069,26 @@ router.get("/tides/practices", requireTesterId, async (req, res) => {
       recommendation = `Protect the minimum. ${c.minimumViable ?? "Rest if needed — this practice can wait."}`;
     }
 
-    return { ...c, score, match, recommendation, todayCheckIn: ciMap.get(c.id) ?? null };
+    // The wire names are the client's ScoredPractice contract — `name`,
+    // `timing`, `reasons` (lib/types.ts:173). This route had been answering
+    // `title`, `match` and `recommendation`, so every consumer read `p.timing`
+    // as undefined: no practice ever classified as resonant, and the fit label
+    // rendered blank. The declared type was always right; the server never
+    // honored it. Nothing reads the old names, so they are gone rather than
+    // doubled up. (Ported from the stalled practices worktree, 2026-08-15.)
+    return {
+      ...c,
+      name: c.title,
+      score,
+      timing: match,
+      reasons: [recommendation],
+      todayCheckIn: ciMap.get(c.id) ?? null,
+    };
   });
 
   // Sort: resonant → supported → neutral → soften → protect
   const ORDER = ["resonant", "supported", "neutral", "soften", "protect"];
-  scored.sort((a, b) => ORDER.indexOf(a.match) - ORDER.indexOf(b.match));
+  scored.sort((a, b) => ORDER.indexOf(a.timing) - ORDER.indexOf(b.timing));
 
   res.json({
     asOf: date.toISOString(),

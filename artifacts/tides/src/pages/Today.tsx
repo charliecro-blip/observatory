@@ -2998,7 +2998,13 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
   // Was hardcoded to New York regardless of the viewer's real location — every
   // practice's timing (sun/moon-hour anchors) was computed for the wrong
   // place for anyone not in NYC (audit finding).
-  const { data: practicesData } = usePractices(testerId, lat, lon);
+  const practicesQ = usePractices(testerId, lat, lon);
+  const practicesData = practicesQ.data;
+  // Only when there is nothing to show. A failed background refresh still holds
+  // a good reading, and a paused query (react-query's offline path) never sets
+  // isError at all — it sits at "pending" forever, which is the same admission
+  // as an error and has to reach the same line.
+  const practicesFailed = !practicesData && (practicesQ.isError || practicesQ.fetchStatus === "paused");
   const practiceRows = (practicesData?.practices ?? []).filter((p: any) => p.timing !== "neutral").slice(0, 4);
   const FIT_LABEL: Record<string, { text: string; color: string }> = {
     resonant: { text: "✦ a great time for this", color: "#3a7040" },
@@ -3025,7 +3031,10 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
     return null;
   };
 
-  if ((!Array.isArray(habits) || habits.length === 0) && practiceRows.length === 0) return null;
+  // A failed practices read keeps the card on screen: hiding it entirely would
+  // turn "couldn't ask" into "you tend nothing today", which is the one thing
+  // this card must never say on its own authority.
+  if ((!Array.isArray(habits) || habits.length === 0) && practiceRows.length === 0 && !practicesFailed) return null;
   const doneCount = habits.filter((h) => h.doneToday).length;
 
   // Resonance against the current moment, same lightweight scoring the Habits
@@ -3079,6 +3088,11 @@ function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; 
           );
         })}
       </div>
+      {practicesFailed && (
+        <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid var(--color-border)", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+          Couldn't read your practices just now, so none are shown here.
+        </div>
+      )}
       {practiceRows.length > 0 && (
         <div style={{ marginTop: 9, paddingTop: 8, borderTop: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 3 }}>
           {practiceRows.map((p: any) => {

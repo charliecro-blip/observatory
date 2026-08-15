@@ -153,12 +153,15 @@ export function useSkyEvents(days = 30, lat = 40.7, lon = -74.0) {
 }
 
 export function usePractices(testerId: string | null, lat = 40.7, lon = -74.0) {
+  // fetchJson, not a bare `r.json()`: a failed read here used to parse the
+  // error body into `data`, and every consumer's `?? []` then rendered "no
+  // practices" — the app claiming an empty rhythm when it had simply failed to
+  // ask. The route needs a tester id, so an anonymous call would 401 into that
+  // same lie; `enabled` keeps it from being made at all.
   return useQuery<{ practices: ScoredPractice[] }>({
     queryKey: ["tides-practices", testerId, lat, lon],
-    queryFn: async () => {
-      const r = await fetch(`/api/tides/practices?${loc(lat, lon)}`, { headers: authHeaders(testerId) });
-      return r.json();
-    },
+    queryFn: () => fetchJson(`/api/tides/practices?${loc(lat, lon)}`, { headers: authHeaders(testerId) }),
+    enabled: !!testerId,
     refetchInterval: 60_000,
   });
 }
