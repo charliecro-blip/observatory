@@ -14,6 +14,15 @@
  * fix is a column on `goals` and a migration; that is a schema change
  * against production and belongs in its own deliberate pass. Until then the
  * key has one owner instead of two copies.
+ *
+ * KEYS ARE PER-CYCLE AND DERIVED, since 2026-08-15. The save key used to be
+ * one exported constant naming the curated cycle, which worked only while
+ * every cycle HAD a curated block. The check-in now runs on any computed
+ * lunation (HOME study M3 — the ritual must survive an unwritten month), so
+ * a cycle without curation keys itself off its own computed start date, and
+ * readers scan the namespace for whichever cycle's answers are still alive
+ * rather than importing one frozen name. Everything stays inside `compass-`
+ * so purgeLocalData() wipes it on account deletion.
  */
 
 export interface CheckInSaved {
@@ -27,22 +36,42 @@ export interface CheckInSaved {
   until: string;
 }
 
-/** Must match the cycle key the check-in is currently running. */
+/** The curated block's cycle key. Named here so the check-in's CYCLE block
+ *  and anything comparing against it can never name different cycles. */
 export const CHECKIN_CYCLE_KEY = "2026-08-12-leo-eclipse";
-export const CHECKIN_SAVE_KEY = `compass-nm-checkin-${CHECKIN_CYCLE_KEY}`;
+
+const PREFIX = "compass-nm-checkin-";
+
+/** Where a given cycle's answers live. */
+export const checkInSaveKey = (cycleKey: string) => `${PREFIX}${cycleKey}`;
 
 const localDate = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-/** The current cycle's kept check-in, or null once it has expired. */
+/**
+ * The most recent kept check-in that has not expired, from ANY cycle.
+ *
+ * A scan rather than a lookup, because the reader (Guiding Stars) does not
+ * know which cycle wrote the marks — and should not have to: "which stars
+ * did I flag at the last turning point?" is one question regardless of
+ * whether that turning point had a curated block.
+ */
 export function readCheckIn(): CheckInSaved | null {
   try {
-    const raw = localStorage.getItem(CHECKIN_SAVE_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw) as CheckInSaved;
-    return s.until >= localDate() ? s : null;
+    const today = localDate();
+    let best: CheckInSaved | null = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(PREFIX)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const s = JSON.parse(raw) as CheckInSaved;
+      if (s.until < today) continue;
+      if (!best || s.savedAt > best.savedAt) best = s;
+    }
+    return best;
   } catch { return null; }
 }
 

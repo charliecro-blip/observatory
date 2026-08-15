@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { localDateStr } from "@/lib/dates";
-import { CHECKIN_SAVE_KEY, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
+import { checkInSaveKey, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
 
 const ACCENT = ELEMENT_COLORS.fire; // Leo. Each cycle names its own accent.
 
@@ -74,6 +74,41 @@ const CYCLE = {
   ],
 };
 
+/**
+ * THE RITUAL SURVIVES AN UNWRITTEN MONTH (HOME study 2026-08-15, M3).
+ *
+ * Standing down when the curated block lags the sky was honest, and it had a
+ * cost the therapist persona named: someone who builds a monthly practice on
+ * this ritual gets silently dropped the first cycle nobody writes. The three
+ * questions are the ritual; the curated read is its seasoning. So a cycle
+ * with no block of its own runs on this generic one — same questions, plain
+ * read, no invented specifics (no sign, no eclipse, no "ahead" dates it has
+ * no way to know) — and the curated block, when it exists, takes precedence.
+ */
+const GENERIC_CYCLE = {
+  name: "New Moon check-in",
+  read: [
+    "A new moon is the month's natural reset: a moment to name what you're done carrying, check that your stars still point somewhere true, and call one shot for the cycle ahead.",
+  ],
+  releaseLabel: CYCLE.releaseLabel,
+  releaseHint: CYCLE.releaseHint,
+  reclaimLabel: CYCLE.reclaimLabel,
+  reclaimHint: CYCLE.reclaimHint,
+  oneShotLabel: CYCLE.oneShotLabel,
+  oneShotHint: CYCLE.oneShotHint,
+  ahead: [] as { when: string; what: string }[],
+};
+
+/** The active cycle's identity and content, given the computed start. */
+function cycleFor(cycleStart: string | undefined) {
+  const curated = !!cycleStart && cycleStart === CYCLE.forCycleStart;
+  return {
+    curated,
+    key: curated ? CYCLE.key : `nm-${cycleStart ?? "unknown"}`,
+    content: curated ? CYCLE : GENERIC_CYCLE,
+  };
+}
+
 interface Saved {
   release: string;
   /** The south node's other face — something of yours worth reclaiming. */
@@ -88,12 +123,17 @@ interface Saved {
 }
 
 // Inside the `compass-` namespace so purgeLocalData() wipes them on account
-// deletion (tests/regressions.test.ts derives every written key and checks).
-//
-// The save key is defined in lib/checkInState so the Guiding Stars page can
-// read the same answers — one owner, not two copies that drift.
-const SAVE_KEY = CHECKIN_SAVE_KEY;
-const DISMISS_KEY = `compass-nm-dismiss-${CYCLE.key}`;
+// deletion. Derived per cycle rather than one constant, because the check-in
+// now runs on any computed lunation; lib/checkInState owns the save-key shape
+// so the Guiding Stars page reads the same answers without knowing the cycle.
+const saveKeyOf = (cycleKey: string) => checkInSaveKey(cycleKey);
+const dismissKeyOf = (cycleKey: string) => `compass-nm-dismiss-${cycleKey}`;
+const dismissCountKeyOf = (cycleKey: string) => `compass-nm-dismiss-count-${cycleKey}`;
+
+/** How many times this cycle's offer has been waved away. */
+function dismissCount(cycleKey: string): number {
+  try { return parseInt(localStorage.getItem(dismissCountKeyOf(cycleKey)) ?? "0", 10) || 0; } catch { return 0; }
+}
 
 /** `cycleStart` plus n days, as a local date string. */
 function addDays(dateStr: string, n: number): string {
@@ -116,16 +156,20 @@ function addDays(dateStr: string, n: number): string {
  * sky has not loaded yet, and an offer is not made on a guess.
  */
 export function turningPointPromptOpen(cycleStart: string | undefined): boolean {
-  if (!cycleStart || cycleStart !== CYCLE.forCycleStart) return false;
+  if (!cycleStart) return false;
   const today = localDateStr();
   if (today < cycleStart || today > addDays(cycleStart, WINDOW_DAYS - 1)) return false;
-  if (readSaved()) return false;                       // already answered
-  try { return localStorage.getItem(DISMISS_KEY) !== today; } catch { return true; }
+  const { key } = cycleFor(cycleStart);
+  if (readSaved(key)) return false;                    // already answered
+  // Two wave-aways demote the offer to a quiet one-line link (see the render),
+  // which no longer claims the banner slot — the rare-moment notice may have it.
+  if (dismissCount(key) >= 2) return false;
+  try { return localStorage.getItem(dismissKeyOf(key)) !== today; } catch { return true; }
 }
 
-function readSaved(): Saved | null {
+function readSaved(cycleKey: string): Saved | null {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(saveKeyOf(cycleKey));
     if (!raw) return null;
     const s = JSON.parse(raw) as Saved;
     return s.until >= localDateStr() ? s : null;
@@ -149,7 +193,16 @@ const PILL: React.CSSProperties = {
 
 // The occultation, drawn: the accent disc, and the card's own background
 // passing over it. Inherits the banner's surface so it survives both themes.
-function EclipseMark({ size = 24 }: { size?: number }) {
+// `plain` is the generic cycle's mark — an ordinary new moon is not an
+// eclipse, and the drawing must not claim one the sky didn't provide.
+function EclipseMark({ size = 24, plain = false }: { size?: number; plain?: boolean }) {
+  if (plain) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, display: "block" }}>
+        <circle cx="12" cy="12" r="8" fill={`${ACCENT}2a`} stroke={ACCENT} strokeWidth="1.3" />
+      </svg>
+    );
+  }
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, display: "block" }}>
       <circle cx="11" cy="13" r="8" fill={`${ACCENT}2a`} stroke={ACCENT} strokeWidth="1.3" />
@@ -176,12 +229,18 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
   const stars = (Array.isArray(starsData) ? starsData : [])
     .filter((g: any) => g.status !== "done" && g.status !== "paused");
 
-  const [saved, setSaved] = useState<Saved | null>(readSaved);
+  // Which cycle this render is about — the curated block when the sky matches
+  // it, the generic ritual otherwise. Everything below keys off this.
+  const cycle = cycleFor(cycleStart);
+  const C = cycle.content;
+
+  const [saved, setSaved] = useState<Saved | null>(() => readSaved(cycle.key));
   // The stored value is the LOCAL DATE of the last "Not now" — dismissed
   // means "dismissed today", so the offer returns with the next morning.
   const [dismissedOn, setDismissedOn] = useState<string | null>(() => {
-    try { return localStorage.getItem(DISMISS_KEY); } catch { return null; }
+    try { return localStorage.getItem(dismissKeyOf(cycle.key)); } catch { return null; }
   });
+  const [dismissals, setDismissals] = useState<number>(() => dismissCount(cycle.key));
   const [open, setOpen] = useState(false);
   const [release, setRelease] = useState("");
   const [reclaim, setReclaim] = useState("");
@@ -198,13 +257,22 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
     return () => window.removeEventListener("keydown", h);
   }, [open]);
 
+  // The sky loads after first render, and the cycle key changes with it —
+  // re-read this cycle's saved answers and dismissals when it does, or the
+  // state initialised against "nm-unknown" sticks for the session.
+  useEffect(() => {
+    setSaved(readSaved(cycle.key));
+    try { setDismissedOn(localStorage.getItem(dismissKeyOf(cycle.key))); } catch { /* private mode */ }
+    setDismissals(dismissCount(cycle.key));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycle.key]);
+
   const today = localDateStr();
-  // The sky's boundary, not a typed one. `cycleStart` disagreeing with the
-  // curated block means the lunation has moved on without new writing, and
-  // the offer stands down rather than reading last month's copy over it.
-  const onThisCycle = !!cycleStart && cycleStart === CYCLE.forCycleStart;
-  const inWindow = onThisCycle
-    && today >= cycleStart! && today <= addDays(cycleStart!, WINDOW_DAYS - 1);
+  // The sky's boundary, not a typed one. A cycle the curated block doesn't
+  // cover no longer stands the ritual down — it runs generic (M3); the
+  // curated read only ever appears against the lunation it was written for.
+  const inWindow = !!cycleStart
+    && today >= cycleStart && today <= addDays(cycleStart, WINDOW_DAYS - 1);
 
   const beginFresh = () => {
     setRelease(""); setReclaim(""); setOneShot(""); setStarMarks({});
@@ -219,8 +287,13 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
   };
   const dismiss = () => {
     const d = localDateStr();
-    try { localStorage.setItem(DISMISS_KEY, d); } catch { /* private mode */ }
+    const n = dismissals + 1;
+    try {
+      localStorage.setItem(dismissKeyOf(cycle.key), d);
+      localStorage.setItem(dismissCountKeyOf(cycle.key), String(n));
+    } catch { /* private mode */ }
     setDismissedOn(d);
+    setDismissals(n);
   };
   const keep = () => {
     // EXPIRES ON THE NEXT NEW MOON, not 29 days from whenever you happened to
@@ -240,7 +313,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
       ...(editing ? { revisedAt: new Date().toISOString() } : {}),
       until: editing && saved ? saved.until : (nextCycleStart ?? localDateStr(fallback)),
     };
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch { /* private mode */ }
+    try { localStorage.setItem(saveKeyOf(cycle.key), JSON.stringify(s)); } catch { /* private mode */ }
     setSaved(s);
     setOpen(false);
 
@@ -280,10 +353,10 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
       }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
-            <div style={{ paddingTop: 3 }}><EclipseMark size={30} /></div>
+            <div style={{ paddingTop: 3 }}><EclipseMark size={30} plain={!cycle.curated} /></div>
             <div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-foreground)" }}>
-                {CYCLE.name}
+                {C.name}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                 {editing ? "Change whatever needs changing." : "About ten minutes, and yours to keep or skip."}
@@ -298,22 +371,22 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
 
         {/* The read is for the first sitting. Coming back to move the aim,
             you want the form, not the sermon — so it steps aside on edit. */}
-        {!editing && CYCLE.read.map((p, i) => (
+        {!editing && C.read.map((p, i) => (
           <p key={i} style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, margin: "10px 0 0" }}>{p}</p>
         ))}
 
         <div style={{ marginTop: 18 }}>
-          <div style={LABEL}>{CYCLE.releaseLabel}</div>
+          <div style={LABEL}>{C.releaseLabel}</div>
           <input value={release} onChange={(e) => setRelease(e.target.value)}
-            placeholder={CYCLE.releaseHint} style={INPUT} />
+            placeholder={C.releaseHint} style={INPUT} />
         </div>
 
         {/* The south node's other face. Optional on purpose — a prompt that
             demands an answer would manufacture one. */}
         <div style={{ marginTop: 16 }}>
-          <div style={LABEL}>{CYCLE.reclaimLabel}</div>
+          <div style={LABEL}>{C.reclaimLabel}</div>
           <input value={reclaim} onChange={(e) => setReclaim(e.target.value)}
-            placeholder={CYCLE.reclaimHint} style={INPUT} />
+            placeholder={C.reclaimHint} style={INPUT} />
         </div>
 
         {stars.length > 0 && (
@@ -341,17 +414,17 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         )}
 
         <div style={{ marginTop: 16 }}>
-          <div style={LABEL}>{CYCLE.oneShotLabel}</div>
+          <div style={LABEL}>{C.oneShotLabel}</div>
           <input value={oneShot} onChange={(e) => setOneShot(e.target.value)}
-            placeholder={CYCLE.oneShotHint} style={INPUT} />
+            placeholder={C.oneShotHint} style={INPUT} />
         </div>
 
         {/* The cycle gets a shape: what's coming, and when this one closes.
             A preview, not a plan — no action attached to either line. */}
-        {CYCLE.ahead.length > 0 && (
+        {C.ahead.length > 0 && (
           <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid var(--color-border)" }}>
             <div style={LABEL}>The cycle ahead</div>
-            {CYCLE.ahead.map((a, i) => (
+            {C.ahead.map((a, i) => (
               <div key={i} style={{ display: "flex", gap: 12, padding: "3px 0", alignItems: "baseline" }}>
                 <span style={{ fontSize: 11, color: ACCENT, flexShrink: 0, minWidth: 44, fontVariantNumeric: "tabular-nums" }}>{a.when}</span>
                 <span style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5 }}>{a.what}</span>
@@ -388,7 +461,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
             <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
-              This cycle · set at the Leo eclipse
+              {cycle.curated ? "This cycle · set at the Leo eclipse" : "This cycle · set at the new moon"}
             </span>
             <button onClick={beginEdit} style={{
               fontSize: 10.5, background: "none", border: "none", padding: 0,
@@ -416,9 +489,9 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
           )}
           {/* The next turning point, so the kept card knows where it's headed
               and the cycle reads as a span rather than a note on a fridge. */}
-          {CYCLE.ahead.length > 0 && (
+          {C.ahead.length > 0 && (
             <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 7, paddingTop: 7, borderTop: "1px solid var(--color-border)" }}>
-              Next: {CYCLE.ahead[0].when} · {CYCLE.ahead[0].what}
+              Next: {C.ahead[0].when} · {C.ahead[0].what}
               {saved.revisedAt && <span> · adjusted {new Date(saved.revisedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
             </div>
           )}
@@ -430,6 +503,28 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
 
   if (!inWindow || dismissedOn === today || suppressPrompt) return <>{overlay}</>;
 
+  // TWO WAVE-AWAYS DEMOTE THE OFFER (HOME study M2). The snooze returns each
+  // morning by design — one mis-click must not cost the month's ritual — but
+  // by the third morning the full banner has become a nag, and a nag trains
+  // the dismissing thumb for every banner the app will ever show. The offer
+  // stays for the window's remainder as one quiet line; it no longer claims
+  // the notice slot (turningPointPromptOpen agrees).
+  if (dismissals >= 2) {
+    const closes = new Date(addDays(cycleStart!, WINDOW_DAYS - 1) + "T12:00:00")
+      .toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return (
+      <>
+        <button onClick={beginFresh} style={{
+          fontSize: 11, background: "none", border: "none", padding: "2px 0",
+          cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
+        }}>
+          The new-moon check-in stays open until {closes}
+        </button>
+        {overlay}
+      </>
+    );
+  }
+
   return (
     <>
       <div style={{
@@ -438,7 +533,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
-          <EclipseMark />
+          <EclipseMark plain={!cycle.curated} />
           {/* DAY-AWARE, because the window is five days long and this line was
               written for one of them. "Today is a new moon" was shown verbatim
               on days 1–4 — a false sentence from the app whose whole moat is
@@ -447,9 +542,13 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
               present tense it earned; the rest of the window points back at
               the day the cycle actually opened. */}
           <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>
-            {today === cycleStart
-              ? "Today is a new moon and a solar eclipse in Leo. Ten minutes to reset?"
-              : "This cycle opened with a new moon and solar eclipse in Leo. Ten minutes to reset?"}
+            {cycle.curated
+              ? (today === cycleStart
+                ? "Today is a new moon and a solar eclipse in Leo. Ten minutes to reset?"
+                : "This cycle opened with a new moon and solar eclipse in Leo. Ten minutes to reset?")
+              : (today === cycleStart
+                ? "Today is a new moon. Ten minutes to reset?"
+                : "This cycle opened with a new moon. Ten minutes to reset?")}
           </span>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>

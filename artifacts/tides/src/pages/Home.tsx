@@ -467,7 +467,10 @@ export default function Home({
   // fully woven and told the reader nothing was placed yet. See
   // components/WeekCommitted.tsx. The proposal still lives in Plan, which is
   // the tab that acts on it.
-  const { data: committed = [] } = useCommittedWeek(testerId, 7);
+  // Sixty days, not seven: the strip draws a week, and everything past it
+  // feeds the card's "Committed" footer — the launch you picked, standing
+  // (HOME study W2).
+  const { data: committed = [] } = useCommittedWeek(testerId, 60);
 
   // The sky's own fortnight, for the horizon row below. `back = 0` matters:
   // Calendar fetches back-days so its month grid can draw the days either side
@@ -713,6 +716,24 @@ export default function Home({
   };
 
   const lead = lines?.results?.[0];
+  /**
+   * ONE VOICE PER FACT (HOME study 2026-08-15, D1 / A1).
+   *
+   * When the answer card's lead is the same item CompassNow is already
+   * showing, this page used to say "what now" twice — from two engines, in
+   * two tenses, with two CTAs — and the day the study was written the two
+   * disagreed on screen: "until 2:04 PM · Start this" above "IN 1 HOUR ·
+   * 2:04–3:06 PM · Put on today". Both engines were right; the page was
+   * wrong to let them both speak as heroes.
+   *
+   * So when they name the same item, the hero up top keeps the voice and
+   * this card becomes what its own header always promised: the receipt.
+   * Judgment badges, the window as a line of evidence rather than a
+   * headline, testimony, alternatives. When they name DIFFERENT items (or
+   * there is no loop), nothing is duplicated and the full hero renders as
+   * before.
+   */
+  const leadIsLoopNow = !!lead && lines?.loop?.now?.heldId === lead.held.id;
   const secondary = (lines?.results ?? []).slice(1);
 
   return (
@@ -849,7 +870,7 @@ export default function Home({
                 <button onClick={() => setShapeOpen(v => !v)} style={{
                   fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
                   color: "var(--color-primary)",
-                }}>{shapeOpen ? "Hide the shape" : "Shape today →"}</button>
+                }}>{shapeOpen ? "Hide the shape" : "Shape today"}</button>
               )
             }
           >Your work</SectionTitle>
@@ -982,7 +1003,7 @@ export default function Home({
                 <button onClick={() => onNavigate("launch")} style={{
                   fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
                   color: "var(--color-primary)",
-                }}>See week →</button>
+                }}>Open Plan →</button>
               }
             >This week</SectionTitle>
             <CommittedWeekStrip windows={committed} onOpen={() => onNavigate("launch")} />
@@ -1140,12 +1161,12 @@ export default function Home({
             ) : (
               <details style={{ display: "inline" }}>
                 <summary style={{ fontSize: 11, color: "var(--color-primary)", cursor: "pointer", listStyle: "none" }}>
-                  Find another activity →
+                  Find another activity
                 </summary>
               </details>
             )
           }
-        >What lines up</SectionTitle>
+        >{leadIsLoopNow ? "Why this lines up" : "What lines up"}</SectionTitle>
 
         {lead ? (
           <div style={{ padding: "2px 20px 18px" }}>
@@ -1172,7 +1193,23 @@ export default function Home({
               {lead.personal && <Badge text="Your chart agrees" color={PERSONAL} />}
             </div>
 
-            <div
+            {/* The item's name and its moment render only when CompassNow is
+                NOT already saying them three hundred pixels up (D1). In the
+                merged state the receipt still names the window — but as a
+                line among the facts, where a receipt keeps its dates. */}
+            {leadIsLoopNow && (
+              <div style={{ fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.5 }}>
+                {lead.activityLabel}
+                <span style={{ color: "var(--color-muted)" }}>
+                  {" · "}
+                  {lead.allDay ? "supported all day"
+                    : lead.state === "open-now" ? `open now, until ${lead.endClock}`
+                    : lead.state === "passed" ? `${lead.startClock}–${lead.endClock}, passed`
+                    : `window ${lead.startClock}–${lead.endClock}`}
+                </span>
+              </div>
+            )}
+            {!leadIsLoopNow && <div
               onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) (focusedTask === id ? clearLink() : linkRow(id)); }}
               title="Show this in your work"
               style={{
@@ -1197,8 +1234,8 @@ export default function Home({
                 textUnderlineOffset: 5,
               }}>
               {lead.held.title}
-            </div>
-            {(() => {
+            </div>}
+            {!leadIsLoopNow && (() => {
               const m = momentBlock(lead);
               const passed = lead.state === "passed";
               return (
@@ -1275,11 +1312,18 @@ export default function Home({
               </div>
             )}
 
+            {/* The CTA row belongs to the full hero. Merged, this card is a
+                receipt, and a receipt does not re-sell you the purchase: the
+                act's button lives on CompassNow, and only the evidence toggle
+                survives here (A1 counted "Start this" over "Put on today" as
+                a decision the page forced the reader to make). */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              <button onClick={() => setShapeOpen(true)} style={{
-                fontSize: 12, fontWeight: 600, padding: "7px 15px", borderRadius: 8, cursor: "pointer",
-                border: "none", background: "var(--color-primary)", color: "var(--color-card)",
-              }}>Put on today</button>
+              {!leadIsLoopNow && (
+                <button onClick={() => setShapeOpen(true)} style={{
+                  fontSize: 12, fontWeight: 600, padding: "7px 15px", borderRadius: 8, cursor: "pointer",
+                  border: "none", background: "var(--color-primary)", color: "var(--color-card)",
+                }}>Put on today</button>
+              )}
               {(lead.evidence?.length ?? 0) > 0 && (
                 <button onClick={() => setEvidenceOpen(v => !v)} style={{
                   fontSize: 12, padding: "7px 13px", borderRadius: 8, cursor: "pointer",
@@ -1288,12 +1332,12 @@ export default function Home({
                 }}>{evidenceOpen ? "Hide evidence" : "See evidence"}</button>
               )}
               <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                {lead.activityLabel}
+                {!leadIsLoopNow && lead.activityLabel}
                 {lead.alternative && (
-                  <> · <button onClick={() => onNavigate("launch")} style={{
+                  <> {!leadIsLoopNow && "· "}<button onClick={() => onNavigate("launch")} style={{
                     fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer",
                     color: "var(--color-primary)", textDecoration: "underline",
-                  }}>change</button></>
+                  }}>change activity</button></>
                 )}
               </span>
             </div>
@@ -1529,7 +1573,7 @@ export default function Home({
         <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
           <details>
             <summary style={{ padding: "6px 14px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
-              Find a time for something else →
+              Find a time for something else
             </summary>
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
           </details>

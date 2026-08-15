@@ -47,7 +47,15 @@ const clock = (iso: string) =>
  * computing "your committed week" separately is how they end up disagreeing,
  * and this is the pair most likely to be read one after the other.
  */
-export function useCommittedWeek(testerId: string | null, days = 7) {
+/**
+ * The fetch runs 60 days out, not 7, since the HOME study (W2): two personas
+ * independently asked where a chosen date GOES once picked — an accepted
+ * election vanished from every Home surface the moment it fell past the
+ * seven-day strip, so the launch someone picked and must defend had no
+ * standing presence anywhere on the landing page. The strip still draws one
+ * week; what lies beyond it renders as the card's footer lines.
+ */
+export function useCommittedWeek(testerId: string | null, days = 60) {
   const today = localToday();
   const until = addDaysLocal(today, days);
   return useQuery<CommittedWindow[]>({
@@ -86,7 +94,16 @@ export function CommittedWeekStrip({ windows, onOpen }: {
   }
   for (const [, list] of byDay) list.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 
-  const blocks = windows.filter(w => w?.startTime).length;
+  // Inside the strip's seven days, and beyond them. The beyond list is the
+  // W2 answer: committed dates as standing facts — date and title, nothing
+  // to do, the detail belonging to Plan.
+  const weekEnd = addDaysLocal(today, 7);
+  const inWeek = windows.filter(w => w?.startTime && localDateStr(new Date(w.startTime)) < weekEnd);
+  const beyond = windows
+    .filter(w => w?.startTime && localDateStr(new Date(w.startTime)) >= weekEnd && !w.completedAt)
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+
+  const blocks = inWeek.length;
   const emptyDays = dayKeys.filter(k => !byDay.has(k)).length;
 
   return (
@@ -138,11 +155,42 @@ export function CommittedWeekStrip({ windows, onOpen }: {
               emptyDays > 0 ? ` · ${emptyDays} ${emptyDays === 1 ? "day" : "days"} with nothing placed` : ""}`}
       </div>
 
-      {onOpen && (
+      {/* Committed dates past the strip — the launch you picked, standing
+          where you land every morning instead of evaporating on day eight. */}
+      {beyond.length > 0 && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+          <div style={{
+            fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px",
+            color: "var(--text-3)", marginBottom: 3,
+          }}>Committed</div>
+          {beyond.slice(0, 3).map((w) => (
+            <div key={w.id} style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "2px 0" }}>
+              <span style={{ fontSize: 10.5, color: PLACED, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+                {new Date(w.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+              <span style={{
+                fontSize: 11.5, color: "var(--color-foreground)", minWidth: 0,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{w.title}</span>
+            </div>
+          ))}
+          {beyond.length > 3 && (
+            <div style={{ fontSize: 10, color: "var(--text-3)", paddingTop: 2 }}>
+              and {beyond.length - 3} more
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Only when empty. The card's header already carries an "Open Plan →"
+          door on Home, and two doors to one place on one card was exactly the
+          sprawl the audit counted (D8). The empty state keeps its own because
+          the header door is easy to miss when the card has nothing to show. */}
+      {onOpen && blocks === 0 && (
         <button onClick={onOpen} style={{
           fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
           cursor: "pointer", color: "var(--color-primary)",
-        }}>{blocks === 0 ? "Weave the week in Plan →" : "Open Plan →"}</button>
+        }}>Open Plan →</button>
       )}
     </div>
   );

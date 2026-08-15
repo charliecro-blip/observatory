@@ -6,11 +6,14 @@
 // (that the walk has happened five times in seven days, that the weekly one has
 // not happened at all) had nowhere to be read.
 //
-// READ-ONLY, DELIBERATELY. Home is panoramic: it shows the shape and hands you
-// a door. The check-off lives on Today, where you are inside the day, and in
-// the Habits tab, which owns the detail. A Home section that becomes the place
-// you *do* the thing has turned into a tab, which is the failure mode the
-// Home/Today split exists to undo.
+// TODAY'S TALLY IS TAPPABLE; THE WEEK STAYS READ-ONLY (HOME study D5). The
+// first version made the whole card read-only under the summary-with-a-door
+// rule, which cost the busy-parent persona her one daily gesture: on the
+// landing page, the habit she does every morning could be seen and not
+// ticked. A check-off is a tally mark, not a workflow — the rule was written
+// against Home becoming a place you DO things, and one tap that records a
+// fact is not doing, it is counting. Editing, scheduling and the streak
+// detail stay behind the door.
 //
 // WHAT THE FIGURE MEANS. `windowTarget` is derived from the cadence the person
 // chose — daily is 7, most days is 5, weekly is their own number, occasional
@@ -18,7 +21,7 @@
 // against one the app invented. Occasional habits have no target and are never
 // given one: they report the bare count and cannot be behind.
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
 
@@ -44,6 +47,7 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
   lon: number;
   onNavigate: (v: string) => void;
 }) {
+  const qc = useQueryClient();
   const today = localToday();
   const { data: habits, isError } = useQuery<Habit[]>({
     // The day and the place are in the URL, so they belong in the cache
@@ -54,6 +58,17 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
       await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`,
         { headers: testerId ? { "x-tester-id": testerId } : {} })),
     enabled: !!testerId,
+  });
+
+  const toggleToday = useMutation({
+    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
+      const headers: Record<string, string> = { "Content-Type": "application/json", ...(testerId ? { "x-tester-id": testerId } : {}) };
+      // Both directions name the viewer's LOCAL date — the same rule every
+      // other habit toggle in the app has already learned the hard way.
+      if (done) await fetch(`/api/habits/${id}/log?date=${today}`, { method: "DELETE", headers });
+      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers, body: JSON.stringify({ date: today }) });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
   });
 
   // No habits is not a state worth a card. Somebody who has never set one up
@@ -89,7 +104,7 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
           <button onClick={() => onNavigate("habits")} style={{
             fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
             color: "var(--color-primary)",
-          }}>All habits →</button>
+          }}>Open Habits →</button>
         </div>
       </div>
 
@@ -99,7 +114,19 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
           const done = h.windowDone ?? 0;
           const behind = h.cadenceMet === false;
           return (
-            <div key={h.id} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "4px 0" }}>
+            <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
+              <button
+                onClick={() => toggleToday.mutate({ id: h.id, done: !!h.doneToday })}
+                disabled={toggleToday.isPending}
+                aria-pressed={!!h.doneToday}
+                aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
+                style={{
+                  width: 15, height: 15, borderRadius: "50%", flexShrink: 0, padding: 0,
+                  cursor: toggleToday.isPending ? "default" : "pointer",
+                  border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
+                  background: h.doneToday ? KEPT : "transparent",
+                  color: "#ffffff", fontSize: 9, lineHeight: 1,
+                }}>{h.doneToday ? "✓" : ""}</button>
               <span style={{
                 fontSize: 12, flex: 1, minWidth: 0, color: "var(--color-foreground)",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

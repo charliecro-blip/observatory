@@ -403,5 +403,10 @@ sky.
 ## Changed since this study's snapshot
 
 - D3 (mobile grid) and M1 (stale banner line) were fixed the same day this
-  was written — they were unambiguous. Everything graded [design] awaits the
-  owner.
+  was written — they were unambiguous.
+- The owner ratified the six headline calls the same day; D1, D5, W2, M2, M3
+  and D8 shipped in `d408a9d`. Still open from the ledger: D2 (DayAhead's
+  habit chips), D4 ("already scheduled" per row), D6 (the hero consulting
+  Google Calendar), D7 (cold-load latency, to be measured on prod), W1
+  (Sunday review on Home), W3 (the water-ahead strip's prominence), M5 (the
+  density toggle), and M4 (the cultivations decision).

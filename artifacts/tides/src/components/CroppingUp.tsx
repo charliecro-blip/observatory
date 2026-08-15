@@ -124,7 +124,7 @@ export default function CroppingUp({ onNavigate }: { onNavigate?: (v: string) =>
           <button onClick={() => onNavigate("launch")} style={{
             fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
             color: "var(--color-primary)",
-          }}>Plan around these →</button>
+          }}>Open Plan →</button>
         </div>
       )}
     </div>
