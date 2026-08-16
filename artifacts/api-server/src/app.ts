@@ -217,6 +217,24 @@ app.use("/assets", express.static(path.join(publicDir, "assets"), {
 }));
 app.use(express.static(publicDir));
 
+/**
+ * AN UNMATCHED /api PATH IS A 404, NEVER THE APP SHELL.
+ *
+ * The comment below always said "for non-API routes"; the code never checked.
+ * So any /api path that matched no router — a typo, a deleted endpoint, a
+ * client one deploy ahead of the server — got index.html with a 200. That
+ * lies twice: fetch(...).json() explodes on an HTML body somewhere far from
+ * the actual mistake, and anything watching status codes reads "alive" off a
+ * route that does not exist. It cost a night of deploy verification
+ * (2026-08-15): three healthy deploys in a row read as "never landed"
+ * because the deleted routes kept answering 200 — the fallback page, not the
+ * routes. The house rule was already "probe user-visible strings, statuses
+ * prove nothing"; this is that rule, now enforced by the server itself.
+ */
+app.all("/api/{*splat}", (req, res) => {
+  res.status(404).json({ error: "no such endpoint", path: req.path });
+});
+
 // SPA routing: serve index.html for non-API routes
 app.get("/{*splat}", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"), (err) => {

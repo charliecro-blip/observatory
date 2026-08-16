@@ -3011,3 +3011,25 @@ describe("testimony facts agree with the prose they replaced", () => {
     expect(src).toMatch(/reading: dayReading\(/);   // whole object, nothing stripped
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AN UNMATCHED /api PATH IS A 404, NEVER THE APP SHELL.
+// The SPA catch-all served index.html at 200 for any /api path that matched no
+// router, which made deleted endpoints look alive to every status-code check —
+// including this repo's own deploy verification, for a full evening.
+describe("the API namespace never falls through to the app shell", () => {
+  const app = readFileSync(join(process.cwd(), "artifacts/api-server/src/app.ts"), "utf-8");
+
+  it("guards /api before the SPA catch-all", () => {
+    const guard = app.indexOf('app.all("/api/{*splat}"');
+    const splat = app.indexOf('app.get("/{*splat}"');
+    expect(guard).toBeGreaterThan(-1);
+    expect(splat).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(splat);   // order is the mechanism
+  });
+
+  it("answers JSON, so a client's .json() fails loudly at the right line", () => {
+    const at = app.indexOf('app.all("/api/{*splat}"');
+    expect(app.slice(at, at + 200)).toMatch(/status\(404\)\.json/);
+  });
+});
