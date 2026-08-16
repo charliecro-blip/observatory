@@ -35,14 +35,3 @@ import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 export const AI_UNCONFIGURED_MESSAGE =
   "The AI features are switched off on this server right now — everything computed from the sky still works.";
 
-/**
- * For a route with NO deterministic fallback. Returns true when it has already
- * answered, so the caller just returns:
- *
- *   if (aiUnavailable(res)) return;
- */
-export function aiUnavailable(res: Response): boolean {
-  if (isOpenAiConfigured) return false;
-  res.status(503).json({ error: AI_UNCONFIGURED_MESSAGE, code: "ai_unconfigured" });
-  return true;
-}

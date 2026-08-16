@@ -2566,19 +2566,18 @@ describe("the AI guard is reachable and used correctly", () => {
     }
   });
 
-  it("the one route with nothing to fall back on returns a contained 503", () => {
-    const src = read("artifacts/api-server/src/routes/blueprint.ts");
-    expect(src).toMatch(/if \(aiUnavailable\(res\)\) return;/);
-    expect(guard).toMatch(/res\.status\(503\)/);
-  });
+  // The "one route with nothing to fall back on" test retired 2026-08-16 with
+  // blueprint.ts itself — it left with the legacy health-tracker estate, and
+  // `aiUnavailable` (whose only consumer it was) left aiGuard with it. If a
+  // future AI route genuinely has no deterministic fallback, it earns that
+  // helper and this test back together.
 
-  it("the streaming routes are left alone — they already contain the error", () => {
-    // advise and openai/messages emit an error frame the client renders;
-    // changing their response shape for a config production doesn't have
-    // would be churn with real regression risk.
-    for (const f of ["advise.ts", "openai.ts"]) {
-      expect(read(`artifacts/api-server/src/routes/${f}`)).not.toContain("aiUnavailable");
-    }
+  it("the streaming route is left alone — it already contains the error", () => {
+    // advise emits an error frame the client renders; changing its response
+    // shape for a config production doesn't have would be churn with real
+    // regression risk. (openai.ts, formerly on this list, left with the
+    // legacy estate.)
+    expect(read("artifacts/api-server/src/routes/advise.ts")).not.toContain("aiUnavailable");
   });
 });
 

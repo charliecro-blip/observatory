@@ -5,11 +5,12 @@
 # and only then touch the database. A broken build or a failed invariant can no
 # longer reach the schema.
 #
-# The root `pnpm run typecheck` is deliberately NOT in here: it currently fails
-# on pre-existing errors in lib/integrations-openai-ai-{react,server}, which
-# belong to the legacy health-tracker app and nothing in Compass imports. Adding
-# it today would break every deploy. Both app typechecks DO run — each app's own
-# build script includes one — so Compass itself is still covered.
+# The root `pnpm run typecheck` joined the build on 2026-08-16, typecheck
+# before tests so the cheap gate fails first. It was kept out while it failed
+# on the legacy health-tracker app — and only there: the old note here blamed
+# lib/integrations-openai-ai-{react,server}, but measured, every root error
+# lived in health-tracker's pages, and the -server lib is a LIVE dependency of
+# Compass's AI routes. The estate is deleted; the gate is armed.
 #
 # NOTE: this is still `drizzle-kit push`, which diffs and applies directly with
 # no versioned history and no rollback. Moving to generated, versioned
@@ -17,7 +18,7 @@
 # supervised baseline against the live database (the tables already exist, so
 # the first generated migration has to be marked applied rather than run), and
 # that is not something to attempt unattended.
-buildCommand = "pnpm install --frozen-lockfile && pnpm test && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push"
+buildCommand = "pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push"
 
 [deploy]
 startCommand = "node --enable-source-maps artifacts/api-server/dist/index.mjs"
