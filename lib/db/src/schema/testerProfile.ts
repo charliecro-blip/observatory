@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, index, serial } from "drizzle-orm/pg-core";
 
 // Server-side copy of the tester profile that otherwise lives only in the
 // browser's localStorage. This is the "account": the tester id stays the
@@ -28,8 +28,42 @@ export const testerProfiles = pgTable("tester_profiles", {
   lat: text("lat"),
   lon: text("lon"),
   locationLabel: text("location_label"),
+  // When this account was first credentialed (a session minted). Before this
+  // instant the bare tester id behaves as it always did — which is what lets
+  // the session model roll out without bricking a single existing device;
+  // after it, every request must carry a valid session token. Null = the
+  // pre-accounts world, still open, still claimable.
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  // Entitlement, named now so billing has a column to read the day it exists.
+  // Everyone is 'beta' — a gift received, not a bill arriving (BACKLOG §5).
+  plan: text("plan").notNull().default("beta"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("ix_tester_feed_token").on(t.feedTokenHash)]);
+
+/**
+ * Server-issued session credentials — the thing the tester id never was.
+ *
+ * One row per device/browser, so restoring on a phone does not sign out the
+ * desktop. The token itself exists only in the moment it is minted; the row
+ * keeps a SHA-256 hash, same doctrine as the feed token: a database dump must
+ * not hand out working credentials. Keyed by tester_id so account deletion's
+ * discovery sweep (lib/accountDeletion.testerScopedTables) takes these rows
+ * with everything else, with no list to forget to update.
+ */
+export const accountSessions = pgTable("account_sessions", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  /** Where this session came from — "claim", "signup", "recovery". */
+  origin: text("origin").notNull().default("claim"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+}, (t) => [
+  index("ix_session_token_hash").on(t.tokenHash),
+  index("ix_session_tester").on(t.testerId),
+]);
+
+export type AccountSessionRow = typeof accountSessions.$inferSelect;
 
 export type TesterProfileRow = typeof testerProfiles.$inferSelect;

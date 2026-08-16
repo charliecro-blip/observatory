@@ -1066,7 +1066,7 @@ function fmtHour12(hhmm: string): string {
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 function Shell() {
-  const { profile, isReady, showModal, createAndApply, lat, lon } = useTester();
+  const { profile, isReady, showModal, createAndApply, lat, lon, sessionBlocked, openModal } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("home");
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
@@ -1206,6 +1206,25 @@ function Shell() {
       boxShadow: (getForceMobile() && window.matchMedia("(min-width: 769px)").matches) ? "0 0 0 1px var(--color-border), 0 12px 48px rgba(0,0,0,0.25)" : undefined,
       background:"var(--color-background)",overflow:"hidden",flexDirection:"column"}}>
       {nowError && <ApiErrorBanner retry={() => refetchNow()} />}
+      {/* The one state that needs the person: the server refused this
+          device's session and both silent repairs (claim, stored-key
+          restore) failed. Everything else about sessions is invisible. */}
+      {sessionBlocked && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12, padding: "8px 16px",
+          background: "var(--color-card)", borderBottom: "1px solid var(--color-border)",
+          fontSize: 12, color: "var(--color-foreground)", flexShrink: 0,
+        }}>
+          <span style={{ flex: 1 }}>
+            This device is signed out — restore it with your account key.
+          </span>
+          <button onClick={openModal} style={{
+            fontSize: 11.5, fontWeight: 600, padding: "5px 12px", borderRadius: 7,
+            border: "none", cursor: "pointer", background: "var(--color-primary)",
+            color: "var(--color-card)",
+          }}>Restore</button>
+        </div>
+      )}
       {capture && testerId && <QuickCapture testerId={testerId} onClose={() => setCapture(false)} onDumpToPlanner={dumpToPlanner} />}
       {/* First-run spotlight tour — the walkthrough over the real interface.
           Armed only once the hero exists in the DOM (see effect), so the

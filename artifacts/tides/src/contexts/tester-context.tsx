@@ -14,11 +14,15 @@ import {
   type Chronotype,
   type CautionPlanet,
 } from "@/lib/tester-profile";
+import { loadSessionToken, saveSessionToken, clearSessionToken, SESSION_INVALID_EVENT } from "@/lib/session";
 
 interface TesterContextValue {
   profile: TesterProfile | null;
   isReady: boolean;
   showModal: boolean;
+  /** The server refused this device's session and every silent repair failed
+   *  — the one state where the person must present the account key. */
+  sessionBlocked: boolean;
   lat: number;
   lon: number;
   /**
@@ -66,12 +70,19 @@ async function syncAccount(p: TesterProfile, onCode: (code: string) => void) {
     if (!r.ok) return;
     const data = await r.json();
     if (data?.recoveryCode) onCode(data.recoveryCode);
+    // A CREATED account (201) is claimed from birth — its session arrives
+    // beside the recovery code, once.
+    if (data?.sessionToken) saveSessionToken(data.sessionToken);
   } catch {
     // offline or server down — retry on the next profile change
   }
 }
 
 const TesterContext = createContext<TesterContextValue | null>(null);
+
+/** In-flight latch for ensureSession — module scope so remounts and parallel
+ *  providers share ONE claim attempt. See the comment at the call site. */
+let ensureSessionInFlight = false;
 
 // Fallback coordinates by IANA timezone — representative city per zone. The
 // planetary-hour grid and sunrise/sunset are location-sensitive: a hardcoded
@@ -170,6 +181,96 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
     if (profile) void syncAccount(profile, absorbCode);
   }, [profile, absorbCode]);
 
+  /**
+   * THE SESSION BRAIN (BACKLOG §2's last open item, closed 2026-08-16).
+   *
+   * Holding an identity without a session, this account is either
+   * pre-sessions (claim it — trust on first use) or this is a second device
+   * of an already-claimed account (the claim 403s; prove ownership with the
+   * recovery code this device already keeps from an earlier sync, silently).
+   * Only when BOTH fail does the person see anything: the restore modal,
+   * asking for the key — the same screen a new device always used.
+   *
+   * The same routine answers a mid-session 401 (session revoked elsewhere,
+   * or the account claimed by another device while this tab sat open),
+   * relayed by the fetch interceptor as SESSION_INVALID_EVENT. One attempt
+   * per trigger — a loop of claim/restore against a server saying no is a
+   * hammering, not a recovery.
+   */
+  const [sessionBlocked, setSessionBlocked] = useState(false);
+  const ensureSession = useCallback(async (p: TesterProfile) => {
+    // MODULE-level in-flight guard, not a ref: StrictMode remounts (and a
+    // second open tab's boot) create fresh refs, and two concurrent runs
+    // produced exactly the race this comment now prevents — the loser's
+    // claim 403'd, its recovery failed, and its failure path cleared the
+    // token the winner had just saved. Measured in the live walkthrough of
+    // this very feature.
+    if (ensureSessionInFlight) return;
+    ensureSessionInFlight = true;
+    try {
+      if (loadSessionToken()) { setSessionBlocked(false); return; } // someone already won
+      const claim = await fetch("/api/account/claim", {
+        method: "POST",
+        headers: { "x-tester-id": p.testerId },
+      });
+      if (claim.ok) {
+        const data = await claim.json();
+        if (data?.sessionToken) { saveSessionToken(data.sessionToken); setSessionBlocked(false); }
+        return;
+      }
+      if (claim.status === 404) return; // profile not synced yet — sync path mints instead
+      // Claimed by another device. The recovery code this device already
+      // holds is the proof of ownership; use it without asking.
+      const code = p.recoveryCode;
+      if (code) {
+        const r = await fetch("/api/account/recover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          if (data?.sessionToken) { saveSessionToken(data.sessionToken); setSessionBlocked(false); return; }
+        }
+        // Rate-limited is "again in a minute", not "signed out". Blocking here
+        // put the scary banner on a healthy account whose only sin was
+        // rebooting fast; the next trigger (any 401, or the next boot) retries.
+        if (r.status === 429) return;
+      }
+      // Both repairs failed — but only block if nobody else won meanwhile.
+      // Clearing a token some concurrent run just minted is how a failed
+      // straggler signs out a healthy device.
+      if (!loadSessionToken()) {
+        clearSessionToken();
+        setSessionBlocked(true);
+      }
+    } catch {
+      // Offline — the gate is also unreachable, so nothing is blocked yet;
+      // the next trigger retries.
+    } finally {
+      ensureSessionInFlight = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (profile && !loadSessionToken()) void ensureSession(profile);
+  }, [profile, ensureSession]);
+
+  useEffect(() => {
+    const onInvalid = () => {
+      if (!profile) return;
+      // The event MEANS the stored token just failed a real request — it is
+      // dead, and it must go before ensureSession runs, or the "someone
+      // already won" early-return reads the corpse as a victory and repairs
+      // nothing. (Found live: a tampered token 401'd forever while the
+      // self-heal politely declined to interfere with it.)
+      clearSessionToken();
+      void ensureSession(profile);
+    };
+    window.addEventListener(SESSION_INVALID_EVENT, onInvalid);
+    return () => window.removeEventListener(SESSION_INVALID_EVENT, onInvalid);
+  }, [profile, ensureSession]);
+
   const updateLocation = useCallback((lat: number, lon: number, label: string) => {
     saveLocation(lat, lon, label);
     setProfile(p => {
@@ -237,6 +338,8 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         ...(data.profile?.cautionPlanets ? { cautionPlanets: data.profile.cautionPlanets } : {}),
         ...(data.profile?.recoveryCode ? { recoveryCode: data.profile.recoveryCode } : {}),
       };
+      if (data.sessionToken) saveSessionToken(data.sessionToken);
+      setSessionBlocked(false);
       saveProfile(restored);
       setProfile(restored);
       setIsReady(true);
@@ -248,6 +351,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resetProfile = useCallback(() => {
+    clearSessionToken();
     clearProfile();
     setProfile(null);
     
@@ -266,6 +370,7 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
         profile,
         isReady,
         showModal,
+        sessionBlocked,
         lat,
         lon,
         locationKnown,

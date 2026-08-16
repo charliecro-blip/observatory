@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import path from "path";
 import router from "./routes";
+import { requireValidSession } from "./middlewares/session";
 import { logger } from "./lib/logger";
 import { privacyHandler } from "./routes/privacy";
 
@@ -173,6 +174,30 @@ const recoverLimiter = rateLimit({
   validate: false,
 });
 
+// The credential surfaces get a hard, tight limiter of their own: recover is
+// an unauthenticated code-guessing surface (~40 bits — strong against these
+// rates, feeble against unthrottled ones), and claim is first-come TOFU.
+const authLimiter = rateLimit({
+  // Sized against the actual threat and the actual traffic. The threat is
+  // guessing a recovery code: ~40 bits, so even this ceiling sustained for a
+  // YEAR searches a millionth of the space. The traffic is a boot that may
+  // legitimately spend two requests (claim → 403 → recover), times StrictMode
+  // doubling in dev, times a user impatiently reloading — the first cut of 10
+  // per 5 minutes rate-limited the app's own login during its own
+  // walkthrough, which answered how tight is too tight.
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  keyGenerator: limiterKey,
+  message: { error: "Too many attempts — wait a few minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Same as aiLimiter below: esbuild renames the ipKeyGenerator import when
+  // bundling, breaking express-rate-limit's toString()-based static check.
+  validate: false,
+});
+app.use("/api/account/recover", authLimiter);
+app.use("/api/account/claim", authLimiter);
+
 app.use("/api/openai", aiLimiter);
 app.use("/api/advise", aiLimiter);
 app.use("/api/daemon-memory", aiLimiter);
@@ -195,6 +220,10 @@ app.use("/api/account/recover", recoverLimiter);
 // change, so a path-wide limiter here would throttle ordinary use.
 app.delete("/api/account", deleteAccountLimiter);
 app.use("/api", generalLimiter);
+// The session gate sits between the limiter and every router: a presented
+// identity on a claimed account must carry its session token past this line
+// or nothing downstream ever sees the request. Order is the mechanism.
+app.use("/api", requireValidSession);
 app.use("/api", router);
 
 app.get("/privacy", privacyHandler);

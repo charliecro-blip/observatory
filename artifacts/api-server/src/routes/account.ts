@@ -15,6 +15,7 @@ import { randomBytes } from "node:crypto";
 import { db, testerProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { mintFeedToken, hashFeedToken } from "../lib/feedToken.js";
+import { claimAccount, mintSessionFor } from "../lib/accountAuth.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { deleteAccount } from "../lib/accountDeletion.js";
 
@@ -71,12 +72,41 @@ router.post("/account/sync", requireTesterId, async (req, res) => {
     const recoveryCode = generateRecoveryCode();
     try {
       await db.insert(testerProfiles).values({ testerId, recoveryCode, ...fields });
-      res.status(201).json({ recoveryCode });
+      // A NEW account is claimed from birth: its first sync mints the session
+      // right here, so a signup never spends a moment in the unclaimed state
+      // where a bare id is a working credential. The TOFU window exists only
+      // for accounts that predate sessions.
+      const sessionToken = await mintSessionFor(testerId, "signup");
+      res.status(201).json({ recoveryCode, sessionToken });
       return;
     } catch (err) {
       if (attempt === 2) throw err;
     }
   }
+});
+
+/**
+ * Trust-on-first-use claim, for accounts that predate sessions.
+ *
+ * The client calls this on boot when it holds an identity but no token. The
+ * first claimer owns the account; everyone after — normally the same person's
+ * other device — gets 403 and proves themselves with the recovery code they
+ * already hold (POST /account/recover mints their session). NOT behind the
+ * session gate, per middlewares/session.ts EXEMPT: this is how a token is
+ * obtained.
+ */
+router.post("/account/claim", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const result = await claimAccount(testerId);
+  if (!result.ok) {
+    if (result.reason === "no-profile") {
+      res.status(404).json({ error: "no_profile", message: "Sync the account first." });
+      return;
+    }
+    res.status(403).json({ error: "already_claimed" });
+    return;
+  }
+  res.json({ sessionToken: result.token });
 });
 
 router.post("/account/recover", async (req, res) => {
@@ -92,8 +122,14 @@ router.post("/account/recover", async (req, res) => {
     res.status(404).json({ error: "not_found", message: "No account matches that key — check it character by character." });
     return;
   }
+  // The recovery code is proof of ownership, so recovering also mints this
+  // device its own session — and claims the account if nothing had yet. This
+  // is what makes the second device's migration silent: it holds the code in
+  // localStorage from an earlier sync, hits the claim 403, and lands here.
+  const sessionToken = await mintSessionFor(row.testerId, "recovery");
   res.json({
     testerId: row.testerId,
+    sessionToken,
     profile: {
       displayName: row.displayName,
       chronotype: row.chronotype,
