@@ -543,11 +543,27 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
  */
 const IN_PROGRESS_CEILING_MIN = 120;
 
-const sameLocalDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+/**
+ * Same day on the VIEWER's calendar, not the server's.
+ *
+ * This compared getFullYear/getMonth/getDate, which on Railway is UTC — so a
+ * Los Angeles user mid-task at 4:50 PM lost "keep going" at 5:00 PM sharp,
+ * because that is when the SERVER's date rolled. The guard's whole purpose is
+ * "yesterday evening's stamp must not claim flow this morning", and whose
+ * morning was never in question.
+ *
+ * Found by the deploy of 6ab47f4: Railway's build ran its own test suite a
+ * few minutes after 00:00 UTC, the flow test's twenty-minutes-ago stamp fell
+ * on the far side of the server's midnight, and the build refused — the same
+ * failure any evening US user was getting nightly in production, caught by
+ * CI entirely by accident of timing.
+ */
+const sameLocalDay = (a: Date, b: Date, tzOffsetMin: number) =>
+  Math.floor((a.getTime() - tzOffsetMin * 60000) / 86400000) ===
+  Math.floor((b.getTime() - tzOffsetMin * 60000) / 86400000);
 
 /** The held item currently underway, or null. Most recent start wins. */
-function inFlowItem(held: HeldItem[], at: Date): { item: HeldItem; minutes: number } | null {
+function inFlowItem(held: HeldItem[], at: Date, tzOffsetMin: number): { item: HeldItem; minutes: number } | null {
   let best: { item: HeldItem; minutes: number } | null = null;
   for (const item of held) {
     if (!item.startedAt) continue;
@@ -555,7 +571,7 @@ function inFlowItem(held: HeldItem[], at: Date): { item: HeldItem; minutes: numb
     if (Number.isNaN(began.getTime())) continue;
     const minutes = Math.floor((at.getTime() - began.getTime()) / 60000);
     if (minutes < 0 || minutes > IN_PROGRESS_CEILING_MIN) continue;
-    if (!sameLocalDay(began, at)) continue;
+    if (!sameLocalDay(began, at, tzOffsetMin)) continue;
     if (!best || minutes < best.minutes) best = { item, minutes };
   }
   return best;
@@ -601,7 +617,7 @@ export function loopCandidateUsable(
  */
 function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts): Loop {
   const now = opts.now ?? new Date();
-  const running = inFlowItem(held, now);
+  const running = inFlowItem(held, now, opts.tzOffsetMin);
 
   if (running) {
     return {

@@ -45,6 +45,30 @@ describe("the loop", () => {
     expect(r.loop.then).toBeNull();
   });
 
+  it("keeps flow across the SERVER's midnight — the boundary is the viewer's", () => {
+    // The defect that broke deploy 6ab47f4's build: sameLocalDay compared the
+    // server's calendar (UTC on Railway), so a Los Angeles user mid-task at
+    // 4:50 PM lost "keep going" at 5:00 PM sharp — UTC midnight — and the CI
+    // suite failed whenever Railway happened to build in the twenty minutes
+    // after 00:00 UTC. Anchored to that exact moment, both sides of it.
+    const utcMidnightPlus10 = new Date("2026-08-16T00:10:00Z");
+    const startedBefore = new Date("2026-08-15T23:50:00Z").toISOString();
+    const r = linesUp({ ...base, now: utcMidnightPlus10, held: [
+      task(1, "Mix track 3", { startedAt: startedBefore }),
+    ] });
+    // tzOffsetMin 300 → the viewer's clock reads 19:10, same local day.
+    expect(r.loop.now?.inFlow).toBe(true);
+
+    // And the guard still guards: across the VIEWER's midnight (05:10 UTC is
+    // 00:10 in Chicago), yesterday evening's stamp must not claim flow.
+    const viewerMidnightPlus10 = new Date("2026-08-16T05:10:00Z");
+    const lastNight = new Date("2026-08-16T04:50:00Z").toISOString();
+    const r2 = linesUp({ ...base, now: viewerMidnightPlus10, held: [
+      task(1, "Mix track 3", { startedAt: lastNight }),
+    ] });
+    expect(r2.loop.now?.inFlow ?? false).toBe(false);
+  });
+
   it("ignores a start stamp that is too old to still be true", () => {
     // Past the two-hour ceiling: a forgotten stamp must not claim the slot
     // all day. Erring short is deliberate.
