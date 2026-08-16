@@ -1694,6 +1694,98 @@ function AccountSection() {
   );
 }
 
+function DevicesSection({ testerId }: { testerId: string | null }) {
+  const qc = useQueryClient();
+  interface SessionRow { id: number; origin: string; createdAt: string; lastSeenAt: string | null; current: boolean }
+  const { data, isError } = useQuery<{ sessions: SessionRow[] }>({
+    queryKey: ["account-sessions", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/account/sessions", { headers: testerId ? { "x-tester-id": testerId } : {} });
+      if (!r.ok) throw new Error(`sessions ${r.status}`);
+      return r.json();
+    },
+    enabled: !!testerId,
+  });
+  const revoke = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`/api/account/sessions/${id}`, {
+        method: "DELETE",
+        headers: testerId ? { "x-tester-id": testerId } : {},
+      });
+      if (!r.ok) throw new Error(`revoke ${r.status}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["account-sessions"] }),
+  });
+
+  const sessions = data?.sessions ?? [];
+  const when = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+  const ORIGIN_LABEL: Record<string, string> = {
+    signup: "created with the account",
+    claim: "signed in automatically",
+    recovery: "restored with the account key",
+  };
+
+  return (
+    <SectionCard
+      title="Devices"
+      sub="Every browser signed into this account. Signing one out takes effect within a minute."
+    >
+      {isError ? (
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
+          Couldn't load the device list just now — that's a connection problem, not an empty list.
+        </div>
+      ) : sessions.length === 0 ? (
+        <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
+          No signed-in devices yet — they appear here once the account reaches the server.
+        </div>
+      ) : (
+        sessions.map((sRow) => (
+          <div key={sRow.id} style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+            borderTop: "1px solid var(--color-border)",
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: "var(--color-foreground)", fontWeight: sRow.current ? 600 : 400 }}>
+                {ORIGIN_LABEL[sRow.origin] ?? sRow.origin}
+                {sRow.current && (
+                  <span style={{
+                    marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: "0.5px",
+                    textTransform: "uppercase", color: "#3f7a4a",
+                    border: "1px solid #3f7a4a55", borderRadius: 999, padding: "1px 8px",
+                  }}>this device</span>
+                )}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>
+                signed in {when(sRow.createdAt)}
+                {sRow.lastSeenAt ? ` · last active ${when(sRow.lastSeenAt)}` : ""}
+              </div>
+            </div>
+            {/* The current device can't revoke itself: it holds the account
+                key, so the next request would silently sign it right back in.
+                Signing out OTHER devices is the real capability. */}
+            {!sRow.current && (
+              <button
+                onClick={() => revoke.mutate(sRow.id)}
+                disabled={revoke.isPending}
+                style={{
+                  fontSize: 11, padding: "5px 12px", borderRadius: 7, cursor: "pointer",
+                  border: "1px solid var(--color-border)", background: "var(--color-card)",
+                  color: "#c05030", flexShrink: 0,
+                }}>Sign out</button>
+            )}
+          </div>
+        ))
+      )}
+      {revoke.isError && (
+        <div style={{ fontSize: 10.5, color: "#a03030", marginTop: 6 }}>
+          Couldn't sign that device out — try again.
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 export default function Settings({ testerId }: { testerId: string | null }) {
   const qc = useQueryClient();
   const { profile, resetProfile, updateLocation, lat, lon } = useTester();
@@ -1777,6 +1869,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
 
         {/* Account — recovery key */}
         <AccountSection />
+        <DevicesSection testerId={testerId} />
 
         {/* Theme + text size */}
         <ThemeSection />

@@ -108,6 +108,16 @@ describe.skipIf(!TEST_DB)("account sessions (integration)", () => {
     expect(rows.rows[0].token_hash).not.toContain(token.slice(5, 20));
   });
 
+  it("a revoked session stops verifying once the cache clears", async () => {
+    const { token } = await A.claimAccount(TESTER);
+    A.clearSessionCache();
+    expect((await A.verifySession(TESTER, token)).state).toBe("valid");
+    // Revoke the way the route does: delete the row, clear the cache.
+    await sql(`DELETE FROM account_sessions WHERE tester_id = $1`, [TESTER]);
+    A.clearSessionCache();
+    expect((await A.verifySession(TESTER, token)).state).toBe("invalid");
+  });
+
   it("sessions are inside the deletion sweep's discovery", async () => {
     // The sweep finds every table with a tester_id column, so this asserts the
     // new table is discoverable rather than trusting a list someone updates.

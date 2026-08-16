@@ -15,7 +15,8 @@ import { randomBytes } from "node:crypto";
 import { db, testerProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { mintFeedToken, hashFeedToken } from "../lib/feedToken.js";
-import { claimAccount, mintSessionFor } from "../lib/accountAuth.js";
+import { claimAccount, mintSessionFor, hashSessionToken, clearSessionCache } from "../lib/accountAuth.js";
+import { accountSessions } from "@workspace/db";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { deleteAccount } from "../lib/accountDeletion.js";
 
@@ -140,6 +141,61 @@ router.post("/account/recover", async (req, res) => {
       recoveryCode: row.recoveryCode,
     },
   });
+});
+
+// ── Sessions — the devices signed into this account ─────────────────────────
+// Behind the session gate like everything else, so only a device holding a
+// valid token can see or revoke the others. The token itself never appears
+// here; rows are identified by id, described by origin and timestamps.
+
+/** List, with THIS device marked — matched by the presented token's hash. */
+router.get("/account/sessions", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const presented = (() => {
+    const t = req.headers["x-session-token"];
+    const v = (Array.isArray(t) ? t[0] : t)?.trim();
+    return v ? hashSessionToken(v) : null;
+  })();
+  const rows = await db.select().from(accountSessions)
+    .where(eq(accountSessions.testerId, testerId));
+  res.json({
+    sessions: rows
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((r) => ({
+        id: r.id,
+        origin: r.origin,
+        createdAt: r.createdAt,
+        lastSeenAt: r.lastSeenAt,
+        current: presented != null && r.tokenHash === presented,
+      })),
+  });
+});
+
+/**
+ * Revoke one session. The CURRENT one is refused: this device holds the
+ * recovery code, so a self-revoke would be theater — the next 401 self-heals
+ * a fresh session automatically. Signing out other devices is the real
+ * capability, and it takes effect within the verdict cache's sixty seconds.
+ */
+router.delete("/account/sessions/:id", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const id = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad_id" }); return; }
+  const presented = (() => {
+    const t = req.headers["x-session-token"];
+    const v = (Array.isArray(t) ? t[0] : t)?.trim();
+    return v ? hashSessionToken(v) : null;
+  })();
+  const row = (await db.select().from(accountSessions)
+    .where(eq(accountSessions.id, id)).limit(1))[0];
+  if (!row || row.testerId !== testerId) { res.status(404).json({ error: "not_found" }); return; }
+  if (presented != null && row.tokenHash === presented) {
+    res.status(400).json({ error: "cannot_revoke_current" });
+    return;
+  }
+  await db.delete(accountSessions).where(eq(accountSessions.id, id));
+  clearSessionCache();
+  res.json({ ok: true });
 });
 
 // ── Calendar-feed token ──────────────────────────────────────────────────────
