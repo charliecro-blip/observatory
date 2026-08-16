@@ -40,6 +40,9 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   const [note, setNote] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedRef = useRef<Date | null>(null);
+  /** The wall-clock instant the session ends. The one source of truth while
+   *  active — `remaining` is always derived from it, never counted down. */
+  const endsAtRef = useRef<number | null>(null);
 
   // Compute seconds until end of current planetary hour
   const hourEnd = planetaryHour?.ends ? parseHHMM(planetaryHour.ends) : null;
@@ -51,52 +54,96 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
     return duration;
   }
 
+  /**
+   * TIME, NOT TICKS (owner, 2026-08-15: "it stops counting if I switch tabs?
+   * I started this when there were 24 minutes left" — and came back to 23:54).
+   *
+   * The countdown was `setInterval(r => r - 1, 1000)`: it subtracted one
+   * second per TICK, and browsers throttle or suspend intervals in hidden
+   * tabs, so every backgrounded minute was a minute the timer never counted.
+   * A 25-minute session left in another tab would happily run for an hour.
+   *
+   * The end is a wall-clock instant now, and `remaining` is derived from it
+   * on every tick — the interval is only a refresh cadence, so it no longer
+   * matters how often (or whether) a throttled tab fires it. A focus and a
+   * visibilitychange listener resnap the display the moment the tab returns,
+   * rather than waiting up to a minute for the throttled interval's next
+   * fire. Pause stores the remainder; resume re-anchors the end from it.
+   */
+  function syncFromClock() {
+    const endsAt = endsAtRef.current;
+    if (endsAt == null) return;
+    const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+    setRemaining(left);
+    if (left <= 0) {
+      clearInterval(intervalRef.current!);
+      endsAtRef.current = null;
+      setPhase("done");
+      // Browser notification if permission granted. In a hidden tab the
+      // throttled interval still fires about once a minute, so this lands
+      // within a minute of the true end even when backgrounded.
+      if (Notification.permission === "granted") {
+        new Notification("Session complete", {
+          body: note ? `"${note}" — time's up.` : "Your Compass session is complete.",
+          icon: "/favicon.svg",
+        });
+      }
+    }
+  }
+
+  function beginTicking() {
+    clearInterval(intervalRef.current!);
+    intervalRef.current = setInterval(syncFromClock, 1000);
+  }
+
   function start() {
     const dur = resolvedDuration();
     setRemaining(dur);
     setPhase("active");
     startedRef.current = new Date();
-    intervalRef.current = setInterval(() => {
-      setRemaining(r => {
-        if (r <= 1) {
-          clearInterval(intervalRef.current!);
-          setPhase("done");
-          // Browser notification if permission granted
-          if (Notification.permission === "granted") {
-            new Notification("Session complete", {
-              body: note ? `"${note}" — time's up.` : "Your Compass session is complete.",
-              icon: "/favicon.svg",
-            });
-          }
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
+    endsAtRef.current = Date.now() + dur * 1000;
+    beginTicking();
   }
 
   function pause() {
+    // Capture the true remainder from the clock, then let the anchor go —
+    // paused time must not elapse.
+    const endsAt = endsAtRef.current;
+    const left = endsAt != null ? Math.max(0, Math.round((endsAt - Date.now()) / 1000)) : 0;
     clearInterval(intervalRef.current!);
+    endsAtRef.current = null;
+    setRemaining(left);
     setPhase("paused");
   }
 
   function resume() {
     setPhase("active");
-    intervalRef.current = setInterval(() => {
-      setRemaining(r => {
-        if (r <= 1) { clearInterval(intervalRef.current!); setPhase("done"); return 0; }
-        return r - 1;
-      });
-    }, 1000);
+    endsAtRef.current = Date.now() + remaining * 1000;
+    beginTicking();
   }
 
   function stop() {
     clearInterval(intervalRef.current!);
+    endsAtRef.current = null;
     setPhase("idle");
     setRemaining(resolvedDuration());
   }
 
   useEffect(() => () => clearInterval(intervalRef.current!), []);
+
+  // The instant-resnap on returning to the tab. Without it the display shows
+  // the last pre-background value until the throttled interval next fires.
+  useEffect(() => {
+    if (phase !== "active") return;
+    const snap = () => syncFromClock();
+    window.addEventListener("focus", snap);
+    document.addEventListener("visibilitychange", snap);
+    return () => {
+      window.removeEventListener("focus", snap);
+      document.removeEventListener("visibilitychange", snap);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // Progress ring params
   const totalSecs = useUntilHourEnd ? secsUntilHourEnd || duration : duration;
