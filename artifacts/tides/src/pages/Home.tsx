@@ -48,6 +48,8 @@ import CroppingUp from "@/components/CroppingUp";
 import RhythmProgress from "@/components/RhythmProgress";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
+import { touchLine, type TouchTrail } from "@/lib/touches";
+import { parseWhen } from "@/lib/parseWhen";
 import { useTester } from "@/contexts/tester-context";
 import { CommittedWeekStrip, useCommittedWeek } from "@/components/WeekCommitted";
 import { ReviewCard } from "@/components/Momentum";
@@ -55,7 +57,7 @@ import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonChec
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
 import CompassNow from "@/components/CompassNow";
-import { useUiDensity } from "@/contexts/preferences-context";
+import { useUiDensity, useAstroDetail } from "@/contexts/preferences-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { AskElectionContext } from "@/App";
 
@@ -67,6 +69,7 @@ interface Task {
   planet?: string | null;
   bestWindowType?: string | null;
   startedAt?: string | null;
+  sortOrder?: number;
 }
 
 // `overflow: hidden` used to be here, to keep the group rows' full-bleed
@@ -96,7 +99,7 @@ interface LinesUp {
   quiet: "supported-only" | "nothing-singled-out" | "all-placed" | "thin-inventory" | null;
   /** One act and the one after it — the engine's own composition. */
   loop?: {
-    now: { title: string; heldId: string; why: string; until: string | null; inFlow: boolean; elapsedMin?: number } | null;
+    now: { title: string; heldId: string; why: string; whyPlain?: string; until: string | null; inFlow: boolean; elapsedMin?: number } | null;
     then: { title: string; heldId: string; startClock: string } | null;
   };
   nextOpening: { activityLabel: string; date: string; startClock: string } | null;
@@ -347,6 +350,13 @@ export default function Home({
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
   const { essential } = useUiDensity();
+  // The astro-quiet lens (stored "minimal", or a running session forcing it).
+  // What it hides here: the VOC strip, the What-lines-up receipt, the water
+  // reveal, CroppingUp, and per-row timing lines. What survives: the loop
+  // (with its plain why), the list, the week, the stars, the rhythm — the
+  // productivity core the lens exists to leave standing.
+  const { level: astroLevel } = useAstroDetail();
+  const skyQuiet = astroLevel === "minimal";
   const isMobile = useIsMobile();
   // Read once and reused in both the key and the fetch. Every value the
   // response depends on belongs in the cache identity — this one didn't:
@@ -361,6 +371,12 @@ export default function Home({
   // for the specific day in question (a DST-transition day, most of all)
   // rather than trusting a snapshot offset for the whole session.
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // The touch trails: which tasks were worked on, and when (wins.taskId).
+  const { data: touchData } = useQuery<{ touches: Record<string, TouchTrail> }>({
+    queryKey: ["touches", testerId],
+    queryFn: () => fetchJson(`/api/planning/touches?tz=${new Date().getTimezoneOffset()}`, { headers }),
+    enabled: !!testerId,
+  });
   const linesQ = useQuery<LinesUp>({
     queryKey: ["lines-up", testerId, lat, lon, tz, zone, locationKnown],
     queryFn: () => fetchJson<LinesUp>(
@@ -453,9 +469,12 @@ export default function Home({
   });
 
   const { data: shaped, isFetching: shaping } = useQuery<ShapedDay>({
-    queryKey: ["shape-day", testerId, lat, lon, tz, zone, locationKnown],
+    // `skyQuiet` is in the key because it is in the URL: the plain weave and
+    // the elected weave are different answers, and flipping the lens must not
+    // serve one as the other from cache.
+    queryKey: ["shape-day", testerId, lat, lon, tz, zone, locationKnown, skyQuiet],
     queryFn: () => fetchJson<ShapedDay>(
-      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`, { headers }),
+      `/api/elections/shape-day?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}${skyQuiet ? "&sky=false" : ""}`, { headers }),
     enabled: !!testerId && shapeOpen,
   });
 
@@ -521,13 +540,37 @@ export default function Home({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const [newTitle, setNewTitle] = useState("");
-  const addTask = useMutation({
-    mutationFn: (title: string) =>
-      fetchJson("/api/tasks", {
+  // The log-it door (home-base ask 3): work nobody planned gets recorded the
+  // hour it happens, as a WIN — never as a pre-checked task. A task that never
+  // needed doing is inventory noise; a win is a record.
+  const [logOpen, setLogOpen] = useState(false);
+  const [logText, setLogText] = useState("");
+  const logWin = useMutation({
+    mutationFn: (text: string) =>
+      fetchJson("/api/planning/wins", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(headers ?? {}) },
-        body: JSON.stringify({ title, dueDate: today }),
+        body: JSON.stringify({ text, tz: new Date().getTimezoneOffset() }),
       }),
+    onSuccess: () => { setLogText(""); setLogOpen(false); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+  });
+  const addTask = useMutation({
+    // The one-line add reads dates the way the capture sheet does (F12):
+    // "call mom friday" lands on Friday. Any parse trouble falls back to the
+    // raw title due today — a date guess must never block the add.
+    mutationFn: (raw: string) => {
+      let title = raw, dueDate = today;
+      try {
+        const p = parseWhen(raw, today);
+        if (p.title.trim()) title = p.title;
+        if (p.dueDate) dueDate = p.dueDate;
+      } catch { /* raw title, due today */ }
+      return fetchJson("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify({ title, dueDate }),
+      });
+    },
     onSuccess: () => { setNewTitle(""); qc.invalidateQueries({ queryKey: ["tasks"] }); },
   });
   const toggleTask = useMutation({
@@ -539,6 +582,33 @@ export default function Home({
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
   });
+
+  // Reorder within a group (F11) — move buttons, not drag, for a first pass
+  // that works on a phone. sortOrder has been in the schema all along; this
+  // is the first UI that writes it.
+  const reorder = useMutation({
+    mutationFn: (updates: { id: number; sortOrder: number }[]) =>
+      Promise.all(updates.map(u => fetchJson(`/api/tasks/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify({ sortOrder: u.sortOrder }),
+      }))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+  const moveWithin = (group: Task[], id: number, dir: -1 | 1) => {
+    const idx = group.findIndex(t => t.id === id);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= group.length) return;
+    const desired = [...group];
+    [desired[idx], desired[j]] = [desired[j], desired[idx]];
+    // Renumber the group in tens. Swapping two equal sortOrders (the default
+    // 0) is a no-op, so the first move settles the whole group's numbers and
+    // later moves are two-row writes.
+    const updates = desired
+      .map((t, i) => ({ id: t.id, sortOrder: i * 10 }))
+      .filter(u => (desired.find(t => t.id === u.id)!.sortOrder ?? 0) !== u.sortOrder);
+    if (updates.length) reorder.mutate(updates);
+  };
 
   const all = tasks ?? [];
   const open = all.filter((t) => t.done !== "true");
@@ -592,7 +662,7 @@ export default function Home({
   const heldBack = new Map((lines?.heldBack ?? []).map(h => [Number(h.item.id.replace("task-", "")), h.reason]));
   const needsActivity = new Set((resolution?.needsActivity ?? []).map(n => Number(n.id.replace("task-", ""))));
 
-  const Row = ({ t, muted }: { t: Task; muted?: boolean }) => {
+  const Row = ({ t, muted, move }: { t: Task; muted?: boolean; move?: { up?: () => void; down?: () => void } }) => {
     const timing = timingFor.get(t.id);
     const isHero = lead ? Number(lead.held.id.replace("task-", "")) === t.id : false;
     const focused = focusedTask === t.id;
@@ -623,6 +693,20 @@ export default function Home({
             color: muted ? "var(--text-3)" : "var(--color-foreground)",
             textDecoration: t.done === "true" ? "line-through" : "none",
           }}>{t.title}</span>
+          {/* Reorder (F11): quiet arrows, tap-sized enough for a phone. */}
+          {move && t.done !== "true" && (
+            <span style={{ display: "flex", gap: 0, flexShrink: 0 }}>
+              {([["↑", move.up, "up"], ["↓", move.down, "down"]] as const).map(([glyph, fn, dir]) => (
+                <button key={dir} onClick={fn} disabled={!fn}
+                  aria-label={`Move ${t.title} ${dir}`}
+                  style={{
+                    fontSize: 10, padding: "0 4px", background: "none", border: "none",
+                    cursor: fn ? "pointer" : "default", color: "var(--text-3)",
+                    opacity: fn ? 0.7 : 0.2, lineHeight: 1.4,
+                  }}>{glyph}</button>
+              ))}
+            </span>
+          )}
         </div>
         {/* The task's TIMING STATE, on the task. This is what finally joins the
             inventory to the engine — previously a task row knew nothing about
@@ -630,9 +714,14 @@ export default function Home({
         {/* Scheduled tasks say nothing per-row: they live under a group whose
             label carries the fact once (HOME study D4 — ten rows each saying
             "already scheduled" was the list narrating its own furniture). */}
-        {t.done !== "true" && !scheduled.has(t.id) && (timing || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed) && (
+        {/* At the quiet lens the timing/held-back/outage lines fold away with
+            the rest of the sky; the two needs-input lines stay, because a
+            duration and a kind of work feed the plain weave too. */}
+        {t.done !== "true" && !scheduled.has(t.id) && (skyQuiet
+          ? (needsDuration.has(t.id) || needsActivity.has(t.id))
+          : (timing || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed)) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
-            {linesFailed ? (
+            {!skyQuiet && linesFailed ? (
               /* WITHHELD, not blank. "No particular timing today" says Compass
                  looked and found nothing; this says it never looked. Rendering
                  an outage as the former is the false statement the whole state
@@ -641,7 +730,7 @@ export default function Home({
               <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>
                 not judged — no reading for today
               </span>
-            ) : timing ? (
+            ) : !skyQuiet && timing ? (
               /* The verdict is the OTHER end of the cross-highlight: clicking it
                  opens the hero's evidence and marks this row, so the two stop
                  being separate statements of one fact. */
@@ -662,7 +751,7 @@ export default function Home({
                     : `${timing.startClock}–${timing.endClock}`}
                 </span>
               </button>
-            ) : heldBack.has(t.id) ? (
+            ) : !skyQuiet && heldBack.has(t.id) ? (
               /* A refusal that carries its reason. Amber rather than faint,
                  because this is a judgment Compass made and stands behind —
                  "no window today" is an answer, not an absence of one. */
@@ -674,6 +763,15 @@ export default function Home({
             )}
           </div>
         )}
+        {/* The touch trail — partial progress as dated record, muted, after
+            the title. Never a percentage, and never a done-mark: a task with
+            touches and done:"false" renders exactly as open as any other. */}
+        {t.done !== "true" && (() => {
+          const line = touchLine(touchData?.touches?.[String(t.id)]);
+          return line ? (
+            <div style={{ fontSize: 10, marginLeft: 24, marginTop: 1, color: "var(--text-3)" }}>{line}</div>
+          ) : null;
+        })()}
         {/* THE WORDS, not just the colour. A green edge means nothing to
             someone who has not learned what green means here, and the link is
             the page's least obvious affordance. Saying where the thing went and
@@ -721,7 +819,16 @@ export default function Home({
             padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
           }}>{label} · {items.length}</div>
         )}
-        {shown.map((t) => <Row key={t.id} t={t} muted={muted} />)}
+        {shown.map((t) => {
+          const i = items.indexOf(t);
+          return <Row key={t.id} t={t} muted={muted}
+            // Muted groups (scheduled) keep their served order — their time
+            // is set elsewhere and arrows there would reorder nothing real.
+            move={muted ? undefined : {
+              up: i > 0 ? () => moveWithin(items, t.id, -1) : undefined,
+              down: i < items.length - 1 ? () => moveWithin(items, t.id, 1) : undefined,
+            }} />;
+        })}
         {(hidden > 0 || open) && (
           <button
             onClick={() => setExpandedGroups((prev) => {
@@ -758,6 +865,13 @@ export default function Home({
    */
   const leadIsLoopNow = !!lead && lines?.loop?.now?.heldId === lead.held.id;
   const secondary = (lines?.results ?? []).slice(1);
+  // At the quiet lens the answer card renders only when what it has to say is
+  // a productivity fact — an outage, a load in flight, a cold start, a fully
+  // placed day. The receipt (badges, testimony, windows) and the sky's
+  // quiet-day sentence stand down; CompassNow above already holds the answer.
+  const showAnswerCard = !skyQuiet
+    || linesFailed || !lines
+    || lines.quiet === "all-placed" || lines.quiet === "thin-inventory";
 
   return (
     // `flex: 1` + `overflowY: auto` make Home its own scroll region, the same
@@ -799,8 +913,10 @@ export default function Home({
         }, seed) : undefined}
       />
 
-      {/* ── RIGHT NOW · conditional. Only when a real condition is gating. */}
-      {now?.voc?.isVOC && now.voc.reading && (
+      {/* ── RIGHT NOW · conditional. Only when a real condition is gating.
+          Stands down at the quiet lens: a void Moon is exactly the kind of
+          standing sky condition the lens exists to fold away. */}
+      {!skyQuiet && now?.voc?.isVOC && now.voc.reading && (
         <div style={{
           ...PANEL,
           borderLeft: `3px solid ${now.voc.reading.benign ? PERSONAL : QUALIFIED}`,
@@ -856,7 +972,10 @@ export default function Home({
         lat={lat}
         lon={lon}
       />
-      <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen(now?.moonCycle?.cycleStart)} />
+      {/* The rare-day banner leads with aspect lines — sky vocabulary the
+          quiet lens exists to fold away, however rare the day. The turning-
+          point check-in above stays: its language is the app's own. */}
+      {!skyQuiet && <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen(now?.moonCycle?.cycleStart)} />}
       {/* THE SUNDAY REVIEW, third in the rarity order (HOME study W1). It
           lived on Today, where Home-landers never met it. Monthly outranks
           roughly-fortnightly outranks weekly, so it stands down whenever
@@ -914,7 +1033,7 @@ export default function Home({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) addTask.mutate(newTitle.trim()); }}
-              placeholder="Add a task. One line is enough."
+              placeholder="Add a task. Say when, and it's read as a due date."
               style={{
                 width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
                 border: "1px solid var(--color-border)", background: "var(--color-card-2)",
@@ -922,6 +1041,32 @@ export default function Home({
               }}
             />
             {addTask.isError && <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>}
+            {/* The other direction: record something already done. */}
+            {!logOpen ? (
+              <button onClick={() => setLogOpen(true)} style={{
+                fontSize: 10.5, background: "none", border: "none", padding: "4px 0 0", cursor: "pointer",
+                color: "var(--text-3)",
+              }}>Log something done →</button>
+            ) : (
+              <div style={{ marginTop: 6 }}>
+                <input
+                  autoFocus
+                  value={logText}
+                  onChange={(e) => setLogText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && logText.trim()) logWin.mutate(logText.trim());
+                    if (e.key === "Escape") { setLogOpen(false); setLogText(""); }
+                  }}
+                  placeholder="What did you do? It goes in today's log."
+                  style={{
+                    width: "100%", padding: "7px 11px", borderRadius: 8, fontSize: 12, outline: "none",
+                    border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                    color: "var(--color-foreground)",
+                  }}
+                />
+                {logWin.isError && <div style={{ fontSize: 10, color: "#a03030", marginTop: 4 }}>Didn't save — try again.</div>}
+              </div>
+            )}
           </div>
 
           {/* Resolution chips live here now, with the work they act on. */}
@@ -1130,10 +1275,10 @@ export default function Home({
           `auto-fit` rather than two fixed columns, because `CroppingUp`
           renders nothing on a genuinely quiet stretch and a fixed grid
           would leave a hole where a card declined to speak. */}
-      <CroppingUp onNavigate={onNavigate} />
+      {!skyQuiet && <CroppingUp onNavigate={onNavigate} />}
 
       {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
-      {!waterOpen ? (
+      {!skyQuiet && (!waterOpen ? (
         <button onClick={() => setWaterOpen(true)} style={{
           fontSize: 11, background: "none", border: "none", cursor: "pointer",
           color: "var(--text-3)", padding: "2px 0", textAlign: "left", flexShrink: 0,
@@ -1152,7 +1297,7 @@ export default function Home({
             color: "var(--text-3)", padding: "4px 0 0", textAlign: "left",
           }}>Hide the water ahead</button>
         </div>
-      )}
+      ))}
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The
@@ -1162,7 +1307,7 @@ export default function Home({
           the same 2px green rule, so the two cards read as one object seen
           twice rather than as two statements of the same fact. The edge is
           always drawn so that setting the link never shifts layout. */}
-      <div style={{
+      {showAnswerCard && <div style={{
         ...ANSWER, overflow: "hidden",
         borderLeft: `3px solid ${focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? CONVERGENT : "var(--color-border)"}`,
         transition: "border-color 140ms ease",
@@ -1468,7 +1613,7 @@ export default function Home({
              Gating on the presence of DATA rather than on the absence of a
              loading flag is what makes that unrepresentable, because every way
              of not having an answer now lands here. */
-          <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>Reading the sky…</div>
+          <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>{skyQuiet ? "Finding what's next…" : "Reading the sky…"}</div>
         ) : (
           /* The quiet day CONTRACTS rather than disappearing. */
           lines.quiet === "all-placed" ? (
@@ -1614,15 +1759,15 @@ export default function Home({
           </div>
         ))}
 
-        <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
+        {!skyQuiet && <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
           <details>
             <summary style={{ padding: "6px 14px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
               Find a time for something else
             </summary>
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
           </details>
-        </div>
-      </div>
+        </div>}
+      </div>}
     </div>
   );
 }

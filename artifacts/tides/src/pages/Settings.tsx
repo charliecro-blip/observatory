@@ -618,7 +618,7 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
-      <Row label="How much astrology" sub="Same engine underneath — this only changes what's shown. Minimal: plain guidance, no jargon. Medium: the moon and the day. Full: glyphs, aspects, transits.">
+      <Row label="How much astrology" sub="Same engine underneath — this only changes what's shown. Minimal quiets the sky across the whole app: plain reasons on the compass, a bare calendar, the instrument rail folded away. Medium keeps the moon and the day's character. Full shows everything in the sky's own words. Starting a session quiets the sky on its own, for as long as it runs.">
         <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
           {(["minimal", "medium", "full"] as const).map(lvl => (
             <button key={lvl} onClick={() => updateDisplay({ astroDetail: lvl })} style={{

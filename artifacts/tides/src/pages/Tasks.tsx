@@ -10,6 +10,7 @@ import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { touchLine, type TouchTrail } from "@/lib/touches";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
@@ -124,6 +125,16 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   const goalsById = Object.fromEntries(goalsList.map(g => [g.id, g]));
   const projectsById = Object.fromEntries(projectsList.map(p => [p.id, p]));
+
+  // Touch trails — the dated "worked on" record per task (wins.taskId).
+  const { data: touchData } = useQuery<{ touches: Record<string, TouchTrail> }>({
+    queryKey: ["touches", testerId],
+    queryFn: async () => {
+      const r = await fetch(`/api/planning/touches?tz=${new Date().getTimezoneOffset()}`, { headers: authH(testerId) });
+      return r.json();
+    },
+    enabled: !!testerId,
+  });
 
   // Always fetch ALL tasks — this is one page grouped by timeframe, so nothing
   // ever lives on a hidden "All" tab. A task with no due date (e.g. one spun
@@ -374,6 +385,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 goal={t.goalId ? goalsById[t.goalId] : undefined}
                 project={t.projectId ? projectsById[t.projectId] : undefined}
                 today={today}
+                touch={touchData?.touches?.[String(t.id)]}
                 onToggle={() => completeTask(t.id, t.title, t.done==="true")}
                 onDelete={() => remove.mutate(t.id)}
                 onSchedule={() => setSuggestFor({ title: t.title, goalId: t.goalId, projectId: t.projectId })}
@@ -418,8 +430,8 @@ function Sect({ label, children, accent, color, muted }: any) {
   );
 }
 
-function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highlight, dim }: {
-  task:Task; goal?:GoalLite; project?:ProjectLite; today:string;
+function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule, highlight, dim }: {
+  task:Task; goal?:GoalLite; project?:ProjectLite; today:string; touch?:TouchTrail;
   onToggle:()=>void; onDelete:()=>void; onSchedule?:()=>void; highlight?:boolean; dim?:boolean;
 }) {
   const isDone = task.done === "true";
@@ -431,6 +443,15 @@ function Row({ task, goal, project, today, onToggle, onDelete, onSchedule, highl
         {isDone?"✓":""}
       </button>
       <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"var(--text-3)":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
+      {/* The touch trail — partial progress as dated record, never a gauge.
+          A touched task's checkbox is exactly as open as any other: touches
+          say "worked on", and only `done` says done. */}
+      {!isDone && touchLine(touch) && (
+        <div title={touch!.minutes > 0 ? `${touch!.minutes} minutes logged` : undefined}
+          style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}}>
+          {touchLine(touch)}
+        </div>
+      )}
       {/* Auto-rollover moved this here; say where it came from rather than
           letting the date silently read as if it were always due today. */}
       {!isDone && carriedLabel(task, today) && (

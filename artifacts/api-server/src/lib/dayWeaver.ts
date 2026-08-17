@@ -62,6 +62,10 @@ export interface WeaveItem {
   startedAt?: string | null;
   /** An activity already assigned; used rather than re-derived. */
   activityKey?: string | null;
+  /** low | medium | high — what the person said it takes. Read by the plain
+   *  weave to hand high-energy work the early stretches; the sky path keeps
+   *  using elections for this. */
+  energy?: string | null;
 }
 
 export interface Placement {
@@ -115,6 +119,14 @@ export interface WeaveOpts {
    * ergonomic one.
    */
   maxLoadFraction?: number;
+  /**
+   * The astro-quiet lens's seam (home-base build 2026-08-16). Default true —
+   * the sky chooses among viable placements, as ever. False skips the
+   * election consult entirely: placement runs on deadline pressure, stated
+   * energy, busy blocks and first-fit alone. ONE weaver, two modes — a
+   * second weaver would drift, which is the WeekStrip/AlreadyWoven bug shape.
+   */
+  consultSky?: boolean;
 }
 
 const MIN_USEFUL_GAP = 20;
@@ -161,7 +173,7 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   const {
     items, date, lat, lon, wakeHour = 7, sleepHour = 23,
     commitments = [], locationKnown = true, maxLoadFraction = 0.6,
-    tzOffsetMin = 0, timeZone,
+    tzOffsetMin = 0, timeZone, consultSky = true,
   } = opts;
 
   // In the USER'S zone, not the server's. Built from local getters, this was
@@ -198,7 +210,20 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   const warnings: string[] = [];
   let committed = 0;
 
-  const ordered = [...items].sort((a, b) => priorityOf(a, today) - priorityOf(b, today));
+  // Practical priority first, always. The plain weave adds two tie-breakers
+  // inside a priority class — nearest deadline, then stated energy (high
+  // first, so demanding work claims the early stretches first-fit hands out
+  // in clock order from the person's own wake hour). The sky path keeps its
+  // original stable order: elections already choose the hour there, and
+  // reordering its input would change shipped behaviour for no gain.
+  const ENERGY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const ordered = [...items].sort((a, b) => {
+    const p = priorityOf(a, today) - priorityOf(b, today);
+    if (p !== 0 || consultSky) return p;
+    const dueA = a.dueDate ?? "9999-12-31", dueB = b.dueDate ?? "9999-12-31";
+    if (dueA !== dueB) return dueA < dueB ? -1 : 1;
+    return (ENERGY_RANK[a.energy ?? ""] ?? 1) - (ENERGY_RANK[b.energy ?? ""] ?? 1);
+  });
 
   for (const item of ordered) {
     const activityKey = resolveActivity(item);
@@ -222,11 +247,13 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
 
     // Astrology first, but only to CHOOSE among slots that already fit. When it
     // has no opinion, or its answer is already taken, first-fit still places
-    // the item — a practical placement beats no placement.
+    // the item — a practical placement beats no placement. At the quiet lens
+    // (`consultSky: false`) this block is skipped whole: the ONLY sky consult
+    // in the weaver, which is what makes one weaver serve both lenses.
     let slot: { startAt: Date; endAt: Date } | null = null;
     let basis: Placement["basis"] = "first-fit";
 
-    if (activityKey) {
+    if (activityKey && consultSky) {
       const sessions = findLongSessions({
         activityKey, minutes, date, lat, lon, wakeHour, sleepHour, commitments, locationKnown,
       });

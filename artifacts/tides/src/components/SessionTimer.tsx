@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { planetColor } from "@/lib/planetColors";
+import { usePreferences } from "@/contexts/preferences-context";
+import { useTester } from "@/contexts/tester-context";
+import LogDone from "@/components/LogDone";
 
 
 
@@ -32,6 +35,17 @@ function fmt(s: number): string {
 export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  // Starting a session is the one-tap door into the astro-quiet lens: the
+  // whole app drops to "minimal" while the timer runs and returns when it
+  // stops. The stored preference is never touched — this is flow mode as a
+  // temporary state, not a setting.
+  const { setSessionQuiet } = usePreferences();
+  const { profile } = useTester();
+  const testerId = profile?.testerId ?? null;
+  // Whether the done state is offering to log the stretch. Offered, never
+  // demanded — "New session" declines it, and a declined offer leaves no
+  // record (home-base §3).
+  const [logging, setLogging] = useState(false);
   const [duration, setDuration] = useState(25 * 60);
   const [remaining, setRemaining] = useState(25 * 60);
   const [customMin, setCustomMin] = useState("25");
@@ -79,6 +93,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
       clearInterval(intervalRef.current!);
       endsAtRef.current = null;
       setPhase("done");
+      setSessionQuiet(false);   // the session is over; the sky comes back
       // Browser notification if permission granted. In a hidden tab the
       // throttled interval still fires about once a minute, so this lands
       // within a minute of the true end even when backgrounded.
@@ -100,6 +115,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
     const dur = resolvedDuration();
     setRemaining(dur);
     setPhase("active");
+    setSessionQuiet(true);
     startedRef.current = new Date();
     endsAtRef.current = Date.now() + dur * 1000;
     beginTicking();
@@ -126,10 +142,13 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
     clearInterval(intervalRef.current!);
     endsAtRef.current = null;
     setPhase("idle");
+    setSessionQuiet(false);
     setRemaining(resolvedDuration());
   }
 
-  useEffect(() => () => clearInterval(intervalRef.current!), []);
+  // Release the lens on unmount too — a quiet override with no timer behind
+  // it would be a mode the person can't see or end.
+  useEffect(() => () => { clearInterval(intervalRef.current!); setSessionQuiet(false); }, []);
 
   // The instant-resnap on returning to the tab. Without it the display shows
   // the last pre-background value until the throttled interval next fires.
@@ -277,16 +296,37 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
             </>
           )}
 
-          {phase === "done" && (
+          {phase === "done" && !logging && (
             <div style={{ textAlign: "center", padding: "8px 0" }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 4 }}>Session complete</div>
               {note && <div style={{ fontSize: 11, color: "var(--color-muted)", fontStyle: "italic", marginBottom: 10 }}>"{note}"</div>}
-              <button onClick={() => { setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
-                style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>
-                New session
-              </button>
+              {/* The maker-schedule loop's last step: session ends → the
+                  stretch is recorded on the thing it was for. An offer only. */}
+              <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                <button onClick={() => setLogging(true)}
+                  style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>
+                  Log what this was for
+                </button>
+                <button onClick={() => { setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
+                  style={{ padding: "7px 12px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                  New session
+                </button>
+              </div>
             </div>
+          )}
+
+          {phase === "done" && logging && (
+            <LogDone
+              testerId={testerId}
+              defaultTitle={note}
+              // resolvedDuration, not totalSecs: totalSecs ignores a custom
+              // duration (it exists for the ring), so a 1-minute custom
+              // session was offering to log 25 minutes it never ran.
+              defaultMinutes={Math.max(1, Math.round(resolvedDuration() / 60))}
+              onLogged={() => { setLogging(false); setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
+              onSkip={() => setLogging(false)}
+            />
           )}
         </div>
       )}

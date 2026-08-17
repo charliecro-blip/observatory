@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { linesUp, type HeldItem } from "../artifacts/api-server/src/lib/linesUp";
+import { linesUp, duePhrase, freePhrase, type HeldItem } from "../artifacts/api-server/src/lib/linesUp";
 
 /**
  * THE LOOP, and the one-authority claim underneath it.
@@ -99,11 +99,63 @@ describe("the loop", () => {
     }
   });
 
+  it("always carries a plain why beside the astro one", () => {
+    // The astro-quiet lens picks whyPlain; a payload without it would silently
+    // fall back to sky vocabulary at exactly the lens meant to hide it.
+    const r = linesUp({ ...base, held: [task(1, "Deep work on the proposal"), task(2, "Call mom")] });
+    if (r.loop.now) {
+      expect(typeof r.loop.now.whyPlain).toBe("string");
+      expect(r.loop.now.whyPlain.length).toBeGreaterThan(0);
+      // Sky vocabulary must not leak into the plain line.
+      expect(r.loop.now.whyPlain).not.toMatch(/hour|chart|line[s]? up/i);
+    }
+  });
+
+  it("keeps the flow why identical at both lenses", () => {
+    const startedMinutesAgo = new Date(Date.now() - 20 * 60000).toISOString();
+    const r = linesUp({ ...base, held: [task(1, "Mix track 3", { startedAt: startedMinutesAgo })] });
+    expect(r.loop.now?.whyPlain).toBe(r.loop.now?.why);
+  });
+
   it("distinguishes an empty list from a fully scheduled one", () => {
     const empty = linesUp({ ...base, held: [] });
     expect(empty.quiet).toBe("thin-inventory");
 
     const allPlaced = linesUp({ ...base, held: [task(1, "Mix track 3", { scheduledFor: "9" })] });
     expect(allPlaced.quiet).toBe("all-placed");
+  });
+});
+
+describe("the plain why-line's facts", () => {
+  // A Chicago viewer (tz 300): 2026-08-13T20:00Z reads 3 PM, Thursday Aug 13.
+  const anchor = new Date("2026-08-13T20:00:00Z");
+
+  it("names the deadline from the viewer's civil day", () => {
+    expect(duePhrase("2026-08-13", anchor, 300)).toBe("due today");
+    expect(duePhrase("2026-08-14", anchor, 300)).toBe("due tomorrow");
+    expect(duePhrase("2026-08-15", anchor, 300)).toBe("due Saturday");
+    expect(duePhrase("2026-08-12", anchor, 300)).toBe("past due");
+    // Past the weekday horizon a due date is not a reason for acting NOW.
+    expect(duePhrase("2026-08-30", anchor, 300)).toBeNull();
+  });
+
+  it("uses the viewer's midnight, not the server's", () => {
+    // 02:00Z on the 14th is still Thursday evening in Chicago — a UTC server
+    // must not call Friday's task "due today" at 9 PM Thursday.
+    const lateEvening = new Date("2026-08-14T02:00:00Z");
+    expect(duePhrase("2026-08-14", lateEvening, 300)).toBe("due tomorrow");
+  });
+
+  it("claims free time only when a calendar actually answered", () => {
+    const nowMs = anchor.getTime();
+    const ahead = [{ startMs: nowMs + 90 * 60000, endMs: nowMs + 120 * 60000 }];
+    // busyKnown=false: no calendar linked or the fetch failed — an empty or
+    // unconsulted list is not evidence of a clear day.
+    expect(freePhrase(ahead, false, nowMs, 300)).toBeNull();
+    expect(freePhrase(ahead, true, nowMs, 300)).toBe("you're free until 4:30 PM");
+    expect(freePhrase([], true, nowMs, 300)).toBe("your calendar is clear for the rest of the day");
+    // Mid-meeting the phrase stands down; the meeting suffix owns that case.
+    const inMeeting = [{ startMs: nowMs - 10 * 60000, endMs: nowMs + 20 * 60000 }];
+    expect(freePhrase(inMeeting, true, nowMs, 300)).toBeNull();
   });
 });

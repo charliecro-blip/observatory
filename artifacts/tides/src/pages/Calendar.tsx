@@ -4,7 +4,7 @@ import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTidesWeek, useSkyEvents, useGCalStatus, useGCalEvents, useCautionDays, type GCalEvent, type CautionDayHit } from "@/hooks/useTides";
-import { useTimeFormat } from "@/contexts/preferences-context";
+import { useTimeFormat, useAstroDetail } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
@@ -473,11 +473,17 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   onDeleteWindow: (id: number) => void;
 }) {
   const fmtTime = useTimeFormat();
+  // The astro-quiet lens strips the grid to plain scheduling: no astro strip,
+  // no planetary-hour bands or legend, no VOC hatch, no crossings or aspect
+  // markers. Events, planned windows, the now line and the add-block zones
+  // are the calendar, and they all stay.
+  const { level: calLevel } = useAstroDetail();
+  const skyQuiet = calLevel === "minimal";
   const HOUR_START = 5, HOUR_END = 23, HOURS = HOUR_END - HOUR_START;
   const ROW_H = isDay ? 60 : 48;
   const LABEL_W = isDay ? 52 : 44;
   // Day: wide labeled planetary hour band left of grid; week: full-width subtle tint
-  const PLANET_BAR_W = isDay ? 68 : 0;
+  const PLANET_BAR_W = isDay && !skyQuiet ? 68 : 0;
   const now = new Date();
   const nowH = now.getHours() + now.getMinutes() / 60;
   const realLocation = hasRealLocation(lat, lon);
@@ -502,12 +508,14 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
   }, [dates, hoursData]);
 
   // Planetary hours legend height (day view only, fixed below grid)
-  const LEGEND_H = isDay ? 108 : 0;
+  const LEGEND_H = isDay && !skyQuiet ? 108 : 0;
 
   // One shared vertical scroll for the gutter + every day column, so the hour
   // labels stay locked to the grid rows while you scroll (previously each column
   // scrolled on its own and the labels sat still — the confusing part).
-  const HDR_H = (isDay ? 48 : 44) + 32; // day/date block + astro strip — matches each column header
+  // The astro strip's 32px leaves the header with the strip, or the gutter
+  // corner floats above misaligned rows.
+  const HDR_H = (isDay ? 48 : 44) + (skyQuiet ? 0 : 32); // day/date block + astro strip — matches each column header
 
   return (
     <div style={{ flex:1, overflowY:"auto", overflowX: isDay ? "hidden" : "auto", position:"relative" }}>
@@ -548,7 +556,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           const nowHour = allHours.find(ph => now >= ph.startTime && now < ph.endTime);
 
           const HEADER_H = isDay ? 48 : 44;
-          const ASTRO_STRIP_H = 32;
+          const ASTRO_STRIP_H = skyQuiet ? 0 : 32;
 
           return (
             <div key={dateStr} style={{ flex:1,minWidth:isDay?0:110,borderRight:"1px solid var(--color-border)",flexShrink:isDay?1:0,display:"flex",flexDirection:"column" }}>
@@ -567,13 +575,13 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     background:isToday?ec:"transparent",
                     display:"flex",alignItems:"center",justifyContent:"center",
                   }}>{dayNum}</div>
-                  {isDay && dayRuler && (
+                  {isDay && !skyQuiet && dayRuler && (
                     <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}>{PLANET_ICONS[dayRuler]} {dayRuler}</div>
                   )}
                 </div>
 
-                {/* Astro strip */}
-                <div style={{
+                {/* Astro strip — folded away entirely at the quiet lens */}
+                {!skyQuiet && <div style={{
                   height:ASTRO_STRIP_H,borderTop:"1px solid var(--color-border)",
                   background:elem?et:"var(--color-card-2)",
                   padding:"3px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2,
@@ -609,11 +617,11 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                       });
                     })()}
                   </div>
-                </div>
+                </div>}
               </div>
 
               {/* Day view: planetary hours legend ABOVE scroll area */}
-              {isDay && (
+              {isDay && !skyQuiet && (
                 <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"var(--color-card-2)",padding:"6px 8px",overflowY:"auto" }}>
                   <div style={{ fontSize:7.5,color:"var(--text-3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
@@ -643,7 +651,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                 <div style={{ position:"relative",height:HOURS*ROW_H }}>
 
                   {/* Planetary hours — week: full-width tint; day: left bar */}
-                  {allHours.map((ph,phi) => {
+                  {!skyQuiet && allHours.map((ph,phi) => {
                     const startMs = ph.startTime.getTime();
                     const endMs   = ph.endTime.getTime();
                     const midnight = new Date(dateStr+"T00:00:00").getTime();
@@ -700,7 +708,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                   ))}
 
                   {/* VOC overlay */}
-                  {voc && (()=>{
+                  {!skyQuiet && voc && (()=>{
                     const topPx = Math.max(0,(voc.startMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
                     const botPx = Math.min(HOURS*ROW_H,(voc.endMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
                     if (botPx<=topPx) return null;
@@ -717,7 +725,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                   })()}
 
                   {/* Aspect crossing lines — only with real location */}
-                  {crossings.map((c:any,ci:number) => {
+                  {!skyQuiet && crossings.map((c:any,ci:number) => {
                     if (!c.time) return null;
                     const mins = timeToMinutes(c.time);
                     const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
@@ -744,7 +752,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                   })}
 
                   {/* Lunar (and planet-planet) aspects — timed markers on the day itself */}
-                  {(eventsMap.get(dateStr) ?? []).filter(ev => (ev.type==="moon_aspect"||ev.type==="aspect") && ev.at).map((ev,ei) => {
+                  {!skyQuiet && (eventsMap.get(dateStr) ?? []).filter(ev => (ev.type==="moon_aspect"||ev.type==="aspect") && ev.at).map((ev,ei) => {
                     const d = new Date(ev.at!);
                     const mins = d.getHours()*60 + d.getMinutes();
                     const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
@@ -843,14 +851,18 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
   cautionHits: CautionDayHit[]; simple?: boolean; onClick: () => void;
 }) {
   const fmtTime = useTimeFormat();
+  // At the quiet lens a month cell is a date and its events — the sky rows
+  // (phase, sign, ruler, VOC, aspects, element tint) all fold away.
+  const { level: cellLevel } = useAstroDetail();
+  const cellQuiet = cellLevel === "minimal";
   const dayNum = parseInt(dateStr.split("-")[2]);
   const elem = dayData?.element ?? "";
-  const phase = dayData?.moonPhase ?? "";
-  const voc = dayData?.voidPeriods ?? false;
+  const phase = cellQuiet ? "" : (dayData?.moonPhase ?? "");
+  const voc = !cellQuiet && (dayData?.voidPeriods ?? false);
   const moonSign = dayData?.moonSign ?? "";
-  const signKey = parseSign(moonSign);
-  const dayRuler = dayData?.dayRuler ?? "";
-  const bg = dayData && !isPast ? (ELEMENT_TINT[elem] ?? "var(--color-card-2)") : "var(--color-card-2)";
+  const signKey = cellQuiet ? null : parseSign(moonSign);
+  const dayRuler = cellQuiet ? "" : (dayData?.dayRuler ?? "");
+  const bg = dayData && !isPast && !cellQuiet ? (ELEMENT_TINT[elem] ?? "var(--color-card-2)") : "var(--color-card-2)";
   const border = isSelected ? "2px solid #1a2a3a" : isToday ? "2px solid #c09040" : "2px solid transparent";
   const rulerCol = PLANET_COLORS[dayRuler] ?? "#999999";
 
@@ -883,7 +895,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
           {isToday && <span style={{ fontSize:8,color:"#b07820",fontWeight:600,lineHeight:1.2 }}>TODAY</span>}
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}>
-          {cautionHits.length > 0 && (
+          {!cellQuiet && cautionHits.length > 0 && (
             <span title={`Advisory: ${cautionHits.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active. Move big commitments carefully.`}
               style={{ fontSize:10,lineHeight:1,cursor:"help" }}>⚠️</span>
           )}
@@ -903,7 +915,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
           {SIGN_SYMBOL[signKey]} {moonSign.split(" ").slice(0,2).join(" ")}
         </div>
       )}
-      {dayData && !showSignNames && elem && (
+      {dayData && !showSignNames && !cellQuiet && elem && (
         <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"var(--text-3)",marginBottom:1 }}>
           {elem.charAt(0).toUpperCase()+elem.slice(1)}
         </div>
@@ -919,7 +931,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Aspects — the day's astrological granularity. Hidden in Simple mode
           (the default): a beginner meets element/phase/sign/ruler first, and
           taps the day for the aspect detail. */}
-      {!simple && aspectEvents.length > 0 && (
+      {!simple && !cellQuiet && aspectEvents.length > 0 && (
         <div style={{ display:"flex",flexDirection:"column",gap:1,marginBottom:2 }}>
           {aspectEvents.slice(0,3).map((ev,i) => {
             const parts = aspectLineParts(ev);
@@ -937,7 +949,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       )}
 
       {/* Ingress — sign change marker (detail only) */}
-      {!simple && ingressEvents.slice(0,1).map((ev,i) => (
+      {!simple && !cellQuiet && ingressEvents.slice(0,1).map((ev,i) => (
         <div key={i} title={ev.title} style={{ fontSize:8,color:ELEMENT_COLORS.earth,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
           → {ev.title.replace("Moon enters ", "")}{ev.time ? ` ${ev.time}` : ""}
         </div>
@@ -978,6 +990,10 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 }) {
   const fmtTime = useTimeFormat();
   const qc = useQueryClient();
+  // At the quiet lens the panel is the date, the add button and the schedule
+  // — the sky cards (moon, conditions, aspects, crossings, cautions) fold.
+  const { level: panelLevel } = useAstroDetail();
+  const panelQuiet = panelLevel === "minimal";
   const isToday = dateStr===localToday();
   const dateObj = new Date(dateStr+"T12:00:00");
   const dayLabel = dateObj.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -1002,16 +1018,16 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 
   return (
     <div style={{ width:260,minWidth:260,borderLeft:"1px solid var(--color-border)",background: "var(--color-card-2)",display:"flex",flexDirection:"column",flexShrink:0,overflowY:"auto" }}>
-      <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
+      <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData&&!panelQuiet?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
         <div style={{ fontSize:9,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
-        {dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
+        {!panelQuiet && dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
         <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
-        {!dayData && <div style={{ fontSize:11,color:"var(--text-3)",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
+        {!dayData && !panelQuiet && <div style={{ fontSize:11,color:"var(--text-3)",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
         {dayData && (<>
-          <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+          {!panelQuiet && <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4 }}>
               <span style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
               <div>
@@ -1038,8 +1054,8 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                 })}
               </div>
             )}
-          </div>
-          <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
+          </div>}
+          {!panelQuiet && <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ fontSize:8,textTransform:"uppercase",letterSpacing:"0.5px",color:"var(--text-3)",marginBottom:5 }}>Conditions</div>
             <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
               <div style={{ flex:1,height:4,borderRadius:2,background:"var(--color-card-2)" }}>
@@ -1053,10 +1069,11 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
             <div style={{ fontSize:9.5,color:"var(--color-muted)",lineHeight:1.5 }}>
               {ELEMENT_NOTE[elem] ?? ""} {QUALITY_NOTE[dayData.quality ?? ""] ? `Overall: ${QUALITY_NOTE[dayData.quality ?? ""]}.` : ""}
             </div>
-          </div>
+          </div>}
           {/* The day's Moon aspects — the fast, personal weather. Sorted so the
               one that perfects soonest reads first (same order as the rail). */}
           {(() => {
+            if (panelQuiet) return null;
             const ma = ((dayData as any)?.moonAspects ?? []) as any[];
             if (!ma.length) return null;
             const ASP_SYM: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
@@ -1081,7 +1098,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
               </div>
             );
           })()}
-          {crossings.length>0 && (
+          {!panelQuiet && crossings.length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:9.5,fontWeight:600,color:"var(--text-1)",marginBottom:2 }}>Angle crossings</div>
               <div style={{ fontSize:8.5,color:"var(--text-3)",lineHeight:1.45,marginBottom:6 }}>
@@ -1279,6 +1296,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showSignNames, setShowSignNames] = useState(true);
+  // The astro-quiet lens: the water strip, the sky legend, the weekday planet
+  // glyphs and the astro toggles fold away; events and schedule stay.
+  const { level: calPageLevel } = useAstroDetail();
+  const pageQuiet = calPageLevel === "minimal";
   // Same hook as the grid — one implementation, so the agenda and the week
   // can never disagree about what hour it is.
   const agendaHours = usePlanetaryHours([selectedDate], lat, lon).data;
@@ -1453,7 +1474,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#ffffff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
 
-        {calView==="agenda" && (
+        {calView==="agenda" && !pageQuiet && (
           <>
             <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"var(--text-3)",cursor:"pointer" }}>Planetary hours</button>
             <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"var(--text-3)",cursor:"pointer" }}>Crossings</button>
@@ -1462,10 +1483,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         {calView==="month" && (
           <>
-            {calView==="month" && (
+            {!pageQuiet && (
               <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"var(--color-muted)":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
             )}
-            <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"var(--text-3)",cursor:"pointer" }}>Signs</button>
+            {!pageQuiet && <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"var(--text-3)",cursor:"pointer" }}>Signs</button>}
             <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"var(--color-muted)",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
           </>
         )}
@@ -1475,10 +1496,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
       {/* The water ahead — the 30-day wave chart, inherited from the retired
           Almanac tab. Tap a bar to jump the calendar to that day. */}
-      <QualityStrip week={weekData} days={30} onPick={(d)=>{
+      {!pageQuiet && <QualityStrip week={weekData} days={30} onPick={(d)=>{
         setSelectedDate(d);
         if (calView==="month") { setYear(parseInt(d.slice(0,4))); setMonth(parseInt(d.slice(5,7))-1); }
-      }}/>
+      }}/>}
 
       {/* On phones the detail panel stacks below the grid instead of crushing it */}
       <div style={{ flex:1,display:"flex",overflow:isMobile?"auto":"hidden",flexDirection:isMobile?"column":"row" }}>
@@ -1486,20 +1507,21 @@ export default function Calendar({ testerId, now, lat, lon }: {
         {calView==="month" && (
           <>
             <div style={{ flex:1,display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 10px 10px",minWidth:0 }}>
-              {/* Legend — every mark on the grid, named */}
-              <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"var(--color-muted)",flexShrink:0 }}>
+              {/* Legend — every mark on the grid, named. Nothing to name at
+                  the quiet lens; the marks it explains are folded away. */}
+              {!pageQuiet && <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize:9,color:"var(--color-muted)",flexShrink:0 }}>
                 <span>tint = the day's element (Moon's sign)</span>
                 {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
                 {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
                 <span><span style={{ background:"#6f6a9022",color:"var(--text-2)",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
                 {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = a caution day for you — tap the day to see what & why</span>}
-              </div>
+              </div>}
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
                   const ruler = WEEKDAY_RULERS[i];
                   return (
-                    <div key={d} title={`${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>
+                    <div key={d} title={pageQuiet ? undefined : `${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
+                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>}
                     </div>
                   );
                 })}
@@ -1540,12 +1562,14 @@ export default function Calendar({ testerId, now, lat, lon }: {
           <AgendaView
             hours={agendaHours?.hours?.[selectedDate] ?? []}
             dateStr={selectedDate} today={today}
-            dayData={dataMap.get(selectedDate)}
-            events={eventsMap.get(selectedDate) ?? []}
+            // The quiet lens hands the agenda a plain day: no sky moments, no
+            // day-character read — the schedule and the calendar events stay.
+            dayData={pageQuiet ? undefined : dataMap.get(selectedDate)}
+            events={pageQuiet ? [] : (eventsMap.get(selectedDate) ?? [])}
             windows={windowsMap.get(selectedDate) ?? []}
             gcalEvents={gcalMap.get(selectedDate) ?? []}
             lat={lat} lon={lon}
-            showHours={agHours} showCrossings={agCrossings}
+            showHours={!pageQuiet && agHours} showCrossings={!pageQuiet && agCrossings}
             onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
             onDeleteWindow={id=>delWindow.mutate(id)}
           />

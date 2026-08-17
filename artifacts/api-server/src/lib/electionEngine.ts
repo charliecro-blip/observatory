@@ -162,7 +162,7 @@ export interface ElectionResult {
   windows: ElectionWindow[];
 }
 
-function clockOf(ms: number, tzOffsetMin: number): string {
+export function clockOf(ms: number, tzOffsetMin: number): string {
   const s = new Date(ms - tzOffsetMin * 60000);
   let h = s.getUTCHours(); const m = s.getUTCMinutes();
   const ampm = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;

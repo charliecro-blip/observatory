@@ -873,6 +873,25 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); qc.invalidateQueries({ queryKey: ["tasks-today"] }); },
   });
 
+  // Stopping on purpose offers — never demands — to keep the stretch (§3,
+  // home-base build). Held here so the offer survives the release mutation's
+  // refetch flipping the card out of its in-flow state.
+  const [stretchOffer, setStretchOffer] = useState<{ taskId: number; title: string; minutes: number } | null>(null);
+  const logStretch = useMutation({
+    mutationFn: async (o: { taskId: number; title: string; minutes: number }) => {
+      const r = await fetch("/api/planning/wins", {
+        method: "POST",
+        headers: { "x-tester-id": testerId ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `worked on: ${o.title}`, taskId: o.taskId,
+          minutes: Math.max(1, o.minutes), tz: new Date().getTimezoneOffset(),
+        }),
+      });
+      if (!r.ok) throw new Error(`couldn't log that (${r.status})`);
+    },
+    onSuccess: () => { setStretchOffer(null); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+  });
+
   const addTask = useMutation({
     mutationFn: async (title: string) => {
       const r = await fetch("/api/tasks", {
@@ -1512,10 +1531,36 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                   </div>
                   {inFlow && (
                     <button
-                      onClick={() => { logEvent("in_progress_release", { taskId: running!.task.id }); startTask.mutate({ id: running!.task.id, started: false }); }}
+                      onClick={() => {
+                        logEvent("in_progress_release", { taskId: running!.task.id });
+                        // The offer to keep the stretch, made at the moment of
+                        // stopping. Declining leaves no record, same as today.
+                        if (running!.minutes >= 1) {
+                          setStretchOffer({ taskId: running!.task.id, title: running!.task.title, minutes: running!.minutes });
+                        }
+                        startTask.mutate({ id: running!.task.id, started: false });
+                      }}
                       style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 10.5, color: "var(--text-3)" }}>
                       not working on this anymore →
                     </button>
+                  )}
+                  {!inFlow && stretchOffer && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, color: "var(--color-muted)" }}>
+                        {stretchOffer.minutes} min in "{stretchOffer.title}" — keep it in the log?
+                      </span>
+                      <button
+                        onClick={() => logStretch.mutate(stretchOffer)}
+                        disabled={logStretch.isPending}
+                        style={{ fontSize: 10.5, padding: "2px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid #4a7a52", background: "#4a7a5212", color: "#4a7a52", fontWeight: 600 }}>
+                        {logStretch.isPending ? "…" : "Log it"}
+                      </button>
+                      <button
+                        onClick={() => setStretchOffer(null)}
+                        style={{ fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>
+                        leave it
+                      </button>
+                    </div>
                   )}
                   {!inFlow && move.caveat && (
                     <div style={{ fontSize: 10.5, color: "#8a7a50", fontStyle: "italic", lineHeight: 1.5, marginTop: 3 }}>

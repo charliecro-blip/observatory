@@ -31,7 +31,7 @@
  * question instead of a recommendation, which is often the more valuable row.
  */
 
-import { computeElections, type Evidence, type SuitabilityReason } from "./electionEngine.js";
+import { computeElections, clockOf, type Evidence, type SuitabilityReason } from "./electionEngine.js";
 import { rankActivities, activityByKey } from "./activityCorrespondences.js";
 import type { ComputedNatalChart } from "./natal.js";
 
@@ -110,6 +110,13 @@ export interface HeldItem {
    * and would let the keyword matcher silently overrule them.
    */
   activityKey?: string | null;
+  /**
+   * The task's due date (viewer-civil "YYYY-MM-DD"), when it has one. Carried
+   * so the loop can give a PLAIN reason at the astro-quiet lens — "Due
+   * Friday" is a fact the engine already ranks on upstream; without it here,
+   * the only reason the loop could state was the sky's.
+   */
+  dueDate?: string | null;
 }
 
 export interface LinesUpResult {
@@ -183,8 +190,15 @@ export interface Loop {
     title: string;
     /** The held item's id, so a surface can act on it. */
     heldId: string;
-    /** Why now: the plain sentence, already composed. */
+    /** Why now: the sentence the medium/full lenses show, already composed. */
     why: string;
+    /**
+     * Why now with the sky left out — deadline and calendar facts only, for
+     * the astro-quiet lens. Composed HERE beside `why`, never derived by a
+     * surface: the client picks one by lens, and the astro why is never
+     * stripped at medium or full.
+     */
+    whyPlain: string;
     /** When this window closes, local clock, when it has an end. */
     until: string | null;
     /** True when this is work already underway rather than a fresh pick. */
@@ -252,6 +266,14 @@ export interface LinesUpOpts {
    *  but the one act named "now" must not collide with a meeting the person
    *  already accepted. Absent or empty means "don't consult a calendar". */
   busy?: { startMs: number; endMs: number }[];
+  /**
+   * True only when a calendar was actually consulted and answered. An empty
+   * `busy` is two different facts — a genuinely clear day, or no calendar
+   * linked / fetch failed — and the plain why-line may only claim "you're
+   * free until 2 PM" in the first case. Claiming it in the second would be a
+   * fabricated observation.
+   */
+  busyKnown?: boolean;
   /**
    * The moment to answer for. Defaults to the real now, which is what the
    * route wants; tests pass an anchor, which is what determinism wants.
@@ -608,6 +630,47 @@ export function loopCandidateUsable(
   return true;
 }
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * The deadline half of the plain why-line, lowercase ("due Friday"), or null
+ * when the due date is too far out to be a reason for acting now.
+ *
+ * The viewer's civil today is computed from tzOffsetMin, never from the
+ * server's clock — a server in UTC would call Friday's task "due tomorrow"
+ * all Thursday evening for anyone west of it.
+ */
+export function duePhrase(dueDate: string, now: Date, tzOffsetMin: number): string | null {
+  const today = new Date(now.getTime() - tzOffsetMin * 60000).toISOString().slice(0, 10);
+  if (dueDate < today) return "past due";
+  if (dueDate === today) return "due today";
+  const diffDays = Math.round((Date.parse(dueDate) - Date.parse(today)) / 86400000);
+  if (diffDays === 1) return "due tomorrow";
+  // A weekday name only reaches as far as it is unambiguous — six days.
+  if (diffDays <= 6) return `due ${WEEKDAYS[new Date(`${dueDate}T00:00:00Z`).getUTCDay()]}`;
+  return null;
+}
+
+/**
+ * The availability half ("you're free until 2 PM"), or null when the calendar
+ * was not actually consulted — see LinesUpOpts.busyKnown. Mid-meeting the
+ * phrase stands down too; the meeting suffix already covers that case.
+ */
+export function freePhrase(
+  busy: { startMs: number; endMs: number }[],
+  busyKnown: boolean,
+  nowMs: number,
+  tzOffsetMin: number,
+): string | null {
+  if (!busyKnown) return null;
+  if (busy.some(b => nowMs >= b.startMs && nowMs < b.endMs)) return null;
+  const next = busy.filter(b => b.startMs > nowMs).sort((a, b) => a.startMs - b.startMs)[0];
+  if (!next) return "your calendar is clear for the rest of the day";
+  const mins = Math.round((next.startMs - nowMs) / 60000);
+  if (mins < 20) return null;   // a sliver before a meeting is not a reason
+  return `you're free until ${clockOf(next.startMs, tzOffsetMin)}`;
+}
+
 /**
  * Compose the loop from results already computed — never a second judgment.
  *
@@ -620,11 +683,15 @@ function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts):
   const running = inFlowItem(held, now, opts.tzOffsetMin);
 
   if (running) {
+    // Already sky-free: flow protection is a fact about the person, not the
+    // hour, so both lenses say the same thing.
+    const flowWhy = "You're already in this. Compass won't move you off it — finish, or stop on purpose.";
     return {
       now: {
         title: running.item.title,
         heldId: running.item.id,
-        why: "You're already in this. Compass won't move you off it — finish, or stop on purpose.",
+        why: flowWhy,
+        whyPlain: flowWhy,
         until: null,
         inFlow: true,
         elapsedMin: running.minutes,
@@ -655,6 +722,19 @@ function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts):
   const sameThing = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   const after = top.find(r =>
     r !== open && r.state !== "passed" && usable(r) && !sameThing(r.held.title, open.held.title)) ?? null;
+  // The plain reason, from facts the loop already holds: the deadline and the
+  // calendar. When neither has anything to say, the fallback states the
+  // engine's claim without the sky's vocabulary — still true at every lens,
+  // since the pick IS the strongest fit; only the evidence is astrological.
+  const due = open.held.dueDate ? duePhrase(open.held.dueDate, now, opts.tzOffsetMin) : null;
+  const free = freePhrase(busy, opts.busyKnown ?? false, nowMs, opts.tzOffsetMin);
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const plain =
+    due && free ? cap(`${due}, and ${free}.`)
+    : due ? cap(`${due}.`)
+    : free ? cap(`${free}.`)
+    : "This is the strongest fit for right now.";
+  const meetingSuffix = inMeeting ? " The window outlasts what's on your calendar right now." : "";
   return {
     now: {
       title: open.held.title,
@@ -664,7 +744,8 @@ function composeLoop(top: LinesUpResult[], held: HeldItem[], opts: LinesUpOpts):
         : open.personal
           ? "This suits the hour, and your chart agrees."
           : "This is what the hour suits.")
-        + (inMeeting ? " The window outlasts what's on your calendar right now." : ""),
+        + meetingSuffix,
+      whyPlain: plain + meetingSuffix,
       until: open.state === "open-now" ? open.endClock ?? null : open.startClock ?? null,
       inFlow: false,
     },

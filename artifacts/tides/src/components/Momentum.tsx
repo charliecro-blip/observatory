@@ -267,18 +267,29 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
 // It renders on HOME's notice queue, not on Today: the study found Home-landers
 // never met it, and a weekly retrospective is panoramic by definition.
 // ?review=week still forces it for design work.
-export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: {
+export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, summoned = false }: {
   testerId: string | null; lat?: number; lon?: number; onOpenLog?: () => void;
   /** The walkthrough hasn't been answered — this account has no past to review. */
   firstRun?: boolean;
+  /** Asked for by hand (the Log's "review now" door, F10) — the Sunday gate
+   *  stands aside, and an empty week gets a quiet line rather than silence,
+   *  because a door that opens onto nothing reads as broken. */
+  summoned?: boolean;
 }) {
   const { data } = useMomentum(testerId, lat, lon);
   if (!data) return null;
 
   const force = new URLSearchParams(window.location.search).get("review");
   const isSunday = new Date().getDay() === 0;
-  const showWeek = force === "week" || isSunday;
+  const showWeek = summoned || force === "week" || isSunday;
   if (!showWeek) return null;
+  if (summoned && data.ledger.length === 0 && data.stars.length === 0) {
+    return (
+      <div style={{ fontSize: 12, color: "var(--text-3)", padding: "10px 2px" }}>
+        The wake is empty so far — nothing to review yet.
+      </div>
+    );
+  }
   // A retrospective needs something to look back ON. This was gated purely on
   // the DATE, so an account created on a Sunday met "⚓ The week in the wake —
   // 0 wins this week · 0 days at the helm" as one of its first impressions:
@@ -287,7 +298,7 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: 
   // reviewed is genuinely empty of both wins and stars. `?review=` still
   // forces either card for design work.
   const nothingToReview = data.ledger.length === 0 && data.stars.length === 0;
-  if (!force && (firstRun || nothingToReview)) return null;
+  if (!force && !summoned && (firstRun || nothingToReview)) return null;
 
   const named = (from: string, to?: string) => data.ledger
     .filter(l => l.source === "named" && l.date >= from && (!to || l.date < to))
@@ -299,7 +310,9 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false }: 
       <div style={{ background: "linear-gradient(135deg, #8a6a2010, #8a6a2004)", border: "1px solid #c8b06a45", borderRadius: 14, padding: "13px 16px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>⚓ The week in the wake</span>
-          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>Sunday review</span>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>
+            {summoned && new Date().getDay() !== 0 ? "This week" : "Sunday review"}
+          </span>
         </div>
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 7 }}>
           {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.streak} day{data.streak === 1 ? "" : "s"} at the helm

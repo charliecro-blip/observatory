@@ -38,7 +38,11 @@ const localDateOf = (dt: Date | string | null, tzOffsetMin: number): string | nu
   return new Date(ms - tzOffsetMin * 60000).toISOString().slice(0, 10);
 };
 
-interface LedgerItem { date: string; goalId: number | null; text: string; source: string; winId?: number }
+interface LedgerItem {
+  date: string; goalId: number | null; text: string; source: string; winId?: number;
+  /** Set on a named win that touches a task/habit — the §-touches join. */
+  taskId?: number | null; habitId?: number | null; minutes?: number | null;
+}
 
 // Exported so the Studio's cycle card can render the same numbers the app
 // shows — one source of truth for the loop.
@@ -95,7 +99,10 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     ledger.push({ date: d, goalId: w.goalId, text: `session: ${w.title}`, source: "session" });
   }
   for (const w of named) {
-    ledger.push({ date: w.date, goalId: w.goalId ?? null, text: w.text, source: "named", winId: w.id });
+    ledger.push({
+      date: w.date, goalId: w.goalId ?? null, text: w.text, source: "named", winId: w.id,
+      taskId: w.taskId ?? null, habitId: w.habitId ?? null, minutes: w.minutes ?? null,
+    });
   }
   ledger.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -187,19 +194,48 @@ router.get("/planning/momentum", async (req, res) => {
   res.json(await computeMomentum(testerId, tzOffsetMin, lat, lon, days));
 });
 
-// POST /planning/wins — name a win (the evening harvest's written line)
+// POST /planning/wins — name a win. Any hour, any date, any door: the evening
+// harvest, the capture sheet's "did" mode, Home's log-it line, a finished
+// session, the Log's backfill box. A win can attach to a star (goalId), a
+// task (taskId — that's a TOUCH: worked on, not done), or a habit (habitId),
+// and can carry minutes when it came from a timed stretch.
 router.post("/planning/wins", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { text, goalId, date, tz } = req.body ?? {};
+  const { text, goalId, taskId, habitId, minutes, date, tz } = req.body ?? {};
   if (!text || !String(text).trim()) { res.status(400).json({ error: "text required" }); return; }
   const tzOffsetMin = parseInt(tz, 10) || 0;
   const day = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
     ? date : localDateOf(new Date(), tzOffsetMin)!;
+  const asId = (v: unknown) => Number.isInteger(v) && (v as number) > 0 ? v as number : null;
   const [row] = await db.insert(wins).values({
-    testerId, date: day, goalId: goalId ?? null, text: String(text).trim().slice(0, 500),
+    testerId, date: day,
+    goalId: asId(goalId), taskId: asId(taskId), habitId: asId(habitId),
+    minutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(24 * 60, Math.round(minutes)) : null,
+    text: String(text).trim().slice(0, 500),
   }).returning();
   res.status(201).json(row);
+});
+
+// GET /planning/touches — per task, the dated record of "worked on" (wins
+// carrying a taskId, last 14 days). This is what partial progress IS here:
+// touches, never gauges. `done` stays binary; no percentage exists to serve.
+router.get("/planning/touches", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  const sinceDate = new Date(Date.now() - 14 * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10);
+  const rows = await db.select().from(wins)
+    .where(and(eq(wins.testerId, testerId), gte(wins.date, sinceDate)));
+  const touches: Record<string, { dates: string[]; minutes: number }> = {};
+  for (const w of rows) {
+    if (!w.taskId) continue;
+    const t = (touches[w.taskId] ??= { dates: [], minutes: 0 });
+    if (!t.dates.includes(w.date)) t.dates.push(w.date);
+    t.minutes += w.minutes ?? 0;
+  }
+  for (const t of Object.values(touches)) t.dates.sort();
+  res.json({ touches, since: sinceDate });
 });
 
 // POST /planning/intentions — set a New-Moon intention for the current cycle

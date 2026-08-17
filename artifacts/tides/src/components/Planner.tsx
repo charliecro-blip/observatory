@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/fetchJson";
 import { useNorthStars } from "@/hooks/useTides";
 import { useTester } from "@/contexts/tester-context";
+import { useAstroDetail } from "@/contexts/preferences-context";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import PlanCalendar from "@/components/PlanCalendar";
@@ -62,6 +63,11 @@ interface Draft {
 
 export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }: { testerId: string | null; lat: number; lon: number; seedList?: string | null; onSeedConsumed?: () => void }) {
   const qc = useQueryClient();
+  // The astro-quiet lens: the weave runs sky-free (deadline, energy, open
+  // time), and the page's copy describes scheduling — no tide vocabulary,
+  // no element lanes, no planetary hours.
+  const { level: astroLevel } = useAstroDetail();
+  const skyQuiet = astroLevel === "minimal";
   const { profile } = useTester();
   const [horizon, setHorizon] = useState("week");
   const [rawList, setRawList] = useState("");
@@ -245,6 +251,8 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           // boundary, so it cannot say when a local day ends across one.
           tzName: Intl.DateTimeFormat().resolvedOptions().timeZone,
           wakeTime: chrono.wakeTime, sleepTime: chrono.sleepTime, busy,
+          // The plain weave: at the quiet lens, place without elections.
+          ...(skyQuiet ? { sky: false } : {}),
         }),
       });
       if (!r.ok) throw new Error(await aiErrorMessage(r));
@@ -407,9 +415,13 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           Repeating it to somebody on their fortieth visit explains a tab they
           already use, and it pushed their own work further down the page. */}
       <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
-        {openTaskCount > 0
-          ? "Compass weaves what you're holding into the stretches of your week that suit each kind of work. Nothing is scheduled until you say so."
-          : "Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open stretches of your week where the sky best supports that kind of work — deep work in focused windows, outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so."}
+        {skyQuiet
+          ? (openTaskCount > 0
+            ? "Compass fits what you're holding into the open stretches of your week, by deadline and energy. Nothing is scheduled until you say so."
+            : "Dump everything on your plate. The Planner reads each line, then fits it into the open stretches of your week — by deadline, duration and energy, around your waking hours and your calendar. Nothing is scheduled until you say so.")
+          : (openTaskCount > 0
+            ? "Compass weaves what you're holding into the stretches of your week that suit each kind of work. Nothing is scheduled until you say so."
+            : "Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open stretches of your week where the sky best supports that kind of work — deep work in focused windows, outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so.")}
       </div>
 
       {/* Horizon */}
@@ -486,7 +498,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             // would read as the app losing the plan; the truth is that the plan
             // named times that have since passed.
             <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 9, padding: "7px 10px", borderRadius: 8, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
-              Your list is still here, but the schedule around it had already passed — weave it again and it'll read the sky as it is now.
+              {skyQuiet
+                ? "Your list is still here, but the schedule around it had already passed — weave it again and it'll place around what's open now."
+                : "Your list is still here, but the schedule around it had already passed — weave it again and it'll read the sky as it is now."}
             </div>
           )}
           <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 10 }}>
@@ -499,7 +513,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                   <input value={c.title} onChange={(e) => editCard(i, { title: e.target.value })}
                     style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none", outline: "none" }} />
-                  {c.planets?.length > 0 && (
+                  {!skyQuiet && c.planets?.length > 0 && (
                     <span style={{ fontSize: 10, color: "var(--text-3)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
                   )}
                   <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
@@ -513,7 +527,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                     lane counts as a match — so naming a second one widens
                     the hours that suit, it does not dilute them. The first
                     stays primary for colour and for display. */}
-                <div style={{ display: "flex", gap: 4, marginBottom: 7, flexWrap: "wrap", alignItems: "center" }}>
+                {/* The lane picker is the sky's classification — folded away
+                    at the quiet lens, where the weave doesn't read lanes. */}
+                {!skyQuiet && <div style={{ display: "flex", gap: 4, marginBottom: 7, flexWrap: "wrap", alignItems: "center" }}>
                   {(["fire", "earth", "air", "water"] as const).map((el) => {
                     const ec = ELEMENT_COLOR[el];
                     const chosen = cardElements(c);
@@ -530,7 +546,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                   {cardElements(c).length > 1 && (
                     <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>any of these suits it</span>
                   )}
-                </div>
+                </div>}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <label style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4 }}>
                     {/* Free typing: any minute count is allowed, not just the
@@ -659,7 +675,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <button onClick={() => weave.mutate()} disabled={weave.isPending || cards.length === 0} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
               background: "#1a2a3a", color: "#ffffff",
-            }}>{weave.isPending ? "Reading the sky…" : "✦ Weave it in"}</button>
+            }}>{weave.isPending ? (skyQuiet ? "Placing…" : "Reading the sky…") : (skyQuiet ? "Weave it in" : "✦ Weave it in")}</button>
             <button onClick={reset} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>start over</button>
             {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(weave.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
@@ -752,8 +768,8 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>{item.title}</div>
                       <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                         {fmtTime(item.startAt)}–{fmtTime(item.endAt)} · {item.estimatedMinutes}m
-                        <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>
-                        <span style={{ color: "var(--text-3)", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>
+                        {!skyQuiet && <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>}
+                        {!skyQuiet && <span style={{ color: "var(--text-3)", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>}
                       </div>
                       {/* Timing tier — the grading language for the slot itself */}
                       {item.tierNote && (
@@ -764,7 +780,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                           {item.tier === "great" ? "✦ " : item.tier === "against" ? "≋ " : "· "}{item.tierNote}
                         </div>
                       )}
-                      <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>
+                      {!skyQuiet && <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3, lineHeight: 1.5 }}>{item.rationale}</div>}
                       {/* Move, not just drop. Until this existed the only
                           response to a placement you disliked was to delete it
                           and weave the whole list again. */}

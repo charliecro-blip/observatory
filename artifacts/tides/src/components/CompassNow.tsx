@@ -15,12 +15,16 @@
 // they want to argue with the answer rather than act on it.
 
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { useAstroDetail } from "@/contexts/preferences-context";
 
 export interface LoopShape {
   now: {
     title: string;
     heldId: string;
     why: string;
+    /** The sky-free reason (deadline/calendar facts), shown at the quiet
+     *  lens. Optional so a stale cached payload degrades to the astro why. */
+    whyPlain?: string;
     until: string | null;
     inFlow: boolean;
     elapsedMin?: number;
@@ -39,11 +43,17 @@ export default function CompassNow({ loop, onOpenWork, onAsk }: {
   onAsk?: (seed: string) => void;
 }) {
   const now = loop?.now;
+  // The lens picks which reason renders. The loop itself survives every lens
+  // — it is the productivity answer, not an astrology feature — but at the
+  // quiet lens the reason is the deadline-and-calendar one the engine
+  // composed beside the sky's (never derived here).
+  const { level } = useAstroDetail();
   // Nothing to loop over is not this component's story to tell — Home's
   // cold-start doors and its all-placed state both say it better, with the
   // right offer attached. Rendering an empty stage here would be the
   // "beautiful centerpiece with nothing in it" failure.
   if (!now) return null;
+  const why = level === "minimal" && now.whyPlain ? now.whyPlain : now.why;
 
   const inFlow = now.inFlow;
   const edge = inFlow ? FLOW : ACCENT;
@@ -78,7 +88,7 @@ export default function CompassNow({ loop, onOpenWork, onAsk }: {
       )}
 
       <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 6, maxWidth: 62 * 8 }}>
-        {now.why}
+        {why}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 11, flexWrap: "wrap" }}>

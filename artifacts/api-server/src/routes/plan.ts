@@ -238,6 +238,12 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   // offset itself changes there.
   const tzName: string | null = isValidTimeZone(req.body.tzName) ? req.body.tzName : null;
   const horizon: Horizon = (["day", "week", "month"].includes(req.body.horizon) ? req.body.horizon : "week");
+  // The plain weave (home-base build 2026-08-16). `sky: false` skips the
+  // planetary-hour pass and the peak-window pass entirely: placement runs on
+  // deadline pressure, stated energy and open time alone, and every placement
+  // grades "workable" — the one tier whose note ("this time will do") already
+  // carries no sky vocabulary. Same weaver, same honesty about refusals.
+  const consultSky = req.body.sky !== false;
   const days = HORIZON_DAYS[horizon];
   const nowMs = Date.now();
   const horizonEndMs = nowMs + days * 86400000;
@@ -335,10 +341,18 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     assoc: t.assoc ?? associateDeterministic(t.title),
     classificationSource: t.classificationSource ?? "deterministic",
   }));
+  const ENERGY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
   enriched.sort((a, b) => {
     const ad = a.dueDate ? Date.parse(a.dueDate) : Infinity;
     const bd = b.dueDate ? Date.parse(b.dueDate) : Infinity;
     if (ad !== bd) return ad - bd;
+    // Plain weave: high-energy work claims the early stretches — the walk
+    // hands out time in clock order from the person's own wake hour, so
+    // ordering IS placement. The sky path keeps its original order.
+    if (!consultSky) {
+      const e = (ENERGY_RANK[a.energy ?? ""] ?? 1) - (ENERGY_RANK[b.energy ?? ""] ?? 1);
+      if (e !== 0) return e;
+    }
     return b.estimatedMinutes - a.estimatedMinutes;
   });
 
@@ -395,7 +409,10 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     // is set membership rather than equality with the primary.
     const lanes = new Set<string>(t.assoc.elements?.length ? t.assoc.elements : [t.assoc.element]);
     const laneRank = (s: Slot) => (lanes.has(s.element) ? 0 : 1);
-    const candidates = slots
+    // Not computed at all in plain mode — each verdict is a full election
+    // evaluation per slot, and a sweep nobody reads is the 90-second-calendar
+    // defect shape (getMajorAspects-in-a-loop).
+    const candidates = !consultSky ? [] : slots
       .filter((s) => s.startMs >= nowMs && s.startMs + durMs <= Math.min(s.endMs + 30 * 60000, dueMs))
       .map((s) => ({ s, v: verdictOf(s) }))
       .filter(({ v }) => v?.suitability !== "defer")
@@ -439,7 +456,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     // than which element the Moon is in; the element lane is the right frame
     // for the big multi-hour blocks, not the small stitches.
     const hourTargets = new Set(t.assoc.planets.filter((p) => HOUR_RULERS.has(p)));
-    if (t.estimatedMinutes <= 75 && hourTargets.size > 0) {
+    if (consultSky && t.estimatedMinutes <= 75 && hourTargets.size > 0) {
       outer0: for (const grid of dayGrids) {
         for (const [segLo, segHi] of wakingSegments(wake, sleep))
         for (let h = segLo; h + t.estimatedMinutes / 60 <= segHi; h += 0.5) {
@@ -481,8 +498,14 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
           // The best of its lanes: a task that is both fire and water should
           // be graded on whichever curve is actually strong at this hour,
           // not on whichever lane happens to be listed first.
-          const e = Math.max(...[...lanes].map((el) => energyAt(grid, el, h)));
-          push(start, grid.date, false, e >= 0.35 ? "workable" : "against");
+          if (consultSky) {
+            const e = Math.max(...[...lanes].map((el) => energyAt(grid, el, h)));
+            push(start, grid.date, false, e >= 0.35 ? "workable" : "against");
+          } else {
+            // Plain mode never grades a slot against a current it was told
+            // not to consult. "workable" is the flat, honest tier.
+            push(start, grid.date, false, "workable");
+          }
           placed = true;
           break outer;
         }

@@ -221,6 +221,11 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
   const [windowType, setWindowType] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(false);
+  // The sheet's two directions: "to do" writes tasks ahead, "did" writes wins
+  // behind — the door for work nobody planned (home-base ask 3). A done thing
+  // becomes a WIN, never a pre-checked task: a task that never needed doing is
+  // inventory noise, a win is a record.
+  const [mode, setMode] = useState<"todo" | "did">("todo");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -277,6 +282,28 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
     }
   }
 
+  // "Did" mode: each line becomes a win dated today. Same failure honesty as
+  // addAll — a mid-list failure keeps the sheet open and says so.
+  async function logAll() {
+    if (lines.length === 0 || !testerId) return;
+    setAdding(true);
+    setAddError(false);
+    try {
+      const results = await Promise.all(lines.map(l => fetch("/api/planning/wins", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: l, tz: new Date().getTimezoneOffset() }),
+      })));
+      if (results.some(r => !r.ok)) { setAddError(true); return; }
+      qc.invalidateQueries({ queryKey: ["momentum"] });
+      onClose();
+    } catch {
+      setAddError(true);
+    } finally {
+      setAdding(false);
+    }
+  }
+
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 999,
@@ -289,11 +316,29 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
         background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440, maxWidth: "100%",
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
-        <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>Quick capture</div>
-        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 10 }}>One thing per line — dump as many as you like. Say when, and it'll be read as a due date.</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: "var(--text-3)" }}>Quick capture</div>
+          <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 2, gap: 1 }}>
+            {([["todo", "To do"], ["did", "Did"]] as const).map(([m, label]) => (
+              <button key={m} onClick={() => setMode(m)} style={{
+                fontSize: 10.5, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
+                background: mode === m ? "var(--color-card)" : "transparent",
+                color: mode === m ? "var(--color-foreground)" : "var(--text-3)",
+                fontWeight: mode === m ? 600 : 400,
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 10 }}>
+          {mode === "todo"
+            ? "One thing per line — dump as many as you like. Say when, and it'll be read as a due date."
+            : "One thing per line — each goes in today's log, planned or not."}
+        </div>
         <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addAll(); if (e.key === "Escape") onClose(); }}
-          placeholder={"reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) (mode === "did" ? logAll() : addAll()); if (e.key === "Escape") onClose(); }}
+          placeholder={mode === "todo"
+            ? "reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"
+            : "cleared the inbox\nran 40 minutes\nfixed the gate latch"}
           rows={4}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
@@ -302,7 +347,7 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             turn a small confirmation into a second copy of the input.
             What it must make visible is the part the user can't see coming:
             that some of their words are about to leave the title. */}
-        {dated.length > 0 && (
+        {mode === "todo" && dated.length > 0 && (
           <div style={{
             marginBottom: 10, padding: "8px 10px", borderRadius: 8,
             background: "var(--color-card-2)", border: "1px solid var(--color-border)",
@@ -339,21 +384,26 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
           </div>
         )}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <select value={windowType} onChange={e => setWindowType(e.target.value)}
+          {mode === "todo" && <select value={windowType} onChange={e => setWindowType(e.target.value)}
             style={{ flex: 1, minWidth: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "var(--text-2)", background: "var(--color-card-2)" }}>
             <option value="">Best time: any</option>
             {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
-          </select>
+          </select>}
           {/* Weave capture into scheduling (#15): hand the dump to the Planner,
               which reads each item's nature and finds it a good window. */}
-          <button onClick={() => { if (lines.length) { onDumpToPlanner(text); } }} disabled={lines.length === 0}
+          {mode === "todo" && <button onClick={() => { if (lines.length) { onDumpToPlanner(text); } }} disabled={lines.length === 0}
             title="Send these to the Planner to schedule"
             style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "var(--color-foreground)" : "var(--text-3)", fontWeight: 500 }}>
             ✦ Dump &amp; schedule →
-          </button>
-          <button onClick={addAll} disabled={lines.length === 0 || adding}
+          </button>}
+          {mode === "did" && <div style={{ flex: 1 }} />}
+          <button onClick={mode === "did" ? logAll : addAll} disabled={lines.length === 0 || adding}
             style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "var(--color-border)", color: lines.length ? "#ffffff" : "var(--text-3)" }}>
-            {adding ? "Adding…" : lines.length > 1 ? `Add ${lines.length}` : "Add"}
+            {adding
+              ? (mode === "did" ? "Logging…" : "Adding…")
+              : mode === "did"
+                ? (lines.length > 1 ? `Log ${lines.length}` : "Log it")
+                : (lines.length > 1 ? `Add ${lines.length}` : "Add")}
           </button>
         </div>
         {addError && <div style={{ fontSize: 11, color: "#a03030", marginTop: 8 }}>Some of these didn't save — try again.</div>}

@@ -94,3 +94,45 @@ describe("day weaver", () => {
     expect(w.openTime.length).toBeGreaterThan(0);   // the day is still a day
   });
 });
+
+// The plain weave (home-base build 2026-08-16): `consultSky: false` is the
+// astro-quiet lens's path through the SAME weaver — a second weaver would
+// drift, which is the WeekStrip/AlreadyWoven bug shape.
+describe("the plain weave", () => {
+  it("never consults an election — every basis is first-fit", () => {
+    const w = weaveDay({ items, date, ...AUSTIN, consultSky: false });
+    expect(w.placed.length).toBeGreaterThan(0);
+    for (const p of w.placed) expect(p.basis).toBe("first-fit");
+  });
+
+  it("still respects commitments and reports refusals", () => {
+    const busy = [{ startAt: at(8), endAt: at(21), title: "All day" }];
+    const w = weaveDay({ items, date, ...AUSTIN, commitments: busy, consultSky: false });
+    expect(w.placed.length + w.unplaced.length).toBe(items.length);
+    for (const u of w.unplaced) expect(u.reason.length).toBeGreaterThan(15);
+  });
+
+  it("hands high-energy work the earlier stretch, deadlines equal", () => {
+    const pair: WeaveItem[] = [
+      { id: "lo", title: "Sort receipts", kind: "task", estMinutes: 60, energy: "low" },
+      { id: "hi", title: "Rewrite the onboarding sequence", kind: "task", estMinutes: 60, energy: "high" },
+    ];
+    const w = weaveDay({ items: pair, date, ...AUSTIN, consultSky: false });
+    const hi = w.placed.find(p => p.item.id === "hi");
+    const lo = w.placed.find(p => p.item.id === "lo");
+    expect(hi && lo).toBeTruthy();
+    expect(hi!.startAt.getTime()).toBeLessThan(lo!.startAt.getTime());
+  });
+
+  it("keeps deadline pressure above energy", () => {
+    const pair: WeaveItem[] = [
+      { id: "due", title: "Send the contract", kind: "task", estMinutes: 30, energy: "low", dueDate: "2026-08-05" },
+      { id: "hi", title: "Rewrite the onboarding sequence", kind: "task", estMinutes: 60, energy: "high" },
+    ];
+    const w = weaveDay({ items: pair, date, ...AUSTIN, consultSky: false });
+    const due = w.placed.find(p => p.item.id === "due");
+    const hi = w.placed.find(p => p.item.id === "hi");
+    expect(due && hi).toBeTruthy();
+    expect(due!.startAt.getTime()).toBeLessThan(hi!.startAt.getTime());
+  });
+});

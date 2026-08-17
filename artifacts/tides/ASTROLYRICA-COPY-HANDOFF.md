@@ -585,3 +585,83 @@ it. The tests in `tests/voidOfCourse.test.ts` pin all of the above.
 **Still worth an outside view** on the twelve sentences themselves — the frame
 is settled, the prose is not, and the Virgo entry is the owner's own wording and
 should be left alone.
+
+---
+
+## ADDENDUM — 2026-08-16 (the home-base build)
+
+The astro-quiet lens shipped app-wide, and with it a set of deliberately
+PLAIN strings. Rule for everything in this addendum: these render at the
+"minimal" astrology level or on productivity surfaces, so they must pass the
+stranger test with zero sky vocabulary — no tide words, no instrument words.
+Rewrite for voice if wanted, but any draft that reintroduces the sky at
+these keys is wrong by construction.
+
+### A2. The loop's plain why-lines (server-composed, `whyPlain`)
+
+Shown under the compass answer at the quiet lens. Composed from fragments:
+
+- deadline half: **"past due" / "due today" / "due tomorrow" / "due Friday"**
+  (weekday only within six days)
+- calendar half: **"you're free until 2 PM"** / **"your calendar is clear
+  for the rest of the day"** (only when a connected calendar actually
+  answered)
+- joined: "Due Friday, and you're free until 2 PM."
+- neither fact: **"This is the strongest fit for right now."**
+- mid-meeting suffix (shared with the astro why): "The window outlasts
+  what's on your calendar right now."
+
+### A3. The quiet rail and session state
+
+- Rail at minimal: the clock, the date, and **"Light 6:13am–7:37pm"**
+- While a session runs (any lens becomes minimal): **"Sky is quiet ·
+  session"**
+
+### A4. The log-it doors
+
+- Capture sheet mode toggle: **"To do" / "Did"** · Did-mode sub-line: "One
+  thing per line — each goes in today's log, planned or not." · button "Log
+  it" / "Log N"
+- Home, under the add-input: **"Log something done →"** · placeholder "What
+  did you do? It goes in today's log."
+- Log day view: **"Add to this day's log"** · placeholder "Something you did
+  that day, planned or not." · saved note "In the ledger ✓"
+- Session done: **"Log what this was for"** · title placeholder "What were
+  you working on?" · link select "No link — just the log" · untitled linked
+  fallback text "worked on: {title}"
+- Flow release offer (Today): "{N} min in \"{title}\" — keep it in the
+  log?" · "Log it" / "leave it"
+
+### A5. Touch trails (tasks page + Home rows)
+
+- **"worked on · Tue · Thu"** ("today" for today) · more than three days:
+  "worked on · N days recently". Hard rule: never a percentage, never a
+  completion word — a touched task is still not done.
+
+### A6. Plain weave copy (Plan at minimal)
+
+- Intro (has tasks): "Compass fits what you're holding into the open
+  stretches of your week, by deadline and energy. Nothing is scheduled
+  until you say so."
+- Intro (cold): "Dump everything on your plate. The Planner reads each
+  line, then fits it into the open stretches of your week — by deadline,
+  duration and energy, around your waking hours and your calendar. Nothing
+  is scheduled until you say so."
+- Button: "Weave it in" (no ✦) · pending "Placing…"
+- Stale note: "…weave it again and it'll place around what's open now."
+- Every plain placement grades "workable" with the existing "this time will
+  do" — already sky-free, reused on purpose.
+
+### A7. Settings dial (rewritten)
+
+"Same engine underneath — this only changes what's shown. Minimal quiets
+the sky across the whole app: plain reasons on the compass, a bare
+calendar, the instrument rail folded away. Medium keeps the moon and the
+day's character. Full shows everything in the sky's own words. Starting a
+session quiets the sky on its own, for as long as it runs."
+
+### A8. Summoned review (Log)
+
+- Door: **"Review the week now"** · close: "Close the review" · non-Sunday
+  chip: "This week" · empty state: "The wake is empty so far — nothing to
+  review yet."

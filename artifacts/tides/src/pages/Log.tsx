@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { WakeList } from "@/components/Momentum";
+import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -82,6 +82,69 @@ const ELEMENT_TO_CHARACTER: Record<string, string> = {
 // Reflect back on any day — the composer writes to that day's check-in row
 // (felt → behaviorTags, note → notes), so hindsight entries are first-class
 // logbook entries too.
+// The backfill door (home-base ask 3): a done thing from any day gets written
+// into that day's ledger, the way habit dots already backfill. It writes a
+// WIN — the record — and lands in the Wake stamped with this date.
+function DayWinComposer({ testerId, date }: { testerId: string | null; date: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState(false);
+  useEffect(() => { setText(""); setSaved(false); }, [date]);
+
+  async function save() {
+    if (!testerId || saving || !text.trim()) return;
+    setSaving(true);
+    try {
+      const r = await fetch("/api/planning/wins", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim(), date, tz: new Date().getTimezoneOffset() }),
+      });
+      if (!r.ok) throw new Error(`win failed (${r.status})`);
+      qc.invalidateQueries({ queryKey: ["momentum"] });
+      setText("");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setErr(true);
+      setTimeout(() => setErr(false), 4000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 24, padding: "12px 16px", background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 8 }}>
+        Add to this day's log
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+          placeholder="Something you did that day, planned or not."
+          style={{
+            flex: 1, padding: "7px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
+            border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+            color: "var(--color-foreground)",
+          }}
+        />
+        <button onClick={save} disabled={saving || !text.trim()} style={{
+          padding: "7px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500,
+          cursor: text.trim() ? "pointer" : "default",
+          background: text.trim() ? "#1a2a3a" : "var(--color-border)",
+          color: text.trim() ? "#ffffff" : "var(--text-3)",
+        }}>{saving ? "Saving…" : "Log it"}</button>
+      </div>
+      {saved && <div style={{ fontSize: 10.5, color: "#3a6020", marginTop: 6 }}>In the ledger ✓</div>}
+      {err && <div style={{ fontSize: 10.5, color: "#a03030", marginTop: 6 }}>Didn't save — try again.</div>}
+    </div>
+  );
+}
+
 function ReflectComposer({ testerId, date, dayDetail }: {
   testerId: string | null; date: string; dayDetail: DayDetail;
 }) {
@@ -181,6 +244,10 @@ function ReflectComposer({ testerId, date, dayDetail }: {
 export default function Log({ testerId, onVisitPlanet }: { testerId: string | null; onVisitPlanet?: (planet: string) => void }) {
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // The summonable review (F10): the Sunday card's content, on demand. The
+  // Sunday auto-appearance on Home stays; this is the GTD ask — a review you
+  // can hold when you want one, not only when it ambushes you.
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [dateRange, setDateRange] = useState(30); // days back
   // Readback-by-flavor: narrow the timeline to one planet's Moon-contact days.
   const [flavor, setFlavor] = useState<string>("");
@@ -450,6 +517,24 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           <div style={{ marginBottom: 16 }}>
             <FeltPattern testerId={testerId} />
           </div>
+          {/* Review now — the week's card without waiting for Sunday. */}
+          <div style={{ marginBottom: 16 }}>
+            {!reviewOpen ? (
+              <button onClick={() => setReviewOpen(true)} style={{
+                fontSize: 11.5, padding: "5px 13px", borderRadius: 8, cursor: "pointer",
+                border: "1px solid var(--color-border)", background: "var(--color-card)",
+                color: "var(--color-primary)", fontWeight: 500,
+              }}>Review the week now</button>
+            ) : (
+              <>
+                <ReviewCard testerId={testerId} summoned onOpenLog={() => setReviewOpen(false)} />
+                <button onClick={() => setReviewOpen(false)} style={{
+                  fontSize: 10.5, marginTop: 6, background: "none", border: "none",
+                  cursor: "pointer", color: "var(--text-3)", padding: 0,
+                }}>Close the review</button>
+              </>
+            )}
+          </div>
           <WakeList testerId={testerId} />
           <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 20 }}>
             ← or select a day to read its full log
@@ -546,6 +631,9 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
 
           {/* Reflect on this day — felt + note, editable in hindsight */}
           <ReflectComposer testerId={testerId} date={dayDetail.date} dayDetail={dayDetail} />
+
+          {/* Backfill a win onto this day — yesterday's unplanned work counts too */}
+          <DayWinComposer testerId={testerId} date={dayDetail.date} />
 
           {/* Check-in scores (only when any exist — Tides itself doesn't
               collect these yet; health-tracker data shows through) */}

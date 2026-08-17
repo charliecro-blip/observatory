@@ -105,6 +105,8 @@ router.get("/elections/lines-up", async (req, res) => {
         // When it was started — what lets the engine say "keep going" rather
         // than proposing a switch off work already underway.
         startedAt: t.startedAt ? new Date(t.startedAt).toISOString() : null,
+        // The deadline, so the loop's plain why-line can state it.
+        dueDate: t.dueDate ?? null,
       });
     }
     // Guiding Stars are directional, so the STEP is what gets timed, not the
@@ -184,9 +186,13 @@ router.get("/elections/lines-up", async (req, res) => {
   // fetch is bounded to 2.5s and has been running beside the DB reads above.
   const b = await busyPromise;
   const busy = b.ok ? b.busy : [];
+  // "Consulted and answered" — the only state in which the plain why-line may
+  // make claims about free time. No calendar linked and a failed fetch both
+  // leave busy empty, and neither is evidence of a clear day.
+  const busyKnown = b.ok && b.connected;
 
   try {
-    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, busy }));
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, busy, busyKnown }));
   } catch (err) {
     req.log?.error({ err }, "lines-up: sky read failed");
     res.status(503).json({
@@ -273,7 +279,20 @@ router.get("/elections/shape-day", async (req, res) => {
   // past one. Absent for any client that hasn't been updated yet, which is
   // exactly why every callee treats it as optional.
   const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
+  // The plain weave (home-base build 2026-08-16): the astro-quiet lens asks
+  // for placement without elections — deadline pressure, stated energy, busy
+  // blocks, first-fit. Same weaver, one flag; refusals stay honest either way.
+  const consultSky = req.query.sky !== "false";
   const date = new Date();
+
+  // The calendar's commitments, so no placement lands on a meeting. Failure
+  // degrades to "didn't consult it", same contract as the loop's busy read.
+  const busyPromise = (async () => {
+    try {
+      const dayStart = new Date(Date.now() - ((Date.now() - tzOffsetMin * 60000) % 86400000));
+      return await fetchGcalBusy(testerId, dayStart.toISOString(), new Date(dayStart.getTime() + 86400000).toISOString());
+    } catch { return { ok: false as const, connected: false, busy: [] }; }
+  })();
 
   const items: WeaveItem[] = [];
   try {
@@ -282,7 +301,7 @@ router.get("/elections/shape-day", async (req, res) => {
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
-        activityKey: t.activityKey,
+        activityKey: t.activityKey, energy: t.energy,
       });
     }
     for (const g of await db.select().from(goals).where(eq(goals.testerId, testerId))) {
@@ -294,7 +313,12 @@ router.get("/elections/shape-day", async (req, res) => {
     return;
   }
 
-  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone }));
+  const b = await busyPromise;
+  const commitments = b.ok
+    ? b.busy.map(x => ({ startAt: new Date(x.startMs), endAt: new Date(x.endMs) }))
+    : [];
+
+  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments, consultSky }));
 });
 
 /**

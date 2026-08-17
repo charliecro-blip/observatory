@@ -199,6 +199,16 @@ export const wins = pgTable("wins", {
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
   date: text("date").notNull(),        // YYYY-MM-DD (viewer-local day)
   goalId: integer("goal_id"),          // nullable — a win can be general
+  // The other things a win can attach to (home-base build 2026-08-16). A win
+  // with a taskId is a TOUCH — the dated record of having worked on a task
+  // that is not done. tasks.done stays binary forever; progress on an
+  // incomplete task is this trail, never a percentage. All nullable and
+  // additive (BACKLOG §9a): a general win attaches to nothing.
+  taskId: integer("task_id"),
+  habitId: integer("habit_id"),
+  // How long the stretch ran, when it came from a session or a logged
+  // duration. Nullable — most named wins are a sentence, not a stopwatch.
+  minutes: integer("minutes"),
   text: text("text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

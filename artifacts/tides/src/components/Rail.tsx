@@ -1,9 +1,9 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { localToday, localDateStr } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
-import { usePreferences, useUiDensity } from "@/contexts/preferences-context";
+import { usePreferences, useUiDensity, useAstroDetail, useTimeFormat } from "@/contexts/preferences-context";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { suggestApproach, approachOptions } from "@/lib/approach";
@@ -257,6 +257,21 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
   const { profile: miProfile } = useTester();
   const [open, setOpen] = useState<string | null>(null);
   const [moonTake, setMoonTake] = useState(0);
+  // The phone's rail. At the astro-quiet lens the glyph strip folds away like
+  // the desktop rail does; a running session leaves its one-line note so the
+  // mode is as legible on a phone as it is at a desk.
+  const { level: miLevel, sessionQuiet: miSessionQuiet } = useAstroDetail();
+  if (miLevel === "minimal") {
+    if (!miSessionQuiet) return null;
+    return (
+      <div style={{
+        background: "var(--color-rail)", borderBottom: "1px solid var(--color-border)",
+        flexShrink: 0, padding: "6px 12px", fontSize: 10.5, color: "var(--text-3)",
+      }}>
+        Sky is quiet · session
+      </div>
+    );
+  }
   // A transient/partial `now` (e.g. an error body cached mid-reload) can lack
   // planetaryHour; the hour chip dereferences it, so guard the whole strip
   // rather than crash the page on mobile.
@@ -445,8 +460,65 @@ export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset:
 // is exported and TideWater draws the day's light band with it, which is the
 // reason deleting the component wholesale would have been wrong.
 
+// The rail at the astro-quiet lens: clock, date, and the day's light — the
+// desk stripped to what a scheduler needs. When a running session is what
+// quieted the sky, the note says so, so the state reads as a mode with an
+// end rather than a breakage.
+function QuietRail({ lat, lon, sessionQuiet, onNavigate }: {
+  lat: number; lon: number; sessionQuiet: boolean; onNavigate?: (v: string) => void;
+}) {
+  const fmtT = useTimeFormat();
+  const [tick, setTick] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setTick(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const sun = railSunTimes(lat, lon);
+  return (
+    <aside style={{
+      width: RAIL_W, minWidth: RAIL_W, background: "var(--color-rail)",
+      display: "flex", flexDirection: "column", flex: 1, minHeight: 0, fontSize: 12,
+    }}>
+      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
+        <button onClick={() => onNavigate?.("today")} title="Back to Today" style={{
+          fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em",
+          display: "flex", alignItems: "center", gap: 7, background: "none", border: "none",
+          cursor: "pointer", padding: 0, color: "var(--color-foreground)",
+        }}>
+          <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
+          Compass
+        </button>
+      </div>
+      <div style={{ padding: "16px 14px" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 30, lineHeight: 1.1, color: "var(--color-foreground)" }}>
+          {fmtT(tick)}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 4 }}>
+          {tick.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </div>
+        {sun && (
+          <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 8 }}>
+            Light {fmtT(sun.sunrise)}–{fmtT(sun.sunset)}
+          </div>
+        )}
+        {sessionQuiet && (
+          <div style={{
+            fontSize: 10.5, color: "var(--text-3)", marginTop: 14, paddingTop: 10,
+            borderTop: "1px solid var(--color-border)",
+          }}>
+            Sky is quiet · session
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
   const { prefs } = usePreferences();
+  // The astro-quiet lens folds the whole instrument panel away — see the
+  // QuietRail branch below the hooks (it must sit after them: hook order).
+  const { level: astroLevel, sessionQuiet } = useAstroDetail();
   const { profile, locationKnown } = useTester();
   const { railSections } = prefs.display;
   // How much of the rail is the first session allowed to be? At `essential`
@@ -588,6 +660,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const toggleHour = useCallback((key: string) => setExpandedHour(v => v === key ? null : key), []);
   const toggleAspect = useCallback((i: number) => setExpandedAspect(v => v === i ? null : i), []);
   const toggleNonMoon = useCallback((i: number) => setExpandedNonMoon(v => v === i ? null : i), []);
+  // The quiet lens needs no sky read at all — it renders before the skeleton
+  // so a slow reading can't make the quiet rail flicker through loading bones.
+  if (astroLevel === "minimal") {
+    return <QuietRail lat={lat} lon={lon} sessionQuiet={sessionQuiet} onNavigate={onNavigate} />;
+  }
   // Also treat a malformed response (e.g. a transient 429 error object) as
   // "not ready yet" — show the skeleton rather than crashing on now.planetaryHour.
   if (!now || !now.planetaryHour) {

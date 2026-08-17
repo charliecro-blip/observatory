@@ -15,12 +15,21 @@ interface PreferencesContextValue {
   updateNotifications: (patch: Partial<NotificationPrefs>) => void;
   updateDisplay: (patch: Partial<DisplayPrefs>) => void;
   updateTiming: (patch: Partial<TimingPrefs>) => void;
+  /**
+   * A running session forces the astro-quiet lens for as long as it runs —
+   * the one-tap door into flow mode for people who will never open Settings.
+   * Context state only, never persisted: the stored preference is untouched,
+   * and the lens returns the moment the session ends (or the tab reloads).
+   */
+  sessionQuiet: boolean;
+  setSessionQuiet: (on: boolean) => void;
 }
 
 const Ctx = createContext<PreferencesContextValue | null>(null);
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<TidesPreferences>(() => loadPreferences());
+  const [sessionQuiet, setSessionQuiet] = useState(false);
 
   const update = useCallback((patch: Partial<TidesPreferences>) => {
     setPrefs(prev => {
@@ -55,7 +64,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <Ctx.Provider value={{ prefs, updateNotifications, updateDisplay, updateTiming }}>
+    <Ctx.Provider value={{ prefs, updateNotifications, updateDisplay, updateTiming, sessionQuiet, setSessionQuiet }}>
       {children}
     </Ctx.Provider>
   );
@@ -68,11 +77,14 @@ export function usePreferences() {
 }
 
 // How much astrology to show, and what that reveals — one hook every surface
-// reads so "minimal / medium / full" gates identically everywhere.
+// reads so "minimal / medium / full" gates identically everywhere. A running
+// session overrides the stored level to "minimal" (see sessionQuiet above);
+// surfaces that want to say WHY the sky went quiet can read the flag.
 export function useAstroDetail() {
-  const { prefs } = usePreferences();
-  const level = prefs.display.astroDetail ?? "full";
-  return { level, ...astroReveal(level) };
+  const { prefs, sessionQuiet } = usePreferences();
+  const stored = prefs.display.astroDetail ?? "full";
+  const level = sessionQuiet ? "minimal" : stored;
+  return { level, sessionQuiet, ...astroReveal(level) };
 }
 
 // How much is on screen — "essential" (the core journey: compass, plan, aims)
