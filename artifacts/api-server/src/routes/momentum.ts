@@ -90,7 +90,8 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
   }
   for (const l of hLogs) {
     const h = habitById.get(l.habitId);
-    ledger.push({ date: l.date, goalId: h?.goalId ?? null, text: `kept: ${h?.name ?? "habit"}`, source: "habit" });
+    // "kept" is practice language; a chore is simply done (owner F7).
+    ledger.push({ date: l.date, goalId: h?.goalId ?? null, text: `${h?.flavor === "chore" ? "done" : "kept"}: ${h?.name ?? "habit"}`, source: "habit" });
   }
   for (const w of sessions) {
     if (!w.completedAt || !w.goalId) continue;

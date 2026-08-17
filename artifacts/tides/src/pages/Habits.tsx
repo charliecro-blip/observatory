@@ -40,6 +40,8 @@ interface Habit {
   // THAT rather than against a universal every-day standard.
   cadence?: Cadence; windowDone?: number; windowTarget?: number; cadenceMet?: boolean;
   solarAnchor?: "sunrise"|"noon"|"sunset"|null; solarAnchorAt?: string|null;
+  // "chore" = recurring upkeep, not an identity practice — no streak framing.
+  flavor?: string | null;
 }
 
 type Cadence = "daily"|"most_days"|"weekly"|"occasional";
@@ -62,6 +64,14 @@ function cadenceLabel(h: Habit): { text: string; tone: "met"|"progress"|"quiet" 
   const cadence = h.cadence ?? "daily";
   const done = h.windowDone ?? 0;
   const target = h.windowTarget ?? 0;
+  // A chore never speaks streak language, whatever its cadence — the record
+  // is the fact it happened, said once and quietly (owner F7).
+  if (h.flavor === "chore") {
+    return {
+      text: h.doneToday ? "done today" : done > 0 ? `done ${done}× this week` : "",
+      tone: "quiet",
+    };
+  }
   if (cadence === "occasional") {
     return { text: done > 0 ? `${done}× in the last week` : "whenever it fits", tone: "quiet" };
   }
@@ -105,7 +115,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
   // indication anything had been lost (owner, 2026-08-13). The draft now
   // survives on disk until it is submitted or explicitly discarded.
   const HABIT_DRAFT_KEY = `compass-habit-draft-${testerId ?? "anon"}`;
-  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset" };
+  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset", chore:false };
   const readHabitDraft = () => {
     try {
       const raw = localStorage.getItem(HABIT_DRAFT_KEY);
@@ -179,6 +189,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           cadence: form.cadence,
           targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
           solarAnchor: form.cadence === "daily" && form.solarAnchor ? form.solarAnchor : undefined,
+          flavor: form.chore ? "chore" : undefined,
         }),
       });
       if (!r.ok) throw new Error(`create habit failed (${r.status})`);
@@ -186,7 +197,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
-      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:""});
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:"",chore:false});
       setNewGoalId(""); setNewProjectId("");
       // Saved for real — the draft has nothing left to protect.
       try { localStorage.removeItem(HABIT_DRAFT_KEY); } catch { /* private mode */ }
@@ -359,6 +370,16 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   );
                 })}
               </div>
+              {/* Chore flavor (owner F7): recurring upkeep — same cadence
+                  machinery, no streak framing anywhere it renders. */}
+              <label style={{display:"flex",alignItems:"center",gap:7,marginTop:8,cursor:"pointer"}}>
+                <input type="checkbox" checked={form.chore}
+                  onChange={e=>setForm(f=>({...f,chore:e.target.checked}))}
+                  style={{width:13,height:13,accentColor:"#1a2a3a",cursor:"pointer"}}/>
+                <span style={{fontSize:10.5,color:"var(--color-muted)"}}>
+                  This is a chore — upkeep on a cycle, checked off plainly, never scored.
+                </span>
+              </label>
               {form.cadence === "weekly" && (
                 <div style={{display:"flex",alignItems:"center",gap:6,marginTop:7}}>
                   <span style={{fontSize:10.5,color:"var(--color-muted)"}}>How many times a week?</span>
@@ -532,7 +553,10 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
 
                 {h.emoji && <span style={{fontSize:18,lineHeight:1}}>{h.emoji}</span>}
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"var(--text-3)":"var(--color-foreground)",textDecoration:h.doneToday?"line-through":"none"}}>{h.name}</div>
+                  <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"var(--text-3)":"var(--color-foreground)",textDecoration:h.doneToday?"line-through":"none"}}>
+                    {h.name}
+                    {h.flavor === "chore" && <span style={{fontSize:8,padding:"1px 6px",borderRadius:4,background:"var(--color-card-2)",border:"1px solid var(--color-border)",color:"var(--text-3)",fontWeight:600,marginLeft:6,verticalAlign:"middle",textDecoration:"none",display:"inline-block"}}>chore</span>}
+                  </div>
                   {/* Progress in the habit's OWN cadence — a 3×/week practice
                       reads "2 of 3 this week", not a broken daily streak. */}
                   {(() => {

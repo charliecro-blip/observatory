@@ -184,6 +184,13 @@ export const habits = pgTable("habits", {
   // Dailies can hang off a solar event rather than a clock time — the body's
   // own schedule. sunrise | noon | sunset (null = no anchor).
   solarAnchor: text("solar_anchor"),
+  // Chore-flavored habits (owner call F7, 2026-08-16): recurring upkeep —
+  // "change the furnace filter" — that is not an identity practice. Same
+  // cadence engine end to end; the flavor changes the FRAMING only: no
+  // streak language anywhere, a task-voiced check-off, "done:" rather than
+  // "kept:" in the ledger. Nullable and additive: null = practice, the only
+  // kind that existed before this column.
+  flavor: text("flavor"), // "chore" | null
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

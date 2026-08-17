@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { planetColor } from "@/lib/planetColors";
-import { usePreferences } from "@/contexts/preferences-context";
+import { usePreferences, useAstroDetail } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import LogDone from "@/components/LogDone";
 
@@ -40,6 +40,11 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   // stops. The stored preference is never touched — this is flow mode as a
   // temporary state, not a setting.
   const { setSessionQuiet } = usePreferences();
+  // The timer's own panel obeys the lens too. While a session runs the lens
+  // is minimal by definition, so the "Moon hour" header was contradicting
+  // the "sky is quiet" claim from inside the very control that made it.
+  const { level: timerLevel } = useAstroDetail();
+  const timerQuiet = timerLevel === "minimal";
   const { profile } = useTester();
   const testerId = profile?.testerId ?? null;
   // Whether the done state is offering to log the stretch. Offered, never
@@ -207,7 +212,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
           width: 240, zIndex: 500,
         }}>
           {/* Planetary hour context */}
-          {planet && (
+          {planet && !timerQuiet && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--color-border)" }}>
               <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: `${pColor}20`, color: pColor, flexShrink: 0 }}>
                 {PLANET_ICONS[planet] ?? "○"}
@@ -234,7 +239,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                       borderColor: !useCustom && !useUntilHourEnd && duration === p.seconds ? "#1a2a3a" : "#d0cbc3",
                     }}>{p.label}</button>
                 ))}
-                {secsUntilHourEnd > 60 && (
+                {secsUntilHourEnd > 60 && !timerQuiet && (
                   <button onClick={() => { setUseUntilHourEnd(true); setUseCustom(false); }}
                     style={{ fontSize: 10, padding: "4px 9px", borderRadius: 8, border: "1px solid", cursor: "pointer",
                       background: useUntilHourEnd ? "#1a2a3a" : "var(--color-card)",

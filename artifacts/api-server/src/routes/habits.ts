@@ -198,7 +198,7 @@ router.post("/habits/seed-starters", async (req, res) => {
 
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId, cadence, targetPerWeek, solarAnchor } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId, cadence, targetPerWeek, solarAnchor, flavor } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   // Client may send arrays (the merged model) or comma-strings — store as CSV.
   const asCsv = (v: unknown): string | null =>
@@ -214,6 +214,8 @@ router.post("/habits", async (req, res) => {
     targetPerWeek: cad === "weekly" ? Math.min(7, Math.max(1, parseInt(String(targetPerWeek ?? 3), 10) || 3)) : null,
     // A solar anchor only means something for something you do every day.
     solarAnchor: cad === "daily" ? normalizeSolarAnchor(solarAnchor) : null,
+    // "chore" is the only flavor; anything else is a practice (null).
+    flavor: flavor === "chore" ? "chore" : null,
   }).returning();
   res.status(201).json(row);
 });

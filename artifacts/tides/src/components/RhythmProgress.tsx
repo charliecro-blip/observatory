@@ -33,6 +33,9 @@ interface Habit {
   windowDone?: number;
   windowTarget?: number;
   cadenceMet?: boolean;
+  /** "chore" = recurring upkeep (owner F7) — a task-voiced check-off, and
+   *  never a weekly score beside it. */
+  flavor?: string | null;
 }
 
 const KEPT = "#3f7a4a";
@@ -113,6 +116,7 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
           const target = h.windowTarget ?? 0;
           const done = h.windowDone ?? 0;
           const behind = h.cadenceMet === false;
+          const chore = h.flavor === "chore";
           return (
             <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
               <button
@@ -121,7 +125,9 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
                 aria-pressed={!!h.doneToday}
                 aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
                 style={{
-                  width: 15, height: 15, borderRadius: "50%", flexShrink: 0, padding: 0,
+                  // A chore checks off in the tasks' own square voice; the
+                  // circle stays the mark of a practice.
+                  width: 15, height: 15, borderRadius: chore ? 4 : "50%", flexShrink: 0, padding: 0,
                   cursor: toggleToday.isPending ? "default" : "pointer",
                   border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
                   background: h.doneToday ? KEPT : "transparent",
@@ -133,12 +139,16 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
               }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
               <span style={{
                 fontSize: 10, flexShrink: 0,
-                color: behind ? BEHIND : done > 0 ? KEPT : "var(--text-3)",
+                color: chore ? "var(--text-3)" : behind ? BEHIND : done > 0 ? KEPT : "var(--text-3)",
               }}>
                 {/* An occasional habit reports what happened and nothing else.
                     Printing "3 of 0" or inventing a denominator for it would
-                    score a habit the person deliberately left unscored. */}
-                {target > 0 ? `${done} of ${target} this week`
+                    score a habit the person deliberately left unscored.
+                    A chore says even less: done today, or nothing — never a
+                    weekly score (owner F7). */}
+                {chore
+                  ? (h.doneToday ? "done today" : done > 0 ? `done ${done}× this week` : "")
+                  : target > 0 ? `${done} of ${target} this week`
                   : done > 0 ? `${done} this week`
                   : "nothing this week"}
               </span>
