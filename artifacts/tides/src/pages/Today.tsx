@@ -2885,7 +2885,7 @@ function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayNam
                 // Bed is the chronotype's hour, not the sky's — the server
                 // sends no instant for it, so the time renders from the
                 // person's own sleepTime here.
-                const sleepT = testerProfile?.chronotype?.sleepTime;
+                const sleepT = ritualProfile?.chronotype?.sleepTime;
                 const anchor = h.doneToday ? null
                   : h.solarAnchor === "bed" ? `⏾ by ${sleepT ? new Date(`2000-01-01T${sleepT.padStart(5, "0")}:00`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "bed"}`
                   : h.solarAnchorAt ? `${h.solarAnchor === "sunset" ? "☾" : "☉"} ${h.solarAnchor === "sunset" ? "by " : ""}${fmtT(h.solarAnchorAt)}`
