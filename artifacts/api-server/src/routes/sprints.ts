@@ -17,8 +17,8 @@
 
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { sprints, wins, goals } from "@workspace/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { sprints, wins, goals, habits, habitLogs } from "@workspace/db/schema";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { transitSpans } from "../lib/transitSpans.js";
 
 const router: IRouter = Router();
@@ -45,21 +45,32 @@ router.get("/transits/spans", async (req, res) => {
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
   const spans = transitSpans({ tzOffsetMin }).slice(0, MAX_SPAN_RESULTS);
 
-  // Personal when the pair touches a planet steering one of the person's
-  // active stars. That grounding is what keeps a suggestion from being the
-  // horoscope-generator shape — the sky met something they already hold.
+  // Personal when the pair touches something the person ALREADY holds — a
+  // planet steering an active star, or one an active habit favors. That
+  // grounding is what keeps a suggestion from being the horoscope-generator
+  // shape: the sky met their inventory, not the other way round.
   let starsByPlanet = new Map<string, { id: number; title: string }>();
+  let habitsByPlanet = new Map<string, { id: number; name: string; planet: string }>();
   try {
-    const rows = await db.select().from(goals).where(eq(goals.testerId, testerId));
-    starsByPlanet = new Map(rows
+    const [goalRows, habitRows] = await Promise.all([
+      db.select().from(goals).where(eq(goals.testerId, testerId)),
+      db.select().from(habits).where(and(eq(habits.testerId, testerId), eq(habits.status, "active"))),
+    ]);
+    starsByPlanet = new Map(goalRows
       .filter(g => g.status === "active" && g.planet)
       .map(g => [g.planet as string, { id: g.id, title: g.title }]));
-  } catch { /* chartless of stars is fine — spans stay global */ }
+    for (const h of habitRows) {
+      for (const p of String(h.favoredPlanets ?? "").split(",").map(x => x.trim()).filter(Boolean)) {
+        if (!habitsByPlanet.has(p)) habitsByPlanet.set(p, { id: h.id, name: h.name, planet: p });
+      }
+    }
+  } catch { /* inventory unread — spans stay global */ }
 
   res.json({
     spans: spans.map(s => ({
       ...s,
       personal: starsByPlanet.get(s.transitPlanet) ?? starsByPlanet.get(s.targetPlanet) ?? null,
+      habitMatch: habitsByPlanet.get(s.transitPlanet) ?? habitsByPlanet.get(s.targetPlanet) ?? null,
     })),
   });
 });
@@ -85,7 +96,27 @@ router.get("/sprints", async (req, res) => {
       tallies.set(w.sprintId, t);
     }
   }
+  // A habit-linked sprint tallies from the habit's OWN log inside its window
+  // — the tap wrote habitLogs, the one record of a kept day, and deriving
+  // here is what makes double-entry impossible (same design as auto wins).
+  const habitIds = [...new Set(rows.map(r => r.habitId).filter((x): x is number => !!x))];
+  const habitDates = new Map<number, string[]>();
+  if (habitIds.length) {
+    const earliest = rows.filter(r => r.habitId).map(r => r.startDate).sort()[0];
+    const logRows = await db.select().from(habitLogs)
+      .where(and(eq(habitLogs.testerId, testerId), inArray(habitLogs.habitId, habitIds), gte(habitLogs.date, earliest)));
+    for (const l of logRows) {
+      const arr = habitDates.get(l.habitId) ?? [];
+      arr.push(l.date);
+      habitDates.set(l.habitId, arr);
+    }
+  }
   res.json(rows.map(r => {
+    if (r.habitId) {
+      const dates = (habitDates.get(r.habitId) ?? [])
+        .filter(d => d >= r.startDate && d <= r.endDate).sort();
+      return { ...r, tally: dates.length, tallyDates: dates };
+    }
     const t = tallies.get(r.id);
     return { ...r, tally: t?.count ?? 0, tallyDates: (t?.dates ?? []).sort() };
   }));
@@ -94,7 +125,7 @@ router.get("/sprints", async (req, res) => {
 router.post("/sprints", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { title, startDate, endDate, source, transitKey, transitLabel, goalId, targetCount, tz } = req.body ?? {};
+  const { title, startDate, endDate, source, transitKey, transitLabel, goalId, habitId, targetCount, tz } = req.body ?? {};
   if (!title || !String(title).trim()) { res.status(400).json({ error: "title required" }); return; }
   const tzOffsetMin = parseInt(tz, 10) || 0;
   const start = DATE_RE.test(startDate ?? "") ? startDate : localToday(tzOffsetMin);
@@ -123,6 +154,7 @@ router.post("/sprints", async (req, res) => {
     transitKey: typeof transitKey === "string" && transitKey ? transitKey.slice(0, 120) : null,
     transitLabel: typeof transitLabel === "string" && transitLabel ? transitLabel.slice(0, 120) : null,
     goalId: asId(goalId),
+    habitId: asId(habitId),
     targetCount: Number.isInteger(targetCount) && targetCount > 0 ? Math.min(99, targetCount) : null,
   }).returning();
   res.status(201).json(row);

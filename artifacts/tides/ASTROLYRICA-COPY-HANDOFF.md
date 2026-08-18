@@ -700,3 +700,10 @@ suggestion line must describe conditions and never promise outcomes.
   down first" · "past a month it isn't a sprint — give it a shorter window,
   or make it a habit"
 - Ledger voice: "sprint: {title}"
+
+Addendum to A10 (same day): sprints weave into what's already held.
+- Sheet gains "or turn a habit up:" (existing habit → its taps keep the
+  habit itself; tally reads "kept N×")
+- Habit-matched suggestion tail: "…— \"{Morning run}\" already leans on
+  {Mars}."
+- Riding a personal span preselects that star in the sheet.

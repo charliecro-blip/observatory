@@ -246,6 +246,12 @@ export const sprints = pgTable("sprints", {
   transitKey: text("transit_key"),
   transitLabel: text("transit_label"),       // "Mars trine Jupiter"
   goalId: integer("goal_id"),                // optional star this serves
+  // A sprint can be an EXISTING habit turned up for a stretch (owner
+  // 2026-08-18: "sprints might also aim to reinforce existing habits").
+  // Its "did it" then writes the habit's own log — one act, one record —
+  // and the tally derives from habitLogs inside the window, never from a
+  // second ledger that could drift.
+  habitId: integer("habit_id"),
   // Optional "do it N times" — a tally target, never a percentage gauge.
   targetCount: integer("target_count"),
   status: text("status").notNull().default("active"), // active | done | ended

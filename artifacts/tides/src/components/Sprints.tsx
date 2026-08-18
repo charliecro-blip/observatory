@@ -24,7 +24,7 @@ import { useAstroDetail } from "@/contexts/preferences-context";
 interface Sprint {
   id: number; title: string; startDate: string; endDate: string;
   source: string; transitKey?: string | null; transitLabel?: string | null;
-  goalId?: number | null; targetCount?: number | null; status: string;
+  goalId?: number | null; habitId?: number | null; targetCount?: number | null; status: string;
   tally: number; tallyDates: string[];
 }
 interface Span {
@@ -32,8 +32,10 @@ interface Span {
   startDate: string; peakDate: string; endDate: string; days: number;
   active: boolean; clipped: boolean; theme: string;
   personal: { id: number; title: string } | null;
+  habitMatch: { id: number; name: string; planet: string } | null;
 }
 interface GoalLite { id: number; title: string }
+interface HabitLite { id: number; name: string; status?: string }
 
 const ASPECT_VERB: Record<string, string> = {
   conjunction: "meets", sextile: "runs with", trine: "runs with",
@@ -97,7 +99,12 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
     if (skyQuiet || active.length > 0 || !spanData?.spans?.length) return null;
     if (store.inCooldown(today)) return null;
     const eligible = spanData.spans.filter(s => !store.isDismissed(s.key));
-    return eligible.find(s => s.personal) ?? eligible.find(s => s.active) ?? eligible[0] ?? null;
+    // Inventory-grounded first: a star's planet, then a habit's favored
+    // planet, then whatever is simply active in the sky.
+    return eligible.find(s => s.personal)
+      ?? eligible.find(s => s.habitMatch)
+      ?? eligible.find(s => s.active)
+      ?? eligible[0] ?? null;
   })();
 
   // ── The start sheet ───────────────────────────────────────────────────────
@@ -106,10 +113,24 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
   const [days, setDays] = useState<number | "transit">(7);
   const [target, setTarget] = useState("");
   const [starId, setStarId] = useState<number | "">("");
+  // Sprinting an EXISTING habit: the tap will keep the habit itself, and the
+  // tally reads the habit's own log. Choosing one takes over the title.
+  const [habitId, setHabitId] = useState<number | "">("");
 
   const { data: goalsList = [] } = useQuery<GoalLite[]>({
     queryKey: ["planning-goals-active", testerId],
     queryFn: () => fetchJson<GoalLite[]>("/api/planning/goals?status=active", { headers }),
+    enabled: !!testerId && sheet != null,
+  });
+  const { data: habitsList = [] } = useQuery<HabitLite[]>({
+    // Same key and shape as LogDone's list — one cache entry, not a second
+    // request for the same answer.
+    queryKey: ["logdone-habits", testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/habits", { headers });
+      const j = await r.json();
+      return Array.isArray(j) ? j.filter((h: HabitLite) => h.status === "active") : [];
+    },
     enabled: !!testerId && sheet != null,
   });
 
@@ -127,29 +148,40 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
           source: span ? "transit" : "chosen",
           transitKey: span?.key,
           transitLabel: span ? `${span.transitPlanet} ${span.aspect} ${span.targetPlanet}` : undefined,
-          goalId: starId || undefined,
+          // A habit sprint attributes through the habit's own star links, so
+          // the two never claim the same act twice.
+          goalId: habitId ? undefined : (starId || undefined),
+          habitId: habitId || undefined,
           targetCount: parseInt(target, 10) > 0 ? parseInt(target, 10) : undefined,
           tz: new Date().getTimezoneOffset(),
         }),
       });
     },
     onSuccess: () => {
-      setSheet(null); setTitle(""); setDays(7); setTarget(""); setStarId("");
+      setSheet(null); setTitle(""); setDays(7); setTarget(""); setStarId(""); setHabitId("");
       qc.invalidateQueries({ queryKey: ["sprints"] });
     },
   });
 
   const logIt = useMutation({
-    mutationFn: (s: Sprint) => fetchJson("/api/planning/wins", {
-      method: "POST", headers,
-      body: JSON.stringify({
-        text: `sprint: ${s.title}`, sprintId: s.id, goalId: s.goalId ?? undefined,
-        tz: new Date().getTimezoneOffset(),
-      }),
-    }),
+    // A habit sprint's tap keeps the HABIT — one act, one record, in the log
+    // that already owns kept days; the sprint tally derives from it. A free
+    // sprint's tap is a named win carrying sprintId.
+    mutationFn: (s: Sprint) => s.habitId
+      ? fetchJson(`/api/habits/${s.habitId}/log`, {
+          method: "POST", headers, body: JSON.stringify({ date: today }),
+        })
+      : fetchJson("/api/planning/wins", {
+          method: "POST", headers,
+          body: JSON.stringify({
+            text: `sprint: ${s.title}`, sprintId: s.id, goalId: s.goalId ?? undefined,
+            tz: new Date().getTimezoneOffset(),
+          }),
+        }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprints"] });
       qc.invalidateQueries({ queryKey: ["momentum"] });
+      qc.invalidateQueries({ queryKey: ["habits"] });
     },
   });
 
@@ -162,7 +194,16 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
   const openSheet = (span?: Span) => {
     setSheet({ span });
     setDays(span ? "transit" : 7);
-    setTitle("");
+    // Riding a span that met your inventory prefills the thing it met: the
+    // habit it matched, or the star whose planet it touched.
+    if (span?.habitMatch && !span.personal) {
+      setHabitId(span.habitMatch.id);
+      setTitle(span.habitMatch.name);
+    } else {
+      setHabitId("");
+      setTitle("");
+    }
+    setStarId(span?.personal?.id ?? "");
   };
 
   // Nothing running, nothing offered, sheet closed: one quiet door, plain at
@@ -182,7 +223,12 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
     const who = s.personal
       ? `${s.transitPlanet} — steering "${s.personal.title}" — ${verb} ${s.targetPlanet}`
       : `${s.transitPlanet} ${verb} ${s.targetPlanet}`;
-    return `${who} ${when} — ${s.theme}.`;
+    // A habit the sky just met beats the generic theme as the tail: it names
+    // the thing they already do that this spell leans into.
+    const tail = !s.personal && s.habitMatch
+      ? `"${s.habitMatch.name}" already leans on ${s.habitMatch.planet}`
+      : s.theme;
+    return `${who} ${when} — ${tail}.`;
   };
 
   return (
@@ -220,7 +266,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               </div>
               <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <span>{over ? `window closed ${weekday(s.endDate)}` : `day ${Math.min(dayN, total)} of ${total}`}</span>
-                {s.tally > 0 && <span style={{ color: "#4a7a52" }}>logged {s.tally}×{s.targetCount ? ` of ${s.targetCount}` : ""}</span>}
+                {s.tally > 0 && <span style={{ color: "#4a7a52" }}>{s.habitId ? "kept" : "logged"} {s.tally}×{s.targetCount ? ` of ${s.targetCount}` : ""}</span>}
                 {!skyQuiet && s.transitLabel && <span style={{ color: "#a08850" }}>{s.transitLabel}</span>}
                 <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   <button onClick={() => setStatus.mutate({ id: s.id, status: "done" })} style={{ fontSize: 9.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>finish</button>
@@ -265,12 +311,32 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
             <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>or borrow one:</span>
               {TEMPLATES.map(t => (
-                <button key={t} onClick={() => setTitle(t)} style={{
+                <button key={t} onClick={() => { setTitle(t); setHabitId(""); }} style={{
                   fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
                   border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)",
                 }}>{t}</button>
               ))}
             </div>
+            {/* Or turn an existing habit up for the stretch — its taps keep
+                the habit itself, so the record stays in one place. */}
+            {habitsList.length > 0 && (
+              <div style={{ display: "flex", gap: 5, marginTop: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>or turn a habit up:</span>
+                <select value={habitId}
+                  onChange={e => {
+                    const id = e.target.value ? Number(e.target.value) : "";
+                    setHabitId(id);
+                    if (id) {
+                      const h = habitsList.find(x => x.id === id);
+                      if (h) setTitle(h.name);
+                    }
+                  }}
+                  style={{ fontSize: 10, padding: "3px 6px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: habitId ? "var(--color-foreground)" : "var(--text-3)" }}>
+                  <option value="">no habit</option>
+                  {habitsList.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>how long:</span>
               {sheet.span && (
@@ -298,7 +364,9 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
                   style={{ width: 44, padding: "3px 6px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 10.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
                 times (optional)
               </label>
-              {goalsList.length > 0 && (
+              {/* A habit sprint attributes through the habit's own stars —
+                  offering a second star here would claim one act twice. */}
+              {goalsList.length > 0 && !habitId && (
                 <select value={starId} onChange={e => setStarId(e.target.value ? Number(e.target.value) : "")}
                   style={{ fontSize: 10, padding: "3px 6px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: starId ? "var(--color-foreground)" : "var(--text-3)" }}>
                   <option value="">no star</option>
