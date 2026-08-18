@@ -700,7 +700,7 @@ export function getPlanetaryHour(date: Date, lat = 40.7, lon = -74.0): Planetary
 
 // ── Planetary Aspects ─────────────────────────────────────────────────────────
 
-const ASPECT_DEFS = [
+export const ASPECT_DEFS = [
   { name: "conjunction",  angle: 0,   orb: 8, nature: "intensifying" },
   { name: "sextile",      angle: 60,  orb: 6, nature: "supportive"   },
   { name: "square",       angle: 90,  orb: 8, nature: "challenging"  },

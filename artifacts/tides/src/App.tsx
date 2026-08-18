@@ -205,6 +205,15 @@ export interface AskElectionContext {
   activity: string;
   note?: string;
   windows: { label: string; tier?: string; why?: string }[];
+  /**
+   * The pick the question is ABOUT, when the ask came from a surface that
+   * was showing one (Home's loop, most of all). Handed to the advisor AS
+   * the strongest fit, overriding Today's own next-move — the seed question
+   * names an item, and answering about a different engine's pick is the
+   * two-authorities bug wearing a chat interface (owner caught it live,
+   * 2026-08-18: asked about one title, answered about another).
+   */
+  subject?: { title: string; why?: string; when?: string; kind?: string };
 }
 
 const WINDOW_TYPES = [

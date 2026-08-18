@@ -1050,17 +1050,26 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               return <CycleLine prefix="this hour" options={railVerbs(planetaryHour.planet, profile?.chronotype, isVOC, moonSign)}
                 seed={new Date().getHours()} style={{ marginBottom: 8 }} />;
             }
-            // Stable default, alternatives on request — tapping ↻ is the user
-            // ASKING for another way in, which is a different act from the app
-            // reshuffling its own advice between glances.
-            const text = hourTakeIdx === 0 ? (suggestApproach(ctx)?.text ?? opts[0]) : opts[hourTakeIdx % opts.length];
+            // Several ways in at once (owner 2026-08-18: "more options on the
+            // sun hour suggestion"). The suggested approach still leads —
+            // stable between glances — and two alternatives sit under it;
+            // ↻ walks the window through the rest of the list.
+            const lead = suggestApproach(ctx)?.text ?? opts[0];
+            const ordered = [lead, ...opts.filter(o => o !== lead)];
+            const start = (hourTakeIdx * 3) % ordered.length;
+            const shown = Array.from(
+              { length: Math.min(3, ordered.length) },
+              (_, i) => ordered[(start + i) % ordered.length]);
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
-                <span style={{ color: "var(--text-3)" }}>this hour</span> {text}
-                {opts.length > 1 && (
-                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="Another way to take this hour" aria-label="Another way to take this hour"
+                <span style={{ color: "var(--text-3)" }}>this hour</span> {shown[0]}
+                {opts.length > 3 && (
+                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="More ways to take this hour" aria-label="More ways to take this hour"
                     style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
                 )}
+                {shown.slice(1).map((o, i) => (
+                  <div key={i} style={{ color: "var(--text-3)", marginTop: 1 }}>· {o}</div>
+                ))}
               </div>
             );
           })()}

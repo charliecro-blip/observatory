@@ -220,11 +220,37 @@ export const wins = pgTable("wins", {
   // additive (BACKLOG §9a): a general win attaches to nothing.
   taskId: integer("task_id"),
   habitId: integer("habit_id"),
+  sprintId: integer("sprint_id"),
   // How long the stretch ran, when it came from a session or a logged
   // duration. Nullable — most named wins are a sentence, not a stopwatch.
   minutes: integer("minutes"),
   text: text("text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Sprints — short, time-bound pushes (owner 2026-08-18): "activities focused
+// for the length of the transit, which they might do multiple times", and
+// their self-chosen cousins (a dopamine fast, a meditation challenge). A
+// sprint is 3–14 days with hard edges, tallied by wins.sprintId taps — the
+// ledger stays the one record. Transit-born sprints STORE their label and
+// window: the sky moves on, and the why must survive it.
+export const sprints = pgTable("sprints", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull().default("obs_default_charlie"),
+  title: text("title").notNull(),
+  startDate: text("start_date").notNull(),   // YYYY-MM-DD, viewer-civil
+  endDate: text("end_date").notNull(),       // inclusive last day
+  source: text("source").notNull().default("chosen"), // chosen | transit
+  // The span this rode, when transit-born — key for dedupe/dismissal
+  // ("mars-trine-jupiter-2026-08-24", peak-dated), label for display.
+  transitKey: text("transit_key"),
+  transitLabel: text("transit_label"),       // "Mars trine Jupiter"
+  goalId: integer("goal_id"),                // optional star this serves
+  // Optional "do it N times" — a tally target, never a percentage gauge.
+  targetCount: integer("target_count"),
+  status: text("status").notNull().default("active"), // active | done | ended
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // New-Moon intentions — the cycle's opening bookend (owner 2026-07-18):

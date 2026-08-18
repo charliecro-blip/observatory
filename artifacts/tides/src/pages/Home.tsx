@@ -46,6 +46,7 @@ import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import RhythmProgress from "@/components/RhythmProgress";
+import Sprints from "@/components/Sprints";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { touchLine, type TouchTrail } from "@/lib/touches";
@@ -903,6 +904,9 @@ export default function Home({
         }}
         // The advisor is handed the same facts the card shows, so it reasons
         // from the engine's answer rather than re-deriving one of its own.
+        // `subject` pins WHICH pick the question is about: the loop's, not
+        // whatever Today's own engine would name — the seed question and the
+        // context must never disagree about their subject.
         onAsk={onAskAboutElection && lead ? (seed) => onAskAboutElection({
           activity: lead.activityLabel,
           windows: [{
@@ -910,6 +914,12 @@ export default function Home({
             tier: lead.supportLevel,
             why: lines?.loop?.now?.why,
           }],
+          subject: lines?.loop?.now ? {
+            title: lines.loop.now.title,
+            why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why,
+            when: lines.loop.now.until ?? undefined,
+            kind: "loop",
+          } : undefined,
         }, seed) : undefined}
       />
 
@@ -1236,6 +1246,11 @@ export default function Home({
               </div>
             </div>
           )}
+
+          {/* SPRINTS — short pushes with hard edges, sometimes riding a
+              week-scale transit. Above the rhythm: a sprint is time-scarce
+              in a way a habit never is. */}
+          <Sprints testerId={testerId} />
 
           {/* THE RHYTHM — habits at the scale they actually move at. */}
           <RhythmProgress testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />

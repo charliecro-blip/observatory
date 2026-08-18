@@ -678,3 +678,25 @@ session quiets the sky on its own, for as long as it runs."
   "Sunrise · 6:16 AM", "Sunset · by 7:36 PM", "Before bed · by 11:00 PM"
 - Star links on a habit card: unlinked "☆ star" · linked "★ {first} +N" ·
   picker pills toggle "★/☆ {title}", closed by "done"
+
+### A10. Sprints (2026-08-18)
+
+Short pushes with hard edges, sometimes riding a week-scale transit. The
+suggestion line must describe conditions and never promise outcomes.
+
+- Card header **"Sprints"** · quiet door "Start a sprint — a short push with
+  an end date →" · "+ another"
+- Suggestion: "{Mars} {runs with|grinds against|meets|faces} {Jupiter}
+  through {Fri} — {a training or courage push, with growth in the air}." ·
+  personal variant "{Mars} — steering \"{Get fit}\" — runs with…" · CTAs
+  "Ride it →" / "not this one"
+- Row: "day 3 of 8" · "logged 4× of 6" · "window closed Tue" · "did it" ·
+  "finish" / "set down"
+- Sheet: placeholder "The push — morning pages, no sugar, ten cold calls…" ·
+  "or borrow one:" templates (Dopamine fast, Meditation, Morning pages, No
+  sugar, Cold showers, Inbox zero) · "how long:" / "until {Aug 21}" ·
+  "aim for N times (optional)" · "Start the sprint" / "never mind"
+- Server refusals: "three sprints are already running — finish or set one
+  down first" · "past a month it isn't a sprint — give it a shorter window,
+  or make it a habit"
+- Ledger voice: "sprint: {title}"

@@ -634,7 +634,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   testerId: string | null; lat?: number; lon?: number; onNavigate?: (view: string) => void;
   onOpenStar?: (goalId: number) => void;
   showAdvisor: boolean; setShowAdvisor: (v: boolean) => void; advisorSeed?: string | null;
-  askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[] } | null;
+  askContext?: { activity: string; note?: string; windows: { label: string; tier?: string; why?: string }[]; subject?: { title: string; why?: string; when?: string; kind?: string } } | null;
   /** The walkthrough hasn't been answered yet — hold back anything that asks
    *  the user for something before they've been shown what this page is. */
   firstRun?: boolean;
@@ -1156,7 +1156,15 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           weekSummary={weekSummary}
           seedMessage={advisorSeed}
           electionContext={askContext}
-          strongestFit={move}
+          // A seeded ask carries its own subject; Today's next-move stands
+          // aside for it. Handing the advisor a rival pick while the seed
+          // question names another is the two-authorities bug (2026-08-18).
+          strongestFit={askContext?.subject ? {
+            title: askContext.subject.title,
+            why: askContext.subject.why ?? "",
+            when: askContext.subject.when ?? "",
+            kind: askContext.subject.kind ?? "loop",
+          } : move}
           now={now}
           northStars={northStars}
           onAddTask={title => {

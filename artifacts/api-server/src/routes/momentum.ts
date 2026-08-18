@@ -213,7 +213,7 @@ router.get("/planning/momentum", async (req, res) => {
 router.post("/planning/wins", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { text, goalId, taskId, habitId, minutes, date, tz } = req.body ?? {};
+  const { text, goalId, taskId, habitId, sprintId, minutes, date, tz } = req.body ?? {};
   if (!text || !String(text).trim()) { res.status(400).json({ error: "text required" }); return; }
   const tzOffsetMin = parseInt(tz, 10) || 0;
   const day = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
@@ -221,7 +221,7 @@ router.post("/planning/wins", async (req, res) => {
   const asId = (v: unknown) => Number.isInteger(v) && (v as number) > 0 ? v as number : null;
   const [row] = await db.insert(wins).values({
     testerId, date: day,
-    goalId: asId(goalId), taskId: asId(taskId), habitId: asId(habitId),
+    goalId: asId(goalId), taskId: asId(taskId), habitId: asId(habitId), sprintId: asId(sprintId),
     minutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(24 * 60, Math.round(minutes)) : null,
     text: String(text).trim().slice(0, 500),
   }).returning();
