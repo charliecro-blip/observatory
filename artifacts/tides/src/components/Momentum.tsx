@@ -26,7 +26,7 @@ export interface MomentumData {
   intentions: { id: number; text: string; goalId: number | null }[];
   prevIntentions: { id: number; text: string; goalId: number | null }[];
   stars: MomentumStar[];
-  ledger: { date: string; goalId: number | null; text: string; source: string; winId?: number }[];
+  ledger: { date: string; goalId: number | null; goalIds?: number[]; text: string; source: string; winId?: number }[];
 }
 
 const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
@@ -178,7 +178,8 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
   const { data } = useMomentum(testerId, lat, lon);
   const [filter, setFilter] = useState<number | "all">("all");
   if (!data || data.ledger.length === 0) return null;
-  const items = data.ledger.filter(l => filter === "all" || l.goalId === filter);
+  // A multi-starred habit's item answers to EVERY star it serves.
+  const items = data.ledger.filter(l => filter === "all" || l.goalId === filter || l.goalIds?.includes(filter as number));
   const starTitle = (id: number | null) => data.stars.find(s => s.id === id)?.title;
   const starEl = (id: number | null) => data.stars.find(s => s.id === id)?.element;
   // Group by date for scannable days

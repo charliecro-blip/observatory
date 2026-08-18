@@ -2882,7 +2882,12 @@ function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayNam
                 const moonHr = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
                 const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
                 const fe = h.favoredElements?.[0];
+                // Bed is the chronotype's hour, not the sky's — the server
+                // sends no instant for it, so the time renders from the
+                // person's own sleepTime here.
+                const sleepT = testerProfile?.chronotype?.sleepTime;
                 const anchor = h.doneToday ? null
+                  : h.solarAnchor === "bed" ? `⏾ by ${sleepT ? new Date(`2000-01-01T${sleepT.padStart(5, "0")}:00`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "bed"}`
                   : h.solarAnchorAt ? `${h.solarAnchor === "sunset" ? "☾" : "☉"} ${h.solarAnchor === "sunset" ? "by " : ""}${fmtT(h.solarAnchorAt)}`
                   : fe === "fire" && dl?.sunrise ? `☉ ${fmtT(dl.sunrise)}`
                   : fe === "air" && dl?.sunrise && dl?.sunset ? `☉ ${fmtT(new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2).toISOString())}`

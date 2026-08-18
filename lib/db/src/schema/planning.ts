@@ -158,7 +158,14 @@ export const tasks = pgTable("tasks", {
 export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
   testerId: text("tester_id").notNull().default("obs_default_charlie"),
-  goalId: integer("goal_id"), // nullable FK to goals — a habit can serve a Guiding Star
+  goalId: integer("goal_id"), // nullable FK to goals — the FIRST star this serves (kept for every existing reader)
+  // ALL the stars this habit serves (owner 2026-08-16: one walk can serve
+  // "get fit" and "clear head" both). CSV of goal ids, in the house idiom the
+  // table already uses for favoredElements/favoredPlanets — a join table for
+  // a list this small would be machinery. goalId mirrors the first entry so
+  // the two can never disagree; a kept habit stays ONE ledger item, counted
+  // by each of its stars.
+  starIds: text("star_ids"), // e.g. "3,7" — CSV of goal ids, nullable
   projectId: integer("project_id"), // nullable FK to projects — a habit can also serve a project
   milestoneId: integer("milestone_id"), // nullable FK to milestones — a recurring STEP becomes a habit
   name: text("name").notNull(),

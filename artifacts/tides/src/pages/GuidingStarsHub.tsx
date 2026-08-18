@@ -839,7 +839,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           const scheduled = g.scheduledCount ?? 0;
           const pct = scheduled > 0 ? Math.min(100, Math.round((done / scheduled) * 100)) : 0;
           const gTasks = allTasks.filter((t: any) => t.goalId === g.id && t.done !== "true");
-          const gHabits = allHabits.filter((h: any) => h.goalId === g.id);
+          // A habit can serve several stars (starIds CSV); it belongs under
+          // every one of them, not only the first (goalId mirrors the first).
+          const gHabits = allHabits.filter((h: any) =>
+            h.goalId === g.id ||
+            (typeof h.starIds === "string" && h.starIds.split(",").map(Number).includes(g.id)));
           const adding = quickAdd && quickAdd.goalId === g.id ? quickAdd.kind : null;
           const dLeft = daysUntil(g.anchorUntil);
           const closing = dLeft != null && dLeft >= 0 && dLeft <= 30;

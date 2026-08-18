@@ -665,3 +665,16 @@ session quiets the sky on its own, for as long as it runs."
 - Door: **"Review the week now"** · close: "Close the review" · non-Sunday
   chip: "This week" · empty state: "The wake is empty so far — nothing to
   review yet."
+
+### A9. Chores, the day's landmarks, and star links (2026-08-16, later)
+
+- Habit form chore line: **"This is a chore — upkeep on a cycle, checked off
+  plainly, never scored."** · card chip "chore" · ledger voice "done:" (a
+  practice stays "kept:")
+- Anchor row (any cadence now): **"Hang it on the day? (optional)"** ·
+  options "At sunrise / Sun overhead / At sunset / **Before bed**" — bed's
+  time is the chronotype's own, shown as "by 11:00 PM"
+- The sun-calendar on Habits: header **"The day's landmarks"** · per-landmark
+  "Sunrise · 6:16 AM", "Sunset · by 7:36 PM", "Before bed · by 11:00 PM"
+- Star links on a habit card: unlinked "☆ star" · linked "★ {first} +N" ·
+  picker pills toggle "★/☆ {title}", closed by "done"

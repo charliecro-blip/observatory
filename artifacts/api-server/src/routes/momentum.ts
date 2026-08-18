@@ -42,6 +42,9 @@ interface LedgerItem {
   date: string; goalId: number | null; text: string; source: string; winId?: number;
   /** Set on a named win that touches a task/habit — the §-touches join. */
   taskId?: number | null; habitId?: number | null; minutes?: number | null;
+  /** Every star this item serves, when it serves more than one (a habit can
+   *  link several). One item either way — each listed star counts it. */
+  goalIds?: number[];
 }
 
 // Exported so the Studio's cycle card can render the same numbers the app
@@ -91,7 +94,14 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
   for (const l of hLogs) {
     const h = habitById.get(l.habitId);
     // "kept" is practice language; a chore is simply done (owner F7).
-    ledger.push({ date: l.date, goalId: h?.goalId ?? null, text: `${h?.flavor === "chore" ? "done" : "kept"}: ${h?.name ?? "habit"}`, source: "habit" });
+    // A multi-starred habit stays ONE ledger item; each star it serves
+    // counts it via goalIds (a walk serving two aims is not two walks).
+    const stars = h?.starIds ? h.starIds.split(",").map(Number).filter(n => Number.isInteger(n) && n > 0) : [];
+    ledger.push({
+      date: l.date, goalId: h?.goalId ?? stars[0] ?? null,
+      ...(stars.length > 1 ? { goalIds: stars } : {}),
+      text: `${h?.flavor === "chore" ? "done" : "kept"}: ${h?.name ?? "habit"}`, source: "habit",
+    });
   }
   for (const w of sessions) {
     if (!w.completedAt || !w.goalId) continue;
@@ -159,7 +169,7 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
       .map(p => ({ ...p, startHour: Math.max(p.startHour, 7), endHour: Math.min(p.endHour, 23) }))
       .filter(p => p.endHour - p.startHour >= 1)
       .sort((a, b) => b.peakE - a.peakE)[0] ?? null;
-    const gWins = ledger.filter(l => l.goalId === g.id);
+    const gWins = ledger.filter(l => l.goalId === g.id || l.goalIds?.includes(g.id));
     return {
       id: g.id, title: g.title, element: g.element, planet: g.planet ?? null,
       stepsDone, stepsTotal: stepsAll.length,

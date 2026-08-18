@@ -4,6 +4,7 @@ import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
+import { useTester } from "@/contexts/tester-context";
 import Glyph from "@/components/Glyph";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
@@ -39,10 +40,17 @@ interface Habit {
   // Cadence: the rhythm this habit actually wants, and how it's doing against
   // THAT rather than against a universal every-day standard.
   cadence?: Cadence; windowDone?: number; windowTarget?: number; cadenceMet?: boolean;
-  solarAnchor?: "sunrise"|"noon"|"sunset"|null; solarAnchorAt?: string|null;
+  solarAnchor?: "sunrise"|"noon"|"sunset"|"bed"|null; solarAnchorAt?: string|null;
   // "chore" = recurring upkeep, not an identity practice — no streak framing.
   flavor?: string | null;
+  // Every star this habit serves, CSV ("3,7"). goalId mirrors the first.
+  starIds?: string | null;
 }
+
+/** The star ids a habit serves, whichever column carries them. */
+const habitStarIds = (h: Habit): number[] =>
+  h.starIds ? h.starIds.split(",").map(Number).filter(n => Number.isInteger(n) && n > 0)
+  : h.goalId ? [h.goalId] : [];
 
 type Cadence = "daily"|"most_days"|"weekly"|"occasional";
 const CADENCE_OPTIONS: { key: Cadence; label: string; hint: string }[] = [
@@ -51,10 +59,14 @@ const CADENCE_OPTIONS: { key: Cadence; label: string; hint: string }[] = [
   { key: "weekly",     label: "A few times", hint: "you pick how many per week" },
   { key: "occasional", label: "When it fits", hint: "tracked, never scored" },
 ];
-const SOLAR_ANCHOR_OPTIONS: { key: "sunrise"|"noon"|"sunset"; label: string; glyph: string }[] = [
+type SolarAnchor = "sunrise"|"noon"|"sunset"|"bed";
+const SOLAR_ANCHOR_OPTIONS: { key: SolarAnchor; label: string; glyph: string }[] = [
   { key: "sunrise", label: "At sunrise",  glyph: "☀︎" },
   { key: "noon",    label: "Sun overhead", glyph: "☉" },
   { key: "sunset",  label: "At sunset",   glyph: "☾" },
+  // Bed is the person's own landmark, not the sky's — its time comes from
+  // the chronotype they gave at onboarding, never from the server.
+  { key: "bed",     label: "Before bed",  glyph: "⏾" },
 ];
 
 // How a habit is doing, in its OWN terms. A 3×/week practice that's done 3
@@ -86,6 +98,19 @@ function cadenceLabel(h: Habit): { text: string; tone: "met"|"progress"|"quiet" 
   };
 }
 const asArr = (v: unknown): string[] => Array.isArray(v) ? v : String(v ?? "").split(",").map(s=>s.trim()).filter(Boolean);
+
+// The bed landmark, from the chronotype's own sleep time ("HH:MM"). A time in
+// the small hours belongs to tomorrow — a night owl's 03:00 bed is tonight's,
+// not this morning's. Null when no chronotype exists: no invented bedtime.
+function bedTimeToday(sleepTime: string | undefined | null, today: string): Date | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(sleepTime ?? "");
+  if (!m) return null;
+  const d = new Date(`${today}T12:00:00`);
+  d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
+  if (parseInt(m[1], 10) < 12) d.setDate(d.getDate() + 1);
+  return d;
+}
+const fmtClock = (d: Date | null) => d ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
 interface GoalLite { id: number; title: string; }
 interface ProjectLite { id: number; title: string; }
 
@@ -115,7 +140,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
   // indication anything had been lost (owner, 2026-08-13). The draft now
   // survives on disk until it is submitted or explicitly discarded.
   const HABIT_DRAFT_KEY = `compass-habit-draft-${testerId ?? "anon"}`;
-  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|"sunrise"|"noon"|"sunset", chore:false };
+  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|SolarAnchor, chore:false };
   const readHabitDraft = () => {
     try {
       const raw = localStorage.getItem(HABIT_DRAFT_KEY);
@@ -142,6 +167,24 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
 
   const [newGoalId, setNewGoalId] = useState<number|"">("");
   const [newProjectId, setNewProjectId] = useState<number|"">("");
+  // Retroactive star-linking (owner 2026-08-16: "if I set habits before I
+  // articulate guiding stars, I want to go back and weave them in"). The
+  // PATCH has taken goalId all along; this is the first UI that sends it
+  // after creation. `linking` = the habit whose picker is open.
+  const { profile: testerProfile } = useTester();
+  const [linking, setLinking] = useState<number|null>(null);
+  const linkStars = useMutation({
+    mutationFn: async ({ id, goalIds }: { id: number; goalIds: number[] }) => {
+      const r = await fetch(`/api/habits/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ goalIds }) });
+      if (!r.ok) throw new Error(`couldn't link that habit (${r.status})`);
+    },
+    // The picker stays open across toggles — linking two stars is two taps,
+    // not two openings. It closes by hand.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["north-stars"] });
+    },
+  });
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
 
   const { data: goalsList = [] } = useQuery<GoalLite[]>({
@@ -188,7 +231,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           projectId: newProjectId || undefined,
           cadence: form.cadence,
           targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
-          solarAnchor: form.cadence === "daily" && form.solarAnchor ? form.solarAnchor : undefined,
+          solarAnchor: form.solarAnchor || undefined,
           flavor: form.chore ? "chore" : undefined,
         }),
       });
@@ -331,6 +374,65 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           </div>
         )}
 
+        {/* THE DAY'S LANDMARKS — the sun-calendar (owner 2026-08-16: "the
+            sun-calendar with the habits got lost along the way"). Four fixed
+            points in the person's actual day — sunrise, noon, sunset, bed —
+            with the habits hung on each, checkable in place. Sunrise/sunset
+            are today's real times here; bed is the chronotype's own hour.
+            Renders only when something is anchored: an empty scaffold is
+            furniture. */}
+        {(() => {
+          const anchored = habits.filter(h => h.solarAnchor);
+          if (anchored.length === 0) return null;
+          const dl = (now as any)?.daylight;
+          const sunrise = dl?.sunrise ? new Date(dl.sunrise) : null;
+          const sunset = dl?.sunset ? new Date(dl.sunset) : null;
+          const noon = sunrise && sunset ? new Date((sunrise.getTime() + sunset.getTime()) / 2) : null;
+          const bed = bedTimeToday(testerProfile?.chronotype?.sleepTime, today);
+          const timeOf: Record<SolarAnchor, Date | null> = { sunrise, noon, sunset, bed };
+          const STRIP_LABEL: Record<SolarAnchor, string> = { sunrise: "Sunrise", noon: "Noon", sunset: "Sunset", bed: "Before bed" };
+          return (
+            <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 8 }}>
+                The day's landmarks
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+                {SOLAR_ANCHOR_OPTIONS.map(opt => {
+                  const hs = anchored.filter(h => h.solarAnchor === opt.key);
+                  if (hs.length === 0) return null;
+                  const t = fmtClock(timeOf[opt.key]);
+                  return (
+                    <div key={opt.key}>
+                      <div style={{ fontSize: 10, color: "#a06818", fontWeight: 600, marginBottom: 5 }}>
+                        {opt.glyph} {STRIP_LABEL[opt.key]}{t ? ` · ${opt.key === "sunset" || opt.key === "bed" ? "by " : ""}${t}` : ""}
+                      </div>
+                      {hs.map(h => (
+                        <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left",
+                            padding: "3px 0", background: "none", border: "none", cursor: "pointer",
+                          }}>
+                          <span style={{
+                            width: 13, height: 13, borderRadius: h.flavor === "chore" ? 3 : "50%", flexShrink: 0,
+                            border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
+                            background: h.doneToday ? "#3f7a4a" : "transparent",
+                            color: "#ffffff", fontSize: 8, lineHeight: "13px", textAlign: "center",
+                          }}>{h.doneToday ? "✓" : ""}</span>
+                          <span style={{
+                            fontSize: 11.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)",
+                            textDecoration: h.doneToday ? "line-through" : "none",
+                          }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Add form */}
         {showAdd && (
           <div style={{background: "var(--color-card)",border:"1px solid var(--color-border)",borderRadius:10,padding:"16px"}}>
@@ -393,24 +495,26 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   ))}
                 </div>
               )}
-              {form.cadence === "daily" && (
-                <div style={{marginTop:7}}>
-                  <div style={{fontSize:10.5,color:"var(--color-muted)",marginBottom:4}}>Hang it on the sun? <span style={{color:"var(--text-3)"}}>(optional)</span></div>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                    {SOLAR_ANCHOR_OPTIONS.map(s => {
-                      const on = form.solarAnchor === s.key;
-                      return (
-                        <button key={s.key} type="button" onClick={()=>setForm(f=>({...f,solarAnchor: on ? "" : s.key}))} style={{
-                          display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:14,cursor:"pointer",fontSize:10.5,
-                          border:on?"1.5px solid #c08020":"1px solid var(--color-border)",
-                          background:on?"#c0802015":"var(--color-card-2)",
-                          color:on?"#a06818":"var(--color-muted)",
-                        }}><span>{s.glyph}</span>{s.label}</button>
-                      );
-                    })}
-                  </div>
+              {/* Any cadence can hang on the day's landmarks (owner
+                  2026-08-16) — a 3×/week run at sunrise is as anchored as a
+                  daily one. "Before bed" is the chronotype's time, not the
+                  sun's. */}
+              <div style={{marginTop:7}}>
+                <div style={{fontSize:10.5,color:"var(--color-muted)",marginBottom:4}}>Hang it on the day? <span style={{color:"var(--text-3)"}}>(optional)</span></div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {SOLAR_ANCHOR_OPTIONS.map(s => {
+                    const on = form.solarAnchor === s.key;
+                    return (
+                      <button key={s.key} type="button" onClick={()=>setForm(f=>({...f,solarAnchor: on ? "" : s.key}))} style={{
+                        display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:14,cursor:"pointer",fontSize:10.5,
+                        border:on?"1.5px solid #c08020":"1px solid var(--color-border)",
+                        background:on?"#c0802015":"var(--color-card-2)",
+                        color:on?"#a06818":"var(--color-muted)",
+                      }}><span>{s.glyph}</span>{s.label}</button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* THE TIMING IS SECONDARY TO DOING THE THING (owner, 2026-08-13).
@@ -562,12 +666,17 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   {(() => {
                     const c = cadenceLabel(h);
                     const anchor = h.solarAnchor ? SOLAR_ANCHOR_OPTIONS.find(s => s.key === h.solarAnchor) : null;
+                    // Bed has no server instant — its time is the chronotype's
+                    // own, computed here. Sky anchors keep the server's.
+                    const anchorAt = h.solarAnchorAt ? new Date(h.solarAnchorAt)
+                      : h.solarAnchor === "bed" ? bedTimeToday(testerProfile?.chronotype?.sleepTime, today)
+                      : null;
                     return (
                       <div style={{fontSize:9,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                         <span style={{color:c.tone==="met"?"#60a050":c.tone==="quiet"?"var(--text-3)":"var(--text-3)"}}>{c.text}</span>
-                        {anchor && h.solarAnchorAt && (
+                        {anchor && (anchorAt || h.solarAnchor === "bed") && (
                           <span style={{color:"#a08850"}} title={`${anchor.label} today`}>
-                            {anchor.glyph} {new Date(h.solarAnchorAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}
+                            {anchor.glyph} {h.solarAnchor === "bed" && anchorAt ? "by " : ""}{anchorAt ? fmtClock(anchorAt) : anchor.label.toLowerCase()}
                           </span>
                         )}
                       </div>
@@ -575,6 +684,43 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   })()}
                 </div>
 
+                {/* The stars this habit serves — linkable AFTER creation
+                    (owner: "go back and weave them in"), and to more than one
+                    (a walk can serve "get fit" and "clear head" both). */}
+                {goalsList.length > 0 && (() => {
+                  const linked = habitStarIds(h);
+                  const goalsById = Object.fromEntries(goalsList.map(g => [g.id, g]));
+                  const first = linked[0] != null ? goalsById[linked[0]] : undefined;
+                  return linking === h.id ? (
+                    <span style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap",flexShrink:0,maxWidth:280}}>
+                      {goalsList.map(g => {
+                        const on = linked.includes(g.id);
+                        return (
+                          <button key={g.id} disabled={linkStars.isPending}
+                            onClick={()=>linkStars.mutate({ id: h.id, goalIds: on ? linked.filter(x=>x!==g.id) : [...linked, g.id] })}
+                            title={on ? `Unlink from ${g.title}` : `Also serves ${g.title}`}
+                            style={{fontSize:8.5,padding:"2px 7px",borderRadius:10,cursor:"pointer",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                              border:on?"1.5px solid #c8a04a":"1px solid var(--color-border)",
+                              background:on?"#c8a04a18":"var(--color-card-2)",
+                              color:on?"#8a6a20":"var(--text-3)",fontWeight:on?600:400}}>
+                            {on ? "★" : "☆"} {g.title}
+                          </button>
+                        );
+                      })}
+                      <button onClick={()=>setLinking(null)} style={{fontSize:8.5,padding:"2px 6px",background:"none",border:"none",cursor:"pointer",color:"var(--text-3)"}}>done</button>
+                    </span>
+                  ) : (
+                    <button onClick={()=>setLinking(h.id)}
+                      title={linked.length ? `Serves ${linked.map(id=>goalsById[id]?.title ?? "a star").join(", ")} — click to change` : "Tie this habit to a Guiding Star"}
+                      style={{fontSize:8,padding:"2px 7px",borderRadius:4,flexShrink:0,cursor:"pointer",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                        border:"1px solid #c8a04a45",background:linked.length?"#c8a04a12":"none",
+                        color:linked.length?"#8a6a20":"var(--text-3)",fontWeight:600}}>
+                      {linked.length
+                        ? `★ ${first?.title ?? "star"}${linked.length > 1 ? ` +${linked.length - 1}` : ""}`
+                        : "☆ star"}
+                    </button>
+                  );
+                })()}
                 {asArr(h.favoredElements).length > 0 && (
                   <div style={{display:"flex",gap:2,flexShrink:0}} title={`Elements: ${asArr(h.favoredElements).join(", ")}`}>
                     {asArr(h.favoredElements).map(el => (

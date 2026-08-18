@@ -37,7 +37,18 @@ function windowTargetFor(cadence: Cadence, targetPerWeek: number | null): number
   return 0; // occasional
 }
 
-const SOLAR_ANCHORS = ["sunrise", "noon", "sunset"] as const;
+// A star list from whatever the client sent: an array of ids, a CSV string, a
+// single id, or nothing. Deduped, positive integers only.
+const normalizeStarIds = (v: unknown): number[] => {
+  const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(",") : v != null ? [v] : [];
+  return [...new Set(raw.map(x => parseInt(String(x), 10)).filter(n => Number.isInteger(n) && n > 0))];
+};
+
+// "bed" is the person's own time, not the sky's — the server validates it but
+// never computes its instant (solarTimes has no entry for it, so solarAnchorAt
+// stays null and the client renders the time from the chronotype it already
+// holds). Inventing a bedtime server-side would be a fabricated fallback.
+const SOLAR_ANCHORS = ["sunrise", "noon", "sunset", "bed"] as const;
 const normalizeSolarAnchor = (v: unknown): string | null =>
   SOLAR_ANCHORS.includes(v as any) ? (v as string) : null;
 
@@ -198,22 +209,30 @@ router.post("/habits/seed-starters", async (req, res) => {
 
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, projectId, milestoneId, cadence, targetPerWeek, solarAnchor, flavor } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, goalIds, projectId, milestoneId, cadence, targetPerWeek, solarAnchor, flavor } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   // Client may send arrays (the merged model) or comma-strings — store as CSV.
   const asCsv = (v: unknown): string | null =>
     Array.isArray(v) ? v.join(",") : (typeof v === "string" && v ? v : null);
+  // One habit, several stars. `goalIds` (array) is the full list; a legacy
+  // single `goalId` is read as a list of one. goalId always mirrors the first
+  // entry so no existing reader of the single column ever disagrees.
+  const starList = normalizeStarIds(goalIds ?? goalId);
   const cad = normalizeCadence(cadence);
   const [row] = await db.insert(habits).values({
     testerId, name, description, emoji,
     favoredElements: asCsv(favoredElements), favoredPhases: asCsv(favoredPhases), favoredPlanets: asCsv(favoredPlanets),
-    bestWindowType, minimumViable, goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
+    bestWindowType, minimumViable,
+    goalId: starList[0] ?? null, starIds: starList.length ? starList.join(",") : null,
+    projectId: projectId ?? null, milestoneId: milestoneId ?? null,
     cadence: cad,
     // Only a `weekly` habit carries an explicit target; the others are implied
     // by the cadence itself, so storing a number would just go stale.
     targetPerWeek: cad === "weekly" ? Math.min(7, Math.max(1, parseInt(String(targetPerWeek ?? 3), 10) || 3)) : null,
-    // A solar anchor only means something for something you do every day.
-    solarAnchor: cad === "daily" ? normalizeSolarAnchor(solarAnchor) : null,
+    // Any cadence can anchor to the day (owner 2026-08-16: "doing habits at
+    // sunrise, noon, sunset, or before bed") — a 3×/week run at sunrise is
+    // as real an anchor as a daily one. The old daily-only rule is gone.
+    solarAnchor: normalizeSolarAnchor(solarAnchor),
     // "chore" is the only flavor; anything else is a practice (null).
     flavor: flavor === "chore" ? "chore" : null,
   }).returning();
@@ -224,18 +243,27 @@ router.post("/habits", async (req, res) => {
 router.patch("/habits/:id", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, projectId, cadence, targetPerWeek, solarAnchor } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, goalIds, projectId, cadence, targetPerWeek, solarAnchor } = req.body;
   // Drizzle skips `undefined` in .set(), so absent fields stay untouched — only
-  // send the cadence trio when the caller actually supplied a cadence.
+  // send the cadence pair when the caller actually supplied a cadence.
   const cadencePatch = cadence === undefined ? {} : (() => {
     const cad = normalizeCadence(cadence);
     return {
       cadence: cad,
       targetPerWeek: cad === "weekly" ? Math.min(7, Math.max(1, parseInt(String(targetPerWeek ?? 3), 10) || 3)) : null,
-      solarAnchor: cad === "daily" ? normalizeSolarAnchor(solarAnchor) : null,
     };
   })();
-  const [row] = await db.update(habits).set({ name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, projectId, ...cadencePatch }).where(and(eq(habits.id, id), eq(habits.testerId, testerId))).returning();
+  // The anchor patches independently of cadence now — any cadence may anchor
+  // to the day, and re-anchoring must not require resending the cadence.
+  const anchorPatch = solarAnchor === undefined ? {} : { solarAnchor: normalizeSolarAnchor(solarAnchor) };
+  // Star links patch as ONE list. Either spelling (goalIds list, legacy
+  // goalId single, or explicit null to unlink) writes both columns, so the
+  // single-column readers and the list can never disagree.
+  const starPatch = (goalIds === undefined && goalId === undefined) ? {} : (() => {
+    const list = normalizeStarIds(goalIds ?? goalId);
+    return { goalId: list[0] ?? null, starIds: list.length ? list.join(",") : null };
+  })();
+  const [row] = await db.update(habits).set({ name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, projectId, ...starPatch, ...cadencePatch, ...anchorPatch }).where(and(eq(habits.id, id), eq(habits.testerId, testerId))).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
