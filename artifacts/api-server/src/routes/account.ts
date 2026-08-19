@@ -40,7 +40,7 @@ function normalizeCode(input: string): string {
 
 router.post("/account/sync", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { displayName, chronotype, cautionPlanets, lat, lon, locationLabel } = req.body ?? {};
+  const { displayName, chronotype, cautionPlanets, lat, lon, locationLabel, prefs } = req.body ?? {};
 
   const existing = (await db.select().from(testerProfiles)
     .where(eq(testerProfiles.testerId, testerId)).limit(1))[0] ?? null;
@@ -52,6 +52,7 @@ router.post("/account/sync", requireTesterId, async (req, res) => {
     lat: lat != null ? String(lat) : (existing?.lat ?? null),
     lon: lon != null ? String(lon) : (existing?.lon ?? null),
     locationLabel: locationLabel ?? existing?.locationLabel ?? null,
+    prefs: prefs ?? existing?.prefs ?? null,
     updatedAt: new Date(),
   };
 
@@ -281,6 +282,58 @@ router.delete("/account", requireTesterId, async (req, res) => {
     });
     throw e;
   }
+});
+
+/**
+ * PREFERENCES, ACROSS DEVICES.
+ *
+ * Preferences were localStorage-only, so on the per-device session model a
+ * lens or a layout set on one device did not exist on the person's other one
+ * (audit 2026-08-19 §7). The client keeps localStorage as its synchronous
+ * source — it must render the first frame at the right density without
+ * waiting for a round trip — and treats this as the copy that follows it to a
+ * new device.
+ *
+ * LAST WRITE WINS, deliberately. Merging two devices' preference objects
+ * field by field would silently produce a third state neither person chose;
+ * for a settings blob whose shape the client owns, the newer whole object is
+ * the honest answer. The client sends the WHOLE object for the same reason.
+ *
+ * Absent is a real answer here, not a failure: a profile that has never
+ * synced returns `{ prefs: null }` and the client keeps its local defaults.
+ */
+router.get("/account/prefs", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select({ prefs: testerProfiles.prefs, updatedAt: testerProfiles.updatedAt })
+    .from(testerProfiles).where(eq(testerProfiles.testerId, testerId)).limit(1))[0] ?? null;
+  res.json({ prefs: row?.prefs ?? null, updatedAt: row?.updatedAt ?? null });
+});
+
+router.put("/account/prefs", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const prefs = req.body?.prefs;
+  if (prefs == null || typeof prefs !== "object" || Array.isArray(prefs)) {
+    res.status(400).json({ error: "prefs must be an object" });
+    return;
+  }
+  // A settings blob has no business being large. The cap is a guard against a
+  // client bug filling the column, not a schema the server pretends to know:
+  // validating the SHAPE here would mean two definitions of it, and the one
+  // that matters lives in the client that reads it back.
+  if (JSON.stringify(prefs).length > 20_000) {
+    res.status(413).json({ error: "preferences too large" });
+    return;
+  }
+  const updated = await db.update(testerProfiles)
+    .set({ prefs, updatedAt: new Date() })
+    .where(eq(testerProfiles.testerId, testerId))
+    .returning({ testerId: testerProfiles.testerId });
+  // No profile yet means this device has never synced. Say so rather than
+  // inserting a bare row: a profile is created by /account/sync, which is
+  // also what mints the recovery code, and a half-made account here would be
+  // an account without one.
+  if (!updated.length) { res.status(404).json({ error: "no profile yet" }); return; }
+  res.json({ ok: true });
 });
 
 export default router;

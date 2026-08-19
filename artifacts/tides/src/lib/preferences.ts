@@ -84,6 +84,17 @@ export interface TidesPreferences {
   display: DisplayPrefs;
   timing: TimingPrefs;
   version: number;
+  /**
+   * When this object was last written, epoch ms.
+   *
+   * The tie-breaker between a device's local copy and the server's, and the
+   * only thing that makes "last write wins" mean what it says — without it
+   * the rule is really "whoever loaded most recently wins", which quietly
+   * discards the newer edit whenever a second device opens the app. Absent on
+   * blobs written before this existed, which reads as 0 and so loses to any
+   * server copy, and that is the right way round for the first sync.
+   */
+  savedAt?: number;
 }
 
 export const DEFAULT_PREFS: TidesPreferences = {
@@ -122,29 +133,84 @@ export const DEFAULT_PREFS: TidesPreferences = {
   version: 1,
 };
 
+/**
+ * Fill a stored (or downloaded) blob out to a complete preferences object.
+ *
+ * Every unknown key is defaulted rather than assumed, which is what lets a
+ * new preference ship without a migration and lets an OLDER client read a
+ * newer object without losing the keys it does not know about.
+ */
+export function mergePreferences(parsed: Partial<TidesPreferences> | null | undefined): TidesPreferences {
+  if (!parsed || typeof parsed !== "object") return DEFAULT_PREFS;
+  const display = { ...DEFAULT_PREFS.display, ...parsed.display };
+  // Migration: an EXISTING user (saved prefs) who never chose an astro level
+  // keeps the full experience they're used to — only brand-new users get the
+  // friendlier "medium" default (and are asked in intake).
+  if (parsed.display && parsed.display.astroDetail === undefined) display.astroDetail = "full";
+  return {
+    notifications: { ...DEFAULT_PREFS.notifications, ...parsed.notifications },
+    display,
+    timing: { ...DEFAULT_PREFS.timing, ...parsed.timing },
+    version: parsed.version ?? 1,
+    savedAt: typeof parsed.savedAt === "number" ? parsed.savedAt : 0,
+  };
+}
+
 export function loadPreferences(): TidesPreferences {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT_PREFS;
-    const parsed = JSON.parse(raw) as Partial<TidesPreferences>;
-    const display = { ...DEFAULT_PREFS.display, ...parsed.display };
-    // Migration: an EXISTING user (saved prefs) who never chose an astro level
-    // keeps the full experience they're used to — only brand-new users get the
-    // friendlier "medium" default (and are asked in intake).
-    if (parsed.display && parsed.display.astroDetail === undefined) display.astroDetail = "full";
-    return {
-      notifications: { ...DEFAULT_PREFS.notifications, ...parsed.notifications },
-      display,
-      timing: { ...DEFAULT_PREFS.timing, ...parsed.timing },
-      version: parsed.version ?? 1,
-    };
+    return mergePreferences(JSON.parse(raw) as Partial<TidesPreferences>);
   } catch {
     return DEFAULT_PREFS;
   }
 }
 
-export function savePreferences(prefs: TidesPreferences): void {
-  localStorage.setItem(KEY, JSON.stringify(prefs));
+/**
+ * Write to localStorage and return the STAMPED object.
+ *
+ * Returning it matters: the caller holds this in state and hands it to the
+ * server push, so if the stamp existed only in storage the two copies would
+ * disagree about when they were written — and the tie-break that decides
+ * which device wins would be reading a savedAt that is always one edit stale.
+ */
+export function savePreferences(prefs: TidesPreferences): TidesPreferences {
+  const stamped = { ...prefs, savedAt: Date.now() };
+  localStorage.setItem(KEY, JSON.stringify(stamped));
+  return stamped;
+}
+
+// ── Across devices ──────────────────────────────────────────────────────────
+// localStorage stays the SYNCHRONOUS source: the first frame has to render at
+// the right density and the right lens without waiting for a round trip, and
+// a page that reflows once the network answers is worse than one that is
+// briefly a device behind. The server copy is what follows a person to a new
+// device (audit 2026-08-19 §7).
+
+/** The stored copy, or null when there is none / it cannot be read. */
+export async function fetchServerPreferences(testerId: string): Promise<TidesPreferences | null> {
+  try {
+    const r = await fetch("/api/account/prefs", { headers: { "x-tester-id": testerId } });
+    if (!r.ok) return null;
+    const body = await r.json() as { prefs?: Partial<TidesPreferences> | null };
+    return body?.prefs ? mergePreferences(body.prefs) : null;
+  } catch {
+    // An unreachable server is not a reason to reset anyone's settings. The
+    // local copy is already correct for this device; it simply does not travel
+    // until the next successful write.
+    return null;
+  }
+}
+
+/** Push the whole object up. Failure is silent by design — see above. */
+export async function pushServerPreferences(testerId: string, prefs: TidesPreferences): Promise<void> {
+  try {
+    await fetch("/api/account/prefs", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+      body: JSON.stringify({ prefs: { ...prefs, savedAt: prefs.savedAt ?? Date.now() } }),
+    });
+  } catch { /* offline; the local copy still stands */ }
 }
 
 // Set just the astro-detail level — used by the onboarding intake, which runs

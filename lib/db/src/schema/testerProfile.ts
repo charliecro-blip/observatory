@@ -34,6 +34,21 @@ export const testerProfiles = pgTable("tester_profiles", {
   // after it, every request must carry a valid session token. Null = the
   // pre-accounts world, still open, still claimable.
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  // Display and notification preferences, as the client's own TidesPreferences
+  // object (audit 2026-08-19 §7).
+  //
+  // These lived in localStorage alone, which on the per-device session model
+  // means a preference set on a laptop does not exist on the same person's
+  // phone. Tolerable while the only settings were toggles someone flips once;
+  // not tolerable for a dashboard people ARRANGE, where a layout silently
+  // resetting on the second device is worse than never offering the feature.
+  //
+  // Stored whole rather than as columns: the shape is the client's to own and
+  // grows with it, and the same wholesale-restore reasoning already applies to
+  // chronotype above. Last write wins across devices, which is the honest
+  // policy for a per-device model — nobody's edit is merged into a shape it
+  // was not made against.
+  prefs: jsonb("prefs"),
   // Entitlement, named now so billing has a column to read the day it exists.
   // Everyone is 'beta' — a gift received, not a bill arriving (BACKLOG §5).
   plan: text("plan").notNull().default("beta"),
