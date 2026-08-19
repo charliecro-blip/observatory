@@ -47,6 +47,8 @@ import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
 import MomentsAhead from "@/components/MomentsAhead";
+import DayConditions from "@/components/DayConditions";
+import { NotificationOptIn } from "@/components/NotificationOptIn";
 import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
 import AskDoors from "@/components/AskDoors";
@@ -61,7 +63,7 @@ import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonChec
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
 import CompassNow from "@/components/CompassNow";
-import { useUiDensity, useAstroDetail } from "@/contexts/preferences-context";
+import { useUiDensity, useAstroDetail, usePreferences } from "@/contexts/preferences-context";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { AskElectionContext } from "@/App";
 
@@ -325,7 +327,7 @@ function SectionTitle({ children, note, action }: {
 }
 
 export default function Home({
-  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture,
+  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun,
 }: {
   testerId: string | null;
   lat: number;
@@ -334,6 +336,9 @@ export default function Home({
   onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void;
   /** Opens the multi-line capture sheet — what "paste today's list" means. */
   onQuickCapture?: () => void;
+  /** The walkthrough is armed or running. Asking for notification permission
+   *  is a poor first sentence, so the opt-in waits until it is answered. */
+  firstRun?: boolean;
 }) {
   const qc = useQueryClient();
   const today = localToday();
@@ -349,6 +354,21 @@ export default function Home({
     enabled: !!testerId,
   });
   const { data: northStars } = useNorthStars(testerId);
+  // Cycle tracking, for the condition slot. Absent for most people and cheap
+  // when it is — a 404 is a real answer here (not set up), never a failure.
+  const { data: cycle } = useQuery<{ cycleStartDate?: string; cycleLength: number; lutealLength: number } | null>({
+    queryKey: ["cycle", testerId],
+    queryFn: () => fetchJson<{ cycleStartDate?: string; cycleLength: number; lutealLength: number } | null>(
+      "/api/cycle", { headers, absentStatuses: [404], absentValue: null }),
+    enabled: !!testerId,
+  });
+  // Shares WhereYouAre's key, so the minimum-viable line costs no request.
+  const { data: habitsForRisk } = useQuery<{ name: string; minimumViable?: string | null }[]>({
+    queryKey: ["habits", testerId, today, lat, lon],
+    queryFn: () => fetchJson<{ name: string; minimumViable?: string | null }[]>(
+      `/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers }),
+    enabled: !!testerId,
+  });
   const { data: now } = useTidesNow(testerId, lat, lon);
   const { locationKnown, profile } = useTester();
   // Same dial Today uses — one mental model for "how much is on screen",
@@ -382,6 +402,7 @@ export default function Home({
   // (with its plain why), the list, the week, the stars, the rhythm — the
   // productivity core the lens exists to leave standing.
   const { level: astroLevel } = useAstroDetail();
+  const showVoid = usePreferences().prefs.display.todayShowVOC;
   const skyQuiet = astroLevel === "minimal";
   const isMobile = useIsMobile();
   // Read once and reused in both the key and the fetch. Every value the
@@ -988,36 +1009,17 @@ export default function Home({
           down only when there is no reading to report. */}
       <TideStrip now={now} minimal={skyQuiet} onOpen={() => onNavigate("today")} />
 
-      {/* ── RIGHT NOW · conditional. Only when a real condition is gating.
-          Stands down at the quiet lens: a void Moon is exactly the kind of
-          standing sky condition the lens exists to fold away. */}
-      {!skyQuiet && now?.voc?.isVOC && now.voc.reading && (
-        <div style={{
-          ...PANEL,
-          borderLeft: `3px solid ${now.voc.reading.benign ? PERSONAL : QUALIFIED}`,
-          borderRadius: 0, padding: "11px 16px",
-        }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 3 }}>
-            Right now · the Moon is void
-            {now.voc.nextIngress && <span style={{ textTransform: "none", letterSpacing: 0 }}> until {now.voc.nextIngress}</span>}
-          </div>
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{now.voc.reading.feel}</div>
-          <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.5, marginTop: 3 }}>{now.voc.reading.instead}</div>
-          {now.voc.scope && (
-            <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginTop: 4 }}>{now.voc.scope}</div>
-          )}
-          {/* THE CITATION, LAST AND SMALLEST. Six signs carry one; the other
-              six render nothing here rather than a hedge. It sits below the
-              counsel because it is the source of the claim rather than part
-              of it — this used to open the lead sentence in the four Lilly
-              signs, which spent the best line on bookkeeping. */}
-          {now.voc.reading.provenance && (
-            <div style={{ fontSize: 10.5, color: "var(--text-3)", lineHeight: 1.5, marginTop: 6, fontStyle: "italic" }}>
-              {now.voc.reading.provenance}
-            </div>
-          )}
-        </div>
-      )}
+      {/* ── THE CONDITION SLOT · one at a time, ranked by rarity.
+          Rhythm risk, then the void Moon, then where you are in a cycle.
+          Three banners folded into one slot (audit §5): rhythm risk and the
+          cycle phase lived on Today, where nobody lands, and the void was
+          drawn on both pages in two different voices.
+
+          Conditions are NOT in the notice queue below and never were: a
+          condition is information about the hour you are already in rather
+          than an offer competing for attention, and letting a common one
+          suppress a rare one is exactly backwards. */}
+      <DayConditions now={now} cycle={cycle} habits={habitsForRisk} skyQuiet={skyQuiet} showVoid={showVoid} />
 
       {/* ── TURNING POINT · the check-in prompt during a cycle window, or the
           kept one-pager after. Renders nothing on ordinary days.
@@ -1060,6 +1062,17 @@ export default function Home({
       {(reviewForced || (sundayToday && !turningPointPromptOpen(now?.moonCycle?.cycleStart) && !rareShowing)) && (
         <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate("log")} />
       )}
+
+      {/* THE DAILY-RETURN HEARTBEAT · one-tap opt-in for the morning and
+          evening pushes. It lived on Today (audit §5), which is not where
+          anyone lands, so it was shown to whoever happened to visit rather
+          than to everyone. Self-gating — hidden once enabled, dismissed or
+          blocked — and held back entirely until the walkthrough is answered,
+          because asking for notification permission is a poor first sentence.
+
+          Below the notice queue on purpose: this is an ask rather than a
+          notice, so it never competes for the rarity slot. */}
+      {!firstRun && <NotificationOptIn lat={lat} lon={lon} />}
 
       {/* THE WORK comes BEFORE the reading now.
           Compass answers "what now" at the top of the page, so the big

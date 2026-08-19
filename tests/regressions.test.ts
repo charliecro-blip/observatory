@@ -1348,14 +1348,30 @@ describe("the guide", () => {
 
   it("holds back the self-promoting banners until the tour is answered", () => {
     // A first screen should be the day, not a stack of asks over it (beta
-    // pass §B1). App decides; Today obeys — assert both halves are wired.
+    // pass §B1). App decides; the pages obey — assert both halves are wired.
+    //
+    // This used to read Today.tsx and require three `{!firstRun` guards in
+    // it, which is an assertion about WHERE the banners live rather than
+    // about the claim. It failed the day the notification opt-in moved to
+    // Home (audit 2026-08-19 §5) even though the guard moved with it. It now
+    // FINDS the render site, so the next move does not break it either.
     const app = readFileSync(join(process.cwd(), "artifacts/tides/src/App.tsx"), "utf-8");
-    const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
     expect(app).toMatch(/const firstRun = tourArmed \|\| tourPending\(testerId\)/);
     expect(app).toMatch(/firstRun=\{firstRun\}/);
-    expect(today).toMatch(/\{!firstRun && <NotificationOptIn/);
-    // The premium-discovery and first-star banners carry the same guard.
-    expect(today.match(/\{!firstRun /g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+
+    const pages = join(process.cwd(), "artifacts/tides/src/pages");
+    const sources = readdirSync(pages)
+      .filter((f) => f.endsWith(".tsx"))
+      .map((f) => readFileSync(join(pages, f), "utf-8"));
+
+    const host = sources.find((src) => src.includes("<NotificationOptIn"));
+    expect(host, "nothing renders the notification opt-in any more").toBeTruthy();
+    expect(host!, "the opt-in asks for permission before the tour is answered")
+      .toMatch(/\{!firstRun && <NotificationOptIn/);
+
+    // Every self-promoting block carries the same guard, wherever it sits.
+    const guards = sources.reduce((n, src) => n + (src.match(/\{!firstRun /g)?.length ?? 0), 0);
+    expect(guards).toBeGreaterThanOrEqual(2);
   });
 });
 

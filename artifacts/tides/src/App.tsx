@@ -1452,7 +1452,7 @@ function Shell() {
         {/* "habits" is not a view — it is the Stars tab opened on its habits
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>

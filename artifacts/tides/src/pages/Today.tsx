@@ -9,7 +9,6 @@ import { localToday, addDaysLocal, localDayRange } from "@/lib/dates";
 import { Outbox, type OutboxState } from "@/lib/outbox";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
-import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
 import { approachOptions } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
@@ -559,7 +558,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // did not opt into a void banner, a tide wave or a fortnight strip, whatever
   // those switches happen to say (AUDIT-JOURNEY J2).
   const quiet = (prefs.display.astroDetail ?? "full") === "minimal";
-  const todayShowVOC = !quiet && prefsDisplay.todayShowVOC;
   const todayShowWave = !quiet && prefsDisplay.todayShowWave;
   const todayShow14Day = !quiet && prefsDisplay.todayShow14Day;
   const todayShowJournal = prefsDisplay.todayShowJournal;
@@ -589,7 +587,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const [showTideCard, setShowTideCard] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [dismissedPremiumBanner, setDismissedPremiumBanner] = useState(() => localStorage.getItem("obs_seen_premium_banner") === "1");
-  const [dismissedStarHint, setDismissedStarHint] = useState(() => localStorage.getItem("obs_seen_star_hint") === "1");
   // The guide, and a one-line way in. The intro runs exactly once and is gone
   // by Thursday; this is the strip that survives long enough to be useful, and
   // it dismisses for good on first open.
@@ -706,17 +703,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     },
     enabled: !!testerId && !!gcalStatus?.connected,
     staleTime: 300_000,
-  });
-
-  const { data: cycle } = useQuery<{ cycleStartDate: string; cycleLength: number; lutealLength: number } | null>({
-    queryKey: ["cycle", testerId],
-    queryFn: async () => {
-      const r = await fetch("/api/cycle", { headers: testerId ? { "x-tester-id": testerId } : {} });
-      if (!r.ok) return null;
-      return r.json();
-    },
-    enabled: !!testerId,
-    staleTime: 3600_000,
   });
 
   // ONE KEY, ONE URL — and the key names everything the URL sends.
@@ -1144,37 +1130,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             question a second time from a surface that could not see the
             answer. */}
 
-        {/* The daily-return heartbeat: one-tap opt-in for the morning/evening
-            pushes. Self-gating — hidden once enabled, dismissed, or blocked —
-            and held back entirely until the walkthrough is answered: asking for
-            notification permission is a poor first sentence. */}
-        {!firstRun && <NotificationOptIn lat={lat} lon={lon} />}
-
-        {/* First-star hint — for users with no Guiding Stars yet, routing them
-            to the app's strongest moment. Takes priority over the premium
-            banner so new users see one nudge, not a stack of two. Suppressed
-            during the walkthrough, whose last step makes exactly this ask. */}
-        {!firstRun && northStars && northStars.length === 0 && !dismissedStarHint && (
-          <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>★</span>
-            <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
-              Set your first <b>Guiding Star</b> — {astro.level === "minimal"
-                ? "a long-term ideal to steer by, so ordinary days stay connected to somewhere."
-                : "a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports."}
-            </div>
-            <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-              To your Stars →
-            </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_star_hint", "1"); setDismissedStarHint(true); }} aria-label="Dismiss this hint" style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
-              ✕
-            </button>
-          </div>
-        )}
 
         {/* Deeper-currents discovery banner — dismissible, shown once until closed.
             Not part of onboarding (kept lean); this is the low-key invitation to
             explore premium features once someone's had a moment with the core loop. */}
-        {!firstRun && !essential && (!northStars || northStars.length > 0 || dismissedStarHint) && !dismissedPremiumBanner && (
+        {!firstRun && !essential && !!northStars?.length && !dismissedPremiumBanner && (
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
@@ -1598,8 +1558,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
         {/* (RhythmCard removed from Today — owner 2026-07-23 "not sure why
             'your rhythm today' is there." The rhythm framing lives in
-            Settings/chronotype + the cycle banner below, which stays because
-            it's personal and self-gating.) */}
+            Settings/chronotype and, since the 2026-08-19 consolidation, in
+            Home's condition slot — the cycle banner this used to point at is
+            no longer below.) */}
 
         {/* The big sky — the moment's defining aspects, explored. Full detail
             only: at minimal/medium this planet-to-planet aspect read-out is
@@ -1625,92 +1586,19 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* The tide — one coherent chart for the whole day */}
         {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
-        {/* Standing conditions */}
+        {/* Standing conditions.
+            The VOC, cycle-phase and rhythm-risk banners that stacked here are
+            gone: they are ONE ranked slot on Home now (audit 2026-08-19 §5),
+            which is where people actually land. Today's VOC strip was the
+            lesser of two copies — Home's carries the reading, the scope and
+            the Lilly provenance — and the hero's guidance line still names a
+            void Moon, because tideGuidance has always taken `voc`. */}
         {!essential && now && <ConditionsStrip now={now} today={today} />}
 
         {/* Logbook — evenings ONLY (owner 2026-07-23): "how did today feel?"
             belongs to the day's close. It renders under "Log the day" during
             evening ritual hours (see reflectBlock above); midday and morning
             it stands down entirely. */}
-
-        {/* VOC banner */}
-        {todayShowVOC && now?.voc?.isVOC && (
-          <div style={{
-            background: "var(--color-card-2)", border: "1px solid #d8d0c0", borderLeft: "3px solid #b0a080",
-            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>◌</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-brass)" }}>
-                Moon void of course{now.voc.nextIngress ? ` · until ${now.voc.nextIngress}` : ""}
-              </div>
-              {/* THE SCOPE FROM THE ENGINE, not a second copy of it written
-                  here. This was hardcoded as "Avoid new beginnings. Good for
-                  completion, review, routine, and rest." — which said the same
-                  thing as VOID_SCOPE in different words, so the app had two
-                  sentences for one fact and they had already drifted apart:
-                  the engine's version scopes the caution to beginnings meant
-                  to LAST, and this one barred beginnings outright. One fact,
-                  one source. */}
-              <div style={{ fontSize: 10, color: "#9a7050", marginTop: 2 }}>
-                {now.voc.scope ?? now.voc.reading?.instead}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Cycle phase banner */}
-        {cycle?.cycleStartDate && (() => {
-          const start = new Date(cycle.cycleStartDate + "T12:00:00");
-          const today_ = new Date();
-          const diff = Math.floor((today_.getTime() - start.getTime()) / 86400000);
-          if (diff < 0) return null;
-          const dayOfCycle = (diff % cycle.cycleLength) + 1;
-          const follEnd = cycle.cycleLength - cycle.lutealLength;
-          const phases = [
-            { name: "Menstrual", max: 5,        color: "#c04050", desc: "Rest · release · introspection" },
-            { name: "Follicular", max: follEnd-4, color: "#d08020", desc: "Rising energy · creativity · planning" },
-            { name: "Ovulatory",  max: follEnd,   color: "#50a050", desc: "Peak energy · visibility · connection" },
-            { name: "Luteal",     max: cycle.cycleLength, color: "#6050a0", desc: "Focus · nesting · detail work" },
-          ];
-          const phase = phases.find(p => dayOfCycle <= p.max) ?? phases[3];
-          return (
-            <div style={{
-              background: `${phase.color}10`, border: `1px solid ${phase.color}30`, borderLeft: `3px solid ${phase.color}`,
-              borderRadius: 8, padding: "9px 14px", display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: phase.color }}>{phase.name} · day {dayOfCycle} of cycle</div>
-                <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{phase.desc}</div>
-              </div>
-              <div style={{ fontSize: 8, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
-            </div>
-          );
-        })()}
-
-        {/* Rhythm-risk banner */}
-        {now?.rhythmRisk && (
-          <div style={{
-            background: "#fff8f0", border: "1px solid #e0b080", borderLeft: "3px solid #c05020",
-            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10,
-          }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#803020" }}>Rhythm-risk window · move gently</div>
-              {(now.rhythmRiskFactors ?? []).length > 0 && (
-                <div style={{ fontSize: 10, color: "#a05030", marginTop: 2 }}>
-                  {(now.rhythmRiskFactors ?? []).join(" · ")}
-                </div>
-              )}
-              {habits.filter((h: any) => h.minimumViable).length > 0 && (
-                <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 6 }}>
-                  <span style={{ fontWeight: 600, color: "#6a4020" }}>Minimum viable: </span>
-                  {habits.filter((h: any) => h.minimumViable).map((h: any) => `${h.name}: ${h.minimumViable}`).join(" · ")}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Waves — today's unscheduled tasks. Guiding Stars have their own
             card above (Dashboard) with weekly progress; listing them again

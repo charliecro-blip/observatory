@@ -665,7 +665,7 @@ function DisplaySection() {
 
       <div style={{ height: 16 }} />
       <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Today page</div>
-      <Row label="VOC banner" sub="Show void-of-course warning at top.">
+      <Row label="Void Moon" sub="Show it on Home when the Moon goes void.">
         <Toggle on={d.todayShowVOC} onChange={v => updateDisplay({ todayShowVOC: v })} />
       </Row>
       <Divider />

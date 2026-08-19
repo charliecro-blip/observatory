@@ -367,6 +367,23 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
             )}
           </div>
 
+          {/* NO STARS YET. This was a dismissible banner on Today (audit §5)
+              — a page the person may never open, and a nudge sitting in the
+              notice band above the day itself. The offer belongs in the card
+              that already draws the stars: what is missing is visible in the
+              same glance as what is there, and it needs no dismiss button
+              because it disappears the moment it is answered.
+
+              Only when there are habits. With nothing held at all the card
+              does not render, and the cold-start doors below make a better
+              first offer than this one. */}
+          {liveStars.length === 0 && liveHabits.length > 0 && (
+            <button onClick={() => onNavigate("work")} style={{
+              marginTop: 10, fontSize: 11, background: "none", border: "none",
+              padding: 0, cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
+            }}>Name a Guiding Star these can count toward →</button>
+          )}
+
           {/* The door to the grouped view, offered only when both halves
               exist: with no stars or no habits there is nothing to weave and
               the invitation would be a chore assigned by the page.
