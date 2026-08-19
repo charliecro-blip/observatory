@@ -119,11 +119,27 @@ describe("unavailable data never looks like empty data", () => {
 
 describe("claims match the evidence", () => {
   it("does not call the recommendation 'best'", () => {
-    const today = read("artifacts/tides/src/pages/Today.tsx");
-    expect(today).toMatch(/Strongest fit right now/);
-    // The heading itself must not say "Best next move" (the explanatory
-    // comment about why it doesn't is allowed to mention the old name).
-    expect(today).not.toMatch(/>\s*Best next move\s*</);
+    // "Best" claims a global optimum over facts the engine does not hold —
+    // what you are mid-way through, your capacity, whether someone is waiting.
+    //
+    // This used to require the literal "Strongest fit right now" inside
+    // Today.tsx, and so failed when that card was deleted as a duplicate of
+    // Home's — a test asserting an ADDRESS rather than a claim. It now checks
+    // every page and component: wherever the recommendation is named, it must
+    // not be named "best".
+    const roots = ["artifacts/tides/src/pages", "artifacts/tides/src/components"];
+    const sources = roots.flatMap((dir) =>
+      readdirSync(join(process.cwd(), dir))
+        .filter((f) => f.endsWith(".tsx"))
+        .map((f) => read(`${dir}/${f}`)));
+
+    for (const src of sources) {
+      expect(src, "a surface headed its recommendation 'Best next move'")
+        .not.toMatch(/>\s*Best next move\s*</);
+    }
+    // And something still names one — the guard is worthless if every
+    // recommendation surface has quietly gone away.
+    expect(sources.some((s) => /Compass · right now|Strongest fit/.test(s))).toBe(true);
   });
 
   it("does not claim the sky read the user's text", () => {

@@ -1370,8 +1370,16 @@ describe("the guide", () => {
       .toMatch(/\{!firstRun && <NotificationOptIn/);
 
     // Every self-promoting block carries the same guard, wherever it sits.
+    //
+    // The floor is 1, not 2: the deeper-currents banner was deleted with the
+    // rest of Today's duplicated surface (2026-08-19), and it is held until
+    // the free/paid line exists because it still sells "Currents under
+    // Calendar", which the pricing decision no longer describes. A count is a
+    // weak assertion anyway — what matters is that whatever asks something of
+    // a first-time user waits for the walkthrough, which the check above
+    // enforces on the one ask that remains.
     const guards = sources.reduce((n, src) => n + (src.match(/\{!firstRun /g)?.length ?? 0), 0);
-    expect(guards).toBeGreaterThanOrEqual(2);
+    expect(guards).toBeGreaterThanOrEqual(1);
   });
 });
 

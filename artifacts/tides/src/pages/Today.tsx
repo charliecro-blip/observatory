@@ -29,12 +29,10 @@ import { StarRows, EveningHarvest } from "@/components/Momentum";
 import { SIGN_MYTHOS, PLANET_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { UnifiedTideChart } from "@/components/TideWater";
 import { ritualPhase } from "@/lib/chronotype";
-import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
 import ReadZone from "@/components/ReadZone";
 import AskDoors from "@/components/AskDoors";
 import MomentsAhead from "@/components/MomentsAhead";
-import AngleCrossing from "@/components/AngleCrossing";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
@@ -123,76 +121,6 @@ function PinButton({ onPin }: { onPin: () => void }) {
     >
       {pinned ? "★" : "☆"}
     </button>
-  );
-}
-
-// ── Moment Advisor ────────────────────────────────────────────────────────────
-
-// mode "send" fires immediately; mode "fill" drops a natural starter into the
-// input for you to complete, so the message reads as your own words (no
-// awkward "ask me what it is" instructions sent on your behalf).
-// The starting questions point Ask at EXPLAINING what Compass computed, not
-// at recomputing it. "What should I do right now?" invited a second, generative
-// answer to the exact question the deterministic engine already answers on the
-// same screen — and when the two differed the user had no way to tell which to
-// believe. These ask Ask to do the thing only it can do: reason about the
-// answer, weigh what the engine can't see, and say where it might be wrong.
-// Only `fill` entries are rendered (the send-mode prompts live as rows in the
-// "Right now" section, where they can reference the current pick). Kept as a
-// list of openers the user completes themselves.
-// QUICK_INTENTIONS lived here — four timing fragments the advisor offered as
-// chips. They are the Timing door's three items now (components/AskDoors.tsx),
-// where each carries both a fragment for surfaces with a text field and a
-// complete question for surfaces without one. Removed 2026-08-19 rather than
-// left dangling: an unreferenced prompt table is a second copy waiting to drift.
-
-/**
- * "Another fit" — collapsed, conditional, never coequal with the default.
- *
- * Three unordered recommendations would rebuild exactly the indecision that
- * Strongest Fit exists to remove, so this stays shut until asked for. What
- * makes it conditional rather than a list is that each line is keyed to
- * something the engine cannot observe — your focus, your energy, whether
- * you've been alone all day. The user chooses by consulting themselves, which
- * is both more useful than a ranking and the honest admission: Compass reads
- * the sky, not the body.
- */
-function AnotherFit({ planet, at, voc, moonSign, wakeTime, sleepTime }: {
-  planet: string;
-  at: Date;
-  voc: boolean;
-  moonSign?: string | null;
-  wakeTime?: string | null;
-  sleepTime?: string | null;
-}) {
-  const [open, setOpen] = useState(false);
-  const fits = conditionalFits({ planet, at, voc, moonSign, wakeTime, sleepTime });
-  // No register for this planet — collapse entirely rather than offer a row
-  // with filler in it.
-  if (!fits.length) return null;
-  return (
-    <div style={{ marginTop: 7 }}>
-      <button
-        onClick={() => { setOpen((v) => !v); if (!open) logEvent("another_fit_open", { planet }); }}
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 10.5, color: "var(--text-3)" }}>
-        {open ? "▴ hide" : "▾ another fit"}
-      </button>
-      {open && (
-        <div style={{ marginTop: 5 }}>
-          {fits.map((f) => (
-            <div key={f.capacity} style={{ display: "flex", gap: 7, alignItems: "baseline", padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
-              <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{f.condition}</span>
-              <span style={{ color: "var(--color-muted)" }}>— {f.suggestion}</span>
-            </div>
-          ))}
-          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4, fontStyle: "italic" }}>
-            {fits[0].basis === "voc"
-              ? "The Moon's void — these all finish rather than begin."
-              : "Compass reads the hour, not your energy. You pick the line that's true."}
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -566,8 +494,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     );
   }
   const [showTideCard, setShowTideCard] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [dismissedPremiumBanner, setDismissedPremiumBanner] = useState(() => localStorage.getItem("obs_seen_premium_banner") === "1");
   // The guide, and a one-line way in. The intro runs exactly once and is gone
   // by Thursday; this is the strip that survives long enough to be useful, and
   // it dismisses for good on first open.
@@ -831,14 +757,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const elemColor = ELEMENT_COLORS[el as Element] ?? "#888888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888888";
 
-  // Angle crossings now come from /tides/now and render through
-  // components/AngleCrossing, so Home shows the same banner from the same
-  // data (audit correction, 2026-08-19). The derivation that lived here —
-  // the 14°/hr sweep, the 3° orb, the ~13-minute window — moved with it and
-  // is finally under test.
-  const crossingBanner = (
-    <AngleCrossing crossings={now?.crossings} enabled={crossingsOn && astro.level !== "minimal"} />
-  );
 
   // Ritual mode — Today reads the *person's* day, not the office clock.
   // Morning opens the loop (the first hours after waking), evening closes it
@@ -1029,9 +947,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             survives as the reference manual in Settings. A new tester's first
             screen is their day. */}
 
-        {/* Active angle crossing(s) ride at the very top — a peak moment the
-            day is passing through right now, above even the ritual card. */}
-        {crossingBanner}
 
         {/* The ritual anchor — morning "Cast off" / evening "Log the day".
             First thing on the page during ritual hours, absent midday. */}
@@ -1058,24 +973,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
             answer. */}
 
 
-        {/* Deeper-currents discovery banner — dismissible, shown once until closed.
-            Not part of onboarding (kept lean); this is the low-key invitation to
-            explore premium features once someone's had a moment with the core loop. */}
-        {!firstRun && !essential && !!northStars?.length && !dismissedPremiumBanner && (
-          <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
-            <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
-              This page is the day's weather. <b>Currents</b> (under Calendar) tracks your slow cycles — the multi-year transits moving through your chart right now.
-            </div>
-            <button onClick={() => setShowPremiumModal(true)} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-              Explore
-            </button>
-            <button onClick={() => { localStorage.setItem("obs_seen_premium_banner", "1"); setDismissedPremiumBanner(true); }} aria-label="Dismiss this banner" style={{ fontSize: 13, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
-              ✕
-            </button>
-          </div>
-        )}
-        {showPremiumModal && <PremiumExploreModal onClose={() => setShowPremiumModal(false)} />}
 
         {/* Hero card — tide-forward */}
         {(() => {
@@ -1314,153 +1211,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           );
         })()}
 
-        {/* Strongest fit right now — the reading above turned into one act.
-            It sits directly under the hero because the question the hero
-            raises ("what kind of time is this?") has exactly one useful
-            answer ("then do this"), and the two should not be separated by a
-            scroll. Deterministic (lib/next-move.ts) so the why is always
-            checkable against the rail. Shown at every density: this is the
-            core loop, not an add-on.
-
-            NOT "best next move". Compass is choosing from the tasks it knows
-            about — it cannot see what you are already mid-way through, your
-            capacity today, whether something is blocked, or whether another
-            person is waiting. "Best" claims a global optimum over facts it
-            doesn't hold; "strongest fit" claims exactly what the engine
-            actually computed, and is still the useful sentence. */}
-        {(() => {
-          if (!now) return null;
-          // FLOW PROTECTION. If something is already underway, the honest card
-          // is "keep going" — not a fresh recommendation. The engine is
-          // stateless and recomputes from the sky every render, so without the
-          // start stamp it would propose switching you off your own work, and
-          // for an app opened several times a day that is the most expensive
-          // mistake it can make.
-          //
-          // This deliberately OVERRIDES the sky. A better-fitting hour is not
-          // a reason to interrupt someone mid-task; the cost of the switch is
-          // real and immediate, while the gain is marginal and speculative.
-          const running = currentlyInProgress(todayTasks as any);
-          const inFlow = !!running;
-          return (
-            <div style={{
-              background: "var(--color-card)", border: "1px solid var(--color-border)",
-              borderLeft: `3px solid ${inFlow ? "#4a7a52" : "var(--color-primary)"}`, borderRadius: 12,
-              padding: "12px 16px", flexShrink: 0,
-            }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: inFlow ? "#4a7a52" : "var(--text-3)", marginBottom: 5 }}>
-                {inFlow ? `Keep going · ${elapsedLabel(running!.minutes)}` : framing.moveLabel}
-              </div>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                {(inFlow || move.kind === "task") && (
-                  <button
-                    onClick={() => {
-                      const id = inFlow ? running!.task.id : move.taskId!;
-                      logEvent("next_move_done", { taskId: id, inFlow });
-                      toggleTask.mutate({ id, done: true });
-                    }}
-                    title="Mark it done"
-                    style={{
-                      width: 17, height: 17, borderRadius: 4, marginTop: 2, flexShrink: 0,
-                      border: `1.5px solid ${inFlow ? "#4a7a52" : "var(--color-primary)"}`, background: "transparent", cursor: "pointer", padding: 0,
-                    }}
-                  />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, color: "var(--color-foreground)", fontWeight: 600, lineHeight: 1.35 }}>
-                    {inFlow ? running!.task.title : move.title}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 3 }}>
-                    {inFlow
-                      ? "You're already in this. Compass won't move you off it — finish, or stop on purpose."
-                      : move.why}
-                  </div>
-                  {inFlow && (
-                    <button
-                      onClick={() => {
-                        logEvent("in_progress_release", { taskId: running!.task.id });
-                        // The offer to keep the stretch, made at the moment of
-                        // stopping. Declining leaves no record, same as today.
-                        if (running!.minutes >= 1) {
-                          setStretchOffer({ taskId: running!.task.id, title: running!.task.title, minutes: running!.minutes });
-                        }
-                        startTask.mutate({ id: running!.task.id, started: false });
-                      }}
-                      style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 10.5, color: "var(--text-3)" }}>
-                      not working on this anymore →
-                    </button>
-                  )}
-                  {!inFlow && stretchOffer && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, color: "var(--color-muted)" }}>
-                        {stretchOffer.minutes} min in "{stretchOffer.title}" — keep it in the log?
-                      </span>
-                      <button
-                        onClick={() => logStretch.mutate(stretchOffer)}
-                        disabled={logStretch.isPending}
-                        style={{ fontSize: 10.5, padding: "2px 10px", borderRadius: 8, cursor: "pointer", border: "1px solid #4a7a52", background: "#4a7a5212", color: "#4a7a52", fontWeight: 600 }}>
-                        {logStretch.isPending ? "…" : "Log it"}
-                      </button>
-                      <button
-                        onClick={() => setStretchOffer(null)}
-                        style={{ fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>
-                        leave it
-                      </button>
-                    </div>
-                  )}
-                  {!inFlow && move.caveat && (
-                    <div style={{ fontSize: 10.5, color: "#8a7a50", fontStyle: "italic", lineHeight: 1.5, marginTop: 3 }}>
-                      {move.caveat}
-                    </div>
-                  )}
-                  {/* Alternatives are for CHOOSING. Offering them to someone
-                      already working is the interruption this card exists to
-                      prevent, wearing a helpful face. */}
-                  {!inFlow && now?.planetaryHour?.planet && (
-                    <AnotherFit
-                      planet={now.planetaryHour.planet}
-                      at={new Date()}
-                      voc={!!now?.voc?.isVOC}
-                      moonSign={now?.moonSign}
-                      wakeTime={testerProfile?.chronotype?.wakeTime}
-                      sleepTime={testerProfile?.chronotype?.sleepTime}
-                    />
-                  )}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
-                  {!inFlow && move.when && (
-                    <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{move.when}</span>
-                  )}
-                  {/* Start — the only way the stateless engine ever learns you
-                      picked something up. Without a press here it keeps
-                      recommending, which is what made "keep going" impossible
-                      to build before there was a column to write to. */}
-                  {!inFlow && move.kind === "task" && (
-                    <button
-                      onClick={() => { logEvent("next_move_start", { taskId: move.taskId }); startTask.mutate({ id: move.taskId!, started: true }); }}
-                      disabled={startTask.isPending}
-                      style={{
-                        fontSize: 10.5, padding: "4px 13px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
-                        border: "1px solid #4a7a52", background: "#4a7a5212", color: "#4a7a52", fontWeight: 600,
-                      }}>
-                      {startTask.isPending ? "…" : "Start"}
-                    </button>
-                  )}
-                  {!inFlow && move.kind !== "task" && (
-                    <button
-                      onClick={() => { logEvent("next_move_cta", { kind: move.kind }); onNavigate?.("work"); }}
-                      style={{
-                        fontSize: 10.5, padding: "4px 11px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", fontWeight: 600,
-                      }}>
-                      {move.kind === "star" ? "Add a step →" : "To your Stars →"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Daily report — the home as a navigation console: weather + where you're
             steering + what's on deck + the week, at a glance. */}
@@ -1497,11 +1247,6 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* (North Stars card absorbed into the dashboard's Guiding stars card —
             it duplicated the same list right below it.) */}
 
-        {/* Today's habits — check-off on the glance layer, so the daily loop
-            (glance → act → check off) closes without a trip into Helm.
-            During ritual hours the RitualCard carries the habit chips, so
-            this card stands down to keep the page lean. */}
-        {!essential && testerId && !ritualMode && <TodayHabits testerId={testerId} now={now} lat={lat} lon={lon} />}
 
         {/* Resonant now — "what fits right now", above the chart rather than
             below it (owner 2026-08-02: "the resonant now set of tabs is very
@@ -1513,81 +1258,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
         {/* The tide — one coherent chart for the whole day */}
         {!essential && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
-        {/* Standing conditions.
-            The VOC, cycle-phase and rhythm-risk banners that stacked here are
-            gone: they are ONE ranked slot on Home now (audit 2026-08-19 §5),
-            which is where people actually land. Today's VOC strip was the
-            lesser of two copies — Home's carries the reading, the scope and
-            the Lilly provenance — and the hero's guidance line still names a
-            void Moon, because tideGuidance has always taken `voc`. */}
-        {!essential && now && <ConditionsStrip now={now} today={today} />}
 
         {/* Logbook — evenings ONLY (owner 2026-07-23): "how did today feel?"
             belongs to the day's close. It renders under "Log the day" during
             evening ritual hours (see reflectBlock above); midday and morning
             it stands down entirely. */}
 
-        {/* Waves — today's unscheduled tasks. Guiding Stars have their own
-            card above (Dashboard) with weekly progress; listing them again
-            here — unfiltered, so paused and done stars leaked in — was
-            "what to ride today" quietly showing stars nobody could ride
-            anymore (beta pass §B1: three list-like blocks answering
-            adjacent questions; this was the one that was actually wrong,
-            not just redundant). */}
-        <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
-          <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Waves</div>
-            {todayTasks.filter(t => t.done === "true").length > 0 && (
-              <span style={{ fontSize: 9, color: "#60a060" }}>{todayTasks.filter(t => t.done === "true").length} done ✓</span>
-            )}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {/* Practices moved into the Habits & practices card — habits and
-                practices are one concept now. */}
-            {/* Active tasks */}
-            {todayTasks.filter(t => t.done !== "true").map(t => (
-              <WaveRow key={`t-${t.id}`} type="task"
-                label={t.title}
-                sub={t.bestWindowType?.replace("_"," ")}
-                onCheck={() => toggleTask.mutate({ id: t.id, done: true })}
-              />
-            ))}
-            {/* Moments ahead — extracted to components/MomentsAhead so Home
-                can render it too (audit 2026-08-19 §3). It was ~110 lines of
-                inline IIFE here, which is why none of its ordering reasoning
-                was testable where it sat. */}
-            <MomentsAhead
-              now={now}
-              tasks={todayTasks.filter(t => t.done !== "true").map(t => ({ id: t.id, title: t.title, planet: t.planet }))}
-              stars={(northStars ?? []).filter((g: any) => g.status !== "done").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
-              chronotype={testerProfile?.chronotype}
-              label={framing.aheadLabel}
-            />
-            {/* Add task */}
-            <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
-              {showAddTask ? (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input autoFocus value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && newTaskTitle.trim()) addTask.mutate(newTaskTitle); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); } }}
-                    placeholder="Add task for today…"
-                    style={{ flex: 1, padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)" }}
-                  />
-                  <button onClick={() => newTaskTitle.trim() && addTask.mutate(newTaskTitle)} disabled={addTask.isPending}
-                    style={{ padding: "5px 11px", borderRadius: 6, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, cursor: "pointer" }}>{addTask.isPending ? "…" : "Add"}</button>
-                  {addTask.isError && <span style={{ fontSize: 10, color: "#a03030", alignSelf: "center" }}>failed — retry</span>}
-                </div>
-              ) : (
-                <button onClick={() => setShowAddTask(true)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                  + add task
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* (ElementalBalance + PlanetaryPulse removed from Today — owner
-            2026-07-23. Pulse's "active sky emphasis" reads belong with the
-            planet surfaces; balance was habit-bookkeeping on the wrong page.) */}
 
         {/* The density toggle — the add-ons are one tap away, and the tap
             persists. This is the whole "core by default, add-ons available"
@@ -1621,104 +1297,6 @@ const ERA_GLOSS: Record<string, string> = {
   Neptune: "where the dream dissolves and re-forms",
   Pluto:   "where power is being renegotiated",
 };
-
-function ConditionsStrip({ now, today }: { now: any; today: string }) {
-  const retros: string[] = now?.retrogrades ?? [];
-  const fastRetros = retros.filter((p) => FAST_RETRO.has(p));
-  // Tight planet-to-planet configurations — the standing sky. Lunar aspects
-  // are excluded on purpose: the Moon's contacts belong to the DAY and have
-  // their own rail section, while these persist for days to weeks. Capped at
-  // three so a busy sky does not bury the rest of the section.
-  const standingAspects = ((now as any)?.aspects ?? [])
-    .filter((a: any) => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 3)
-    .sort((a: any, b: any) => a.orb - b.orb)
-    .slice(0, 3);
-  const ecl = activeEclipse(today, 5);
-  // Planet-planet aspects moved OUT of this strip — they're the moment's
-  // headline now (BigSky, up top), not a background condition. This strip is
-  // for the genuinely standing weather: retrogrades, eclipse windows, and the
-  // slow outer backdrop (the era lines).
-  const signOf = (p: string) => (now?.planets ?? []).find((x: any) => x.planet === p)?.sign ?? "";
-  const eras = ["Saturn", "Uranus", "Neptune", "Pluto"]
-    .map((p) => ({ p, sign: signOf(p), rx: retros.includes(p) }))
-    .filter((e) => e.sign);
-  // The day's standing caution — the rough-edged planet's shadow, in plain
-  // language (from the synthesis engine's testimony, already de-jargoned).
-  const caution = (now?.reading?.testimonies ?? []).find((t: any) => t.source === "sectMalefic");
-
-  const hasAny = retros.length > 0 || ecl || eras.length > 0 || caution;
-  if (!hasAny) return null;
-
-  return (
-    <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
-        Standing conditions
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {ecl && (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 13, flexShrink: 0 }}>{ecl.eclipse.kind === "solar" ? "☀" : "🌑"}</span>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
-              <b style={{ color: "#8a6a30" }}>
-                {ecl.daysAway === 0 ? "Today" : ecl.daysAway > 0 ? `In ${ecl.daysAway}d` : `${-ecl.daysAway}d ago`}
-                {" · "}{ecl.eclipse.type} {ecl.eclipse.kind} eclipse
-              </b>
-              <div style={{ color: "var(--color-muted)" }}>{ecl.eclipse.note}</div>
-            </div>
-          </div>
-        )}
-        {fastRetros.map((p) => (
-          <div key={p} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 12, flexShrink: 0, color: "#a06040" }}>{PLANET_GLYPH[p] ?? p[0]}℞</span>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
-              <b style={{ color: "#8a5a40" }}>{p} retrograde{signOf(p) ? ` in ${signOf(p)}` : ""}</b>
-              {" — "}{(RETRO_NOTES[p] ?? `${p} retrograde.`).replace(`${p} retrograde — `, "")}
-            </div>
-          </div>
-        ))}
-        {caution && (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 12, flexShrink: 0, color: "#907040" }}>◆</span>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>
-              <b style={{ color: "#8a6a30" }}>Today's edge</b> — {caution.note}
-            </div>
-          </div>
-        )}
-        {/* PLANET-TO-PLANET ASPECTS. The section listed eclipses, retrogrades,
-            the day's edge and the era — and omitted the configurations
-            between planets, which are the standing conditions most likely to
-            be doing the actual work. The engine has computed them since the
-            non-lunar testimony went in; nothing surfaced them here.
-
-            Lunar aspects are deliberately excluded: they belong to the day,
-            not to the standing sky, and they have their own rail section. */}
-        {standingAspects.length > 0 && (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <span style={{ fontSize: 12, flexShrink: 0, color: "#6a7a8a" }}>⚹</span>
-            <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-              <b style={{ color: "var(--text-2)" }}>Between the planets</b>
-              {standingAspects.map((a: any, i: number) => (
-                <div key={i} style={{ marginTop: 2 }}>
-                  {a.planet1} {a.aspect} {a.planet2}
-                  <span style={{ color: "var(--text-3)" }}>
-                    {" · "}{a.orb <= 1 ? "exact" : `${a.orb.toFixed(1)}°`}
-                    {a.applying ? " · still closing" : " · separating"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {eras.length > 0 && (
-          <div style={{ fontSize: 9.5, color: "var(--color-muted)", paddingTop: 5, borderTop: "1px solid var(--color-border)", lineHeight: 1.6 }}>
-            the era · {eras.map((e) => `${e.p}${e.rx ? " ℞" : ""} in ${e.sign} — ${ERA_GLOSS[e.p]}`).join(" · ")}
-            <span style={{ color: "var(--text-3)" }}> · in effect for months to years</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 
 /**
@@ -2698,105 +2276,6 @@ function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayNam
   );
 }
 
-function TodayHabits({ testerId, now, lat, lon }: { testerId: string; now: any; lat: number; lon: number }) {
-  const qc = useQueryClient();
-  const today = localToday();
-  const { data: habits = [] } = useQuery<any[]>({
-    queryKey: ["habits", testerId, today, lat, lon],
-    queryFn: async () => jsonArray(await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: { "x-tester-id": testerId } })),
-  });
-
-  const toggleLog = useMutation({
-    mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
-      const headers = { "x-tester-id": testerId, "Content-Type": "application/json" };
-      if (done) await fetch(`/api/habits/${id}/log?date=${today}`, { method: "DELETE", headers });
-      else await fetch(`/api/habits/${id}/log`, { method: "POST", headers, body: JSON.stringify({ date: today }) });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["habits"] }),
-  });
-
-  // The separate practices list is gone (HOME study M4). It read the legacy
-  // cultivations table — one no surface can populate since the 2026-07-09
-  // merge — so for every post-merge account it was a network call rendering
-  // nothing. Habits carry their own sky timing (the ✦ on the chips below),
-  // which is the merge actually finishing.
-
-  // Daily sun/moon link per habit — a concrete anchor in the day's real sky:
-  // fire → sunrise, air → midday sun, earth → before sunset, water → the
-  // Moon's own planetary hour.
-  const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
-  const dl = (now as any)?.daylight;
-  const moonHour = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
-  const anchorFor = (h: any): { label: string; why: string } | null => {
-    const e = h.favoredElements?.[0];
-    if (e === "fire" && dl?.sunrise) return { label: `☉ sunrise ${fmtT(dl.sunrise)}`, why: "Fire habits ride the rising sun — anchor it to first light." };
-    if (e === "air" && dl?.sunrise && dl?.sunset) {
-      const noon = new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2);
-      return { label: `☉ midday ${fmtT(noon.toISOString())}`, why: "Air habits suit the high sun — clear head, full light." };
-    }
-    if (e === "earth" && dl?.sunset) return { label: `☉ by sunset ${fmtT(dl.sunset)}`, why: "Earth habits close the day — land it before the light goes." };
-    if (e === "water" && moonHour) return { label: `☽ Moon hour ${moonHour.time}`, why: "Water habits belong to the Moon — its own hour today." };
-    return null;
-  };
-
-  if (!Array.isArray(habits) || habits.length === 0) return null;
-  const doneCount = habits.filter((h) => h.doneToday).length;
-
-  // Resonance against the current moment, same lightweight scoring the Habits
-  // page uses — a habit whose favored element matches today floats up.
-  const el = now?.element?.element ?? "";
-  const sorted = [...habits].sort((a, b) => {
-    const score = (h: any) => (h.doneToday ? -2 : 0) + (h.favoredElements?.includes(el) ? 1 : 0);
-    return score(b) - score(a);
-  });
-
-  return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Habits & practices</div>
-        {habits.length > 0 && <div style={{ fontSize: 9.5, color: "var(--text-3)" }}>{doneCount}/{habits.length} done</div>}
-      </div>
-      {/* "Rise and shine" and "Wind down" are SEEDED by the app on signup, not
-          chosen — so a new user meets two habits they don't remember creating
-          and can't tell whether the app is tracking or merely proposing them.
-          Detected by the untouched seed description, which needs no migration
-          and stops identifying them the moment the user edits one. */}
-      {habits.length > 0 && habits.every((h: any) => /just a starting rhythm|Rename it, or make it yours/.test(h.description ?? "")) && (
-        <div style={{ fontSize: 10, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 7 }}>
-          These two are suggestions to start from — rename, replace or delete them.
-        </div>
-      )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-        {sorted.map((h) => {
-          const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
-          const anchor = !h.doneToday ? anchorFor(h) : null;
-          return (
-            <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
-              title={[resonant ? `Favors ${el} days — a great time for this` : null, anchor?.why].filter(Boolean).join(" ") || undefined}
-              style={{
-                display: "flex", alignItems: "center", gap: 6, padding: "6px 12px 6px 8px", borderRadius: 18,
-                cursor: "pointer", fontSize: 11.5,
-                border: h.doneToday ? "1px solid #a8c898" : resonant ? "1px solid #b8ccb0" : "1px solid var(--color-border)",
-                background: h.doneToday ? "#eef6e8" : "var(--color-card-2)",
-                color: h.doneToday ? ELEMENT_COLORS.earth : "var(--color-foreground)",
-              }}>
-              <span style={{
-                width: 16, height: 16, borderRadius: "50%", flexShrink: 0, fontSize: 10, color: "#ffffff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: h.doneToday ? "#80b870" : "transparent",
-                border: h.doneToday ? "none" : "1.5px solid #c0bab0",
-              }}>{h.doneToday ? "✓" : ""}</span>
-              {h.emoji ? `${h.emoji} ` : ""}{h.name}
-              {resonant && <span style={{ fontSize: 8.5, color: "#4a8060" }}>✦</span>}
-              {anchor && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{anchor.label}</span>}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ── Shared aspect + planet vocabulary ────────────────────────────────────────
 //
 // What survives the 2026-08-14 dead-code removal: `PLANET_THEMES`, read by
@@ -2842,35 +2321,4 @@ function fmtSinceExact(hours: number): string {
 }
 
 // ── WaveRow ────────────────────────────────────────────────────────────────────
-type WaveRowType = "practice-resonant" | "practice-supported" | "practice-soften" | "task" | "goal";
 
-const WAVE_ROW_STYLE: Record<WaveRowType, { border: string; dot: string; textColor: string; dim?: boolean }> = {
-  "practice-resonant":  { border: "#60a060", dot: "#60a060", textColor: "#2a5020" },
-  "practice-supported": { border: "#6090d0", dot: "#6090d0", textColor: ELEMENT_COLORS.water },
-  "practice-soften":    { border: "#d0a060", dot: "#d0a060", textColor: "#8a5020", dim: true },
-  "task":               { border: "#c0bab0", dot: "#8080a0", textColor: "#222222" },
-  "goal":               { border: "#a060c0", dot: "#a060c0", textColor: ELEMENT_COLORS.air },
-};
-
-function WaveRow({ type, label, sub, onCheck }: { type: WaveRowType; label: string; sub?: string; onCheck?: () => void }) {
-  const s = WAVE_ROW_STYLE[type];
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "8px 18px",
-      borderBottom: "1px solid #f5f2ee",
-      borderLeft: `3px solid ${s.border}`,
-      opacity: s.dim ? 0.6 : 1,
-      background: type === "practice-resonant" ? "#fafff8" : "transparent",
-    }}>
-      {onCheck ? (
-        <button onClick={onCheck} style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${s.border}`, background: "transparent", flexShrink: 0, cursor: "pointer" }} />
-      ) : (
-        <div style={{ width: 7, height: 7, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
-      )}
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, color: s.textColor, fontWeight: type === "practice-resonant" ? 500 : 400 }}>{label}</div>
-        {sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sub}</div>}
-      </div>
-    </div>
-  );
-}
