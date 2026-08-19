@@ -301,7 +301,7 @@ function SectionTitle({ children, note, action, fold, summary }: {
 }
 
 export default function Home({
-  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun,
+  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun, onOpenStar,
 }: {
   testerId: string | null;
   lat: number;
@@ -313,6 +313,10 @@ export default function Home({
   /** The walkthrough is armed or running. Asking for notification permission
    *  is a poor first sentence, so the opt-in waits until it is answered. */
   firstRun?: boolean;
+  /** Deep link from a morning star row into that star's game plan. It was
+   *  wired to Today and went unpassed when the ritual card moved here — the
+   *  row still rendered, and tapping it did nothing. */
+  onOpenStar?: (goalId: number) => void;
 }) {
   const { essential } = useUiDensity();
   // THE COMEBACK MOMENT (loyalty audit 2026-08-18, A2). Streak apps churn
@@ -676,6 +680,7 @@ export default function Home({
           windows={ritualWindows}
           testerId={testerId}
           displayName={profile?.displayName}
+          onOpenStar={onOpenStar}
           lat={lat} lon={lon}
           showJournal={showJournal}
         />

@@ -77,7 +77,7 @@ export default function FeltPattern({ testerId, days = 60 }: { testerId: string 
         <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 4 }}>
           {data.ratedTotal > 0
             ? `${data.ratedTotal} day${data.ratedTotal === 1 ? "" : "s"} rated so far. About ${short} more and Compass can show you which kinds of day you actually rate highest — your own record, not a claim about the sky.`
-            : "Rate a few days on Today and this becomes a record of which kinds of day actually work for you."}
+            : "Rate a few days as you close them out and this becomes a record of which kinds of day you rate highest."}
         </div>
       </div>
     );

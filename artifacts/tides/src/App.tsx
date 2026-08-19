@@ -214,7 +214,7 @@ export interface AskElectionContext {
   /**
    * The pick the question is ABOUT, when the ask came from a surface that
    * was showing one (Home's loop, most of all). Handed to the advisor AS
-   * the strongest fit, overriding Today's own next-move — the seed question
+   * the strongest fit. The seed question
    * names an item, and answering about a different engine's pick is the
    * two-authorities bug wearing a chat interface (owner caught it live,
    * 2026-08-18: asked about one title, answered about another).
@@ -1200,7 +1200,7 @@ function Shell() {
   // through every step against a still-loading page and record a completion
   // the user never saw.
   // ON HOME, WHICH IS WHERE PEOPLE LAND (AUDIT-JOURNEY-2026-08-18, J1).
-  // This waited on `view === "today"` and on Today's hero, while the landing
+  // This waited on `view === "today"` and on that page's hero, while the landing
   // view has been "home" since the split — so for anyone who followed the
   // default path the walkthrough never fired at all. It now arms on Home and
   // waits for the work panel, which is the one anchor that exists in every
@@ -1218,16 +1218,15 @@ function Shell() {
     return () => clearInterval(t);
   }, [testerId, view, tourArmed]);
   // "The first session is still happening" — true from the moment an account
-  // lands on Today until it completes or skips the walkthrough. Today uses it
-  // to hold back its self-promoting banners (push opt-in, premium discovery):
-  // a first screen should be the day, not three asks stacked over it. Reads
-  // fresh on every render, and the tour's own onDone re-renders App, so it
-  // flips the moment the walkthrough resolves.
+  // lands until it completes or skips the walkthrough. Home uses it to hold
+  // back the push opt-in: a first screen should be the day, not an ask
+  // stacked over it. Reads fresh on every render, and the tour's own onDone
+  // re-renders App, so it flips the moment the walkthrough resolves.
   const firstRun = tourArmed || tourPending(testerId);
-  // Session timer + Advise trigger live in the global top bar so they're always
-  // reachable, not just from the Today page. The advisor modal itself still
-  // renders inside Today (it needs Today's gcalEvents/weekSummary context), so
-  // opening it from elsewhere jumps to Today first.
+  // Session timer + Advise trigger live in the global top bar so they are
+  // always reachable. The advisor renders here too, above whatever view is
+  // showing — it used to live inside Today and drag the reader there, which
+  // is the whole reason opening Ask cost you your place.
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [advisorSeed, setAdvisorSeed] = useState<string | null>(null);
   // Structured context that rides into Ask alongside the seed message — the
@@ -1243,16 +1242,18 @@ function Shell() {
   const askAboutElection = (ctx: AskElectionContext, seed: string) => {
     setAskContext(ctx); setAdvisorSeed(seed); setShowAdvisor(true);
   };
-  // Teachable-moment deep link: "today feels saturnine" on Today → Star Base
-  // opens on that planet's page.
+  // Teachable-moment deep link: "today feels saturnine" → Star Base opens on
+  // that planet's page.
   const [visitPlanet, setVisitPlanet] = useState<string | null>(null);
   const goToPlanet = (planet: string) => { setVisitPlanet(planet); setView("planets"); };
   // "Set a Guiding Star in this element" from the Almanac reference (#25):
   // seed the element, jump to Aims, let GuidingStarsHub open its form pre-filled.
   const [starSeedElement, setStarSeedElement] = useState<string | null>(null);
   const startStarInElement = (element: string) => { setStarSeedElement(element); setView("work"); };
-  // Morning glance deep-link: tap a star row on Today → that star's game plan
-  // in Aims, scrolled into view and briefly highlighted.
+  // Morning glance deep-link: tap a star row in the ritual card → that star's
+  // game plan in Aims, scrolled into view and briefly highlighted. It rode on
+  // Today until 2026-08-19 and went unpassed when the card moved to Home — the
+  // row still rendered and tapping it did nothing, which no type could catch.
   const [focusStarId, setFocusStarId] = useState<number | null>(null);
   const openStar = (goalId: number) => { setFocusStarId(goalId); setView("work"); };
   // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
@@ -1487,7 +1488,7 @@ function Shell() {
         {/* "habits" is not a view — it is the Stars tab opened on its habits
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Log"

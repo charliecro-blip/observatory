@@ -81,9 +81,9 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
   const tasks = Array.isArray(todayTasks) ? todayTasks : [];
   const wins = Array.isArray(windows) ? windows : [];
   const { data: habitsRaw = [] } = useQuery<any[]>({
-    // Same key and same URL as every other habits read on the page — see the
-    // note on Today's own query above for what sharing a key while asking for
-    // something different cost.
+    // Same key and same URL as every other habits read in the app. Sharing a
+    // key while asking for something different serves one surface's answer to
+    // another, which is a bug this repo has already paid for once.
     queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => { const j = await fetchJson(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers: { "x-tester-id": testerId ?? "" } }); return Array.isArray(j) ? j : []; },
     enabled: !!testerId,

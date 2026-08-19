@@ -1296,9 +1296,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       )}
 
-      {/* Waves — habits / tasks / goals. Hidden at essential: Today already
-          carries On deck and the day's tasks, so in the rail it was a third
-          copy of the same list rather than a second view of it. */}
+      {/* Waves — habits / tasks / goals. Hidden at essential, because Home
+          already carries the habits and the day's tasks and in the rail this
+          was a third copy of the same list rather than a second view of it.
+          (It said "Today" until that page retired on 2026-08-19; the reason
+          survived the move, the page did not.) */}
       {show("waves") && (
       <div style={{ borderTop: "1px solid var(--color-border)" }}>
         <button onClick={() => setWavesOpen(v => !v)} style={{
