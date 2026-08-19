@@ -1280,41 +1280,6 @@ export default function Home({
         </div>
       </div>
 
-      {/* ══ THE HORIZON ═══════════════════════════════════════════════════
-          Home's second question — "what's coming?" — which nothing on the
-          page looked far enough ahead to answer. Two facts at two scales:
-          the fortnight's shape, and the fixed dates beyond it.
-
-          BREADTH AT LOW RESOLUTION, which is the whole guard against Home
-          becoming the everything-page again. Neither of these explains
-          itself; both hand you a door to the tab that owns the detail.
-
-          `auto-fit` rather than two fixed columns, because `CroppingUp`
-          renders nothing on a genuinely quiet stretch and a fixed grid
-          would leave a hole where a card declined to speak. */}
-      {!skyQuiet && <CroppingUp testerId={testerId} onNavigate={onNavigate} />}
-
-      {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
-      {!skyQuiet && (!waterOpen ? (
-        <button onClick={() => setWaterOpen(true)} style={{
-          fontSize: 11, background: "none", border: "none", cursor: "pointer",
-          color: "var(--text-3)", padding: "2px 0", textAlign: "left", flexShrink: 0,
-        }}>Show the water ahead</button>
-      ) : (
-        <div style={{ flexShrink: 0 }}>
-          {water && (
-            // `overflow: hidden` clips QualityStrip's own full-bleed bottom
-            // rule to the rounded corners — safe on a non-flex-item wrapper.
-            <div style={{ ...PANEL, overflow: "hidden" }}>
-              <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
-            </div>
-          )}
-          <button onClick={() => setWaterOpen(false)} style={{
-            fontSize: 11, background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", padding: "4px 0 0", textAlign: "left",
-          }}>Hide the water ahead</button>
-        </div>
-      ))}
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
           A moment becoming available, not a row returned from an API. The
@@ -1825,15 +1790,69 @@ export default function Home({
           </div>
         ))}
 
+        {/* THE ACTIVITY PICKER — "when is a good time for X", the one
+            question a person arrives holding that the loop cannot answer,
+            because the loop can only time what they have already written
+            down. It was folded shut at the bottom of the page's last card
+            (audit 2026-08-19 §6), which is a long way to bury the thing the
+            product is named after.
+
+            It opens by itself when the loop has no lead. With a pick on
+            screen this is a secondary door and the fold is right; with
+            nothing on screen the fold hides the only answer the card has
+            left, and "something ELSE" is not even true — there is no first
+            thing for it to be else to. */}
         {!skyQuiet && <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
-          <details>
+          <details open={!lead}>
             <summary style={{ padding: "6px 14px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
-              Find a time for something else
+              {lead ? "Find a time for something else" : "Find a good time for something"}
             </summary>
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
           </details>
         </div>}
       </div>}
+
+      {/* ══ THE HORIZON ═══════════════════════════════════════════════════
+          Home's second question — "what's coming?" — which nothing on the
+          page looked far enough ahead to answer. Two facts at two scales:
+          the fortnight's shape, and the fixed dates beyond it.
+
+          BREADTH AT LOW RESOLUTION, which is the whole guard against Home
+          becoming the everything-page again. Neither of these explains
+          itself; both hand you a door to the tab that owns the detail.
+
+          `auto-fit` rather than two fixed columns, because `CroppingUp`
+          renders nothing on a genuinely quiet stretch and a fixed grid
+          would leave a hole where a card declined to speak.
+
+          IT SITS BELOW THE ANSWER NOW (audit 2026-08-19 §6). The horizon
+          used to interrupt the page between Compass's answer and the
+          receipt for that answer — a forecast wedged into the middle of an
+          argument. Home's first question is "what now"; this is the second
+          one, and it reads that way only when it comes second. */}
+      {!skyQuiet && <CroppingUp testerId={testerId} onNavigate={onNavigate} />}
+
+      {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
+      {!skyQuiet && (!waterOpen ? (
+        <button onClick={() => setWaterOpen(true)} style={{
+          fontSize: 11, background: "none", border: "none", cursor: "pointer",
+          color: "var(--text-3)", padding: "2px 0", textAlign: "left", flexShrink: 0,
+        }}>Show the water ahead</button>
+      ) : (
+        <div style={{ flexShrink: 0 }}>
+          {water && (
+            // `overflow: hidden` clips QualityStrip's own full-bleed bottom
+            // rule to the rounded corners — safe on a non-flex-item wrapper.
+            <div style={{ ...PANEL, overflow: "hidden" }}>
+              <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
+            </div>
+          )}
+          <button onClick={() => setWaterOpen(false)} style={{
+            fontSize: 11, background: "none", border: "none", cursor: "pointer",
+            color: "var(--text-3)", padding: "4px 0 0", textAlign: "left",
+          }}>Hide the water ahead</button>
+        </div>
+      ))}
     </div>
   );
 }
