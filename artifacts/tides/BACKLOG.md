@@ -370,11 +370,11 @@ scan as an optimisation.
 
 ## From the loyalty audit — 2026-08-18 (deferred deliberately, specced here)
 
-**Sprint share card.** The first shareable object that works at every lens:
-title, days kept, window — no sky vocabulary at minimal, the transit label at
-medium/full. Offer it once, at the moment a sprint is FINISHED (the natural
-"tell someone" moment); reuse the tide-card share pattern. Never auto-post,
-never a leaderboard.
+**Sprint share card — SHIPPED 2026-08-18** (components/SprintCard.tsx).
+Offered at the finish moment only, and only when at least one day was kept;
+reuses the Studio's palette, chrome and PNG exporter. Reports days kept, the
+window, and the transit at medium/full — never the private target, never a
+comparison, never auto-posted.
 
 **First named answer inside two minutes.** Restructure first-run so the loop
 speaks about the person's own item before the tour offers itself: intake →

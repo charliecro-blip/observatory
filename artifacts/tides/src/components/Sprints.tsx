@@ -20,6 +20,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useAstroDetail } from "@/contexts/preferences-context";
+import SprintCard, { type SprintCardSubject } from "@/components/SprintCard";
 
 interface Sprint {
   id: number; title: string; startDate: string; endDate: string;
@@ -185,10 +186,24 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
     },
   });
 
+  // Finishing offers a card; setting one down never does. A person who quit
+  // on purpose does not want a commemorative object, and offering one would
+  // turn an honest exit into a failure notice.
+  const [cardFor, setCardFor] = useState<SprintCardSubject | null>(null);
+  const [finishedOffer, setFinishedOffer] = useState<Sprint | null>(null);
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
       fetchJson(`/api/sprints/${id}`, { method: "PATCH", headers, body: JSON.stringify({ status }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sprints"] }),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["sprints"] });
+      // Only when something actually happened. A sprint finished with zero
+      // kept days has nothing to tell, and offering a "0 DAYS KEPT" card
+      // would be the shaming move this product exists to refuse.
+      if (v.status === "done") {
+        const s = sprintRows.find(x => x.id === v.id);
+        setFinishedOffer(s && s.tally > 0 ? s : null);
+      }
+    },
   });
 
   const openSheet = (span?: Span) => {
@@ -208,7 +223,8 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
 
   // Nothing running, nothing offered, sheet closed: one quiet door, plain at
   // every lens — the self-chosen sprint must not depend on the sky showing.
-  if (active.length === 0 && !suggestion && !sheet) {
+  // A just-finished sprint holds the card open past its own disappearance.
+  if (active.length === 0 && !suggestion && !sheet && !finishedOffer && !cardFor) {
     return (
       <button onClick={() => openSheet()} style={{
         fontSize: 11, background: "none", border: "none", cursor: "pointer",
@@ -246,6 +262,29 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
       </div>
 
       <div style={{ padding: "0 16px 12px" }}>
+        {/* The finished moment — the one natural "tell someone" beat. Offered
+            once, declined by dismissing, never posted by the app. */}
+        {finishedOffer && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11.5, color: "var(--color-foreground)", flex: 1, minWidth: 140 }}>
+              "{finishedOffer.title}" — finished, {finishedOffer.tally} {finishedOffer.tally === 1 ? "day" : "days"} kept.
+            </span>
+            <button onClick={() => {
+              setCardFor({
+                title: finishedOffer.title, startDate: finishedOffer.startDate, endDate: finishedOffer.endDate,
+                tally: finishedOffer.tally, transitLabel: finishedOffer.transitLabel,
+              });
+              setFinishedOffer(null);
+            }} style={{
+              fontSize: 10.5, padding: "3px 11px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+              border: "1px solid #c8a04a", background: "#c8a04a14", color: "#8a6a20", fontWeight: 600,
+            }}>Make a card</button>
+            <button onClick={() => setFinishedOffer(null)} style={{
+              fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
+            }}>no thanks</button>
+          </div>
+        )}
+
         {/* Active sprints */}
         {active.map(s => {
           const dayN = Math.max(1, Math.round((Date.parse(today) - Date.parse(s.startDate)) / 86400000) + 1);
@@ -389,6 +428,8 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
           </div>
         )}
       </div>
+
+      {cardFor && <SprintCard sprint={cardFor} onClose={() => setCardFor(null)} />}
     </div>
   );
 }

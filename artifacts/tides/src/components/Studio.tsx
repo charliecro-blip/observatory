@@ -23,14 +23,18 @@ import { SIGN_MYTHOS } from "@/lib/mythos";
 type Subject = "day" | "week" | "lunation";
 type Format = "story" | "post";
 
-const SURFACE: Record<GlyphTheme, { bg: string; ink: string; sub: string; line: string }> = {
+// Exported so the sprint card (components/SprintCard.tsx) shares this exact
+// palette, chrome and exporter rather than growing a second card system —
+// two share surfaces that drift would be the WeekStrip/AlreadyWoven shape in
+// the one place users actually publish under the brand's name.
+export const SURFACE: Record<GlyphTheme, { bg: string; ink: string; sub: string; line: string }> = {
   tide:        { bg: "#F2EFE9", ink: "#1A2A3A", sub: "#8A8278", line: "#D8D2C8" },
   almanac:     { bg: "#F3E9D6", ink: "#3A3226", sub: "#8A7A5E", line: "#DCCFB4" },
   observatory: { bg: "#0E1420", ink: "#E8ECF4", sub: "#8F9AB4", line: "#263044" },
   minimal:     { bg: "#FFFFFF", ink: "#111111", sub: "#777777", line: "#E2E2E2" },
 };
 
-const SERIF = "Georgia, 'Times New Roman', serif";
+export const SERIF = "Georgia, 'Times New Roman', serif";
 
 // One glyph as SVG text — the celestialGlyphs recipe translated to SVG:
 // fill = element color for the theme; the optical-thinning stroke is painted
@@ -99,7 +103,7 @@ function fmtDay(d: string) {
 }
 
 // ── Header / footer shared by every card ─────────────────────────────────────
-function Chrome({ W, H, theme, kicker, foot }: { W: number; H: number; theme: GlyphTheme; kicker: string; foot?: string }) {
+export function Chrome({ W, H, theme, kicker, foot }: { W: number; H: number; theme: GlyphTheme; kicker: string; foot?: string }) {
   const s = SURFACE[theme];
   return (
     <g fontFamily={SERIF}>
@@ -292,7 +296,7 @@ async function embeddedFontCss(): Promise<string> {
   return out;
 }
 
-async function exportPng(svg: SVGSVGElement, w: number, h: number, filename: string) {
+export async function exportPng(svg: SVGSVGElement, w: number, h: number, filename: string) {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("width", String(w));
   clone.setAttribute("height", String(h));

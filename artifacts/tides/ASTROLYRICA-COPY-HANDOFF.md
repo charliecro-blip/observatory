@@ -723,3 +723,18 @@ Addendum to A10 (same day): sprints weave into what's already held.
 - Guide gains "What lives where" (task/habit/sprint/star/win + "Home steers
   what you're holding; Today runs the day itself." — the same sentence now
   in the tour's loop stop).
+
+### A12. The finished-sprint card (2026-08-18)
+
+Offered at the finish moment, only when a day was actually kept.
+
+- Offer line: **"{title}" — finished, {N} days kept.** · "Make a card" /
+  "no thanks"
+- Modal: **"A sprint, finished"** · "Yours to keep or post. Nothing is
+  shared unless you send it somewhere."
+- On the card itself: COMPASS · "{N} days" kicker · the tally as the hero
+  with **"DAYS KEPT"** · the title · the window ("Aug 18 – Aug 24") · at
+  medium/full only, *"while {Mars square Neptune}"* · footer "move with
+  time".
+- Never on the card: the target count, any percentage, any comparison to
+  another person.
