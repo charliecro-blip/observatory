@@ -140,3 +140,45 @@ currently has little to buy. Either the paid rhythm grows a sky-free spine
 (the record's yearly face, review tooling, sprint history) or the secular
 door is an acquisition channel for the astro-curious rather than a revenue
 tier of its own. Both are defensible; it should be chosen on purpose.
+
+---
+
+## Addendum — the sky-free spine, recommended (2026-08-18, later)
+
+The open question above, answered as a recommendation rather than left
+hanging. **Free is the day. Paid is the year.**
+
+Every current premium bucket except Ask is astrological (Currents, personal
+advisories, smart scheduling), so a quiet-lens subscriber has nothing to
+buy. But the fix is not a second premium ladder for secular users — two
+ladders would double the surface and split the story. There is one line that
+serves both doors at once, because the astro-fluent user wants it just as
+much:
+
+**The record, and what it tells you.**
+
+- **Free** — today and this week. The loop, the list, habits and their
+  cadence, sprints, the wake as a running feed, the summoned weekly review.
+  Everything needed to run a life, permanently, without paying.
+- **Paid** — the accumulated version of the same thing:
+  - the record's **month/quarter/year face** (BACKLOG; already the
+    pre-billing requirement)
+  - **patterns from your own data** — what you actually finish, by weekday,
+    by energy, by time of day (`donePattern` exists; a sky-free reading of
+    it is a genuinely different product from the felt-vs-tide correlation)
+  - **sprint history** and re-running a past sprint
+  - **time by star** from touches and session minutes — the training-log
+    persona's whole reason to pay
+  - **calendar write-back** (BACKLOG §5) — the most conventional paid
+    feature in the category and entirely sky-free
+
+Why this line and not another: it is the only asset the app has that
+*appreciates*, it cannot be taken to a competitor, it needs no astrology to
+explain, and it does not withhold anything a person needs today — which
+keeps the free tier honest enough to keep recommending. It also gives the
+astro tiers somewhere to sit rather than being the whole ladder: Currents
+and advisories become *depth*, not the price of the record.
+
+**What this requires before billing:** the yearly face has to exist. Until
+it does, there is nothing to sell at any lens, which is the real reason it
+sits in BACKLOG as a requirement rather than a nice-to-have.
