@@ -48,6 +48,7 @@ import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
 import MomentsAhead from "@/components/MomentsAhead";
 import DayConditions from "@/components/DayConditions";
+import AngleCrossing from "@/components/AngleCrossing";
 import { useFold, FoldToggle, FoldedSummary, Fold } from "@/components/ModuleFold";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import WhereYouAre from "@/components/WhereYouAre";
@@ -423,6 +424,7 @@ export default function Home({
   // productivity core the lens exists to leave standing.
   const { level: astroLevel } = useAstroDetail();
   const showVoid = usePreferences().prefs.display.todayShowVOC;
+  const showCrossings = usePreferences().prefs.display.todayShowCrossings;
   const skyQuiet = astroLevel === "minimal";
   const isMobile = useIsMobile();
   // Read once and reused in both the key and the fetch. Every value the
@@ -977,6 +979,26 @@ export default function Home({
           what has moved toward the stars. It ABSORBS the rhythm card and the
           Guiding Stars card from the context column rather than becoming a
           third voice for the same facts. */}
+      {/* ── AN ANGLE CROSSING, ABOVE EVERYTHING ═══════════════════════════
+          The shortest-lived fact in the app — an angle sweeps ~14°/hr, so a
+          3° orb is about thirteen minutes — and it was visible only on Today
+          (owner, 2026-08-19: "I think it's important to have in there").
+
+          The audit said this move cost an unconditional 14-day fetch, because
+          the week payload was the only place the client read crossings from.
+          Measured instead of assumed: /tides/week is ~900ms, the same scan
+          over a 2-hour window is ~8ms, so it rides on /tides/now and Home
+          pays nothing.
+
+          IT SITS ABOVE THE REPORT, not in either band. The owner's standing
+          instruction for this banner is that it comes to the top of the
+          screen when it is live, and nothing else on Home expires: a
+          condition describes the hour you are already in, while this is a
+          twenty-minute window already closing. It renders on a tiny fraction
+          of loads, so the ordinary page pays nothing for the place it
+          holds. */}
+      {!skyQuiet && <AngleCrossing crossings={now?.crossings} enabled={showCrossings} />}
+
       <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
 
       {/* ══ COMPASS · the answer, first ═══════════════════════════════════

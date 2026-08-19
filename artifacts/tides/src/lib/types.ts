@@ -55,6 +55,8 @@ export interface TidesNow {
   elementEmphasis?: string;
   planetaryHour: { planet: string; began: string; ends: string; quality: string; archetype?: string };
   upcomingHours: { planet: string; time: string }[];
+  /** Angle crossings within ~2 hours — the client decides which are live. */
+  crossings?: { planet: string; angle: string; at: string; benefic?: boolean; malefic?: boolean }[];
   voc?: {
     isVOC: boolean; lastAspect?: string; nextIngress?: string;
     /** What the void governs — stated so results below need no disclaimer. */

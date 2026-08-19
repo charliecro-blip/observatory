@@ -385,6 +385,36 @@ router.get("/tides/now", async (req, res) => {
       cautions:  voc ? VOC_CAUTIONS : [],
     },
     upcomingHours,
+    // ── ANGLE CROSSINGS ACTIVE RIGHT NOW ────────────────────────────────
+    // A planet passing the local ASC or MC is a peak moment measured in
+    // minutes, and it was visible only on Today — the page nobody lands on
+    // since the 2026-08-04 split.
+    //
+    // The 2026-08-19 audit said moving it would cost a 14-day week fetch,
+    // because the week payload was the only place the client read crossings
+    // from. That was wrong, and measuring settled it: /tides/week runs
+    // ~900ms while getNextAngularCrossings over a 2-hour window is ~8ms
+    // warm. Carrying it HERE costs the client nothing at all — Home already
+    // fetches this payload, and a live crossing is exactly the kind of fact
+    // "now" is for.
+    //
+    // A 2-hour horizon, not 24: an angle sweeps ~14°/hr, so a 3° orb is
+    // about 13 minutes either side of exact. The client decides what counts
+    // as live; anything past two hours could not possibly.
+    crossings: getNextAngularCrossings(jd, lat, lon, 3, 2)
+      .filter(c => {
+        // The same significance filter the week uses, so the two surfaces
+        // cannot disagree about which crossings are worth a banner.
+        if (c.planet === "Moon") return true;
+        if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
+        if (c.planet === "Sun" && c.angle === "MC") return true;
+        return false;
+      })
+      .map(c => ({
+        planet: c.planet, angle: c.angle,
+        at: c.crossingTime,          // ISO; the client reads it in its own zone
+        benefic: !!c.benefic, malefic: !!c.malefic,
+      })),
     voidOfCourse: voc,
     // `reading` is sign-specific: a void in Taurus and a void in Capricorn are
     // not the same afternoon, and Lilly exempts four signs outright — which

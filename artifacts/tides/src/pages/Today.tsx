@@ -34,33 +34,14 @@ import WovenReading from "@/components/WovenReading";
 import ReadZone from "@/components/ReadZone";
 import AskDoors from "@/components/AskDoors";
 import MomentsAhead from "@/components/MomentsAhead";
+import AngleCrossing from "@/components/AngleCrossing";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
 
 
-const PLANET_SIGNIFICATION: Record<string, string> = {
-  Moon: "nourishment · care · small tasks · environment",
-  Mars: "action · ignition · assertion · exertion",
-  Saturn: "slowing · focusing · consolidation · rest",
-  Venus: "beauty · pleasure · connection · relationship",
-  Jupiter: "expansion · abundance · generosity · vision",
-  Sun: "visibility · leadership · vitality · clarity",
-  Mercury: "communication · ideas · movement · craft",
-  Uranus: "disruption · surprise · liberation · shake-up",
-};
 
 // A planet crossing a chart angle is a ~20-min peak for that planet's kind of
-// action — so we name the schedulable thing it favors (Mars → training).
-const CROSSING_ACTIVITY: Record<string, string> = {
-  Mars: "a hard workout or a decisive push",
-  Venus: "a date, a connection, or making something beautiful",
-  Mercury: "writing, calls, errands, a quick pitch",
-  Sun: "being seen — present, lead, put yourself forward",
-  Jupiter: "the big ask, teaching, or reaching wider",
-  Saturn: "focused, structural work — the unglamorous right thing",
-  Moon: "rest, home, food, tending someone",
-};
 
 
 const QUALITY_COLORS: Record<string, string> = {
@@ -850,68 +831,14 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   const elemColor = ELEMENT_COLORS[el as Element] ?? "#888888";
   const qColor = QUALITY_COLORS[now?.quality ?? "neutral"] ?? "#888888";
 
-  // Find ALL angle crossings active right now (recent past or near future), not just
-  // the single nearest one — showing only one meant a second simultaneous crossing
-  // (e.g. Jupiter AND Pluto both at an angle) was silently concealed behind it.
-  const todayData = week?.days?.find(d => d.date === today);
-  const nowMinutesForCross = new Date().getHours() * 60 + new Date().getMinutes();
-  // A chart angle sweeps the ecliptic at ~14°/hr (the ~15°/hr diurnal rate,
-  // minus the Moon's own ~0.5°/hr drift), so a 3° orb is ~13 minutes either
-  // side of exact — the window an angle crossing is genuinely "active" for.
-  // Owner: give any crossing a 3° orb and treat it as live, not past.
-  const CROSS_DEG_PER_MIN = 14 / 60;      // ≈0.233°/min
-  const CROSS_ORB_DEG = 3;
-  const CROSS_WINDOW_MIN = CROSS_ORB_DEG / CROSS_DEG_PER_MIN; // ≈12.9 min
-  const activeCrossings = (todayData?.crossings ?? [])
-    .map(c => {
-      if (!c.time) return null;
-      const [ch, cm] = c.time.split(":").map(Number);
-      const crossMin = ch * 60 + (cm ?? 0);
-      const diff = crossMin - nowMinutesForCross;
-      return { c, diff, orbDeg: Math.abs(diff) * CROSS_DEG_PER_MIN };
-    })
-    .filter((x): x is { c: Crossing; diff: number; orbDeg: number } => x !== null && Math.abs(x.diff) <= CROSS_WINDOW_MIN)
-    .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-
-  // An active crossing is a peak moment — it rides at the very TOP of the page
-  // (owner: "when that's active, this banner should come to the top of the
-  // screen"), and reads as live, not "N min ago".
-  const crossingBanner = crossingsOn && astro.level !== "minimal" && activeCrossings.length > 0 ? (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {activeCrossings.map(({ c: cr, diff, orbDeg }, i) => {
-        const pCol = PLANET_COLORS[cr.planet] ?? PLANET_COLORS.Sun;
-        const sig = PLANET_SIGNIFICATION[cr.planet];
-        const isBenefic = ["Venus", "Jupiter", "Sun"].includes(cr.planet);
-        const whenLabel = Math.abs(diff) < 2 ? "peaking now"
-          : diff < 0 ? `exact ${Math.round(-diff)}m ago · ${orbDeg.toFixed(1)}° orb`
-          : `exact in ${Math.round(diff)}m · ${orbDeg.toFixed(1)}° orb`;
-        return (
-          <div key={`${cr.planet}-${cr.angle}-${i}`} style={{
-            background: `${pCol}14`, border: `1px solid ${pCol}55`, borderLeft: `3px solid ${pCol}`,
-            borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <span className="phrase-in" style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_ICONS[cr.planet] ?? "⚡"}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: pCol }}>
-                {cr.planet} crosses {cr.angle} · active now
-              </div>
-              <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 2 }}>
-                {cr.time} · {whenLabel}{sig ? ` — ${sig}` : ""}
-              </div>
-              {CROSSING_ACTIVITY[cr.planet] && (
-                <div style={{ fontSize: 10, color: pCol, marginTop: 3, fontWeight: 500 }}>
-                  ◷ A ~20-min window for {CROSSING_ACTIVITY[cr.planet]}.
-                </div>
-              )}
-            </div>
-            <div style={{ fontSize: 8, background: `${pCol}22`, color: pCol, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
-              ● {isBenefic ? "↑" : ""} {cr.angle}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  ) : null;
+  // Angle crossings now come from /tides/now and render through
+  // components/AngleCrossing, so Home shows the same banner from the same
+  // data (audit correction, 2026-08-19). The derivation that lived here —
+  // the 14°/hr sweep, the 3° orb, the ~13-minute window — moved with it and
+  // is finally under test.
+  const crossingBanner = (
+    <AngleCrossing crossings={now?.crossings} enabled={crossingsOn && astro.level !== "minimal"} />
+  );
 
   // Ritual mode — Today reads the *person's* day, not the office clock.
   // Morning opens the loop (the first hours after waking), evening closes it

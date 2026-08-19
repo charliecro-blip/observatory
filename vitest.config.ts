@@ -19,6 +19,12 @@ export default defineConfig({
       // `import "./logger.js"` → logger.ts. Relative specifiers only, so this
       // can never rewrite a real package import.
       { find: /^(\.{1,2}\/.*)\.js$/, replacement: "$1.ts" },
+      // The client's own alias. Without it a test could only import modules
+      // that happen to have no `@/` imports anywhere in their graph, which
+      // silently steered pure logic OUT of the components it belongs beside —
+      // the arithmetic behind an angle crossing sat untested in a 3000-line
+      // page partly because importing it here was impossible.
+      { find: /^@\//, replacement: path.join(ROOT, "artifacts/tides/src") + "/" },
     ],
   },
   test: {
