@@ -95,7 +95,7 @@ export interface Resolution {
   ready: number;
 }
 
-export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shapeOpen, waterOpen }: {
+export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shapeOpen, waterOpen, ritualMode }: {
   testerId: string | null;
   lat: number;
   lon: number;
@@ -106,6 +106,8 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
   /** Disclosures whose CONTENTS are fetched only once opened. */
   shapeOpen: boolean;
   waterOpen: boolean;
+  /** "morning" | "evening" during the person's own ritual hours, else null. */
+  ritualMode: "morning" | "evening" | null;
 }) {
   const qc = useQueryClient();
   const today = localToday();
@@ -425,10 +427,29 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
     || lines.quiet === "all-placed" || lines.quiet === "thin-inventory";
 
 
+  // ── THE DAILY LOOP'S OWN DATA ────────────────────────────────────────────
+  // Every one of these is gated on ritualMode, so outside the hours the card
+  // renders in they cost nothing. That matters most for the week read: it is
+  // the ~900ms call, and the evening card wants exactly one field out of it
+  // (tomorrow's element), so it asks for two days rather than fourteen.
+  const ritual = !!ritualMode;
+  const { data: ritualTasks } = useQuery<Task[]>({
+    queryKey: ["tasks-today", testerId, today, tz],
+    queryFn: () => fetchJson<Task[]>(`/api/tasks?date=${today}&tz=${tz}`, { headers }),
+    enabled: !!testerId && ritual,
+  });
+  const { data: ritualWindows } = useQuery<any[]>({
+    queryKey: ["planning-windows-today", testerId, today, tz],
+    queryFn: () => fetchJson<any[]>(`/api/planning/windows?date=${today}`, { headers }),
+    enabled: !!testerId && ritual,
+  });
+  const { data: ritualWeek } = useTidesWeek(2, lat, lon, 0, ritual);
+
   /** Drop the cached reading and ask again — what the retry button does. */
   const refreshLines = () => { qc.removeQueries({ queryKey: ["lines-up"] }); void refetchLines(); };
 
   return {
+    ritualTasks, ritualWindows, ritualWeek,
     refreshLines, qc, today, headers, tasks, tasksFailed, northStars, cycle, habitsForRisk, now, tz, zone, touchData, lines, linesError, refetchLines, linesFetching, linesUnreachable, linesFailed, failure, resolution, setDuration, setActivity, shaped, shaping, committed, sundayToday, reviewForced, rareData, rareShowing, water, logWin, addTask, toggleTask, reorder, moveWithin, all, open, doneToday, scheduled, loose, placed, overdue, dueToday, later, undated, soleGroup, engagedToday, timingFor, needsDuration, heldBack, needsActivity, lead, leadIsLoopNow, secondary, showAnswerCard,
   };
 }

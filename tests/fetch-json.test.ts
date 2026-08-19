@@ -76,10 +76,16 @@ describe("absence is a decision, not an accident", () => {
 
 describe("the life-data queries were migrated", () => {
   it("no longer bare-parses tasks, stars or habits", () => {
+    // Today.tsx was on this list until its life-data queries moved out —
+    // to hooks/useHomeData and components/RitualCard (2026-08-19). A file
+    // that no longer ASKS for tasks, stars or habits cannot be required to
+    // ask for them through fetchJson; the claim is about the queries, so
+    // the list follows them.
     for (const f of [
       "artifacts/tides/src/hooks/useTides.ts",
+      "artifacts/tides/src/hooks/useHomeData.ts",
       "artifacts/tides/src/pages/GuidingStarsHub.tsx",
-      "artifacts/tides/src/pages/Today.tsx",
+      "artifacts/tides/src/components/RitualCard.tsx",
     ]) {
       const src = readFileSync(f, "utf-8");
       expect(src, `${f} should use fetchJson`).toMatch(/fetchJson\(/);

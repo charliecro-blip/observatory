@@ -67,6 +67,8 @@ import DayAhead from "@/components/DayAhead";
 import CompassNow from "@/components/CompassNow";
 import { useUiDensity, useAstroDetail, usePreferences } from "@/contexts/preferences-context";
 import { useHomeData, type Task, type LinesUpResult } from "@/hooks/useHomeData";
+import RitualCard from "@/components/RitualCard";
+import { ritualPhase } from "@/lib/chronotype";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { AskElectionContext } from "@/App";
 
@@ -371,6 +373,12 @@ export default function Home({
   const { level: astroLevel } = useAstroDetail();
   const skyQuiet = astroLevel === "minimal";
 
+  // Ritual hours read the PERSON's clock, not the office's: the first hours
+  // after waking and the last before sleep, from their chronotype. Null in
+  // between, which is what keeps the loop's own queries from firing on an
+  // ordinary afternoon.
+  const ritualMode = ritualPhase(profile?.chronotype);
+
   // ── EVERY server answer, and everything derived from one ─────────────────
   // Home used to open with ~600 lines before its first piece of markup. They
   // live in hooks/useHomeData now, which is the refactor the audit's
@@ -386,7 +394,8 @@ export default function Home({
     all, open, doneToday, scheduled, loose, placed, overdue, dueToday, later, undated,
     soleGroup, engagedToday, timingFor, needsDuration, heldBack, needsActivity,
     lead, leadIsLoopNow, secondary, showAnswerCard, refreshLines, linesUnreachable,
-  } = useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shapeOpen, waterOpen });
+    ritualTasks, ritualWindows, ritualWeek,
+  } = useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shapeOpen, waterOpen, ritualMode });
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
   const comebackRan = useRef(false);
@@ -406,6 +415,7 @@ export default function Home({
 
   const showVoid = usePreferences().prefs.display.todayShowVOC;
   const showCrossings = usePreferences().prefs.display.todayShowCrossings;
+  const showJournal = usePreferences().prefs.display.todayShowJournal;
   /** Sets the link. Symmetric: the row's verdict and the hero title both call it. */
   const linkRow = (id: number) => { setFocusedTask(id); setEvidenceOpen(true); };
 
@@ -648,6 +658,26 @@ export default function Home({
           of loads, so the ordinary page pays nothing for the place it
           holds. */}
       {!skyQuiet && <AngleCrossing crossings={now?.crossings} enabled={showCrossings} />}
+
+      {/* ══ THE DAILY LOOP ════════════════════════════════════════════════
+          Morning "Cast off", evening "Log the day" — the ritual the whole
+          product is shaped around, which until now lived on a page nobody
+          lands on. It leads when it renders at all, because during those
+          hours it IS the reason someone opened the app; the rest of the day
+          it renders nothing and Home is unchanged. */}
+      {ritualMode && now && (
+        <RitualCard
+          mode={ritualMode}
+          now={now}
+          week={ritualWeek}
+          todayTasks={(ritualTasks ?? []) as any}
+          windows={ritualWindows}
+          testerId={testerId}
+          displayName={profile?.displayName}
+          lat={lat} lon={lon}
+          showJournal={showJournal}
+        />
+      )}
 
       <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
 

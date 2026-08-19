@@ -1900,8 +1900,30 @@ describe("ephemeris time granularity", () => {
 //     finished today.
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+/**
+ * Read whichever client file declares `function <name>`.
+ *
+ * These suites used to hard-code artifacts/tides/src/pages/Today.tsx and slice
+ * it. Six of them broke at once when DonePattern, BlockCheck and CascadeCard
+ * moved into components/RitualCard — none of the behaviour they assert had
+ * changed. A test that names an address fails on every move; this names the
+ * declaration instead.
+ */
+function fileDeclaring(fn: string): string {
+  const roots = ["artifacts/tides/src/pages", "artifacts/tides/src/components", "artifacts/tides/src/hooks"];
+  for (const dir of roots) {
+    for (const f of readdirSync(join(process.cwd(), dir))) {
+      if (!/\.(tsx?|ts)$/.test(f)) continue;
+      const src = readFileSync(join(process.cwd(), dir, f), "utf-8");
+      if (new RegExp(`function ${fn}\\b`).test(src)) return src;
+    }
+  }
+  throw new Error(`no client file declares function ${fn}`);
+}
+
 describe("behavioural pattern replaces the felt rating", () => {
-  const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+  const today = fileDeclaring("DonePattern");
 
   it("no longer asks anyone to rate a day", () => {
     expect(today).not.toMatch(/How did today feel/);
@@ -1958,7 +1980,7 @@ describe("behavioural pattern replaces the felt rating", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("marking a scheduled block done", () => {
-  const today = readFileSync(join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+  const today = fileDeclaring("BlockCheck");
 
   it("calls the endpoint that was built and never wired", () => {
     expect(today).toMatch(/planning\/windows\/\$\{id\}\/complete/);
@@ -1978,13 +2000,13 @@ describe("marking a scheduled block done", () => {
   it("offers one verb, not two — 'skip' is just not pressing anything", () => {
     // A schedule that makes you account for every unmet block is the guilt
     // ledger this product refuses (BACKLOG §4, do-not-copy).
-    const comp = today.slice(today.indexOf("function BlockCheck"), today.indexOf("function DonePattern"));
+    const comp = today.slice(today.indexOf("function BlockCheck"));
     expect(comp).toMatch(/did it/);
     expect(comp).not.toMatch(/Skip|skipped/);
   });
 
   it("only lists blocks that are still open", () => {
-    const comp = today.slice(today.indexOf("function BlockCheck"), today.indexOf("function DonePattern"));
+    const comp = today.slice(today.indexOf("function BlockCheck"));
     expect(comp).toMatch(/filter\(\(w: any\) => !w\.completedAt\)/);
   });
 });
