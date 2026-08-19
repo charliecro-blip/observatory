@@ -54,6 +54,7 @@ import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
 import { starIdsOf } from "@/lib/starLinks";
 import { useFold, FoldToggle } from "@/components/ModuleFold";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface Habit {
   id: number; name: string; emoji?: string | null;
@@ -67,7 +68,12 @@ interface Task { id: number; title: string; done: string | null; dueDate: string
 const KEPT = "#3f7a4a";
 const BEHIND = "#a08040";
 const MAX_HABIT_ROWS = 5;      // ungrouped layout
-const MAX_ROWS_PER_STAR = 3;   // grouped layout, habits before tasks
+// Grouped layout, habits before tasks. TWO on a phone: at three rows each,
+// two star groups plus the untied bucket ran ~830px on an 812px screen and
+// pushed Compass's answer below the fold — the same 375px failure the HOME
+// study found in the work grid (D3), in a card added to fix a different one.
+const MAX_ROWS_PER_STAR = 3;
+const MAX_ROWS_PER_STAR_MOBILE = 2;
 
 export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
   testerId: string | null; lat: number; lon: number; onNavigate: (v: string) => void;
@@ -75,6 +81,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
   const qc = useQueryClient();
   const today = localToday();
   const { isFolded } = useFold();
+  const isMobile = useIsMobile();
 
   const { data: habits, isError: habitsFailed } = useQuery<Habit[]>({
     // Same key as every other habit read on the page, so this is one cache
@@ -145,6 +152,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
 
   const starTitle = new Map(liveStars.map(s => [s.id, s.title]));
   const folded = isFolded("whereYouAre");
+  const perStar = isMobile ? MAX_ROWS_PER_STAR_MOBILE : MAX_ROWS_PER_STAR;
 
   const habitTally = (h: Habit) => {
     const chore = h.flavor === "chore";
@@ -229,8 +237,8 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
             const mine = sorted.filter(h => (habitStars.get(h.id) ?? []).includes(s.id));
             const myTasks = openTasks.filter(t => t.goalId === s.id);
             if (!mine.length && !myTasks.length) return null;
-            const shownHabits = mine.slice(0, MAX_ROWS_PER_STAR);
-            const shownTasks = myTasks.slice(0, Math.max(0, MAX_ROWS_PER_STAR - shownHabits.length));
+            const shownHabits = mine.slice(0, perStar);
+            const shownTasks = myTasks.slice(0, Math.max(0, perStar - shownHabits.length));
             const hidden = (mine.length - shownHabits.length) + (myTasks.length - shownTasks.length);
             const done = s.completedCount ?? 0;
             const scheduled = s.scheduledCount ?? 0;
@@ -313,10 +321,10 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
                 }}>Tie them in →</button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {untiedHabits.slice(0, MAX_ROWS_PER_STAR).map(h => <HabitRow key={h.id} h={h} />)}
-                {untiedHabits.length > MAX_ROWS_PER_STAR && (
+                {untiedHabits.slice(0, perStar).map(h => <HabitRow key={h.id} h={h} />)}
+                {untiedHabits.length > perStar && (
                   <div style={{ fontSize: 10, color: "var(--text-3)" }}>
-                    and {untiedHabits.length - MAX_ROWS_PER_STAR} more habits
+                    and {untiedHabits.length - perStar} more habits
                   </div>
                 )}
                 {/* Counted, not listed — "Your work" below lists every task by
