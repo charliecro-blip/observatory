@@ -49,9 +49,28 @@ export const testerProfiles = pgTable("tester_profiles", {
   // policy for a per-device model — nobody's edit is merged into a shape it
   // was not made against.
   prefs: jsonb("prefs"),
-  // Entitlement, named now so billing has a column to read the day it exists.
-  // Everyone is 'beta' — a gift received, not a bill arriving (BACKLOG §5).
+  // ── ENTITLEMENT ───────────────────────────────────────────────────────
+  // beta | free | trial | paid. Everyone is 'beta' — a gift received, not a
+  // bill arriving (BACKLOG §5) — and beta resolves exactly like paid, so the
+  // day it retires nothing downstream changes shape.
   plan: text("plan").notNull().default("beta"),
+  // When a trial ends. The expiry is computed on READ rather than swept by a
+  // job: an account whose trial lapsed at midnight must not keep paid
+  // features until some cron happens to notice.
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // When the plan last changed, for support questions no other column can
+  // answer ("it stopped working on the 3rd").
+  planUpdatedAt: timestamp("plan_updated_at", { withTimezone: true }),
+  // The payment provider's own ids. Deliberately provider-AGNOSTIC names:
+  // the choice between a merchant-of-record and a raw processor is the
+  // owner's and is not made here, and a column called stripe_customer_id
+  // would quietly make it.
+  billingCustomerId: text("billing_customer_id"),
+  billingSubscriptionId: text("billing_subscription_id"),
+  // The provider's own status string, stored verbatim. Compass's own plan
+  // column is what the app reads; this is for reconciling with the provider
+  // when the two disagree, which is the failure that matters in billing.
+  billingStatus: text("billing_status"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("ix_tester_feed_token").on(t.feedTokenHash)]);

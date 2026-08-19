@@ -15,6 +15,7 @@ import { randomBytes } from "node:crypto";
 import { db, testerProfiles } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { mintFeedToken, hashFeedToken } from "../lib/feedToken.js";
+import { entitlementFor, TRIAL_DAYS } from "../lib/entitlements.js";
 import { claimAccount, mintSessionFor, hashSessionToken, clearSessionCache } from "../lib/accountAuth.js";
 import { accountSessions } from "@workspace/db";
 import { requireTesterId } from "../middlewares/testerId.js";
@@ -334,6 +335,45 @@ router.put("/account/prefs", requireTesterId, async (req, res) => {
   // an account without one.
   if (!updated.length) { res.status(404).json({ error: "no profile yet" }); return; }
   res.json({ ok: true });
+});
+
+/**
+ * WHAT THIS ACCOUNT CAN DO.
+ *
+ * One definition, on the server, asked for by the client — rather than two
+ * copies of the free/paid line drifting apart. The client renders doors from
+ * this; the guards enforce it. Both read the same function.
+ */
+router.get("/account/entitlements", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select({ plan: testerProfiles.plan, trialEndsAt: testerProfiles.trialEndsAt })
+    .from(testerProfiles).where(eq(testerProfiles.testerId, testerId)).limit(1))[0] ?? null;
+  res.json(entitlementFor(row));
+});
+
+/**
+ * START THE 30-DAY TRIAL. Idempotent, and it never restarts one.
+ *
+ * A person who has already had their trial gets `already: true` and their
+ * existing dates back rather than a fresh month — otherwise the endpoint is
+ * a free subscription for anyone who calls it twice. Nothing here takes a
+ * payment method: the trial is the product making its case, and asking for a
+ * card first is asking to be trusted before being useful.
+ */
+router.post("/account/trial", requireTesterId, async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const row = (await db.select().from(testerProfiles)
+    .where(eq(testerProfiles.testerId, testerId)).limit(1))[0] ?? null;
+  if (!row) { res.status(404).json({ error: "no profile yet" }); return; }
+  if (row.trialEndsAt) {
+    res.json({ already: true, ...entitlementFor(row) });
+    return;
+  }
+  const ends = new Date(Date.now() + TRIAL_DAYS * 86_400_000);
+  await db.update(testerProfiles)
+    .set({ plan: "trial", trialEndsAt: ends, planUpdatedAt: new Date(), updatedAt: new Date() })
+    .where(eq(testerProfiles.testerId, testerId));
+  res.status(201).json({ already: false, ...entitlementFor({ plan: "trial", trialEndsAt: ends }) });
 });
 
 export default router;

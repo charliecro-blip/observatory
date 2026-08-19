@@ -21,6 +21,7 @@ import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals, habits, habitLogs } from "@workspace/db";
 import { fetchGcalBusy } from "./googleCal.js";
 import { computeNatalChart } from "../lib/natal.js";
+import { requireFeature } from "../middlewares/entitlement.js";
 
 const router: IRouter = Router();
 
@@ -211,7 +212,7 @@ router.get("/elections/lines-up", async (req, res) => {
  * length exists it reports the shortfall — a four-hour request must never
  * quietly become the activity's twenty-minute minimum viable form.
  */
-router.get("/elections/long-session", (req, res) => {
+router.get("/elections/long-session", requireFeature("sessions.long"), (req, res) => {
   const activityKey = (req.query.activity as string) ?? "";
   const minutes = Math.min(600, Math.max(30, parseInt((req.query.minutes as string) ?? "240", 10) || 240));
   const hasCoords = req.query.lat != null && req.query.lon != null;
@@ -259,7 +260,7 @@ router.get("/elections/long-session", (req, res) => {
  * `openTime` and `unplaced` are returned alongside `placed`, and the client is
  * expected to render open stretches as deliberate rather than as failure.
  */
-router.get("/elections/shape-day", async (req, res) => {
+router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
 
@@ -330,7 +331,7 @@ router.get("/elections/shape-day", async (req, res) => {
  *
  * Days deliberately left open are part of the answer, not a failure to fill.
  */
-router.get("/elections/shape-week", async (req, res) => {
+router.get("/elections/shape-week", requireFeature("shape.week"), async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
 

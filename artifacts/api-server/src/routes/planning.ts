@@ -8,6 +8,7 @@ import { tierForMoment, compareTiers, WINDOW_ELEMENT } from "../lib/timingTier.j
 import { evaluateActivityInterval } from "../lib/electionEngine.js";
 import { pickRehomeSlots } from "../lib/rehome.js";
 import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
+import { requireFeature } from "../middlewares/entitlement.js";
 
 const router: IRouter = Router();
 
@@ -579,7 +580,7 @@ router.post("/planning/cascade/preview", requireTesterId, async (req, res) => {
 // On the grid: candidates are stepped every 15 minutes, but that is a CHOICE
 // of slot, not a measurement of an astronomical event (BACKLOG §10). Proposing
 // 2:15 PM and printing "2:15 PM" is exact — nothing is being rounded.
-router.post("/planning/rehome/suggest", requireTesterId, async (req, res) => {
+router.post("/planning/rehome/suggest", requireTesterId, requireFeature("placement.calendar"), async (req, res) => {
   const testerId = res.locals.testerId as string;
   const id = parseInt(String(req.body?.windowId), 10);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "windowId required" }); return; }
