@@ -45,7 +45,7 @@ import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
-import RhythmProgress from "@/components/RhythmProgress";
+import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
 import AskDoors from "@/components/AskDoors";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
@@ -927,6 +927,15 @@ export default function Home({
         </div>
       )}
 
+      {/* ══ WHERE YOU ARE · the report that actually changes ══════════════
+          The top strip used to hold the last turning-point's kept card — a
+          souvenir holding the page's most valuable band for up to a month
+          (design 2026-08-19). This is what accrues instead: the habits and
+          what has moved toward the stars. It ABSORBS the rhythm card and the
+          Guiding Stars card from the context column rather than becoming a
+          third voice for the same facts. */}
+      <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
+
       {/* ══ COMPASS · the answer, first ═══════════════════════════════════
           "What should I do right now" is the app's central question, and it
           was arriving fifth — inside a card, under a section title and a
@@ -1244,60 +1253,9 @@ export default function Home({
             <CommittedWeekStrip windows={committed} onOpen={() => onNavigate("launch")} />
           </div>
 
-          {/* GUIDING STARS, with their movement — the card that used to live on
-              Today (Dashboard's "Guiding stars"). A star's progress is measured
-              in weeks, so it was answering a question Today never asks; here it
-              is one of the standing things Home exists to show.
-
-              Chips became rows to make room for the figure. What each row
-              reports is what HAPPENED — the count done, or the count with a
-              time on it — never a denominator nobody set. A star with nothing
-              scheduled used to render "0/2", an obligation the app invented and
-              then scored the person against. */}
-          {(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").length > 0 && (
-            <div style={PANEL}>
-              <SectionTitle
-                action={
-                  <button onClick={() => onNavigate("work")} style={{
-                    fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
-                    color: "var(--color-primary)",
-                  }}>Open Stars →</button>
-                }
-              >Guiding Stars</SectionTitle>
-              <div style={{ padding: "0 16px 12px" }}>
-                {(northStars ?? [])
-                  .filter((g: any) => g.status !== "done" && g.status !== "paused")
-                  .map((g: any) => {
-                    const done = g.completedCount ?? 0;
-                    const scheduled = g.scheduledCount ?? 0;
-                    return (
-                      <button key={g.id} onClick={() => onNavigate("work")} style={{
-                        display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
-                        padding: "4px 0", background: "none", border: "none", cursor: "pointer",
-                      }}>
-                        <span style={{
-                          fontSize: 12, flex: 1, minWidth: 0, color: "var(--color-foreground)",
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}>{g.title}</span>
-                        <span style={{ fontSize: 10, color: done > 0 ? CONVERGENT : "var(--text-3)", flexShrink: 0 }}>
-                          {done > 0 ? `${done} this week`
-                            : scheduled > 0 ? `${scheduled} scheduled`
-                            : "nothing yet"}
-                        </span>
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* SPRINTS — short pushes with hard edges, sometimes riding a
-              week-scale transit. Above the rhythm: a sprint is time-scarce
-              in a way a habit never is. */}
-          <Sprints testerId={testerId} />
-
-          {/* THE RHYTHM — habits at the scale they actually move at. */}
-          <RhythmProgress testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
+          {/* The rhythm card and the Guiding Stars card lived here. Both are
+              in "Where you are" at the top of the page now — one report
+              instead of two cards saying adjacent halves of it. */}
 
           {/* Expanded only: the day's wins are a look backward, and the
               landing page's essential job is forward. The Log tab holds the

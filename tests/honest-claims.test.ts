@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf-8");
@@ -11,6 +11,8 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf-8");
  * Compass asserted more than it knew — the failure mode that costs a serious
  * user their trust in everything else the app says.
  */
+
+const SRC_DIRS = { components: "artifacts/tides/src/components" };
 
 describe("no invented obligations", () => {
   const FILES = [
@@ -73,8 +75,23 @@ describe("no invented obligations", () => {
     // would have failed for the reason the file no longer draws the thing —
     // the exact "source-text test defends dead code" trap this file's other
     // case was rewritten to avoid.
-    const home = read("artifacts/tides/src/pages/Home.tsx");
-    expect(home).toMatch(/done > 0 \? `\$\{done\} this week`/);
+    // It has now moved TWICE — Dashboard → Home (the 2026-08-14 split) →
+    // WhereYouAre (the 2026-08-19 top-of-page rework, which absorbed Home's
+    // stars card). Rather than chase it a third time, find whichever file
+    // actually draws it and assert there. A move now updates nothing; only
+    // deleting the safe form, or drawing star progress nowhere at all,
+    // fails — which is exactly the pair of things worth failing on.
+    const drawers = readdirSync(SRC_DIRS.components)
+      .filter(f => f.endsWith(".tsx"))
+      .map(f => `artifacts/tides/src/components/${f}`)
+      .concat(["artifacts/tides/src/pages/Home.tsx"])
+      .filter(f => /scheduledCount/.test(read(f)));
+
+    expect(drawers.length, "nothing draws star progress any more").toBeGreaterThan(0);
+    for (const f of drawers) {
+      expect(read(f), `${f} draws star progress without the bare-count form`)
+        .toMatch(/done > 0 \? `\$\{done\} this week`/);
+    }
   });
 });
 

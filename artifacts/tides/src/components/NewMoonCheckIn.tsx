@@ -239,6 +239,8 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
   const C = cycle.content;
 
   const [saved, setSaved] = useState<Saved | null>(() => readSaved(cycle.key));
+  // The kept one-pager, opened by hand from the one-line form.
+  const [expanded, setExpanded] = useState(false);
   // The stored value is the LOCAL DATE of the last "Not now" — dismissed
   // means "dismissed today", so the offer returns with the next morning.
   const [dismissedOn, setDismissedOn] = useState<string | null>(() => {
@@ -483,7 +485,31 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
     </div>
   );
 
-  // Saved and current → the featured card, in place of any prompt.
+  // Saved and current → ONE LINE, not a card (design 2026-08-19).
+  //
+  // What you wrote at the last new moon is a souvenir: true, worth keeping,
+  // and worth re-reading — but it held the top of Home for up to a month
+  // after it stopped being news, above the progress report that actually
+  // changes daily. It reads as context now, with the full one-pager a tap
+  // away. `expanded` restores the card for anyone who wants to sit with it.
+  if (saved && !expanded) {
+    const headline = saved.oneShot || saved.release;
+    return (
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", padding: "0 4px" }}>
+        <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+          {cycle.curated ? "This cycle · set at the Leo eclipse" : "This cycle · set at the new moon"}
+        </span>
+        <span style={{ fontSize: 11.5, color: "var(--color-muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          you named <span style={{ color: "var(--text-2)" }}>{headline}</span>
+        </span>
+        <button onClick={() => setExpanded(true)} style={{
+          fontSize: 10.5, background: "none", border: "none", padding: 0,
+          cursor: "pointer", color: "var(--color-primary)", flexShrink: 0,
+        }}>read it →</button>
+      </div>
+    );
+  }
+
   if (saved) {
     const headline = saved.oneShot || saved.release;
     return (
@@ -496,10 +522,16 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
             <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
               {cycle.curated ? "This cycle · set at the Leo eclipse" : "This cycle · set at the new moon"}
             </span>
-            <button onClick={beginEdit} style={{
-              fontSize: 10.5, background: "none", border: "none", padding: 0,
-              cursor: "pointer", color: "var(--color-primary)",
-            }}>adjust</button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={beginEdit} style={{
+                fontSize: 10.5, background: "none", border: "none", padding: 0,
+                cursor: "pointer", color: "var(--color-primary)",
+              }}>adjust</button>
+              <button onClick={() => setExpanded(false)} style={{
+                fontSize: 10.5, background: "none", border: "none", padding: 0,
+                cursor: "pointer", color: "var(--text-3)",
+              }}>close</button>
+            </div>
           </div>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 19, lineHeight: 1.3, color: "var(--color-foreground)", marginTop: 5 }}>
             {headline}
