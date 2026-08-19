@@ -18,22 +18,55 @@
  *
  * What it never does: score a star it was never given a target for, or print
  * a denominator nobody set. A star with nothing yet says "nothing yet".
+ *
+ * ── GROUPED UNDER THE STARS (owner, 2026-08-19) ──────────────────────────
+ * "There's a more elegant way of showing that these habits belong to the
+ * guiding stars." The two columns — habits here, stars there — drew the
+ * means and the end as two unrelated inventories.
+ *
+ * THE CARD HAS TWO LAYOUTS AND PICKS BY WHAT IS TRUE. Grouping is only an
+ * improvement once something is actually tied: with no links at all it would
+ * render four empty headings above one undifferentiated pile, which is worse
+ * than the two columns AND reads as an accusation. So when nothing is tied
+ * the old side-by-side stands, with one quiet door to go tie something; the
+ * grouped view takes over the moment a single link exists, and gets better
+ * from there. Nobody has to be taught the feature — it arrives when it has
+ * something to say.
+ *
+ * A HABIT UNDER TWO STARS APPEARS UNDER BOTH, and says so. It is one ledger
+ * item counted by each of its stars (see lib/starLinks), so the counts here
+ * are over DISTINCT habits — the header's "1 of 5 today" must keep matching
+ * the tally the person can see, however many groups a row appears in.
+ *
+ * UNASSIGNED IS A NAMED BUCKET, never a silent remainder. Gaps are output
+ * with reasons is the house rule, and "not tied to a star" is a true fact
+ * about someone's setup with a working door attached; an untitled leftover
+ * pile at the bottom of the card is the same data saying nothing.
+ *
+ * Untied TASKS are counted, not listed. "Your work" sits directly below this
+ * card and lists every task grouped by date; drawing them again here would
+ * make Home the second place that answers the same question, and the date
+ * axis is the better one for a list you are working from.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
+import { starIdsOf } from "@/lib/starLinks";
 
 interface Habit {
   id: number; name: string; emoji?: string | null;
   doneToday?: boolean; windowDone?: number; windowTarget?: number;
   cadenceMet?: boolean; flavor?: string | null;
+  goalId?: number | null; starIds?: string | null;
 }
 interface Star { id: number; title: string; status?: string; completedCount?: number; scheduledCount?: number }
+interface Task { id: number; title: string; done: string | null; dueDate: string | null; goalId?: number | null }
 
 const KEPT = "#3f7a4a";
 const BEHIND = "#a08040";
-const MAX_HABIT_ROWS = 5;
+const MAX_HABIT_ROWS = 5;      // ungrouped layout
+const MAX_ROWS_PER_STAR = 3;   // grouped layout, habits before tasks
 
 export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
   testerId: string | null; lat: number; lon: number; onNavigate: (v: string) => void;
@@ -56,6 +89,15 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
       await fetch("/api/planning/north-stars", { headers: testerId ? { "x-tester-id": testerId } : {} })),
     enabled: !!testerId,
   });
+  // Home's own key, deliberately: it already asks for every task, and the
+  // grouping needs the same answer. Sharing the key makes this a cache read
+  // rather than a second request.
+  const { data: tasks } = useQuery<Task[]>({
+    queryKey: ["tasks", "all"],
+    queryFn: async () => jsonArray<Task>(
+      await fetch("/api/tasks", { headers: testerId ? { "x-tester-id": testerId } : {} })),
+    enabled: !!testerId,
+  });
 
   const toggleToday = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
@@ -72,121 +114,275 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
 
   const liveHabits = habits ?? [];
   const liveStars = (stars ?? []).filter(s => s.status !== "done" && s.status !== "paused");
+  const openTasks = (tasks ?? []).filter(t => t.done !== "true");
 
   // Nothing held at all is not a state worth a card — the cold-start doors
   // below say it better, with the right offer attached.
   if (habitsFailed || (liveHabits.length === 0 && liveStars.length === 0)) return null;
 
+  // Counts are over DISTINCT habits, computed before any grouping, so a habit
+  // serving two stars cannot inflate the header it appears under twice.
   const doneToday = liveHabits.filter(h => h.doneToday).length;
   const weekKept = liveHabits.reduce((n, h) => n + (h.windowDone ?? 0), 0);
   // What needs looking at first: behind, then untouched, then already kept.
-  const sorted = [...liveHabits].sort((a, b) =>
-    ((a.cadenceMet === false ? 0 : 2) + (a.doneToday ? 1 : 0)) -
-    ((b.cadenceMet === false ? 0 : 2) + (b.doneToday ? 1 : 0)));
-  const shown = sorted.slice(0, MAX_HABIT_ROWS);
+  const rank = (h: Habit) => (h.cadenceMet === false ? 0 : 2) + (h.doneToday ? 1 : 0);
+  const sorted = [...liveHabits].sort((a, b) => rank(a) - rank(b));
+
+  const starIdSet = new Set(liveStars.map(s => s.id));
+  // A link only counts when it points at a star that is still live. A habit
+  // tied to a star since paused is untied as far as this card is concerned —
+  // otherwise it disappears from both the group (there is none) and the
+  // unassigned bucket, which is the silent drop the house rule forbids.
+  const habitStars = new Map<number, number[]>(
+    liveHabits.map(h => [h.id, starIdsOf(h).filter(id => starIdSet.has(id))]));
+  const tiedHabits = liveHabits.filter(h => (habitStars.get(h.id) ?? []).length > 0);
+  const untiedHabits = sorted.filter(h => (habitStars.get(h.id) ?? []).length === 0);
+  const untiedTasks = openTasks.filter(t => !t.goalId || !starIdSet.has(t.goalId));
+  const grouped = tiedHabits.length > 0
+    || openTasks.some(t => t.goalId != null && starIdSet.has(t.goalId));
+
+  const starTitle = new Map(liveStars.map(s => [s.id, s.title]));
+
+  const habitTally = (h: Habit) => {
+    const chore = h.flavor === "chore";
+    const target = h.windowTarget ?? 0;
+    const done = h.windowDone ?? 0;
+    if (chore) return h.doneToday ? "done today" : done > 0 ? `done ${done}×` : "";
+    if (target > 0) return `${done} of ${target}`;
+    return done > 0 ? `${done} this week` : "nothing yet";
+  };
+  const tallyColor = (h: Habit) =>
+    h.flavor === "chore" ? "var(--text-3)"
+    : h.cadenceMet === false ? BEHIND
+    : (h.windowDone ?? 0) > 0 ? KEPT : "var(--text-3)";
+
+  const HabitRow = ({ h, also }: { h: Habit; also?: string }) => (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <button
+          onClick={() => toggleToday.mutate({ id: h.id, done: !!h.doneToday })}
+          disabled={toggleToday.isPending}
+          aria-pressed={!!h.doneToday}
+          aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
+          style={{
+            width: 14, height: 14, borderRadius: h.flavor === "chore" ? 4 : "50%", flexShrink: 0, padding: 0,
+            cursor: toggleToday.isPending ? "default" : "pointer",
+            border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
+            background: h.doneToday ? KEPT : "transparent",
+            color: "#ffffff", fontSize: 8.5, lineHeight: 1,
+          }}>{h.doneToday ? "✓" : ""}</button>
+        <span style={{
+          flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)",
+          textDecoration: h.doneToday ? "line-through" : "none",
+        }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
+        <span style={{ fontSize: 10, flexShrink: 0, color: tallyColor(h) }}>{habitTally(h)}</span>
+      </div>
+      {/* The same habit, seen from another star. Its own line rather than a
+          suffix on the name: the name span already truncates, and this is the
+          first thing to lose when it does — exactly the wrong priority for
+          the one label explaining why a row appears twice on the page. */}
+      {also && (
+        <div style={{ fontSize: 9.5, color: "var(--text-3)", paddingLeft: 23, marginTop: 1 }}>{also}</div>
+      )}
+    </div>
+  );
 
   return (
     <div style={{
       background: "var(--color-card)", border: "1px solid var(--color-border)",
       borderRadius: 12, padding: "12px 16px 14px", flexShrink: 0,
     }}>
-      <div style={{
-        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
-        color: "var(--text-3)", marginBottom: 10,
-      }}>Where you are</div>
-
-      <div style={{ display: "grid", gridTemplateColumns: liveStars.length ? "minmax(0, 1.35fr) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 20 }}>
-
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+        <span style={{
+          fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
+          color: "var(--text-3)",
+        }}>Where you are</span>
         {liveHabits.length > 0 && (
-          <div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Habits</span>
-              <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                {doneToday} of {liveHabits.length} today{weekKept > 0 ? ` · ${weekKept} this week` : ""}
-              </span>
-              <button onClick={() => onNavigate("habits")} style={{
-                marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
-                padding: 0, cursor: "pointer", color: "var(--color-primary)",
-              }}>Open →</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {shown.map(h => {
-                const chore = h.flavor === "chore";
-                const target = h.windowTarget ?? 0;
-                const done = h.windowDone ?? 0;
-                const behind = h.cadenceMet === false;
-                return (
-                  <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <button
-                      onClick={() => toggleToday.mutate({ id: h.id, done: !!h.doneToday })}
-                      disabled={toggleToday.isPending}
-                      aria-pressed={!!h.doneToday}
-                      aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
-                      style={{
-                        width: 14, height: 14, borderRadius: chore ? 4 : "50%", flexShrink: 0, padding: 0,
-                        cursor: toggleToday.isPending ? "default" : "pointer",
-                        border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
-                        background: h.doneToday ? KEPT : "transparent",
-                        color: "#ffffff", fontSize: 8.5, lineHeight: 1,
-                      }}>{h.doneToday ? "✓" : ""}</button>
-                    <span style={{
-                      flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)",
-                      textDecoration: h.doneToday ? "line-through" : "none",
-                    }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
-                    <span style={{
-                      fontSize: 10, flexShrink: 0,
-                      color: chore ? "var(--text-3)" : behind ? BEHIND : done > 0 ? KEPT : "var(--text-3)",
-                    }}>
-                      {chore ? (h.doneToday ? "done today" : done > 0 ? `done ${done}×` : "")
-                        : target > 0 ? `${done} of ${target}`
-                        : done > 0 ? `${done} this week` : "nothing yet"}
-                    </span>
-                  </div>
-                );
-              })}
-              {liveHabits.length > shown.length && (
-                <div style={{ fontSize: 10, color: "var(--text-3)", paddingTop: 2 }}>
-                  and {liveHabits.length - shown.length} more
-                </div>
-              )}
-            </div>
-          </div>
+          <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+            {doneToday} of {liveHabits.length} today{weekKept > 0 ? ` · ${weekKept} this week` : ""}
+          </span>
         )}
-
-        {liveStars.length > 0 && (
-          <div style={{ borderLeft: liveHabits.length ? "1px solid var(--color-border)" : "none", paddingLeft: liveHabits.length ? 20 : 0 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Guiding Stars</span>
-              <button onClick={() => onNavigate("work")} style={{
-                marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
-                padding: 0, cursor: "pointer", color: "var(--color-primary)",
-              }}>Open →</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {liveStars.map(g => {
-                const done = g.completedCount ?? 0;
-                const scheduled = g.scheduledCount ?? 0;
-                return (
-                  <button key={g.id} onClick={() => onNavigate("work")} style={{
-                    display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
-                    padding: 0, background: "none", border: "none", cursor: "pointer",
-                  }}>
-                    <span style={{
-                      flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--color-foreground)",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>{g.title}</span>
-                    <span style={{ fontSize: 10, flexShrink: 0, color: done > 0 ? KEPT : "var(--text-3)" }}>
-                      {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "nothing yet"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        <button onClick={() => onNavigate("work")} style={{
+          marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
+          padding: 0, cursor: "pointer", color: "var(--color-primary)",
+        }}>Open →</button>
       </div>
+
+      {grouped ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+          {/* TWO COLUMNS WHERE THERE IS ROOM. Stacked, five stars of three
+              rows each ran the card past 650px — the top of Home spending
+              more than a phone screen on the summary before the answer. The
+              rows are short and the card is wide, so half of it was empty
+              margin. `auto-fit` with a 250px floor gives two columns on a
+              laptop and one on a phone without a breakpoint to maintain. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "11px 20px" }}>
+          {liveStars.map(s => {
+            const mine = sorted.filter(h => (habitStars.get(h.id) ?? []).includes(s.id));
+            const myTasks = openTasks.filter(t => t.goalId === s.id);
+            if (!mine.length && !myTasks.length) return null;
+            const shownHabits = mine.slice(0, MAX_ROWS_PER_STAR);
+            const shownTasks = myTasks.slice(0, Math.max(0, MAX_ROWS_PER_STAR - shownHabits.length));
+            const hidden = (mine.length - shownHabits.length) + (myTasks.length - shownTasks.length);
+            const done = s.completedCount ?? 0;
+            const scheduled = s.scheduledCount ?? 0;
+            return (
+              <div key={s.id}>
+                <button onClick={() => onNavigate("work")} style={{
+                  display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
+                  padding: 0, background: "none", border: "none", cursor: "pointer", marginBottom: 4,
+                }}>
+                  <span style={{
+                    flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>{s.title}</span>
+                  <span style={{ fontSize: 10, flexShrink: 0, color: done > 0 ? KEPT : "var(--text-3)" }}>
+                    {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "nothing yet"}
+                  </span>
+                </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 10, borderLeft: "1px solid var(--color-border)" }}>
+                  {shownHabits.map(h => {
+                    const others = (habitStars.get(h.id) ?? []).filter(id => id !== s.id);
+                    const also = others.length === 0 ? undefined
+                      : others.length === 1 ? `also counts toward ${starTitle.get(others[0])}`
+                      : `also counts toward ${others.length} other stars`;
+                    return <HabitRow key={h.id} h={h} also={also} />;
+                  })}
+                  {shownTasks.map(t => (
+                    <button key={t.id} onClick={() => onNavigate("work")} style={{
+                      display: "flex", alignItems: "baseline", gap: 9, width: "100%", textAlign: "left",
+                      padding: 0, background: "none", border: "none", cursor: "pointer",
+                    }}>
+                      <span style={{ width: 14, flexShrink: 0, fontSize: 10, color: "var(--text-3)", lineHeight: 1.6 }}>·</span>
+                      <span style={{
+                        flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--color-foreground)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{t.title}</span>
+                      {t.dueDate && (
+                        <span style={{ fontSize: 10, flexShrink: 0, color: t.dueDate < today ? BEHIND : "var(--text-3)" }}>
+                          {t.dueDate < today ? "overdue" : t.dueDate === today ? "today" : ""}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  {hidden > 0 && (
+                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>and {hidden} more</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          </div>
+
+          {/* Stars nothing points at yet, named in one line rather than given
+              an empty heading each. The count is the useful part and the door
+              is the point; four blank groups would be four accusations. */}
+          {(() => {
+            const bare = liveStars.filter(s =>
+              !liveHabits.some(h => (habitStars.get(h.id) ?? []).includes(s.id))
+              && !openTasks.some(t => t.goalId === s.id));
+            if (!bare.length) return null;
+            return (
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, borderTop: "1px solid var(--color-border)", paddingTop: 9 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  Nothing tied yet: {bare.map(s => s.title).join(" · ")}
+                </span>
+                <button onClick={() => onNavigate("work")} style={{
+                  flexShrink: 0, fontSize: 10.5, background: "none", border: "none",
+                  padding: 0, cursor: "pointer", color: "var(--color-primary)",
+                }}>Tie something to them →</button>
+              </div>
+            );
+          })()}
+
+          {(untiedHabits.length > 0 || untiedTasks.length > 0) && (
+            <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 9 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 5 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Not tied to a star</span>
+                <button onClick={() => onNavigate("habits")} style={{
+                  marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
+                  padding: 0, cursor: "pointer", color: "var(--color-primary)",
+                }}>Tie them in →</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {untiedHabits.slice(0, MAX_ROWS_PER_STAR).map(h => <HabitRow key={h.id} h={h} />)}
+                {untiedHabits.length > MAX_ROWS_PER_STAR && (
+                  <div style={{ fontSize: 10, color: "var(--text-3)" }}>
+                    and {untiedHabits.length - MAX_ROWS_PER_STAR} more habits
+                  </div>
+                )}
+                {/* Counted, not listed — "Your work" below lists every task by
+                    date, and that is the better axis for a list you work from. */}
+                {untiedTasks.length > 0 && (
+                  <div style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                    {untiedTasks.length} {untiedTasks.length === 1 ? "task" : "tasks"}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: liveStars.length && liveHabits.length ? "minmax(0, 1.35fr) minmax(0, 1fr)" : "minmax(0, 1fr)", gap: 20 }}>
+            {liveHabits.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Habits</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {sorted.slice(0, MAX_HABIT_ROWS).map(h => <HabitRow key={h.id} h={h} />)}
+                  {liveHabits.length > MAX_HABIT_ROWS && (
+                    <div style={{ fontSize: 10, color: "var(--text-3)", paddingTop: 2 }}>
+                      and {liveHabits.length - MAX_HABIT_ROWS} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {liveStars.length > 0 && (
+              <div style={{ borderLeft: liveHabits.length ? "1px solid var(--color-border)" : "none", paddingLeft: liveHabits.length ? 20 : 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Guiding Stars</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {liveStars.map(g => {
+                    const done = g.completedCount ?? 0;
+                    const scheduled = g.scheduledCount ?? 0;
+                    return (
+                      <button key={g.id} onClick={() => onNavigate("work")} style={{
+                        display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
+                        padding: 0, background: "none", border: "none", cursor: "pointer",
+                      }}>
+                        <span style={{
+                          flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--color-foreground)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{g.title}</span>
+                        <span style={{ fontSize: 10, flexShrink: 0, color: done > 0 ? KEPT : "var(--text-3)" }}>
+                          {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "nothing yet"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* The door to the grouped view, offered only when both halves
+              exist: with no stars or no habits there is nothing to weave and
+              the invitation would be a chore assigned by the page.
+
+              It used to read "…and they group here", which was the interface
+              captioning its own behavior. If grouping needs a caption to be
+              discoverable, that is a design fault rather than a copy one, and
+              the caption would only hide it. */}
+          {liveHabits.length > 0 && liveStars.length > 0 && (
+            <button onClick={() => onNavigate("habits")} style={{
+              marginTop: 10, fontSize: 10.5, background: "none", border: "none",
+              padding: 0, cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
+            }}>Tie a habit to a star →</button>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { useTester } from "@/contexts/tester-context";
 import Glyph from "@/components/Glyph";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
+import { starIdsOf } from "@/lib/starLinks";
 
 const PLANET_CHOICES = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"];
 
@@ -48,9 +49,7 @@ interface Habit {
 }
 
 /** The star ids a habit serves, whichever column carries them. */
-const habitStarIds = (h: Habit): number[] =>
-  h.starIds ? h.starIds.split(",").map(Number).filter(n => Number.isInteger(n) && n > 0)
-  : h.goalId ? [h.goalId] : [];
+const habitStarIds = starIdsOf;
 
 type Cadence = "daily"|"most_days"|"weekly"|"occasional";
 const CADENCE_OPTIONS: { key: Cadence; label: string; hint: string }[] = [
