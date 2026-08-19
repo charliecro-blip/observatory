@@ -402,3 +402,53 @@ into saying something untrue.
 
 Items 5, 6 and 3 are each one step of §2, so the merge gets closer
 without ever being attempted as a merge.
+
+---
+
+## Built, and what the building corrected · 2026-08-19
+
+Items 1–7 shipped. Two of this audit's own calls were wrong, and the
+corrections matter more than the confirmations.
+
+**§5 was wrong about the angle-crossing banner.** It said "move" without
+checking where the data lived. `/tides/now` carries no crossings — they
+come from the week payload — so moving that banner means an
+unconditional 14-day fetch on the landing page to serve a window that is
+live for about thirteen minutes. It stays on Today. The audit priced a
+move against data it never looked for, which is the failure mode this
+repo already has a name for: read the code and guess, instead of
+measuring.
+
+**§7 understated the cycle-phase banner's frequency.** The table ranked
+it as a notice; it is a CONDITION — true every single day for anyone
+tracking one. Ranking it by rarity puts it last in the condition slot
+rather than in the notice queue at all. The banner table's real lesson
+is that "banner" was never one category.
+
+**A defect the build found that no audit would have.** Folding four
+modules in one tick stored one: each toggle computed its patch from its
+own render's snapshot, so all four read the same empty array and
+overwrote each other. `updateDisplay` now takes a function of current
+state. Rare when a person clicks, certain under React's batching — and
+invisible to any amount of reading.
+
+### Items 8 and 9 are deliberately not built
+
+**8 · Extract Home's inline blocks to components.** Measured before
+starting: "Your work" is 162 lines closing over 21 identifiers from the
+component body, "What lines up" 121 lines over 17. Threading ~18 props
+into a component is the same coupling with more ceremony, not less —
+the refactor that would actually help is a `useHomeData` hook or a
+context, which is a different and larger design change than this item
+describes. Its stated purpose here was to unblock drag-reorder, which
+§7 argues against building. What remains is file hygiene, bought at the
+price of churning the source-text tests that read `Home.tsx` — three of
+which already needed rewriting today for moves far smaller than this.
+Not worth it in the week before a beta.
+
+**9 · Retire Today.** Premature by this audit's own test. Today still
+holds six things Home does not: the tide hero, the tide chart, the
+ritual card, the big sky, the evening harvest, and the angle crossings
+that §5 above just established should stay there. The rule was to
+delete Today when it has nothing Home lacks. Items 3, 5 and 6 each
+moved one thing; that is the mechanism working, and it is not finished.
