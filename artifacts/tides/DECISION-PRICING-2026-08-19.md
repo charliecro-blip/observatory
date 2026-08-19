@@ -84,3 +84,74 @@ price it knowing that.
 
 `tester_profiles.plan` already exists, defaulting to `beta`. That is the
 place to put an entitlement without inventing a users table.
+
+---
+
+## Built · 2026-08-19
+
+The line above is now enforced. What exists, and what a provider choice
+would still need.
+
+### Enforced, and tested
+
+`api-server/src/lib/entitlements.ts` is the single definition. The
+client reads it through `GET /account/entitlements` rather than holding
+a second copy, because two copies of a free/paid line drift and the
+drift always favors whichever is cheaper to change.
+
+The guards sit on the routes that COMPUTE: `shape-day`, `shape-week`,
+`long-session`, and calendar-aware re-homing. They refuse with 402 and
+name the feature. They never touch storage or retrieval, which is how
+the promise that **committed windows survive** is kept — a free account
+still reads its windows, still keeps new ones by hand, still exports.
+Verified, not assumed.
+
+Trial expiry is computed on read. A trial that lapsed at midnight is a
+free account at 00:01, without waiting for a job. `POST /account/trial`
+is idempotent and never restarts one; it asks for no payment method.
+
+The three amendments are in `NEVER_GATED` as data, with a test keeping
+that list disjoint from the paid one — so a future feature key cannot
+quietly paywall the Guiding Star cap, cadence forgiveness, evidence, or
+export.
+
+### The seam, not the integration
+
+The owner's call (2026-08-19): build the port, choose the provider
+later. Nothing in the code or the schema says "stripe" — the columns
+are `billing_customer_id` / `billing_subscription_id` / `billing_status`,
+because a column named after a provider would quietly make a choice
+that has tax and legal consequences.
+
+`lib/billing/transitions.ts` is the part worth having correct before a
+provider exists, and it is pure and tested twelve ways:
+
+- **Stale events are ignored**, compared on the provider's own
+  timestamp. A retried "ended" arriving after a newer "active" would
+  otherwise cancel a live subscription.
+- **Past due keeps access.** A failed charge is usually an expired card
+  and the retry usually works; the provider's dunning window is where
+  that decision belongs.
+- **An ended subscription lands on `free`, never back on `beta`.**
+- **A downgrade writes five fields**, all of them plan or billing. The
+  test asserts the exact key set, so the survival of committed work is
+  structurally guaranteed rather than remembered.
+
+The webhook route **rejects anything it cannot verify** and returns 200
+for events it deliberately ignored, since a 4xx makes providers retry
+forever. Confirmed against a live instance: a forged
+`subscription.active` POST is refused 400 and the account stays on
+beta.
+
+### What choosing a provider still needs
+
+One adapter implementing `BillingAdapter` (four methods), its keys as
+environment variables, and the price set in the provider's dashboard —
+the UI renders whatever `GET /billing/price` returns and shows no
+number when that is null, because a wrong price is worse than none.
+
+The open question is unchanged and is not a code question: **merchant
+of record (Paddle, Lemon Squeezy) or raw processor (Stripe)**. VAT on
+digital sales to the EU and UK is owed from the first sale; an MoR
+becomes the legal seller and handles it, Stripe does not. That is the
+decision the naming here is deliberately staying out of.
