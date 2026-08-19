@@ -12,6 +12,7 @@ import { PremiumProvider } from "@/contexts/premium-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
 import SpotlightTour from "@/components/SpotlightTour";
+import { Guide } from "@/components/Guide";
 import { tourPending } from "@/lib/tour";
 import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
@@ -1193,13 +1194,20 @@ function Shell() {
   // DOM — the tour's missing-anchor safety would otherwise auto-advance
   // through every step against a still-loading page and record a completion
   // the user never saw.
+  // ON HOME, WHICH IS WHERE PEOPLE LAND (AUDIT-JOURNEY-2026-08-18, J1).
+  // This waited on `view === "today"` and on Today's hero, while the landing
+  // view has been "home" since the split — so for anyone who followed the
+  // default path the walkthrough never fired at all. It now arms on Home and
+  // waits for the work panel, which is the one anchor that exists in every
+  // state including a cold start.
   const [tourArmed, setTourArmed] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   useEffect(() => {
-    if (!testerId || view !== "today" || tourArmed || !tourPending(testerId)) return;
+    if (!testerId || view !== "home" || tourArmed || !tourPending(testerId)) return;
     let tries = 0;
     const t = setInterval(() => {
       tries++;
-      if (document.querySelector('[data-tour="today-hero"]')) { setTourArmed(true); clearInterval(t); }
+      if (document.querySelector('[data-tour="home-work"]')) { setTourArmed(true); clearInterval(t); }
       else if (tries > 40) clearInterval(t); // data never arrived — offer again next visit
     }, 500);
     return () => clearInterval(t);
@@ -1338,6 +1346,7 @@ function Shell() {
           missing-anchor auto-advance can't burn through every step against an
           empty page and mark itself complete before the data arrives. */}
       {tourArmed && <SpotlightTour testerId={testerId} onDone={() => setTourArmed(false)} onFinalCta={() => setView("work")} />}
+      {showGuide && <Guide onClose={() => setShowGuide(false)} />}
 
       {/* ── Top bar ── */}
       <div data-tour={isMobile ? undefined : "nav-tabs"} style={{
@@ -1352,7 +1361,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "today" ? "nav-today" : t.id === "work" ? "nav-work" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1401,6 +1410,15 @@ function Shell() {
             color:"var(--text-3)", cursor:"pointer", opacity: getForceMobile() ? 1 : 0.72,
           }}>📱</button>
         )}
+        {/* The Guide, out of Settings (AUDIT-JOURNEY J3). It is the app's only
+            structural explanation of itself — what a task is against a habit
+            against a sprint against a star — and it was reachable only by
+            scrolling past eight other cards in Settings. One control fixes it. */}
+        <button onClick={() => setShowGuide(true)}
+          aria-label="How Compass works" title="How Compass works" style={{
+          fontSize:12, padding:"4px 7px", borderRadius:6, border:"none",
+          background:"transparent", color:"var(--text-3)", cursor:"pointer", opacity:0.72,
+        }}>?</button>
         <button onClick={toggleTheme}
           aria-label={theme === "light" ? "Switch to dark" : "Switch to light"}
           title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{
@@ -1457,7 +1475,7 @@ function Shell() {
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
           {navTabs.map(t => (
-            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : undefined} onClick={() => setView(t.id)} style={{
+            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "today" ? "nav-today" : t.id === "work" ? "nav-work" : undefined} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",

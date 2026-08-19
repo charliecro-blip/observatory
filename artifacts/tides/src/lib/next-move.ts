@@ -48,6 +48,13 @@ export interface NextMoveInput {
   voc?: boolean;
   /** Injected so the caller (and tests) control "now" rather than the clock. */
   now: Date;
+  /**
+   * The astro-quiet lens. When true the move is chosen exactly as before —
+   * the engine is not weakened — but its WORDS drop the sky: no planetary
+   * hour in the window label, no "the sky has nothing to time". Same
+   * separation the loop's `whyPlain` makes on the server (AUDIT-JOURNEY J2).
+   */
+  skyQuiet?: boolean;
 }
 
 export interface NextMove {
@@ -93,11 +100,15 @@ function humanMinutes(mins: number): string {
 
 /** "38 min left in the Jupiter hour" — the honest shape of the window. */
 function hourRemaining(input: NextMoveInput): string {
-  const { currentHour, now } = input;
+  const { currentHour, now, skyQuiet } = input;
   if (!currentHour) return "";
   const left = minutesUntil(currentHour.ends, now);
-  if (left == null || left <= 0) return `in the ${currentHour.planet} hour`;
-  return `${humanMinutes(left)} left in the ${currentHour.planet} hour`;
+  // The window is real either way; at the quiet lens it is named by the
+  // clock rather than by its ruler.
+  if (left == null || left <= 0) return skyQuiet ? "" : `in the ${currentHour.planet} hour`;
+  return skyQuiet
+    ? `${humanMinutes(left)} in this stretch`
+    : `${humanMinutes(left)} left in the ${currentHour.planet} hour`;
 }
 
 export function pickNextMove(input: NextMoveInput): NextMove {
@@ -166,7 +177,9 @@ export function pickNextMove(input: NextMoveInput): NextMove {
     const first = tasks[0];
     return {
       kind: "task", taskId: first.id, title: first.title, caveat,
-      why: "Nothing in the sky singles this out — it's simply next, and the hour is as good as any.",
+      why: input.skyQuiet
+        ? "Nothing singles this out — it's simply next, and now is as good a time as any."
+        : "Nothing in the sky singles this out — it's simply next, and the hour is as good as any.",
       when: hourRemaining(input),
     };
   }
@@ -178,7 +191,9 @@ export function pickNextMove(input: NextMoveInput): NextMove {
     title: star ? `One piece of “${star.title}”` : "Name one thing for today",
     why: star
       ? "Nothing is on today's list. The next move is to put one piece of a Guiding Star on it."
-      : "Nothing is on today's list yet — and with nothing to place, the sky has nothing to time.",
+      : input.skyQuiet
+        ? "Nothing is on today's list yet — name one thing and Compass can work with it."
+        : "Nothing is on today's list yet — and with nothing to place, the sky has nothing to time.",
     when: hourRemaining(input),
   };
 }

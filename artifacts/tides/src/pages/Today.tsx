@@ -646,7 +646,15 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // plan, your aims, the ritual loop. The instrument add-ons are one tap away.
   const { essential, setDensity } = useUiDensity();
   const { updateLocation, profile: testerProfile } = useTester();
-  const { todayShowVOC, todayShowWave, todayShow14Day, todayShowJournal } = prefs.display;
+  const prefsDisplay = prefs.display;
+  // The lens outranks the per-module toggles: someone at "just the guidance"
+  // did not opt into a void banner, a tide wave or a fortnight strip, whatever
+  // those switches happen to say (AUDIT-JOURNEY J2).
+  const quiet = (prefs.display.astroDetail ?? "full") === "minimal";
+  const todayShowVOC = !quiet && prefsDisplay.todayShowVOC;
+  const todayShowWave = !quiet && prefsDisplay.todayShowWave;
+  const todayShow14Day = !quiet && prefsDisplay.todayShow14Day;
+  const todayShowJournal = prefsDisplay.todayShowJournal;
   const today = localToday();
   // Crossings display moved to Settings (a tuning knob, not a daily control).
   const crossingsOn = prefs.display.todayShowCrossings;
@@ -914,6 +922,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
     const activeStars = (northStars ?? []).filter((g: any) => g.status !== "done");
     return pickNextMove({
       now: new Date(),
+      skyQuiet: (prefs.display.astroDetail ?? "full") === "minimal",
       currentHour: now?.planetaryHour ? {
         planet: now.planetaryHour.planet,
         began: now.planetaryHour.began,
@@ -973,7 +982,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
   // An active crossing is a peak moment — it rides at the very TOP of the page
   // (owner: "when that's active, this banner should come to the top of the
   // screen"), and reads as live, not "N min ago".
-  const crossingBanner = crossingsOn && activeCrossings.length > 0 ? (
+  const crossingBanner = crossingsOn && astro.level !== "minimal" && activeCrossings.length > 0 ? (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {activeCrossings.map(({ c: cr, diff, orbDeg }, i) => {
         const pCol = PLANET_COLORS[cr.planet] ?? PLANET_COLORS.Sun;
@@ -1104,9 +1113,11 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               instead of the legacy good/workable favorability labels. The hover
               tooltip was removed (owner 2026-07-21) — it overflowed off-screen
               in the top-right corner and the chip reads clearly on its own. */}
-          <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40` }}>
-            {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
-          </div>
+          {astro.level !== "minimal" && (
+            <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 10, background: `${elemColor}20`, color: elemColor, border: `1px solid ${elemColor}40` }}>
+              {now?.tide ? `${now.tide.characterLabel} tide · ${now.tide.levelLabel.toLowerCase()}` : `${el} day`}
+            </div>
+          )}
           {/* Crossings on/off moved to Settings → Today page — the topbar
               stays for status (location), not tuning knobs. */}
           {!hasSavedLocation(testerProfile) && (
@@ -1239,7 +1250,9 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>★</span>
             <div style={{ flex: 1, fontSize: 11.5, color: "var(--color-foreground)" }}>
-              Set your first <b>Guiding Star</b> — a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports.
+              Set your first <b>Guiding Star</b> — {astro.level === "minimal"
+                ? "a long-term ideal to steer by, so ordinary days stay connected to somewhere."
+                : "a long-term ideal the sky can help you steer toward. The app will suggest ones your current season supports."}
             </div>
             <button onClick={() => onNavigate?.("work")} style={{ fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)", cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
               To your Stars →
@@ -1285,9 +1298,20 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           const activation = now?.dayArc?.heightFactors?.activation ?? 1;
           const aspectsAhead = (now?.dayArc?.events ?? []).filter((e: any) => e.kind === "aspect" && !e.past).length;
           const isQuiet = activation < 0.25 && aspectsAhead === 0 && (tide?.band ?? "mid") !== "high";
-          const guidanceText = isQuiet ? QUIET_DAY_GUIDANCE[character]
+          // The guidance line IS what the quiet lens's reader bought ("plain
+          // language, what to do and when"), so it stays — but the tide
+          // vocabulary in it does not. Same sentence, sky words removed;
+          // nothing is invented to replace them.
+          const rawGuidance = isQuiet ? QUIET_DAY_GUIDANCE[character]
             : tide ? tideGuidance(character, tide.level, !!now?.voc?.isVOC) : heroText(now);
-          const confNote = isQuiet ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
+          const guidanceText = astro.level === "minimal"
+            ? rawGuidance
+                .replace(/ — the sky's calm/g, "")
+                .replace(/; the sky isn't pushing/g, "")
+                .replace(/this tide favours/g, "the day favours")
+                .replace(/[^.]*\bMoon(?:'s)? void[^.]*\.\s*/g, "")
+            : rawGuidance;
+          const confNote = isQuiet || astro.level === "minimal" ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
 
 
           return (
@@ -1299,24 +1323,41 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
               <div style={{ background: `linear-gradient(135deg, ${elFill}, ${elFill}cc)`, padding: "24px 28px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                   <div>
+                    {/* THE HERO OBEYS THE LENS (AUDIT-JOURNEY J2). The quiet
+                        lens reached Home, the rail, Calendar, Plan and the
+                        timer and left this — the loudest sky surface in the
+                        app — speaking tide levels and moon signs to someone
+                        who asked for none of it. At minimal the banner states
+                        the day plainly and keeps the guidance line below,
+                        which is the part that was always for everyone. */}
                     <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 8 }}>
-                      {levelLabel}
+                      {astro.level === "minimal" ? "Today" : levelLabel}
                     </div>
                     <div style={{ fontSize: 44, fontWeight: 700, color: "#ffffff", letterSpacing: "-1px", lineHeight: 1 }}>
-                      {tide?.headline ?? "Tide"}
+                      {astro.level === "minimal"
+                        ? new Date().toLocaleDateString("en-US", { weekday: "long" })
+                        : (tide?.headline ?? "Tide")}
                     </div>
                     <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", marginTop: 10, maxWidth: 340, lineHeight: 1.4 }}>
-                      {CHARACTER_ESSENCE[character]}
+                      {astro.level === "minimal"
+                        ? new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })
+                        : CHARACTER_ESSENCE[character]}
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
-                    <button onClick={() => setShowTideCard(true)} title="Share today's tide" style={{
-                      fontSize: 11.5, padding: "5px 14px", borderRadius: 20, cursor: "pointer",
-                      border: "1px solid rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.15)", color: "#ffffff", fontWeight: 500,
-                    }}>↗ Share</button>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", textAlign: "right", lineHeight: 1.7 }}>
-                      {now?.moonSign ?? ""}<br/>{now?.planetaryHour?.planet} hour<br/>{now?.moonPhase ?? ""}
-                    </div>
+                    {/* The Studio publishes moon phases and aspects — nothing
+                        the quiet lens's reader asked for. */}
+                    {astro.level !== "minimal" && (
+                      <button onClick={() => setShowTideCard(true)} title="Share today's tide" style={{
+                        fontSize: 11.5, padding: "5px 14px", borderRadius: 20, cursor: "pointer",
+                        border: "1px solid rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.15)", color: "#ffffff", fontWeight: 500,
+                      }}>↗ Share</button>
+                    )}
+                    {astro.level !== "minimal" && (
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", textAlign: "right", lineHeight: 1.7 }}>
+                        {now?.moonSign ?? ""}<br/>{now?.planetaryHour?.planet} hour<br/>{now?.moonPhase ?? ""}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* WHERE IN THE LUNAR CYCLE.
@@ -1335,7 +1376,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     What replaces it is a real position in a real period:
                     elongation / 360, the canonical definition of where the
                     Moon is in its month. Every mark below is computed. */}
-                {now?.moonCycle && (() => {
+                {astro.level !== "minimal" && now?.moonCycle && (() => {
                   const mc = now.moonCycle;
                   const STOPS = [
                     { at: 0,    label: "new" },
@@ -1388,7 +1429,10 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
 
                 {/* The woven sentence — the synthesis engine's one-line
                     judgment. Kept; it is the flavour, and it reads well. */}
-                {now?.reading?.flavour && (
+                {/* The synthesis engine's sentence names elements and planets
+                    outright ("an earth day … with Venus steady underneath"),
+                    so it belongs to the lenses that asked for them. */}
+                {astro.level !== "minimal" && now?.reading?.flavour && (
                   <div style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6, marginTop: 12 }}>
                     {now.reading.flavour.charAt(0).toUpperCase() + now.reading.flavour.slice(1)}
                   </div>
@@ -1401,7 +1445,12 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     One stack, sorted by duration, with a lead that is allowed
                     to be "nothing". The full testimony table still lives in the
                     receipt below at full detail. */}
-                <ReadZone reading={now?.reading} testerId={testerId} accent={elColor} />
+                {/* The testimony stack — planetary hours, day rulers, the
+                    slower layers. Sky by definition, so it folds at minimal
+                    and the guidance line above stands alone (J2). */}
+                {astro.level !== "minimal" && (
+                  <ReadZone reading={now?.reading} testerId={testerId} accent={elColor} />
+                )}
 
                 {astro.level === "full" && (
                   <WovenReading
@@ -1419,7 +1468,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                     measures: how much the testimonies concur. It was never a
                     calibrated probability and shouldn't borrow the authority
                     of one. */}
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                {astro.level !== "minimal" && <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   {/* No percentage. "Energy 89%" invited exactly the question
                       the owner asked — how does that square with a 74% lit
                       Moon? — and the honest answer was damning: energy IS the
@@ -1451,7 +1500,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                       Moon VOC
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {/* Personal modifier line — the moat, shown when a hard transit is
                     active. Day-scale movers only: a Pluto/Neptune/Uranus transit is

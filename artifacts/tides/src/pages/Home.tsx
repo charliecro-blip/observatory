@@ -1057,7 +1057,10 @@ export default function Home({
         {/* YOUR WORK — capture, inventory and the action that acts on them,
             together. The standalone "Shape today" card is gone: an action
             separated from its object was too much real estate for one line. */}
-        <div style={PANEL}>
+        {/* The tour's arming anchor and its first stop. This panel renders in
+            every state including a cold start, which is why the walkthrough
+            waits for it rather than for the loop hero (J1). */}
+        <div style={PANEL} data-tour="home-work">
           <SectionTitle
             note={open.length ? `${open.length} open` : undefined}
             action={
@@ -1362,7 +1365,7 @@ export default function Home({
           the same 2px green rule, so the two cards read as one object seen
           twice rather than as two statements of the same fact. The edge is
           always drawn so that setting the link never shifts layout. */}
-      {showAnswerCard && <div style={{
+      {showAnswerCard && <div data-tour="home-answer" style={{
         ...ANSWER, overflow: "hidden",
         borderLeft: `3px solid ${focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? CONVERGENT : "var(--color-border)"}`,
         transition: "border-color 140ms ease",

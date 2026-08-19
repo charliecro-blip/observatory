@@ -738,3 +738,32 @@ Offered at the finish moment, only when a day was actually kept.
   time".
 - Never on the card: the target count, any percentage, any comparison to
   another person.
+
+### A13. The journey batch (2026-08-18, late)
+
+The walkthrough moved to Home and was rewritten (TOUR_VERSION 2). Five
+stops, all anchored to things that exist on a cold start:
+1. **"Start with what you're holding"** — "Type a line and press Enter —
+   that's the whole form. Say when, and the date is read from your words.
+   Everything you're carrying lives in this one list, split by when it's due
+   rather than by category."
+2. **"The answer to 'what now'"** — "Once there's something on your list,
+   Compass names one thing to do next and says why. Its reasons are
+   deadlines, your calendar, and — if you want it — the sky. When nothing
+   stands out, it says that instead of inventing work."
+3. **"The day itself"** — Today runs the hours.
+4. **"Put it in time"** — Plan finds real windows; nothing reaches your
+   calendar until you keep it.
+5. **"Give it a direction"** — Guiding Stars; CTA "Set my first Guiding Star".
+
+Quiet-lens variants added on Today (the hero now reads TODAY / {weekday} /
+{month day}):
+- next-move window: **"29 min in this stretch"** (vs "29 min left in the
+  Mercury hour")
+- next-move empty: "Nothing is on today's list yet — name one thing and
+  Compass can work with it."
+- next-move fallback why: "Nothing singles this out — it's simply next, and
+  now is as good a time as any."
+- star banner: "a long-term ideal to steer by, so ordinary days stay
+  connected to somewhere."
+- sprint finish now also offers **"run it again"** beside "Make a card".

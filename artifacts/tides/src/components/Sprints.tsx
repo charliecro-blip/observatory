@@ -279,6 +279,22 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               fontSize: 10.5, padding: "3px 11px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
               border: "1px solid #c8a04a", background: "#c8a04a14", color: "#8a6a20", fontWeight: 600,
             }}>Make a card</button>
+            {/* "Which they might do multiple times" is the feature's own
+                premise (AUDIT-JOURNEY J5) — the finish is the one moment
+                someone knows whether it was worth repeating. */}
+            <button onClick={() => {
+              const s = finishedOffer;
+              setFinishedOffer(null);
+              setSheet({});
+              setTitle(s.title);
+              setHabitId(s.habitId ?? "");
+              setStarId(s.habitId ? "" : (s.goalId ?? ""));
+              setDays(Math.max(3, Math.min(14,
+                Math.round((Date.parse(s.endDate) - Date.parse(s.startDate)) / 86400000) + 1)));
+            }} style={{
+              fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer",
+              color: "var(--color-primary)", fontWeight: 600,
+            }}>run it again</button>
             <button onClick={() => setFinishedOffer(null)} style={{
               fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
             }}>no thanks</button>

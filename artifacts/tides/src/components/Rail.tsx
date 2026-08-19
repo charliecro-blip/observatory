@@ -725,6 +725,17 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           beginner reads only the top of this and already has something to work
           with; the detail waits below for whoever wants it. */}
 
+      {/* The dossiers had no way in but a Log chip (AUDIT-JOURNEY J4): a whole
+          education surface reachable only by accident. The rail is where a
+          curious reader already is, so the door belongs here. */}
+      {onNavigate && (
+        <button onClick={() => onNavigate("planets")} style={{
+          padding: "6px 14px", background: "none", border: "none", borderBottom: "1px solid var(--color-border)",
+          cursor: "pointer", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px",
+          color: "var(--text-3)", textAlign: "left", width: "100%",
+        }}>Read the planets →</button>
+      )}
+
       {/* SEASON — the slowest, simplest signifier: what sign the Sun is in. */}
       {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
