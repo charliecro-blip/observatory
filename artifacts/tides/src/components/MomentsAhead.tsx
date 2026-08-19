@@ -39,6 +39,7 @@
 
 import { suggestApproach } from "@/lib/approach";
 import { PLANET_COLORS } from "@/lib/planetColors";
+import { useFold, FoldToggle } from "@/components/ModuleFold";
 
 /** Never advice — these sit beside tasks, and a line telling someone to avoid
  *  a square would contradict the task listed on the very next row. */
@@ -67,6 +68,8 @@ export default function MomentsAhead({
   framed?: boolean;
   onOpen?: () => void;
 }) {
+  const { isFolded } = useFold();
+  const folded = framed && isFolded("momentsAhead");
   const upcoming = (now?.upcomingHours ?? []).slice(0, 8);
   const at = (t: string) => {
     const hhmm = String(t ?? "").match(/^(\d{1,2}):(\d{2})/);
@@ -125,15 +128,21 @@ export default function MomentsAhead({
         fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px",
         color: "var(--text-3)", marginBottom: 5, display: "flex", alignItems: "baseline", gap: 8,
       }}>
+        {framed && <FoldToggle id="momentsAhead" label={label} />}
         <span>{label}</span>
-        {onOpen && (
+        {/* The count, not the rows: "4 ahead" is a true fact this module
+            already holds, and it is what the fold leaves behind. */}
+        {folded && <span style={{ textTransform: "none", letterSpacing: 0, fontSize: 10.5 }}>
+          {rows.length} ahead
+        </span>}
+        {onOpen && !folded && (
           <button onClick={onOpen} style={{
             marginLeft: "auto", fontSize: 10.5, textTransform: "none", letterSpacing: 0,
             background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)",
           }}>Open Today →</button>
         )}
       </div>
-      {rows.map((m: any, i: number) => (
+      {!folded && rows.map((m: any, i: number) => (
         <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
           <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
           <span style={{ color: "var(--color-foreground)" }}>

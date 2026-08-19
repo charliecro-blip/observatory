@@ -21,6 +21,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { AlmanacEntry } from "./Almanac";
+import { useFold, FoldToggle } from "@/components/ModuleFold";
 
 /** How far out to look. Long enough to catch a station or an ingress, short
  *  enough that everything here is close enough to plan against. */
@@ -61,6 +62,7 @@ const ASPECT_WORD: Record<string, string> = {
 };
 
 export default function CroppingUp({ testerId, onNavigate }: { testerId?: string | null; onNavigate?: (v: string) => void }) {
+  const folded = useFold().isFolded("croppingUp");
   // THE NON-LUNAR ASPECTS (owner, 2026-08-19). The card looked ahead at
   // stations, ingresses and eclipses and never at planet-to-planet aspects —
   // the fortnight-scale weather between them.
@@ -130,12 +132,22 @@ export default function CroppingUp({ testerId, onNavigate }: { testerId?: string
       background: "var(--color-card)", border: "1px solid var(--color-border)",
       borderRadius: 12, flexShrink: 0,
     }}>
-      <div style={{ padding: "11px 16px 6px" }}>
+      <div style={{ padding: folded ? "11px 16px" : "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
+        <FoldToggle id="croppingUp" label="Cropping up" />
         <div style={{
           fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
           color: "var(--text-3)",
         }}>Cropping up</div>
+        {/* The count is the whole fact this card holds at a glance, and it is
+            what the fold leaves standing — never "hidden", which would make
+            the person's own choice look like something the app withheld. */}
+        {folded && (
+          <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+            {isError ? "not loaded" : entries.length ? `${entries.length} ahead` : "nothing ahead"}
+          </span>
+        )}
       </div>
+      {folded ? null : <>
 
       {isPending && (
         <div style={{ padding: "0 16px 13px", fontSize: 11.5, color: "var(--text-3)" }}>
@@ -180,6 +192,7 @@ export default function CroppingUp({ testerId, onNavigate }: { testerId?: string
           }}>Open Plan →</button>
         </div>
       )}
+      </>}
     </div>
   );
 }

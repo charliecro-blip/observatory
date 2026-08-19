@@ -48,6 +48,7 @@ import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
 import MomentsAhead from "@/components/MomentsAhead";
 import DayConditions from "@/components/DayConditions";
+import { useFold, FoldToggle, FoldedSummary, Fold } from "@/components/ModuleFold";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
@@ -311,17 +312,36 @@ function Badge({ text, color }: { text: string; color: string }) {
   );
 }
 
-function SectionTitle({ children, note, action }: {
+/**
+ * Every module's header, and — when given a `fold` id — the place its fold
+ * control lives (audit §7).
+ *
+ * The header is the ONLY thing a folded module leaves on the page, beside the
+ * summary. Putting the control here rather than on each card means a module
+ * cannot ship a fold that has no way back.
+ */
+function SectionTitle({ children, note, action, fold, summary }: {
   children: React.ReactNode; note?: string; action?: React.ReactNode;
+  /** Module id. Omit for a module that must not be foldable. */
+  fold?: string;
+  /** Shown INSTEAD of `note` while folded — one true fact this module holds. */
+  summary?: string;
 }) {
+  const { isFolded } = useFold();
+  const folded = !!fold && isFolded(fold);
   return (
     <div style={{ padding: "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
+      {fold && <FoldToggle id={fold} label={typeof children === "string" ? children : "this section"} />}
       <div style={{
         fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
         color: "var(--text-3)",
       }}>{children}</div>
-      {note && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{note}</div>}
-      {action && <div style={{ marginLeft: "auto" }}>{action}</div>}
+      {folded ? <FoldedSummary text={summary} />
+        : note ? <div style={{ fontSize: 10, color: "var(--text-3)" }}>{note}</div> : null}
+      {/* The action goes with the body: a "refresh" or a "shape today" beside
+          a header whose contents are folded away acts on something nobody can
+          see. */}
+      {action && !folded && <div style={{ marginLeft: "auto" }}>{action}</div>}
     </div>
   );
 }
@@ -1100,6 +1120,8 @@ export default function Home({
             waits for it rather than for the loop hero (J1). */}
         <div style={PANEL} data-tour="home-work">
           <SectionTitle
+            fold="work"
+            summary={open.length ? `${open.length} open` : "nothing on the list"}
             note={open.length ? `${open.length} open` : undefined}
             action={
               /* Said ONCE, at the top, rather than repeated down every row. The
@@ -1118,6 +1140,7 @@ export default function Home({
               )
             }
           >Your work</SectionTitle>
+          <Fold id="work">
 
           <div style={{ padding: "0 16px 10px" }}>
             <input
@@ -1255,6 +1278,7 @@ export default function Home({
               )}
             </>
           )}
+          </Fold>
         </div>
 
         {/* ── CONTEXT column ── */}
@@ -1298,8 +1322,12 @@ export default function Home({
                   color: "var(--color-primary)",
                 }}>Open Plan →</button>
               }
+              fold="week"
+              summary={committed.length ? `${committed.length} committed` : "nothing committed"}
             >This week</SectionTitle>
-            <CommittedWeekStrip windows={committed} onOpen={() => onNavigate("launch")} />
+            <Fold id="week">
+              <CommittedWeekStrip windows={committed} onOpen={() => onNavigate("launch")} />
+            </Fold>
           </div>
 
           {/* The rhythm card and the Guiding Stars card lived here. Both are
@@ -1351,8 +1379,8 @@ export default function Home({
       {onAskAboutElection && (
         <div style={{ ...PANEL, overflow: "hidden" }}>
           <div style={{ height: 3, background: `linear-gradient(90deg, ${PERSONAL}, ${PERSONAL}66 55%, var(--color-border))` }} />
-          <SectionTitle>Ask</SectionTitle>
-          <div style={{ padding: "0 16px 14px" }}>
+          <SectionTitle fold="ask" summary="three doors">Ask</SectionTitle>
+          <Fold id="ask"><div style={{ padding: "0 16px 14px" }}>
             <AskDoors
               layout="tiles"
               stars={(northStars ?? [])
@@ -1383,7 +1411,7 @@ export default function Home({
                 pick.send,
               )}
             />
-          </div>
+          </div></Fold>
         </div>
       )}
 
@@ -1435,7 +1463,11 @@ export default function Home({
               </details>
             )
           }
+          fold="linesUp"
+          summary={lead ? `${lead.activityLabel} · ${lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`}`
+            : linesFailed ? "no reading" : "nothing lines up"}
         >{leadIsLoopNow ? "Why this lines up" : "What lines up"}</SectionTitle>
+        <Fold id="linesUp">
 
         {lead ? (
           <div style={{ padding: "2px 20px 18px" }}>
@@ -1859,6 +1891,7 @@ export default function Home({
             <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
           </details>
         </div>}
+        </Fold>
       </div>}
 
       {/* ══ THE HORIZON ═══════════════════════════════════════════════════

@@ -8,6 +8,7 @@ import {
   TimingPrefs,
   loadPreferences,
   savePreferences,
+  choosePreferences,
   fetchServerPreferences,
   pushServerPreferences,
   astroReveal,
@@ -16,7 +17,7 @@ import {
 interface PreferencesContextValue {
   prefs: TidesPreferences;
   updateNotifications: (patch: Partial<NotificationPrefs>) => void;
-  updateDisplay: (patch: Partial<DisplayPrefs>) => void;
+  updateDisplay: (patch: Partial<DisplayPrefs> | ((prev: DisplayPrefs) => Partial<DisplayPrefs>)) => void;
   updateTiming: (patch: Partial<TimingPrefs>) => void;
   /**
    * A running session forces the astro-quiet lens for as long as it runs —
@@ -55,13 +56,12 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (async () => {
       const remote = await fetchServerPreferences(testerId);
       if (cancelled) return;
-      const localAt = prefs.savedAt ?? 0;
-      const remoteAt = remote?.savedAt ?? 0;
-      if (remote && remoteAt > localAt) {
+      const winner = choosePreferences(prefs, remote);
+      if (winner === "remote" && remote) {
         savePreferences(remote);
         setPrefs(remote);
         logEvent("prefs_adopted_remote", {});
-      } else if (localAt > remoteAt) {
+      } else if (winner === "local") {
         // This device is ahead — seed the shared copy so the NEXT device gets
         // it. Without this the column stays null until someone happens to
         // change a setting, and the feature would look broken to the one
@@ -98,8 +98,22 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     setPrefs(prev => commit({ ...prev, notifications: { ...prev.notifications, ...patch } }));
   }, [commit]);
 
-  const updateDisplay = useCallback((patch: Partial<DisplayPrefs>) => {
-    setPrefs(prev => commit({ ...prev, display: { ...prev.display, ...patch } }));
+  /**
+   * `patch` may be a function of the CURRENT display prefs.
+   *
+   * Without that form, a caller computing its patch from the render's own
+   * snapshot loses every update but the last when two land in one tick.
+   * Measured: folding four dashboard modules in a single tick stored one —
+   * each toggle read the same empty array and wrote a one-element one over
+   * the others. Rare when a person clicks, certain under React's batching.
+   */
+  const updateDisplay = useCallback((
+    patch: Partial<DisplayPrefs> | ((prev: DisplayPrefs) => Partial<DisplayPrefs>),
+  ) => {
+    setPrefs(prev => commit({
+      ...prev,
+      display: { ...prev.display, ...(typeof patch === "function" ? patch(prev.display) : patch) },
+    }));
   }, [commit]);
 
   const updateTiming = useCallback((patch: Partial<TimingPrefs>) => {

@@ -53,6 +53,25 @@ export interface DisplayPrefs {
   //   expanded  — the full instrument panel (rhythm, big sky, pulse,
   //               conditions, elemental balance, teachable moments…).
   uiDensity: "essential" | "expanded";
+  /**
+   * Modules the person has folded shut, by id (audit 2026-08-19 §7).
+   *
+   * The owner asked for a dashboard whose modules can be rearranged, minimized
+   * and expanded. This is the minimize half, and it is the half worth having:
+   * free drag-and-drop would let someone move the receipt above the answer it
+   * is a receipt FOR, which is not customization but breaking an argument the
+   * page is making.
+   *
+   * A COLLAPSED MODULE IS NOT A HIDDEN ONE. It keeps its header and a one-line
+   * summary of what it holds, so folding something shut is a density choice
+   * rather than a disappearance — nothing a person chose to fold can quietly
+   * become a gap they were never told about, which is the same rule that makes
+   * the app report gaps instead of dropping them.
+   *
+   * Ids, never indices: a stored index would silently point at a different
+   * module the next time the page's order changes.
+   */
+  collapsedModules: string[];
 }
 
 export type AstroDetail = DisplayPrefs["astroDetail"];
@@ -125,6 +144,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     skyLanguage: "plain",
     astroDetail: "medium",
     uiDensity: "essential",
+    collapsedModules: [],
   },
   timing: {
     watchPlanets: [],
@@ -143,6 +163,9 @@ export const DEFAULT_PREFS: TidesPreferences = {
 export function mergePreferences(parsed: Partial<TidesPreferences> | null | undefined): TidesPreferences {
   if (!parsed || typeof parsed !== "object") return DEFAULT_PREFS;
   const display = { ...DEFAULT_PREFS.display, ...parsed.display };
+  // A stored blob predating this key, or one corrupted to a non-array, must
+  // not make `.includes` throw on every render of every module.
+  if (!Array.isArray(display.collapsedModules)) display.collapsedModules = [];
   // Migration: an EXISTING user (saved prefs) who never chose an astro level
   // keeps the full experience they're used to — only brand-new users get the
   // friendlier "medium" default (and are asked in intake).
@@ -186,6 +209,33 @@ export function savePreferences(prefs: TidesPreferences): TidesPreferences {
 // a page that reflows once the network answers is worse than one that is
 // briefly a device behind. The server copy is what follows a person to a new
 // device (audit 2026-08-19 §7).
+
+/**
+ * WHICH COPY WINS when a device's own preferences and the server's disagree.
+ *
+ * Exported and pure so the rule is testable. "Last write wins" is only true
+ * if something records WHEN each was written; without `savedAt` the rule is
+ * really "whoever loaded most recently wins", which throws away the newer
+ * edit every time a second device opens the app — and on a per-device session
+ * model the device that opened second is not the wrong one.
+ *
+ *   "remote"  the shared copy is newer; adopt it
+ *   "local"   this device is ahead; seed the column so the NEXT device gets it
+ *   "neither" they agree, or there is nothing to compare
+ *
+ * A blob written before the stamp existed reads as 0 and loses to any stamped
+ * copy, which is the right way round for a first sync.
+ */
+export function choosePreferences(
+  local: TidesPreferences,
+  remote: TidesPreferences | null,
+): "remote" | "local" | "neither" {
+  const l = local.savedAt ?? 0;
+  const r = remote?.savedAt ?? 0;
+  if (remote && r > l) return "remote";
+  if (l > r) return "local";
+  return "neither";
+}
 
 /** The stored copy, or null when there is none / it cannot be read. */
 export async function fetchServerPreferences(testerId: string): Promise<TidesPreferences | null> {

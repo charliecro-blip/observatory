@@ -53,6 +53,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
 import { starIdsOf } from "@/lib/starLinks";
+import { useFold, FoldToggle } from "@/components/ModuleFold";
 
 interface Habit {
   id: number; name: string; emoji?: string | null;
@@ -73,6 +74,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
 }) {
   const qc = useQueryClient();
   const today = localToday();
+  const { isFolded } = useFold();
 
   const { data: habits, isError: habitsFailed } = useQuery<Habit[]>({
     // Same key as every other habit read on the page, so this is one cache
@@ -142,6 +144,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
     || openTasks.some(t => t.goalId != null && starIdSet.has(t.goalId));
 
   const starTitle = new Map(liveStars.map(s => [s.id, s.title]));
+  const folded = isFolded("whereYouAre");
 
   const habitTally = (h: Habit) => {
     const chore = h.flavor === "chore";
@@ -191,13 +194,17 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
   return (
     <div style={{
       background: "var(--color-card)", border: "1px solid var(--color-border)",
-      borderRadius: 12, padding: "12px 16px 14px", flexShrink: 0,
+      borderRadius: 12, padding: folded ? "12px 16px" : "12px 16px 14px", flexShrink: 0,
     }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: folded ? 0 : 10 }}>
+        <FoldToggle id="whereYouAre" label="Where you are" />
         <span style={{
           fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
           color: "var(--text-3)",
         }}>Where you are</span>
+        {/* The count IS the summary — it is the single most-glanced number on
+            the card, so a folded version keeps exactly the line someone would
+            have opened it for. */}
         {liveHabits.length > 0 && (
           <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
             {doneToday} of {liveHabits.length} today{weekKept > 0 ? ` · ${weekKept} this week` : ""}
@@ -209,7 +216,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
         }}>Open →</button>
       </div>
 
-      {grouped ? (
+      {folded ? null : grouped ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
           {/* TWO COLUMNS WHERE THERE IS ROOM. Stacked, five stars of three
               rows each ran the card past 650px — the top of Home spending
