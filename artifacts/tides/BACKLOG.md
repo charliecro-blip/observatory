@@ -365,3 +365,29 @@ rather than in its interior.
 pinning a date, and several keep the OLD method alongside the new one, asserting
 it was worse — a record of the size of the error, so nobody restores a cheap
 scan as an optimisation.
+
+---
+
+## From the loyalty audit — 2026-08-18 (deferred deliberately, specced here)
+
+**Sprint share card.** The first shareable object that works at every lens:
+title, days kept, window — no sky vocabulary at minimal, the transit label at
+medium/full. Offer it once, at the moment a sprint is FINISHED (the natural
+"tell someone" moment); reuse the tide-card share pattern. Never auto-post,
+never a leaderboard.
+
+**First named answer inside two minutes.** Restructure first-run so the loop
+speaks about the person's own item before the tour offers itself: intake →
+paste three real things (the cold-start doors already exist) → the loop
+answers one by name → THEN the walkthrough. Needs its own session; touches
+tour arming (App.tsx waits on today-hero) and the cold-start choreography.
+
+**The record's yearly face.** A month/year-scale view of the wake — the
+subscription's "why" ("free is today, paid is the rhythm"). Pre-billing
+requirement, not a nice-to-have.
+
+**The secular premium spine (owner decision).** Every premium bucket except
+Ask is astro-flavored, so a quiet-lens subscriber has little to buy. Either
+the paid rhythm grows sky-free value (yearly record, review tooling, sprint
+history) or the secular door is deliberately an acquisition channel rather
+than a revenue tier. Choose on purpose before billing lands.

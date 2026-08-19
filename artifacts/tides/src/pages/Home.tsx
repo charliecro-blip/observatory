@@ -39,7 +39,7 @@
  * building a settings shape nobody can reach.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
@@ -351,6 +351,28 @@ export default function Home({
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
   const { essential } = useUiDensity();
+  // THE COMEBACK MOMENT (loyalty audit 2026-08-18, A2). Streak apps churn
+  // people at the first missed week: return, see red, delete. Compass's
+  // mechanics are already kind — rollover carries, cadence forgives, touches
+  // never zero — but the kindness was silent. A person back after five or
+  // more quiet days gets greeted once, not audited. Ref-guarded so React's
+  // StrictMode double-mount can't stamp today before the read.
+  const [comebackDays, setComebackDays] = useState<number | null>(null);
+  const comebackRan = useRef(false);
+  useEffect(() => {
+    if (!testerId || comebackRan.current) return;
+    comebackRan.current = true;
+    try {
+      const key = `compass-last-seen-${testerId}`;
+      const prev = localStorage.getItem(key);
+      if (prev && prev < today) {
+        const days = Math.round((Date.parse(today) - Date.parse(prev)) / 86400000);
+        if (days >= 5) setComebackDays(days);
+      }
+      localStorage.setItem(key, today);
+    } catch { /* private mode — the greeting just doesn't happen */ }
+  }, [testerId, today]);
+
   // The astro-quiet lens (stored "minimal", or a running session forcing it).
   // What it hides here: the VOC strip, the What-lines-up receipt, the water
   // reveal, CroppingUp, and per-row timing lines. What survives: the loop
@@ -885,6 +907,24 @@ export default function Home({
       display: "flex", flexDirection: "column", gap: 14,
       padding: "14px 0 40px", maxWidth: 980, margin: "0 auto", width: "100%",
     }}>
+
+      {/* The comeback greeting — once, on the first open after 5+ quiet
+          days. A single line, no tally of what was missed: the absence of
+          an audit IS the feature. */}
+      {comebackDays != null && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+          background: "var(--color-card)", border: "1px solid var(--color-border)",
+          borderLeft: "3px solid #4a7a52", borderRadius: 10,
+        }}>
+          <span style={{ flex: 1, fontSize: 12.5, color: "var(--color-foreground)" }}>
+            Back after {comebackDays} days. Everything kept your place — start anywhere.
+          </span>
+          <button onClick={() => setComebackDays(null)} aria-label="Dismiss" style={{
+            fontSize: 12, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 0,
+          }}>✕</button>
+        </div>
+      )}
 
       {/* ══ COMPASS · the answer, first ═══════════════════════════════════
           "What should I do right now" is the app's central question, and it

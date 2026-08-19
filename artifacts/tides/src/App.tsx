@@ -30,7 +30,7 @@ import { logEvent } from "@/lib/analytics";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { parseWhen, formatDueChip } from "@/lib/parseWhen";
-import { localToday } from "@/lib/dates";
+import { localToday, addDaysLocal } from "@/lib/dates";
 import Home from "@/pages/Home";
 
 type WorkTab = "overview" | "tasks" | "habits";
@@ -230,11 +230,16 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
   const [windowType, setWindowType] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(false);
-  // The sheet's two directions: "to do" writes tasks ahead, "did" writes wins
-  // behind — the door for work nobody planned (home-base ask 3). A done thing
-  // becomes a WIN, never a pre-checked task: a task that never needed doing is
-  // inventory noise, a win is a record.
-  const [mode, setMode] = useState<"todo" | "did">("todo");
+  // ONE DOOR, FOUR EXITS (loyalty audit 2026-08-18, C1). Eight nouns can hold
+  // "meditate", and nobody carries that taxonomy on day three — so the person
+  // says the thing and picks its direction, and Compass files it: "to do" →
+  // a task, "did" → a win, "keep doing" → a habit, "for a stretch" → a
+  // sprint. The distinctions live in the verbs, not in a glossary.
+  const [mode, setMode] = useState<"todo" | "did" | "habit" | "sprint">("todo");
+  // Habit lines are scored only against the rhythm chosen here; sprint lines
+  // all share one window.
+  const [cadence, setCadence] = useState("most_days");
+  const [sprintDays, setSprintDays] = useState(7);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -291,20 +296,16 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
     }
   }
 
-  // "Did" mode: each line becomes a win dated today. Same failure honesty as
-  // addAll — a mid-list failure keeps the sheet open and says so.
-  async function logAll() {
+  // The non-task exits share addAll's failure honesty: a mid-list failure
+  // keeps the sheet open and says so.
+  async function submitLines(makeRequest: (line: string) => Promise<Response>, invalidate: string[]) {
     if (lines.length === 0 || !testerId) return;
     setAdding(true);
     setAddError(false);
     try {
-      const results = await Promise.all(lines.map(l => fetch("/api/planning/wins", {
-        method: "POST",
-        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: l, tz: new Date().getTimezoneOffset() }),
-      })));
+      const results = await Promise.all(lines.map(makeRequest));
       if (results.some(r => !r.ok)) { setAddError(true); return; }
-      qc.invalidateQueries({ queryKey: ["momentum"] });
+      for (const key of invalidate) qc.invalidateQueries({ queryKey: [key] });
       onClose();
     } catch {
       setAddError(true);
@@ -312,6 +313,22 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
       setAdding(false);
     }
   }
+  const H = { "x-tester-id": testerId ?? "", "Content-Type": "application/json" };
+  // "Did": each line becomes a win dated today.
+  const logAll = () => submitLines(
+    l => fetch("/api/planning/wins", { method: "POST", headers: H, body: JSON.stringify({ text: l, tz: new Date().getTimezoneOffset() }) }),
+    ["momentum"]);
+  // "Keep doing": each line becomes a habit on the chosen rhythm.
+  const keepAll = () => submitLines(
+    l => fetch("/api/habits", { method: "POST", headers: H, body: JSON.stringify({ name: l, cadence }) }),
+    ["habits"]);
+  // "For a stretch": each line becomes a sprint sharing one window. The
+  // server's three-at-once cap can refuse later lines; the sheet stays open
+  // and says some didn't save rather than pretending.
+  const sprintAll = () => submitLines(
+    l => fetch("/api/sprints", { method: "POST", headers: H, body: JSON.stringify({ title: l, endDate: addDaysLocal(localToday(), sprintDays - 1), tz: new Date().getTimezoneOffset() }) }),
+    ["sprints"]);
+  const submitFor = { todo: addAll, did: logAll, habit: keepAll, sprint: sprintAll };
 
   return (
     <div style={{
@@ -327,8 +344,8 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <div style={{ fontSize: 12, color: "var(--text-3)" }}>Quick capture</div>
-          <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 2, gap: 1 }}>
-            {([["todo", "To do"], ["did", "Did"]] as const).map(([m, label]) => (
+          <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 2, gap: 1, flexWrap: "wrap" }}>
+            {([["todo", "To do"], ["did", "Did"], ["habit", "Keep doing"], ["sprint", "For a stretch"]] as const).map(([m, label]) => (
               <button key={m} onClick={() => setMode(m)} style={{
                 fontSize: 10.5, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
                 background: mode === m ? "var(--color-card)" : "transparent",
@@ -339,15 +356,17 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
           </div>
         </div>
         <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 10 }}>
-          {mode === "todo"
-            ? "One thing per line — dump as many as you like. Say when, and it'll be read as a due date."
-            : "One thing per line — each goes in today's log, planned or not."}
+          {mode === "todo" ? "One thing per line — dump as many as you like. Say when, and it'll be read as a due date."
+            : mode === "did" ? "One thing per line — each goes in today's log, planned or not."
+            : mode === "habit" ? "One per line — each becomes a habit, scored only against the rhythm you pick."
+            : "One per line — each becomes a sprint with a hard end date. Three can run at once."}
         </div>
         <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) (mode === "did" ? logAll() : addAll()); if (e.key === "Escape") onClose(); }}
-          placeholder={mode === "todo"
-            ? "reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"
-            : "cleared the inbox\nran 40 minutes\nfixed the gate latch"}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitFor[mode](); if (e.key === "Escape") onClose(); }}
+          placeholder={mode === "todo" ? "reply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"
+            : mode === "did" ? "cleared the inbox\nran 40 minutes\nfixed the gate latch"
+            : mode === "habit" ? "morning walk\nread before bed"
+            : "no sugar\nten cold calls"}
           rows={4}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
@@ -392,6 +411,35 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             </div>
           </div>
         )}
+        {/* The mode's one option row: rhythm for habits, window for sprints. */}
+        {mode === "habit" && (
+          <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: "var(--text-3)" }}>rhythm:</span>
+            {([["daily", "Every day"], ["most_days", "Most days"], ["weekly", "A few times"], ["occasional", "When it fits"]] as const).map(([c, label]) => (
+              <button key={c} onClick={() => setCadence(c)} style={{
+                fontSize: 10, padding: "3px 9px", borderRadius: 10, cursor: "pointer",
+                border: cadence === c ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+                background: cadence === c ? "#1a2a3a10" : "var(--color-card-2)",
+                color: cadence === c ? "var(--color-foreground)" : "var(--text-3)",
+                fontWeight: cadence === c ? 600 : 400,
+              }}>{label}</button>
+            ))}
+          </div>
+        )}
+        {mode === "sprint" && (
+          <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: "var(--text-3)" }}>how long:</span>
+            {[3, 5, 7, 10, 14].map(d => (
+              <button key={d} onClick={() => setSprintDays(d)} style={{
+                fontSize: 10, padding: "3px 9px", borderRadius: 10, cursor: "pointer",
+                border: sprintDays === d ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
+                background: sprintDays === d ? "#1a2a3a10" : "var(--color-card-2)",
+                color: sprintDays === d ? "var(--color-foreground)" : "var(--text-3)",
+                fontWeight: sprintDays === d ? 600 : 400,
+              }}>{d}d</button>
+            ))}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {mode === "todo" && <select value={windowType} onChange={e => setWindowType(e.target.value)}
             style={{ flex: 1, minWidth: 140, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, color: "var(--text-2)", background: "var(--color-card-2)" }}>
@@ -405,14 +453,14 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "var(--color-foreground)" : "var(--text-3)", fontWeight: 500 }}>
             ✦ Dump &amp; schedule →
           </button>}
-          {mode === "did" && <div style={{ flex: 1 }} />}
-          <button onClick={mode === "did" ? logAll : addAll} disabled={lines.length === 0 || adding}
+          {mode !== "todo" && <div style={{ flex: 1 }} />}
+          <button onClick={() => submitFor[mode]()} disabled={lines.length === 0 || adding}
             style={{ padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: lines.length ? "pointer" : "default", background: lines.length ? "#1a2a3a" : "var(--color-border)", color: lines.length ? "#ffffff" : "var(--text-3)" }}>
-            {adding
-              ? (mode === "did" ? "Logging…" : "Adding…")
-              : mode === "did"
-                ? (lines.length > 1 ? `Log ${lines.length}` : "Log it")
-                : (lines.length > 1 ? `Add ${lines.length}` : "Add")}
+            {adding ? "Saving…"
+              : mode === "did" ? (lines.length > 1 ? `Log ${lines.length}` : "Log it")
+              : mode === "habit" ? (lines.length > 1 ? `Keep ${lines.length}` : "Keep it")
+              : mode === "sprint" ? (lines.length > 1 ? `Start ${lines.length}` : "Start it")
+              : (lines.length > 1 ? `Add ${lines.length}` : "Add")}
           </button>
         </div>
         {addError && <div style={{ fontSize: 11, color: "#a03030", marginTop: 8 }}>Some of these didn't save — try again.</div>}

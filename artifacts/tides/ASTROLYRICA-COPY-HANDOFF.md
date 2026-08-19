@@ -707,3 +707,19 @@ Addendum to A10 (same day): sprints weave into what's already held.
 - Habit-matched suggestion tail: "…— \"{Morning run}\" already leans on
   {Mars}."
 - Riding a personal span preselects that star in the sheet.
+
+### A11. The loyalty batch (2026-08-18, evening)
+
+- Capture sheet modes are now four: **"To do" / "Did" / "Keep doing" /
+  "For a stretch"** · habit sub-line "One per line — each becomes a habit,
+  scored only against the rhythm you pick." · sprint sub-line "One per line
+  — each becomes a sprint with a hard end date. Three can run at once." ·
+  buttons "Keep it/Keep N", "Start it/Start N" · option rows "rhythm:" /
+  "how long:"
+- Comeback greeting (once, after 5+ quiet days): **"Back after {N} days.
+  Everything kept your place — start anywhere."**
+- First session ever, in the timer panel: **"The sky steps back while a
+  session runs. It returns when you stop."**
+- Guide gains "What lives where" (task/habit/sprint/star/win + "Home steers
+  what you're holding; Today runs the day itself." — the same sentence now
+  in the tour's loop stop).

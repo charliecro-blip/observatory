@@ -51,6 +51,13 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   // demanded — "New session" declines it, and a declined offer leaves no
   // record (home-base §3).
   const [logging, setLogging] = useState(false);
+  // The first session ever gets one line explaining the side effect the
+  // person is about to see — cards folding away reads as breakage without
+  // it (loyalty audit C3). Computed at mount so it holds through the whole
+  // first session, then never again.
+  const [firstQuietNote] = useState(() => {
+    try { return !localStorage.getItem("compass-session-quiet-note"); } catch { return false; }
+  });
   const [duration, setDuration] = useState(25 * 60);
   const [remaining, setRemaining] = useState(25 * 60);
   const [customMin, setCustomMin] = useState("25");
@@ -121,6 +128,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
     setRemaining(dur);
     setPhase("active");
     setSessionQuiet(true);
+    try { localStorage.setItem("compass-session-quiet-note", "1"); } catch { /* private mode */ }
     startedRef.current = new Date();
     endsAtRef.current = Date.now() + dur * 1000;
     beginTicking();
@@ -291,6 +299,11 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                   </text>
                 </svg>
               </div>
+              {firstQuietNote && (
+                <div style={{ fontSize: 9.5, color: "var(--text-3)", textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>
+                  The sky steps back while a session runs. It returns when you stop.
+                </div>
+              )}
               <div style={{ display: "flex", gap: 6 }}>
                 {phase === "active"
                   ? <button onClick={pause} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", fontSize: 11, cursor: "pointer" }}>Pause</button>

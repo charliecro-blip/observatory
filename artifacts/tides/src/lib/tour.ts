@@ -46,7 +46,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     anchor: "nav-tabs",
     title: "The loop",
-    body: "Read Today. Steer by your Stars. Place the next moves in Plan. Calendar holds the wider view — and the evening asks how the day actually went.",
+    body: "Home steers what you're holding; Today runs the day itself. Place the next moves in Plan, and Calendar holds the wider view — the evening asks how the day actually went.",
   },
   {
     anchor: "today-density",

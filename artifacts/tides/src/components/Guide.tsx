@@ -37,6 +37,20 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    key: "kinds",
+    glyph: "⊞",
+    title: "What lives where",
+    lead: "Several kinds of thing, one capture sheet — say it and Compass files it.",
+    points: [
+      { term: "A task", text: "Fires once and is done. \"Call mom friday\" — the date is read from your words." },
+      { term: "A habit", text: "Recurs on the rhythm you choose and is scored only against that rhythm. A chore is a habit without the streak language — plain upkeep, checked off and never scored." },
+      { term: "A sprint", text: "A short push with a hard end date — a week of cold showers, ten cold calls. Sometimes it rides a transit; ending early is allowed and recorded honestly." },
+      { term: "A Guiding Star", text: "The long thing you're steering toward. Stars don't get scheduled — their steps and habits do, and everything done in their service counts toward them." },
+      { term: "A win", text: "The record that something happened, planned or not. Finished tasks, kept habits, sprint days and named moments all land in the wake on their own." },
+      { term: "Home and Today", text: "Home steers what you're holding; Today runs the day itself." },
+    ],
+  },
+  {
     key: "home",
     glyph: "⌂",
     title: "Home",
