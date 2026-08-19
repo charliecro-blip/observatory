@@ -17,6 +17,7 @@
 
 import { useTodayWindows } from "@/hooks/useTides";
 import { localToday } from "@/lib/dates";
+import { useQuery } from "@tanstack/react-query";
 
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -30,16 +31,49 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
   const today = localToday();
   const { data: windows } = useTodayWindows(testerId, today);
 
+  // YOUR CALENDAR IS PART OF YOUR DAY (owner, 2026-08-19). This card promised
+  // "what is actually on today, in order, with now marked" and showed only
+  // what Compass itself had placed — so the meetings that shape the day were
+  // the one thing missing from it.
+  //
+  // An unreachable calendar is NOT an empty one: the query's failure is
+  // reported below rather than rendered as a free afternoon, the same rule
+  // the weaver learned the hard way.
+  const calQ = useQuery<{ connected?: boolean; events?: any[] }>({
+    queryKey: ["gcal-today", testerId, today],
+    queryFn: async () => {
+      const start = new Date(`${today}T00:00:00`).toISOString();
+      const end = new Date(`${today}T23:59:59`).toISOString();
+      const r = await fetch(`/api/integrations/google-cal/events?start=${start}&end=${end}`,
+        { headers: testerId ? { "x-tester-id": testerId } : {} });
+      // 404/409 mean "not connected" — a true empty, not a failure.
+      if (r.status === 404 || r.status === 409) return { connected: false, events: [] };
+      if (!r.ok) throw new Error(`calendar unreachable (${r.status})`);
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 1000 * 60 * 5,
+  });
+  const calendarUnreachable = calQ.isError || calQ.fetchStatus === "paused";
+
   // The habit chips are gone (HOME study D2 — one habit had four sightings on
   // one page). A habit is not "on the day" until something places it: this
   // card is the day's spine, and unplaced habits were a second copy of the
   // HABITS card wearing chips. That card owns them, and its tally is tappable.
   const nowMs = Date.now();
-  const scheduled = (Array.isArray(windows) ? windows : [])
-    .filter((w: any) => w?.startTime)
-    .sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime));
+  // Both kinds on one spine, in time order. A calendar event is a COMMITMENT
+  // (someone else is expecting you) where a window is a choice, so it is
+  // marked rather than merged silently — but it sits in the same list,
+  // because the day does not keep them in separate places.
+  const gcal = (calQ.data?.events ?? [])
+    .filter((e: any) => !e.allDay && e.start)
+    .map((e: any) => ({ id: `g-${e.id}`, title: e.title, startTime: e.start, endTime: e.end, gcal: true }));
+  const scheduled = [
+    ...(Array.isArray(windows) ? windows : []).filter((w: any) => w?.startTime),
+    ...gcal,
+  ].sort((a: any, b: any) => Date.parse(a.startTime) - Date.parse(b.startTime));
 
-  if (!scheduled.length) return null;
+  if (!scheduled.length && !calendarUnreachable) return null;
 
   const nextIdx = scheduled.findIndex((w: any) => Date.parse(w.startTime) > nowMs);
 
@@ -89,6 +123,12 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     textDecoration: done ? "line-through" : "none",
                   }}>{w.title}</span>
+                  {w.gcal && (
+                    <span title="From your calendar" style={{
+                      fontSize: 8.5, color: "var(--text-3)", border: "1px solid var(--color-border)",
+                      borderRadius: 4, padding: "0 5px", flexShrink: 0, lineHeight: "14px",
+                    }}>calendar</span>
+                  )}
                   {inside && !done && (
                     <span style={{ fontSize: 9.5, color: "var(--color-primary)", flexShrink: 0 }}>now</span>
                   )}
@@ -97,6 +137,12 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {calendarUnreachable && (
+        <div style={{ fontSize: 10.5, color: "#8a5030", marginTop: scheduled.length ? 7 : 5, lineHeight: 1.5 }}>
+          Couldn&rsquo;t reach your calendar — anything on it is missing from this list.
         </div>
       )}
 

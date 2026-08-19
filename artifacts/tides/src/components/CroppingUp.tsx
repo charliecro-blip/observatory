@@ -50,7 +50,38 @@ function whenPhrase(iso: string, now: Date): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function CroppingUp({ onNavigate }: { onNavigate?: (v: string) => void }) {
+interface Span {
+  key: string; transitPlanet: string; aspect: string; targetPlanet: string;
+  startDate: string; peakDate: string; endDate: string; active: boolean;
+}
+
+const ASPECT_WORD: Record<string, string> = {
+  conjunction: "meets", sextile: "runs with", trine: "runs with",
+  square: "grinds against", opposition: "faces",
+};
+
+export default function CroppingUp({ testerId, onNavigate }: { testerId?: string | null; onNavigate?: (v: string) => void }) {
+  // THE NON-LUNAR ASPECTS (owner, 2026-08-19). The card looked ahead at
+  // stations, ingresses and eclipses and never at planet-to-planet aspects —
+  // the fortnight-scale weather between them.
+  //
+  // Read from the SAME engine the sprint suggester uses, so the horizon card
+  // and the suggestion can never disagree about what is coming. The Moon is
+  // excluded there by construction, which is exactly right here too: a lunar
+  // aspect lasts hours and this card's whole claim is "close enough ahead to
+  // steer around".
+  const spanQ = useQuery<{ spans: Span[] }>({
+    queryKey: ["transit-spans", testerId, new Date().toISOString().slice(0, 10)],
+    queryFn: async () => {
+      const r = await fetch(`/api/transits/spans?tz=${new Date().getTimezoneOffset()}`,
+        { headers: testerId ? { "x-tester-id": testerId } : {} });
+      if (!r.ok) throw new Error("spans unavailable");
+      return r.json();
+    },
+    enabled: !!testerId,
+    staleTime: 6 * 60 * 60 * 1000,
+  });
+
   const { data, isPending, isError } = useQuery<{ entries: AlmanacEntry[] }>({
     queryKey: ["almanac", HORIZON_DAYS],
     queryFn: async () => {
@@ -62,9 +93,31 @@ export default function CroppingUp({ onNavigate }: { onNavigate?: (v: string) =>
   });
 
   const now = new Date();
-  const entries = (data?.entries ?? [])
-    .filter((e) => e.eclipse || e.kind === "station" || e.kind === "ingress")
-    .slice(0, MAX_ROWS);
+  const fixed = (data?.entries ?? [])
+    .filter((e) => e.eclipse || e.kind === "station" || e.kind === "ingress");
+
+  // Spans that have not started yet — what is COMING, which is the card's
+  // question. One per pairing, soonest first.
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const aspectRows = (spanQ.data?.spans ?? [])
+    .filter((sp) => !sp.active && sp.startDate > todayStr)
+    .map((sp) => ({
+      at: `${sp.startDate}T12:00:00`,
+      glyph: "✦",
+      title: `${sp.transitPlanet} ${ASPECT_WORD[sp.aspect] ?? "meets"} ${sp.targetPlanet}`,
+      eclipse: false,
+      kind: "aspect" as const,
+      key: sp.key,
+    }));
+
+  // Interleaved by date and capped together, so a busy fortnight of aspects
+  // cannot push the eclipse off the card — the rarity ordering this card was
+  // built on still decides what survives the cap.
+  const entries = [...fixed, ...aspectRows]
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+    .sort((a, b) => Number(!!b.eclipse) - Number(!!a.eclipse))
+    .slice(0, MAX_ROWS)
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 
   // Nothing to say and nothing wrong: the card stands down rather than
   // printing a reassurance. A quiet forty-five days is real, but a panel

@@ -1292,7 +1292,7 @@ export default function Home({
           `auto-fit` rather than two fixed columns, because `CroppingUp`
           renders nothing on a genuinely quiet stretch and a fixed grid
           would leave a hole where a card declined to speak. */}
-      {!skyQuiet && <CroppingUp onNavigate={onNavigate} />}
+      {!skyQuiet && <CroppingUp testerId={testerId} onNavigate={onNavigate} />}
 
       {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
       {!skyQuiet && (!waterOpen ? (
