@@ -29,8 +29,14 @@ export function clearSessionToken(): void {
 }
 
 /** Fired by the interceptor when the server rejects the session, so the one
- *  listener (tester-context) can attempt a silent recovery-code restore. */
+ *  listener (tester-context) can attempt a silent recovery-code restore.
+ *
+ *  It carries the token the rejected request actually sent — null when the
+ *  request had none. The listener needs that to tell "the token in storage is
+ *  dead" from "a request that predates the repair came back late", because
+ *  those want opposite actions and only one of them is a sign-out. */
 export const SESSION_INVALID_EVENT = "compass:session-invalid";
+export type SessionInvalidDetail = { token: string | null };
 
 function isApiRequest(input: RequestInfo | URL): boolean {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -64,7 +70,9 @@ export function installSessionInterceptor(): void {
       try {
         const body = await res.clone().json();
         if (body?.error === "session_required") {
-          window.dispatchEvent(new CustomEvent(SESSION_INVALID_EVENT));
+          window.dispatchEvent(new CustomEvent<SessionInvalidDetail>(
+            SESSION_INVALID_EVENT, { detail: { token } },
+          ));
         }
       } catch { /* not JSON — someone else's 401 */ }
     }

@@ -15,9 +15,19 @@
  * and from that instant the account requires the token. Nobody is ever
  * locked out by the deploy itself; a second device that arrives after the
  * first claimed restores silently with the recovery code it already holds
- * in localStorage. TOFU — trust on first use — is a real, bounded window,
- * and it is strictly narrower than today's, where no claiming is needed
- * at all.
+ * in localStorage.
+ *
+ * That rule shipped with no expiry, which made it a hole rather than a
+ * rollout: claiming happens on the account's OWN next boot, so an account
+ * nobody opens stays readable and writable by anyone holding its id, forever.
+ * Measured on production 2026-08-19, three days in: 1 of 20 profiles claimed,
+ * and zero of the other 19 had ever had a row in account_sessions. The gate
+ * was protecting one person. Five of the nineteen carry hand-typed ids —
+ * orrery-demo, felt-test, cadence-test, obs_ns3, obs_push_route_verify — which
+ * are not guessed so much as typed, and orrery-demo holds real data across
+ * fourteen tables.
+ *
+ * So the window now ENDS: see lib/tofuWindow.ts.
  *
  * Email login is the deliberate NON-choice: magic links need Resend, and
  * RESEND_API_KEY is not on Railway. The recovery code is already the
@@ -26,8 +36,10 @@
 import { db, testerProfiles, accountSessions } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { mintSessionToken, hashSessionToken, sessionTokenMatches } from "./sessionToken.js";
+import { tofuWindowOpen } from "./tofuWindow.js";
 
 export { mintSessionToken, hashSessionToken, sessionTokenMatches };
+export { tofuDeadline, tofuWindowOpen } from "./tofuWindow.js";
 
 /**
  * The verification cache. Every /api request with an identity costs a
@@ -47,9 +59,9 @@ export function clearSessionCache(): void {
 }
 
 export type SessionVerdict =
-  | { state: "unclaimed" }                    // pre-accounts account: bare id still works
+  | { state: "unclaimed" }                    // pre-accounts account, window still open
   | { state: "valid"; sessionId: number }
-  | { state: "invalid" }                      // claimed, and the token is missing or wrong
+  | { state: "invalid"; reason: "no-session" | "window-closed" }
   | { state: "unknown-account" };             // no profile row at all (pre-first-sync)
 
 /**
@@ -64,15 +76,21 @@ export async function verifySession(testerId: string, token: string | null): Pro
   const cacheKey = `${testerId}|${token ? hashSessionToken(token) : "-"}`;
   const hit = verdictCache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return hit.allowed ? { state: "valid", sessionId: -1 } : { state: "invalid" };
+    return hit.allowed ? { state: "valid", sessionId: -1 } : { state: "invalid", reason: "no-session" };
   }
 
   const profile = (await db.select({ claimedAt: testerProfiles.claimedAt })
     .from(testerProfiles).where(eq(testerProfiles.testerId, testerId)).limit(1))[0];
   if (!profile) return { state: "unknown-account" };
-  if (!profile.claimedAt) return { state: "unclaimed" };
+  // The unclaimed verdict is never cached — it is the one answer that changes
+  // with the wall clock rather than with a row, so it must be recomputed. The
+  // cache below only ever holds claimed-account verdicts, which is what lets
+  // the deadline take effect at the instant it passes instead of a minute later.
+  if (!profile.claimedAt) {
+    return tofuWindowOpen() ? { state: "unclaimed" } : { state: "invalid", reason: "window-closed" };
+  }
 
-  if (!token) return { state: "invalid" };
+  if (!token) return { state: "invalid", reason: "no-session" };
   const row = (await db.select().from(accountSessions)
     .where(eq(accountSessions.tokenHash, hashSessionToken(token))).limit(1))[0];
   const ok = !!row && row.testerId === testerId && sessionTokenMatches(token, row.tokenHash);
@@ -80,7 +98,7 @@ export async function verifySession(testerId: string, token: string | null): Pro
   if (verdictCache.size > 5000) verdictCache.clear();
   verdictCache.set(cacheKey, { at: Date.now(), allowed: ok });
 
-  if (!ok) return { state: "invalid" };
+  if (!ok) return { state: "invalid", reason: "no-session" };
   // Liveness bookkeeping, throttled by the cache above (at most once per TTL
   // per session) and fire-and-forget — a slow write must not slow the request.
   void db.update(accountSessions).set({ lastSeenAt: new Date() })
@@ -101,18 +119,23 @@ export async function mintSessionFor(testerId: string, origin: "claim" | "signup
 /**
  * Trust-on-first-use claim for accounts that predate sessions.
  *
- * Exactly once: the first claimer owns the account. Anyone else — including
- * the owner's own second device — gets `already-claimed` and proves
+ * Exactly once, and only while the window is open (lib/tofuWindow.ts): the
+ * first claimer owns the account. Anyone else — including the owner's own
+ * second device, and everyone at all once the deadline passes — proves
  * themselves with the recovery code instead, which every previously-synced
  * device already holds.
  */
 export async function claimAccount(testerId: string): Promise<
-  { ok: true; token: string } | { ok: false; reason: "no-profile" | "already-claimed" }
+  { ok: true; token: string } | { ok: false; reason: "no-profile" | "already-claimed" | "window-closed" }
 > {
   const profile = (await db.select({ claimedAt: testerProfiles.claimedAt })
     .from(testerProfiles).where(eq(testerProfiles.testerId, testerId)).limit(1))[0];
   if (!profile) return { ok: false, reason: "no-profile" };
   if (profile.claimedAt) return { ok: false, reason: "already-claimed" };
+  // After the deadline a bare id buys nothing here either. Checked AFTER
+  // already-claimed so the accurate reason survives: a second device asking
+  // late is still a second device, and both answers send it to the same place.
+  if (!tofuWindowOpen()) return { ok: false, reason: "window-closed" };
   const token = await mintSessionFor(testerId, "claim");
   return { ok: true, token };
 }

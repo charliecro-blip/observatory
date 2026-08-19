@@ -14,7 +14,7 @@ import {
   type Chronotype,
   type CautionPlanet,
 } from "@/lib/tester-profile";
-import { loadSessionToken, saveSessionToken, clearSessionToken, SESSION_INVALID_EVENT } from "@/lib/session";
+import { loadSessionToken, saveSessionToken, clearSessionToken, SESSION_INVALID_EVENT, type SessionInvalidDetail } from "@/lib/session";
 
 interface TesterContextValue {
   profile: TesterProfile | null;
@@ -257,14 +257,24 @@ export function TesterProvider({ children }: { children: React.ReactNode }) {
   }, [profile, ensureSession]);
 
   useEffect(() => {
-    const onInvalid = () => {
+    const onInvalid = (e: Event) => {
       if (!profile) return;
-      // The event MEANS the stored token just failed a real request — it is
-      // dead, and it must go before ensureSession runs, or the "someone
+      // A dead token must go before ensureSession runs, or the "someone
       // already won" early-return reads the corpse as a victory and repairs
       // nothing. (Found live: a tampered token 401'd forever while the
       // self-heal politely declined to interfere with it.)
-      clearSessionToken();
+      //
+      // But only the token that ACTUALLY failed. The event used to clear
+      // storage unconditionally, which is fine while 401s are rare and fatal
+      // and wrong the moment they are routine: past the TOFU deadline every
+      // dormant account boots into one, because the boot sync fires before
+      // this device has any token at all. That 401 carries no token, lands
+      // after the repair it raced has already saved a good one, and the old
+      // code deleted it — signing out the device the repair had just fixed.
+      const failed = (e as CustomEvent<SessionInvalidDetail>).detail?.token ?? null;
+      const current = loadSessionToken();
+      if (failed && current && current !== failed) return; // already replaced
+      if (failed && current === failed) clearSessionToken();
       void ensureSession(profile);
     };
     window.addEventListener(SESSION_INVALID_EVENT, onInvalid);
