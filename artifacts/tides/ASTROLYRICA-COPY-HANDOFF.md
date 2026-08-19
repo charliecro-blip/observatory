@@ -767,3 +767,83 @@ Quiet-lens variants added on Today (the hero now reads TODAY / {weekday} /
 - star banner: "a long-term ideal to steer by, so ordinary days stay
   connected to somewhere."
 - sprint finish now also offers **"run it again"** beside "Make a card".
+
+---
+
+## BRIEF — sprint suggestions, the transit mapping (2026-08-19)
+
+**What we need from you:** the mapping that turns a real transit window into a
+suggested short push. This is a NEW table, not a rewrite of an existing one.
+
+**The rules that bind every line here** (unchanged from §3 of this file, and
+non-negotiable because they are also the product's legal and ethical floor):
+describe conditions, never promise outcomes; no health, medical or financial
+claims; nothing deterministic. A sprint suggestion says what the spell is
+*like*, and the person decides what to run in it.
+
+### How it's used, so you can pitch the register
+
+Compass finds week-scale windows where a fast planet (Sun, Mercury, Venus,
+Mars, Jupiter) holds a major aspect to another planet — 3 to 21 days. It
+offers **at most one at a time**, never more often than roughly weekly, and
+only when nothing else is running. The line appears on the home page like
+this:
+
+> **Venus faces Saturn through Fri** — a connection or beauty push, with
+> structure in the air.
+> *Ride it →   not this one*
+
+### The defect you are fixing
+
+The tail of that sentence is built from two independent lookups —
+`PUSH[transiting planet]` + `DOMAIN[target planet]` — and **nothing reads the
+aspect**. So Venus *trine* Saturn and Venus *square* Saturn produce identical
+copy. For the opposition above, "a connection or beauty push" is arguably the
+wrong read of a Saturn opposition entirely.
+
+### Table 1 — the aspect mode (NEW; five lines)
+
+Give each aspect a MODE: what kind of push the shape itself suggests. Our
+working draft, to replace or sharpen:
+
+| Aspect | Draft mode |
+|---|---|
+| conjunction | begin — start it while the fuse is lit |
+| sextile | offer — a light, low-friction run at it |
+| square | friction — the effortful version, the one that needs teeth |
+| trine | ease — the pleasant, repeatable version |
+| opposition | face — the one that needs another person, or a reckoning |
+
+### Table 2 — the transiting planet's push (EXISTING; review)
+
+Sun "a showing-up push" · Mercury "a writing or outreach push" · Venus "a
+connection or beauty push" · Mars "a training or courage push" · Jupiter "a
+widening push"
+
+### Table 3 — the target planet's domain (EXISTING; review)
+
+Sun "visibility" · Mercury "words and errands" · Venus "taste and company" ·
+Mars "nerve" · Jupiter "growth" · Saturn "structure" · Uranus
+"habit-breaking" · Neptune "quiet and imagination" · Pluto "the deep drawer"
+
+### Table 4 — the concrete suggestions (NEW; 25 cells, the real ask)
+
+For each **transiting planet × aspect mode**, two or three CONCRETE sprint
+ideas — the kind of thing a person could actually run for a week and tally.
+"Ten cold calls", "no sugar", "morning pages", "one hard conversation",
+"reply within the day". Not themes; things you do.
+
+Worked example of the shape we want, for Mars × friction:
+*"the workout you've been avoiding" · "one hard conversation, prepared" ·
+"the task at the bottom of the list, daily until it's gone"*
+
+Five planets × five modes. Where a cell is genuinely thin, say so and give
+one — an honest gap beats a padded table, and the app will fall back to the
+generic push line.
+
+### What NOT to write
+
+No streak or challenge framing (no "day 3 of 7 — don't break it"), nothing
+competitive, nothing that reads as an ultimatum from the sky, and no cell that
+only makes sense for someone who already knows astrology — these lines are
+shown at the medium lens and must pass the stranger test.
