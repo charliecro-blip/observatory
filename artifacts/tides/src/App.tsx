@@ -19,7 +19,6 @@ import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import BearingsCard from "@/components/BearingsCard";
 import { SessionTimer } from "@/components/SessionTimer";
 import MomentAdvisor from "@/components/MomentAdvisor";
-import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
 import Habits from "@/pages/Habits";
@@ -173,7 +172,7 @@ const queryClient = new QueryClient({
   },
 });
 
-type View = "home"|"today"|"calendar"|"work"|"launch"|"planets"|"settings";
+type View = "home"|"calendar"|"work"|"launch"|"planets"|"settings";
 
 // Primary tabs = the loop (owner 2026-07-29: Compass is an enchanted
 // productivity app — the nav carries only the daily journey). Today is the
@@ -188,14 +187,19 @@ type View = "home"|"today"|"calendar"|"work"|"launch"|"planets"|"settings";
 // orient → act/schedule → connect to direction → inspect the wider timeline.
 // "Stars" over "Aims": the feature is called Guiding Stars everywhere else,
 // and one name per concept is the terminology rule (GPT audit §11).
-// 2026-08-04: Home leads. The owner's brief was that the homepage becomes a
-// dashboard centred on the Compass and the to-do dump, and that Today — which
-// had grown "super busy and a little overwhelming" — keeps the narrower job of
-// laying the day out in time. Today stays in the nav because it is still the
-// place the sky is read; it is no longer the place you land.
+// 2026-08-04: Home leads — the homepage became the dashboard centred on the
+// Compass and the to-do dump, and Today kept the narrower job of laying the
+// day out in time.
+//
+// 2026-08-19: Today is RETIRED. Emptying it was the plan from the start: move
+// each thing it held to the surface that should own it, and delete the tab
+// once it holds nothing the others lack. The daily loop and the day's reading
+// went to Home, the day chart and the Studio to Calendar, the deep sky
+// read-outs to Planets, and the advisor to App — where a modal always
+// belonged. Everything else it drew was a second copy of something Home had
+// grown. Four tabs, and the loop is one of them fewer.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"home",     label:"Home"},
-  {id:"today",    label:"Today",    zoom:true},
   {id:"launch",   label:"Plan"},
   {id:"work",     label:"Stars"},
   {id:"calendar", label:"Calendar", zoom:true},
@@ -1367,7 +1371,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "today" ? "nav-today" : t.id === "work" ? "nav-work" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1443,7 +1447,7 @@ function Shell() {
 
       {/* Mobile instrument strip — the rail's sky ladder as a horizontal glyph
           row on phones (which don't get the rail). Sky-facing views only. */}
-      {isMobile && (view==="today" || view==="calendar") && <MobileInstruments now={now} />}
+      {isMobile && view==="calendar" && <MobileInstruments now={now} />}
 
       {/* ASK, above whatever is on screen. It rendered inside Today, which is
           why every route into it had to navigate there first. The seeded
@@ -1484,7 +1488,6 @@ function Shell() {
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
         {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Log"
@@ -1506,7 +1509,7 @@ function Shell() {
           paddingBottom:"env(safe-area-inset-bottom)",
         }}>
           {navTabs.map(t => (
-            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "today" ? "nav-today" : t.id === "work" ? "nav-work" : undefined} onClick={() => setView(t.id)} style={{
+            <button key={t.id} data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => setView(t.id)} style={{
               flex:1, padding:"8px 0 7px", border:"none", background:"none", cursor:"pointer",
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",

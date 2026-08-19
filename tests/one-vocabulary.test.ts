@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { approachOptions } from "../artifacts/tides/src/lib/approach";
 
@@ -21,22 +21,30 @@ import { approachOptions } from "../artifacts/tides/src/lib/approach";
 const read = (f: string) => readFileSync(join(process.cwd(), f), "utf-8");
 
 describe("the flat list is never read without the rules", () => {
-  // EVERY file, not just the rail. The first version of this test checked
+  // EVERY consumer, FOUND rather than listed. The first version checked
   // Rail.tsx alone, which is exactly the mistake it was written about: the fix
-  // had been applied per-surface instead of per-vocabulary, and a
-  // file-specific test repeats that error. Scanning all consumers immediately
-  // turned up a third site — the Resonant Now cards in Today.tsx.
-  const FILES = [
-    "artifacts/tides/src/components/Rail.tsx",
-    "artifacts/tides/src/pages/Today.tsx",
-  ];
+  // had been applied per-surface instead of per-vocabulary. Listing two files
+  // was the same mistake one step later — it broke the day Today retired and
+  // the Resonant Now cards moved to components/SkyReadouts, and a hard-coded
+  // list would have silently stopped covering a consumer that merely moved.
+  const CLIENT = "artifacts/tides/src";
+  function consumers(): string[] {
+    const out: string[] = [];
+    for (const dir of ["components", "pages", "hooks"]) {
+      for (const f of readdirSync(join(process.cwd(), CLIENT, dir))) {
+        if (!/\.tsx?$/.test(f)) continue;
+        const rel = `${CLIENT}/${dir}/${f}`;
+        if (/PLANET_ACTIVITIES\[/.test(read(rel))) out.push(rel);
+      }
+    }
+    return out;
+  }
+  const FILES = consumers();
 
-  it("has no consumer outside the two files this test knows about", () => {
-    // If PLANET_ACTIVITIES grows a new reader, this test must be told about it
-    // rather than silently not covering it.
-    const src = read("artifacts/tides/src/lib/mythos.ts");
-    expect(src).toMatch(/PLANET_ACTIVITIES/);
-    for (const f of FILES) expect(read(f)).toMatch(/PLANET_ACTIVITIES/);
+  it("has at least one consumer, and the vocabulary still exists", () => {
+    // A discovery-based scan is worthless if it silently finds nothing.
+    expect(read("artifacts/tides/src/lib/mythos.ts")).toMatch(/PLANET_ACTIVITIES/);
+    expect(FILES.length, "no surface reads PLANET_ACTIVITIES any more").toBeGreaterThan(0);
   });
 
   it("only ever uses the flat list as a fallback behind approachOptions", () => {
@@ -73,12 +81,23 @@ describe("the flat list is never read without the rules", () => {
       expect(c, `railVerbs called without a chronotype: ${c}`).toMatch(/chronotype/);
       expect(c, `railVerbs called without the void flag: ${c}`).toMatch(/isVOC|voc/);
     }
-    // Today's own call sites must carry the same two facts.
-    const today = read("artifacts/tides/src/pages/Today.tsx");
-    for (const m of today.matchAll(/approachOptions\(\{([\s\S]{0,260}?)\}\)/g)) {
-      expect(m[1], `approachOptions called without sleepTime:\n${m[1]}`).toMatch(/sleepTime/);
-      expect(m[1], `approachOptions called without voc:\n${m[1]}`).toMatch(/voc:/);
+    // EVERY other call site must carry the same two facts — found, not listed.
+    // This named Today.tsx until that page retired and the Resonant Now cards
+    // moved; a named file would have stopped checking the call site rather
+    // than following it.
+    let checked = 0;
+    for (const f of FILES) {
+      for (const m of read(f).matchAll(/approachOptions\(\{([\s\S]{0,260}?)\}\)/g)) {
+        checked++;
+        // Shorthand counts. `voc,` passes the flag exactly as `voc: voc`
+        // does, and requiring the colon would fail a call site that is
+        // correct — which is what widening this scan to the rail turned up.
+        expect(m[1], `${f}: approachOptions called without sleepTime:\n${m[1]}`).toMatch(/sleepTime/);
+        expect(m[1], `${f}: approachOptions called without the void flag:\n${m[1]}`)
+          .toMatch(/\bvoc\b\s*[,:}]/);
+      }
     }
+    expect(checked, "no approachOptions call sites found outside the rail").toBeGreaterThan(0);
   });
 });
 

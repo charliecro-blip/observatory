@@ -11,6 +11,9 @@ import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
 import { QualityStrip } from "@/components/QualityStrip";
+import { UnifiedTideChart } from "@/components/TideWater";
+import LunarCycle from "@/components/LunarCycle";
+import { Studio } from "@/components/Studio";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -1278,6 +1281,7 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
 export default function Calendar({ testerId, now, lat, lon }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
 }) {
+  const [showStudio, setShowStudio] = useState(false);
   const today = localToday();
   const todayYear  = parseInt(today.slice(0,4));
   const todayMonth = parseInt(today.slice(5,7))-1;
@@ -1491,8 +1495,28 @@ export default function Calendar({ testerId, now, lat, lon }: {
           </>
         )}
 
+        {/* THE STUDIO — shareable day/week/lunation cards, inherited from
+            Today's hero as it retires (2026-08-19). Calendar is where the
+            day, the week and the lunation all already live, which is exactly
+            the three things it publishes. */}
+        {!pageQuiet && now && (
+          <button onClick={()=>setShowStudio(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>↗ Share</button>
+        )}
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
+
+      {/* Where the month stands, above the day it contains. */}
+      {!pageQuiet && <LunarCycle now={now} />}
+
+      {/* TODAY'S OWN WATER — the day-scale chart, inherited from the Today
+          tab as it empties (2026-08-19). Calendar is time's whole home, and
+          this is the finest resolution it offers: the hours of one day, under
+          a sky gradient anchored to the real sunrise and sunset.
+
+          It sits ABOVE the 30-day strip so the two read as one zoom — this
+          day, then the month around it — rather than as two charts that
+          happen to share a page. */}
+      {!pageQuiet && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
 
       {/* The water ahead — the 30-day wave chart, inherited from the retired
           Almanac tab. Tap a bar to jump the calendar to that day. */}
@@ -1591,6 +1615,8 @@ export default function Calendar({ testerId, now, lat, lon }: {
       {addModal && (
         <EventModal dateStr={addModal.date} startHour={addModal.hour} testerId={testerId} onClose={()=>setAddModal(null)}/>
       )}
+
+      {showStudio && now && <Studio now={now} lat={lat} lon={lon} onClose={() => setShowStudio(false)} />}
     </div>
   );
 }

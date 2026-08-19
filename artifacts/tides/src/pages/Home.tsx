@@ -46,6 +46,8 @@ import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
+import DayReading from "@/components/DayReading";
+import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/elements";
 import MomentsAhead from "@/components/MomentsAhead";
 import DayConditions from "@/components/DayConditions";
 import AngleCrossing from "@/components/AngleCrossing";
@@ -729,7 +731,28 @@ export default function Home({
           and keeps the guidance with the sky words taken out, which is the
           half of the hero that was always for everyone — the strip stands
           down only when there is no reading to report. */}
-      <TideStrip now={now} minimal={skyQuiet} onOpen={() => onNavigate("today")} />
+      <TideStrip now={now} minimal={skyQuiet} />
+
+      {/* THE READING UNDER THE LINE. The strip says what kind of day it is;
+          this is the synthesis engine's evidence for saying so — the one
+          thing in Today's hero that nothing on Home carried. Folded by
+          default: it came from a page built to be read to one built to be
+          acted on. */}
+      {!skyQuiet && now?.reading && (
+        <div style={{ ...PANEL, overflow: "hidden" }}>
+          <SectionTitle fold="reading" summary="the day, read whole">The reading</SectionTitle>
+          <Fold id="reading">
+            <div style={{ padding: "0 16px 14px" }}>
+              <DayReading
+                now={now}
+                level={astroLevel}
+                testerId={testerId}
+                accent={ELEMENT_COLORS[CHARACTER_ELEMENT[(now?.tide?.character ?? "deep") as TideCharacter] ?? "water"]}
+              />
+            </div>
+          </Fold>
+        </div>
+      )}
 
       {/* ── THE CONDITION SLOT · one at a time, ranked by rarity.
           Rhythm risk, then the void Moon, then where you are in a cycle.
@@ -1020,7 +1043,6 @@ export default function Home({
               chronotype={profile?.chronotype}
               label="Moments ahead"
               framed
-              onOpen={() => onNavigate("today")}
             />
           )}
 

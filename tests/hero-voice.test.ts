@@ -60,8 +60,11 @@ describe("the hero's guidance reconciles the void", () => {
 describe("the hero says the void once, not three times", () => {
   const woven = readFileSync(
     join(process.cwd(), "artifacts/tides/src/components/WovenReading.tsx"), "utf-8");
+  // The hero retired with Today (2026-08-19); the reading it wrapped is
+  // components/DayReading now, on Home. The claim is about whoever PASSES
+  // saidAlready, never about which page did.
   const today = readFileSync(
-    join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8");
+    join(process.cwd(), "artifacts/tides/src/components/DayReading.tsx"), "utf-8");
 
   it("WovenReading can be told what the card already said", () => {
     expect(woven).toMatch(/saidAlready/);
@@ -82,7 +85,7 @@ describe("the hero says the void once, not three times", () => {
     expect(synth).toMatch(/salience: p\.salience, source: p\.name/);
   });
 
-  it("Today passes both the testimony source and the pattern name", () => {
+  it("the reading passes both the testimony source and the pattern name", () => {
     // They differ ("voc" vs "Void of course"); passing one silently leaves the
     // other rendering, which is the bug this whole rule exists to stop.
     expect(today).toMatch(/saidAlready=\{[^}]*voc[^}]*Void of course/s);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -44,13 +44,31 @@ describe("today's tasks include what is scheduled today", () => {
     expect(src).toMatch(/else \{\s*conds\.push\(eq\(tasks\.dueDate, date\)\);/);
   });
 
-  it("is asked for by both surfaces that read today's tasks", () => {
-    // Today and the Rail share one cache key. If only one sends tz they
-    // fetch different sets under the same key and disagree on screen.
-    for (const f of ["artifacts/tides/src/pages/Today.tsx", "artifacts/tides/src/components/Rail.tsx"]) {
-      const client = readFileSync(join(process.cwd(), f), "utf-8");
-      expect(client, f).toMatch(/api\/tasks\?date=\$\{today\}&tz=\$\{new Date\(\)\.getTimezoneOffset\(\)\}/);
-      expect(client, f).toMatch(/queryKey: \["tasks-today", testerId, today, new Date\(\)\.getTimezoneOffset\(\)\]/);
+  it("is asked for with a tz by EVERY surface that reads today's tasks", () => {
+    // These share one cache key. If one of them omits tz they fetch different
+    // sets under the same key and disagree on screen.
+    //
+    // The readers are FOUND, not listed. This named Today.tsx and the Rail
+    // until Today retired and its copy moved into hooks/useHomeData — and a
+    // named list is the wrong shape for a test whose whole subject is "every
+    // reader of this key agrees", since a new reader would never be noticed.
+    const readers: string[] = [];
+    for (const dir of ["components", "pages", "hooks"]) {
+      for (const f of readdirSync(join(process.cwd(), "artifacts/tides/src", dir))) {
+        if (!/\.tsx?$/.test(f)) continue;
+        const rel = `artifacts/tides/src/${dir}/${f}`;
+        const client = readFileSync(join(process.cwd(), rel), "utf-8");
+        if (/queryKey: \["tasks-today"/.test(client)) readers.push(rel);
+      }
+    }
+    expect(readers.length, "nothing reads the tasks-today key any more").toBeGreaterThan(1);
+    for (const rel of readers) {
+      const client = readFileSync(join(process.cwd(), rel), "utf-8");
+      expect(client, `${rel} asks without a tz`).toMatch(/api\/tasks\?date=\$\{today\}&tz=\$\{/);
+      // The offset must be IN the key, however the file spells it — a value
+      // the response depends on that the key omits serves a stale answer.
+      expect(client, `${rel} leaves the offset out of the cache key`)
+        .toMatch(/queryKey: \["tasks-today", testerId, today, (?:tz|new Date\(\)\.getTimezoneOffset\(\))\]/);
     }
   });
 });

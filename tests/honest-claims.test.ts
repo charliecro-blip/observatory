@@ -15,11 +15,12 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf-8");
 const SRC_DIRS = { components: "artifacts/tides/src/components" };
 
 describe("no invented obligations", () => {
+  // Dashboard and Today retired on 2026-08-19; every surface that draws star
+  // progress is still on this list, which is the thing the list is for.
   const FILES = [
-    "artifacts/tides/src/components/Dashboard.tsx",
     "artifacts/tides/src/components/Rail.tsx",
+    "artifacts/tides/src/components/WhereYouAre.tsx",
     "artifacts/tides/src/pages/Home.tsx",
-    "artifacts/tides/src/pages/Today.tsx",
     "artifacts/tides/src/pages/GuidingStarsHub.tsx",
   ];
 
@@ -150,15 +151,22 @@ describe("claims match the evidence", () => {
     expect(hub).toMatch(/Compass reads your wording as/);
   });
 
-  it("labels the hero curve as a phase indicator, not a forecast", () => {
-    // It is a fixed sine — only the marker carries data — and it renders
-    // beside real percentages, so it must say what it is.
-    const today = read("artifacts/tides/src/pages/Today.tsx");
-    expect(today).toMatch(/not a graph of the day/);
-  });
+  // REMOVED 2026-08-19: "labels the hero curve as a phase indicator, not a
+  // forecast" required the caption "not a graph of the day".
+  //
+  // It had been wrong since the curve was replaced. The invented sine went
+  // away and a real computed position took its place, so the caption went
+  // too — and moon-cycle.test.ts asserts its ABSENCE, on the house rule that
+  // a disclaimer means the design is wrong. The two tests demanded opposite
+  // things and both passed, because this one was reading the phrase out of a
+  // COMMENT explaining why the caption had been deleted. A test kept alive by
+  // prose about its own obsolescence.
 
   it("states charge as a band, never a percentage, and calls confidence agreement", () => {
-    const today = read("artifacts/tides/src/pages/Today.tsx");
+    // The meta row moved out of Today's hero and under the reading, on Home
+    // (2026-08-19). It very nearly went in the bin with the banner it sat on;
+    // this test is why it did not.
+    const today = read("artifacts/tides/src/components/DayReading.tsx");
     expect(today).toMatch(/signal agreement/);
     // Charge must read as activation, not favorability — the likeliest
     // misreading. Spelling-agnostic on purpose: this pinned "favourable" and

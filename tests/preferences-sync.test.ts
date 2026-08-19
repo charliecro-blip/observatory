@@ -76,8 +76,14 @@ describe("the stored shape", () => {
   });
 
   it("never lets a missing or corrupt fold list throw on render", () => {
-    // Every module calls .includes() on this on every render.
-    expect(mergePreferences({} as any).display.collapsedModules).toEqual([]);
+    // Every module calls .includes() on this on every render, so the ONLY
+    // thing that matters is that it is an array. This used to assert the
+    // literal [] and failed the day "the reading" started folded — pinning a
+    // default rather than the property that keeps the page from crashing.
+    expect(Array.isArray(mergePreferences({} as any).display.collapsedModules)).toBe(true);
+    // A corrupt value falls back to empty rather than to the default: nothing
+    // is known about what the person wanted, and hiding a module they never
+    // folded is the worse of the two guesses.
     expect(mergePreferences({ display: { collapsedModules: "work" } } as any)
       .display.collapsedModules).toEqual([]);
   });

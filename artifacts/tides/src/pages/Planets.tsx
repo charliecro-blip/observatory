@@ -10,6 +10,7 @@ import Glyph from "@/components/Glyph";
 import ChartWheel from "@/components/ChartWheel";
 import { PremiumGate } from "@/components/PremiumGate";
 import { ReferenceSection } from "@/components/ReferenceSection";
+import { ModulePulse, BigSky } from "@/components/SkyReadouts";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
@@ -530,6 +531,9 @@ function ChartView({ testerId }: { testerId: string | null }) {
 }
 
 export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect, initialPlanet, onStartStar }: { testerId: string | null; lat?: number; lon?: number; onReflect?: (seed: string) => void; initialPlanet?: string | null; onStartStar?: (element: string) => void }) {
+  // Same key every other sky read on the app uses, so this is a cache hit
+  // rather than a second request for the same answer.
+  const { data: now } = useTidesNow(testerId, lat, lon);
   const [mode, setMode] = useState<"planets" | "houses" | "chart">("planets");
   // Arriving via a teachable-moment link ("today feels saturnine → visit
   // Saturn") lands directly on that planet's page.
@@ -577,6 +581,22 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
           <PremiumGate feature="practitioner">
             <ChartView testerId={testerId} />
           </PremiumGate>
+        )}
+
+        {/* THE SKY, READ RIGHT NOW — inherited from Today as it empties
+            (2026-08-19). Both of these were gated behind the expanded density
+            on a page nobody lands on, which put the app's deepest sky
+            read-out behind two doors. Planets is where someone arrives having
+            decided to go looking, which is exactly who they are for.
+
+            Above the reference library on purpose: this is the sky as it
+            actually stands tonight, and the library is what the words in it
+            mean. */}
+        {now && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
+            <ModulePulse now={now} />
+            <BigSky now={now} />
+          </div>
         )}
 
         {/* The reference library — elements, planets, signs, and the learn-the-

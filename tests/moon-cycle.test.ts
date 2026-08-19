@@ -106,9 +106,12 @@ describe("the cycle position is a real position in a real period", () => {
 const stripComments = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
 
-describe("the hero no longer draws what it cannot compute", () => {
+describe("the cycle bar no longer draws what it cannot compute", () => {
+  // The hero that drew this retired with the Today page (2026-08-19); the bar
+  // moved to Calendar, which is where a position in a period belongs. The
+  // claims are unchanged — they were never about which page drew it.
   const src = stripComments(readFileSync(
-    join(process.cwd(), "artifacts/tides/src/pages/Today.tsx"), "utf-8"));
+    join(process.cwd(), "artifacts/tides/src/components/LunarCycle.tsx"), "utf-8"));
 
   it("has no invented sine wave and no five-way marker lookup", () => {
     expect(src).not.toMatch(/Math\.sin\(Math\.PI \* x/);

@@ -12,7 +12,7 @@
 // ran at all (AUDIT-JOURNEY-2026-08-18, J1). Bumping the version deliberately
 // re-offers the tour to accounts that carry a v1 verdict: the walkthrough they
 // answered is not the one that exists now, and most of them never saw it.
-export const TOUR_VERSION = 2;
+export const TOUR_VERSION = 3;
 
 export interface TourStep {
   /** Matches a data-tour attribute somewhere in the live DOM. */
@@ -44,11 +44,6 @@ export const TOUR_STEPS: TourStep[] = [
     anchor: "home-answer",
     title: "The answer to \"what now\"",
     body: "Once there's something on your list, Compass names one thing to do next and says why. Its reasons are deadlines, your calendar, and — if you want it — the sky. When nothing stands out, it says that instead of inventing work.",
-  },
-  {
-    anchor: "nav-today",
-    title: "The day itself",
-    body: "Today runs the hours: what kind of day it is, what's already on it, and how it actually went when you look back in the evening.",
   },
   {
     anchor: "nav-plan",
