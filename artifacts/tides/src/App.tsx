@@ -18,6 +18,7 @@ import { applyTextScale } from "@/lib/textScale";
 import GuidingStarsHub from "@/pages/GuidingStarsHub";
 import BearingsCard from "@/components/BearingsCard";
 import { SessionTimer } from "@/components/SessionTimer";
+import MomentAdvisor from "@/components/MomentAdvisor";
 import Today from "@/pages/Today";
 import Tasks from "@/pages/Tasks";
 import Calendar from "@/pages/Calendar";
@@ -1229,9 +1230,14 @@ function Shell() {
   // Auspice engine's real candidate windows + the user's own note. Ask treats
   // the windows as given facts (see /api/advise electionContext).
   const [askContext, setAskContext] = useState<AskElectionContext | null>(null);
-  const askCompass = (seed: string) => { setAskContext(null); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true); };
+  // ASK NO LONGER MOVES YOU. Both of these used to setView("today") before
+  // opening the panel, because the panel lived inside that page — so tapping
+  // "Timing" on Home's Ask card silently threw away the page you were on and
+  // landed you somewhere else with a modal over it. The advisor is a modal;
+  // it never had any business belonging to a route.
+  const askCompass = (seed: string) => { setAskContext(null); setAdvisorSeed(seed); setShowAdvisor(true); };
   const askAboutElection = (ctx: AskElectionContext, seed: string) => {
-    setAskContext(ctx); setAdvisorSeed(seed); setView("today"); setShowAdvisor(true);
+    setAskContext(ctx); setAdvisorSeed(seed); setShowAdvisor(true);
   };
   // Teachable-moment deep link: "today feels saturnine" on Today → Star Base
   // opens on that planet's page.
@@ -1382,7 +1388,7 @@ function Shell() {
           <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
         )}
         <button
-          onClick={() => { setAskContext(null); setAdvisorSeed(null); setView("today"); setShowAdvisor(true); }}
+          onClick={() => { setAskContext(null); setAdvisorSeed(null); setShowAdvisor(true); }}
           style={{
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", fontWeight: 500, marginRight: 6,
@@ -1439,6 +1445,31 @@ function Shell() {
           row on phones (which don't get the rail). Sky-facing views only. */}
       {isMobile && (view==="today" || view==="calendar") && <MobileInstruments now={now} />}
 
+      {/* ASK, above whatever is on screen. It rendered inside Today, which is
+          why every route into it had to navigate there first. The seeded
+          subject travels with the question, so an ask that began at Home's
+          answer is still about THAT pick — the rule the seed already encoded
+          and the navigation quietly broke. With no seed there is no pinned
+          subject, which is the honest shape for a free question. */}
+      {showAdvisor && (
+        <MomentAdvisor
+          testerId={testerId}
+          lat={lat}
+          lon={lon}
+          onClose={() => setShowAdvisor(false)}
+          seedMessage={advisorSeed}
+          electionContext={askContext}
+          strongestFit={askContext?.subject ? {
+            title: askContext.subject.title,
+            why: askContext.subject.why ?? "",
+            when: askContext.subject.when ?? "",
+            kind: askContext.subject.kind ?? "loop",
+          } : null}
+          now={now}
+          onAddTask={() => { setShowAdvisor(false); setCapture(true); }}
+        />
+      )}
+
       {/* ── Content row ── */}
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
         {/* Left sidebar: Rail (desktop only — the hero carries moon/hour on phones) */}
@@ -1453,7 +1484,7 @@ function Shell() {
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
         {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
-        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} showAdvisor={showAdvisor} setShowAdvisor={setShowAdvisor} advisorSeed={advisorSeed} askContext={askContext} onOpenStar={openStar} firstRun={firstRun}/>}
+        {view==="today"    && <Today    testerId={testerId} lat={lat} lon={lon} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else setView(v as View); }} onOpenStar={openStar} firstRun={firstRun}/>}
         {view==="calendar" && (
           <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
             {(a) => a==="Log"
