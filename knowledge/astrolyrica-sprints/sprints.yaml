@@ -1,0 +1,341 @@
+# sprints — transit windows turned into short, tally-able pushes.
+# A NEW collection: transiting planet x aspect mode -> concrete sprint ideas. When a
+# fast planet (Sun/Mercury/Venus/Mars/Jupiter) holds a major aspect to another over
+# a 3-21 day window, this supplies what kind of push the SHAPE suggests plus concrete
+# things to actually run. Aspect->mode: conjunction=begin, sextile=offer, square=
+# friction, trine=ease, opposition=face. Describe conditions, never promise outcomes;
+# no health/financial claims; no streak/competition framing. Every entry carries `avoid`.
+
+sprints:
+- id: sun_begin
+  transiting_planet: sun
+  mode: begin
+  aspect: conjunction
+  push: a showing-up push
+  register: a showing-up push — the two fold into one — a fresh start with the fuse lit
+  ideas:
+  - post one thing you made, daily
+  - put your name on one thing a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - visibility mistaken for the work
+- id: sun_offer
+  transiting_planet: sun
+  mode: offer
+  aspect: sextile
+  push: a showing-up push
+  register: a showing-up push — an opening, low-friction — a light run at it if you reach
+  ideas:
+  - share one small win a day
+  - let one person see the work each day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - visibility mistaken for the work
+- id: sun_friction
+  transiting_planet: sun
+  mode: friction
+  aspect: square
+  push: a showing-up push
+  register: a showing-up push — the effortful version, the one that needs teeth
+  ideas:
+  - do the visible thing you've been avoiding, daily
+  - speak up once a day where you'd usually stay quiet
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - visibility mistaken for the work
+- id: sun_ease
+  transiting_planet: sun
+  mode: ease
+  aspect: trine
+  push: a showing-up push
+  register: a showing-up push — the pleasant, repeatable version — it flows
+  ideas:
+  - ten minutes of your own creative work, daily
+  - one thing a day done purely because it's yours
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - visibility mistaken for the work
+- id: sun_face
+  transiting_planet: sun
+  mode: face
+  aspect: opposition
+  push: a showing-up push
+  register: a showing-up push — the one that needs another person, or a reckoning
+  ideas:
+  - one honest ask a day for the thing you want
+  - show the work to someone who'll be straight with you, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - visibility mistaken for the work
+- id: mercury_begin
+  transiting_planet: mercury
+  mode: begin
+  aspect: conjunction
+  push: a writing or outreach push
+  register: a writing or outreach push — the two fold into one — a fresh start with the fuse lit
+  ideas:
+  - morning pages, daily
+  - one new outreach message a day
+  - two hundred words a day on the thing
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - words mistaken for the deed
+- id: mercury_offer
+  transiting_planet: mercury
+  mode: offer
+  aspect: sextile
+  push: a writing or outreach push
+  register: a writing or outreach push — an opening, low-friction — a light run at it if you reach
+  ideas:
+  - clear one dodged reply a day
+  - one small learning session a day
+  - send one thinking-of-you note a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - words mistaken for the deed
+- id: mercury_friction
+  transiting_planet: mercury
+  mode: friction
+  aspect: square
+  push: a writing or outreach push
+  register: a writing or outreach push — the effortful version, the one that needs teeth
+  ideas:
+  - draft the hard message and send it, daily until the backlog's gone
+  - the difficult email first, each morning
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - words mistaken for the deed
+- id: mercury_ease
+  transiting_planet: mercury
+  mode: ease
+  aspect: trine
+  push: a writing or outreach push
+  register: a writing or outreach push — the pleasant, repeatable version — it flows
+  ideas:
+  - read twenty pages a day
+  - one note a day on what you learned
+  - tidy one thread of the inbox a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - words mistaken for the deed
+- id: mercury_face
+  transiting_planet: mercury
+  mode: face
+  aspect: opposition
+  push: a writing or outreach push
+  register: a writing or outreach push — the one that needs another person, or a reckoning
+  ideas:
+  - one hard conversation this week, prepared
+  - return the call you've been avoiding
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - words mistaken for the deed
+- id: venus_begin
+  transiting_planet: venus
+  mode: begin
+  aspect: conjunction
+  push: a warmth-and-taste push
+  register: a warmth-and-taste push — the two fold into one — a fresh start with the fuse lit
+  ideas:
+  - reach out to one person a day
+  - make one thing nicer a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - performing warmth instead of offering it
+- id: venus_offer
+  transiting_planet: venus
+  mode: offer
+  aspect: sextile
+  push: a warmth-and-taste push
+  register: a warmth-and-taste push — an opening, low-friction — a light run at it if you reach
+  ideas:
+  - one specific compliment a day
+  - tend one friendship a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - performing warmth instead of offering it
+- id: venus_friction
+  transiting_planet: venus
+  mode: friction
+  aspect: square
+  push: a warmth-and-taste push
+  register: a warmth-and-taste push — the effortful version, the one that needs teeth
+  ideas:
+  - one repair a day — the reconciliation you've dodged
+  - spend on the thing that lasts, not the quick fix
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - performing warmth instead of offering it
+- id: venus_ease
+  transiting_planet: venus
+  mode: ease
+  aspect: trine
+  push: a warmth-and-taste push
+  register: a warmth-and-taste push — the pleasant, repeatable version — it flows
+  ideas:
+  - a shared meal a day
+  - ten minutes a day of something you enjoy
+  - make the space pleasant each morning
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - performing warmth instead of offering it
+- id: venus_face
+  transiting_planet: venus
+  mode: face
+  aspect: opposition
+  push: a warmth-and-taste push
+  register: a warmth-and-taste push — the one that needs another person, or a reckoning
+  ideas:
+  - the relationship talk you've deferred
+  - say what you actually want from someone, once
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - performing warmth instead of offering it
+- id: mars_begin
+  transiting_planet: mars
+  mode: begin
+  aspect: conjunction
+  push: a training or courage push
+  register: a training or courage push — the two fold into one — a fresh start with the fuse lit
+  ideas:
+  - a workout a day
+  - the brave first move each morning
+  - thirty minutes a day on the hard project
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - overexertion worn as virtue
+- id: mars_offer
+  transiting_planet: mars
+  mode: offer
+  aspect: sextile
+  push: a training or courage push
+  register: a training or courage push — an opening, low-friction — a light run at it if you reach
+  ideas:
+  - one small bold thing a day
+  - the direct no, once a day
+  - clear one blocked item a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - overexertion worn as virtue
+- id: mars_friction
+  transiting_planet: mars
+  mode: friction
+  aspect: square
+  push: a training or courage push
+  register: a training or courage push — the effortful version, the one that needs teeth
+  ideas:
+  - the workout you've been avoiding
+  - one hard conversation, prepared
+  - the task at the bottom of the list, daily until it's gone
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - overexertion worn as virtue
+- id: mars_ease
+  transiting_planet: mars
+  mode: ease
+  aspect: trine
+  push: a training or courage push
+  register: a training or courage push — the pleasant, repeatable version — it flows
+  ideas:
+  - a daily walk or run you enjoy
+  - move the body twenty minutes a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - overexertion worn as virtue
+- id: mars_face
+  transiting_planet: mars
+  mode: face
+  aspect: opposition
+  push: a training or courage push
+  register: a training or courage push — the one that needs another person, or a reckoning
+  ideas:
+  - the confrontation you've been dodging
+  - set one boundary out loud a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - overexertion worn as virtue
+- id: jupiter_begin
+  transiting_planet: jupiter
+  mode: begin
+  aspect: conjunction
+  push: a reach-wider push
+  register: a reach-wider push — the two fold into one — a fresh start with the fuse lit
+  ideas:
+  - apply for one bigger thing a day
+  - one generous offer a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: jupiter_offer
+  transiting_planet: jupiter
+  mode: offer
+  aspect: sextile
+  push: a reach-wider push
+  register: a reach-wider push — an opening, low-friction — a light run at it if you reach
+  ideas:
+  - make one introduction a day
+  - teach one thing you know, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: jupiter_friction
+  transiting_planet: jupiter
+  mode: friction
+  aspect: square
+  push: a reach-wider push
+  register: a reach-wider push — the effortful version, the one that needs teeth
+  ideas:
+  - make one bigger-than-comfortable ask a day
+  - an hour a day on the growth thing that needs discipline
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: jupiter_ease
+  transiting_planet: jupiter
+  mode: ease
+  aspect: trine
+  push: a reach-wider push
+  register: a reach-wider push — the pleasant, repeatable version — it flows
+  ideas:
+  - read something that widens the frame, daily
+  - name one thing you're glad about, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: jupiter_face
+  transiting_planet: jupiter
+  mode: face
+  aspect: opposition
+  push: a reach-wider push
+  register: a reach-wider push — the one that needs another person, or a reckoning
+  ideas:
+  - the big ask to one person this week
+  - back someone else's bigger idea, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through

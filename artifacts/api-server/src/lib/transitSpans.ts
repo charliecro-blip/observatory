@@ -24,6 +24,7 @@
  */
 
 import { getPlanetPositions, julianDay, ASPECT_DEFS } from "./astro.js";
+import { sprintIdeasFor, sprintRegisterFor } from "./sprintIdeas.js";
 
 /** Faster body first — a transit belongs to the one doing the moving. */
 const SPEED_ORDER = ["Mercury", "Venus", "Sun", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
@@ -54,6 +55,10 @@ export interface TransitSpan {
   clipped: boolean;
   /** A short conditions phrase for the pair — never a promise. */
   theme: string;
+  /** Concrete, tally-able things to actually run in this window (Astrolyrica:
+   *  knowledge/astrolyrica-sprints). Specific to the pair where one exists,
+   *  otherwise the shape's generic set. Empty when neither has an entry. */
+  ideas: string[];
 }
 
 // What kind of push the moving planet lends, and what the touched planet puts
@@ -101,6 +106,11 @@ const DOMAIN: Record<string, string> = {
 };
 
 function themeFor(transitPlanet: string, aspect: string, targetPlanet: string): string {
+  // Astrolyrica's own register line for this shape, when the table has one —
+  // it says the same thing better than the mode/push/domain composition can,
+  // and the composition stays as the floor for anything uncovered.
+  const written = sprintRegisterFor(transitPlanet, aspect);
+  if (written) return written;
   const mode = MODE[aspect];
   const push = PUSH[transitPlanet] ?? "a short push";
   const domain = DOMAIN[targetPlanet];
@@ -181,6 +191,7 @@ export function transitSpans(opts: { tzOffsetMin: number; now?: Date }): Transit
       active: startDate <= today && today <= endDate,
       clipped: startClipped || endClipped,
       theme: themeFor(t, aspect, target),
+      ideas: sprintIdeasFor(t, aspect, target)?.ideas ?? [],
     });
   };
   for (let idx = 0; idx < days.length; idx++) {

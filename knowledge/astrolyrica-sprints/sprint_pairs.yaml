@@ -1,0 +1,581 @@
+# sprint_pairs — the SPECIFIC layer: transiting planet x aspect x target planet.
+# Where sprints.yaml gives the generic push-by-shape, this gives target-specific,
+# aspect-differentiated ideas so Mars square Saturn (the deferred grind) reads unlike
+# Mars square Neptune (discipline against fog). High-signal pairings only; the engine
+# tries the specific pair first and falls back to sprints.yaml. Describe conditions,
+# never promise; no health/financial claims; no streak/competition framing. Every
+# entry carries `avoid`.
+
+sprint_pairs:
+- id: mars_conjunction_saturn
+  transiting_planet: mars
+  target_planet: saturn
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the disciplined push — one bounded block a day on the hard structural task
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mars_sextile_saturn
+  transiting_planet: mars
+  target_planet: saturn
+  aspect: sextile
+  mode: offer
+  ideas:
+  - one unglamorous task cleared a day, if you reach for it
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mars_square_saturn
+  transiting_planet: mars
+  target_planet: saturn
+  aspect: square
+  mode: friction
+  ideas:
+  - the grind you've deferred — one hard bounded hour a day until it's done
+  - the workout on a strict schedule, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mars_trine_saturn
+  transiting_planet: mars
+  target_planet: saturn
+  aspect: trine
+  mode: ease
+  ideas:
+  - a steady, repeatable discipline — same time each day, low drama
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mars_opposition_saturn
+  transiting_planet: mars
+  target_planet: saturn
+  aspect: opposition
+  mode: face
+  ideas:
+  - meet the wall head-on — the deadline or the authority you've been avoiding
+  - the boundary you've dodged, set once
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mars_conjunction_pluto
+  transiting_planet: mars
+  target_planet: pluto
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the deep purge — clear one buried thing a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - intensity mistaken for progress
+- id: mars_sextile_pluto
+  transiting_planet: mars
+  target_planet: pluto
+  aspect: sextile
+  mode: offer
+  ideas:
+  - one small act of letting-go a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - intensity mistaken for progress
+- id: mars_square_pluto
+  transiting_planet: mars
+  target_planet: pluto
+  aspect: square
+  mode: friction
+  ideas:
+  - the hard elimination — cut one thing loose a day, no negotiation
+  - the buried task dragged into daylight, an hour a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - intensity mistaken for progress
+- id: mars_trine_pluto
+  transiting_planet: mars
+  target_planet: pluto
+  aspect: trine
+  mode: ease
+  ideas:
+  - a deep, steady practice — the same descent each day, sustainably
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - intensity mistaken for progress
+- id: mars_opposition_pluto
+  transiting_planet: mars
+  target_planet: pluto
+  aspect: opposition
+  mode: face
+  ideas:
+  - the power struggle named and faced
+  - the thing you've been gripping, loosened once
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - intensity mistaken for progress
+- id: venus_conjunction_saturn
+  transiting_planet: venus
+  target_planet: saturn
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the commitment — one act of steady devotion a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: venus_sextile_saturn
+  transiting_planet: venus
+  target_planet: saturn
+  aspect: sextile
+  mode: offer
+  ideas:
+  - one small act of loyal care a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: venus_square_saturn
+  transiting_planet: venus
+  target_planet: saturn
+  aspect: square
+  mode: friction
+  ideas:
+  - the repair that takes discipline — show up for the hard relational work daily
+  - the pleasure earned by structure, not indulgence
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: venus_trine_saturn
+  transiting_planet: venus
+  target_planet: saturn
+  aspect: trine
+  mode: ease
+  ideas:
+  - a steady, low-key devotion — the same small care each day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: venus_opposition_saturn
+  transiting_planet: venus
+  target_planet: saturn
+  aspect: opposition
+  mode: face
+  ideas:
+  - the commitment conversation you've deferred
+  - say the loving hard thing to the person, once
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: venus_conjunction_jupiter
+  transiting_planet: venus
+  target_planet: jupiter
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the generosity — one open-handed gift a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: venus_sextile_jupiter
+  transiting_planet: venus
+  target_planet: jupiter
+  aspect: sextile
+  mode: offer
+  ideas:
+  - one small generous gesture a day
+  - invite one person in a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: venus_square_jupiter
+  transiting_planet: venus
+  target_planet: jupiter
+  aspect: square
+  mode: friction
+  ideas:
+  - give from surplus not vanity — one considered generosity a day
+  - one pleasure chosen well, not five grabbed
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: venus_trine_jupiter
+  transiting_planet: venus
+  target_planet: jupiter
+  aspect: trine
+  mode: ease
+  ideas:
+  - the abundant, easy warmth — a shared delight a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: venus_opposition_jupiter
+  transiting_planet: venus
+  target_planet: jupiter
+  aspect: opposition
+  mode: face
+  ideas:
+  - the big-hearted ask to one person this week
+  - give to someone's actual need, not your image of it
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: mercury_conjunction_saturn
+  transiting_planet: mercury
+  target_planet: saturn
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the disciplined writing — a fixed word-count a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mercury_sextile_saturn
+  transiting_planet: mercury
+  target_planet: saturn
+  aspect: sextile
+  mode: offer
+  ideas:
+  - one careful, exact message a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mercury_square_saturn
+  transiting_planet: mercury
+  target_planet: saturn
+  aspect: square
+  mode: friction
+  ideas:
+  - draft the hard exact thing daily, expecting it slow
+  - the admin backlog, one bounded session a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mercury_trine_saturn
+  transiting_planet: mercury
+  target_planet: saturn
+  aspect: trine
+  mode: ease
+  ideas:
+  - a steady practice — the same page each morning, no pressure
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mercury_opposition_saturn
+  transiting_planet: mercury
+  target_planet: saturn
+  aspect: opposition
+  mode: face
+  ideas:
+  - the hard exact conversation, prepared and written first
+  - check the work against the standard, once
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: mercury_conjunction_neptune
+  transiting_planet: mercury
+  target_planet: neptune
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the imaginative writing — a page of unedited flow a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the vague thing left vague
+- id: mercury_sextile_neptune
+  transiting_planet: mercury
+  target_planet: neptune
+  aspect: sextile
+  mode: offer
+  ideas:
+  - let one idea wander without deciding, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the vague thing left vague
+- id: mercury_square_neptune
+  transiting_planet: mercury
+  target_planet: neptune
+  aspect: square
+  mode: friction
+  ideas:
+  - pull one clear sentence from the fog a day
+  - translate the vague thing into one concrete step, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the vague thing left vague
+- id: mercury_trine_neptune
+  transiting_planet: mercury
+  target_planet: neptune
+  aspect: trine
+  mode: ease
+  ideas:
+  - the daily imaginative practice — morning pages, the dream journal
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the vague thing left vague
+- id: mercury_opposition_neptune
+  transiting_planet: mercury
+  target_planet: neptune
+  aspect: opposition
+  mode: face
+  ideas:
+  - name the thing you've been vague about, to one person
+  - the honest sentence where you've been telling yourself a story
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the vague thing left vague
+- id: sun_conjunction_saturn
+  transiting_planet: sun
+  target_planet: saturn
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the disciplined showing-up — the visible unglamorous work, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: sun_sextile_saturn
+  transiting_planet: sun
+  target_planet: saturn
+  aspect: sextile
+  mode: offer
+  ideas:
+  - show up for the thing without needing applause, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: sun_square_saturn
+  transiting_planet: sun
+  target_planet: saturn
+  aspect: square
+  mode: friction
+  ideas:
+  - do the hard visible thing you've been avoiding, daily
+  - hold the standard even when unseen, each day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: sun_trine_saturn
+  transiting_planet: sun
+  target_planet: saturn
+  aspect: trine
+  mode: ease
+  ideas:
+  - a steady daily anchor — the same central act, no drama
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: sun_opposition_saturn
+  transiting_planet: sun
+  target_planet: saturn
+  aspect: opposition
+  mode: face
+  ideas:
+  - the honest look at whether the work holds up
+  - the reckoning with what you're actually delivering
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: sun_conjunction_jupiter
+  transiting_planet: sun
+  target_planet: jupiter
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the bigger visible thing — one confident move a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: sun_sextile_jupiter
+  transiting_planet: sun
+  target_planet: jupiter
+  aspect: sextile
+  mode: offer
+  ideas:
+  - share one thing you're proud of a day
+  - back someone publicly, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: sun_square_jupiter
+  transiting_planet: sun
+  target_planet: jupiter
+  aspect: square
+  mode: friction
+  ideas:
+  - make one confident ask a day, the one you've been shrinking
+  - aim a notch past comfortable, and be seen doing it
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: sun_trine_jupiter
+  transiting_planet: sun
+  target_planet: jupiter
+  aspect: trine
+  mode: ease
+  ideas:
+  - create and share freely, daily — the warm abundant showing-up
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: sun_opposition_jupiter
+  transiting_planet: sun
+  target_planet: jupiter
+  aspect: opposition
+  mode: face
+  ideas:
+  - the big visible ask to one person this week
+  - step into the larger role and let it be seen
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - reach mistaken for follow-through
+- id: jupiter_conjunction_saturn
+  transiting_planet: jupiter
+  target_planet: saturn
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the structured expansion — one foundational piece of the big plan a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: jupiter_sextile_saturn
+  transiting_planet: jupiter
+  target_planet: saturn
+  aspect: sextile
+  mode: offer
+  ideas:
+  - widen the plan, then lay one brick, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: jupiter_square_saturn
+  transiting_planet: jupiter
+  target_planet: saturn
+  aspect: square
+  mode: friction
+  ideas:
+  - the unglamorous hour on the big thing, daily
+  - check the vision against the budget, once a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: jupiter_trine_saturn
+  transiting_planet: jupiter
+  target_planet: saturn
+  aspect: trine
+  mode: ease
+  ideas:
+  - the steady build — the big plan advanced a little each day, sustainably
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: jupiter_opposition_saturn
+  transiting_planet: jupiter
+  target_planet: saturn
+  aspect: opposition
+  mode: face
+  ideas:
+  - the plan meets the deadline — the honest reckoning of scope
+  - make the big commitment real with one structural promise
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - the discipline turned into self-punishment
+- id: jupiter_conjunction_uranus
+  transiting_planet: jupiter
+  target_planet: uranus
+  aspect: conjunction
+  mode: begin
+  ideas:
+  - start the bold experiment — try one new bigger thing a day
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - novelty for its own sake
+- id: jupiter_sextile_uranus
+  transiting_planet: jupiter
+  target_planet: uranus
+  aspect: sextile
+  mode: offer
+  ideas:
+  - let the odd bigger idea have a step, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - novelty for its own sake
+- id: jupiter_square_uranus
+  transiting_planet: jupiter
+  target_planet: uranus
+  aspect: square
+  mode: friction
+  ideas:
+  - alter one real thing on purpose a day
+  - the growth that breaks the old pattern, daily
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - novelty for its own sake
+- id: jupiter_trine_uranus
+  transiting_planet: jupiter
+  target_planet: uranus
+  aspect: trine
+  mode: ease
+  ideas:
+  - follow the new opening, daily — the exciting easy expansion
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - novelty for its own sake
+- id: jupiter_opposition_uranus
+  transiting_planet: jupiter
+  target_planet: uranus
+  aspect: opposition
+  mode: face
+  ideas:
+  - the leap you've been circling — the reckoning with the safe version
+  - name the bold change to someone who'll hold you to it
+  avoid:
+  - streak or challenge framing (day 3 of 7, don't break it)
+  - treating the window as a command from the sky
+  - novelty for its own sake

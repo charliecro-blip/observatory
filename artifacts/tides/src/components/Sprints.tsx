@@ -34,6 +34,8 @@ interface Span {
   active: boolean; clipped: boolean; theme: string;
   personal: { id: number; title: string } | null;
   habitMatch: { id: number; name: string; planet: string } | null;
+  /** Concrete things to run in this window, specific to the pairing. */
+  ideas?: string[];
 }
 interface GoalLite { id: number; title: string }
 interface HabitLite { id: number; name: string; status?: string }
@@ -363,11 +365,18 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
                 border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-foreground)",
               }}
             />
+            {/* When the window has its own ideas (Astrolyrica's pair table,
+                specific to this transiting planet × aspect × target), those
+                beat the generic six — "the grind you've deferred" is a
+                different offer from "no sugar". The generic list stays for a
+                self-chosen sprint and for pairs the table doesn't cover. */}
             <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>or borrow one:</span>
-              {TEMPLATES.map(t => (
+              <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>
+                {sheet.span?.ideas?.length ? "for this window:" : "or borrow one:"}
+              </span>
+              {(sheet.span?.ideas?.length ? sheet.span.ideas : TEMPLATES).map(t => (
                 <button key={t} onClick={() => { setTitle(t); setHabitId(""); }} style={{
-                  fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+                  fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer", textAlign: "left",
                   border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)",
                 }}>{t}</button>
               ))}

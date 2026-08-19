@@ -69,31 +69,41 @@ describe("transit spans", () => {
 
   it("reads the ASPECT, not just the planet pair", () => {
     // The defect this pins: themeFor() concatenated PUSH[transiting] +
-    // DOMAIN[target] and never looked at the aspect, so a trine and a
-    // square produced identical copy. Every theme must now open with the
-    // mode the aspect's own shape contributes.
-    const MODES = [
-      "a good stretch to begin something",
-      "an easy opening, if you want it",
-      "friction worth using",
-      "a stretch that should run smoothly",
-      "a stretch that asks for the other side of something",
-    ];
+    // DOMAIN[target] and never looked at the aspect, so a trine and a square
+    // produced identical copy.
+    //
+    // It deliberately does NOT pin particular wording. The theme prefers
+    // Astrolyrica's written register for the shape (knowledge/
+    // astrolyrica-sprints) and falls back to the composed mode line, so
+    // asserting a prefix would just break the next time the copy improves —
+    // which is exactly what happened when the tables landed. The invariant
+    // is the one that matters: same pair, different aspect, different words.
     expect(spans.length).toBeGreaterThan(0);
-    for (const s of spans) {
-      expect(MODES.some(m => s.theme.startsWith(m))).toBe(true);
-    }
-    // And two spans over the SAME pair with different aspects must differ.
-    const byPair = new Map<string, Set<string>>();
+    for (const s of spans) expect(s.theme.length).toBeGreaterThan(0);
+
+    const byPair = new Map<string, Map<string, string>>();
     for (const s of spans) {
       const pair = `${s.transitPlanet}-${s.targetPlanet}`;
-      if (!byPair.has(pair)) byPair.set(pair, new Set());
-      byPair.get(pair)!.add(`${s.aspect}|${s.theme}`);
+      if (!byPair.has(pair)) byPair.set(pair, new Map());
+      byPair.get(pair)!.set(s.aspect, s.theme);
     }
-    for (const [, variants] of byPair) {
-      const aspects = new Set([...variants].map(v => v.split("|")[0]));
-      const themes = new Set([...variants].map(v => v.split("|")[1]));
-      if (aspects.size > 1) expect(themes.size).toBeGreaterThan(1);
+    for (const [, byAspect] of byPair) {
+      if (byAspect.size > 1) {
+        expect(new Set(byAspect.values()).size).toBe(byAspect.size);
+      }
+    }
+  });
+
+  it("carries concrete, tally-able ideas for the windows the tables cover", () => {
+    // The pair table is high-signal pairings only, so not every span has
+    // ideas — but a span that has them must have usable ones, and they must
+    // never carry the framing the brief ruled out.
+    const withIdeas = spans.filter(s => (s.ideas?.length ?? 0) > 0);
+    for (const s of withIdeas) {
+      for (const idea of s.ideas) {
+        expect(idea.length).toBeGreaterThan(3);
+        expect(idea.toLowerCase()).not.toMatch(/day \d+ of \d+|don't break|streak/);
+      }
     }
   });
 
