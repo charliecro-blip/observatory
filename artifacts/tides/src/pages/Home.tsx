@@ -46,6 +46,7 @@ import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
+import MomentsAhead from "@/components/MomentsAhead";
 import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
 import AskDoors from "@/components/AskDoors";
@@ -349,7 +350,7 @@ export default function Home({
   });
   const { data: northStars } = useNorthStars(testerId);
   const { data: now } = useTidesNow(testerId, lat, lon);
-  const { locationKnown } = useTester();
+  const { locationKnown, profile } = useTester();
   // Same dial Today uses — one mental model for "how much is on screen",
   // shared across pages rather than a second Home-only preference.
   const { essential } = useUiDensity();
@@ -1250,6 +1251,27 @@ export default function Home({
               Above This week because the day you are standing in outranks
               the one ahead of it; renders nothing when the day is empty. */}
           <DayAhead testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
+
+          {/* MOMENTS AHEAD, under what's already placed. DayAhead answers
+              "what is on today"; this answers "what are the hours I have
+              left for", which nothing on Home could say — CompassNow names
+              one pick and the week strip is a horizon (audit §3).
+
+              Sky vocabulary end to end, so the quiet lens hides it outright.
+              There is nothing here to translate: the rows ARE the planetary
+              hours and the Moon's applying contacts. */}
+          {!skyQuiet && (
+            <MomentsAhead
+              now={now}
+              tasks={open.map(t => ({ id: t.id, title: t.title, planet: t.planet }))}
+              stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused")
+                .map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
+              chronotype={profile?.chronotype}
+              label="Moments ahead"
+              framed
+              onOpen={() => onNavigate("today")}
+            />
+          )}
 
           {/* THIS WEEK — what you have committed to, not what could be placed.
               Always rendered: an empty committed week is a real answer and the

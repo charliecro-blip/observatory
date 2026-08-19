@@ -11,7 +11,7 @@ import { invalidateWindows } from "@/lib/invalidateWindows";
 import { aiErrorMessage } from "@/lib/aiError";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import { pickNextMove } from "@/lib/next-move";
-import { suggestApproach, approachOptions } from "@/lib/approach";
+import { approachOptions } from "@/lib/approach";
 import { conditionalFits } from "@/lib/alternatives";
 import { currentlyInProgress, elapsedLabel } from "@/lib/in-progress";
 import { framingFor, modeFrom } from "@/lib/modes";
@@ -34,27 +34,10 @@ import { PremiumExploreModal } from "@/components/PremiumGate";
 import WovenReading from "@/components/WovenReading";
 import ReadZone from "@/components/ReadZone";
 import AskDoors from "@/components/AskDoors";
+import MomentsAhead from "@/components/MomentsAhead";
 import { PLANET_GLYPH as PLANET_ICONS, PLANET_GLYPH as BIGSKY_PLANET_GLYPH } from "@/lib/glyphs";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
-/**
- * What a Moon contact means for the hour it lands in, keyed off the aspect's
- * OWN nature rather than a hard/soft binary. The engine emits five natures and
- * they are not two groups: a conjunction intensifies whatever it touches, which
- * is neither support nor friction, and collapsing it into either would say
- * something false about half the aspects the Moon makes in a day.
- *
- * Deliberately not advice — these rows sit under "what to ride today" beside
- * tasks, and a line telling someone to avoid a square would contradict the
- * task listed on the very next row.
- */
-const LUNAR_MOMENT: Record<string, string> = {
-  supportive: "an easier stretch — use it on something real",
-  flowing: "things move without being pushed",
-  challenging: "friction, and it's workable",
-  polarizing: "two pulls at once — pick one",
-  intensifying: "whatever's already going gets louder",
-};
 
 
 const PLANET_SIGNIFICATION: Record<string, string> = {
@@ -1754,114 +1737,17 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                 onCheck={() => toggleTask.mutate({ id: t.id, done: true })}
               />
             ))}
-            {/* Moments ahead — the planetary hours coming up, matched to the
-                task or star that runs on that planet (owner 2026-07-23: "the
-                sun hour ahead could relate to a to do or task or goal"). Tasks
-                and stars carry an auto-diagnosed ruling planet; when an
-                upcoming hour's ruler matches, that hour IS the moment. */}
-            {(() => {
-              const openTasks = todayTasks.filter(t => t.done !== "true");
-              const AHEAD_ROWS = 4;
-              const upcoming = (now?.upcomingHours ?? []).slice(0, 8);
-              const at = (t: string) => {
-                const hhmm = String(t ?? "").match(/^(\d{1,2}):(\d{2})/);
-                const when = new Date();
-                if (hhmm) when.setHours(Number(hhmm[1]), Number(hhmm[2]), 0, 0);
-                return when;
-              };
-              // Hours that line up with something you actually hold come first.
-              const moments = upcoming.map((h: any) => {
-                const task = openTasks.find(t => t.planet === h.planet);
-                const star = (northStars ?? []).find((g: any) => g.planet === h.planet && g.status !== "done");
-                return { ...h, task, star };
-              }).filter((m: any) => m.task || m.star).slice(0, AHEAD_ROWS);
-              // Then fill the rest with what each remaining hour is FOR.
-              //
-              // The generic row used to be an all-or-nothing fallback — it fired
-              // only when nothing matched — so holding a single relevant task
-              // collapsed this list to one line. "I also wanted more waves":
-              // the hours were always there, the code just stopped naming them
-              // as soon as one of them had a task on it.
-              //
-              // Approach-aware, not PLANET_ACTIVITIES[planet][0]: that flat list
-              // had no sense of the hour, which is how "Mars hour — train hard"
-              // arrived at 21:20 against a stated 23:00 bedtime.
-              const used = new Set(moments.map((m: any) => m.time));
-              const generic = upcoming
-                .filter((h: any) => !used.has(h.time))
-                .map((h: any) => {
-                  const a = suggestApproach({
-                    planet: h.planet,
-                    at: at(h.time),
-                    wakeTime: testerProfile?.chronotype?.wakeTime,
-                    sleepTime: testerProfile?.chronotype?.sleepTime,
-                    voc: !!now?.voc?.isVOC,
-                    moonSign: now?.moonSign,
-                  });
-                  return a ? { ...h, generic: a.text } : null;
-                })
-                .filter(Boolean) as any[];
-              // The Moon's aspects are the other kind of moment ahead — and the
-              // stronger one. This list knew only about planetary hours, which
-              // is exactly backwards: the census put `planetary-time` at 99%
-              // frequency (so common it can never establish convergence on its
-              // own) while `lunar-contact` runs at 39% and IS an establishing
-              // family. The rarer, load-bearing testimony was the one missing
-              // from "what to ride today".
-              //
-              // Applying only, and only what perfects before the day is out: a
-              // separating aspect is a wave already passed, and putting it in a
-              // forward-looking list would be the same error as showing an hour
-              // that has ended.
-              const lunar = ((now?.moonAspects ?? []) as any[])
-                .filter((a: any) => a.applying && !a.stationsBeforeExact)
-                .filter((a: any) => typeof a.hoursToExact === "number" && a.hoursToExact > 0 && a.hoursToExact <= 12)
-                .map((a: any) => {
-                  const when = new Date(Date.now() + a.hoursToExact * 3600000);
-                  const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-                  return {
-                    time: `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`,
-                    lunar: { other, aspect: a.aspect, nature: a.nature },
-                    // A task or star on the aspected planet is what this wave
-                    // carries, matched the same way the hours are.
-                    task: openTasks.find(t => t.planet === other),
-                    star: (northStars ?? []).find((g: any) => g.planet === other && g.status !== "done"),
-                  };
-                })
-                .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
-                .slice(0, 2);   // two at most; this is a rail, not an ephemeris
-
-              // Lunar contacts lead. They are fewer, they are rarer, and unlike
-              // an hour they name a specific meeting between two bodies — so
-              // when the list has to be cut to AHEAD_ROWS, the hour is what
-              // should lose its place, not the aspect.
-              const rows = [...lunar, ...moments, ...generic]
-                .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
-                .slice(0, AHEAD_ROWS + lunar.length);
-              if (!rows.length) return null;
-              return (
-                <div style={{ padding: "8px 18px 4px", borderTop: "1px solid var(--color-border)" }}>
-                  <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 5 }}>
-                    {framing.aheadLabel}
-                  </div>
-                  {rows.map((m: any, i: number) => (
-                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
-                      <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
-                      <span style={{ color: "var(--color-foreground)" }}>
-                        {m.lunar
-                          ? <><span style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>
-                          : <>{m.planet} hour</>}
-                        {" — "}
-                        {m.task ? <>a window for “<b>{m.task.title}</b>”</>
-                          : m.star ? <>moves “<b>{m.star.title}</b>”</>
-                          : m.lunar ? <>{LUNAR_MOMENT[m.lunar.nature as string] ?? "the day turns here"}</>
-                          : <>{m.generic}</>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            {/* Moments ahead — extracted to components/MomentsAhead so Home
+                can render it too (audit 2026-08-19 §3). It was ~110 lines of
+                inline IIFE here, which is why none of its ordering reasoning
+                was testable where it sat. */}
+            <MomentsAhead
+              now={now}
+              tasks={todayTasks.filter(t => t.done !== "true").map(t => ({ id: t.id, title: t.title, planet: t.planet }))}
+              stars={(northStars ?? []).filter((g: any) => g.status !== "done").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
+              chronotype={testerProfile?.chronotype}
+              label={framing.aheadLabel}
+            />
             {/* Add task */}
             <div style={{ padding: "8px 18px", borderTop: "1px solid var(--color-border)" }}>
               {showAddTask ? (
