@@ -100,7 +100,7 @@ interface HelpBadgeProps {
 export const GLOSSARY = {
   planetaryHour: {
     title: "Planetary Hour",
-    body: "Each day is divided into 24 unequal hours, each ruled by one of the seven classical planets. The ruling planet colours the hour's quality — Sun hours favour visibility and leadership; Moon hours favour intuition and home; Mercury favours communication; Venus favours beauty and relationship; Mars favours action and assertion; Jupiter favours expansion; Saturn favours structure and consolidation.",
+    body: "Each day is divided into 24 unequal hours, each ruled by one of the seven classical planets. The ruling planet colors the hour's quality — Sun hours favor visibility and leadership; Moon hours favor intuition and home; Mercury favors communication; Venus favors beauty and relationship; Mars favors action and assertion; Jupiter favors expansion; Saturn favors structure and consolidation.",
   },
   voidOfCourse: {
     title: "Void of Course Moon",
@@ -132,7 +132,7 @@ export const GLOSSARY = {
   },
   malefic: {
     title: "Malefic Planets",
-    body: "Mars and Saturn are the traditional malefics — their influences tend toward challenge, friction, or restriction. This doesn't mean bad; Mars crossings can be excellent for decisive action, assertion, and physical work. Saturn crossings favour discipline and consolidation.",
+    body: "Mars and Saturn are the traditional malefics — their influences tend toward challenge, friction, or restriction. This doesn't mean bad; Mars crossings can be excellent for decisive action, assertion, and physical work. Saturn crossings favor discipline and consolidation.",
   },
   moonPhase: {
     title: "Lunar Phase",

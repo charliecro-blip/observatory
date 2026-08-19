@@ -45,6 +45,7 @@ import { ElectionPicker } from "@/components/ElectionPicker";
 import { useNorthStars, useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
+import TideStrip from "@/components/TideStrip";
 import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
 import AskDoors from "@/components/AskDoors";
@@ -972,6 +973,19 @@ export default function Home({
           } : undefined,
         }, seed) : undefined}
       />
+
+      {/* ══ THE DAY, IN ONE LINE ═══════════════════════════════════════════
+          Home had no tide surface at all (owner, 2026-08-19: "a smaller
+          version of the tides banner should be on the homepage"). It sits
+          under the answer rather than over it: this is the day's conditions,
+          and conditions read after the thing they qualify, which is the same
+          argument that moved Compass to the top of the page.
+
+          It renders at EVERY lens. At minimal it names the day by its date
+          and keeps the guidance with the sky words taken out, which is the
+          half of the hero that was always for everyone — the strip stands
+          down only when there is no reading to report. */}
+      <TideStrip now={now} minimal={skyQuiet} onOpen={() => onNavigate("today")} />
 
       {/* ── RIGHT NOW · conditional. Only when a real condition is gating.
           Stands down at the quiet lens: a void Moon is exactly the kind of

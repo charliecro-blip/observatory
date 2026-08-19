@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { fetchJson } from "@/lib/fetchJson";
 import { recordVisit } from "@/lib/visits";
 import { jsonArray } from "@/lib/jsonArray";
-import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, type Element, type TideCharacter } from "@/lib/elements";
+import { ELEMENT_COLORS, ELEMENT_SURFACE, ELEMENT_BG, CHARACTER_ELEMENT, CHARACTER_LABEL, CHARACTER_ESSENCE, tideGuidance, CONFIDENCE_NOTE, QUIET_DAY_GUIDANCE, plainGuidance, type Element, type TideCharacter } from "@/lib/elements";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { logEvent } from "@/lib/analytics";
 import { localToday, addDaysLocal, localDayRange } from "@/lib/dates";
@@ -1229,13 +1229,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
           // nothing is invented to replace them.
           const rawGuidance = isQuiet ? QUIET_DAY_GUIDANCE[character]
             : tide ? tideGuidance(character, tide.level, !!now?.voc?.isVOC) : heroText(now);
-          const guidanceText = astro.level === "minimal"
-            ? rawGuidance
-                .replace(/ — the sky's calm/g, "")
-                .replace(/; the sky isn't pushing/g, "")
-                .replace(/this tide favours/g, "the day favours")
-                .replace(/[^.]*\bMoon(?:'s)? void[^.]*\.\s*/g, "")
-            : rawGuidance;
+          const guidanceText = astro.level === "minimal" ? plainGuidance(rawGuidance) : rawGuidance;
           const confNote = isQuiet || astro.level === "minimal" ? "" : tide ? CONFIDENCE_NOTE[tide.confidence] : "";
 
 
@@ -1404,7 +1398,7 @@ export default function Today({ testerId, lat = 40.7, lon = -74.0, onNavigate, s
                       (§"What survives of the tide scalar": demote or remove the
                       public numeric). The scalar stays an internal input; the
                       surface says the band, which is all it can support. */}
-                  <div title="How charged this moment is — not how favourable. A charged hour can be a difficult one. Deliberately a band, not a percentage: the underlying number is mostly lunar illumination and cannot carry more precision than that."
+                  <div title="How charged this moment is — not how favorable. A charged hour can be a difficult one. Deliberately a band, not a percentage: the underlying number is mostly lunar illumination and cannot carry more precision than that."
                     style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
                     {tide?.band === "high" ? "strongly charged" : tide?.band === "low" ? "quietly charged" : "moderately charged"}

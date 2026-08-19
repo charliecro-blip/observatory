@@ -144,9 +144,12 @@ describe("claims match the evidence", () => {
   it("states charge as a band, never a percentage, and calls confidence agreement", () => {
     const today = read("artifacts/tides/src/pages/Today.tsx");
     expect(today).toMatch(/signal agreement/);
-    // Charge must read as activation, not favourability — the likeliest
-    // misreading.
-    expect(today).toMatch(/not how favourable/);
+    // Charge must read as activation, not favorability — the likeliest
+    // misreading. Spelling-agnostic on purpose: this pinned "favourable" and
+    // so failed the day the copy was corrected to the house's American
+    // spellings, which is a test asserting an orthography rather than the
+    // claim it was written to protect.
+    expect(today).toMatch(/not how favou?rable/);
     // And it must not be a percentage. "Energy 89%" drew exactly the right
     // question from the owner — how does that square with a 74% lit Moon? —
     // and the answer was that energy IS illumination plus up to 0.15 for

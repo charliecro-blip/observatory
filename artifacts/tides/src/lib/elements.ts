@@ -235,7 +235,7 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
       // charge and then redirecting it beats pretending the day is flat.
       return `Energy's high, but the Moon's void — spend it on what's already moving, not on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
     }
-    return `${pace} Lean into what this tide favours — ${verbs.slice(0, 3).join(", ")}.`;
+    return `${pace} Lean into what this tide favors — ${verbs.slice(0, 3).join(", ")}.`;
   }
   if (level === "ebb" || level === "low") {
     // On low/ebb, favor the receptive end of the character
@@ -248,7 +248,7 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
     return `${pace} ${gentle.charAt(0).toUpperCase() + gentle.slice(1)}.${voc ? " The Moon's void, which points the same way." : ""}`;
   }
   if (voc) {
-    return `${pace} With the Moon void, favour finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
+    return `${pace} With the Moon void, favor finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
   }
   return `${pace} Good for ${verbs.slice(0, 3).join(", ")}.`;
 }
@@ -287,4 +287,29 @@ export function moduleResonance(moduleId: string, currentElement: Element, empha
     return modEls.some(e => pEls.includes(e));
   }) ? 0.4 : 0;
   return elMatch + planetMatch;
+}
+
+/**
+ * The guidance line with the sky's vocabulary taken out of it.
+ *
+ * The guidance IS what the quiet lens's reader came for ("plain language,
+ * what to do and when"), so at `minimal` the sentence stays and only its tide
+ * words go. Nothing is invented to replace them — a shorter true sentence
+ * beats a padded one.
+ *
+ * This lived inline in Today's hero as a chain of four regexes over strings
+ * declared in THIS file, a hundred lines away. Editing a guidance string
+ * there would silently stop the strip from matching, and nothing would fail —
+ * the sky word would simply start appearing to the person who asked for none.
+ * One copy, next to the strings it edits.
+ */
+export function plainGuidance(raw: string): string {
+  return raw
+    .replace(/ — the sky's calm/g, "")
+    .replace(/; the sky isn't pushing/g, "")
+    .replace(/this tide favors/g, "the day favors")
+    // The whole sentence, not the phrase: half a sentence about a void Moon
+    // is worse than none.
+    .replace(/[^.]*\bMoon(?:'s)? void[^.]*\.\s*/g, "")
+    .trim();
 }
