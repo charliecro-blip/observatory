@@ -59,10 +59,53 @@ router.get("/transits/spans", async (req, res) => {
     starsByPlanet = new Map(goalRows
       .filter(g => g.status === "active" && g.planet)
       .map(g => [g.planet as string, { id: g.id, title: g.title }]));
+    // WHICH habit a planet reaches for (owner, 2026-08-19: "make sure it's
+    // not just the same habits"). This took the FIRST match and kept it
+    // forever, so one planet proposed one habit for the rest of time.
+    //
+    // Three rules, in order:
+    //   1. never a habit that already had a sprint in the last 30 days —
+    //      novelty is the whole reason the suggestion exists;
+    //   2. prefer one that is BEHIND its own cadence — a sprint is a push
+    //      for something slipping, not a victory lap for something already
+    //      kept every day;
+    //   3. rotate among what's left, keyed to the day, so two candidates
+    //      genuinely alternate instead of one winning permanently.
+    const weekAgo = new Date(Date.now() - 7 * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10);
+    const monthAgo = new Date(Date.now() - 30 * 86400000 - tzOffsetMin * 60000).toISOString().slice(0, 10);
+    const [logRows, recentSprints] = await Promise.all([
+      db.select().from(habitLogs).where(and(eq(habitLogs.testerId, testerId), gte(habitLogs.date, weekAgo))),
+      db.select().from(sprints).where(and(eq(sprints.testerId, testerId), gte(sprints.startDate, monthAgo))),
+    ]);
+    const sprintedRecently = new Set(recentSprints.map(r => r.habitId).filter(Boolean));
+    const keptThisWeek = new Map<number, number>();
+    for (const l of logRows) keptThisWeek.set(l.habitId, (keptThisWeek.get(l.habitId) ?? 0) + 1);
+    const weeklyTarget = (h: typeof habitRows[number]) =>
+      h.cadence === "daily" ? 7 : h.cadence === "most_days" ? 5
+      : h.cadence === "weekly" ? (h.targetPerWeek ?? 3) : 0;
+    // A stable day number, so the rotation changes daily but not per request.
+    const dayIdx = Math.floor((Date.now() - tzOffsetMin * 60000) / 86400000);
+
+    const byPlanet = new Map<string, typeof habitRows>();
     for (const h of habitRows) {
+      if (sprintedRecently.has(h.id)) continue;
       for (const p of String(h.favoredPlanets ?? "").split(",").map(x => x.trim()).filter(Boolean)) {
-        if (!habitsByPlanet.has(p)) habitsByPlanet.set(p, { id: h.id, name: h.name, planet: p });
+        const arr = byPlanet.get(p) ?? [];
+        arr.push(h);
+        byPlanet.set(p, arr);
       }
+    }
+    for (const [p, candidates] of byPlanet) {
+      const shortfall = (h: typeof habitRows[number]) => {
+        const target = weeklyTarget(h);
+        return target === 0 ? -1 : target - (keptThisWeek.get(h.id) ?? 0);
+      };
+      // Behind first (largest shortfall), then rotate within the tie.
+      const ranked = [...candidates].sort((a, b) => shortfall(b) - shortfall(a));
+      const topShortfall = shortfall(ranked[0]);
+      const tied = ranked.filter(h => shortfall(h) === topShortfall);
+      const pick = tied[dayIdx % tied.length];
+      habitsByPlanet.set(p, { id: pick.id, name: pick.name, planet: p });
     }
   } catch { /* inventory unread — spans stay global */ }
 

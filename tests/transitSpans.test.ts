@@ -67,6 +67,36 @@ describe("transit spans", () => {
     }
   });
 
+  it("reads the ASPECT, not just the planet pair", () => {
+    // The defect this pins: themeFor() concatenated PUSH[transiting] +
+    // DOMAIN[target] and never looked at the aspect, so a trine and a
+    // square produced identical copy. Every theme must now open with the
+    // mode the aspect's own shape contributes.
+    const MODES = [
+      "a good stretch to begin something",
+      "an easy opening, if you want it",
+      "friction worth using",
+      "a stretch that should run smoothly",
+      "a stretch that asks for the other side of something",
+    ];
+    expect(spans.length).toBeGreaterThan(0);
+    for (const s of spans) {
+      expect(MODES.some(m => s.theme.startsWith(m))).toBe(true);
+    }
+    // And two spans over the SAME pair with different aspects must differ.
+    const byPair = new Map<string, Set<string>>();
+    for (const s of spans) {
+      const pair = `${s.transitPlanet}-${s.targetPlanet}`;
+      if (!byPair.has(pair)) byPair.set(pair, new Set());
+      byPair.get(pair)!.add(`${s.aspect}|${s.theme}`);
+    }
+    for (const [, variants] of byPair) {
+      const aspects = new Set([...variants].map(v => v.split("|")[0]));
+      const themes = new Set([...variants].map(v => v.split("|")[1]));
+      if (aspects.size > 1) expect(themes.size).toBeGreaterThan(1);
+    }
+  });
+
   it("keys are stable identities: pair, aspect, peak date", () => {
     for (const s of spans) {
       expect(s.key).toBe(

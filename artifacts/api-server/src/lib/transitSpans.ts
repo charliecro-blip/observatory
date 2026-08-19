@@ -66,6 +66,28 @@ const PUSH: Record<string, string> = {
   Mars: "a training or courage push",
   Jupiter: "a widening push",
 };
+
+/**
+ * The ASPECT's own contribution — the mode of the push.
+ *
+ * Without this the theme was two independent lookups concatenated, so a
+ * trine and a square produced identical copy (owner, 2026-08-19, on a
+ * Venus–Saturn opposition: "make sure they're appropriate"). The shape of
+ * an aspect is most of what it means — an opposition to Saturn is a
+ * reckoning with what you have built, not a beauty push — so the mode
+ * leads the sentence and the domain follows it.
+ *
+ * Conditions vocabulary only: each of these describes the spell, never an
+ * outcome. The final wording is Astrolyrica's (see the brief in
+ * ASTROLYRICA-COPY-HANDOFF.md); these are the working drafts.
+ */
+const MODE: Record<string, string> = {
+  conjunction: "a good stretch to begin something",
+  sextile: "an easy opening, if you want it",
+  square: "friction worth using",
+  trine: "a stretch that should run smoothly",
+  opposition: "a stretch that asks for the other side of something",
+};
 const DOMAIN: Record<string, string> = {
   Sun: "visibility",
   Mercury: "words and errands",
@@ -78,10 +100,14 @@ const DOMAIN: Record<string, string> = {
   Pluto: "the deep drawer",
 };
 
-function themeFor(transitPlanet: string, targetPlanet: string): string {
+function themeFor(transitPlanet: string, aspect: string, targetPlanet: string): string {
+  const mode = MODE[aspect];
   const push = PUSH[transitPlanet] ?? "a short push";
   const domain = DOMAIN[targetPlanet];
-  return domain ? `${push}, with ${domain} in the air` : push;
+  // mode → push → domain, in that order: the shape of the aspect, the kind
+  // of effort it lends, and the territory it touches.
+  const tail = domain ? `${push}, with ${domain} in the air` : push;
+  return mode ? `${mode} — ${tail}` : tail;
 }
 
 /** The viewer's civil date for a day offset from the anchor. */
@@ -154,7 +180,7 @@ export function transitSpans(opts: { tzOffsetMin: number; now?: Date }): Transit
       days: length,
       active: startDate <= today && today <= endDate,
       clipped: startClipped || endClipped,
-      theme: themeFor(t, target),
+      theme: themeFor(t, aspect, target),
     });
   };
   for (let idx = 0; idx < days.length; idx++) {

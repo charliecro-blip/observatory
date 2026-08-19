@@ -47,6 +47,7 @@ import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import RhythmProgress from "@/components/RhythmProgress";
 import Sprints from "@/components/Sprints";
+import AskDoors from "@/components/AskDoors";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { touchLine, type TouchTrail } from "@/lib/touches";
@@ -1365,6 +1366,55 @@ export default function Home({
           the same 2px green rule, so the two cards read as one object seen
           twice rather than as two statements of the same fact. The edge is
           always drawn so that setting the link never shifts layout. */}
+      {/* ══ ASK · the chief function ══════════════════════════════════════
+          Three doors, closed (DESIGN-ASK-AND-HOME-2026-08-19). It takes the
+          slot the receipt used to hold because a receipt for an answer given
+          three hundred pixels above does not deserve the page's second most
+          valuable card — and because "what do I want to orient to?" is the
+          question people actually arrive holding.
+
+          It never answers "what should I do": CompassNow does that, above,
+          deterministically. Everything behind "This moment" reasons about
+          THAT pick rather than proposing a rival one. */}
+      {onAskAboutElection && (
+        <div style={{ ...PANEL, overflow: "hidden" }}>
+          <div style={{ height: 3, background: `linear-gradient(90deg, ${PERSONAL}, ${PERSONAL}66 55%, var(--color-border))` }} />
+          <SectionTitle>Ask</SectionTitle>
+          <div style={{ padding: "0 16px 14px" }}>
+            <AskDoors
+              layout="tiles"
+              stars={(northStars ?? [])
+                .filter((g: any) => g.status !== "done" && g.status !== "paused")
+                .slice(0, 4)
+                .map((g: any) => ({ id: g.id, title: g.title }))}
+              strongestFit={lines?.loop?.now
+                ? { title: lines.loop.now.title, why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why }
+                : null}
+              note="Compass answered above — this is for thinking it through."
+              onPick={(pick) => onAskAboutElection(
+                {
+                  activity: lead?.activityLabel ?? "",
+                  windows: lead ? [{
+                    label: lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`,
+                    tier: lead.supportLevel,
+                    why: lines?.loop?.now?.why,
+                  }] : [],
+                  subject: lines?.loop?.now ? {
+                    title: lines.loop.now.title,
+                    why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why,
+                    when: lines.loop.now.until ?? undefined,
+                    kind: "loop",
+                  } : undefined,
+                },
+                // Home has no text field, so a fragment would strand the
+                // reader mid-sentence: send the complete question instead.
+                pick.send,
+              )}
+            />
+          </div>
+        </div>
+      )}
+
       {showAnswerCard && <div data-tour="home-answer" style={{
         ...ANSWER, overflow: "hidden",
         borderLeft: `3px solid ${focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? CONVERGENT : "var(--color-border)"}`,
