@@ -8,7 +8,6 @@ import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { PLANET_GLYPH as GLYPH } from "@/lib/glyphs";
 import Glyph from "@/components/Glyph";
 import ChartWheel from "@/components/ChartWheel";
-import { PremiumGate } from "@/components/PremiumGate";
 import { ReferenceSection } from "@/components/ReferenceSection";
 import { ModulePulse, BigSky } from "@/components/SkyReadouts";
 import { ELEMENT_COLORS } from "@/lib/elements";
@@ -577,11 +576,13 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
 
         {mode === "planets" && <PlanetsView natal={natal} currents={currents} onReflect={onReflect} testerId={testerId} lat={lat} lon={lon} initialPlanet={refJump ?? initialPlanet} />}
         {mode === "houses" && <HousesView natal={natal} currents={currents} onReflect={onReflect} />}
-        {mode === "chart" && (
-          <PremiumGate feature="practitioner">
-            <ChartView testerId={testerId} />
-          </PremiumGate>
-        )}
+        {/* THE CHART IS NOT PAID. It sat behind PremiumGate under the old
+            line, where paid meant natal personalization — the axis the
+            pricing decision explicitly turned down (DECISION-PRICING-
+            2026-08-19). The engine treats chartless as first-class on
+            purpose, so the chart is "your chart can join the read", never
+            "upgrade to unlock the real astrology". */}
+        {mode === "chart" && <ChartView testerId={testerId} />}
 
         {/* THE SKY, READ RIGHT NOW — inherited from Today as it empties
             (2026-08-19). Both of these were gated behind the expanded density

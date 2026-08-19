@@ -4,7 +4,8 @@ import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { logEvent } from "@/lib/analytics";
-import { usePremium } from "@/contexts/premium-context";
+import { useEntitlements } from "@/contexts/entitlements-context";
+import { PREMIUM_FEATURES, FREE_KEEPS } from "@/lib/premium";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
@@ -992,29 +993,43 @@ function CycleSection({ testerId }: { testerId: string | null }) {
 
 // ---- Export section ----
 
-// ---- Premium preview toggle ----
-// No billing exists yet. This toggle lets you flip between the unlocked view
-// (what premium content looks like) and the locked view (the paywall/teaser
-// UX new users without premium would see) — remove once real entitlements exist.
+// ---- Your plan ----
+// This was a TOGGLE: a localStorage boolean letting you flip between the
+// "unlocked" and "locked" views. It described the old free/paid line — paid
+// meant Currents, personal advisories and Ask — which the pricing decision of
+// 2026-08-19 replaced, and it controlled a gate that is now server-side, so
+// flipping it would have changed nothing except what the page claimed.
+//
+// A switch that does nothing is worse than no switch, so this reports the
+// plan the SERVER says you are on, and the trial's real remaining days.
 
-function PremiumPreviewSection() {
-  const { unlocked, setUnlocked } = usePremium();
+function PlanSection() {
+  const { entitlement, loading } = useEntitlements();
+  const plan = entitlement?.plan;
+  const left = entitlement?.trialDaysLeft;
+  const label = loading || !plan ? "…"
+    : plan === "beta" ? "Beta · everything, at no charge"
+    : plan === "trial" ? `Trial · ${left} day${left === 1 ? "" : "s"} left`
+    : plan === "paid" ? "Full Compass"
+    : "Free";
   return (
-    <SectionCard title="Premium — try both sides" sub="No billing exists yet. Flip this to feel exactly what's free vs paid across the app.">
-      <Row label={unlocked ? "Premium: ON" : "Premium: OFF (free view)"} sub={unlocked ? "You're seeing everything a paying user would." : "You're seeing the free experience a new user gets."}>
-        <Toggle on={unlocked} onChange={setUnlocked} />
+    <SectionCard title="Your plan" sub="Nothing costs anything yet; everyone is on the beta plan while billing is built.">
+      <Row label={label} sub={plan === "free"
+        ? "Today's read, your planner, and every reason behind a suggestion, with shaping days and weeks on the paid half."
+        : "Every part of Compass, including shaping the week and finding long sessions."}>
+        <span />
       </Row>
       <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#6a8a5a", marginBottom: 5 }}>Free</div>
           <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
-            The daily tide & Big Sky · the calendar & forecast · scheduling tasks & habits yourself · the sky reference · Guiding Stars, tasks & habits as a plain planner
+            {FREE_KEEPS.join(" · ")}
           </div>
         </div>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Premium ✦</div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Paid ✦</div>
           <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
-            Currents (your long cycles) · personal advisories · smart scheduling (best times found for you) · Ask — the "what do I do now" advisor
+            {PREMIUM_FEATURES.map(f => f.title).join(" · ")}
           </div>
         </div>
       </div>
@@ -1878,7 +1893,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
         <EmailReportsSection testerId={testerId} />
 
         {/* Premium — near the top so it's easy to find and toggle */}
-        <PremiumPreviewSection />
+        <PlanSection />
 
         {/* Caution planets — the questionnaire lost its only door when Currents
             was retired; Tasks/Calendar/Aims still read cautionPlanets. */}

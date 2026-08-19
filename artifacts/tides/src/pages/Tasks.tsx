@@ -4,7 +4,6 @@ import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow, PlanningWindow } from "@/lib/types";
 import { useCurrents } from "@/hooks/useTides";
-import { usePremium } from "@/contexts/premium-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
@@ -83,7 +82,13 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   // "Guarding" — the same self-reported caution windows shown on Guiding
   // Stars/Currents, surfaced right where you're committing to something new.
-  const { unlocked: premiumUnlocked } = usePremium();
+  // CAUTION PERIODS ARE NOT PAID any more. They are natal-derived, and the
+  // pricing decision (2026-08-19) turned natal down as the paid axis — the
+  // engine treats chartless as first-class, so charging here would charge for
+  // the thing the architecture was built to make optional. Kept as a named
+  // constant rather than deleted at every use site, so what changed stays
+  // legible and the gate is one edit away if the line ever moves back.
+  const premiumUnlocked = true;
   const { prefs } = usePreferences();
   const { profile } = useTester();
   const { data: currentsData } = useCurrents(testerId, localStorage.getItem("obs_house_system") ?? "whole-sign");

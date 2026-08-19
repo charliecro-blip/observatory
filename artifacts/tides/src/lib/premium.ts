@@ -1,17 +1,18 @@
-// No billing infrastructure exists yet. This module defines what's gated and
-// why, so the paywall UI (PremiumGate, the explore modal, the Settings
-// preview toggle) has one source of truth to build against — swapping the
-// dev-override check in premium-context.tsx for a real entitlement check
-// later shouldn't require touching any of the UI built on top of this.
+/**
+ * WHAT PAID BUYS — the teaser copy, and only the teaser copy.
+ *
+ * The line itself lives on the server (api-server/src/lib/entitlements.ts)
+ * and is read through useEntitlements(). This file exists so the explore
+ * modal has words for it, and nothing here decides anything.
+ *
+ * IT DESCRIBED A DIFFERENT PRODUCT UNTIL 2026-08-19. The old list sold
+ * Currents, Caution Periods and The Chart — natal personalization, which the
+ * pricing decision turned down as the paid axis. Left alone it would have
+ * told a free user to upgrade for three things they already have, which is
+ * worse than saying nothing.
+ */
 
-// The free/paid line: FREE is a genuinely useful weather-app-plus-planner —
-// the universal tide (Now), the Ahead calendar with manual scheduling, the
-// Almanac reference, and Guiding Stars/tasks/habits usable as a plain planner
-// with no astrology required. PAID is when it becomes PERSONAL and INTELLIGENT:
-// your own chart's long cycles, your personal caution windows, and the app
-// finding the best *time* for what you're planning (the AI/tide timing layer,
-// which is also where the real per-user cost lives).
-export type PremiumFeature = "currents" | "scheduling" | "practitioner";
+export type PremiumFeature = "orchestration";
 
 export interface PremiumFeatureMeta {
   key: PremiumFeature;
@@ -20,29 +21,43 @@ export interface PremiumFeatureMeta {
   icon: string;
 }
 
+/** Named for what the person gets, in the order they would meet it. */
 export const PREMIUM_FEATURES: PremiumFeatureMeta[] = [
   {
-    key: "currents",
-    title: "Currents",
-    teaser: "Your profected year, active outer-planet chapters, and major transits — the long water beneath the daily tide.",
-    icon: "🌊",
+    key: "orchestration",
+    title: "Shape the week",
+    teaser: "Hand Compass a list and it finds windows across the week, working around your calendar and your waking hours.",
+    icon: "◷",
   },
   {
-    key: "currents",
-    title: "Caution Periods",
-    teaser: "Flag the planetary archetypes that hit you hardest, and get a gentle heads-up when the Sun or Moon lights one up.",
-    icon: "⚠",
+    key: "orchestration",
+    title: "Long sessions",
+    teaser: "Find where a week actually has hours free in a row.",
+    icon: "▭",
   },
   {
-    key: "practitioner",
-    title: "The Chart",
-    teaser: "The live astro clock: your natal wheel with today's transits overlaid, the full geometry, and AI transit readings that weigh each transit against your whole chart. For when you want the sky itself, not the weather.",
-    icon: "⊕",
+    key: "orchestration",
+    title: "What actually worked",
+    teaser: "Your own record of the kinds of day you get things done on, built from what you finished.",
+    icon: "◔",
   },
   {
-    key: "scheduling",
-    title: "Smart scheduling",
-    teaser: "Compass reads what a task or habit is really about and finds its best times this week — matched to the sky and to your own free hours. You can always still pick your own time for free.",
+    key: "orchestration",
+    title: "Timing, in Ask",
+    teaser: "Ask when something should happen, and across which days.",
     icon: "✦",
   },
+];
+
+/**
+ * What free keeps — stated because a page that only lists what you lack
+ * reads as a hostage note. Every one of these is deliberate: the day's read
+ * and its full evidence, the plain planner, and the star cap and cadence
+ * forgiveness that the pricing decision refused to make levers.
+ */
+export const FREE_KEEPS: string[] = [
+  "Today's read, and the reasons behind every suggestion",
+  "Your tasks, habits and Guiding Stars as a plain planner",
+  "The sky as it stands, and good times for one thing at a time",
+  "Everything you have written, and you can export it whenever you want",
 ];

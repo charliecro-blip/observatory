@@ -8,7 +8,7 @@ import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profil
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { setAstroDetail } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
-import { PremiumProvider } from "@/contexts/premium-context";
+import { EntitlementsProvider } from "@/contexts/entitlements-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
 import Rail, { MobileInstruments } from "@/components/Rail";
 import SpotlightTour from "@/components/SpotlightTour";
@@ -1539,11 +1539,11 @@ export default function App() {
       <ThemeProvider>
         <TesterProvider>
           <PreferencesProvider>
-            <PremiumProvider>
+            <EntitlementsProvider>
               <ErrorBoundary>
                 <Shell/>
               </ErrorBoundary>
-            </PremiumProvider>
+            </EntitlementsProvider>
           </PreferencesProvider>
         </TesterProvider>
       </ThemeProvider>

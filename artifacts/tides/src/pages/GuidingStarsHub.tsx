@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNorthStars, useCurrents } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS, type ElementMythos } from "@/lib/mythos";
 import { ActivityTimesHint } from "@/components/ActivityTimesHint";
-import { usePremium } from "@/contexts/premium-context";
 import { useTester } from "@/contexts/tester-context";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
@@ -101,7 +100,13 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
 }) {
   const qc = useQueryClient();
   const { data: stars, isLoading, isError: starsError } = useNorthStars(testerId);
-  const { unlocked: premiumUnlocked } = usePremium();
+  // CAUTION PERIODS ARE NOT PAID any more. They are natal-derived, and the
+  // pricing decision (2026-08-19) turned natal down as the paid axis — the
+  // engine treats chartless as first-class, so charging here would charge for
+  // the thing the architecture was built to make optional. Kept as a named
+  // constant rather than deleted at every use site, so what changed stays
+  // legible and the gate is one edit away if the line ever moves back.
+  const premiumUnlocked = true;
   const { profile } = useTester();
   const { data: currentsData } = useCurrents(testerId, houseSystemPref());
   const cautionPlanets = profile?.cautionPlanets;

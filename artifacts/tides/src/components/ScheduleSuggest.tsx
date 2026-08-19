@@ -3,7 +3,7 @@ import { localToday } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
-import { usePremium } from "@/contexts/premium-context";
+import { useEntitlements } from "@/contexts/entitlements-context";
 import { PremiumExploreModal } from "@/components/PremiumGate";
 import { isWithinFreeWindow, isAwakeDuring } from "@/lib/chronotype";
 import { ELEMENT_COLORS } from "@/lib/elements";
@@ -37,7 +37,12 @@ export function ScheduleSuggest({
 }) {
   const qc = useQueryClient();
   const { profile } = useTester();
-  const { unlocked } = usePremium();
+  // Finding a task's best times ACROSS THE WEEK is orchestration — the paid
+  // half of the line — while picking your own time by hand stays free, which
+  // is what the custom picker below is. Keyed on placement.calendar rather
+  // than on the old "scheduling" bundle, which also carried natal features
+  // the pricing decision un-gated.
+  const unlocked = useEntitlements().can("placement.calendar");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
   // Free users go straight to picking their own time (manual scheduling is
