@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { pickLead, bandOf, familyOf, type LeadTestimony, type DurationBand } from "@/lib/lead";
+import { useAstroDetail } from "@/contexts/preferences-context";
+import { literalOf, interpretationOf } from "@/lib/literalSky";
 
 /**
  * Zone 1 — READ. What kind of moment is this?
@@ -43,6 +45,16 @@ export default function ReadZone({ reading, testerId, accent }: {
   testerId: string | null;
   accent: string;
 }) {
+  // At `full` the reader has asked for the sky's own words; the composed
+  // sentence is a paraphrase of a fact they want to see (owner, 2026-08-20).
+  const literalFirst = useAstroDetail().level === "full";
+  // The lead is a LeadRow, which carries no facts — only the testimony it was
+  // chosen from does. They share a `source`, which is what that field is for.
+  const factsBySource = new Map((reading?.testimonies ?? []).map(t => [t.source, t]));
+  const literalForRow = (r: { source: string }) => {
+    const t = factsBySource.get(r.source);
+    return t ? literalOf(t) : null;
+  };
   const [showSlow, setShowSlow] = useState(false);
   const testimonies = reading?.testimonies ?? [];
   if (!testimonies.length) return null;
@@ -106,7 +118,12 @@ export default function ReadZone({ reading, testerId, accent }: {
           color: isLead ? "var(--color-foreground)" : "var(--color-muted)",
           fontWeight: isLead ? 600 : 400,
         }}>
-          {t.note}
+          {literalFirst && literalOf(t) ? (
+            <>
+              <span style={{ fontWeight: 600, color: "var(--color-foreground)" }}>{literalOf(t)}</span>
+              <span style={{ color: "var(--text-3)" }}>{" — "}{interpretationOf(t.note)}</span>
+            </>
+          ) : t.note}
         </span>
       </div>
     );
@@ -118,7 +135,12 @@ export default function ReadZone({ reading, testerId, accent }: {
       {result.state === "leads" && (
         <div style={{ fontSize: 12.5, color: "var(--text-1)", lineHeight: 1.55 }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.8px", marginRight: 6 }}>LED BY</span>
-          {result.lead.note}
+          {literalFirst && literalForRow(result.lead) ? (
+            <>
+              <span style={{ fontWeight: 700 }}>{literalForRow(result.lead)}</span>
+              <span style={{ color: "var(--color-muted)" }}>{" — "}{interpretationOf(result.lead.note)}</span>
+            </>
+          ) : result.lead.note}
           {result.support.length >= 2 && (
             <div style={{ fontSize: 11, color: "#4a7a52", marginTop: 4 }}>
               {/* Was "Stacked support". "Support" reads as endorsement — as
@@ -133,7 +155,13 @@ export default function ReadZone({ reading, testerId, accent }: {
       {result.state === "crosscurrents" && (
         <div style={{ fontSize: 12.5, color: "var(--text-1)", lineHeight: 1.55 }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: "#8a6a30", letterSpacing: "0.8px", marginRight: 6 }}>MIXED CURRENT</span>
-          Two things pull different ways — {result.a.note}; and {result.b.note}
+          {/* Same rule as the rows: at `full` the configuration leads and the
+              reading follows it, rather than the reading restating it. */}
+          Two things pull different ways — {literalFirst && literalForRow(result.a)
+            ? <><b>{literalForRow(result.a)}</b>{", "}{interpretationOf(result.a.note)}</>
+            : result.a.note}; and {literalFirst && literalForRow(result.b)
+            ? <><b>{literalForRow(result.b)}</b>{", "}{interpretationOf(result.b.note)}</>
+            : result.b.note}
         </div>
       )}
       {result.state === "quiet" && (
@@ -146,12 +174,16 @@ export default function ReadZone({ reading, testerId, accent }: {
       {/* The stack, sorted by duration — the rail's own logic. */}
       <div style={{ marginTop: 9 }}>
         {shown.map(r => <Row key={r.band} band={r.band} t={r.t} />)}
+        {/* A real hit area, not a full stop. Same reason as the module
+            chevrons — an expand nobody notices is an expand nobody uses. */}
         {slow.length > 0 && (
           <button onClick={() => setShowSlow(v => !v)} style={{
-            marginTop: 4, background: "none", border: "none", cursor: "pointer", padding: 0,
-            fontSize: 10, color: "var(--text-3)",
+            marginTop: 4, background: "none", border: "none", cursor: "pointer",
+            padding: "4px 8px 4px 0", fontSize: 12.5, color: "var(--text-2)",
+            display: "inline-flex", alignItems: "center", gap: 5,
           }}>
-            {showSlow ? "▴ fewer layers" : `▾ show ${slow.length} slower layer${slow.length === 1 ? "" : "s"}`}
+            <span style={{ fontSize: 14, lineHeight: 1 }}>{showSlow ? "▾" : "▸"}</span>
+            {showSlow ? "fewer layers" : `show ${slow.length} slower layer${slow.length === 1 ? "" : "s"}`}
           </button>
         )}
       </div>

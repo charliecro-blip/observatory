@@ -50,9 +50,16 @@ export function FoldToggle({ id, label }: { id: string; label: string }) {
       aria-expanded={!folded}
       aria-label={`${folded ? "Expand" : "Collapse"} ${label}`}
       title={folded ? `Expand ${label}` : `Collapse ${label}`}
+      // BIGGER, AND WITH SOMETHING TO HIT (owner, 2026-08-20: "these expand
+      // functions were not intuitive for me to see — I want bigger arrows").
+      // It was a 10px glyph with 2px of padding: a control the size of a
+      // full stop, on modules whose whole point is that they open.
       style={{
-        background: "none", border: "none", cursor: "pointer", padding: "0 2px",
-        color: "var(--text-3)", fontSize: 10, lineHeight: 1, flexShrink: 0,
+        background: "none", border: "none", cursor: "pointer",
+        padding: "2px 5px", margin: "0 1px 0 -3px", borderRadius: 5,
+        color: "var(--text-2)", fontSize: 14, lineHeight: 1, flexShrink: 0,
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        minWidth: 22, minHeight: 22,
       }}>{folded ? "▸" : "▾"}</button>
   );
 }

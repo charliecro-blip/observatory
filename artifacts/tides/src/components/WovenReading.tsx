@@ -115,35 +115,15 @@ export default function WovenReading({ reading, level, accent = "#5a6cae", saidA
         </div>
       )}
 
-      {/* Full: the reading's working — the ranked testimony table. */}
-      {full && reading.testimonies?.length > 0 && (
-        <div style={{ marginTop: 9 }}>
-          <button onClick={() => { if (!showWorking) logEvent("reading_working_opened"); setShowWorking(!showWorking); }} style={{
-            fontSize: 10, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0,
-            letterSpacing: "0.5px",
-          }}>
-            {showWorking ? "▾ the working" : "▸ the working — every voice, weighted"}
-          </button>
-          {showWorking && (
-            <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-              {reading.testimonies.map((t, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-                  <span style={{
-                    flexShrink: 0, fontVariantNumeric: "tabular-nums", fontWeight: 600,
-                    color: t.polarity > 0 ? "#4a7a52" : "#a04040", width: 38, textAlign: "right",
-                  }}>
-                    {t.polarity > 0 ? "+" : "−"}{Math.abs(t.score).toFixed(2)}
-                  </span>
-                  <span style={{ flexShrink: 0, color: "var(--text-3)", width: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t.source}
-                  </span>
-                  <span>{t.note}<span style={{ color: "var(--color-muted)" }}> · w {t.weight.toFixed(2)} · loud {t.salience.toFixed(2)}</span></span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* THE WORKING IS GONE (owner, 2026-08-20: "I don't think we need an
+          option to see all the math"). It listed every testimony with its
+          weight, loudness and signed contribution — the engine's arithmetic,
+          shown because it COULD be rather than because anyone reads a
+          fourteen-row table to decide what to do this afternoon.
+          What it existed to protect is still protected: at `full` every row
+          above now leads with the literal configuration and its orb, which is
+          the checkable fact. The score that ranked them was never the part a
+          person could check. */}
     </div>
   );
 }

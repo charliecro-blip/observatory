@@ -35,11 +35,28 @@ export interface LeadTestimony {
   salience: number;
   weight: number;
   polarity: 1 | -1;
+  /**
+   * The configuration itself, as data rather than as a sentence.
+   *
+   * The client only ever declared four of these fields, so the ones a LITERAL
+   * reading needs — which planets, which aspect, which sign — arrived on every
+   * response and were dropped by the type. The server has sent them all along
+   * (api-server/src/lib/synthesis.ts, TestimonyFacts).
+   */
   facts?: {
     kind?: string;
+    planet?: string;
+    partner?: string;
+    aspect?: string;
+    sign?: string;
     applying?: boolean;
     orbDeg?: number;
     durationDays?: number;
+    phaseName?: string;
+    waxing?: boolean;
+    dignity?: number;
+    isDay?: boolean;
+    verb?: string;
   };
 }
 
