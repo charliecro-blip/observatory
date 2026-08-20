@@ -9,6 +9,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PLANET_GLYPH } from "@/lib/glyphs";
+import { useCurrents } from "@/hooks/useTides";
+import { HOUSE_MEANINGS } from "@/lib/currents-content";
 
 /**
  * "What is this?" — the mechanism behind a phrase, on request.
@@ -54,6 +56,9 @@ interface Fix {
   };
 }
 
+/** "an 8th-house year" but "a 3rd-house year" — the article follows the
+ *  ordinal's SOUND, and this line printed "an" unconditionally. */
+const artFor = (n: number) => (n === 8 || n === 11 || n === 18) ? "an" : "a";
 const ord = (n: number) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) === n % 10 && n % 10 < 4 ? n % 10 : 0] ?? "th"}`;
 const fmtDate = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const fmtMonthYear = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
@@ -78,6 +83,13 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
   // Which slow transit has its meaning unfolded. Above the early returns for
   // the same reason as `open` — hooks precede every conditional return.
   const [openTransit, setOpenTransit] = useState<number | null>(null);
+  // THE LONG CYCLES, from the engine that outlived its page. /api/currents
+  // still computes profections, which slow planet sits in which natal house
+  // and when it leaves, the real aspects those planets are making, and the
+  // person's own caution planets — and since the Currents page was merged
+  // away in 2026-08 almost none of it has been rendered anywhere. The data
+  // never stopped being computed; it just stopped being shown.
+  const { data: currents } = useCurrents(testerId, "whole-sign");
 
   if (!testerId || !data) return null;
   if (!data.available) {
@@ -113,7 +125,7 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 6 }}>
         <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THIS YEAR</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
-          an {ord(fix.year.house)}-house year — <b>{fix.year.theme.split(" — ")[0]}</b>
+          {artFor(fix.year.house)} {ord(fix.year.house)}-house year — <b>{fix.year.theme.split(" — ")[0]}</b>
           <span style={{ color: "var(--color-muted)" }}> · {PLANET_GLYPH[fix.year.lord] ?? ""} {fix.year.lord} holds the year</span>
           {nextHit && (
             <span style={{ color: "#8a6a30" }}> · next power day {fmtDate(nextHit.date)} ({nextHit.label})</span>
@@ -122,9 +134,16 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
         </div>
       </div>
 
-      {/* THE CHAPTER */}
+      {/* THE ARC — Saturn's ~29-year lap.
+          It was labelled "THE CHAPTER", and a Guiding Star's anchor of kind
+          "chapter" means something else entirely: one outer planet crossing
+          one natal house ("rides Pluto through your 7th"). Two unrelated
+          ideas under one word on adjacent surfaces, which is why the owner
+          kept finding it confusing (2026-08-20). "Chapter" now belongs to
+          the house transit — the meaning already user-facing in two places —
+          and Saturn's lap is an arc, which is what it is. */}
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: fix.chapter.renovations.length ? 6 : 0 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THE CHAPTER</span>
+        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THE ARC</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           {fix.chapter.saturnStage}
           {fix.chapter.nextWaypoint && (
@@ -163,6 +182,79 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
                 paddingLeft: 9, borderLeft: "2px solid var(--color-border)",
               }}>{fix.chapter.renovations[openTransit].note}</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── THE CHAPTERS — which slow planet is crossing which of your houses,
+             and when it leaves. This is what a Guiding Star means when it says
+             it "rides Pluto through your 7th", and until now the only place
+             you could see the list was the anchor picker inside the star
+             creation form. The engine has computed it all along. */}
+      {(currents?.transitsByHouse?.length ?? 0) > 0 && (
+        <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CHAPTERS</span>
+          <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
+            {(currents!.transitsByHouse as any[]).map((t: any, i: number) => (
+              <div key={t.planet ?? i}>
+                {PLANET_GLYPH[t.planet] ?? ""} {t.planet} through your {ord(t.house)}
+                {HOUSE_MEANINGS[t.house] && (
+                  <span style={{ color: "var(--color-muted)" }}> — {HOUSE_MEANINGS[t.house].domains}</span>
+                )}
+                {t.leavesHouse && (
+                  <span style={{ color: "var(--text-3)" }}> · until {fmtMonthYear(String(t.leavesHouse).slice(0, 10))}</span>
+                )}
+                {t.retrograde && <span style={{ color: "var(--text-3)" }}> · retrograde</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── WHAT'S CLOSE — the actual aspects the slow planets are making, with
+             their orbs. "In progress" above names the renovation; this says how
+             close it is, which is the difference between a thing building and a
+             thing happening this week. An orb is a measurement, never a
+             forecast. */}
+      {(currents?.majorTransits?.length ?? 0) > 0 && (
+        <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CLOSE NOW</span>
+          <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
+            {(currents!.majorTransits as any[])
+              // IN PROGRESS above names the same renovations, from a second
+              // computation of the same sky. Repeating them here made one
+              // fact look like two — so this shows only what that row has
+              // not already said, and adds the orb, which is the thing it
+              // could not.
+              .filter((t: any) => !fix.chapter.renovations.some(r =>
+                r.line.includes(t.transitPlanet) && r.line.includes(t.natalPlanet)))
+              .slice(0, 4).map((t: any, i: number) => (
+              <div key={i}>
+                {PLANET_GLYPH[t.transitPlanet] ?? ""} {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
+                <span style={{ color: "var(--text-3)" }}>
+                  {t.exact ? " · exact now" : ` · ${t.orb}° off`}
+                  {t.natalHouse ? ` · ${ord(t.natalHouse)} house` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── YOUR OWN WEATHER. The planets this person said hit them hardest,
+             and when those planets are lit. It is the one part of this card
+             they wrote themselves, so it renders only once they have actually
+             answered — never as an empty prompt. */}
+      {(currents?.cautionWindows?.length ?? 0) > 0 && (
+        <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>WATCH</span>
+          <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
+            {(currents!.cautionWindows as any[]).slice(0, 3).map((w: any, i: number) => (
+              <div key={i}>
+                {PLANET_GLYPH[w.transitPlanet] ?? ""} {w.transitPlanet} {String(w.aspect ?? "").toLowerCase()} your {w.natalPlanet}
+                <span style={{ color: "var(--text-3)" }}> · you flagged this one</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
