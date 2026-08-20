@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 export const WINDOW_TYPES = [
   "deep_work", "planning", "creative", "admin", "social",
@@ -322,3 +322,31 @@ export type Habit = typeof habits.$inferSelect;
 export type HabitLog = typeof habitLogs.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type DaemonMemory = typeof daemonMemory.$inferSelect;
+
+/**
+ * WHAT A CALENDAR EVENT IS — told to Compass once, remembered after.
+ *
+ * The audit refuses to guess an event's kind: "Dinner w/ Sam" is not a first
+ * date until somebody says so, and guessing is how a Neptune trine once got
+ * offered as a window for a video about tastes and temperatures. So the
+ * person confirms, and this is where the confirmation lives.
+ *
+ * It has to be SERVER-side. A per-device answer would ask the same question
+ * again on the phone, and the whole point is that you say it once.
+ *
+ * Keyed on the provider's own event id. Recurring meetings keep one id across
+ * instances, which is exactly right — you tell Compass what the Tuesday
+ * stand-up is a single time.
+ */
+export const eventKinds = pgTable("event_kinds", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  /** Where the event came from — "gcal" today, room for more. */
+  source: text("source").notNull().default("gcal"),
+  eventId: text("event_id").notNull(),
+  /** An activity key from activityCorrespondences, or null for "not one of
+   *  those" — which is a real answer and must not read as unanswered. */
+  activityKey: text("activity_key"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index("ix_event_kind_lookup").on(t.testerId, t.source, t.eventId)]);

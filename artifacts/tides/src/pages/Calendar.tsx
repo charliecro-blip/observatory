@@ -12,6 +12,7 @@ import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
 import { QualityStrip } from "@/components/QualityStrip";
 import { Studio } from "@/components/Studio";
+import CalendarAudit from "@/components/CalendarAudit";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -1280,6 +1281,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
 }) {
   const [showStudio, setShowStudio] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
   const today = localToday();
   const todayYear  = parseInt(today.slice(0,4));
   const todayMonth = parseInt(today.slice(5,7))-1;
@@ -1497,6 +1499,13 @@ export default function Calendar({ testerId, now, lat, lon }: {
             Today's hero as it retires (2026-08-19). Calendar is where the
             day, the week and the lunation all already live, which is exactly
             the three things it publishes. */}
+        {/* READ THE WEEK — the audit is a thing you ASK for. It sits in the
+            toolbar rather than marking up the grid, because a mark on every
+            event is the unprompted-suggestion shape this app just spent a
+            day removing. */}
+        {!pageQuiet && (gcalData?.events?.length ?? 0) > 0 && (
+          <button onClick={()=>setShowAudit(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>◷ Read the week</button>
+        )}
         {!pageQuiet && now && (
           <button onClick={()=>setShowStudio(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>↗ Share</button>
         )}
@@ -1612,6 +1621,9 @@ export default function Calendar({ testerId, now, lat, lon }: {
       )}
 
       {showStudio && now && <Studio now={now} lat={lat} lon={lon} onClose={() => setShowStudio(false)} />}
+      {showAudit && (
+        <CalendarAudit testerId={testerId} events={gcalData?.events ?? []} onClose={() => setShowAudit(false)} />
+      )}
     </div>
   );
 }

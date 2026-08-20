@@ -36,6 +36,9 @@ import { Router, type IRouter } from "express";
 import { evaluateActivityInterval } from "../lib/electionEngine.js";
 import { matchActivity, ACTIVITIES } from "../lib/activityCorrespondences.js";
 import { requireTesterId } from "../middlewares/testerId.js";
+import { db } from "@workspace/db";
+import { eventKinds } from "@workspace/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -52,6 +55,7 @@ interface IncomingEvent {
 }
 
 router.post("/calendar/audit", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
   const events: IncomingEvent[] = Array.isArray(req.body?.events) ? req.body.events : [];
   if (!events.length) { res.json({ readings: [] }); return; }
   if (events.length > MAX_EVENTS) {
@@ -61,6 +65,16 @@ router.post("/calendar/audit", requireTesterId, async (req, res) => {
     return;
   }
 
+  // What this person has already told us these events are. Applied before
+  // anything is proposed, so a question is never asked twice.
+  const known = new Map<string, string | null>();
+  const ids = events.map(e => e.id).filter(Boolean);
+  if (ids.length) {
+    const rows = await db.select().from(eventKinds)
+      .where(and(eq(eventKinds.testerId, testerId), inArray(eventKinds.eventId, ids)));
+    for (const r of rows) known.set(r.eventId, r.activityKey);
+  }
+
   const readings = events.map((ev) => {
     const startAt = new Date(ev.start);
     const endAt = ev.end ? new Date(ev.end) : new Date(startAt.getTime() + 3600_000);
@@ -68,10 +82,17 @@ router.post("/calendar/audit", requireTesterId, async (req, res) => {
       return { id: ev.id, state: "unreadable" as const, reason: "the times on this event could not be read" };
     }
 
+    // The stored answer wins over anything the caller guessed at.
+    const stored = known.has(ev.id) ? known.get(ev.id) : undefined;
+    // Explicitly told "none of these" — a real answer, and not the same thing
+    // as never having been asked. It must not come back as a question.
+    if (stored === null) return { id: ev.id, state: "not-timeable" as const };
+    const activityKey = stored ?? ev.activityKey ?? null;
+
     // ── Confirmed: a real verdict, with the reasons that produced it.
-    if (ev.activityKey) {
-      const a = evaluateActivityInterval({ activityKey: ev.activityKey, startAt, endAt });
-      if (!a) return { id: ev.id, state: "unknown-activity" as const, activityKey: ev.activityKey };
+    if (activityKey) {
+      const a = evaluateActivityInterval({ activityKey, startAt, endAt });
+      if (!a) return { id: ev.id, state: "unknown-activity" as const, activityKey };
       // TWO AXES, and "nothing notable" is a real answer on both.
       //
       // `suitability` is clear | qualified | defer — whether anything argues
@@ -83,7 +104,7 @@ router.post("/calendar/audit", requireTesterId, async (req, res) => {
       return {
         id: ev.id,
         state: quiet ? ("quiet" as const) : ("assessed" as const),
-        activityKey: ev.activityKey,
+        activityKey,
         suitability: a.suitability,
         supportLevel: a.supportLevel,
         backgroundFit: a.backgroundFit,
@@ -104,6 +125,33 @@ router.post("/calendar/audit", requireTesterId, async (req, res) => {
   });
 
   res.json({ readings });
+});
+
+/**
+ * TELL COMPASS WHAT AN EVENT IS — or that it is not the kind of thing timing
+ * has anything to say about, which is what `activityKey: null` means here.
+ * Saying "none of these" has to be recordable, or the audit asks the same
+ * question about the same standing meeting every week.
+ */
+router.put("/calendar/audit/kind", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const { eventId, activityKey, source } = req.body ?? {};
+  if (typeof eventId !== "string" || !eventId) { res.status(400).json({ error: "eventId required" }); return; }
+  if (activityKey != null && !ACTIVITIES.some((a: any) => a.key === activityKey)) {
+    res.status(400).json({ error: "unknown_activity", activityKey });
+    return;
+  }
+  const src = typeof source === "string" && source ? source : "gcal";
+  const existing = (await db.select().from(eventKinds)
+    .where(and(eq(eventKinds.testerId, testerId), eq(eventKinds.source, src), eq(eventKinds.eventId, eventId)))
+    .limit(1))[0] ?? null;
+  if (existing) {
+    await db.update(eventKinds).set({ activityKey: activityKey ?? null, updatedAt: new Date() })
+      .where(eq(eventKinds.id, existing.id));
+  } else {
+    await db.insert(eventKinds).values({ testerId, source: src, eventId, activityKey: activityKey ?? null });
+  }
+  res.json({ ok: true, eventId, activityKey: activityKey ?? null });
 });
 
 /** The vocabulary a person picks from when they tell Compass what an event is. */
