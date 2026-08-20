@@ -1309,7 +1309,14 @@ describe("the guide", () => {
 
   it("leads with the loop, not with astrology", () => {
     // The first section a new user opens decides what they think the app is.
-    expect(guide.indexOf('key: "loop"')).toBeLessThan(guide.indexOf('key: "today"'));
+    //
+    // This compared the loop's position against `key: "today"` until that tab
+    // retired, at which point indexOf returned -1 and the assertion passed or
+    // failed for reasons unrelated to its claim. The claim is that the loop
+    // comes FIRST, so that is what it checks now — no anchor to go stale.
+    const keys = [...guide.matchAll(/key: "(\w+)"/g)].map((m) => m[1]);
+    expect(keys.length, "the guide has no sections").toBeGreaterThan(2);
+    expect(keys[0], "the guide no longer opens on the loop").toBe("loop");
     expect(guide).toMatch(/You don't need to know any astrology/);
   });
 

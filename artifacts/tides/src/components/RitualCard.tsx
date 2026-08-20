@@ -39,6 +39,7 @@ import { localToday, localDayRange, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useTester } from "@/contexts/tester-context";
 import { EveningHarvest, useMomentum } from "@/components/Momentum";
+import { useFold, FoldToggle } from "@/components/ModuleFold";
 
 /** Streak language, and the reason it stays gentle below three days: a
  *  cadence the person chose is not a streak they are failing. */
@@ -68,6 +69,10 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
   // The helm streak lived inside the star rows that merged into "Where you
   // are"; it belongs to the RITUAL rather than to the stars, so it stayed.
   const streak = useMomentum(testerId, lat, lon).data?.streak ?? 0;
+  // Only the EVENING branch folds. After the stars and habits merged into
+  // "Where you are", the morning card is a greeting bar with nothing beneath
+  // it, and a chevron that hides nothing is a control lying about having a job.
+  const folded = useFold().isFolded("ritual");
   const parseHour = (v: string | undefined, fallback: number) => {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(v ?? ""));
     if (!m) return fallback;
@@ -264,9 +269,13 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
   return (
     <div style={{ background: `linear-gradient(135deg, ${elColor}16, ${elColor}05)`, border: `1px solid ${elColor}30`, borderRadius: 14, padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 3 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>🌙 Log the day{firstName ? `, ${firstName}` : ""}</span>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+          <FoldToggle id="ritual" label="the evening check-in" />
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>🌙 Log the day{firstName ? `, ${firstName}` : ""}</span>
+        </span>
         <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>evening</span>
       </div>
+      {!folded && <>
 
       {/* Outside the didAnything branch, deliberately. BlockCheck is the ONLY
           way to mark a scheduled block complete, and it used to sit INSIDE it —
@@ -338,6 +347,7 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
       <div style={{ marginTop: 10 }}>
         <EveningReflection now={now} today={today} testerId={testerId} showJournal={showJournal} />
       </div>
+      </>}
     </div>
   );
 }

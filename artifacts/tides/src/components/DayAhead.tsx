@@ -18,6 +18,7 @@
 import { useTodayWindows } from "@/hooks/useTides";
 import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
+import { useFold, FoldToggle } from "@/components/ModuleFold";
 
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -76,6 +77,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
   if (!scheduled.length && !calendarUnreachable) return null;
 
   const nextIdx = scheduled.findIndex((w: any) => Date.parse(w.startTime) > nowMs);
+  const folded = useFold().isFolded("dayAhead");
 
   return (
     <div style={{
@@ -83,8 +85,17 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
       borderRadius: 12, padding: "12px 16px 13px",
     }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
-          Your day
+        <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+          <FoldToggle id="dayAhead" label="Your day" />
+          <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+            Your day
+          </span>
+          {/* Folded, the count is what the card was for. */}
+          {folded && (
+            <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+              {scheduled.length ? `${scheduled.length} on today` : "nothing on today"}
+            </span>
+          )}
         </span>
         {onNavigate && (
           <button onClick={() => onNavigate("calendar")} style={{
@@ -93,6 +104,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
           }}>Open Calendar →</button>
         )}
       </div>
+      {!folded && <>
 
       {scheduled.length > 0 && (
         <div style={{ marginTop: 7 }}>
@@ -146,6 +158,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
         </div>
       )}
 
+      </>}
     </div>
   );
 }

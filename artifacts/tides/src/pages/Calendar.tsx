@@ -11,8 +11,6 @@ import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
 import { QualityStrip } from "@/components/QualityStrip";
-import { UnifiedTideChart } from "@/components/TideWater";
-import LunarCycle from "@/components/LunarCycle";
 import { Studio } from "@/components/Studio";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
@@ -1505,18 +1503,15 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
 
-      {/* Where the month stands, above the day it contains. */}
-      {!pageQuiet && <LunarCycle now={now} />}
 
-      {/* TODAY'S OWN WATER — the day-scale chart, inherited from the Today
-          tab as it empties (2026-08-19). Calendar is time's whole home, and
-          this is the finest resolution it offers: the hours of one day, under
-          a sky gradient anchored to the real sunrise and sunset.
-
-          It sits ABOVE the 30-day strip so the two read as one zoom — this
-          day, then the month around it — rather than as two charts that
-          happen to share a page. */}
-      {!pageQuiet && now?.dayArc && <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />}
+      {/* THE DAY CHART AND THE CYCLE BAR LEFT (owner, 2026-08-20). Two
+          reasons, and the second is the one that mattered: he wants the tide
+          chart on Home, and on this page they were BREAKING it. The page root
+          is a flex column with overflow:hidden, so two fixed-height siblings
+          above a flex:1 grid squeeze the grid to nothing and there is no
+          scroll to recover it — "I can't scroll down into the day/week/month
+          view, the tide charts are taking up the full view". The same
+          overflow-hidden-versus-flex trap this repo has hit before. */}
 
       {/* The water ahead — the 30-day wave chart, inherited from the retired
           Almanac tab. Tap a bar to jump the calendar to that day. */}

@@ -47,6 +47,8 @@ import { QualityStrip } from "@/components/QualityStrip";
 import CroppingUp from "@/components/CroppingUp";
 import TideStrip from "@/components/TideStrip";
 import DayReading from "@/components/DayReading";
+import { UnifiedTideChart } from "@/components/TideWater";
+import LunarCycle from "@/components/LunarCycle";
 import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/elements";
 import MomentsAhead from "@/components/MomentsAhead";
 import DayConditions from "@/components/DayConditions";
@@ -664,6 +666,24 @@ export default function Home({
           half of the hero that was always for everyone — the strip stands
           down only when there is no reading to report. */}
       <TideStrip now={now} minimal={skyQuiet} />
+
+      {/* THE TIDE, ON REQUEST. It went to Calendar when Today retired and
+          came back here (owner, 2026-08-20) — where it also stops crushing
+          Calendar's grid, since that page is a flex column with no room for
+          a fixed-height chart above it.
+
+          Folded by default: it is the heaviest thing on the page and the
+          strip above already says what kind of day it is in one line. The
+          chart is for when you want the hours. */}
+      {!skyQuiet && now?.dayArc && (
+        <div style={{ ...PANEL, overflow: "hidden" }}>
+          <SectionTitle fold="tide" summary="the hours, and where the water runs high">The tide</SectionTitle>
+          <Fold id="tide">
+            <LunarCycle now={now} />
+            <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />
+          </Fold>
+        </div>
+      )}
 
       {/* THE READING UNDER THE LINE. The strip says what kind of day it is;
           this is the synthesis engine's evidence for saying so — the one

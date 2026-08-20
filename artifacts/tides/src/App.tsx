@@ -87,26 +87,6 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
   );
 }
 
-// Calendar's slim sub-tab bar — the course ahead (Calendar) and the wake
-// behind (Log) share time's home rather than holding top-level tabs.
-function SubTabbed({ tabs, children, initial }: { tabs: string[]; children: (active: string) => React.ReactNode; initial?: string }) {
-  const [active, setActive] = useState(initial && tabs.includes(initial) ? initial : tabs[0]);
-  return (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-      <div style={{ display:"flex", borderBottom:"1px solid var(--color-border)", background:"var(--color-rail)", flexShrink:0, padding:"0 20px" }}>
-        {tabs.map(t => (
-          <button key={t} onClick={() => setActive(t)} style={{
-            padding:"9px 16px", border:"none", background:"none", cursor:"pointer",
-            fontSize:12, fontWeight: active===t ? 600 : 400,
-            color: active===t ? "var(--color-primary)" : "var(--color-muted)",
-            borderBottom: active===t ? "2px solid var(--color-primary)" : "2px solid transparent", marginBottom:-1,
-          }}>{t}</button>
-        ))}
-      </div>
-      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>{children(active)}</div>
-    </div>
-  );
-}
 
 /**
  * Measured 2026-08-02: a single cold load fired **27 API requests across 20
@@ -172,7 +152,7 @@ const queryClient = new QueryClient({
   },
 });
 
-type View = "home"|"calendar"|"work"|"launch"|"planets"|"settings";
+type View = "home"|"calendar"|"work"|"launch"|"log"|"planets"|"settings";
 
 // Primary tabs = the loop (owner 2026-07-29: Compass is an enchanted
 // productivity app — the nav carries only the daily journey). Today is the
@@ -200,9 +180,10 @@ type View = "home"|"calendar"|"work"|"launch"|"planets"|"settings";
 // grown. Four tabs, and the loop is one of them fewer.
 const TOP_TABS: {id:View; label:string; zoom?:boolean}[] = [
   {id:"home",     label:"Home"},
-  {id:"launch",   label:"Plan"},
-  {id:"work",     label:"Stars"},
   {id:"calendar", label:"Calendar", zoom:true},
+  {id:"work",     label:"Stars"},
+  {id:"launch",   label:"Plan"},
+  {id:"log",      label:"Log"},
 ];
 
 // Structured election context handed from Auspice's picker into Ask. The
@@ -1184,7 +1165,6 @@ function Shell() {
   const [view, setView] = useState<View>("home");
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
-  const [calendarSeed, setCalendarSeed] = useState<string | null>(null);
   // Same idea one level down: which sub-tab of Stars to open on arrival.
   const [workSeedTab, setWorkSeedTab] = useState<WorkTab | null>(null);
   // The nav is just the loop — TOP_TABS carries all four core tabs, so the
@@ -1319,7 +1299,7 @@ function Shell() {
   }
 
   // Bottom-bar glyphs for the phone layout — the four loop tabs, thumb-reachable.
-  const TAB_GLYPHS: Record<string, string> = { today:"◉", calendar:"▦", work:"✦", launch:"▲" };
+  const TAB_GLYPHS: Record<string, string> = { calendar:"▦", work:"✦", launch:"▲", log:"❦" };
 
   return (
     <div style={{
@@ -1372,7 +1352,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => { if (t.id === "calendar") setCalendarSeed(null); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => setView(t.id)} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1488,14 +1468,13 @@ function Shell() {
         {/* "habits" is not a view — it is the Stars tab opened on its habits
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "log") { setCalendarSeed("Log"); setView("calendar"); } else if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
-        {view==="calendar" && (
-          <SubTabbed key={calendarSeed ?? "default"} tabs={["Calendar","Log"]} initial={calendarSeed ?? undefined}>
-            {(a) => a==="Log"
-              ? <Log testerId={testerId} onVisitPlanet={goToPlanet}/>
-              : <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
-          </SubTabbed>
-        )}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {/* THE LOG IS ITS OWN DESTINATION (owner, 2026-08-20). It was a
+            sub-tab of Calendar, which put the record of how things went
+            behind a page about where things go — two different questions,
+            and the second one hid the first. */}
+        {view==="log"      && <Log testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)} seedTab={workSeedTab} onSeedTabConsumed={()=>setWorkSeedTab(null)}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}

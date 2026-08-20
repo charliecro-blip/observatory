@@ -148,7 +148,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     // read, onto one built to be acted on — so it opens on request rather
     // than claiming the band above the day's work on a first visit. Everything
     // else starts open; a module nobody has met yet should not be hidden.
-    collapsedModules: ["reading"],
+    collapsedModules: ["reading", "tide"],
   },
   timing: {
     watchPlanets: [],
