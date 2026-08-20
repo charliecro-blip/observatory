@@ -75,8 +75,12 @@ const MAX_HABIT_ROWS = 5;      // ungrouped layout
 const MAX_ROWS_PER_STAR = 3;
 const MAX_ROWS_PER_STAR_MOBILE = 2;
 
-export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
+export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar }: {
   testerId: string | null; lat: number; lon: number; onNavigate: (v: string) => void;
+  /** Open one star's game plan, scrolled to and highlighted. It rode on the
+   *  morning card's star rows until those merged into this one (2026-08-19);
+   *  the affordance follows the stars rather than the card. */
+  onOpenStar?: (goalId: number) => void;
 }) {
   const qc = useQueryClient();
   const today = localToday();
@@ -244,7 +248,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
             const scheduled = s.scheduledCount ?? 0;
             return (
               <div key={s.id}>
-                <button onClick={() => onNavigate("work")} style={{
+                <button onClick={() => onOpenStar ? onOpenStar(s.id) : onNavigate("work")} style={{
                   display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
                   padding: 0, background: "none", border: "none", cursor: "pointer", marginBottom: 4,
                 }}>
@@ -363,7 +367,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate }: {
                     const done = g.completedCount ?? 0;
                     const scheduled = g.scheduledCount ?? 0;
                     return (
-                      <button key={g.id} onClick={() => onNavigate("work")} style={{
+                      <button key={g.id} onClick={() => onOpenStar ? onOpenStar(g.id) : onNavigate("work")} style={{
                         display: "flex", alignItems: "baseline", gap: 8, width: "100%", textAlign: "left",
                         padding: 0, background: "none", border: "none", cursor: "pointer",
                       }}>

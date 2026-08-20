@@ -88,12 +88,13 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
                   {s.nextMove ? `next: ${s.nextMove.title}` : s.openTasks > 0 ? `${s.openTasks} open tasks` : "break it into a first step →"}
                 </div>
               </div>
-              {s.bestWindowToday && (
-                <span style={{ fontSize: 9.5, color: c, fontWeight: 600, flexShrink: 0 }}
-                  title="Today's best stretch for this star's element, from the tide curve">
-                  ◷ {s.bestWindowToday.startClock}–{s.bestWindowToday.endClock}
-                </span>
-              )}
+              {/* THE ASSIGNED WINDOW IS GONE (owner, 2026-08-19). A row read
+                  "Courtship · 7 AM–9 AM" — a time this star's element happens
+                  to suit, printed beside an aim the app had never been told
+                  anything about, which reads as an instruction rather than an
+                  observation. The star and what is next on it stay; when to
+                  do it is the person's. `bestWindowToday` is still computed
+                  and still served, for the surfaces you ASK. */}
               <span style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>→</span>
             </button>
           );

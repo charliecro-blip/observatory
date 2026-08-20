@@ -81,11 +81,27 @@ export function tourRecord(testerId: string | null): TourRecord | null {
   }
 }
 
-/** Should the tour auto-run right now? Only for accounts with no verdict on
- *  the CURRENT version — completing or skipping v1 both count as a verdict. */
+/**
+ * Should the tour auto-run right now?
+ *
+ * ONLY FOR SOMEONE WHO HAS NEVER GIVEN A VERDICT. Completing it or skipping
+ * it both count, and they count FOREVER — not per version.
+ *
+ * This used to re-run whenever TOUR_VERSION changed, which meant the nav
+ * change of 2026-08-19 re-explained the app to someone who had been using it
+ * for weeks (owner, same day: "I pulled up compass again and got the intro
+ * again, even though I've already used it"). The version was doing two jobs
+ * and the second one was wrong: a layout that moved is not a reason to teach
+ * somebody their own app again. It still RECORDS which version they saw,
+ * which is the useful half.
+ *
+ * If a change ever genuinely warrants re-teaching, that is a deliberate act —
+ * Settings has "Replay the walkthrough" — and not a side effect of an
+ * unrelated commit bumping a constant.
+ */
 export function tourPending(testerId: string | null): boolean {
   const r = tourRecord(testerId);
-  return !r || (r.tourVersion !== TOUR_VERSION) || (!r.completedAt && !r.skippedAt);
+  return !r || (!r.completedAt && !r.skippedAt);
 }
 
 export function saveTourRecord(testerId: string | null, patch: Partial<TourRecord>): void {

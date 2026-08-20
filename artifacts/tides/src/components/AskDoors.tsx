@@ -82,9 +82,12 @@ export function buildDoors(
         pick: { send: `Compass is suggesting "${strongestFit.title}" right now, because: ${strongestFit.why ?? "(no reason given)"} Walk me through that reasoning — which factors actually drove it, how strong the case is, and what would have to be true for it to be the wrong call.` },
       }] : []),
       {
-        label: "What can't Compass see?",
-        sub: "The things that could outweigh the timing",
-        pick: { send: "What real-life considerations could outweigh Compass's current suggestion? Be specific about what the app cannot see — my energy, obligations, whether something is blocked, other people — and how each would change the read." },
+        label: "What should I weigh right now?",
+        sub: "The things timing can't account for",
+        // It asked what could "outweigh Compass's current suggestion" until
+        // Home stopped making one (2026-08-19). A question about a
+        // recommendation nobody asked for has nothing to refer to.
+        pick: { send: "Given the hour I'm in and what I'm holding, what should I actually weigh right now? Be specific about what the app cannot see — my energy, obligations, whether something is blocked, other people — and how each would change what's worth doing." },
       },
       {
         label: "Is this a moment to rest?",

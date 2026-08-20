@@ -47,6 +47,9 @@ export interface Task {
   bestWindowType?: string | null;
   startedAt?: string | null;
   sortOrder?: number;
+  /** The window this task was scheduled into, when it has been. The
+   *  authoritative direction — the task points at its window. */
+  planningWindowId?: number | null;
 }
 
 export interface LinesUpResult {
@@ -158,14 +161,6 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
     queryFn: () => fetchJson(`/api/planning/touches?tz=${new Date().getTimezoneOffset()}`, { headers }),
     enabled: !!testerId,
   });
-  const linesQ = useQuery<LinesUp>({
-    queryKey: ["lines-up", testerId, lat, lon, tz, zone, locationKnown],
-    queryFn: () => fetchJson<LinesUp>(
-      `/api/elections/lines-up?lat=${lat}&lon=${lon}&tz=${tz}&timeZone=${encodeURIComponent(zone)}&locationKnown=${locationKnown}`,
-      { headers }),
-    enabled: !!testerId,
-  });
-  const { data: lines, error: linesError, refetch: refetchLines, isFetching: linesFetching } = linesQ;
 
   /**
    * A PAUSED QUERY IS UNREACHABLE, NOT LOADING.
@@ -187,8 +182,6 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
    * that a pause DURING a background refresh, when we still hold good data,
    * does not throw away a perfectly valid reading.
    */
-  const linesUnreachable = linesQ.fetchStatus === "paused" && !lines;
-  const linesFailed = linesQ.isError || linesUnreachable;
 
   // WHICH read failed, and WHEN it failed — both from the server.
   //
@@ -196,12 +189,6 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
   // admissions, and the surface says different things for each. The timestamp
   // is the server's because a time the client makes up is not evidence: it
   // would say "didn't answer at 4:02 PM" about a moment nothing happened at.
-  const failure = (() => {
-    const body = linesError instanceof HttpError ? linesError.body as Record<string, unknown> : null;
-    const reason = typeof body?.reason === "string" ? body.reason : null;
-    const at = typeof body?.at === "string" ? body.at : null;
-    return { reason, at };
-  })();
   const { data: resolution } = useQuery<Resolution>({
     queryKey: ["needs-resolution", testerId],
     queryFn: () => fetchJson<Resolution>("/api/elections/needs-resolution", { headers }),
@@ -240,7 +227,6 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
       qc.invalidateQueries({ queryKey: ["needs-resolution"] });
       qc.invalidateQueries({ queryKey: ["shape-day"] });
       qc.invalidateQueries({ queryKey: ["shape-week"] });
-      qc.invalidateQueries({ queryKey: ["lines-up"] });
     },
   });
 
@@ -353,12 +339,17 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
   // Overdue and undated are separated because they are different problems: one
   // is a promise you broke, the other is a thought you had. Merging them into
   // "open tasks" is what makes a list feel like an accusation.
-  const scheduled = new Set((lines?.alreadyScheduled ?? []).map(n => Number(n.id.replace("task-", ""))));
+  // WHICH TASKS ARE ALREADY PLACED, read from the task's own link to its
+  // window rather than from the timing engine's answer.
+  //
+  // It came from lines-up until 2026-08-19, which meant the placed/loose
+  // split depended on an expensive sky read that Home no longer makes — and
+  // made an outage in the SKY move tasks between groups in the person's list,
+  // which is a fact about their calendar and nothing to do with the weather.
+  // `planningWindowId` is the authoritative direction and always was.
+  const scheduled = new Set(all.filter(t => t.planningWindowId != null).map(t => t.id));
   // Placed tasks leave the date groups: their time is set, so "overdue" and
-  // "no date" stop applying, and one labelled group carries the fact the rows
-  // used to repeat. `scheduled` comes from the lines-up read, so during an
-  // outage placed tasks fall back into the date groups — visible and honest,
-  // just unlabelled until the reading returns.
+  // "no date" stop applying, and one labelled group carries the fact.
   const loose = open.filter((t) => !scheduled.has(t.id));
   const placed = open.filter((t) => scheduled.has(t.id));
   const overdue = loose.filter((t) => t.dueDate && t.dueDate < today);
@@ -381,50 +372,17 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
   // review card on a day you have not started is a chore, not a reflection.
   const engagedToday = doneToday.length > 0 || all.some((t) => t.startedAt && t.startedAt.startsWith(today));
 
-  // THE JOIN. A timing result and a task row used to repeat each other word for
-  // word — the hero said "a time for deep focus on board exam prep" and the
-  // list below said it again. Repetition does not communicate connection; it
-  // just makes the page feel sparse. The result stays the answer, and the task
-  // row carries a small indicator pointing back at it.
-  const timingFor = new Map<number, LinesUpResult>();
-  for (const r of lines?.results ?? []) {
-    const id = Number(r.held.id.replace("task-", ""));
-    if (!Number.isNaN(id)) timingFor.set(id, r);
-  }
+  // WHAT THE TIMING ENGINE USED TO PUT HERE IS GONE (owner, 2026-08-19: "it
+  // shouldn't auto-suggest possibilities of what to do, unprompted... let
+  // people ask/input context, rather than being told what to do").
+  //
+  // timingFor, heldBack, lead, secondary and showAnswerCard all existed to
+  // feed two cards that told you what to do before you asked. What survives
+  // is what asks YOU for something: a task with no duration or no kind of
+  // work cannot be timed even when you do ask for it, and saying so is a
+  // request for input rather than an instruction.
   const needsDuration = new Set((resolution?.needsDuration ?? []).map(n => Number(n.id.replace("task-", ""))));
-  // The engine looked and declined, with a reason. Carried per item so the row
-  // can say so instead of showing the blank line that used to mean both
-  // "declined" and "never considered".
-  const heldBack = new Map((lines?.heldBack ?? []).map(h => [Number(h.item.id.replace("task-", "")), h.reason]));
   const needsActivity = new Set((resolution?.needsActivity ?? []).map(n => Number(n.id.replace("task-", ""))));
-
-  const lead = lines?.results?.[0];
-  /**
-   * ONE VOICE PER FACT (HOME study 2026-08-15, D1 / A1).
-   *
-   * When the answer card's lead is the same item CompassNow is already
-   * showing, this page used to say "what now" twice — from two engines, in
-   * two tenses, with two CTAs — and the day the study was written the two
-   * disagreed on screen: "until 2:04 PM · Start this" above "IN 1 HOUR ·
-   * 2:04–3:06 PM · Put on today". Both engines were right; the page was
-   * wrong to let them both speak as heroes.
-   *
-   * So when they name the same item, the hero up top keeps the voice and
-   * this card becomes what its own header always promised: the receipt.
-   * Judgment badges, the window as a line of evidence rather than a
-   * headline, testimony, alternatives. When they name DIFFERENT items (or
-   * there is no loop), nothing is duplicated and the full hero renders as
-   * before.
-   */
-  const leadIsLoopNow = !!lead && lines?.loop?.now?.heldId === lead.held.id;
-  const secondary = (lines?.results ?? []).slice(1);
-  // At the quiet lens the answer card renders only when what it has to say is
-  // a productivity fact — an outage, a load in flight, a cold start, a fully
-  // placed day. The receipt (badges, testimony, windows) and the sky's
-  // quiet-day sentence stand down; CompassNow above already holds the answer.
-  const showAnswerCard = !skyQuiet
-    || linesFailed || !lines
-    || lines.quiet === "all-placed" || lines.quiet === "thin-inventory";
 
 
   // ── THE DAILY LOOP'S OWN DATA ────────────────────────────────────────────
@@ -445,11 +403,8 @@ export function useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shape
   });
   const { data: ritualWeek } = useTidesWeek(2, lat, lon, 0, ritual);
 
-  /** Drop the cached reading and ask again — what the retry button does. */
-  const refreshLines = () => { qc.removeQueries({ queryKey: ["lines-up"] }); void refetchLines(); };
 
   return {
     ritualTasks, ritualWindows, ritualWeek,
-    refreshLines, qc, today, headers, tasks, tasksFailed, northStars, cycle, habitsForRisk, now, tz, zone, touchData, lines, linesError, refetchLines, linesFetching, linesUnreachable, linesFailed, failure, resolution, setDuration, setActivity, shaped, shaping, committed, sundayToday, reviewForced, rareData, rareShowing, water, logWin, addTask, toggleTask, reorder, moveWithin, all, open, doneToday, scheduled, loose, placed, overdue, dueToday, later, undated, soleGroup, engagedToday, timingFor, needsDuration, heldBack, needsActivity, lead, leadIsLoopNow, secondary, showAnswerCard,
-  };
+    qc, today, headers, tasks, tasksFailed, northStars, cycle, habitsForRisk, now, tz, zone, touchData, resolution, setDuration, setActivity, shaped, shaping, committed, sundayToday, reviewForced, rareData, rareShowing, water, logWin, addTask, toggleTask, reorder, moveWithin, all, open, doneToday, scheduled, loose, placed, overdue, dueToday, later, undated, soleGroup, engagedToday, needsDuration, needsActivity, };
 }

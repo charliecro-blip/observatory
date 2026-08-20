@@ -4,8 +4,8 @@
  * Lifted out of Today's "Waves" card (audit 2026-08-19 §3). Waves was two
  * cards under one header: a list of today's unscheduled tasks, which Home
  * already draws grouped by date, and THIS — the part no surface on Home could
- * answer. `DayAhead` shows what has been placed and `CompassNow` shows one
- * pick; neither shows the shape of the hours still to come.
+ * answer. `DayAhead` shows what has been placed; nothing shows the shape of
+ * the hours still to come.
  *
  * It was ~110 lines of inline IIFE inside a 3181-line page, which is also why
  * none of its reasoning was testable where it sat.
@@ -41,15 +41,38 @@ import { suggestApproach } from "@/lib/approach";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { useFold, FoldToggle } from "@/components/ModuleFold";
 
-/** Never advice — these sit beside tasks, and a line telling someone to avoid
- *  a square would contradict the task listed on the very next row. */
-const LUNAR_MOMENT: Record<string, string> = {
-  supportive: "an easier stretch — use it on something real",
-  flowing: "things move without being pushed",
-  challenging: "friction, and it's workable",
-  polarizing: "two pulls at once — pick one",
-  intensifying: "whatever's already going gets louder",
+/**
+ * WHAT THE OTHER PLANET IS ABOUT — its own territory, and nothing about
+ * whether the meeting is easy.
+ *
+ * This was a table keyed on the aspect's NATURE: sextile and trine both read
+ * "supportive", so a Moon-sextile-Pluto row printed "an easier stretch — use
+ * it on something real". The owner's objection (2026-08-19) is the correct
+ * one: a sextile to PLUTO is not an easy stretch. Pluto is intensity and what
+ * is underneath, and the aspect's geometry does not soften the planet it
+ * touches. Valence read off geometry alone, applied to any planet, produces a
+ * confident sentence about the wrong thing.
+ *
+ * So the row names the territory and stops. The aspect is already on screen;
+ * what it FEELS like is the person's to judge.
+ */
+const PLANET_NOTE: Record<string, string> = {
+  Sun: "vitality, and being seen",
+  Moon: "care, rest, the body",
+  Mercury: "words, errands, thinking",
+  Venus: "connection, beauty, ease",
+  Mars: "effort, heat, assertion",
+  Jupiter: "scope, generosity, the wider view",
+  Saturn: "limits, structure, the long haul",
+  Uranus: "disruption, and what won't sit still",
+  Neptune: "fog, dreams, things without edges",
+  Pluto: "intensity, and what's underneath",
 };
+
+// A planet with nothing written for it gets NO clause. "a meeting worth
+// noticing" was there so the sentence had an ending, which is filler dressed
+// as an observation — the row already names the aspect, and that is the fact.
+const planetNote = (p: string): string | null => PLANET_NOTE[p] ?? null;
 
 export interface MomentHolder { id: number; title: string; planet?: string | null }
 
@@ -78,15 +101,17 @@ export default function MomentsAhead({
     return when;
   };
 
-  const moments = upcoming.map((h: any) => ({
-    ...h,
-    task: tasks.find(t => t.planet === h.planet),
-    star: stars.find(g => g.planet === h.planet),
-  })).filter((m: any) => m.task || m.star).slice(0, maxRows);
-
-  const used = new Set(moments.map((m: any) => m.time));
+  // NO TASK OR STAR MATCHING. Rows used to pair an hour with whatever the
+  // person held whose auto-diagnosed planet happened to match, and print it
+  // as "a window for X". The planet match is a weak signal presented as a
+  // strong claim, and it produced exactly the nonsense the owner caught
+  // (2026-08-19): a Moon-trine-NEPTUNE row offered as a window for a video
+  // about tastes and temperatures. Neptune is diffuse and dreamlike and had
+  // nothing to do with it; the two shared a lookup table, not a meaning.
+  //
+  // What each hour is FOR is a real thing to say. What YOU should put in it
+  // is not something to be told unprompted.
   const generic = upcoming
-    .filter((h: any) => !used.has(h.time))
     .map((h: any) => {
       const a = suggestApproach({
         planet: h.planet,
@@ -109,14 +134,12 @@ export default function MomentsAhead({
       return {
         time: `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`,
         lunar: { other, aspect: a.aspect, nature: a.nature },
-        task: tasks.find(t => t.planet === other),
-        star: stars.find(g => g.planet === other),
       };
     })
     .sort((a, b) => String(a.time).localeCompare(String(b.time)))
     .slice(0, 2);   // two at most; this is a rail, not an ephemeris
 
-  const rows = [...lunar, ...moments, ...generic]
+  const rows = [...lunar, ...generic]
     .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
     .slice(0, maxRows + lunar.length);
 
@@ -149,11 +172,10 @@ export default function MomentsAhead({
             {m.lunar
               ? <><span style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>
               : <>{m.planet} hour</>}
-            {" — "}
-            {m.task ? <>a window for “<b>{m.task.title}</b>”</>
-              : m.star ? <>moves “<b>{m.star.title}</b>”</>
-              : m.lunar ? <>{LUNAR_MOMENT[m.lunar.nature as string] ?? "the day turns here"}</>
-              : <>{m.generic}</>}
+            {(() => {
+              const note = m.lunar ? planetNote(m.lunar.other) : m.generic;
+              return note ? <>{" — "}{note}</> : null;
+            })()}
           </span>
         </div>
       ))}

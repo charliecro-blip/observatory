@@ -66,7 +66,6 @@ import { ReviewCard } from "@/components/Momentum";
 import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonCheckIn";
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
-import CompassNow from "@/components/CompassNow";
 import { useUiDensity, useAstroDetail, usePreferences } from "@/contexts/preferences-context";
 import { useHomeData, type Task, type LinesUpResult } from "@/hooks/useHomeData";
 import RitualCard from "@/components/RitualCard";
@@ -393,13 +392,12 @@ export default function Home({
   // derived state, and the pile is what needed a name.
   const {
     today, headers, tasks, tasksFailed, northStars, cycle, habitsForRisk, now, tz,
-    touchData, lines, refetchLines, linesFetching, linesFailed, failure,
+    touchData,
     resolution, setDuration, setActivity, shaped, shaping, committed,
     sundayToday, reviewForced, rareShowing, water,
     logWin, addTask, toggleTask, reorder, moveWithin,
     all, open, doneToday, scheduled, loose, placed, overdue, dueToday, later, undated,
-    soleGroup, engagedToday, timingFor, needsDuration, heldBack, needsActivity,
-    lead, leadIsLoopNow, secondary, showAnswerCard, refreshLines, linesUnreachable,
+    soleGroup, engagedToday, needsDuration, needsActivity,
     ritualTasks, ritualWindows, ritualWeek,
   } = useHomeData({ testerId, lat, lon, skyQuiet, locationKnown, shapeOpen, waterOpen, ritualMode });
   // Same dial Today uses — one mental model for "how much is on screen",
@@ -426,8 +424,6 @@ export default function Home({
   const linkRow = (id: number) => { setFocusedTask(id); setEvidenceOpen(true); };
 
   const Row = ({ t, muted, move }: { t: Task; muted?: boolean; move?: { up?: () => void; down?: () => void } }) => {
-    const timing = timingFor.get(t.id);
-    const isHero = lead ? Number(lead.held.id.replace("task-", "")) === t.id : false;
     const focused = focusedTask === t.id;
     return (
       <div
@@ -477,50 +473,18 @@ export default function Home({
         {/* Scheduled tasks say nothing per-row: they live under a group whose
             label carries the fact once (HOME study D4 — ten rows each saying
             "already scheduled" was the list narrating its own furniture). */}
-        {/* At the quiet lens the timing/held-back/outage lines fold away with
-            the rest of the sky; the two needs-input lines stay, because a
-            duration and a kind of work feed the plain weave too. */}
-        {t.done !== "true" && !scheduled.has(t.id) && (skyQuiet
-          ? (needsDuration.has(t.id) || needsActivity.has(t.id))
-          : (timing || heldBack.has(t.id) || needsDuration.has(t.id) || needsActivity.has(t.id) || linesFailed)) && (
+        {/* WHAT THE ROW STILL SAYS, and what it stopped saying.
+            Gone: the assigned window, the held-back reason, and the "no
+            reading today" line — all three told you what to do with a task
+            before you asked (owner, 2026-08-19). What is left asks YOU for
+            something: a task with no duration or no kind of work cannot be
+            timed even when you do ask, and saying so is a request for input
+            rather than an instruction. */}
+        {t.done !== "true" && !scheduled.has(t.id)
+          && (needsDuration.has(t.id) || needsActivity.has(t.id)) && (
           <div style={{ fontSize: 10.5, marginLeft: 24, marginTop: 1, color: "var(--color-muted)" }}>
-            {!skyQuiet && linesFailed ? (
-              /* WITHHELD, not blank. "No particular timing today" says Compass
-                 looked and found nothing; this says it never looked. Rendering
-                 an outage as the former is the false statement the whole state
-                 exists to prevent. Italic is used nowhere else in the app, so
-                 the difference is visible without reading the words. */
-              <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>
-                not judged — no reading for today
-              </span>
-            ) : !skyQuiet && timing ? (
-              /* The verdict is the OTHER end of the cross-highlight: clicking it
-                 opens the hero's evidence and marks this row, so the two stop
-                 being separate statements of one fact. */
-              <button
-                onClick={() => { if (isHero) (focused ? clearLink() : linkRow(t.id)); }}
-                style={{
-                  background: "none", border: "none", padding: 0, textAlign: "left",
-                  font: "inherit", cursor: isHero ? "pointer" : "default",
-                  color: timing.supportLevel === "convergent" ? CONVERGENT : "var(--color-muted)",
-                }}>
-                {timing.supportLevel === "convergent" && "✦ "}
-                {timing.activityLabel}
-                <span style={{ color: "var(--color-muted)" }}>
-                  {" · "}
-                  {timing.allDay ? "supported all day"
-                    : timing.state === "open-now" ? `open now, until ${timing.endClock}`
-                    : timing.state === "passed" ? `${timing.startClock}–${timing.endClock}, passed`
-                    : `${timing.startClock}–${timing.endClock}`}
-                </span>
-              </button>
-            ) : !skyQuiet && heldBack.has(t.id) ? (
-              /* A refusal that carries its reason. Amber rather than faint,
-                 because this is a judgment Compass made and stands behind —
-                 "no window today" is an answer, not an absence of one. */
-              <span style={{ color: QUALIFIED }}>held back — {heldBack.get(t.id)}</span>
-            ) : needsActivity.has(t.id) ? (
-              <span style={{ color: QUALIFIED }}>needs a kind of work before it can be timed</span>
+            {needsActivity.has(t.id) ? (
+              <span style={{ color: QUALIFIED }}>needs to know what kind of task this is before it can be timed</span>
             ) : (
               <span style={{ color: QUALIFIED }}>needs a rough duration before it can be placed</span>
             )}
@@ -680,50 +644,13 @@ export default function Home({
           windows={ritualWindows}
           testerId={testerId}
           displayName={profile?.displayName}
-          onOpenStar={onOpenStar}
           lat={lat} lon={lon}
           showJournal={showJournal}
         />
       )}
 
-      <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} />
+      <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} onOpenStar={onOpenStar} />
 
-      {/* ══ COMPASS · the answer, first ═══════════════════════════════════
-          "What should I do right now" is the app's central question, and it
-          was arriving fifth — inside a card, under a section title and a
-          badge row. It leads now, above the reading it came from and above
-          the conditions that qualify it: a qualification read before the
-          thing it qualifies is backwards.
-
-          Renders nothing when there is nothing to loop over; Home's
-          cold-start doors and its all-placed state each say that better,
-          with the right offer attached. */}
-      <CompassNow
-        loop={lines?.loop}
-        onOpenWork={(heldId) => {
-          const id = Number(heldId.replace("task-", ""));
-          if (!Number.isNaN(id)) linkRow(id);
-        }}
-        // The advisor is handed the same facts the card shows, so it reasons
-        // from the engine's answer rather than re-deriving one of its own.
-        // `subject` pins WHICH pick the question is about: the loop's, not
-        // whatever Today's own engine would name — the seed question and the
-        // context must never disagree about their subject.
-        onAsk={onAskAboutElection && lead ? (seed) => onAskAboutElection({
-          activity: lead.activityLabel,
-          windows: [{
-            label: lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`,
-            tier: lead.supportLevel,
-            why: lines?.loop?.now?.why,
-          }],
-          subject: lines?.loop?.now ? {
-            title: lines.loop.now.title,
-            why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why,
-            when: lines.loop.now.until ?? undefined,
-            kind: "loop",
-          } : undefined,
-        }, seed) : undefined}
-      />
 
       {/* ══ THE DAY, IN ONE LINE ═══════════════════════════════════════════
           Home had no tide surface at all (owner, 2026-08-19: "a smaller
@@ -745,7 +672,7 @@ export default function Home({
           acted on. */}
       {!skyQuiet && now?.reading && (
         <div style={{ ...PANEL, overflow: "hidden" }}>
-          <SectionTitle fold="reading" summary="the day, read whole">The reading</SectionTitle>
+          <SectionTitle fold="reading" summary="what the sky is doing today">The reading</SectionTitle>
           <Fold id="reading">
             <div style={{ padding: "0 16px 14px" }}>
               <DayReading
@@ -854,15 +781,10 @@ export default function Home({
             summary={open.length ? `${open.length} open` : "nothing on the list"}
             note={open.length ? `${open.length} open` : undefined}
             action={
-              /* Said ONCE, at the top, rather than repeated down every row. The
-                 person's work is unaffected by a failed sky read and must not
-                 look broken — but "Shape today" would be an offer Compass
-                 cannot currently honour, so it stands down. */
-              linesFailed ? (
-                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                  Timing is unavailable. Your list is fine.
-                </span>
-              ) : (
+              /* The outage line that used to sit here is gone with the sky
+                 read it reported on. Shaping the day is something you ask
+                 for, and the request answers for itself when it fails. */
+              (
                 <button onClick={() => setShapeOpen(v => !v)} style={{
                   fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
                   color: "var(--color-primary)",
@@ -1033,8 +955,8 @@ export default function Home({
 
           {/* MOMENTS AHEAD, under what's already placed. DayAhead answers
               "what is on today"; this answers "what are the hours I have
-              left for", which nothing on Home could say — CompassNow names
-              one pick and the week strip is a horizon (audit §3).
+              left for", which nothing else on Home says — the week strip is
+              a horizon, and nothing names a pick any more (2026-08-19).
 
               Sky vocabulary end to end, so the quiet lens hides it outright.
               There is nothing here to translate: the rows ARE the planetary
@@ -1114,9 +1036,10 @@ export default function Home({
           valuable card — and because "what do I want to orient to?" is the
           question people actually arrive holding.
 
-          It never answers "what should I do": CompassNow does that, above,
-          deterministically. Everything behind "This moment" reasons about
-          THAT pick rather than proposing a rival one. */}
+          ASK IS WHERE A RECOMMENDATION LIVES NOW. Home stopped naming one
+          unprompted on 2026-08-19, so there is no pick above for these doors
+          to reason about — which means "This moment" asks a question rather
+          than explaining an answer nobody requested. */}
       {onAskAboutElection && (
         <div style={{ ...PANEL, overflow: "hidden" }}>
           <div style={{ height: 3, background: `linear-gradient(90deg, ${PERSONAL}, ${PERSONAL}66 55%, var(--color-border))` }} />
@@ -1128,25 +1051,9 @@ export default function Home({
                 .filter((g: any) => g.status !== "done" && g.status !== "paused")
                 .slice(0, 4)
                 .map((g: any) => ({ id: g.id, title: g.title }))}
-              strongestFit={lines?.loop?.now
-                ? { title: lines.loop.now.title, why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why }
-                : null}
-              note="Compass answered above — this is for thinking it through."
+              strongestFit={null}
               onPick={(pick) => onAskAboutElection(
-                {
-                  activity: lead?.activityLabel ?? "",
-                  windows: lead ? [{
-                    label: lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`,
-                    tier: lead.supportLevel,
-                    why: lines?.loop?.now?.why,
-                  }] : [],
-                  subject: lines?.loop?.now ? {
-                    title: lines.loop.now.title,
-                    why: skyQuiet && lines.loop.now.whyPlain ? lines.loop.now.whyPlain : lines.loop.now.why,
-                    when: lines.loop.now.until ?? undefined,
-                    kind: "loop",
-                  } : undefined,
-                },
+                { activity: "", windows: [] },
                 // Home has no text field, so a fragment would strand the
                 // reader mid-sentence: send the complete question instead.
                 pick.send,
@@ -1155,485 +1062,6 @@ export default function Home({
           </div></Fold>
         </div>
       )}
-
-      {showAnswerCard && <div data-tour="home-answer" style={{
-        ...ANSWER, overflow: "hidden",
-        borderLeft: `3px solid ${focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? CONVERGENT : "var(--color-border)"}`,
-        transition: "border-color 140ms ease",
-      }}>
-        {/* A 3px seam across the top of the only elevated surface on the page.
-            The one piece of pure decoration here, and it earns its place by
-            marking which card is the answer without another border or label.
-            ACTIVE STATE ONLY. The seam is built from the convergence green, and
-            green is never decorative here — drawing it above a cold start, a
-            quiet day or an outage would dress up a card that has nothing to
-            report, which is how an empty state starts lying. */}
-        {lead && (
-          <div style={{
-            height: 3,
-            background: `linear-gradient(90deg, ${CONVERGENT}, ${CONVERGENT}66 55%, var(--color-border))`,
-          }}/>
-        )}
-        <SectionTitle
-          action={
-            linesFailed ? (
-              /* Amber, not green: this is a needs-input state, and it belongs
-                 in the header rather than inside the empty slot so that the
-                 module is identifiable as unread before you read a word of it. */
-              // The existing Badge, in the needs-input colour. Reusing it beats
-              // fresh hexes: Badge already builds its fill as an alpha suffix
-              // on the same ink, so the chip survives dark mode, and an amber
-              // pill already means "needs input" everywhere else on the page.
-              <Badge text="no reading" color={QUALIFIED} />
-            ) : focusedTask != null && lead && focusedTask === Number(lead.held.id.replace("task-", "")) ? (
-              /* The link ends by hand. Since nothing expires it, there must be
-                 a visible way out — and naming the state ("Linked to your
-                 work") is what tells someone the green edge below is a
-                 relationship rather than a status. */
-              <button onClick={clearLink} style={{
-                fontSize: 10.5, background: "none", border: "none", padding: 0,
-                cursor: "pointer", color: CONVERGENT,
-              }}>
-                Linked to your work <span style={{ color: "var(--text-3)" }}>✕</span>
-              </button>
-            ) : (
-              <details style={{ display: "inline" }}>
-                <summary style={{ fontSize: 11, color: "var(--color-primary)", cursor: "pointer", listStyle: "none" }}>
-                  Find another activity
-                </summary>
-              </details>
-            )
-          }
-          fold="linesUp"
-          summary={lead ? `${lead.activityLabel} · ${lead.allDay ? "all day" : `${lead.startClock}–${lead.endClock}`}`
-            : linesFailed ? "no reading" : "nothing lines up"}
-        >{leadIsLoopNow ? "Why this lines up" : "What lines up"}</SectionTitle>
-        <Fold id="linesUp">
-
-        {lead ? (
-          <div style={{ padding: "2px 20px 18px" }}>
-            {/* The loop moved OUT of this card and up to CompassNow — one
-                copy, at the top, where the question is actually asked. What
-                stays here is what someone comes to this card for: the
-                badges, the evidence, the alternatives, the horizon. */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              <Badge
-                text={lead.supportLevel === "convergent" ? "Several things line up" : "Supported"}
-                color={lead.supportLevel === "convergent" ? CONVERGENT : NEUTRAL}
-              />
-              {/* Suitability shown BESIDE support, not folded into it — they
-                  answer different questions: the sky, and the matter. A clear
-                  matter gets no chip: unqualified is the default state, and a
-                  badge announcing normality is noise. An unknown value renders
-                  as itself rather than vanishing. */}
-              {lead.suitability !== "clear" && (
-                <Badge
-                  text={lead.suitability === "qualified" ? "Useful, with a catch" : lead.suitability}
-                  color={QUALIFIED}
-                />
-              )}
-              {lead.personal && <Badge text="Your chart agrees" color={PERSONAL} />}
-            </div>
-
-            {/* The item's name and its moment render only when CompassNow is
-                NOT already saying them three hundred pixels up (D1). In the
-                merged state the receipt still names the window — but as a
-                line among the facts, where a receipt keeps its dates. */}
-            {leadIsLoopNow && (
-              <div style={{ fontSize: 13, color: "var(--color-foreground)", lineHeight: 1.5 }}>
-                {lead.activityLabel}
-                <span style={{ color: "var(--color-muted)" }}>
-                  {" · "}
-                  {lead.allDay ? "supported all day"
-                    : lead.state === "open-now" ? `open now, until ${lead.endClock}`
-                    : lead.state === "passed" ? `${lead.startClock}–${lead.endClock}, passed`
-                    : `window ${lead.startClock}–${lead.endClock}`}
-                </span>
-              </div>
-            )}
-            {!leadIsLoopNow && <div
-              onClick={() => { const id = Number(lead.held.id.replace("task-", "")); if (!Number.isNaN(id)) (focusedTask === id ? clearLink() : linkRow(id)); }}
-              title="Show this in your work"
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 29, fontWeight: 400, lineHeight: 1.18, letterSpacing: "0.01em",
-                color: "var(--color-foreground)", cursor: "pointer",
-                // Shorthand WITH the colour in it, not the longhand pair.
-                //
-                // The earlier note here claimed longhand had fixed React's
-                // "don't mix shorthand and non-shorthand" warning. It had not:
-                // the warning still fired ~10 times on every cold load, because
-                // React reuses this DOM node across renders in which the same
-                // position is styled with the `textDecoration` shorthand, and
-                // the collision is between renders rather than within one style
-                // object. `textDecoration: "underline <color>"` carries the
-                // colour itself, so no longhand exists to collide with — and
-                // these were the only two longhand uses in the app.
-                // (`textUnderlineOffset` is not part of the shorthand and is
-                // safe to keep alongside it.)
-                textDecoration: focusedTask === Number(lead.held.id.replace("task-", ""))
-                  ? "underline var(--color-border)" : "none",
-                textUnderlineOffset: 5,
-              }}>
-              {lead.held.title}
-            </div>}
-            {!leadIsLoopNow && (() => {
-              const m = momentBlock(lead);
-              const passed = lead.state === "passed";
-              return (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{
-                    fontSize: 10, fontWeight: 500, letterSpacing: "0.1em",
-                    color: passed ? "var(--text-3)" : "var(--color-muted)",
-                  }}>{m.label}</div>
-                  <div style={{
-                    fontFamily: "var(--font-display)", fontSize: 32, lineHeight: 1.15,
-                    whiteSpace: "nowrap", marginTop: 2,
-                    color: passed ? "var(--text-3)" : "var(--color-foreground)",
-                  }}>{m.clock}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 3 }}>{m.meta}</div>
-                  {m.elapsed != null && (
-                    <div style={{
-                      height: 3, borderRadius: 2, marginTop: 9, maxWidth: 320,
-                      background: "var(--color-border)", overflow: "hidden",
-                    }}>
-                      <div style={{ height: "100%", width: `${m.elapsed * 100}%`, background: CONVERGENT }}/>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* The receipt, behind a disclosure. An astro-literate reader must
-                be able to inspect it; nobody should have to read it first. */}
-            {/* One testimony per line, in an inset panel. The engine computes
-                them separately and used to join them into a single blur; three
-                facts a reader can weigh is a different thing from one sentence
-                they can only accept. */}
-            {evidenceOpen && (lead.evidence?.length ?? 0) > 0 && (
-              <div style={{
-                background: "var(--color-card-2)", border: "1px solid var(--color-border)",
-                borderRadius: 8, padding: "15px 17px", marginTop: 11, maxWidth: 720,
-                display: "flex", flexDirection: "column", gap: 12,
-              }}>
-                {/* Two columns: the KIND of claim, then the claim. Knowing you
-                    are about to read a lunar testimony rather than a personal
-                    one changes how it lands, and the family was already known
-                    at the point each testimony was computed — the join was the
-                    only thing throwing it away. The label set is deliberately
-                    NOT an enum here: a family this view has never heard of
-                    renders as itself rather than vanishing. */}
-                {lead.evidence.map((e, i) => (
-                  <div key={i} style={{
-                    display: "flex", gap: 12,
-                    borderTop: i === 0 ? "none" : "1px solid var(--color-border)",
-                    paddingTop: i === 0 ? 0 : 12,
-                  }}>
-                    <div style={{
-                      width: 78, flexShrink: 0, paddingTop: 3,
-                      fontSize: 9.5, fontWeight: 500, letterSpacing: "0.12em",
-                      textTransform: "uppercase", color: "var(--text-3)",
-                    }}>{e.family}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55, minWidth: 0 }}>
-                      {e.text}
-                    </div>
-                  </div>
-                ))}
-                {/* THE ABSENCE LINE. A claim about Compass's own reasons list,
-                    not about the sky — see `ElectionWindow.noObjections`. It is
-                    rendered only when the engine asserts it, because the view
-                    is not in a position to know. */}
-                {lead.noObjections && (
-                  <div style={{
-                    borderTop: "1px solid var(--color-border)", paddingTop: 11,
-                    fontSize: 11.5, color: "var(--text-3)",
-                  }}>
-                    Compass found nothing against it.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* The CTA row belongs to the full hero. Merged, this card is a
-                receipt, and a receipt does not re-sell you the purchase: the
-                act's button lives on CompassNow, and only the evidence toggle
-                survives here (A1 counted "Start this" over "Put on today" as
-                a decision the page forced the reader to make). */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              {!leadIsLoopNow && (
-                <button onClick={() => setShapeOpen(true)} style={{
-                  fontSize: 12, fontWeight: 600, padding: "7px 15px", borderRadius: 8, cursor: "pointer",
-                  border: "none", background: "var(--color-primary)", color: "var(--color-card)",
-                }}>Put on today</button>
-              )}
-              {(lead.evidence?.length ?? 0) > 0 && (
-                <button onClick={() => setEvidenceOpen(v => !v)} style={{
-                  fontSize: 12, padding: "7px 13px", borderRadius: 8, cursor: "pointer",
-                  border: "1px solid var(--color-border)", background: "var(--color-card)",
-                  color: "var(--color-foreground)",
-                }}>{evidenceOpen ? "Hide evidence" : "See evidence"}</button>
-              )}
-              <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                {!leadIsLoopNow && lead.activityLabel}
-                {lead.alternative && (
-                  <> {!leadIsLoopNow && "· "}<button onClick={() => onNavigate("launch")} style={{
-                    fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer",
-                    color: "var(--color-primary)", textDecoration: "underline",
-                  }}>change activity</button></>
-                )}
-              </span>
-            </div>
-          </div>
-        ) : linesFailed ? (
-          /* AN OUTAGE IS NOT A QUIET DAY.
-             Found by accident: with the API down, this hero said "Nothing
-             you're holding is especially singled out today" — a confident,
-             false statement, and exactly the defect the codebase already has a
-             rule against ("a failed request stops looking like an empty life").
-             Reintroduced here because a thrown query and an empty result both
-             leave `lines` undefined, and the quiet branch caught both. */
-          /* Separated from a quiet day by STRUCTURE, not by a caption. The
-             answer slot is drawn and left empty, exactly where the answer would
-             have been, so the shape of the missing thing is visible. A quiet day
-             has no such hole: it has an answer, and the answer is "nothing in
-             particular". A caption saying "this isn't a quiet day" would be the
-             disclaimer the rules already forbid. */
-          <div style={{ padding: "2px 20px 20px" }}>
-            <div style={{
-              border: "1px dashed var(--color-border)", borderRadius: 8, padding: 18,
-            }}>
-              <div style={{
-                fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1.25,
-                color: "var(--color-foreground)",
-              }}>
-                {/* Three different admissions, because they are three different
-                    facts. Not reaching Compass at all is not the same as
-                    Compass failing to read the sky, and neither is the same as
-                    not knowing what you hold — and only the last two mean a
-                    reading was actually attempted. */}
-                {linesUnreachable ? "Today's reading didn't load."
-                  : failure.reason === "inventory-unread" ? "Compass couldn't load your list."
-                  : "Compass couldn't read the sky today."}
-              </div>
-              <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 6 }}>
-                {/* The failure time is stated only when the server sent one. An
-                    invented timestamp would be a fabricated observation, and
-                    this module exists precisely to stop Compass asserting
-                    things it did not observe. An unreachable server never sent
-                    one, so nothing is claimed about when it happened. */}
-                {failure.at && `No answer at ${new Date(failure.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}. `}
-                {linesUnreachable && "The connection dropped before Compass could ask. "}
-                Compass hasn't judged anything either way.
-              </div>
-              <button
-                // `refetch()` does not rescue a PAUSED query, and neither does
-                // telling the online manager it is online.
-                //
-                // Measured, with the API restored: `onlineManager.isOnline()`
-                // was already `true` while the query sat at
-                // `fetchStatus: "paused"`. The retryer parked itself when the
-                // network was down and only wakes on an online *event*; the
-                // value being correct now is not one. So both earlier attempts
-                // — `setOnline(navigator.onLine)`, then flipping it through
-                // false — left a button that looked like it worked and changed
-                // nothing.
-                //
-                // Removing the query drops the parked retryer with it. The
-                // mounted observer then creates a fresh query, which starts
-                // unpaused because the manager reports online. This depends on
-                // no retryer internals, which is why it is the version that
-                // survives a react-query upgrade.
-                onClick={() => { refreshLines(); }}
-                disabled={linesFetching}
-                style={{
-                  marginTop: 12, fontSize: 12, padding: "7px 14px", borderRadius: 8,
-                  cursor: linesFetching ? "default" : "pointer",
-                  border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                  color: "var(--color-foreground)", opacity: linesFetching ? 0.6 : 1,
-                }}>
-                {linesFetching ? "Reading…" : "Try again"}
-              </button>
-            </div>
-          </div>
-        ) : !lines ? (
-          /* NO DATA IN HAND IS NOT A QUIET DAY EITHER.
-             This was `linesLoading`, and it let the false statement back in by
-             a second route. react-query reports `isLoading: false` for a
-             DISABLED query, and this one is disabled until `testerId` resolves
-             — so with the API down, the tester lookup never returns, the query
-             never runs, and the page fell through to "nothing is especially
-             singled out today": maximally confident, entirely unfounded.
-             Gating on the presence of DATA rather than on the absence of a
-             loading flag is what makes that unrepresentable, because every way
-             of not having an answer now lands here. */
-          <div style={{ padding: "2px 20px 18px", fontSize: 14, color: "var(--text-3)" }}>{skyQuiet ? "Finding what's next…" : "Reading the sky…"}</div>
-        ) : (
-          /* The quiet day CONTRACTS rather than disappearing. */
-          lines.quiet === "all-placed" ? (
-            /* EVERYTHING IS ALREADY PLACED. Not a cold start — the opposite.
-               This state used to render the cold-start doors above a fully
-               scheduled list, telling someone their list was empty while it
-               sat one panel below. */
-            <div style={{ padding: "2px 20px 20px" }}>
-              <div style={{
-                fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.3,
-                color: "var(--color-foreground)", maxWidth: 560,
-              }}>
-                Everything you're holding already has a time.
-              </div>
-              <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
-                {(lines.alreadyScheduled?.length ?? 0) > 0
-                  ? `${lines.alreadyScheduled.length} thing${lines.alreadyScheduled.length === 1 ? "" : "s"} on the calendar. Add something new and Compass will find it a window.`
-                  : "Add something new and Compass will find it a window."}
-              </div>
-              <div className="cta-row" style={{ display: "flex", gap: 16, marginTop: 14 }}>
-                <button onClick={() => onNavigate("calendar")} style={{
-                  fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
-                  color: "var(--color-primary)",
-                }}>See the day →</button>
-                <button onClick={() => onQuickCapture?.()} style={{
-                  fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
-                  color: "var(--text-3)",
-                }}>Add something</button>
-              </div>
-            </div>
-          ) : lines.quiet === "thin-inventory" ? (
-            /* COLD START is its own state, not a thinner quiet day.
-               Compass can only point at what someone holds, so with an empty
-               inventory the honest move is to say that and open three doors —
-               rather than report an absence of convergence, which would blame
-               the sky for a thing the sky has nothing to do with. */
-            <div style={{ padding: "2px 20px 20px" }}>
-              <div style={{
-                fontFamily: "var(--font-display)", fontSize: 24, lineHeight: 1.28,
-                color: "var(--color-foreground)", maxWidth: 560,
-              }}>
-                Compass times the things on your list. There's nothing on it yet.
-              </div>
-              {/* DOORS, not buttons — and each one states its cost.
-                  What stalls people here is not being unable to choose; it is
-                  not knowing what they are agreeing to. "Choose recurring
-                  activities" sounds like a setup wizard until it says it sets
-                  up timing for good, and "paste your list" sounds like the
-                  start of an onboarding interview until it says nothing else
-                  is asked for. The sub-line is the whole point of the shape. */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14, maxWidth: 520 }}>
-                {[
-                  // "Paste a list" has to OPEN somewhere to paste it. This
-                  // focused the one-line field far below instead, which read
-                  // as the click having failed — a door that only scrolls is
-                  // not a door. The capture sheet takes a whole dump at once.
-                  { title: "Paste today's list", sub: "One line per thing.",
-                    go: () => onQuickCapture
-                      ? onQuickCapture()
-                      : document.querySelector<HTMLInputElement>('input[placeholder^="Add a task"]')?.focus() },
-                  { title: "Choose recurring activities", sub: "Pick once; timing works from then on.",
-                    go: () => onNavigate("work") },
-                  { title: "Find a time for one thing", sub: "Name it and get a window.",
-                    go: () => onNavigate("launch") },
-                ].map((d) => (
-                  <button key={d.title} onClick={d.go}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-card-2)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
-                      padding: "13px 15px", borderRadius: 8, cursor: "pointer",
-                      border: "1px solid var(--color-border)", background: "transparent",
-                      transition: "background 140ms ease",
-                    }}>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 13.5, color: "var(--color-foreground)" }}>{d.title}</span>
-                      <span style={{ display: "block", fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>{d.sub}</span>
-                    </span>
-                    <span style={{ color: "var(--text-3)", fontSize: 13 }}>→</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-          <div style={{ padding: "2px 20px 18px" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.3, color: "var(--color-foreground)" }}>
-              Nothing stands out today.
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 5 }}>
-              Pick by what matters most; the sky has no preference.
-              {lines?.nextOpening && (
-                <> The next notable opening is {lines.nextOpening.activityLabel.toLowerCase()} on {lines.nextOpening.date} at {lines.nextOpening.startClock}.</>
-              )}
-            </div>
-          </div>
-          )
-        )}
-
-        {/* Two or three results: compact rows beneath the lead, never three heroes.
-            CONTENTION. Two activities can legitimately elect the same interval —
-            a single night planetary hour suited both `deep-work` and
-            `sign-contract` here, and the engine is right to return both. But
-            listing two windows that are in fact ONE window, with nothing said,
-            offers the same 53 minutes twice and lets someone accept both. The
-            overlap is computable from what is already on screen, so the honest
-            move is to name it rather than to let the reader discover it by
-            double-booking. */}
-        {secondary.map((r, i) => {
-          const clash = [lead, ...secondary.slice(0, i)].find(
-            (p) => p && !p.allDay && !r.allDay &&
-              Date.parse(p.startAt) < Date.parse(r.endAt) &&
-              Date.parse(r.startAt) < Date.parse(p.endAt));
-          return (
-          <div key={r.held.id} style={{
-            display: "flex", alignItems: "baseline", gap: 10, padding: "7px 20px",
-            borderTop: "1px solid var(--color-border)",
-          }}>
-            <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {r.held.title}
-              {clash && (
-                <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                  {" · same window as "}{clash.held.title.length > 22 ? `${clash.held.title.slice(0, 22)}…` : clash.held.title}
-                </span>
-              )}
-            </span>
-            {r.supportLevel === "convergent" && <Badge text="lines up" color={CONVERGENT} />}
-            <span style={{
-              fontSize: 11.5, flexShrink: 0,
-              color: r.state === "passed" ? "var(--text-3)" : "var(--color-primary)",
-            }}>
-              {r.allDay ? "all day" : r.state === "open-now" ? `now, until ${r.endClock}` : `${r.startClock}–${r.endClock}`}
-            </span>
-          </div>
-          );
-        })}
-
-        {lines?.clarify.map((c) => (
-          <div key={c.held.id} style={{ padding: "7px 20px", borderTop: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12 }}>{c.held.title}</div>
-            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1 }}>
-              {c.candidates.map(x => x.label).join(" or ")}? Compass won't time it until it knows which.
-            </div>
-          </div>
-        ))}
-
-        {/* THE ACTIVITY PICKER — "when is a good time for X", the one
-            question a person arrives holding that the loop cannot answer,
-            because the loop can only time what they have already written
-            down. It was folded shut at the bottom of the page's last card
-            (audit 2026-08-19 §6), which is a long way to bury the thing the
-            product is named after.
-
-            It opens by itself when the loop has no lead. With a pick on
-            screen this is a secondary door and the fold is right; with
-            nothing on screen the fold hides the only answer the card has
-            left, and "something ELSE" is not even true — there is no first
-            thing for it to be else to. */}
-        {!skyQuiet && <div style={{ borderTop: "1px solid var(--color-border)", padding: "4px 6px 6px" }}>
-          <details open={!lead}>
-            <summary style={{ padding: "6px 14px", cursor: "pointer", fontSize: 11.5, color: "var(--color-primary)", listStyle: "none" }}>
-              {lead ? "Find a time for something else" : "Find a good time for something"}
-            </summary>
-            <ElectionPicker testerId={testerId} lat={lat} lon={lon} onAsk={onAskAboutElection} />
-          </details>
-        </div>}
-        </Fold>
-      </div>}
 
       {/* ══ THE HORIZON ═══════════════════════════════════════════════════
           Home's second question — "what's coming?" — which nothing on the
@@ -1653,29 +1081,32 @@ export default function Home({
           receipt for that answer — a forecast wedged into the middle of an
           argument. Home's first question is "what now"; this is the second
           one, and it reads that way only when it comes second. */}
-      {!skyQuiet && <CroppingUp testerId={testerId} onNavigate={onNavigate} />}
-
-      {/* THE WATER AHEAD, on request (W3). In-place reveal, so no arrow. */}
-      {!skyQuiet && (!waterOpen ? (
-        <button onClick={() => setWaterOpen(true)} style={{
-          fontSize: 11, background: "none", border: "none", cursor: "pointer",
-          color: "var(--text-3)", padding: "2px 0", textAlign: "left", flexShrink: 0,
-        }}>Show the water ahead</button>
-      ) : (
-        <div style={{ flexShrink: 0 }}>
-          {water && (
-            // `overflow: hidden` clips QualityStrip's own full-bleed bottom
-            // rule to the rounded corners — safe on a non-flex-item wrapper.
-            <div style={{ ...PANEL, overflow: "hidden" }}>
-              <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />
+      {/* THE HORIZON, IN ONE BREATH. The dates ahead and the shape of the
+          days they land in were two cards asking the same question, so the
+          reader answered it twice (owner, 2026-08-19: "cropping up and the
+          water ahead should be shown in one breath"). The chart still opens
+          on request — it is the heavier half — but it opens INSIDE the card
+          whose question it finishes. */}
+      {!skyQuiet && (
+        <CroppingUp
+          testerId={testerId}
+          onNavigate={onNavigate}
+          water={!waterOpen ? (
+            <button onClick={() => setWaterOpen(true)} style={{
+              fontSize: 11, background: "none", border: "none", cursor: "pointer",
+              color: "var(--color-primary)", padding: "2px 16px 12px", textAlign: "left",
+            }}>Show the next two weeks</button>
+          ) : (
+            <div>
+              {water && <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />}
+              <button onClick={() => setWaterOpen(false)} style={{
+                fontSize: 11, background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-3)", padding: "6px 16px 10px", textAlign: "left",
+              }}>Hide it</button>
             </div>
           )}
-          <button onClick={() => setWaterOpen(false)} style={{
-            fontSize: 11, background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", padding: "4px 0 0", textAlign: "left",
-          }}>Hide the water ahead</button>
-        </div>
-      ))}
+        />
+      )}
     </div>
   );
 }

@@ -61,7 +61,16 @@ const ASPECT_WORD: Record<string, string> = {
   square: "grinds against", opposition: "faces",
 };
 
-export default function CroppingUp({ testerId, onNavigate }: { testerId?: string | null; onNavigate?: (v: string) => void }) {
+export default function CroppingUp({ testerId, onNavigate, water }: {
+  testerId?: string | null;
+  onNavigate?: (v: string) => void;
+  /** The fortnight's shape, drawn inside this card rather than beside it —
+   *  "cropping up and the water ahead should be shown in one breath" (owner,
+   *  2026-08-19). Two cards asking "what's coming" made the reader answer the
+   *  question twice: the dates ahead, then the shape of the days they land
+   *  in, are one look at the horizon. */
+  water?: React.ReactNode;
+}) {
   const folded = useFold().isFolded("croppingUp");
   // THE NON-LUNAR ASPECTS (owner, 2026-08-19). The card looked ahead at
   // stations, ingresses and eclipses and never at planet-to-planet aspects —
@@ -193,6 +202,7 @@ export default function CroppingUp({ testerId, onNavigate }: { testerId?: string
         </div>
       )}
       </>}
+      {!folded && water}
     </div>
   );
 }

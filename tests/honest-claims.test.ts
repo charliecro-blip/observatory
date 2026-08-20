@@ -138,9 +138,18 @@ describe("claims match the evidence", () => {
       expect(src, "a surface headed its recommendation 'Best next move'")
         .not.toMatch(/>\s*Best next move\s*</);
     }
-    // And something still names one — the guard is worthless if every
-    // recommendation surface has quietly gone away.
-    expect(sources.some((s) => /Compass · right now|Strongest fit/.test(s))).toBe(true);
+    // The existence check that used to sit here is gone, and its removal is
+    // the point rather than an oversight.
+    //
+    // It asserted that SOME surface still named a recommendation, guarding
+    // against the guard quietly becoming vacuous. On 2026-08-19 every one of
+    // them was removed deliberately — "it shouldn't auto-suggest possibilities
+    // of what to do, unprompted... let people ask/input context, rather than
+    // being told what to do" — so the check was asserting the presence of a
+    // thing the product had decided not to have.
+    //
+    // What survives is the claim worth keeping: wherever a recommendation IS
+    // named, in Ask or anywhere later, it must not be named "best".
   });
 
   it("does not claim the sky read the user's text", () => {

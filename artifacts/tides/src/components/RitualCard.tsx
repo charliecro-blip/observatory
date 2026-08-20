@@ -38,7 +38,7 @@ import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { localToday, localDayRange, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useTester } from "@/contexts/tester-context";
-import { StarRows, EveningHarvest } from "@/components/Momentum";
+import { EveningHarvest, useMomentum } from "@/components/Momentum";
 
 /** Streak language, and the reason it stays gentle below three days: a
  *  cadence the person chose is not a streak they are failing. */
@@ -48,14 +48,13 @@ const STREAK_NUDGE = (streak: number) =>
   : streak >= 3 ? `day ${streak + 1} — momentum is real`
   : "small and daily beats big and rare";
 
-export default function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayName, onOpenStar, lat, lon, showJournal = true }: {
+export default function RitualCard({ mode, now, week, todayTasks, windows, testerId, displayName, lat, lon, showJournal = true }: {
   mode: "morning" | "evening";
   now: any; week: any;
   todayTasks: { id: number; title: string; done: string }[];
   windows: any[] | undefined;
   testerId: string | null;
   displayName?: string;
-  onOpenStar?: (goalId: number) => void;
   lat?: number; lon?: number;
   /** The `todayShowJournal` preference — the evening line is optional. */
   showJournal?: boolean;
@@ -66,6 +65,9 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
   // chronotype is optional, hence the plain fallback; and when sleep is
   // earlier than wake it wraps past midnight, so the scan runs to end of day.
   const { profile: ritualProfile } = useTester();
+  // The helm streak lived inside the star rows that merged into "Where you
+  // are"; it belongs to the RITUAL rather than to the stars, so it stayed.
+  const streak = useMomentum(testerId, lat, lon).data?.streak ?? 0;
   const parseHour = (v: string | undefined, fallback: number) => {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(v ?? ""));
     if (!m) return fallback;
@@ -210,76 +212,29 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
       <div style={{ background: `linear-gradient(135deg, ${elColor}16, ${elColor}05)`, border: `1px solid ${elColor}30`, borderRadius: 14, padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 3 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>⛵ Cast off{firstName ? `, ${firstName}` : ""}</span>
-          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
+          <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            {streak > 0 && (
+              <span style={{ fontSize: 9, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
+                ⚓ {streak} day{streak === 1 ? "" : "s"} at the helm
+              </span>
+            )}
+            <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
+          </span>
         </div>
 
 
-        {/* The morning glance: one row per Guiding Star — next move + today's
-            best window for its element; tap → that star's game plan. */}
-        <StarRows testerId={testerId} lat={lat} lon={lon} onOpenStar={onOpenStar} />
+        {/* THE STARS AND THE HABITS MOVED OUT (owner, 2026-08-19: "these two
+            main features are redundant and need merging/simplifying").
+            This card listed every Guiding Star and every daily, and "Where
+            you are" listed them again directly below — the same facts twice,
+            in two shapes, on the first screen of the day.
 
-        {/* Morning chips: every daily, plus any looser practice that's actually
-            BEHIND its own cadence. An "whenever it fits" habit never appears
-            here unprompted — the morning glance shouldn't manufacture a
-            to-do out of something that declared it has no schedule. */}
-        {(() => {
-          const morningHabits = habitList.filter((h: any) => {
-            const cad = h.cadence ?? "daily";
-            if (cad === "daily") return true;
-            if (cad === "occasional") return false;
-            return h.cadenceMet === false;
-          });
-          return morningHabits.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {morningHabits.map((h: any) => {
-                const resonant = !h.doneToday && el && h.favoredElements?.includes(el);
-                // An explicit solar anchor wins; otherwise fall back to the
-                // element's implied rhythm — fire rides sunrise, air the high
-                // sun, earth lands by sunset, water takes the Moon's own hour.
-                const dl = (now as any)?.daylight;
-                const moonHr = ((now as any)?.upcomingHours ?? []).find((u: any) => u.planet === "Moon");
-                const fmtT = (iso?: string) => iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : null;
-                const fe = h.favoredElements?.[0];
-                // Bed is the chronotype's hour, not the sky's — the server
-                // sends no instant for it, so the time renders from the
-                // person's own sleepTime here.
-                const sleepT = ritualProfile?.chronotype?.sleepTime;
-                const anchor = h.doneToday ? null
-                  : h.solarAnchor === "bed" ? `⏾ by ${sleepT ? new Date(`2000-01-01T${sleepT.padStart(5, "0")}:00`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "bed"}`
-                  : h.solarAnchorAt ? `${h.solarAnchor === "sunset" ? "☾" : "☉"} ${h.solarAnchor === "sunset" ? "by " : ""}${fmtT(h.solarAnchorAt)}`
-                  : fe === "fire" && dl?.sunrise ? `☉ ${fmtT(dl.sunrise)}`
-                  : fe === "air" && dl?.sunrise && dl?.sunset ? `☉ ${fmtT(new Date((Date.parse(dl.sunrise) + Date.parse(dl.sunset)) / 2).toISOString())}`
-                  : fe === "earth" && dl?.sunset ? `☉ by ${fmtT(dl.sunset)}`
-                  : fe === "water" && moonHr ? `☽ ${moonHr.time}`
-                  : null;
-                return (
-                  <button key={h.id} onClick={() => toggleLog.mutate({ id: h.id, done: h.doneToday })}
-                    title={anchor ? "A daily sky anchor for this habit — sun or moon time that suits its element" : undefined}
-                    style={{
-                    display: "flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 18, cursor: "pointer",
-                    border: h.doneToday ? "1px solid #4a806040" : `1px solid ${resonant ? elColor : "var(--color-border)"}`,
-                    background: h.doneToday ? "#4a806012" : "var(--color-card)",
-                  }}>
-                    <span style={{ fontSize: 11, color: h.doneToday ? "#4a8060" : "var(--text-3)" }}>{h.doneToday ? "✓" : "○"}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, color: h.doneToday ? "#4a8060" : "var(--color-foreground)" }}>{h.name}</span>
-                    {resonant && <span style={{ fontSize: 10, color: elColor }}>✦</span>}
-                    {/* A streak reads as encouragement on a daily and as
-                        nonsense on a 3×/week — so non-dailies show their
-                        cadence position instead. */}
-                    <span style={{ fontSize: 9, color: "var(--text-3)" }}>
-                      {(h.cadence ?? "daily") !== "daily"
-                        ? `${h.windowDone ?? 0}/${h.windowTarget ?? 0} this week`
-                        : h.doneToday ? `${h.streak}d` : STREAK_NUDGE(h.streak ?? 0)}
-                    </span>
-                    {anchor && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{anchor}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          );
-        })()}
+            "Where you are" wins them, and deserves to: it groups each habit
+            under the star it serves and carries the real progress counts,
+            where these were a flat list and a row of chips. What survives
+            here is what only a ritual card can say — that it is morning, who
+            you are, and how long the run is. */}
+
 
       </div>
     );
