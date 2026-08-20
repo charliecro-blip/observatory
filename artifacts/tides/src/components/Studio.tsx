@@ -20,7 +20,7 @@ import { SIGN_MYTHOS } from "@/lib/mythos";
  * thinning as an SVG stroke painted in the surface color).
  */
 
-type Subject = "day" | "week" | "lunation";
+type Subject = "day" | "week" | "lunation" | "activity";
 type Format = "story" | "post";
 
 // Exported so the sprint card (components/SprintCard.tsx) shares this exact
@@ -172,6 +172,71 @@ function DayCard({ now, W, H, theme }: { now: any; W: number; H: number; theme: 
 }
 
 // ── The Week ─────────────────────────────────────────────────────────────────
+
+/**
+ * THE WEEK FOR ONE ACTIVITY, as a shareable card.
+ *
+ * The same answer Plan draws as a grid, sized for a phone screen. It travels
+ * better than the day card because it carries its own question — "the week
+ * for deep work" is legible to somebody who has never seen Compass, where
+ * "Surge Tide, rising" is not.
+ *
+ * IT PUBLISHES THE SAME REFUSAL IT SHOWS. A week with no strong window says
+ * so on the card. Publishing only the good weeks would make the account a
+ * different product from the app.
+ */
+function ActivityCard({ label, windows, W, H, theme }: {
+  label: string; windows: any[]; W: number; H: number; theme: GlyphTheme;
+}) {
+  const s = SURFACE[theme];
+  const story = H > 1500;
+  const days: { dow: string; date: string; wins: any[] }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.now() + i * 86400000);
+    const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    days.push({
+      dow: d.toLocaleDateString("en-US", { weekday: "short" }),
+      date,
+      wins: windows.filter(w => w.date === date),
+    });
+  }
+  const colW = 118, gap = 14;
+  const x0 = (W - (7 * colW + 6 * gap)) / 2;
+  const top = story ? 700 : 540;
+  return (
+    <>
+      <text x={W / 2} y={story ? 470 : 360} textAnchor="middle" fill={s.sub}
+        fontSize={30} letterSpacing={7} fontFamily={SERIF}>THE WEEK FOR</text>
+      <text x={W / 2} y={story ? 570 : 445} textAnchor="middle" fill={s.ink}
+        fontSize={story ? 88 : 74} fontFamily={SERIF}>{label}</text>
+      {days.map((d, i) => {
+        const x = x0 + i * (colW + gap);
+        return (
+          <g key={i}>
+            <text x={x + colW / 2} y={top} textAnchor="middle" fill={s.sub} fontSize={26} fontFamily={SERIF}>{d.dow}</text>
+            {d.wins.length === 0 ? (
+              <rect x={x} y={top + 24} width={colW} height={52} rx={9}
+                fill="none" stroke={s.line} strokeDasharray="5 5" />
+            ) : d.wins.slice(0, 3).map((w, j) => (
+              <g key={j}>
+                <rect x={x} y={top + 24 + j * 62} width={colW} height={52} rx={9}
+                  fill={s.ink} fillOpacity={w.tier === "great" ? 0.88 : 0.12} />
+                <text x={x + colW / 2} y={top + 56 + j * 62} textAnchor="middle"
+                  fill={w.tier === "great" ? s.bg : s.ink} fontSize={24} fontFamily={SERIF}>{w.startClock}</text>
+              </g>
+            ))}
+          </g>
+        );
+      })}
+      <text x={W / 2} y={top + 260} textAnchor="middle" fill={s.sub} fontSize={26} fontFamily={SERIF}>
+        {windows.length === 0
+          ? `nothing this week stands out for ${label.toLowerCase()}`
+          : `${windows.length} window${windows.length === 1 ? "" : "s"} this week`}
+      </text>
+    </>
+  );
+}
+
 function WeekCard({ days, weekTone, W, H, theme }: { days: any[]; weekTone?: string; W: number; H: number; theme: GlyphTheme }) {
   const s = SURFACE[theme];
   const story = H > 1500;
@@ -333,6 +398,23 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
   const [theme, setTheme] = useState<GlyphTheme>("tide");
   const [busy, setBusy] = useState(false);
 
+  // WHICH thing the "for one thing" card is about. Only fetched once that
+  // subject is chosen — nobody making a day card should pay for a week scan.
+  const [cardActivity, setCardActivity] = useState("deep-work");
+  const { data: cardActs } = useQuery<{ activities: { key: string; label: string }[] }>({
+    queryKey: ["election-activities"],
+    queryFn: async () => (await fetch("/api/elections/activities")).json(),
+    staleTime: Infinity,
+    enabled: subject === "activity",
+  });
+  const { data: cardWindows } = useQuery<{ windows: any[] }>({
+    queryKey: ["activity-week", cardActivity, lat.toFixed(2), lon.toFixed(2), new Date().getTimezoneOffset()],
+    queryFn: async () => (await fetch(
+      `/api/elections/times?activity=${encodeURIComponent(cardActivity)}&span=week&lat=${lat}&lon=${lon}&tz=${new Date().getTimezoneOffset()}&timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&locationKnown=true`
+    )).json(),
+    enabled: subject === "activity",
+  });
+
   // One 30-day pull covers both the week and the lunation.
   const { data: month } = useQuery<any>({
     queryKey: ["studio-month", lat, lon],
@@ -383,8 +465,23 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           </div>
           <div>
             <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Subject</div>
-            <Seg value={subject} onPick={setSubject} options={[["day", "The day"], ["week", "The week"], ["lunation", "The lunation"]]} />
+            <Seg value={subject} onPick={setSubject} options={[["day", "The day"], ["week", "The week"], ["lunation", "The lunation"], ["activity", "One activity"]]} />
           </div>
+          {subject === "activity" && (
+            <div>
+              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Which activity</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {(cardActs?.activities ?? []).slice(0, 14).map(a => (
+                  <button key={a.key} onClick={() => setCardActivity(a.key)} style={{
+                    fontSize: 10.5, padding: "3px 9px", borderRadius: 11, cursor: "pointer",
+                    border: `1px solid ${a.key === cardActivity ? "var(--color-primary)" : "var(--color-border)"}`,
+                    background: a.key === cardActivity ? "var(--color-primary)" : "var(--color-background)",
+                    color: a.key === cardActivity ? "#ffffff" : "var(--text-2)",
+                  }}>{a.label}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Format</div>
             <Seg value={format} onPick={setFormat} options={[["story", "Story 9:16"], ["post", "Post 4:5"]]} />
@@ -407,6 +504,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           style={{ width: format === "story" ? 300 : 340, height: "auto", borderRadius: 14, boxShadow: "0 10px 40px rgba(0,0,0,0.3)", flexShrink: 0 }}>
           <rect width={W} height={H} fill={s.bg} />
           {subject === "day" && <DayCard now={now} W={W} H={H} theme={theme} />}
+          {subject === "activity" && <ActivityCard label={(cardActs?.activities ?? []).find(a => a.key === cardActivity)?.label ?? cardActivity} windows={cardWindows?.windows ?? []} W={W} H={H} theme={theme} />}
           {subject === "week" && <WeekCard days={days} weekTone={month?.weekTone} W={W} H={H} theme={theme} />}
           {subject === "lunation" && <LunationCard days={days} W={W} H={H} theme={theme} />}
         </svg>

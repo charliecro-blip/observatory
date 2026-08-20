@@ -10,6 +10,7 @@ import { useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
 import AlreadyWoven from "@/components/AlreadyWoven";
 import Almanac from "@/components/Almanac";
+import ActivityWeek from "@/components/ActivityWeek";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -316,6 +317,15 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
             breakdown, also reachable from Aims, surfaced here in Plan). */}
 
         {mode === "begin" && (<>
+        {/* THE WEEK, FOR ONE THING — an almanac asked the way people ask it.
+            Cropping Up on Home points here for "what's coming", and what was
+            here was two electional pickers and no view of the week itself
+            (owner, 2026-08-20). This answers "how does training / love / deep
+            study look for the week ahead" at a glance, and sits ABOVE the two
+            pickers because it is the browsing question: you look at the week,
+            then you elect a moment inside it. */}
+        <ActivityWeek testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown} />
+        <div style={{ height: 18 }} />
         {/* TWO DIFFERENT JOBS, not two methods for the same one.
 
             These stacked with no explanation, so a user met an activity picker
