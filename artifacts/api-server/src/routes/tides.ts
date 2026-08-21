@@ -17,7 +17,7 @@ import { natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide.js";
-import { computeDayArc, findPeakWindows, nextIngressAfterMs } from "../lib/dayarc.js";
+import { computeDayArc, findPeakWindows, nextIngressAfterMs, vocSpansBetween } from "../lib/dayarc.js";
 import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
@@ -1022,6 +1022,7 @@ router.get("/tides/events", (req, res) => {
     date: string;
     time?: string;
     at?: string;        // ISO UTC instant for timed events — client formats to its own timezone
+    endAt?: string;     // ISO UTC end, for spans (the void)
     type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window";
     title: string;
     subtitle?: string;
@@ -1170,6 +1171,24 @@ router.get("/tides/events", (req, res) => {
     }
   }
 
+  // VOC spans — real start and end instants, found once for the whole range
+  // rather than per day. The old event carried no time at all, and the
+  // calendar's range reader required one, so no void was ever drawn in any
+  // view (found 2026-08-21). A span that runs past midnight is ONE event;
+  // the client clips it to each of its own local days.
+  for (const v of vocSpansBetween(todayUtc.getTime(), todayUtc.getTime() + numDays * 86400000)) {
+    events.push({
+      date:    v.start.slice(0, 10),
+      at:      v.start,
+      endAt:   v.end,
+      type:    "voc",
+      title:   "Moon void of course",
+      subtitle: "Good for finishing, rest and review; beginnings tend to drift.",
+      icon:    "◌",
+      quality: "caution",
+    });
+  }
+
   // Scan day-by-day for phase changes, ingresses, VOC, quality windows
   let prevPhase = "";
   let prevSign  = "";
@@ -1233,18 +1252,6 @@ router.get("/tides/events", (req, res) => {
       });
     }
     prevSign = moonSignNoon;
-
-    // VOC period — only when it takes up a meaningful chunk of the day
-    if (hasVoc) {
-      events.push({
-        date:    dateStr,
-        type:    "voc",
-        title:   "Moon void of course",
-        subtitle: "Avoid new beginnings. Good for completion, rest, and review.",
-        icon:    "◌",
-        quality: "caution",
-      });
-    }
 
     // High-quality window
     let score = 5;

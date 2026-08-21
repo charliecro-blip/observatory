@@ -58,7 +58,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
     staleTime: Infinity,
   });
 
-  const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; cautions: string[]; windows: ElectionWindowT[]; activity: ActivityLite }>({
+  const { data: times, isFetching } = useQuery<{ chartAvailable: boolean; personalized: boolean; cautions: string[]; windows: ElectionWindowT[]; activity: ActivityLite; withheld?: { hourOnly: number } }>({
     // lat/lon/tz are COMPUTATIONAL INPUTS and therefore belong in the key.
     // Without them a location or timezone change left the previous place's
     // windows cached for the full stale period — the app quietly answering
@@ -191,6 +191,14 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           {times && !times.chartAvailable && (
             <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
               ○ Add your birth chart in Settings and ★ great times get read from your own houses.
+            </div>
+          )}
+          {/* A gap is output, never a silent drop: the hours the engine matched
+              and chose not to list are counted here, so nobody wonders where
+              the Mercury hours went. */}
+          {(times?.withheld?.hourOnly ?? 0) > 0 && (
+            <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
+              {times!.withheld!.hourOnly} matching planetary hour{times!.withheld!.hourOnly === 1 ? "" : "s"} this {span} aren't listed on their own, only where they fall inside a window above.
             </div>
           )}
 

@@ -69,6 +69,7 @@ import NewMoonCheckIn, { turningPointPromptOpen } from "@/components/NewMoonChec
 import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
 import { useUiDensity, useAstroDetail, usePreferences } from "@/contexts/preferences-context";
+import RhythmLead from "@/components/RhythmLead";
 import { useHomeData, type Task, type LinesUpResult } from "@/hooks/useHomeData";
 import RitualCard from "@/components/RitualCard";
 import { ritualPhase } from "@/lib/chronotype";
@@ -419,6 +420,8 @@ export default function Home({
     } catch { /* private mode — the greeting just doesn't happen */ }
   }, [testerId, today]);
 
+  const { prefs, updateDisplay } = usePreferences();
+  const rhythm = prefs.display.rhythm ?? "tide";
   const showVoid = usePreferences().prefs.display.todayShowVOC;
   const showCrossings = usePreferences().prefs.display.todayShowCrossings;
   const showJournal = usePreferences().prefs.display.todayShowJournal;
@@ -630,6 +633,20 @@ export default function Home({
           of loads, so the ordinary page pays nothing for the place it
           holds. */}
       {!skyQuiet && <AngleCrossing crossings={now?.crossings} enabled={showCrossings} />}
+
+      {/* ══ HOW COMPASS MEETS YOU ═════════════════════════════════════════
+          The first question, shaped by the person's own choice — one move,
+          the route, or a few ways in. Read-the-day-first renders only the
+          switch, and the page below is the app as built. */}
+      <RhythmLead
+        rhythm={rhythm}
+        onPickRhythm={(r) => updateDisplay({ rhythm: r })}
+        testerId={testerId} lat={lat} lon={lon}
+        overdue={overdue} dueToday={dueToday} undated={undated} later={later}
+        committedCount={committed.length}
+        onShape={() => setShapeOpen(v => !v)} shapeOpen={shapeOpen}
+        onFocus={linkRow}
+      />
 
       {/* ══ THE DAILY LOOP ════════════════════════════════════════════════
           Morning "Cast off", evening "Log the day" — the ritual the whole
@@ -951,10 +968,13 @@ export default function Home({
                   "no date · 10" filed the whole inventory under a caveat. */}
               <Group label="overdue" items={overdue} bare={soleGroup === "overdue"} />
               <Group label="today" items={dueToday} bare={soleGroup === "today"} />
-              <Group label="no date" items={undated} cap={GROUP_CAP} bare={soleGroup === "no date"} />
+              {/* A campaign keeps the backlog short: three, and the rest on
+                  request. The inventory is not hidden, it is behind one tap,
+                  which is the difference between a push and a disappearance. */}
+              <Group label="no date" items={undated} cap={rhythm === "campaign" ? 3 : GROUP_CAP} bare={soleGroup === "no date"} />
               {/* Not muted any more. Dimming a whole group made the backlog
                   read as disabled, and "later" is still work you are holding. */}
-              <Group label="later" items={later} cap={GROUP_CAP} bare={soleGroup === "later"} />
+              <Group label="later" items={later} cap={rhythm === "campaign" ? 3 : GROUP_CAP} bare={soleGroup === "later"} />
               {/* The fact said once, as a heading, never per-row (D4). */}
               <Group label="scheduled" items={placed} muted cap={GROUP_CAP} />
               {open.length === 0 && tasks && (

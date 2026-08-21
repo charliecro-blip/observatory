@@ -157,6 +157,7 @@ export interface SkyEvent {
   date: string;
   time?: string;
   at?: string;        // ISO UTC instant for timed events; date/time are localized from this in the client
+  endAt?: string;     // ISO UTC end, for spans (the void) — clipped to local days by the reader
   type: "moon_phase" | "ingress" | "voc" | "crossing" | "quality_window" | "moon_aspect" | "aspect";
   title: string;
   subtitle?: string;

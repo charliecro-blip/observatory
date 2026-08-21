@@ -6,11 +6,19 @@
  * renovations in progress). Dated landmarks, not analysis — a trail map's
  * "you are here", not a reading.
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 import { useCurrents } from "@/hooks/useTides";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
+import { PLANET_LITERACY } from "@/lib/sky-literacy";
+import { jsonArray } from "@/lib/jsonArray";
+
+interface StarLite {
+  id: number; title: string; status?: string; planet?: string | null;
+  anchorKind?: string | null; anchorPlanet?: string | null; anchorHouse?: number | null;
+}
+interface TaskLite { id: number; title: string; done: string | null; planet?: string | null }
 
 /**
  * "What is this?" — the mechanism behind a phrase, on request.
@@ -58,12 +66,24 @@ interface Fix {
 
 /** "an 8th-house year" but "a 3rd-house year" — the article follows the
  *  ordinal's SOUND, and this line printed "an" unconditionally. */
+const LINK: React.CSSProperties = {
+  background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer",
+  color: "var(--color-primary)", textDecoration: "underline", textUnderlineOffset: 2,
+};
 const artFor = (n: number) => (n === 8 || n === 11 || n === 18) ? "an" : "a";
 const ord = (n: number) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) === n % 10 && n % 10 < 4 ? n % 10 : 0] ?? "th"}`;
 const fmtDate = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const fmtMonthYear = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 
-export default function BearingsCard({ testerId, onOpenSettings }: { testerId: string | null; onOpenSettings?: () => void }) {
+export default function BearingsCard({ testerId, onOpenSettings, expanded = false, onNavigate }: {
+  testerId: string | null;
+  onOpenSettings?: () => void;
+  /** The full room (its own Stars tab, 2026-08-21): each bearing opens into
+   *  what it means and what of yours is riding it — stars anchored to the
+   *  year or a chapter, stars and tasks that speak the planet. */
+  expanded?: boolean;
+  onNavigate?: (tab: "overview" | "tasks" | "habits") => void;
+}) {
   const { data } = useQuery<{ available: boolean; reason?: string; fix?: Fix }>({
     queryKey: ["position-fix", testerId],
     queryFn: async () => {
@@ -90,6 +110,19 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
   // away in 2026-08 almost none of it has been rendered anywhere. The data
   // never stopped being computed; it just stopped being shown.
   const { data: currents } = useCurrents(testerId, "whole-sign");
+  // What of yours is riding these cycles. Same keys as Home and the hub, so
+  // these are cache reads on a warm app, and always above the early returns.
+  const { data: stars } = useQuery<StarLite[]>({
+    queryKey: ["north-stars", testerId],
+    queryFn: async () => jsonArray<StarLite>(await fetch("/api/planning/north-stars", { headers: testerId ? { "x-tester-id": testerId } : {} })),
+    enabled: !!testerId && expanded,
+  });
+  const { data: tasks } = useQuery<TaskLite[]>({
+    queryKey: ["tasks", "all"],
+    queryFn: async () => jsonArray<TaskLite>(await fetch("/api/tasks", { headers: testerId ? { "x-tester-id": testerId } : {} })),
+    enabled: !!testerId && expanded,
+  });
+  const [openChapter, setOpenChapter] = useState<string | null>(null);
 
   if (!testerId || !data) return null;
   if (!data.available) {
@@ -131,6 +164,23 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
             <span style={{ color: "#8a6a30" }}> · next power day {fmtDate(nextHit.date)} ({nextHit.label})</span>
           )}
           <Explain text={fix.year.explain} open={open === "year"} onToggle={() => setOpen(open === "year" ? null : "year")} />
+          {expanded && (() => {
+            const live = (stars ?? []).filter(s => s.status !== "done" && s.status !== "paused");
+            const riding = live.filter(s => s.anchorKind === "profection" && s.anchorHouse === fix.year.house);
+            const hm = HOUSE_MEANINGS[fix.year.house];
+            const lord = PLANET_LITERACY[fix.year.lord];
+            return (
+              <div style={{ marginTop: 7, paddingTop: 7, borderTop: "1px dashed var(--color-border)", fontSize: 11.5, lineHeight: 1.6, color: "var(--text-2)" }}>
+                {hm && <div><b style={{ color: "var(--color-foreground)" }}>{hm.title}</b> — {hm.domains}.</div>}
+                {lord?.longArc && <div style={{ color: "var(--color-muted)" }}>{lord.longArc}</div>}
+                <div style={{ marginTop: 4 }}>
+                  {riding.length > 0
+                    ? <>Riding this year: {riding.map(s => <span key={s.id}>★ {s.title} </span>)}</>
+                    : <>No star is set on this year yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it →</button></>}</>}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -195,18 +245,59 @@ export default function BearingsCard({ testerId, onOpenSettings }: { testerId: s
         <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
           <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CHAPTERS</span>
           <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
-            {(currents!.transitsByHouse as any[]).map((t: any, i: number) => (
-              <div key={t.planet ?? i}>
-                {PLANET_GLYPH[t.planet] ?? ""} {t.planet} through your {ord(t.house)}
-                {HOUSE_MEANINGS[t.house] && (
-                  <span style={{ color: "var(--color-muted)" }}> — {HOUSE_MEANINGS[t.house].domains}</span>
-                )}
-                {t.leavesHouse && (
-                  <span style={{ color: "var(--text-3)" }}> · until {fmtMonthYear(String(t.leavesHouse).slice(0, 10))}</span>
-                )}
-                {t.retrograde && <span style={{ color: "var(--text-3)" }}> · retrograde</span>}
-              </div>
-            ))}
+            {(currents!.transitsByHouse as any[]).map((t: any, i: number) => {
+              const key = `${t.planet}:${t.house}`;
+              const isOpen = expanded && openChapter === key;
+              const line = (
+                <>
+                  {PLANET_GLYPH[t.planet] ?? ""} {t.planet} through your {ord(t.house)}
+                  {HOUSE_MEANINGS[t.house] && (
+                    <span style={{ color: "var(--color-muted)" }}> — {HOUSE_MEANINGS[t.house].domains}</span>
+                  )}
+                  {t.leavesHouse && (
+                    <span style={{ color: "var(--text-3)" }}> · until {fmtMonthYear(String(t.leavesHouse).slice(0, 10))}</span>
+                  )}
+                  {t.retrograde && <span style={{ color: "var(--text-3)" }}> · retrograde</span>}
+                </>
+              );
+              if (!expanded) return <div key={key}>{line}</div>;
+              const live = (stars ?? []).filter(s => s.status !== "done" && s.status !== "paused");
+              const riding = live.filter(s => s.anchorKind === "chapter" && s.anchorPlanet === t.planet && s.anchorHouse === t.house);
+              const speaks = live.filter(s => s.planet === t.planet && !riding.some(r => r.id === s.id));
+              const openTasks = (tasks ?? []).filter(x => x.done !== "true" && x.planet === t.planet);
+              const lit = PLANET_LITERACY[t.planet];
+              const hm = HOUSE_MEANINGS[t.house];
+              return (
+                <div key={key}>
+                  <button onClick={() => setOpenChapter(isOpen ? null : key)} aria-expanded={isOpen} style={{
+                    background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left",
+                    color: isOpen ? "var(--color-primary)" : "inherit",
+                  }}>
+                    <span style={{ fontSize: 10, marginRight: 5, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>▸</span>
+                    {line}
+                  </button>
+                  {isOpen && (
+                    <div style={{ fontSize: 11.5, lineHeight: 1.6, color: "var(--text-2)", margin: "4px 0 8px 15px", paddingLeft: 9, borderLeft: "2px solid var(--color-border)" }}>
+                      {hm && <div><b style={{ color: "var(--color-foreground)" }}>{hm.title}</b> — the {ord(t.house)} house holds {hm.domains}.</div>}
+                      {lit?.longArc && <div style={{ color: "var(--color-muted)" }}>{lit.longArc}</div>}
+                      <div style={{ marginTop: 4 }}>
+                        {riding.length > 0
+                          ? <>Riding this chapter: {riding.map(s => <span key={s.id}>★ {s.title} </span>)}</>
+                          : <>No star is set on this chapter yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it →</button></>}</>}
+                      </div>
+                      {(speaks.length > 0 || openTasks.length > 0) && (
+                        <div style={{ marginTop: 2 }}>
+                          Stars and tasks tuned to {t.planet}:{" "}
+                          {speaks.map(s => <span key={`s${s.id}`}>★ {s.title} · </span>)}
+                          {openTasks.slice(0, 5).map(x => <span key={`t${x.id}`}>{x.title} · </span>)}
+                          {openTasks.length > 5 && <span>and {openTasks.length - 5} more</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

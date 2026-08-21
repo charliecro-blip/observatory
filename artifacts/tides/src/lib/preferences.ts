@@ -72,7 +72,26 @@ export interface DisplayPrefs {
    * module the next time the page's order changes.
    */
   collapsedModules: string[];
+  /**
+   * How Compass meets you — the free, manual half of the working-rhythm idea
+   * (DESIGN-WORKING-RHYTHM-2026-08-21 §4, §6). Four presets over dials the
+   * app already has; adaptive hierarchy, never a skin. The astrological
+   * proposal for this value is the paid layer and does not exist yet.
+   *   tide      — read the day first, then what fits it (the app as built)
+   *   campaign  — one clear move; the backlog waits
+   *   route     — protect what you keep; fewer re-plans
+   *   field     — a few good ways in, chosen late
+   */
+  rhythm: Rhythm;
 }
+
+export type Rhythm = "tide" | "campaign" | "route" | "field";
+export const RHYTHMS: { key: Rhythm; label: string; blurb: string }[] = [
+  { key: "tide",     label: "Read the day first",  blurb: "what kind of day it is, then what fits it" },
+  { key: "campaign", label: "One clear move",      blurb: "the thing to push on now; the rest waits" },
+  { key: "route",    label: "Protect my routines", blurb: "the routines you keep, and fewer re-plans" },
+  { key: "field",    label: "Keep options open",   blurb: "a few good ways in, chosen when you get there" },
+];
 
 export type AstroDetail = DisplayPrefs["astroDetail"];
 export type UiDensity = DisplayPrefs["uiDensity"];
@@ -149,6 +168,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     // than claiming the band above the day's work on a first visit. Everything
     // else starts open; a module nobody has met yet should not be hidden.
     collapsedModules: ["reading", "tide"],
+    rhythm: "tide",
   },
   timing: {
     watchPlanets: [],
@@ -280,6 +300,12 @@ export function setAstroDetail(level: AstroDetail): void {
 // simplify" affordance. NOTE: no migration override for existing users — the
 // decluttered default applies to everyone (owner 2026-07-23); expanding is one
 // tap and persists.
+export function setRhythm(rhythm: Rhythm): void {
+  const prefs = loadPreferences();
+  prefs.display.rhythm = rhythm;
+  savePreferences(prefs);
+}
+
 export function setUiDensity(level: UiDensity): void {
   const prefs = loadPreferences();
   prefs.display.uiDensity = level;

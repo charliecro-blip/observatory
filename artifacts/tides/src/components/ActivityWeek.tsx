@@ -61,7 +61,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
     staleTime: Infinity,
   });
 
-  const { data, isPending } = useQuery<{ windows: Win[]; personalized?: boolean; chartAvailable?: boolean }>({
+  const { data, isPending } = useQuery<{ windows: Win[]; personalized?: boolean; chartAvailable?: boolean; withheld?: { hourOnly: number } }>({
     // Everything the answer depends on is in the key. The zone and the
     // location flag ride in the URL, and a key that omits them serves a
     // Chicago answer to a traveller — a lesson this repo has already paid for.
@@ -160,6 +160,9 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                 : `${total} window${total === 1 ? "" : "s"} this week. Pick one to see what's behind it.`}
             {!why && data?.chartAvailable === false && (
               <span> Add your birth chart to have these read against your own houses.</span>
+            )}
+            {!why && (data?.withheld?.hourOnly ?? 0) > 0 && (
+              <span> {data!.withheld!.hourOnly} matching planetary hours aren't listed on their own.</span>
             )}
           </div>
         </>

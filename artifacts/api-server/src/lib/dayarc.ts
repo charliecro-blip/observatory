@@ -196,31 +196,73 @@ function refineCrossing(lo: number, hi: number, isPast: (t: number) => boolean):
   return new Date(Math.round(hi / 1000) * 1000);
 }
 
-export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0, timeZone?: string): DayArc {
-  // Anchor the day to the viewer's local midnight (not the server's, which is UTC on
-  // Railway). Shift the instant into viewer-local wall time, read its Y/M/D, then map
-  // that local midnight back to a UTC instant.
-  //
-  // Two paths, chosen so every existing caller that doesn't pass `timeZone`
-  // is byte-for-byte unaffected. The numeric-offset path below is a SNAPSHOT:
-  // `tzOffsetMin` is one number for the whole call, so it is wrong by up to
-  // an hour on the day a DST clock changes, and the flat `+ 24h` below is
-  // wrong on that same day (23 or 25 hours, never 24). When an IANA zone is
-  // available, `dayBoundsInZone` recomputes the offset for THIS specific day
-  // and derives the end from the next civil date rather than a fixed span.
-  let dayStart: Date, dayEnd: Date;
-  if (timeZone) {
-    [dayStart, dayEnd] = dayBoundsInZone(now, timeZone);
-  } else {
-    const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
-    dayStart = new Date(
-      Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 0, 0, 0) + tzOffsetMin * 60000,
-    );
-    dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
-  }
-  const STEP_MS = 10 * 60000; // 10-minute resolution
+/**
+ * Void-of-course spans over a long range — the calendar's question, for 90
+ * days at a time — WITHOUT walking every ten minutes of every day.
+ *
+ * Measured: the full scan is 3.3s for 90 days, on a synchronous route that
+ * was 0.73s before. A void is defined by two instants only — the Moon's last
+ * perfection in a sign and her ingress out of it — so this finds each
+ * ingress directly (cheap) and scans backward from it in widening windows
+ * until the last perfection appears. Same scanner as the day arc, so the two
+ * cannot disagree about when a void begins; just aimed at the part of the
+ * sign that matters.
+ */
+export function vocSpansBetween(startMs: number, endMs: number): { start: string; end: string }[] {
+  // Pure function of the sky, and every viewer asks for the same UTC range
+  // on the same day — so the first request pays and the rest read. Keyed on
+  // the exact instants, which the route quantises to a UTC midnight itself.
+  const memoKey = `${startMs}:${endMs}`;
+  const hit = VOC_SPAN_MEMO.get(memoKey);
+  if (hit) return hit;
 
-  // Precompute all VOC/aspect planet longitudes are cheap enough per step.
+  const out: { start: string; end: string }[] = [];
+  const HOUR = 3600000;
+  let t = startMs - 3 * 24 * HOUR; // a void running AT startMs began before it
+  let guard = 0;
+  while (guard++ < 200) {
+    const ing = nextIngressAfterMs(t);
+    if (ing <= t) break;
+    if (ing > endMs + 3 * 24 * HOUR) break;
+    // Last perfection before this ingress, inside the same sign. Scanned
+    // backward in three regions — each one only the part not yet seen —
+    // because most voids are a few hours long and the full sign rarely
+    // needs walking.
+    let voidStart: number | null = null;
+    let seenTo = ing - 60000;
+    for (const W of [6 * HOUR, 24 * HOUR, 72 * HOUR]) {
+      const from = ing - W;
+      const { ingresses, perfections } = scanLunarEvents(new Date(from), new Date(seenTo));
+      const prevIngress = ingresses.length ? ingresses[ingresses.length - 1].t.getTime() : null;
+      const inSign = perfections.filter(p => p.t.getTime() < ing && (prevIngress == null || p.t.getTime() > prevIngress));
+      if (inSign.length) { voidStart = inSign[inSign.length - 1].t.getTime(); break; }
+      // The whole sign seen and nothing perfected in it: void from the ingress in.
+      if (prevIngress != null) { voidStart = prevIngress; break; }
+      seenTo = from;
+    }
+    if (voidStart != null && voidStart < ing && voidStart < endMs && ing > startMs) {
+      out.push({ start: new Date(voidStart).toISOString(), end: new Date(ing).toISOString() });
+    }
+    t = ing + 60000;
+  }
+  if (VOC_SPAN_MEMO.size >= 16) VOC_SPAN_MEMO.delete(VOC_SPAN_MEMO.keys().next().value!);
+  VOC_SPAN_MEMO.set(memoKey, out);
+  return out;
+}
+const VOC_SPAN_MEMO = new Map<string, { start: string; end: string }[]>();
+
+/**
+ * The Moon's day, scanned once: every sign ingress and every exact
+ * perfection to a classical planet between two instants, at 10-minute
+ * resolution refined to the crossing. This is the ONE implementation — the
+ * day arc's segments, its void windows and the calendar's void spans all
+ * read from it, so they cannot disagree about when a void begins.
+ */
+export function scanLunarEvents(dayStart: Date, dayEnd: Date): {
+  ingresses: { t: Date; sign: string }[];
+  perfections: { t: Date; planet: string; aspect: string }[];
+} {
+  const STEP_MS = 10 * 60000; // 10-minute resolution
   const ingresses: { t: Date; sign: string }[] = [];
   const perfections: { t: Date; planet: string; aspect: string }[] = [];
 
@@ -269,6 +311,61 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     }
     prevSign = sign; prevMoon = mLon; prevJd = jd;
   }
+  return { ingresses, perfections };
+}
+
+/**
+ * Void-of-course windows between two instants, as real spans. A void runs
+ * from the Moon's last perfection in a sign to her ingress into the next;
+ * a void still running at `dayEnd` ends at the REAL next ingress, found by a
+ * short forward scan, which can be tomorrow.
+ */
+export function vocWindowsBetween(
+  dayStart: Date, dayEnd: Date,
+  // A caller that has already scanned this span hands its result in, so the
+  // day arc does not pay for the same 10-minute walk twice.
+  scanned?: ReturnType<typeof scanLunarEvents>,
+): { start: string; end: string }[] {
+  const { ingresses, perfections } = scanned ?? scanLunarEvents(dayStart, dayEnd);
+  const boundaries: Date[] = [dayStart, ...ingresses.map(i => i.t), dayEnd];
+  const out: { start: string; end: string }[] = [];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const s = boundaries[i], e = boundaries[i + 1];
+    const inSeg = perfections.filter(p => p.t >= s && p.t < e);
+    const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
+    const endsAtIngress = i < boundaries.length - 2;
+    if (endsAtIngress) {
+      if (lastPerf.getTime() < e.getTime()) out.push({ start: lastPerf.toISOString(), end: e.toISOString() });
+    } else if (voidOfCourse(julianDay(lastPerf)).voc) {
+      out.push({ start: lastPerf.toISOString(), end: new Date(nextIngressAfterMs(e.getTime())).toISOString() });
+    }
+  }
+  return out;
+}
+
+export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin = 0, timeZone?: string): DayArc {
+  // Anchor the day to the viewer's local midnight (not the server's, which is UTC on
+  // Railway). Shift the instant into viewer-local wall time, read its Y/M/D, then map
+  // that local midnight back to a UTC instant.
+  //
+  // Two paths, chosen so every existing caller that doesn't pass `timeZone`
+  // is byte-for-byte unaffected. The numeric-offset path below is a SNAPSHOT:
+  // `tzOffsetMin` is one number for the whole call, so it is wrong by up to
+  // an hour on the day a DST clock changes, and the flat `+ 24h` below is
+  // wrong on that same day (23 or 25 hours, never 24). When an IANA zone is
+  // available, `dayBoundsInZone` recomputes the offset for THIS specific day
+  // and derives the end from the next civil date rather than a fixed span.
+  let dayStart: Date, dayEnd: Date;
+  if (timeZone) {
+    [dayStart, dayEnd] = dayBoundsInZone(now, timeZone);
+  } else {
+    const shifted = new Date(now.getTime() - tzOffsetMin * 60000);
+    dayStart = new Date(
+      Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), 0, 0, 0) + tzOffsetMin * 60000,
+    );
+    dayEnd = new Date(dayStart.getTime() + 24 * 3600000);
+  }
+  const { ingresses, perfections } = scanLunarEvents(dayStart, dayEnd);
 
   // Build character segments split at ingresses
   const boundaries: Date[] = [dayStart, ...ingresses.map(i => i.t), dayEnd];
@@ -297,26 +394,8 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
     });
   }
 
-  // VOC windows — includes a trailing cross-midnight window when the last
-  // segment is void (audit F3a); its end is the real next ingress, found via
-  // a short forward scan rather than assumed to fall within today.
-  const vocWindows: { start: string; end: string }[] = [];
-  for (let i = 0; i < boundaries.length - 2; i++) {
-    const s = boundaries[i], e = boundaries[i + 1];
-    const inSeg = perfections.filter(p => p.t >= s && p.t < e);
-    const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
-    if (lastPerf.getTime() < e.getTime()) vocWindows.push({ start: lastPerf.toISOString(), end: e.toISOString() });
-  }
-  {
-    const lastSeg = segments[segments.length - 1];
-    if (lastSeg?.voc) {
-      const s = boundaries[boundaries.length - 2], e = boundaries[boundaries.length - 1];
-      const inSeg = perfections.filter(p => p.t >= s && p.t < e);
-      const lastPerf = inSeg.length ? inSeg[inSeg.length - 1].t : s;
-      const ingressMs = nextIngressAfterMs(e.getTime());
-      vocWindows.push({ start: lastPerf.toISOString(), end: new Date(ingressMs).toISOString() });
-    }
-  }
+  // VOC windows — the same scan, through the one shared implementation.
+  const vocWindows = vocWindowsBetween(dayStart, dayEnd, { ingresses, perfections });
 
   // Angle crossings — the day's peak MOMENTS (a planet on the Ascendant or
   // Midheaven, ~20 min each). Luminaries + benefics/malefics only, and only

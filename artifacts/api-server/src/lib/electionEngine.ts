@@ -160,6 +160,13 @@ export interface ElectionResult {
   personalized: boolean;
   cautions: string[];
   windows: ElectionWindow[];
+  /**
+   * What was computed and deliberately NOT listed, with the count. A gap is
+   * output, never a silent drop (CLAUDE.md): the interface can say "nine
+   * matching hours this week aren't shown on their own" instead of the
+   * person wondering where the Mercury hours went.
+   */
+  withheld: { hourOnly: number };
 }
 
 export function clockOf(ms: number, tzOffsetMin: number): string {
@@ -256,6 +263,8 @@ const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
 ]);
 const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
   ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
+/** Acts for which an hour by itself is too small a thing to suggest. */
+const SUBSTANTIAL_MODES = new Set<ReturnType<typeof modeOf>>(["inception", "execution"]);
 
 /**
  * THE AGREEMENT RULE, in one place.
@@ -604,6 +613,8 @@ export function computeElections(opts: {
   if (mercRx && act.mercuryRx === "favor") cautions.push("Mercury is retrograde — which actually suits this: re- work runs well under it.");
 
   const windows: ElectionWindow[] = [];
+  // Candidates the hour made and nothing else backed — counted, not shown.
+  let hourOnlyWithheld = 0;
   const finalAspectMemo = new Map<string, ReturnType<typeof moonFinalAspectInSign>>();
 
   for (let d = 0; d < days; d++) {
@@ -941,6 +952,27 @@ export function computeElections(opts: {
       // the two can no longer drift apart on what "convergent" means.
       const supportLevel: SupportLevel = supportLevelFrom(allFamilies);
 
+      // THE HOUR ALONE IS NOT A WINDOW (owner 2026-08-21).
+      //
+      // Measured before this: over ten activities for one week, 68 of the 100
+      // windows returned carried no lunar testimony at all — a matching
+      // planetary hour, sometimes with the weekday's ruler or a standing
+      // condition behind it. "First draft" and "admin errands" were ten for
+      // ten. The doctrine above already says the hour cannot establish
+      // convergence; it was still allowed to establish the window itself,
+      // so every Mercury hour of every day became a suggestion.
+      //
+      // The rule: for a SUBSTANTIAL act — a beginning or a piece of real
+      // work — a window needs something with a time of its own that is not
+      // the hour: the Moon applying to a significator, the Moon's sign, a
+      // standing aspect between the significators, a natal contact. The hour
+      // stays in the evidence and in the hour x Moon stack, where it sharpens
+      // a window; it no longer makes one. Upkeep and recovery keep their
+      // hour-only rows — a Mercury hour is exactly the right grain for
+      // errands, and nobody plans a fortnight around them.
+      const hourCarriesIt = !allFamilies.some(f => roleOf(f) === "establishing" || f === "lunar-condition");
+      if (hourCarriesIt && SUBSTANTIAL_MODES.has(actMode)) { hourOnlyWithheld++; continue; }
+
       // Kept as a MODIFIER, not a promotion. The hour x Moon overlap is still
       // the thing that turns a several-hour lunar swell into a window with a
       // clean start and end, so it should decide which supported window leads —
@@ -1078,5 +1110,6 @@ export function computeElections(opts: {
     chartAvailable: !!natal,
     personalized: out.some(w => w.personal),
     cautions, windows: out,
+    withheld: { hourOnly: hourOnlyWithheld },
   };
 }

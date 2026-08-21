@@ -171,14 +171,32 @@ function addDays(dateStr: string, n: number): string {
   d.setDate(d.getDate() + n);
   return localDateStr(d);
 }
-function vocRangeForDate(dateStr: string, eventsMap: Map<string, SkyEvent[]>): { startMin: number; endMin: number } | null {
-  const events = eventsMap.get(dateStr) ?? [];
-  const vocEv = events.find(e => e.type === "voc" && e.time);
-  if (!vocEv?.time) return null;
-  const startMin = timeToMinutes(vocEv.time);
-  const nextIngress = events.find(e => e.type === "ingress" && e.time && timeToMinutes(e.time) > startMin);
-  const endMin = nextIngress?.time ? timeToMinutes(nextIngress.time) : 24 * 60;
-  return { startMin, endMin };
+/** A void span as the server sent it — two instants. */
+type VocSpan = { startMs: number; endMs: number };
+function vocSpansOf(events: SkyEvent[]): VocSpan[] {
+  return events
+    .filter(e => e.type === "voc" && e.at && e.endAt)
+    .map(e => ({ startMs: Date.parse(e.at!), endMs: Date.parse(e.endAt!) }))
+    .filter(v => Number.isFinite(v.startMs) && Number.isFinite(v.endMs) && v.endMs > v.startMs);
+}
+/**
+ * The void's minutes on ONE local day. A span that crosses midnight shows on
+ * both days, clipped — so the grey block on Tuesday ends at 24:00 and the
+ * one on Wednesday starts at 0:00, which is what actually happened.
+ *
+ * The old reader took a `time` off the day's own void event, and the server
+ * never sent one; no void was ever drawn anywhere (2026-08-21).
+ */
+function vocRangesForDate(dateStr: string, spans: VocSpan[]): { startMin: number; endMin: number }[] {
+  const dayStart = new Date(dateStr + "T00:00:00").getTime();
+  const dayEnd = new Date(dateStr + "T23:59:59.999").getTime() + 1;
+  const out: { startMin: number; endMin: number }[] = [];
+  for (const v of spans) {
+    const a = Math.max(v.startMs, dayStart), b = Math.min(v.endMs, dayEnd);
+    if (b <= a) continue;
+    out.push({ startMin: Math.round((a - dayStart) / 60000), endMin: Math.round((b - dayStart) / 60000) });
+  }
+  return out.sort((x, y) => x.startMin - y.startMin);
 }
 
 // ── EventModal ────────────────────────────────────────────────────────────────
@@ -460,11 +478,12 @@ function usePlanetaryHours(dates: string[], lat: number, lon: number) {
   });
 }
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
   dates: string[];
   dataMap: Map<string, WeekDay>;
   windowsMap: Map<string, PlanningWindow[]>;
   eventsMap: Map<string, SkyEvent[]>;
+  vocSpans: VocSpan[];
   gcalMap: Map<string, GCalEvent[]>;
   cautionMap: Map<string, CautionDayHit[]>;
   testerId: string | null;
@@ -551,7 +570,8 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
           const signKey = parseSign(moonSign);
           const phase = dayData?.moonPhase ?? "";
           const qs = dayData?.qualityScore ?? 0;
-          const voc = vocRangeForDate(dateStr, eventsMap);
+          const vocs = vocRangesForDate(dateStr, vocSpans);
+          const voc = vocs.length > 0;
           const moonAspects = dayData?.moonAspects ?? [];
           const dayRuler = dayData?.dayRuler ?? "";
           const allHours = planetaryHoursMap.get(dateStr) ?? [];
@@ -709,22 +729,26 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, gcalMap, cautionMap, 
                     </div>
                   ))}
 
-                  {/* VOC overlay */}
-                  {!skyQuiet && voc && (()=>{
-                    const topPx = Math.max(0,(voc.startMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
-                    const botPx = Math.min(HOURS*ROW_H,(voc.endMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
+                  {/* THE VOID, BLOCKED OFF. A flat translucent grey over the
+                      hours the Moon is void (owner 2026-08-21: "blocked off in
+                      a transparent grey"), not the faint hatch — the point is
+                      that the stretch reads as held, the way a booked hour
+                      does, before anyone reads the label. */}
+                  {!skyQuiet && vocs.map((v, vi) => {
+                    const topPx = Math.max(0,(v.startMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
+                    const botPx = Math.min(HOURS*ROW_H,(v.endMin/60-HOUR_START)/HOURS*HOURS*ROW_H);
                     if (botPx<=topPx) return null;
                     return (
-                      <div style={{
+                      <div key={vi} style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,top:topPx,height:botPx-topPx,
                         zIndex:3,pointerEvents:"none",
-                        background:"repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(111,106,144,0.08) 8px,rgba(111,106,144,0.08) 9px)",
-                        borderLeft:"2px solid #6f6a9050",
+                        background:"rgba(96,96,108,0.21)",
+                        borderTop:"1px solid rgba(96,96,108,0.34)", borderBottom:"1px solid rgba(96,96,108,0.34)",
                       }}>
-                        <div style={{ position:"absolute",top:2,left:4,fontSize:7,color:"var(--text-2)",fontWeight:600 }}>◒ VOC</div>
+                        <div style={{ position:"absolute",top:3,left:5,fontSize:7.5,color:"var(--text-2)",fontWeight:600,letterSpacing:0.3 }}>◒ void Moon</div>
                       </div>
                     );
-                  })()}
+                  })}
 
                   {/* Aspect crossing lines — only with real location */}
                   {!skyQuiet && crossings.map((c:any,ci:number) => {
@@ -886,7 +910,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         <div style={{
           position:"absolute",left:0,right:0,top:`${vocFrac.top*100}%`,height:`${vocFrac.height*100}%`,
           borderRadius:4,pointerEvents:"none",
-          background:"repeating-linear-gradient(135deg,transparent,transparent 5px,rgba(180,150,0,0.1) 5px,rgba(180,150,0,0.1) 6px)",
+          background:"rgba(96,96,108,0.14)",
         }}/>
       )}
 
@@ -1155,8 +1179,8 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 // opt-in layers so the essentials read first (#13b, #20).
 interface AgendaMoment { min: number; time: string; glyph: string; label: string; sub?: string; color: string; faded?: boolean; onDelete?: () => void; }
 
-function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
-  dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; windows: PlanningWindow[];
+function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
+  dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[]; lat: number; lon: number; showHours: boolean; showCrossings: boolean;
   /** Canonical hours for this date, from the server. `null` means genuinely
    *  unavailable (polar day or night), which is different from "none yet". */
@@ -1185,9 +1209,9 @@ function AgendaView({ dateStr, today, dayData, events, windows, gcalEvents, lat,
   }
 
   // Void-of-course Moon — a rest window, shown as start/end bookends
-  const voc = vocRangeForDate(dateStr, new Map([[dateStr, events]]));
-  if (voc) {
-    moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "drifting — rest, don't launch", color: "var(--text-2)" });
+  for (const voc of vocRanges) {
+    if (voc.startMin > 0) moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
+    else moments.push({ min: 0, time: minutesToTime(0), glyph: "◒", label: "Void Moon, still running", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
     if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "var(--text-2)" });
   }
 
@@ -1377,6 +1401,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
     return m;
   },[eventsData]);
 
+  // The void's spans, once, from every event — not per date, because a span
+  // that starts on Tuesday is Wednesday's business too.
+  const vocSpans = useMemo(() => vocSpansOf(eventsData?.events ?? []), [eventsData]);
+
   const gcalMap = useMemo(() => {
     const m = new Map<string, GCalEvent[]>();
     for (const ev of gcalData?.events ?? []) {
@@ -1444,8 +1472,10 @@ export default function Calendar({ testerId, now, lat, lon }: {
   }
 
   function vocFracForDate(dateStr: string): {top:number;height:number}|null {
-    const voc = vocRangeForDate(dateStr,eventsMap);
-    if (!voc) return null;
+    const ranges = vocRangesForDate(dateStr, vocSpans);
+    if (!ranges.length) return null;
+    // One block per cell: from the first void minute to the last.
+    const voc = { startMin: ranges[0].startMin, endMin: ranges[ranges.length - 1].endMin };
     const DAY_START=6, DAY_END=24, SPAN=DAY_END-DAY_START;
     const vocH = voc.startMin/60, endH = Math.min(DAY_END,voc.endMin/60);
     const top    = Math.max(0,(vocH-DAY_START)/SPAN);
@@ -1594,6 +1624,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
             // day-character read — the schedule and the calendar events stay.
             dayData={pageQuiet ? undefined : dataMap.get(selectedDate)}
             events={pageQuiet ? [] : (eventsMap.get(selectedDate) ?? [])}
+            vocRanges={pageQuiet ? [] : vocRangesForDate(selectedDate, vocSpans)}
             windows={windowsMap.get(selectedDate) ?? []}
             gcalEvents={gcalMap.get(selectedDate) ?? []}
             lat={lat} lon={lon}
@@ -1607,6 +1638,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
         {(calView==="week"||calView==="day") && (
           <TimeGrid
             dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
+            vocSpans={pageQuiet ? [] : vocSpans}
             gcalMap={gcalMap} cautionMap={cautionMap}
             testerId={testerId} today={today} lat={lat} lon={lon}
             isDay={calView==="day"}

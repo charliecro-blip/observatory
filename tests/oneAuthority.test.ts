@@ -52,8 +52,13 @@ describe("one astrological authority", () => {
         if (a !== b) disagreements.push(`${key} Aug ${d}: engine=[${a}] longSession=[${b}]`);
       }
     }
-    // Without this the loop could pass by comparing nothing.
-    expect(compared).toBeGreaterThan(40);
+    // Without this the loop could pass by comparing nothing. The floor was
+    // 40 of the 60 activity-days; it is 30 since 2026-08-21, when the engine
+    // stopped making windows out of a matching planetary hour alone for
+    // substantial acts — a first-draft day with no lunar testimony now has
+    // no windows at all, which is the intended answer, and those days are
+    // skipped here rather than compared. Measured after the change: 39.
+    expect(compared).toBeGreaterThan(30);
     expect(disagreements).toEqual([]);
   }, 120_000);
 

@@ -9,7 +9,7 @@ import { PREMIUM_FEATURES, FREE_KEEPS } from "@/lib/premium";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
-import type { NotificationPrefs, DisplayPrefs } from "@/lib/preferences";
+import { RHYTHMS, type NotificationPrefs, type DisplayPrefs } from "@/lib/preferences";
 import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
 import { Guide } from "@/components/Guide";
 import { enablePush } from "@/lib/pushSubscribe";
@@ -628,6 +628,20 @@ function DisplaySection() {
               color: d.astroDetail === lvl ? "var(--color-foreground)" : "var(--text-3)",
               fontWeight: d.astroDetail === lvl ? 600 : 400,
             }}>{lvl}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
+      <Row label="How Compass meets you" sub="Same tasks and the same sky, with a different first question. One clear move leads with the thing to push on; Protect my routines with what you keep; Keep options open with a few ways in. Read the day first is the app as it has been.">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {RHYTHMS.map(r => (
+            <button key={r.key} onClick={() => updateDisplay({ rhythm: r.key })} title={r.blurb} style={{
+              fontSize: 11, padding: "4px 11px", borderRadius: 7, cursor: "pointer",
+              border: `1px solid ${(d.rhythm ?? "tide") === r.key ? "var(--color-primary)" : "var(--color-border)"}`,
+              background: (d.rhythm ?? "tide") === r.key ? "var(--color-primary)" : "var(--color-card-2)",
+              color: (d.rhythm ?? "tide") === r.key ? "#fff" : "var(--text-3)",
+              fontWeight: (d.rhythm ?? "tide") === r.key ? 600 : 400,
+            }}>{r.label}</button>
           ))}
         </div>
       </Row>

@@ -5,8 +5,8 @@ import { ApiErrorBanner } from "@/components/ApiError";
 import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
-import { PreferencesProvider } from "@/contexts/preferences-context";
-import { setAstroDetail } from "@/lib/preferences";
+import { PreferencesProvider, usePreferences } from "@/contexts/preferences-context";
+import { RHYTHMS, type Rhythm } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { EntitlementsProvider } from "@/contexts/entitlements-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -34,7 +34,7 @@ import { parseWhen, formatDueChip } from "@/lib/parseWhen";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import Home from "@/pages/Home";
 
-type WorkTab = "overview" | "tasks" | "habits";
+type WorkTab = "overview" | "tasks" | "habits" | "bearings";
 
 function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusStarId, onFocusConsumed, onOpenSettings, onLeaveWork, seedTab, onSeedTabConsumed }: { testerId: string|null; now: any; lat: number; lon: number; seedElement?: string|null; onSeedConsumed?: ()=>void; focusStarId?: number|null; onFocusConsumed?: ()=>void; onOpenSettings?: ()=>void; onLeaveWork?: (v: string)=>void; seedTab?: WorkTab|null; onSeedTabConsumed?: ()=>void }) {
   const [tab, setTab] = useState<WorkTab>("overview");
@@ -57,6 +57,11 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
     {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
     {id:"habits",    label:"Habits"},
+    // Its own room (owner 2026-08-21: the card above every tab was "still
+    // really prominent"; the ask was to expand it, not to bury it). Here it
+    // can be as long as it needs to be, and the Stars overview gets its
+    // first screen back.
+    {id:"bearings",  label:"Your bearings"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
@@ -73,12 +78,8 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
         ))}
       </div>
       <div style={{flex:1, overflow:"auto", display:"flex", flexDirection:"column", padding:"16px 20px"}}>
-        {/* Your bearings — where you are in time (year + chapter + landmarks).
-            Replaced CurrentsContextHeader (owner 2026-07-27: "locating someone
-            in time" is the product; you steer from where you are). */}
-        <BearingsCard testerId={testerId} onOpenSettings={onOpenSettings} />
-
         {/* Tab content — inherits flex from parent, scrollable together with header */}
+        {tab==="bearings"  && <BearingsCard testerId={testerId} onOpenSettings={onOpenSettings} expanded onNavigate={setTab} />}
         {tab==="overview"  && <GuidingStarsHub testerId={testerId} lat={lat} lon={lon} onNavigate={setTab} seedElement={seedElement} onSeedConsumed={onSeedConsumed} focusStarId={focusStarId} onFocusConsumed={onFocusConsumed}/>}
         {tab==="tasks"     && <Tasks    testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {tab==="habits"    && <Habits   testerId={testerId} now={now} lat={lat} lon={lon} onNavigate={onLeaveWork}/>}
@@ -607,13 +608,25 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   skipNameStep?: boolean;
 }) {
   const { updateChronotype, restoreFromCode } = useTester();
+  // THROUGH THE PROVIDER, not around it. This modal renders inside Shell,
+  // which is inside PreferencesProvider, so the provider's state was already
+  // loaded before any intake answer was written. The old path wrote straight
+  // to localStorage on the claim that the provider "mounted after
+  // onboarding" — it no longer does, so "The full chart" chosen here showed
+  // as "medium" until the next reload (found 2026-08-21 while adding the
+  // rhythm question, which failed the same way).
+  const { updateDisplay } = usePreferences();
   const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
   const [name, setName] = useState("");
-  // How much astrology to show — the intake question (owner 2026-07-22). Writes
-  // straight to preferences so the provider (mounted after onboarding) picks it
-  // up. Default "medium" is the friendlier middle for the glaze-over majority.
+  // How much astrology to show — the intake question (owner 2026-07-22).
+  // Default "medium" is the friendlier middle for the glaze-over majority.
   const [astroDetail, setAstroDetailState] = useState<"minimal" | "medium" | "full">("medium");
-  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { logEvent("onboard_astro_detail", { level: lvl }); setAstroDetailState(lvl); setAstroDetail(lvl); };
+  const chooseAstroDetail = (lvl: "minimal" | "medium" | "full") => { logEvent("onboard_astro_detail", { level: lvl }); setAstroDetailState(lvl); updateDisplay({ astroDetail: lvl }); };
+  // How Compass meets you — the free half of the working-rhythm idea, asked
+  // here so the first Home a person sees is shaped for them rather than for
+  // the owner (DESIGN-WORKING-RHYTHM-2026-08-21 §5, §6). Shipped 2026-08-21.
+  const [rhythm, setRhythmState] = useState<Rhythm>("tide");
+  const chooseRhythm = (r: Rhythm) => { logEvent("onboard_rhythm", { rhythm: r }); setRhythmState(r); updateDisplay({ rhythm: r }); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
   const [showRestore, setShowRestore] = useState(false);
@@ -916,6 +929,26 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                 }}>
                 <div style={{ fontSize:11.5, fontWeight:600, color: astroDetail === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
                 <div style={{ fontSize:9, color:"var(--text-3)", marginTop:2, lineHeight:1.4 }}>{o.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Working-rhythm intake. Situations, not traits: people answer
+            "structure or flexibility?" aspirationally and "a free afternoon
+            appears" honestly. Each answer is a default Home can act on. */}
+        <div style={{ marginBottom:18 }}>
+          <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>A free afternoon opens up. What should Compass lead with?</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
+            {RHYTHMS.map(o => (
+              <button key={o.key} type="button" onClick={() => chooseRhythm(o.key)}
+                style={{
+                  padding:"9px 9px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                  border: rhythm === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
+                  background: rhythm === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
+                }}>
+                <div style={{ fontSize:11.5, fontWeight:600, color: rhythm === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
+                <div style={{ fontSize:9, color:"var(--text-3)", marginTop:2, lineHeight:1.4 }}>{o.blurb}</div>
               </button>
             ))}
           </div>
