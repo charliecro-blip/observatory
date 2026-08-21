@@ -308,7 +308,11 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: soon ? col : "var(--text-3)" }}>{soon ? `✦ your ${core.name} is on an angle now` : "Today at your location"}</span>
             {rise && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>rises</b> {fmt(rise.at)}{rise.approximate ? " ~" : ""}</span>}
             {culm && <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}><b style={{ color: col }}>culminates</b> {fmt(culm.at)}{culm.approximate ? " ~" : ""}</span>}
-            <span style={{ fontSize: 10, color: "var(--text-3)" }}>good moments to lead with {core.short.replace(/^the /, "")}</span>
+            {/* `use` is a list of doings ("tending, resting, listening inward");
+                `short` is a noun phrase ("the need to feel safe"), which the
+                old "lead with …" template turned into nonsense for the Moon
+                (owner 2026-08-21). */}
+            <span style={{ fontSize: 10, color: "var(--text-3)" }}>good moments for {core.use}</span>
           </div>
         );
       })()}

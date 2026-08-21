@@ -361,3 +361,15 @@ Owner verdict on step 1: "they feel helpful! elegant. build the rest."
 Read on the owner's chart: Field overall (Planning Field, Action Field,
 Recovery Route, Commitment Route), earth payoff; gear offered today:
 Saturn square the Ascendant, 2.8°, Route through Oct 20.
+
+### Gear invitations are negotiable (owner 2026-08-21, same evening)
+
+"I like the gear invitation — although I think we should also give options
+for more info and for people to suggest/adapt the invitation before
+agreeing upon it." So the banner has four doors now: Yes, Adjust (a
+different rhythm, a span of three days / a week / through the transit /
+any date), What's this? (the transit and its orb, the rule that fired,
+how the end date was found, what Home would change, and that the
+transit→rhythm pairing is Compass synthesis while the aspect and dates are
+measured), and Not now. An adjusted yes is recorded as adjusted, so the
+record can later compare the sky's version against the person's.

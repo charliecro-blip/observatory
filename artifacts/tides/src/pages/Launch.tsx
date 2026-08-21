@@ -3,6 +3,7 @@ import { WeekWeave, useWeekShape } from "@/components/WeekShape";
 import { useTester } from "@/contexts/tester-context";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import type { AskElectionContext } from "@/App";
+import Planets from "@/pages/Planets";
 import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
@@ -213,7 +214,13 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
   );
 }
 
-export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate }: { testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void; onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void; onNavigate?: (v: string) => void }) {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate, planets }: {
+  testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void;
+  onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void; onNavigate?: (v: string) => void;
+  /** The planet dossiers' wiring, handed down from the shell so the room can
+   *  render the same page the deep links do. */
+  planets?: Omit<React.ComponentProps<typeof Planets>, "testerId" | "lat" | "lon">;
+}) {
   const [category, setCategory] = useState<string | null>(null);
   const [days, setDays] = useState(14);
   const [showCrossings, setShowCrossings] = useState(false);
@@ -221,7 +228,10 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
   // windows) and BEGIN (electional — pick the moment to start one specific
   // venture). A switcher instead of one long scroll, so each mode gets the
   // whole surface and neither buries the other.
-  const [mode, setMode] = useState<"schedule" | "begin">("schedule");
+  // A third room, THE PLANETS (owner 2026-08-21): the dossiers' door was in
+  // the rail on every page, which is not where a reference belongs. Plan is
+  // where you go to decide when; the planets are the vocabulary of that.
+  const [mode, setMode] = useState<"schedule" | "begin" | "planets">("schedule");
   // The week weave lives in SCHEDULE because that room already exists to
   // "weave the week's tasks into good windows" — this is that, computed.
   // Opt-in: a proposed week appearing unasked is the app telling someone how to
@@ -249,7 +259,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
               "Pick a day" over "Begin": it is the marketing hook ("Pick the
               day. Know why.") as a tab, and the least discoverable word of
               the three became the plainest. */}
-          {([["schedule", "Schedule"], ["begin", "Pick a day"]] as const).map(([m, label]) => (
+          {([["schedule", "Schedule"], ["begin", "Pick a day"], ["planets", "The planets"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 18px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
               background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "var(--text-3)",
@@ -315,6 +325,10 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
 
         {/* BREAK DOWN — "this goal is too big; give me the steps" (#3: the PM
             breakdown, also reachable from Aims, surfaced here in Plan). */}
+
+        {mode === "planets" && (
+          <Planets testerId={testerId} lat={lat} lon={lon} {...(planets ?? {})} />
+        )}
 
         {mode === "begin" && (<>
         {/* THE WEEK, FOR ONE THING — an almanac asked the way people ask it.

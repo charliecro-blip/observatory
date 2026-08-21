@@ -1509,7 +1509,7 @@ function Shell() {
             and the second one hid the first. */}
         {view==="log"      && <Log testerId={testerId} onVisitPlanet={goToPlanet}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)} seedTab={workSeedTab} onSeedTabConsumed={()=>setWorkSeedTab(null)}/>}
-        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)} planets={{ onReflect: askCompass, initialPlanet: visitPlanet, onStartStar: startStarInElement }}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>

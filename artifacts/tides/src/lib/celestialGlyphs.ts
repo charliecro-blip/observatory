@@ -53,11 +53,16 @@ export const GLYPH_INDEX: Record<string, { cp: number; element: GlyphElement }> 
 );
 
 // ── Faces ──────────────────────────────────────────────────────────────────
-// Both loaded from Google Fonts in index.html. Venus is the ONE glyph pulled
-// from Symbols 1 (its crossbar is proportioned; Symbols 2's is stubby).
+// Self-hosted subsets (index.css). Coverage is split between the two Noto
+// faces and the stack falls through PER CHARACTER: Symbols 2 holds the Sun
+// (U+2609) and Pluto (U+2BD3); Symbols 1 holds the other planets, the signs
+// and the aspect marks. Measured 2026-08-21 against the actual cmaps — the
+// stack used to end at Symbols 2 and every other glyph came from the system.
+// Venus is pulled from Symbols 1 first (its crossbar is proportioned;
+// Symbols 2's is stubby).
 export const FACE = {
-  default: "'Noto Sans Symbols 2', sans-serif",
-  venus: "'Noto Sans Symbols', sans-serif",
+  default: "'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif",
+  venus: "'Noto Sans Symbols', 'Noto Sans Symbols 2', sans-serif",
 };
 export const fontFor = (name: string): string => (name === "Venus" ? FACE.venus : FACE.default);
 
@@ -89,6 +94,27 @@ export const GLYPH_ELEMENT_COLORS: Record<GlyphTheme, Record<GlyphElement, strin
  *                 stroke is painted in this colour, so it MUST match or the
  *                 edges show as a halo. CSS variables are fine.
  */
+// ── Optical centering ───────────────────────────────────────────────────────
+// Where each glyph's INK sits against the 1em box it is laid out in, measured
+// 2026-08-21 from the faces' own metrics and a canvas ink scan at 100px:
+// Symbols 1 puts its baseline at 0.955em (ascent 1480 / descent 570 on a
+// 1000 upem), so its marks ride ~0.1em LOW in a line-height-1 box; Symbols 2
+// (1069 / 630) puts the baseline at 0.72em and the Sun and Pluto ride
+// ~0.13em HIGH. A flex-centred circle centres the box, not the ink, which is
+// why nothing sat centred (owner 2026-08-21). Values are em, applied as a
+// transform so layout is untouched; negative lifts the glyph.
+const NUDGE_EM: Record<string, number> = {
+  // Symbols 2
+  Sun: 0.146, Pluto: 0.106,
+  // Symbols 1 — measured
+  Moon: -0.095, Mercury: -0.095, Venus: -0.12, Mars: -0.18, Jupiter: -0.095, Saturn: -0.065,
+  Uranus: -0.095, Neptune: -0.125, Aries: -0.085, Leo: -0.205, Scorpio: -0.185, Pisces: -0.07,
+  Conjunction: -0.08, Trine: -0.085,
+};
+const NUDGE_DEFAULT_S1 = -0.09;
+export const nudgeFor = (name: string): number =>
+  NUDGE_EM[name] ?? (name === "Sun" || name === "Pluto" ? 0.125 : NUDGE_DEFAULT_S1);
+
 export function glyphStyle(
   name: string,
   element: GlyphElement,
@@ -100,10 +126,13 @@ export function glyphStyle(
   const color = GLYPH_ELEMENT_COLORS[theme][element];
   const thin = thinFor(name);
   const strokePx = thin > 0 ? (thin * fontSizePx).toFixed(2) : "0";
+  const nudge = nudgeFor(name);
   return {
     fontFamily: fontFor(name),
     fontSize: `${fontSizePx}px`,
     lineHeight: 1,
+    display: "inline-block",
+    transform: nudge ? `translateY(${nudge.toFixed(3)}em)` : undefined,
     color,
     WebkitTextStroke: Number(strokePx) > 0 ? `${strokePx}px ${bgColor}` : "0px transparent",
     textShadow: glow ? "0 0 15px currentColor, 0 0 5px currentColor" : "none",
