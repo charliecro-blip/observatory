@@ -99,10 +99,13 @@ describe("day weaver", () => {
 // astro-quiet lens's path through the SAME weaver — a second weaver would
 // drift, which is the WeekStrip/AlreadyWoven bug shape.
 describe("the plain weave", () => {
-  it("never consults an election — every basis is first-fit", () => {
+  it("never consults an election — every basis is practical", () => {
     const w = weaveDay({ items, date, ...AUSTIN, consultSky: false });
     expect(w.placed.length).toBeGreaterThan(0);
-    for (const p of w.placed) expect(p.basis).toBe("first-fit");
+    // "rest" is the other practical basis (2026-08-21): a recovery item goes
+    // into the latest free stretch. Neither consults the sky; "elected" and
+    // "usual" are the ones that must never appear at the quiet lens.
+    for (const p of w.placed) expect(["first-fit", "rest"]).toContain(p.basis);
   });
 
   it("still respects commitments and reports refusals", () => {

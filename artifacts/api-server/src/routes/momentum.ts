@@ -40,6 +40,7 @@ const localDateOf = (dt: Date | string | null, tzOffsetMin: number): string | nu
 
 interface LedgerItem {
   date: string; goalId: number | null; text: string; source: string; winId?: number;
+  kind?: "win" | "kept";
   /** Set on a named win that touches a task/habit — the §-touches join. */
   taskId?: number | null; habitId?: number | null; minutes?: number | null;
   /** Every star this item serves, when it serves more than one (a habit can
@@ -113,6 +114,7 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     ledger.push({
       date: w.date, goalId: w.goalId ?? null, text: w.text, source: "named", winId: w.id,
       taskId: w.taskId ?? null, habitId: w.habitId ?? null, minutes: w.minutes ?? null,
+      kind: (w as any).kind === "kept" ? "kept" : "win",
     });
   }
   ledger.sort((a, b) => b.date.localeCompare(a.date));
@@ -187,9 +189,11 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     intentions: allIntentions.filter(i => i.cycleStart === cycleStart),
     prevIntentions: allIntentions.filter(i => i.cycleStart === prevCycleStart),
     winsPrevCycle: ledger.filter(l => l.date >= prevCycleStart && l.date < cycleStart).length,
-    winsToday: ledger.filter(l => l.date === today).length,
-    winsWeek: ledger.filter(l => l.date >= weekStart).length,
-    winsCycle: ledger.filter(l => l.date >= cycleStart).length,
+    winsToday: ledger.filter(l => l.date === today && (l as any).kind !== "kept").length,
+    winsWeek: ledger.filter(l => l.date >= weekStart && (l as any).kind !== "kept").length,
+    winsCycle: ledger.filter(l => l.date >= cycleStart && (l as any).kind !== "kept").length,
+    keptToday: ledger.filter(l => l.date === today && (l as any).kind === "kept").length,
+    keptWeek: ledger.filter(l => l.date >= weekStart && (l as any).kind === "kept").length,
     stars,
     ledger: ledger.slice(0, 200),
   };
@@ -213,7 +217,7 @@ router.get("/planning/momentum", async (req, res) => {
 router.post("/planning/wins", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
-  const { text, goalId, taskId, habitId, sprintId, minutes, date, tz } = req.body ?? {};
+  const { text, goalId, taskId, habitId, sprintId, minutes, date, tz, kind } = req.body ?? {};
   if (!text || !String(text).trim()) { res.status(400).json({ error: "text required" }); return; }
   const tzOffsetMin = parseInt(tz, 10) || 0;
   const day = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
@@ -224,6 +228,9 @@ router.post("/planning/wins", async (req, res) => {
     goalId: asId(goalId), taskId: asId(taskId), habitId: asId(habitId), sprintId: asId(sprintId),
     minutes: Number.isFinite(minutes) && minutes > 0 ? Math.min(24 * 60, Math.round(minutes)) : null,
     text: String(text).trim().slice(0, 500),
+    // A keeping — rested, enjoyed, tended, stopped — is the other thing a
+    // day can hold (AUDIT-HOLISM §2). Anything else is a win.
+    kind: kind === "kept" ? "kept" : "win",
   }).returning();
   res.status(201).json(row);
 });

@@ -183,7 +183,9 @@ export const DEFAULT_PREFS: TidesPreferences = {
   },
   display: {
     railSections: ["moon", "aspects", "retrogrades", "hour", "transits"],
-    autoRollover: true,
+    // Opt-in since 2026-08-21 (AUDIT-HOLISM §3.6): a rest day should not
+    // leave a debt by default.
+    autoRollover: false,
     todayShowVOC: true,
     todayShowWave: true,
     todayShow14Day: true,

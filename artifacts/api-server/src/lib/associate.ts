@@ -65,7 +65,11 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
   Venus: {
     element: "earth", windowType: "social", short: "beauty, pleasure, and relating",
-    keywords: ["love", "beauty", "beautiful", "art", "aesthetic", "pleasure", "enjoy", "relationship", "relate", "harmony", "harmonize", "date", "romance", "money", "finances", "budget", "value", "values", "worth", "craft", "design", "decorate", "style", "taste", "gift", "kindness", "friend", "friendship", "connection", "sensual", "garden", "flowers", "music"],
+    keywords: ["love", "beauty", "beautiful", "art", "aesthetic", "pleasure", "enjoy", "relationship", "relate", "harmony", "harmonize", "date", "romance", "money", "finances", "budget", "value", "values", "worth", "craft", "design", "decorate", "style", "taste", "gift", "kindness", "friend", "friendship", "connection", "sensual", "garden", "flowers", "music",
+      // The person-day phrasings (USER-SIMULATIONS-2026-08-21-REST #16, #18): a
+      // dinner with a named person, seeing your people, a drink, a visit —
+      // Venus's company, which the table did not recognise as anything.
+      "friends", "people", "dinner", "drinks", "lunch", "brunch", "coffee", "visit", "hang", "hangout", "catch up", "see my people", "dinner with", "drinks with", "lunch with", "coffee with", "date night", "night out", "picnic", "hosting", "guests"],
   },
   Mars: {
     element: "fire", windowType: "deep_work", short: "drive and physical effort",
@@ -79,7 +83,10 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
   Saturn: {
     element: "earth", windowType: "deep_work", short: "structure and discipline",
-    keywords: ["structure", "discipline", "disciplined", "commit", "commitment", "routine", "habit", "consistent", "consistency", "foundation", "build", "building", "master", "mastery", "patience", "patient", "boundary", "limit", "focus", "focused", "finish", "complete", "responsible", "responsibility", "career", "work", "long-term", "goal", "plan", "spine", "bones", "posture", "align", "aligned", "alignment", "stability", "stable", "solid", "ground", "grounded", "maintain", "steady", "save", "savings", "accountable"],
+    keywords: ["structure", "discipline", "disciplined", "commit", "commitment", "routine", "habit", "consistent", "consistency", "foundation", "build", "building", "master", "mastery", "patience", "patient", "boundary", "limit", "focus", "focused", "finish", "complete", "responsible", "responsibility", "career", "work", "long-term", "goal", "plan", "spine", "bones", "posture", "align", "aligned", "alignment", "stability", "stable", "solid", "ground", "grounded", "maintain", "steady", "save", "savings", "accountable",
+      // Saturn as ENOUGH (AUDIT-HOLISM §2): the stop, the boundary, the thing
+      // declined. "Leave work at six" read as nothing at all (#19).
+      "enough", "stop", "leave work", "leave work at", "log off", "clock off", "stop working", "say no", "no more", "decline", "cut off", "wind down", "shut the laptop", "done by"],
   },
   Uranus: {
     element: "air", windowType: "creative", short: "change and experiment",

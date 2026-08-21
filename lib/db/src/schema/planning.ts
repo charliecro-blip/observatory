@@ -221,6 +221,10 @@ export const wins = pgTable("wins", {
   taskId: integer("task_id"),
   habitId: integer("habit_id"),
   sprintId: integer("sprint_id"),
+  // A win is a doing; a KEEPING is the other thing a day can hold — rest,
+  // pleasure, company, the stop (AUDIT-HOLISM-2026-08-21 §2). Same table,
+  // second kind, so the record can count both without a second ledger.
+  kind: text("kind").default("win"),   // win | kept
   // How long the stretch ran, when it came from a session or a logged
   // duration. Nullable — most named wins are a sentence, not a stopwatch.
   minutes: integer("minutes"),

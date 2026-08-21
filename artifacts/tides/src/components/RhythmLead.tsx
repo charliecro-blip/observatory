@@ -56,8 +56,12 @@ const CAP: React.CSSProperties = {
 export default function RhythmLead({
   rhythm, onPickRhythm, testerId, lat, lon,
   overdue, dueToday, undated, later, committedCount,
-  onShape, shapeOpen, onFocus, gear, onEndGear, element,
+  onShape, shapeOpen, onFocus, gear, onEndGear, element, tideLevel, stars,
 }: {
+  /** The tide's level now — low and ebb make a rest the move. */
+  tideLevel?: string | null;
+  /** Live stars, with the planet each speaks. A Moon, Venus or Saturn star is a keeping. */
+  stars?: { id: number; title: string; planet?: string | null }[];
   /** The rhythm in force — the override while it lasts, else the base. */
   rhythm: Rhythm;
   onPickRhythm: (r: Rhythm) => void;
@@ -79,7 +83,7 @@ export default function RhythmLead({
     queryKey: ["habits", testerId, today, lat, lon],
     queryFn: async () => jsonArray<Habit>(await fetch(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`,
       { headers: testerId ? { "x-tester-id": testerId } : {} })),
-    enabled: !!testerId && rhythm === "route",
+    enabled: !!testerId && (rhythm === "route" || rhythm === "field" || rhythm === "campaign"),
   });
   const toggle = useMutation({
     mutationFn: async ({ id, done }: { id: number; done: boolean }) => {
@@ -125,7 +129,35 @@ export default function RhythmLead({
   // The order a push wants: what's late, what's due, then what's waiting.
   const ranked = [...overdue, ...dueToday, ...undated, ...later];
 
+  // A KEEPING — the other thing a day can hold (AUDIT-HOLISM-2026-08-21 §2):
+  // a practice not yet kept today, or a star that speaks the Moon, Venus or
+  // Saturn. The presets used to hold doings only; a do-nothing day had one
+  // move, and it was the overdue task (USER-SIMULATIONS-2026-08-21-REST #2,
+  // #3).
+  const YIN = new Set(["Moon", "Venus", "Saturn"]);
+  const practice = (habits ?? []).find(h => !h.doneToday && h.flavor !== "chore");
+  const yinStar = (stars ?? []).find(s => s.planet && YIN.has(s.planet));
+  const keeping: { kind: "habit" | "star"; title: string; id: number } | null =
+    practice ? { kind: "habit", title: `${practice.emoji ? `${practice.emoji} ` : ""}${practice.name}`, id: practice.id }
+    : yinStar ? { kind: "star", title: `★ ${yinStar.title}`, id: yinStar.id } : null;
+  const tideOut = tideLevel === "low" || tideLevel === "ebb";
+
   if (rhythm === "campaign") {
+    // The tide is out and there is something to keep: that is the move.
+    if (tideOut && keeping) {
+      return (
+        <div style={{ ...CARD, borderLeft: "3px solid var(--color-primary)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+            <span style={CAP}>One move</span>
+            <span style={{ marginLeft: "auto" }}>{switcher}</span>
+          </div>
+          {payoff}
+          <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-foreground)", lineHeight: 1.3, marginBottom: 4 }}>{keeping.title}</div>
+          <div style={{ fontSize: 11.5, color: "var(--color-muted)" }}>The tide is out, so the move is a keeping{ranked[0] ? `; ${ranked[0].title} waits for the turn` : ""}.</div>
+          {gearLine}
+        </div>
+      );
+    }
     const move = ranked[0];
     const next = ranked[1];
     return (
@@ -142,7 +174,7 @@ export default function RhythmLead({
               fontSize: 17, fontWeight: 600, color: "var(--color-foreground)", lineHeight: 1.3, marginBottom: 4,
             }}>{move.title}</button>
             <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 10 }}>
-              {overdue.includes(move) ? "Late, so it goes first." : dueToday.includes(move) ? "Due today." : "Top of what you're holding."}
+              {overdue.includes(move) ? "Past its date, so it comes first." : dueToday.includes(move) ? "Due today." : "Top of what you're holding."}
               {next && <> After it: {next.title}.</>}
             </div>
             <button onClick={onShape} style={{
@@ -208,20 +240,26 @@ export default function RhythmLead({
   const picks: TaskLite[] = [];
   for (const t of [overdue[0], dueToday[0], undated[0], undated[1], later[0]]) {
     if (t && !picks.includes(t)) picks.push(t);
-    if (picks.length === 3) break;
+    if (picks.length === (keeping ? 2 : 3)) break;
   }
   return (
     <div style={{ ...CARD, borderLeft: "3px solid #6f6a90" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-        <span style={CAP}>{picks.length === 1 ? "One way in" : `${["", "One", "Two", "Three"][picks.length]} ways in`}</span>
+        <span style={CAP}>{(() => { const n = picks.length + (keeping ? 1 : 0); return n === 1 ? "One way in" : `${["", "One", "Two", "Three"][n] ?? n} ways in`; })()}</span>
         <span style={{ marginLeft: "auto" }}>{switcher}</span>
       </div>
       {payoff}
-      {picks.length === 0 ? (
+      {picks.length === 0 && !keeping ? (
         <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Nothing on the list yet. Whatever you add shows up here as a choice.</div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${picks.length}, minmax(0, 1fr))`, gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${picks.length + (keeping ? 1 : 0)}, minmax(0, 1fr))`, gap: 8, marginBottom: 8 }}>
+            {keeping && (
+              <div style={{ textAlign: "left", padding: "9px 11px", borderRadius: 9, border: "1px dashed var(--color-border)", background: "var(--color-card-2)" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", lineHeight: 1.3 }}>{keeping.title}</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>a keeping</div>
+              </div>
+            )}
             {picks.map(t => (
               <button key={t.id} onClick={() => onFocus(t.id)} style={{
                 textAlign: "left", padding: "9px 11px", borderRadius: 9, cursor: "pointer",
@@ -229,7 +267,7 @@ export default function RhythmLead({
               }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", lineHeight: 1.3 }}>{t.title}</div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
-                  {overdue.includes(t) ? "past due" : dueToday.includes(t) ? "due today" : later.includes(t) ? "later" : "no date"}
+                  {overdue.includes(t) ? "past its date" : dueToday.includes(t) ? "due today" : later.includes(t) ? "later" : "no date"}
                 </div>
               </button>
             ))}

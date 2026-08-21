@@ -23,10 +23,11 @@ export interface MomentumStar {
 export interface MomentumData {
   today: string; streak: number; cycleStart: string; prevCycleStart: string; weekStart: string;
   winsToday: number; winsWeek: number; winsCycle: number; winsPrevCycle: number;
+  keptToday?: number; keptWeek?: number;
   intentions: { id: number; text: string; goalId: number | null }[];
   prevIntentions: { id: number; text: string; goalId: number | null }[];
   stars: MomentumStar[];
-  ledger: { date: string; goalId: number | null; goalIds?: number[]; text: string; source: string; winId?: number }[];
+  ledger: { date: string; goalId: number | null; goalIds?: number[]; text: string; source: string; winId?: number; kind?: "win" | "kept" }[];
 }
 
 const EL_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
@@ -110,6 +111,20 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
   const { data } = useMomentum(testerId, lat, lon);
   const [text, setText] = useState("");
   const [starId, setStarId] = useState<number | "">("");
+  // THE MOON QUESTION (AUDIT-HOLISM §3.7): what restored you. A day that
+  // rested had nothing to say to "what moved" (REST #10); it says it here,
+  // as a keeping.
+  const [kept, setKept] = useState("");
+  const nameKept = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/planning/wins", {
+        method: "POST", headers: { "Content-Type": "application/json", "x-tester-id": testerId ?? "" },
+        body: JSON.stringify({ text: kept.trim(), kind: "kept", tz: new Date().getTimezoneOffset() }),
+      });
+      if (!r.ok) throw new Error(`kept save failed (${r.status})`);
+    },
+    onSuccess: () => { logEvent("kept_named"); setKept(""); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+  });
   const nameWin = useMutation({
     mutationFn: async () => {
       const r = await fetch("/api/planning/wins", {
@@ -140,7 +155,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
                 border: w.source === "named" ? "1px solid #c8b06a55" : "1px solid #4a806030",
                 color: w.source === "named" ? "#8a6a20" : "#4a8060",
               }}>
-                {w.source === "named" ? "★" : "✓"} {w.text}{starTitle(w.goalId) ? ` · ${starTitle(w.goalId)}` : ""}
+                {w.kind === "kept" ? "☾" : w.source === "named" ? "★" : "✓"} {w.text}{starTitle(w.goalId) ? ` · ${starTitle(w.goalId)}` : ""}
               </span>
             ))}
           </div>
@@ -167,8 +182,18 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
           ★ log it
         </button>
       </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+        <input value={kept} onChange={e => setKept(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && kept.trim() && nameKept.mutate()}
+          placeholder="What restored you, or what you let be…"
+          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+        <button onClick={() => kept.trim() && nameKept.mutate()} disabled={!kept.trim() || nameKept.isPending}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: kept.trim() ? "#4a6080" : "var(--color-border)", color: kept.trim() ? "#ffffff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+          ☾ kept
+        </button>
+      </div>
       <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 5 }}>
-        ⚓ {data.streak} day{data.streak === 1 ? "" : "s"} at the helm · {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.winsCycle} this moon cycle
+        {data.streak > 0 ? `⚓ ${data.streak} day${data.streak === 1 ? "" : "s"} at the helm · ` : ""}{data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week{(data.keptWeek ?? 0) > 0 ? ` · ${data.keptWeek} kept` : ""} · {data.winsCycle} this moon cycle
       </div>
     </div>
   );
@@ -317,7 +342,12 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, su
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginBottom: 7 }}>
-          {data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.streak} day{data.streak === 1 ? "" : "s"} at the helm
+          {/* A week that rested is not a week that failed (REST #11): with
+              nothing won and no streak, the line reads the keepings instead
+              of printing a double zero under a gold border. */}
+          {data.winsWeek === 0 && data.streak === 0
+            ? ((data.keptWeek ?? 0) > 0 ? `${data.keptWeek} kept this week, and no wins to count` : "A quiet week in the wake")
+            : <>{data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week · {data.streak} day{data.streak === 1 ? "" : "s"} at the helm{(data.keptWeek ?? 0) > 0 ? ` · ${data.keptWeek} kept` : ""}</>}
           {data.stars.filter(s => s.winsWeek > 0).map(s => ` · ${s.title}: ${s.winsWeek}`).join("")}
         </div>
         {topNamed.length > 0 && (

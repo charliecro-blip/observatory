@@ -675,6 +675,8 @@ export default function Home({
         committedCount={committed.length}
         onShape={() => setShapeOpen(v => !v)} shapeOpen={shapeOpen}
         onFocus={linkRow}
+        tideLevel={now?.tide?.level ?? null}
+        stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
       />
 
       {/* A GEAR CHANGE, offered — the sky lighting one working style for a
@@ -1015,7 +1017,7 @@ export default function Home({
               {/* A single-group list drops its heading. Almost every imported
                   dump is one group — ten undated lines — and labelling it
                   "no date · 10" filed the whole inventory under a caveat. */}
-              <Group label="overdue" items={overdue} bare={soleGroup === "overdue"} />
+              <Group label="past its date" items={overdue} bare={soleGroup === "overdue"} />
               <Group label="today" items={dueToday} bare={soleGroup === "today"} />
               {/* A campaign keeps the backlog short: three, and the rest on
                   request. The inventory is not hidden, it is behind one tap,

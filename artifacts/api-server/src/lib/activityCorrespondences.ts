@@ -470,7 +470,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     houses: [5, 7], phase: "waxing", voc: "avoid", mercuryRx: null, windowType: "relationship",
     gloss: "Moon applying to Venus, evening tide — the oldest election there is." }),
   A({ key: "deepen-bond", label: "Deepen a bond", category: "love",
-    keywords: ["quality time", "anniversary", "partner", "connect deeply", "us time"],
+    keywords: ["quality time", "anniversary", "partner", "connect deeply", "us time", "dinner with", "drinks with", "lunch with", "coffee with", "evening with", "walk with"],
     element: "water", planets: { Venus: 1.0, Moon: 0.8 }, hourRulers: ["Venus", "Moon"],
     aspects: "soft", signs: { Cancer: "the shared shell", Scorpio: "depth", Taurus: "steady warmth" },
     houses: [7, 4], phase: null, voc: "neutral", mercuryRx: null, windowType: "relationship",
@@ -513,7 +513,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
 
   // ── SOCIAL ──────────────────────────────────────────────────────────────────
   A({ key: "host", label: "Host a gathering", category: "social",
-    keywords: ["host", "dinner party", "gathering", "have people over", "party"],
+    keywords: ["host", "dinner party", "gathering", "have people over", "party", "see my people", "see friends", "friends over", "catch up with friends"],
     element: "fire", planets: { Jupiter: 1.0, Venus: 0.9, Sun: 0.7 }, hourRulers: ["Jupiter", "Venus", "Sun"],
     aspects: "soft", signs: { Leo: "the generous table", Libra: "the room in harmony", Sagittarius: "the feast" },
     houses: [5, 11], phase: "waxing", voc: "neutral", mercuryRx: null, windowType: "social",

@@ -294,7 +294,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                       }}>{t.title}</span>
                       {t.dueDate && (
                         <span style={{ fontSize: 10, flexShrink: 0, color: t.dueDate < today ? BEHIND : "var(--text-3)" }}>
-                          {t.dueDate < today ? "overdue" : t.dueDate === today ? "today" : ""}
+                          {t.dueDate < today ? "past its date" : t.dueDate === today ? "today" : ""}
                         </span>
                       )}
                     </button>

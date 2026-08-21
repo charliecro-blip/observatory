@@ -253,7 +253,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   // "Someday" (no due date) is always shown so nothing can hide.
   const weekEnd = addDaysLocal(localToday(), 7);
   const buckets: { key: string; label: string; accent?: string; tasks: Task[] }[] = [
-    { key: "overdue",  label: "Overdue",     accent: "#a04040", tasks: active.filter(t => t.dueDate && t.dueDate < today) },
+    { key: "overdue",  label: "Past its date",     accent: "#a04040", tasks: active.filter(t => t.dueDate && t.dueDate < today) },
     { key: "today",    label: "Today",       accent: "#3a6020", tasks: active.filter(t => t.dueDate === today) },
     { key: "week",     label: "This week",   tasks: active.filter(t => t.dueDate && t.dueDate > today && t.dueDate <= weekEnd) },
     { key: "later",    label: "Scheduled later", tasks: active.filter(t => t.dueDate && t.dueDate > weekEnd) },

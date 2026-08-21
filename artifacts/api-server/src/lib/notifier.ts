@@ -126,7 +126,7 @@ async function tick() {
       if (t.hour === MORNING_HOUR && t.minute < 2 && dedup(`morning-${sub.testerId}-${t.date}`)) {
         await sendPushToTester(sub.testerId, {
           title: `⛵ Cast off — a ${ch.word} day`,
-          body: `${ch.grain} · ${phase.name.toLowerCase()}. Your streaks and today's three are ready.`,
+          body: `${ch.grain} · ${phase.name.toLowerCase()}.`,
           tag: "morning-brief",
         });
       }

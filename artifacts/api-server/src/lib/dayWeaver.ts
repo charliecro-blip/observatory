@@ -31,7 +31,7 @@
 import { dayTimeline, containers, type Commitment } from "./dayTimeline.js";
 import { dayKeyIn, dayBoundsIn, dayKeyInZone, dayBoundsInZone } from "./localClock.js";
 import { findLongSessions } from "./longSession.js";
-import { rankActivities, activityByKey } from "./activityCorrespondences.js";
+import { rankActivities, activityByKey, modeOf } from "./activityCorrespondences.js";
 
 /**
  * Fallback durations by window type, in minutes.
@@ -84,7 +84,7 @@ export interface Placement {
   activityKey: string | null;
   /** Why here — from the session finder, the person's own usual slot, or
    *  "the only time that fits". */
-  basis: "elected" | "first-fit" | "usual";
+  basis: "elected" | "first-fit" | "usual" | "rest";
   /** Under Route: the elected slot that was available and NOT taken, so the
    *  person can see what keeping the routine cost. Output, never silent. */
   keptOver?: { startAt: Date; endAt: Date } | null;
@@ -234,7 +234,16 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   // original stable order: elections already choose the hour there, and
   // reordering its input would change shipped behaviour for no gain.
   const ENERGY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  // REST IS PLACED LAST, AND LATE. A recovery-mode item (deep rest, a nap,
+  // a bath) used to be elected into the morning's best window like any
+  // task — "Rest properly" at 7:30 AM (USER-SIMULATIONS-2026-08-21-REST
+  // #20). It now goes after everything else, into the latest free stretch
+  // that fits, so rest lands on the wind-down side of the day and never
+  // claims the hour the engine rates best for doing.
+  const isRest = (it: WeaveItem) => { const k = resolveActivity(it); return !!k && modeOf(k) === "recovery"; };
   const ordered = [...items].sort((a, b) => {
+    const r = Number(isRest(a)) - Number(isRest(b));
+    if (r !== 0) return r;
     const p = priorityOf(a, today) - priorityOf(b, today);
     if (p !== 0 || consultSky) return p;
     const dueA = a.dueDate ?? "9999-12-31", dueB = b.dueDate ?? "9999-12-31";
@@ -248,7 +257,9 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
     if (!dur) {
       unplaced.push({
         item,
-        reason: "no estimate, and the title does not clearly name a kind of work — add a rough duration to schedule it",
+        reason: item.kind === "star-step"
+          ? "a direction, with no block to place — give it a step with a rough duration and that can be placed"
+          : "no estimate, and the title does not clearly name a kind of thing — add a rough duration to schedule it",
       });
       continue;
     }
@@ -271,7 +282,8 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
     let basis: Placement["basis"] = "first-fit";
     let keptOver: Placement["keptOver"] = null;
 
-    const sessions = activityKey && consultSky
+    const rest = isRest(item);
+    const sessions = activityKey && consultSky && !rest
       ? findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, commitments, locationKnown })
       : null;
     const elected = (sessions?.options ?? [])
@@ -299,6 +311,7 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
 
     if (!slot && elected) { slot = { startAt: elected.startAt, endAt: elected.endAt }; basis = "elected"; }
 
+    if (!slot && rest) { slot = lastFit(free, minutes); if (slot) basis = "rest"; }
     if (!slot) slot = firstFit(free, minutes);
 
     if (!slot) {
@@ -340,6 +353,16 @@ function fitsInFree(free: OpenStretch[], startAt: Date, endAt: Date): boolean {
   return free.some(f => startAt >= f.startAt && endAt <= f.endAt);
 }
 
+/** The latest stretch that fits — where rest goes, so it never takes the morning. */
+function lastFit(free: OpenStretch[], minutes: number): { startAt: Date; endAt: Date } | null {
+  for (const f of [...free].sort((a, b) => b.startAt.getTime() - a.startAt.getTime())) {
+    if (f.minutes >= minutes) {
+      const endAt = f.endAt;
+      return { startAt: new Date(endAt.getTime() - minutes * 60000), endAt };
+    }
+  }
+  return null;
+}
 function firstFit(free: OpenStretch[], minutes: number): { startAt: Date; endAt: Date } | null {
   for (const f of [...free].sort((a, b) => a.startAt.getTime() - b.startAt.getTime())) {
     if (f.minutes >= minutes) {

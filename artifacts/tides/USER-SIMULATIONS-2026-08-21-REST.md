@@ -88,3 +88,32 @@ Ordered by how many lines above it clears, mapped to AUDIT-HOLISM §3.
 Items 1, 5, 6 and 7 are copy or one table each. Items 2, 3 and 4 are the
 keepings work from the holism audit. Together they clear every push line
 above except the count on the list, which is a fact.
+
+## Built, the same night
+
+All eight punch-list items, one commit:
+
+1. Diagnosis: Venus knows dinner, drinks, lunch, coffee, "see my people",
+   "date night", guests; Saturn knows "enough", "leave work at", "log off",
+   "say no", "wind down", "done by". "Dinner with" and "drinks with" match
+   the deepen-a-bond activity; "see my people" and "friends over" match
+   hosting.
+2. The presets hold keepings: Field's three ways include a practice not
+   yet kept today or a Moon/Venus/Saturn star when one exists; Campaign's
+   one move is the keeping when the tide is low or ebbing. "OVERDUE" reads
+   "past its date" on Home, in Where you are, and on the Tasks page; "Late,
+   so it goes first" is gone.
+3. Shape Day places rest last and late — a recovery item goes into the
+   latest free stretch (basis "rest"), never the morning's election — and
+   a star with no block shape is refused as "a direction rather than a
+   block". "Kind of work" reads "kind of thing".
+4. The harvest asks the Moon question: "What restored you, or what you let
+   be…" → ☾ kept, a second kind on the wins table, counted beside wins and
+   never as one.
+5. The review never prints a double zero: with nothing won and no streak
+   it reads the keepings, or "A quiet week in the wake".
+6. The tide strip states conditions — "what starts now has the tide behind
+   it" — and its verb lists are what the tide favors, not what you must do.
+7. The morning notification says the day's grain and the phase, and stops
+   announcing streaks and "today's three".
+8. Auto-rollover is opt-in.

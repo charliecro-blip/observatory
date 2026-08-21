@@ -204,11 +204,15 @@ export const CHARACTER_GRAIN: Record<TideCharacter, string> = {
 
 // Level phrasing → what it means for pace (independent of character)
 export const LEVEL_GUIDANCE: Record<string, string> = {
-  high:    "Energy is at its peak — this is the window to fully engage.",
-  rising:  "Energy is building — start now and let it carry you.",
-  tide:    "A steady middle — do what you like; the sky isn't pushing.",
-  ebb:     "Energy is releasing — wind down, refine, don't start anything big.",
-  low:     "The tide is out — rest, seed intentions, restore.",
+  // Conditions, not orders (USER-SIMULATIONS-2026-08-21-REST #1): the
+  // rising tide used to read "start now and let it carry you" to someone
+  // who had decided to do nothing. What the tide is good for is said; what
+  // the person does with it is theirs.
+  high:    "Energy is at its peak — this is the window to fully engage, for whoever wants to.",
+  rising:  "Energy is building — what starts now has the tide behind it.",
+  tide:    "A steady middle — nothing is pushing either way.",
+  ebb:     "Energy is releasing — the stretch suits winding down and refining.",
+  low:     "The tide is out — the stretch suits rest, seeds, and restoring.",
 };
 
 // Character × level → the actionable "what to do" line.
@@ -235,7 +239,7 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
       // charge and then redirecting it beats pretending the day is flat.
       return `Energy's high, but the Moon's void — spend it on what's already moving, not on a start. Good for ${verbs.slice(0, 3).join(", ")} in service of something underway.`;
     }
-    return `${pace} Lean into what this tide favors — ${verbs.slice(0, 3).join(", ")}.`;
+    return `${pace} It favors ${verbs.slice(0, 3).join(", ")}.`;
   }
   if (level === "ebb" || level === "low") {
     // On low/ebb, favor the receptive end of the character
@@ -250,7 +254,7 @@ export function tideGuidance(character: TideCharacter, level: string, voc = fals
   if (voc) {
     return `${pace} With the Moon void, favor finishing over starting — good for ${verbs.slice(0, 3).join(", ")} on work already in hand.`;
   }
-  return `${pace} Good for ${verbs.slice(0, 3).join(", ")}.`;
+  return `${pace} It suits ${verbs.slice(0, 3).join(", ")}.`;
 }
 
 // Honest reading for a genuinely undramatic day — most days. Never manufacture
