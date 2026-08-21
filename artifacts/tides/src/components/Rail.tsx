@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences, useUiDensity, useAstroDetail, useTimeFormat } from "@/contexts/preferences-context";
+import { takesFor, lineOf } from "@/lib/explain";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { suggestApproach, approachOptions } from "@/lib/approach";
@@ -534,6 +535,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const [moonTakeIdx, setMoonTakeIdx] = useState(0);
   const [seasonTakeIdx, setSeasonTakeIdx] = useState(0);
   const [hourTakeIdx, setHourTakeIdx] = useState(0);
+  const [hourExampleIdx, setHourExampleIdx] = useState(0);
   // Instrument-dashboard collapse: `compact` (persisted) turns every core
   // section into a one-line glyph an experienced user reads at a glance; while
   // compact, an individual section can still be expanded (added to `expanded`).
@@ -740,21 +742,28 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           {(() => {
             const sm = SIGN_MYTHOS[sunSign.split(" ")[0]];
             if (!sm) return null;
-            const takes: { label: string; text: string }[] = [
-              { label: "essence", text: sm.essence },
-              { label: "the feel", text: sm.feel },
-              { label: "favors", text: sm.favors.slice(0, 3).join(" · ") },
-              { label: "watch for", text: sm.shadow },
-            ];
+            // CONDITION → APPROACH → EXAMPLE (AUDIT-EXPLAINERS-2026-08-21 §3).
+            // The rarest thing qualifying the Sun leads — an eclipse corridor,
+            // the Sun on a node, a gathering in the sign — and the sign's own
+            // sentence comes last, as the base. "The feel" left this rotation:
+            // its surf-and-fog lines are tide vocabulary outside the tide.
+            const takes = takesFor(["Sun", "season"], now?.qualifiers, {
+              label: "essence", approach: sm.essence.replace(/\.$/, ""), example: sm.favors[0],
+            }, astroLevel);
+            takes.push({ key: "shadow", label: "watch for", condition: "", approach: sm.shadow.replace(/\.$/, "") });
             const t = takes[seasonTakeIdx % takes.length];
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
                 <span style={{
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
-                }}>{t.label}</span>{t.text}
-                <button onClick={() => setSeasonTakeIdx(i => i + 1)} title="Another take on this season" aria-label="Another take on this season"
-                  style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}</span>
+                {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
+                {lineOf({ ...t, condition: "" })}
+                {takes.length > 1 && (
+                  <button onClick={() => setSeasonTakeIdx(i => i + 1)} title={`Another take on this season (${(seasonTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="Another take on this season"
+                    style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+                )}
               </div>
             );
           })()}
@@ -820,12 +829,17 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           {(() => {
             const sm = moonSign ? SIGN_MYTHOS[moonSign.split(" ")[0]] : null;
             if (!sm) return null;
-            const takes: { label: string; text: string }[] = [
-              moonFavours(sm, now?.voc),
-              { label: "the feel", text: sm.feel },
-              { label: "watch for", text: sm.shadow },
-              { label: "essence", text: sm.essence },
-            ];
+            // The Moon's qualifiers lead (the void, the Moon on a node, the
+            // eclipse corridor); the sign's mood is the base, with one favor as
+            // its example. When void, the void qualifier carries the sign's own
+            // void reading, so `instead` is not repeated here.
+            const fav = moonFavours(sm, now?.voc);
+            const takes = takesFor(["Moon"], now?.qualifiers, {
+              label: "the mood", approach: sm.essence.replace(/\.$/, ""),
+              example: now?.voc?.isVOC ? undefined : sm.favors[0],
+            }, astroLevel);
+            if (!now?.voc?.isVOC) takes.push({ key: "favors", label: fav.label, condition: "", approach: fav.text });
+            takes.push({ key: "shadow", label: "watch for", condition: "", approach: sm.shadow.replace(/\.$/, "") });
             const t = takes[moonTakeIdx % takes.length];
             // How much of this mood is LEFT — measured, not assumed. The label
             // used to read a flat "next 2½ days" (a sign's average length), so
@@ -857,8 +871,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <span style={{
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
-                }}>{t.label}</span>{t.text}
-                <button onClick={() => setMoonTakeIdx(i => i + 1)} title="Another take on this Moon sign" aria-label="Another take on this Moon sign"
+                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}</span>
+                {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
+                {lineOf({ ...t, condition: "" })}
+                <button onClick={() => setMoonTakeIdx(i => i + 1)} title={`Another take on this Moon (${(moonTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
             );
@@ -1020,6 +1036,28 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 })()}
               </div>
               <PlanetReading planet={planetaryHour.planet} planets={now.planets} />
+              {/* What qualifies THIS planet right now — on a node, combust,
+                  stationing, retrograde — under the dignity line, which says
+                  what it does from its sign. The two are the condition; the
+                  approach below is what to do with it. */}
+              {(() => {
+                const takes = takesFor([planetaryHour.planet], now?.qualifiers, { label: "", approach: "" }, astroLevel)
+                  .filter(t => t.key !== "base");
+                if (!takes.length) return null;
+                const t = takes[hourTakeIdx % takes.length];
+                return (
+                  <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.45 }}>
+                    <span style={{ display: "block", color: "var(--text-3)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                      {t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}
+                    </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>{lineOf({ ...t, condition: "" })}
+                    {takes.length > 1 && (
+                      <button onClick={() => setHourTakeIdx(i => i + 1)} title={`The next thing qualifying ${planetaryHour.planet} (${(hourTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="The next qualifier"
+                        style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <div style={{ fontSize: 9, color: "var(--text-3)", display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -1060,20 +1098,17 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             // ↻ walks the window through the rest of the list.
             const lead = suggestApproach(ctx)?.text ?? opts[0];
             const ordered = [lead, ...opts.filter(o => o !== lead)];
-            const start = (hourTakeIdx * 3) % ordered.length;
-            const shown = Array.from(
-              { length: Math.min(3, ordered.length) },
-              (_, i) => ordered[(start + i) % ordered.length]);
+            // ONE example, never three (AUDIT-EXPLAINERS §2c): a column of
+            // three imperatives is what made the rail read as a horoscope.
+            // The rest stay one tap away.
+            const shown = ordered[hourExampleIdx % ordered.length];
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 8, lineHeight: 1.5 }}>
-                <span style={{ color: "var(--text-3)" }}>this hour</span> {shown[0]}
-                {opts.length > 3 && (
-                  <button onClick={() => setHourTakeIdx(i => i + 1)} title="More ways to take this hour" aria-label="More ways to take this hour"
+                <span style={{ color: "var(--text-3)" }}>for example</span> {shown}
+                {ordered.length > 1 && (
+                  <button onClick={() => setHourExampleIdx(i => i + 1)} title={`Another way to take this hour (${(hourExampleIdx % ordered.length) + 1} of ${ordered.length})`} aria-label="Another way to take this hour"
                     style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
                 )}
-                {shown.slice(1).map((o, i) => (
-                  <div key={i} style={{ color: "var(--text-3)", marginTop: 1 }}>· {o}</div>
-                ))}
               </div>
             );
           })()}

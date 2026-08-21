@@ -29,6 +29,8 @@ export interface TideState {
 
 export interface TidesNow {
   timestamp: string;
+  /** What makes this moment unlike others with the same sign — see lib/explain.ts. */
+  qualifiers?: import("./explain").Qualifier[];
   dayRuler: string;
   momentLabel: string;
   quality: string;

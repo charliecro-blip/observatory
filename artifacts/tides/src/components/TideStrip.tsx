@@ -53,6 +53,13 @@ export default function TideStrip({ now, minimal, onOpen }: {
     ? QUIET_DAY_GUIDANCE[character]
     : tideGuidance(character, now.tide.level, !!now?.voc?.isVOC);
   const guidance = minimal ? plainGuidance(raw) : raw;
+  // The moment's rarest qualifier, under the day's line — an eclipse
+  // corridor, a luminary on a node, a station — so Home says the thing that
+  // makes today unlike other days of its kind (AUDIT-EXPLAINERS §4). Only
+  // the rare ones (a retrograde is not news on a strip). Never at minimal.
+  // The luminaries' own rare qualifiers only: the season's (the eclipse
+  // corridor) lives in the rail's SEASON line and would repeat here.
+  const rare = !minimal ? (now?.qualifiers ?? []).find((q: any) => q.salience >= 60 && (q.bodies.includes("Sun") || q.bodies.includes("Moon"))) : null;
 
   // At minimal the day names itself by its date, which is a fact everyone
   // already holds. Inventing a plain-language stand-in for "Deep" would be
@@ -72,6 +79,11 @@ export default function TideStrip({ now, minimal, onOpen }: {
       <span style={{ flex: 1, minWidth: 180, fontSize: 12, lineHeight: 1.45, color: "var(--color-muted)" }}>
         {guidance}
       </span>
+      {rare && (
+        <span style={{ fontSize: 11, color: "var(--color-muted)", flexBasis: "100%", lineHeight: 1.5 }}>
+          <span style={{ color: "var(--color-foreground)" }}>{rare.plain.charAt(0).toUpperCase() + rare.plain.slice(1)}</span> — {rare.approach}.
+        </span>
+      )}
     </div>
   );
 

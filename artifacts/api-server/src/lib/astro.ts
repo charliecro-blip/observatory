@@ -195,12 +195,11 @@ export function getPlanetPositions(jd: number) {
 // traditions. Standard mean-node formula (retrograde by nature, ~-0.053°/day).
 // Kept out of getPlanetPositions on purpose so nodes don't silently enter every
 // daily aspect/transit calc; callers add them where they're actually wanted.
-export function lunarNodes(jd: number): {
+export function lunarNodes(jd: number, which: "true" | "mean" = "true"): {
   north: { longitude: number; sign: string; degree: number };
   south: { longitude: number; sign: string; degree: number };
 } {
-  const d = jd - 2451545.0;
-  const north = normalize360(125.0445479 - 0.0529537222 * d);
+  const north = which === "mean" ? meanNodeLongitude(jd) : trueNodeLongitude(jd);
   const south = normalize360(north + 180);
   return {
     north: { longitude: north, ...longitudeToSign(north) },
@@ -208,13 +207,50 @@ export function lunarNodes(jd: number): {
   };
 }
 
-// ── Asteroid goddesses (Ceres, Pallas, Juno, Vesta) — EXPERIMENTAL ──────────
-// The main-belt asteroids aren't in astronomy-engine, so we solve them from
-// J2000 osculating elements with a full 3D Kepler (inclination + node — needed
-// because Pallas is inclined ~35°, which the flat 2D model used for the planets
-// would get badly wrong). Accuracy is approximate (elements are mean, not
-// perturbed) — verify against a known position and calibrate M0 if it drifts,
-// the same way Chiron and the nodes were dialed in.
+/** The mean ascending node — the secular term only. */
+export function meanNodeLongitude(jd: number): number {
+  const d = jd - 2451545.0;
+  return normalize360(125.0445479 - 0.0529537222 * d);
+}
+
+/**
+ * THE TRUE NODE (Meeus, Astronomical Algorithms ch. 47): the mean node plus
+ * the periodic terms that make it swing ±1.7° about the mean on a ~14-day
+ * wobble. This is what every chart program means by "North Node" unless it
+ * says "mean", and it was measured 2026-08-21 against JPL Horizons' osculating
+ * node on six dates from 1975 to 2033 (see tests/ephemeris-reference.test.ts).
+ * Until then the engine silently used the mean node everywhere.
+ */
+export function trueNodeLongitude(jd: number): number {
+  const T = (jd - 2451545.0) / 36525;
+  const r = Math.PI / 180;
+  // Fundamental arguments (Meeus 47.2–47.5)
+  const D = normalize360(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868 - T * T * T * T / 113065000) * r;
+  const M = normalize360(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T + T * T * T / 24490000) * r;
+  const Mp = normalize360(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T * T * T / 69699 - T * T * T * T / 14712000) * r;
+  const F = normalize360(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - T * T * T / 3526000 + T * T * T * T / 863310000) * r;
+  const omega = 125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + T * T * T / 467441 - T * T * T * T / 60616000;
+  const corr =
+    -1.4979 * Math.sin(2 * (D - F))
+    - 0.1500 * Math.sin(M)
+    - 0.1226 * Math.sin(2 * D)
+    + 0.1176 * Math.sin(2 * F)
+    - 0.0801 * Math.sin(2 * (Mp - F));
+  return normalize360(omega + corr);
+}
+
+// ── Asteroid goddesses (Ceres, Pallas, Juno, Vesta) ────────────────────────
+// READ FROM A TABLE, not solved. The Kepler model below survives only as the
+// fallback outside the table's range (1940–2070).
+//
+// Measured 2026-08-21 against JPL Horizons: the Kepler model on J2000 mean
+// elements is within 0.2° in 2026 (its M0 calibration held) but, with no
+// account of Jupiter's perturbations, drifts to 1–2° through the 1990s, 2.5°
+// in 1985, 3.4° in 1960 and 4.5° for Pallas at 2000 — so every natal
+// asteroid for a birth before ~2010 was off by degrees. The table is
+// Horizons' own geocentric apparent ecliptic longitude (QUANTITIES=31) at
+// four-day steps, Catmull-Rom interpolated; see
+// tests/ephemeris-reference.test.ts, which pins five instants.
 interface AsteroidElements {
   a: number; e: number; i: number; om: number; w: number; M0: number; // deg, J2000 epoch
 }
@@ -230,7 +266,7 @@ const ASTEROIDS: Record<string, AsteroidElements> = {
   Vesta:  { a: 2.3615, e: 0.0887, i: 7.141,  om: 103.917, w: 150.735, M0: 340.372 },
 };
 
-function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
+function asteroidKeplerLongitude(jd: number, el: AsteroidElements): number {
   const d = jd - 2451545.0;                          // days since J2000
   const n = 0.9856076686 / Math.pow(el.a, 1.5);      // mean motion, deg/day
   const M = normalize360(el.M0 + n * d) * DEG2RAD;
@@ -253,12 +289,39 @@ function asteroidGeoLongitude(jd: number, el: AsteroidElements): number {
   return normalize360(Math.atan2(yg, xg) / DEG2RAD);
 }
 
+
+import asteroidTable from "./asteroid-ephemeris.json" with { type: "json" };
+const AST_TABLE = asteroidTable as { startJD: number; stepDays: number; bodies: Record<string, number[]> };
+
+/** Unwrap a short run of longitudes so interpolation never crosses 0/360 the wrong way. */
+function unwrap(vals: number[]): number[] {
+  const out = [vals[0]];
+  for (let i = 1; i < vals.length; i++) {
+    let v = vals[i];
+    while (v - out[i - 1] > 180) v -= 360;
+    while (v - out[i - 1] < -180) v += 360;
+    out.push(v);
+  }
+  return out;
+}
+
+/** Horizons table, Catmull-Rom between four-day samples; Kepler beyond the table. */
+function asteroidGeoLongitude(jd: number, name: string, el: AsteroidElements): number {
+  const t = AST_TABLE.bodies[name];
+  const x = (jd - AST_TABLE.startJD) / AST_TABLE.stepDays;
+  if (!t || x < 1 || x > t.length - 3) return asteroidKeplerLongitude(jd, el);
+  const i = Math.floor(x), f = x - i;
+  const [p0, p1, p2, p3] = unwrap([t[i - 1], t[i], t[i + 1], t[i + 2]]);
+  const v = 0.5 * ((2 * p1) + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (-p0 + 3 * p1 - 3 * p2 + p3) * f * f * f);
+  return normalize360(v);
+}
+
 // The four asteroid goddesses with sign/degree + retrograde (from the sign of
 // the day-to-day geocentric motion). EXPERIMENTAL — see note above.
 export function getAsteroids(jd: number): Array<{ planet: string; sign: string; degree: number; longitude: number; retrograde: boolean }> {
   return Object.entries(ASTEROIDS).map(([name, el]) => {
-    const lon = asteroidGeoLongitude(jd, el);
-    const lonNext = asteroidGeoLongitude(jd + 1, el);
+    const lon = asteroidGeoLongitude(jd, name, el);
+    const lonNext = asteroidGeoLongitude(jd + 1, name, el);
     const retrograde = normalize360(lonNext - lon) > 180; // moving backward through the zodiac
     return { planet: name, longitude: lon, retrograde, ...longitudeToSign(lon) };
   });

@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { computeNatalChart, computeTransitAspects } from "../lib/natal.js";
 import { computeTide, PLANET_TO_ELEMENT, type TideAspectLite } from "../lib/tide.js";
 import { computeDayArc, findPeakWindows, nextIngressAfterMs, vocSpansBetween } from "../lib/dayarc.js";
+import { computeQualifiers } from "../lib/qualifiers.js";
 import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
@@ -416,6 +417,13 @@ router.get("/tides/now", async (req, res) => {
         benefic: !!c.benefic, malefic: !!c.malefic,
       })),
     voidOfCourse: voc,
+    // What makes this moment unlike other moments with the same sign —
+    // eclipse corridor, a luminary on a node, stations, combustion, the
+    // void, a stellium — each with its bodies and a salience, so a surface
+    // can compose its base plus the one rarest qualifier for its body
+    // (AUDIT-EXPLAINERS-2026-08-21 §3). Cheap: nodes, one eclipse scan,
+    // five motion reads.
+    qualifiers: computeQualifiers(jd, planets, { voc, vocFeel: voc ? voidReading(moonSign)?.feel ?? null : null }),
     // `reading` is sign-specific: a void in Taurus and a void in Capricorn are
     // not the same afternoon, and Lilly exempts four signs outright — which
     // changes the counsel from "wait it out" to "use it". Only computed when
