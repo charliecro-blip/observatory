@@ -3,6 +3,31 @@ import { db, dailyCheckIns } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import { UpsertCheckInBody } from "@workspace/api-zod";
 import { requireTesterId } from "../middlewares/testerId.js";
+// `reflection` is not in the generated UpsertCheckInBody, and a zod object
+// strips what it doesn't know — so it is read off the raw body and checked
+// here rather than silently dropped. Hand-written because api-server has no
+// direct zod dependency, and one field doesn't earn one.
+const MAX_ANSWER = 8000;
+function cleanReflection(v: unknown): Record<string, unknown> | null | undefined {
+  if (v === null) return null;
+  if (typeof v !== "object" || Array.isArray(v)) return undefined;
+  const o = v as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  if (o.prompt !== undefined) {
+    if (typeof o.prompt !== "string" || o.prompt.length > 400) return undefined;
+    out.prompt = o.prompt;
+  }
+  for (const bag of ["answers", "items"] as const) {
+    if (o[bag] === undefined) continue;
+    const b = o[bag];
+    if (typeof b !== "object" || b === null || Array.isArray(b)) return undefined;
+    for (const val of Object.values(b as Record<string, unknown>)) {
+      if (typeof val !== "string" || val.length > MAX_ANSWER) return undefined;
+    }
+    out[bag] = b;
+  }
+  return out;
+}
 
 const router: IRouter = Router();
 
@@ -51,6 +76,16 @@ router.post("/check-ins", requireTesterId, async (req, res) => {
   const provided: Record<string, unknown> = {};
   for (const f of FIELDS) {
     if ((body as Record<string, unknown>)[f] !== undefined) provided[f] = (body as Record<string, unknown>)[f];
+  }
+
+  const rawReflection = (req.body as Record<string, unknown>)?.reflection;
+  if (rawReflection !== undefined) {
+    const cleaned = cleanReflection(rawReflection);
+    if (cleaned === undefined) {
+      res.status(400).json({ error: "reflection must be { prompt?, answers?, items? } of strings" });
+      return;
+    }
+    provided.reflection = cleaned;
   }
 
   const [row] = await db

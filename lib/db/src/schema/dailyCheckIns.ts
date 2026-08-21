@@ -17,6 +17,14 @@ export const dailyCheckIns = pgTable("daily_check_ins", {
   symptomTags: json("symptom_tags").$type<string[]>(),
   behaviorTags: json("behavior_tags").$type<string[]>(),
   notes: text("notes"),
+  // The Log's reflection, kept structured rather than flattened into `notes`:
+  // { prompt, answers: {key: text}, items: {ledgerKey: text} }. `notes` stays
+  // the day's plain paragraph so every older reader keeps working.
+  reflection: json("reflection").$type<{
+    prompt?: string;
+    answers?: Record<string, string>;
+    items?: Record<string, string>;
+  }>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

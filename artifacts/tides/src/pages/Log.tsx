@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
+import LogComposer, { type LogVariant } from "@/components/LogComposer";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -75,10 +76,6 @@ function decodeFelt(tags: string[] | null | undefined) {
   return { felt: get("felt:"), tideChar: get("tideChar:"), tideLevel: get("tideLevel:") };
 }
 
-const ELEMENT_TO_CHARACTER: Record<string, string> = {
-  water: "deep", fire: "surge", earth: "building", air: "clear",
-};
-
 // Reflect back on any day — the composer writes to that day's check-in row
 // (felt → behaviorTags, note → notes), so hindsight entries are first-class
 // logbook entries too.
@@ -145,102 +142,6 @@ function DayWinComposer({ testerId, date }: { testerId: string | null; date: str
   );
 }
 
-function ReflectComposer({ testerId, date, dayDetail }: {
-  testerId: string | null; date: string; dayDetail: DayDetail;
-}) {
-  const qc = useQueryClient();
-  const existing = decodeFelt(dayDetail.checkIn?.behaviorTags);
-  const [felt, setFelt] = useState<string | null>(existing.felt);
-  const [note, setNote] = useState(dayDetail.checkIn?.notes ?? "");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveErr, setSaveErr] = useState(false);
-  useEffect(() => {
-    setFelt(decodeFelt(dayDetail.checkIn?.behaviorTags).felt);
-    setNote(dayDetail.checkIn?.notes ?? "");
-    setSaved(false);
-  }, [date, dayDetail.checkIn?.id]);
-
-  const dirty = felt !== existing.felt || note !== (dayDetail.checkIn?.notes ?? "");
-
-  async function save() {
-    if (!testerId || saving) return;
-    setSaving(true);
-    try {
-      const body: Record<string, unknown> = { date, notes: note || null };
-      if (felt) {
-        const tags = [`felt:${felt}`];
-        const ch = existing.tideChar ?? ELEMENT_TO_CHARACTER[dayDetail.sky.element];
-        if (ch) tags.push(`tideChar:${ch}`);
-        if (existing.tideLevel) tags.push(`tideLevel:${existing.tideLevel}`);
-        body.behaviorTags = tags;
-      }
-      const r = await fetch("/api/check-ins", {
-        method: "POST",
-        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      // Don't flash "saved ✓" if the server rejected it — that silently loses
-      // the reflection. Surface the failure instead.
-      if (!r.ok) throw new Error(`check-in failed (${r.status})`);
-      qc.invalidateQueries({ queryKey: ["logs-day"] });
-      qc.invalidateQueries({ queryKey: ["logs-timeline"] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      setSaveErr(true);
-      setTimeout(() => setSaveErr(false), 4000);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div style={{ marginBottom: 24, padding: "14px 16px", background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
-        {dayDetail.checkIn ? "Your reflection" : "Reflect on this day"}
-      </div>
-      <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
-        {Object.entries(FELT_META).map(([key, o]) => (
-          <button key={key} onClick={() => setFelt(felt === key ? null : key)} style={{
-            flex: 1, padding: "7px 6px", borderRadius: 8, cursor: "pointer",
-            border: felt === key ? `1.5px solid ${o.color}` : "1px solid var(--color-border)",
-            background: felt === key ? `${o.color}12` : "var(--color-card-2)",
-            fontSize: 11, color: felt === key ? o.color : "var(--color-muted)",
-            fontWeight: felt === key ? 600 : 400,
-          }}>
-            {o.icon} {o.label}
-          </button>
-        ))}
-      </div>
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="What happened that day — and did the weather fit?"
-        rows={2}
-        style={{
-          width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8,
-          border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-          fontSize: 12, lineHeight: 1.5, color: "var(--color-foreground)",
-          outline: "none", resize: "vertical", fontFamily: "inherit", marginBottom: 8,
-        }}
-      />
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
-        {saved && <span style={{ fontSize: 10, color: "#4a8060" }}>saved ✓</span>}
-        {saveErr && <span style={{ fontSize: 10, color: "#a03030" }}>couldn't save — try again</span>}
-        <button onClick={save} disabled={!dirty || saving} style={{
-          padding: "6px 16px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600,
-          cursor: dirty && !saving ? "pointer" : "default",
-          background: dirty && !saving ? "#1a2a3a" : "var(--color-border)",
-          color: dirty && !saving ? "#ffffff" : "var(--text-3)",
-        }}>
-          {saving ? "…" : "Save"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function Log({ testerId, onVisitPlanet }: { testerId: string | null; onVisitPlanet?: (planet: string) => void }) {
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -249,6 +150,9 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
   // can hold when you want one, not only when it ambushes you.
   const [reviewOpen, setReviewOpen] = useState(false);
   const [dateRange, setDateRange] = useState(30); // days back
+  const [logVariant, setLogVariant] = useState<LogVariant>(() => {
+    try { return (localStorage.getItem("compass-log-variant") as LogVariant) || "page"; } catch { return "page"; }
+  });
   // Readback-by-flavor: narrow the timeline to one planet's Moon-contact days.
   const [flavor, setFlavor] = useState<string>("");
   // Viewer timezone offset — day boundaries are the viewer's midnights.
@@ -629,8 +533,16 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
             </div>
           </div>
 
-          {/* Reflect on this day — felt + note, editable in hindsight */}
-          <ReflectComposer testerId={testerId} date={dayDetail.date} dayDetail={dayDetail} />
+          {/* Reflect on this day — felt + writing, editable in hindsight. Three
+              shapes are live at once while the owner picks one; the losers get
+              deleted, they don't become a setting. */}
+          <LogComposer
+            testerId={testerId}
+            date={dayDetail.date}
+            dayDetail={dayDetail}
+            variant={logVariant}
+            onPickVariant={(v) => { setLogVariant(v); try { localStorage.setItem("compass-log-variant", v); } catch {} }}
+          />
 
           {/* Backfill a win onto this day — yesterday's unplanned work counts too */}
           <DayWinComposer testerId={testerId} date={dayDetail.date} />
