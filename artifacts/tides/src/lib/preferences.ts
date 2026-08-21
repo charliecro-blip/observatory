@@ -83,6 +83,10 @@ export interface DisplayPrefs {
    *   field     — a few good ways in, chosen late
    */
   rhythm: Rhythm;
+  /** The Log tab, on or off (owner 2026-08-21: "the log should be
+   *  customizable — people can turn it on and off if they need"). Off hides
+   *  the tab and its doors; nothing is deleted. */
+  showLog: boolean;
   /**
    * A temporary gear, accepted from a sky invitation (§3 "current gear"):
    * the chart says a transit is lighting one working style, the person says
@@ -196,6 +200,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
     // else starts open; a module nobody has met yet should not be hidden.
     collapsedModules: ["reading", "tide"],
     rhythm: "tide",
+    showLog: true,
   },
   timing: {
     watchPlanets: [],

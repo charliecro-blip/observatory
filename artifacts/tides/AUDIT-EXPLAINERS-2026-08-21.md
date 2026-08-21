@@ -247,3 +247,27 @@ and it is copy, not code.
 - The tide "feel" metaphors: move into the tide instrument, or retire?
 - Rhythm-aware grammar (§5): build it with the composer, or after a week of
   the presets?
+
+---
+
+## 8. Built, the same day
+
+- **The qualifiers layer** (`lib/qualifiers.ts`, on `/tides/now`): eclipse
+  corridor, a luminary on the true node, stations and retrogrades of the
+  classical planets, cazimi and combustion, the void, a gathering of three
+  or more planets in one sign — each with bodies, salience, literal, plain,
+  one approach clause, and provenance. One home per qualifier (the corridor
+  is the season's; the node is the luminary's), learned the hard way: the
+  first build opened SEASON, MOON and the tide strip with the same eclipse
+  sentence.
+- **The composer** (`lib/explain.ts`): condition → approach → example; the
+  rail's three lines and the tide strip read from it. "The feel" left the
+  rotation. The hour's approach list shows one example; ↻ walks the rest.
+- **The engine, checked**: the node is now the true node (Meeus), within
+  0.2° of Horizons across six dates; the four asteroids read from a
+  Horizons table 1940–2070 (the Kepler model was 1–4° off for births in
+  the 1960s–90s). Both pinned by `tests/ephemeris-reference.test.ts`.
+- Not yet: the single sign/planet table served from the server (§6.1), and
+  the rewrite of the sign sentences themselves in the approach register
+  (§6.4) — the base lines are still the mythos essences. That is the copy
+  job, and it is next.

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
 import LogComposer, { type LogVariant } from "@/components/LogComposer";
+import Diary from "@/components/Diary";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -142,7 +143,7 @@ function DayWinComposer({ testerId, date }: { testerId: string | null; date: str
   );
 }
 
-export default function Log({ testerId, onVisitPlanet }: { testerId: string | null; onVisitPlanet?: (planet: string) => void }) {
+export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }: { testerId: string | null; onVisitPlanet?: (planet: string) => void; lat?: number; lon?: number }) {
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   // The summonable review (F10): the Sunday card's content, on demand. The
@@ -150,6 +151,8 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
   // can hold when you want one, not only when it ambushes you.
   const [reviewOpen, setReviewOpen] = useState(false);
   const [dateRange, setDateRange] = useState(30); // days back
+  // The diary (workings) sits beside the days, as its own room.
+  const [logMode, setLogMode] = useState<"days" | "diary">("days");
   const [logVariant, setLogVariant] = useState<LogVariant>(() => {
     try { return (localStorage.getItem("compass-log-variant") as LogVariant) || "page"; } catch { return "page"; }
   });
@@ -413,6 +416,18 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
         /* No day selected → the Wake: the continual wins ledger is the Log's
            default view (owner 2026-07-17: tracking progress, emphasized). */
         <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}>
+          {/* DAYS or the DIARY. The diary is the intentional record — set
+              on purpose, stamped with the sky, closed with how it went. */}
+          <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "var(--color-card-2)", borderRadius: 8, padding: 3, width: "fit-content" }}>
+            {([["days", "The days"], ["diary", "The diary"]] as const).map(([m, label]) => (
+              <button key={m} onClick={() => setLogMode(m)} style={{
+                fontSize: 11.5, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: logMode === m ? "var(--color-card)" : "transparent",
+                color: logMode === m ? "var(--color-primary)" : "var(--text-3)", fontWeight: logMode === m ? 600 : 400,
+              }}>{label}</button>
+            ))}
+          </div>
+          {logMode === "diary" ? <Diary testerId={testerId} lat={lat} lon={lon} /> : (<>
           {/* The felt loop, finally shown. The endpoint that computes it has
               existed for weeks with nothing rendering it — a trust engine
               nobody can see is a diary (integration audit, gap 2). It belongs
@@ -443,6 +458,7 @@ export default function Log({ testerId, onVisitPlanet }: { testerId: string | nu
           <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 20 }}>
             ← or select a day to read its full log
           </div>
+          </>)}
         </div>
       ) : dayLoading ? (
         <div

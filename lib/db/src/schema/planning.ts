@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 
 export const WINDOW_TYPES = [
   "deep_work", "planning", "creative", "admin", "social",
@@ -367,4 +367,30 @@ export const rhythmDays = pgTable("rhythm_days", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("uq_rhythm_days_tester_date").on(t.testerId, t.date),
+]);
+
+
+/**
+ * THE DIARY — a working: a moment the person set out to do something with
+ * intention, and how it went (owner 2026-08-21: "a sort of magical diary…
+ * to file in moments where I'm really trying to be intentional with my
+ * aims, and how it goes"). Optionally tied to a star, a task or a habit;
+ * always stamped with the sky as it stood when the intention was set, so
+ * the record can later be read against the conditions.
+ */
+export const workings = pgTable("workings", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  date: text("date").notNull(),                 // YYYY-MM-DD, the viewer's local day
+  intention: text("intention").notNull(),       // what was set out to do, and how
+  goalId: integer("goal_id"),                   // a Guiding Star, optional
+  taskId: integer("task_id"),                   // optional
+  habitId: integer("habit_id"),                 // optional
+  skyStamp: jsonb("sky_stamp"),                 // the literal conditions at the moment it was set
+  outcome: text("outcome"),                     // how it went, written later
+  felt: text("felt"),                           // aligned | mixed | off, written later
+  outcomeAt: timestamp("outcome_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("ix_workings_tester_date").on(t.testerId, t.date),
 ]);

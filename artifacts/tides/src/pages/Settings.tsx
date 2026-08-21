@@ -648,6 +648,19 @@ function DisplaySection() {
           ))}
         </div>
       </Row>
+      <Row label="The Log" sub="The days, the wake, the felt pattern and the diary. Off hides the tab; nothing is deleted, and it comes back when you turn it on.">
+        <div style={{ display: "flex", background: "var(--color-card-2)", borderRadius: 7, padding: 3, gap: 1 }}>
+          {([["on", true], ["off", false]] as const).map(([label, val]) => (
+            <button key={label} onClick={() => updateDisplay({ showLog: val })} style={{
+              fontSize: 11, padding: "3px 12px", borderRadius: 5, border: "none", cursor: "pointer",
+              background: (d.showLog ?? true) === val ? "var(--color-card)" : "transparent",
+              color: (d.showLog ?? true) === val ? "var(--color-foreground)" : "var(--text-3)",
+              fontWeight: (d.showLog ?? true) === val ? 600 : 400,
+            }}>{label}</button>
+          ))}
+        </div>
+      </Row>
+      <Divider />
       <Row label="By your chart" sub="Four functions, read off four placements. The chart proposes them; the record below is what decides.">
         <div style={{ maxWidth: 560 }}>
           <RhythmProposal testerId={testerId} current={d.rhythm ?? "tide"} onUse={(r) => updateDisplay({ rhythm: r, rhythmOverride: null, collapsedModules: TRIM_FOLDS[r] })} />

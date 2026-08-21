@@ -1202,7 +1202,11 @@ function Shell() {
   const [workSeedTab, setWorkSeedTab] = useState<WorkTab | null>(null);
   // The nav is just the loop — TOP_TABS carries all four core tabs, so the
   // old essential-density "⋯" reveal (which held Log and Planets) is gone.
-  const navTabs = TOP_TABS;
+  // The Log is optional (owner 2026-08-21): off hides the tab, and a view
+  // left pointing at it goes home rather than at a tab that is not there.
+  const showLog = usePreferences().prefs.display.showLog ?? true;
+  const navTabs = showLog ? TOP_TABS : TOP_TABS.filter(t => t.id !== "log");
+  useEffect(() => { if (!showLog && view === "log") setView("home"); }, [showLog, view]);
   // Usage analytics: which surface is being used (owner 2026-07-20).
   useEffect(() => { logEvent("view", { view }); }, [view]);
   const [capture, setCapture] = useState(false);
@@ -1507,7 +1511,7 @@ function Shell() {
             sub-tab of Calendar, which put the record of how things went
             behind a page about where things go — two different questions,
             and the second one hid the first. */}
-        {view==="log"      && <Log testerId={testerId} onVisitPlanet={goToPlanet}/>}
+        {view==="log"      && <Log testerId={testerId} onVisitPlanet={goToPlanet} lat={lat} lon={lon}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)} seedTab={workSeedTab} onSeedTabConsumed={()=>setWorkSeedTab(null)}/>}
         {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)} planets={{ onReflect: askCompass, initialPlanet: visitPlanet, onStartStar: startStarInElement }}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
