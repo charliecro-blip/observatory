@@ -29,7 +29,7 @@ const SECTIONS: Section[] = [
     key: "loop",
     glyph: "◉",
     title: "The daily loop",
-    lead: "Two moments a day. Everything else is optional.",
+    lead: "Two moments a day, and everything else is optional.",
     points: [
       { term: "Morning — Cast off", text: "Today opens with the day's character, your first few things, and one good window. It appears in the first hours after you wake, not at a fixed clock time." },
       { term: "Evening — Log the day", text: "A line about the day, if you want one. It lands in the Log stamped with that day's sky. Optional — nothing depends on it." },

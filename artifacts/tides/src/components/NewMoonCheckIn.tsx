@@ -612,7 +612,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
                 ? "Today is a new moon and a solar eclipse in Leo. Ten minutes to reset?"
                 : "This cycle opened with a new moon and solar eclipse in Leo. Ten minutes to reset?")
               : (today === cycleStart
-                ? "Today is a new moon. Ten minutes to reset?"
+                ? "Today is a new moon; ten minutes to reset?"
                 : "This cycle opened with a new moon. Ten minutes to reset?")}
           </span>
         </div>

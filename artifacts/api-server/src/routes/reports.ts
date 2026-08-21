@@ -247,7 +247,7 @@ export async function composeDay(testerId: string, tz: number, lat: number, lon:
     ? `${dueCount} thing${dueCount === 1 ? "" : "s"} of yours today. ${shape}.`
     : wins.length > 0
       ? `${wins.length} block${wins.length === 1 ? "" : "s"} on your calendar. ${shape}.`
-      : `Nothing due today. ${shape}.`;
+      : `Nothing due today; ${shape}.`;
   blocks.push({ lines: [headline] });
 
   // 2) TODAY — the reader's actual rows. Capped at three: a list you can't
@@ -460,7 +460,7 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
     ? `${upcoming.length} thing${upcoming.length === 1 ? "" : "s"} due this week${overdue.length ? `, ${overdue.length} still open from before` : ""}.`
     : overdue.length > 0
       ? `Nothing new due this week — ${overdue.length} still open from before.`
-      : "Nothing due this week. A clear run.";
+      : "Nothing due this week, a clear run.";
   blocks.push({ lines: [weekHeadline] });
 
   // 2) WHAT'S DUE, WHEN — their rows against the days, capped at five. The

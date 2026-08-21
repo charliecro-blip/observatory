@@ -28,14 +28,14 @@ const MOON_EMOJI: Record<string, string> = {
   "Full Moon":"🌕","Waning Gibbous":"🌖","Last Quarter":"🌗","Waning Crescent":"🌘","Balsamic Moon":"🌑",
 };
 const MOON_MEANING: Record<string, string> = {
-  "New Moon":"Seed-planting. Set intentions; avoid external launches.",
+  "New Moon":"Seed-planting: set intentions and hold off on launches.",
   "Waxing Crescent":"First steps. Begin what the new moon seeded.",
-  "First Quarter":"Push through resistance. Make the decision.",
-  "Waxing Gibbous":"Refine and intensify. Nearly at peak.",
-  "Full Moon":"Peak visibility and emotion. Share, celebrate, complete.",
+  "First Quarter":"The push through resistance, and the decision made.",
+  "Waxing Gibbous":"Refining and intensifying, nearly at the peak.",
+  "Full Moon":"Peak visibility and feeling: share, celebrate, complete.",
   "Waning Gibbous":"Gratitude. Share what you've learned.",
-  "Last Quarter":"Edit and release. Remove what no longer serves.",
-  "Waning Crescent":"Rest. Let the field lie fallow.",
+  "Last Quarter":"Editing and release, removing what no longer serves.",
+  "Waning Crescent":"Rest, and let the field lie fallow.",
   "Balsamic Moon":"Surrender. Deepest inner work before the new cycle.",
 };
 // Alpha tints over var(--color-card) so the grid follows the theme — the

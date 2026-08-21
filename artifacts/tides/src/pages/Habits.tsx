@@ -817,7 +817,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               const st = listState({ data: habits, isError: habitsError, isLoading: habitsLoading });
               if (st === "unavailable") return <span style={{color:"#a05050"}}>Couldn't load your habits — this is a connection problem, not an empty list.</span>;
               if (habitsLoading) return "Loading…";
-              return testerId ? "No habits yet. Add one above." : "Set up your profile first.";
+              return testerId ? "No habits yet; add one above." : "Set up your profile first.";
             })()}
           </div>
         )}

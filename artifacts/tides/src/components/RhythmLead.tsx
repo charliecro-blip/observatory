@@ -106,7 +106,7 @@ export default function RhythmLead({
 
   const switcher = (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 10, color: "var(--text-3)" }}>how Compass meets you:</span>
+      <span style={{ fontSize: 10, color: "var(--text-3)" }}>how you want to be met:</span>
       {RHYTHMS.map(r => (
         <button key={r.key} title={r.blurb} onClick={() => onPickRhythm(r.key)} style={{
           fontSize: 10.5, padding: "3px 9px", borderRadius: 11, cursor: "pointer",

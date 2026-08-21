@@ -73,7 +73,7 @@ export function composeTakes(a: AspectParty, b: AspectParty, aspect: AspectName)
       { label: "What to do", text: `Spend it on purpose. Put real work into the channel while it's open — ${A.use}, ${B.use}, or anything that joins them. Effort placed in a trine goes unusually far; that's the whole trade.` },
     ];
     case "sextile": return [
-      { label: "The opening", text: `${A.name} in ${a.sign} and ${B.name} in ${b.sign} are within reach of each other — a working alliance between ${A.short} and ${B.short} is on offer. Not loud, but real.` },
+      { label: "The opening", text: `${A.name} in ${a.sign} and ${B.name} in ${b.sign} are within reach of each other — a working alliance between ${A.short} and ${B.short} is on offer.` },
       { label: "The invitation", text: `Sextiles reward initiative and punish nothing. If you make the call, send the draft, take the first step in this direction, the door opens easily. If you don't, nothing happens — which is the quiet cost.` },
       { label: "What to do", text: `One deliberate move in this lane today: something joining ${A.use} with ${B.use}. Sextiles are the aspects most shaped by what you choose to do with them.` },
     ];

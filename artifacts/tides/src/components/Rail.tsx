@@ -743,7 +743,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <span style={{
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
-                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}</span>
+                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}</span>
                 {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
                 {lineOf({ ...t, condition: "" })}
                 {takes.length > 1 && (
@@ -857,7 +857,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <span style={{
                   display: "block", color: "var(--text-3)", fontSize: 8,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
-                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}</span>
+                }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}</span>
                 {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
                 {lineOf({ ...t, condition: "" })}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title={`Another take on this Moon (${(moonTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="Another take on this Moon sign"
@@ -1037,7 +1037,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 return (
                   <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.45 }}>
                     <span style={{ display: "block", color: "var(--text-3)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px" }}>
-                      {t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}
+                      {t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}
                     </span>
                     {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}{lineOf({ ...t, condition: "" })}
                     {takes.length > 1 && (

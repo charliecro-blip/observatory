@@ -635,7 +635,7 @@ function DisplaySection() {
         </div>
       </Row>
       <Divider />
-      <Row label="How Compass meets you" sub="Same tasks and the same sky, with a different first question. One clear move leads with the thing to push on; Protect my routines with what you keep; Keep options open with a few ways in. Read the day first is the app as it has been.">
+      <Row label="How you want to be met" sub="Same tasks and the same sky, with a different first question. One clear move leads with the thing to push on; Protect my routines with what you keep; Keep options open with a few ways in. Read the day first is the app as it has been.">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {RHYTHMS.map(r => (
             <button key={r.key} onClick={() => updateDisplay({ rhythm: r.key, rhythmOverride: null, collapsedModules: TRIM_FOLDS[r.key] })} title={r.blurb} style={{
@@ -1651,9 +1651,9 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
 // ---- Main Settings page ----
 
 const HOUSE_SYSTEMS: { id: string; label: string; note: string }[] = [
-  { id: "whole-sign",    label: "Whole Sign",    note: "Traditional. Each sign = one house. Used for profections and the Currents view." },
+  { id: "whole-sign",    label: "Whole Sign",    note: "The traditional system: each sign is one house, which is what profections and the Currents view use." },
   { id: "equal",         label: "Equal",         note: "30° houses measured from the Ascendant degree." },
-  { id: "placidus",      label: "Placidus",      note: "Most common modern system. Time-based, unequal houses." },
+  { id: "placidus",      label: "Placidus",      note: "The most common modern system, with time-based, unequal houses." },
   { id: "porphyry",      label: "Porphyry",      note: "Simple quadrant system; trisects each quadrant equally." },
   { id: "regiomontanus", label: "Regiomontanus", note: "Space-based quadrant system, favored in medical astrology." },
 ];

@@ -157,7 +157,9 @@ describe("claims match the evidence", () => {
     // correspondence system — nothing celestial observed anything.
     const hub = read("artifacts/tides/src/pages/GuidingStarsHub.tsx");
     expect(hub).not.toMatch(/The sky reads this as/);
-    expect(hub).toMatch(/Compass reads your wording as/);
+    // The agent is the app, in the first person since the 2026-08-21 copy
+    // pass ("how Compass meets you" read as the app talking about itself).
+    expect(hub).toMatch(/We read your wording as|Compass reads your wording as/);
   });
 
   // REMOVED 2026-08-19: "labels the hero curve as a phase indicator, not a

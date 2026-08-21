@@ -938,7 +938,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             "structure or flexibility?" aspirationally and "a free afternoon
             appears" honestly. Each answer is a default Home can act on. */}
         <div style={{ marginBottom:18 }}>
-          <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>A free afternoon opens up. What should Compass lead with?</div>
+          <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>A free afternoon opens up; what should come first?</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
             {RHYTHMS.map(o => (
               <button key={o.key} type="button" onClick={() => chooseRhythm(o.key)}

@@ -161,7 +161,7 @@ export const ELECTION_CATEGORIES: ElectionCategory[] = [
   {
     key: "business_launch", label: "Business or product launch",
     houses: [10, 1], significators: ["Sun", "Saturn"], mercuryRetro: "soft",
-    mercuryRetroNote: "Mercury is retrograde — not disqualifying for a launch, but expect messaging, contracts, and logistics to need another pass once it turns direct. Build the follow-up adjustment into the plan.",
+    mercuryRetroNote: "Mercury is retrograde — a launch can go ahead, and messaging, contracts and logistics tend to need another pass once it turns direct, so build the follow-up into the plan.",
     preferredHourRulers: ["Sun", "Jupiter"], weight: "heavy",
     description: "Opening a business, launching a product or website, going public with a venture.",
   },

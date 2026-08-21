@@ -665,7 +665,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     Naming the actual source is what makes the override below
                     make sense. */}
                 <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>
-                  Compass reads your wording as
+                  We read your wording as
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
                 {diagnosis.houses && diagnosis.houses.length > 0 && (
@@ -913,7 +913,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "none", color: "var(--color-muted)", cursor: "pointer",
                     }}>pause</button>
-                    <button onClick={() => { if (confirm(`Retire “${g.title}”? It ends the journey — history stays in the Log.`)) retireStar.mutate(g.id); }} title="End this star — reached, outgrown, or done with" style={{
+                    <button onClick={() => { if (confirm(`Retire “${g.title}”? It ends here, and the history stays in the Log.`)) retireStar.mutate(g.id); }} title="End this star — reached, outgrown, or done with" style={{
                       fontSize: 9.5, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "none", color: "var(--color-muted)", cursor: "pointer",
                     }}>retire</button>

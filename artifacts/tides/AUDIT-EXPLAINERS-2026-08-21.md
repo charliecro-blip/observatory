@@ -287,3 +287,31 @@ and it is copy, not code.
   stay where they are: they are the examples, keyed to the person's clock.
 - Open: nothing from the audit. The copy in both lexicons is the owner's to
   revise in one place now.
+
+## 9. The app-wide copy pass (owner 2026-08-21: "double check all the copy")
+
+1,448 unique user-facing strings extracted from the client, the server's
+libs and routes, and the lexicons, and scanned for the owner's standing
+flags plus the skill's list. Found and fixed:
+
+- **The app naming itself on controls and banners** ("how Compass meets
+  you:", "Compass reads this as:", "· Compass reading", "Compass is set
+  to…", "What should Compass lead with?"). Now second person or first
+  person plural: "how you want to be met", "Read as:", "· our reading",
+  "You're set to…", "what should come first?". Left alone, deliberately:
+  "Compass" as the subject of explanatory prose in the Guide, the intro
+  slides and the evidence lines ("Compass reads this as suiting quick
+  exchange"), where the name marks provenance — this app's synthesis
+  against the tradition's — and a pronoun would lose that.
+- **Two-short-sentence cadence**, 18 lines: the six Calendar phase
+  glosses, two Settings house-system descriptions, the Guide's "Two
+  moments a day. Everything else is optional.", the new-moon prompt, the
+  habits and reports empty states, the birthplace error, and seven
+  planet "use it" / signification lines that were a noun list, a full
+  stop, then a verb list.
+- **"Not X, but Y"**: the Mercury-retrograde launch note, and "Not loud,
+  but real." (a kicker) cut from the aspect opening.
+- **Banned word**: "journey" in the retire-a-star confirm.
+
+Not flagged by the scan and not changed: em dashes, which the app's voice
+uses as a house style in long lines; 1,400-odd strings that read clean.

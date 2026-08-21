@@ -71,7 +71,7 @@ export default function RhythmRecordNotice({ testerId, onSwitch }: { testerId: s
       background: "var(--color-card)", border: "1px solid var(--color-border)", borderLeft: "3px solid #3f7a4a", borderRadius: 10,
     }}>
       <div style={{ flex: 1, minWidth: 220, fontSize: 12, lineHeight: 1.55, color: "var(--color-muted)" }}>
-        Compass is set to <b style={{ color: "var(--color-foreground)" }}>{TRIM_NAME[data.current]}</b>, and your record says something else: on the {s.days} days set to <b style={{ color: "var(--color-foreground)" }}>{TRIM_NAME[s.rhythm]}</b> you rated {pct(s.alignedShare)} of days aligned, against {pct(s.currentShare)} here.
+        You're set to <b style={{ color: "var(--color-foreground)" }}>{TRIM_NAME[data.current]}</b>, and your record says something else: on the {s.days} days set to <b style={{ color: "var(--color-foreground)" }}>{TRIM_NAME[s.rhythm]}</b> you rated {pct(s.alignedShare)} of days aligned, against {pct(s.currentShare)} here.
       </div>
       <div style={{ display: "flex", gap: 6 }}>
         <button onClick={() => onSwitch(s.rhythm)} style={{

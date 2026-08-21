@@ -97,7 +97,7 @@ export default function GearChange({ testerId, current, base, onAccept }: {
         <div style={{ flex: 1, minWidth: 220, fontSize: 12, lineHeight: 1.55 }}>
           <div style={{ color: "var(--color-foreground)" }}>{gear.literal}</div>
           <div style={{ color: "var(--color-muted)" }}>
-            Compass reads this as: {gear.reading}. Lead with <b style={{ color: "var(--color-foreground)" }}>{label(chosen)}</b> through {fmt(until)}?
+            Read as: {gear.reading}. Lead with <b style={{ color: "var(--color-foreground)" }}>{label(chosen)}</b> through {fmt(until)}?
             {adapted && <span style={{ color: "var(--text-3)" }}> (your version)</span>}
             {base !== current && <span style={{ color: "var(--text-3)" }}> You'd come back to your own rhythm after.</span>}
           </div>

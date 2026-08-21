@@ -69,7 +69,7 @@ router.get("/location-search", async (req, res) => {
   if (!apiKey) {
     res.status(503).json({
       error: "unavailable",
-      message: "Birthplace lookup is unavailable. Enter latitude/longitude manually.",
+      message: "Birthplace lookup is unavailable; enter the latitude and longitude by hand.",
     });
     return;
   }
