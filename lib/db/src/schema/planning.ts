@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const WINDOW_TYPES = [
   "deep_work", "planning", "creative", "admin", "social",
@@ -350,3 +350,21 @@ export const eventKinds = pgTable("event_kinds", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("ix_event_kind_lookup").on(t.testerId, t.source, t.eventId)]);
+
+
+/**
+ * Which working rhythm Home led with on a given day — the record half of
+ * the prior/posterior loop (DESIGN-WORKING-RHYTHM-2026-08-21 §1, §8c). One
+ * row per tester-day, stamped by the client when Home opens; the audit
+ * joins it with that day's felt rating and wins so the rhythm in force can
+ * be compared against how the day actually went.
+ */
+export const rhythmDays = pgTable("rhythm_days", {
+  id: serial("id").primaryKey(),
+  testerId: text("tester_id").notNull(),
+  date: text("date").notNull(),          // YYYY-MM-DD, the viewer's local day
+  rhythm: text("rhythm").notNull(),      // tide | campaign | route | field
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_rhythm_days_tester_date").on(t.testerId, t.date),
+]);

@@ -70,6 +70,10 @@ import RareMomentBanner from "@/components/RareMomentBanner";
 import DayAhead from "@/components/DayAhead";
 import { useUiDensity, useAstroDetail, usePreferences } from "@/contexts/preferences-context";
 import RhythmLead from "@/components/RhythmLead";
+import GearChange from "@/components/GearChange";
+import RhythmRecordNotice from "@/components/RhythmRecord";
+import { useRhythmProposal } from "@/components/RhythmProposal";
+import { effectiveRhythm, TRIM_FOLDS, type Rhythm } from "@/lib/preferences";
 import { useHomeData, type Task, type LinesUpResult } from "@/hooks/useHomeData";
 import RitualCard from "@/components/RitualCard";
 import { ritualPhase } from "@/lib/chronotype";
@@ -421,7 +425,29 @@ export default function Home({
   }, [testerId, today]);
 
   const { prefs, updateDisplay } = usePreferences();
-  const rhythm = prefs.display.rhythm ?? "tide";
+  const baseRhythm = prefs.display.rhythm ?? "tide";
+  // The override while it lasts (a gear the person accepted), else the base.
+  const rhythm = effectiveRhythm(prefs.display);
+  const gearActive = rhythm !== baseRhythm && prefs.display.rhythmOverride
+    ? { rhythm, until: prefs.display.rhythmOverride.until, base: baseRhythm } : null;
+  // Choosing a rhythm applies its fold defaults once; refolding afterward is
+  // the person's own. An override does not touch the folds.
+  const pickRhythm = (r: Rhythm) => updateDisplay({ rhythm: r, rhythmOverride: null, collapsedModules: TRIM_FOLDS[r] });
+  // The chart's proposal — for the payoff line only, here. 402 reads as
+  // absent, which is what a chartless or unentitled account should see.
+  const { data: proposal } = useRhythmProposal(testerId, !skyQuiet);
+  // THE RECORD: stamp which rhythm led today, once per day per rhythm, so the
+  // audit has something to join against felt ratings and wins.
+  useEffect(() => {
+    if (!testerId) return;
+    const key = `compass-rhythm-stamp-${testerId}`;
+    const stamp = `${today}:${rhythm}`;
+    try { if (localStorage.getItem(key) === stamp) return; } catch { /* stamp anyway */ }
+    fetch("/api/account/rhythm-day", {
+      method: "PUT", headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+      body: JSON.stringify({ date: today, rhythm }),
+    }).then(r => { if (r.ok) { try { localStorage.setItem(key, stamp); } catch {} } }).catch(() => {});
+  }, [testerId, today, rhythm]);
   const showVoid = usePreferences().prefs.display.todayShowVOC;
   const showCrossings = usePreferences().prefs.display.todayShowCrossings;
   const showJournal = usePreferences().prefs.display.todayShowJournal;
@@ -640,13 +666,29 @@ export default function Home({
           switch, and the page below is the app as built. */}
       <RhythmLead
         rhythm={rhythm}
-        onPickRhythm={(r) => updateDisplay({ rhythm: r })}
+        onPickRhythm={pickRhythm}
+        gear={gearActive}
+        onEndGear={() => updateDisplay({ rhythmOverride: null })}
+        element={proposal?.proposal?.element ?? null}
         testerId={testerId} lat={lat} lon={lon}
         overdue={overdue} dueToday={dueToday} undated={undated} later={later}
         committedCount={committed.length}
         onShape={() => setShapeOpen(v => !v)} shapeOpen={shapeOpen}
         onFocus={linkRow}
       />
+
+      {/* A GEAR CHANGE, offered — the sky lighting one working style for a
+          stretch. Sky vocabulary, so the quiet lens hides it. */}
+      {!skyQuiet && (
+        <GearChange
+          testerId={testerId} current={rhythm} base={baseRhythm}
+          onAccept={(r, until, reason) => updateDisplay({ rhythmOverride: { rhythm: r, until, reason } })}
+        />
+      )}
+
+      {/* THE RECORD'S VERDICT — renders only when a rival rhythm has enough
+          rated days and a clearly better share of aligned ones. */}
+      <RhythmRecordNotice testerId={testerId} onSwitch={pickRhythm} />
 
       {/* ══ THE DAILY LOOP ════════════════════════════════════════════════
           Morning "Cast off", evening "Log the day" — the ritual the whole
@@ -942,6 +984,13 @@ export default function Home({
                   <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
                     {p.item.title}
                     {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
+                    {/* Under Route the weave keeps the usual slot and says what
+                        it kept it over. Output, never a silent trade. */}
+                    {(p as any).basis === "usual" && (
+                      <span style={{ fontSize: 9, color: "var(--text-3)" }}>
+                        {" "}· your usual time{(p as any).keptOver ? `, kept over the ${clockOf((p as any).keptOver.startAt)} the sky preferred` : ""}
+                      </span>
+                    )}
                   </span>
                 </div>
               ))}

@@ -8,7 +8,7 @@
  */
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
 import { findRareWindows, rareToday } from "../lib/rareWindows.js";
@@ -18,7 +18,7 @@ import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
 import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
 import { needsResolution } from "../lib/needsResolution.js";
-import { tasks, goals, habits, habitLogs } from "@workspace/db";
+import { tasks, goals, habits, habitLogs, planningWindows, testerProfiles } from "@workspace/db";
 import { fetchGcalBusy } from "./googleCal.js";
 import { computeNatalChart } from "../lib/natal.js";
 import { requireFeature } from "../middlewares/entitlement.js";
@@ -295,6 +295,47 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
     } catch { return { ok: false as const, connected: false, busy: [] }; }
   })();
 
+  // THE ROUTE RHYTHM reaches the weaver here. The preference is the synced
+  // blob on the profile; "route" asks the weave to keep each item's usual
+  // slot, which is read off the person's own past windows — the same title,
+  // placed at about the same clock, at least twice in the last six weeks.
+  let protectRoutine = false;
+  const usualStarts = new Map<string, string>();
+  try {
+    const prof = (await db.select({ prefs: testerProfiles.prefs }).from(testerProfiles).where(eq(testerProfiles.testerId, testerId)).limit(1))[0];
+    // Override-aware, like the client's effectiveRhythm: an accepted gear
+    // change is the rhythm in force until its date.
+    const disp = (prof?.prefs as any)?.display ?? {};
+    const ov = disp.rhythmOverride;
+    const rhythm = ov && ov.until && Date.parse(ov.until) > Date.now() ? ov.rhythm : disp.rhythm;
+    protectRoutine = rhythm === "route";
+    if (protectRoutine) {
+      const since = new Date(Date.now() - 42 * 86400000);
+      const past = await db.select({ title: planningWindows.title, startAt: planningWindows.startTime })
+        .from(planningWindows)
+        .where(and(eq(planningWindows.testerId, testerId), gte(planningWindows.startTime, since)));
+      const byTitle = new Map<string, number[]>();
+      for (const w of past) {
+        if (!w.startAt) continue;
+        // Minutes after local midnight, in the viewer's zone.
+        const local = new Date(new Date(w.startAt).getTime() - tzOffsetMin * 60000);
+        const mins = local.getUTCHours() * 60 + local.getUTCMinutes();
+        const k = w.title.trim().toLowerCase();
+        byTitle.set(k, [...(byTitle.get(k) ?? []), mins]);
+      }
+      for (const [k, list] of byTitle) {
+        if (list.length < 2) continue;
+        const sorted = [...list].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        // A habit of timing, not a coincidence: most placements within 45 min of the median.
+        const near = sorted.filter(m => Math.abs(m - median) <= 45).length;
+        if (near * 2 >= sorted.length) {
+          usualStarts.set(k, `${String(Math.floor(median / 60)).padStart(2, "0")}:${String(median % 60).padStart(2, "0")}`);
+        }
+      }
+    }
+  } catch { /* no profile or no history: the weave runs without a routine to protect */ }
+
   const items: WeaveItem[] = [];
   try {
     for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
@@ -303,6 +344,7 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes, dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
         activityKey: t.activityKey, energy: t.energy,
+        usualStart: usualStarts.get(t.title.trim().toLowerCase()) ?? null,
       });
     }
     for (const g of await db.select().from(goals).where(eq(goals.testerId, testerId))) {
@@ -319,7 +361,7 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
     ? b.busy.map(x => ({ startAt: new Date(x.startMs), endAt: new Date(x.endMs) }))
     : [];
 
-  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments, consultSky }));
+  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments, consultSky, protectRoutine }));
 });
 
 /**

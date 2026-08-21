@@ -6,7 +6,7 @@ import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider, usePreferences } from "@/contexts/preferences-context";
-import { RHYTHMS, type Rhythm } from "@/lib/preferences";
+import { RHYTHMS, TRIM_FOLDS, type Rhythm } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { EntitlementsProvider } from "@/contexts/entitlements-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -626,7 +626,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   // here so the first Home a person sees is shaped for them rather than for
   // the owner (DESIGN-WORKING-RHYTHM-2026-08-21 §5, §6). Shipped 2026-08-21.
   const [rhythm, setRhythmState] = useState<Rhythm>("tide");
-  const chooseRhythm = (r: Rhythm) => { logEvent("onboard_rhythm", { rhythm: r }); setRhythmState(r); updateDisplay({ rhythm: r }); };
+  const chooseRhythm = (r: Rhythm) => { logEvent("onboard_rhythm", { rhythm: r }); setRhythmState(r); updateDisplay({ rhythm: r, collapsedModules: TRIM_FOLDS[r] }); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
   const [showRestore, setShowRestore] = useState(false);

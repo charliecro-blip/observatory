@@ -23,6 +23,18 @@ import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
 import { RHYTHMS, type Rhythm } from "@/lib/preferences";
 
+/**
+ * ELEMENT AS PAYOFF LANGUAGE (design §4): one line under the heading, in
+ * the grammar of what makes effort feel good to this person — from the
+ * chart's Sun element, when there is a chart. Not a theme; a sentence.
+ */
+const PAYOFF: Record<string, string> = {
+  fire: "By your chart, momentum is what rewards you.",
+  earth: "By your chart, seeing it add up is what rewards you.",
+  air: "By your chart, variety is what rewards you.",
+  water: "By your chart, the pull being there is what rewards you.",
+};
+
 interface TaskLite { id: number; title: string; dueDate?: string | null }
 interface Habit {
   id: number; name: string; emoji?: string | null;
@@ -44,10 +56,16 @@ const CAP: React.CSSProperties = {
 export default function RhythmLead({
   rhythm, onPickRhythm, testerId, lat, lon,
   overdue, dueToday, undated, later, committedCount,
-  onShape, shapeOpen, onFocus,
+  onShape, shapeOpen, onFocus, gear, onEndGear, element,
 }: {
+  /** The rhythm in force — the override while it lasts, else the base. */
   rhythm: Rhythm;
   onPickRhythm: (r: Rhythm) => void;
+  /** A temporary gear in force, if any. */
+  gear?: { rhythm: Rhythm; until: string; base: Rhythm } | null;
+  onEndGear?: () => void;
+  /** The chart's Sun element, for the payoff line. Absent without a chart. */
+  element?: string | null;
   testerId: string | null; lat: number; lon: number;
   overdue: TaskLite[]; dueToday: TaskLite[]; undated: TaskLite[]; later: TaskLite[];
   committedCount: number;
@@ -76,6 +94,16 @@ export default function RhythmLead({
     },
   });
 
+  const gearLine = gear && (
+    <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 6 }}>
+      In gear through {new Date(gear.until + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}, then back to {RHYTHMS.find(r => r.key === gear.base)?.label ?? gear.base}.
+      {onEndGear && <> <button onClick={onEndGear} style={{ background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", color: "var(--color-primary)", textDecoration: "underline", textUnderlineOffset: 2 }}>End it now</button></>}
+    </div>
+  );
+  const payoff = element && PAYOFF[element] ? (
+    <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: -2, marginBottom: 8 }}>{PAYOFF[element]}</div>
+  ) : null;
+
   const switcher = (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
       <span style={{ fontSize: 10, color: "var(--text-3)" }}>how Compass meets you:</span>
@@ -91,7 +119,7 @@ export default function RhythmLead({
   );
 
   if (rhythm === "tide") {
-    return <div style={{ padding: "0 2px" }}>{switcher}</div>;
+    return <div style={{ padding: "0 2px" }}>{switcher}{gearLine}</div>;
   }
 
   // The order a push wants: what's late, what's due, then what's waiting.
@@ -106,6 +134,7 @@ export default function RhythmLead({
           <span style={CAP}>One move</span>
           <span style={{ marginLeft: "auto" }}>{switcher}</span>
         </div>
+        {payoff}
         {move ? (
           <>
             <button onClick={() => onFocus(move.id)} style={{
@@ -124,6 +153,7 @@ export default function RhythmLead({
         ) : (
           <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Nothing on the list. Add the one thing that matters and it leads here.</div>
         )}
+        {gearLine}
       </div>
     );
   }
@@ -145,6 +175,7 @@ export default function RhythmLead({
           {committedCount > 0 && <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>{committedCount} block{committedCount === 1 ? "" : "s"} held this week</span>}
           <span style={{ marginLeft: "auto" }}>{switcher}</span>
         </div>
+        {payoff}
         {rows.length === 0 ? (
           <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No routines yet. Add one in Stars and it leads here, with its count.</div>
         ) : (
@@ -168,6 +199,7 @@ export default function RhythmLead({
             ))}
           </div>
         )}
+        {gearLine}
       </div>
     );
   }
@@ -184,6 +216,7 @@ export default function RhythmLead({
         <span style={CAP}>{picks.length === 1 ? "One way in" : `${["", "One", "Two", "Three"][picks.length]} ways in`}</span>
         <span style={{ marginLeft: "auto" }}>{switcher}</span>
       </div>
+      {payoff}
       {picks.length === 0 ? (
         <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Nothing on the list yet. Whatever you add shows up here as a choice.</div>
       ) : (
@@ -204,6 +237,7 @@ export default function RhythmLead({
           <div style={{ fontSize: 11, color: "var(--color-muted)" }}>Pick one now and the others stay open.</div>
         </>
       )}
+      {gearLine}
     </div>
   );
 }

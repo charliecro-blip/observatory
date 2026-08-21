@@ -55,6 +55,9 @@ import { localToday } from "@/lib/dates";
 import { starIdsOf } from "@/lib/starLinks";
 import { useFold, FoldToggle } from "@/components/ModuleFold";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { usePreferences } from "@/contexts/preferences-context";
+import { effectiveRhythm } from "@/lib/preferences";
+import { useMomentum } from "@/components/Momentum";
 
 interface Habit {
   id: number; name: string; emoji?: string | null;
@@ -86,6 +89,11 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
   const today = localToday();
   const { isFolded } = useFold();
   const isMobile = useIsMobile();
+  // PROGRESS LANGUAGE follows the rhythm (design §2, "progress language"):
+  // a campaign counts wins, a route counts what was kept and for how long,
+  // the field counts what was touched. Same numbers, different headline.
+  const rhythm = effectiveRhythm(usePreferences().prefs.display);
+  const { data: momentum } = useMomentum(testerId, lat, lon, rhythm === "campaign" || rhythm === "route");
 
   const { data: habits, isError: habitsFailed } = useQuery<Habit[]>({
     // Same key as every other habit read on the page, so this is one cache
@@ -219,7 +227,13 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             have opened it for. */}
         {liveHabits.length > 0 && (
           <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-            {doneToday} of {liveHabits.length} today{weekKept > 0 ? ` · ${weekKept} this week` : ""}
+            {rhythm === "campaign"
+              ? `${momentum?.winsWeek ?? 0} win${(momentum?.winsWeek ?? 0) === 1 ? "" : "s"} this week · ${doneToday} of ${liveHabits.length} today`
+              : rhythm === "route"
+              ? `${weekKept} kept this week${(momentum?.streak ?? 0) > 0 ? ` · ${momentum!.streak} day${momentum!.streak === 1 ? "" : "s"} running` : ""} · ${doneToday} of ${liveHabits.length} today`
+              : rhythm === "field"
+              ? `${doneToday} touched today · ${openTasks.length} open`
+              : `${doneToday} of ${liveHabits.length} today${weekKept > 0 ? ` · ${weekKept} this week` : ""}`}
           </span>
         )}
         <button onClick={() => onNavigate("work")} style={{

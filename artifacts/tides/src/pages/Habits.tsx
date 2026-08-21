@@ -164,7 +164,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     } catch { /* private mode */ }
   }, [form, showAdd, HABIT_DRAFT_KEY]);
 
-  const [newGoalId, setNewGoalId] = useState<number|"">("");
+  // Several stars at creation, not one (owner 2026-08-21: "set habits to
+  // match multiple stars"). The edit chips below could already do this; the
+  // creation form was still a single select, so every habit was born serving
+  // one star and had to be re-linked.
+  const [newGoalIds, setNewGoalIds] = useState<number[]>([]);
+  const newGoalId: number | "" = newGoalIds[0] ?? "";
   const [newProjectId, setNewProjectId] = useState<number|"">("");
   // Retroactive star-linking (owner 2026-08-16: "if I set habits before I
   // articulate guiding stars, I want to go back and weave them in"). The
@@ -226,7 +231,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           favoredPlanets: form.favoredPlanets.join(",") || undefined,
           bestWindowType: form.bestWindowType || undefined,
           minimumViable: form.minimumViable.trim() || undefined,
-          goalId: newGoalId || undefined,
+          goalIds: newGoalIds.length ? newGoalIds : undefined,
           projectId: newProjectId || undefined,
           cadence: form.cadence,
           targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
@@ -240,7 +245,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:"",chore:false});
-      setNewGoalId(""); setNewProjectId("");
+      setNewGoalIds([]); setNewProjectId("");
       // Saved for real — the draft has nothing left to protect.
       try { localStorage.removeItem(HABIT_DRAFT_KEY); } catch { /* private mode */ }
     },
@@ -613,11 +618,22 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             {(goalsList.length > 0 || projectsList.length > 0) && (
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 {goalsList.length > 0 && (
-                  <select value={newGoalId} onChange={e=>setNewGoalId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                    <option value="">Guiding Star: none</option>
-                    {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-                  </select>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:9.5,color:"var(--text-3)",marginBottom:4}}>Counts toward {newGoalIds.length === 0 ? "no star yet" : newGoalIds.length === 1 ? "one star" : `${newGoalIds.length} stars`}</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {goalsList.map(g => {
+                        const on = newGoalIds.includes(g.id);
+                        return (
+                          <button key={g.id} type="button" onClick={()=>setNewGoalIds(on ? newGoalIds.filter(x=>x!==g.id) : [...newGoalIds, g.id])}
+                            aria-pressed={on}
+                            style={{fontSize:10.5,padding:"3px 9px",borderRadius:11,cursor:"pointer",
+                              border:`1px solid ${on ? "var(--color-primary)" : "var(--color-border)"}`,
+                              background: on ? "var(--color-primary)" : "var(--color-card-2)",
+                              color: on ? "#fff" : "var(--color-muted)"}}>★ {g.title}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
                 {projectsList.length > 0 && (
                   <select value={newProjectId} onChange={e=>setNewProjectId(e.target.value ? Number(e.target.value) : "")}

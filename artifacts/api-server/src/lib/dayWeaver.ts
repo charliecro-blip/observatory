@@ -66,6 +66,12 @@ export interface WeaveItem {
    *  weave to hand high-energy work the early stretches; the sky path keeps
    *  using elections for this. */
   energy?: string | null;
+  /**
+   * The clock this item has usually been placed at — "HH:MM" in the viewer's
+   * zone, derived by the caller from the person's own past windows. Read
+   * only when the weave is asked to protect routines (the Route rhythm).
+   */
+  usualStart?: string | null;
 }
 
 export interface Placement {
@@ -76,8 +82,12 @@ export interface Placement {
   /** True when the duration came from WINDOW_MINUTES, not from the person. */
   assumedDuration: boolean;
   activityKey: string | null;
-  /** Why here — from the session finder, or "the only time that fits". */
-  basis: "elected" | "first-fit";
+  /** Why here — from the session finder, the person's own usual slot, or
+   *  "the only time that fits". */
+  basis: "elected" | "first-fit" | "usual";
+  /** Under Route: the elected slot that was available and NOT taken, so the
+   *  person can see what keeping the routine cost. Output, never silent. */
+  keptOver?: { startAt: Date; endAt: Date } | null;
 }
 
 export interface Unplaced {
@@ -127,6 +137,13 @@ export interface WeaveOpts {
    * second weaver would drift, which is the WeekStrip/AlreadyWoven bug shape.
    */
   consultSky?: boolean;
+  /**
+   * THE ROUTE RHYTHM'S ONE RULE (DESIGN-WORKING-RHYTHM-2026-08-21 §4): an
+   * item with a usual slot keeps it when it fits and the sky does not object,
+   * even when a better-scored window is open elsewhere. The astrology yields
+   * to continuity; what it yielded is reported on the placement.
+   */
+  protectRoutine?: boolean;
 }
 
 const MIN_USEFUL_GAP = 20;
@@ -173,7 +190,7 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   const {
     items, date, lat, lon, wakeHour = 7, sleepHour = 23,
     commitments = [], locationKnown = true, maxLoadFraction = 0.6,
-    tzOffsetMin = 0, timeZone, consultSky = true,
+    tzOffsetMin = 0, timeZone, consultSky = true, protectRoutine = false,
   } = opts;
 
   // In the USER'S zone, not the server's. Built from local getters, this was
@@ -252,17 +269,35 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
     // in the weaver, which is what makes one weaver serve both lenses.
     let slot: { startAt: Date; endAt: Date } | null = null;
     let basis: Placement["basis"] = "first-fit";
+    let keptOver: Placement["keptOver"] = null;
 
-    if (activityKey && consultSky) {
-      const sessions = findLongSessions({
-        activityKey, minutes, date, lat, lon, wakeHour, sleepHour, commitments, locationKnown,
-      });
-      for (const o of sessions?.options ?? []) {
-        const c = o.candidate;
-        if (c.suitability === "defer") continue;
-        if (fitsInFree(free, c.startAt, c.endAt)) { slot = { startAt: c.startAt, endAt: c.endAt }; basis = "elected"; break; }
+    const sessions = activityKey && consultSky
+      ? findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, commitments, locationKnown })
+      : null;
+    const elected = (sessions?.options ?? [])
+      .map(o => o.candidate)
+      .find(c => c.suitability !== "defer" && fitsInFree(free, c.startAt, c.endAt)) ?? null;
+
+    // The usual slot first, under Route. It is taken when it fits the free
+    // stretches and no deferred session overlaps it; the elected slot it
+    // displaces is kept on the placement so the trade is visible.
+    if (protectRoutine && item.usualStart) {
+      const [hh, mm] = item.usualStart.split(":").map(Number);
+      if (Number.isFinite(hh) && Number.isFinite(mm)) {
+        const uStart = new Date(dayStart.getTime() + (hh * 60 + mm) * 60000);
+        const uEnd = new Date(uStart.getTime() + minutes * 60000);
+        const deferredOverlap = (sessions?.options ?? []).some(o =>
+          o.candidate.suitability === "defer" && o.candidate.startAt < uEnd && o.candidate.endAt > uStart);
+        if (!deferredOverlap && fitsInFree(free, uStart, uEnd)) {
+          slot = { startAt: uStart, endAt: uEnd };
+          basis = "usual";
+          const sameSlot = elected && Math.abs(elected.startAt.getTime() - uStart.getTime()) < 30 * 60000;
+          keptOver = elected && !sameSlot ? { startAt: elected.startAt, endAt: elected.endAt } : null;
+        }
       }
     }
+
+    if (!slot && elected) { slot = { startAt: elected.startAt, endAt: elected.endAt }; basis = "elected"; }
 
     if (!slot) slot = firstFit(free, minutes);
 
@@ -276,7 +311,7 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
       continue;
     }
 
-    placed.push({ item, startAt: slot.startAt, endAt: slot.endAt, minutes, assumedDuration: assumed, activityKey, basis });
+    placed.push({ item, startAt: slot.startAt, endAt: slot.endAt, minutes, assumedDuration: assumed, activityKey, basis, keptOver });
     committed += minutes;
     free = carve(free, slot.startAt, slot.endAt);
   }

@@ -33,7 +33,8 @@ export type Feature =
   | "horizon.week"       // reading past today
   | "history.patterns"   // what actually worked, over time
   | "elections.strict"   // the strict electional tools
-  | "ask.timing";        // Ask's timing door, and multi-star Orient
+  | "ask.timing"         // Ask's timing door, and multi-star Orient
+  | "rhythm.astro";      // the chart's proposal for a working rhythm, and gear changes
 
 /**
  * NEVER GATED, and the reasons are load-bearing rather than generous.
@@ -61,6 +62,7 @@ export const NEVER_GATED = [
 const PAID_ONLY: readonly Feature[] = [
   "shape.day", "shape.week", "sessions.long", "placement.calendar",
   "horizon.week", "history.patterns", "elections.strict", "ask.timing",
+  "rhythm.astro",
 ];
 
 export interface Entitlement {

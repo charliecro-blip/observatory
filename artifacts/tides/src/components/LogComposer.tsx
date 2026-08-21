@@ -16,12 +16,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { useMomentum } from "@/components/Momentum";
 
-export type LogVariant = "page" | "asks" | "margin";
+export type LogVariant = "page" | "asks" | "margin" | "tally";
 
 export const LOG_VARIANTS: { key: LogVariant; label: string; blurb: string }[] = [
   { key: "page", label: "A page", blurb: "one question, one big surface" },
   { key: "asks", label: "Three asks", blurb: "short answers, same three every day" },
   { key: "margin", label: "In the margin", blurb: "a note beside each thing you did" },
+  // The fourth shape (design §8 leftover): wins only, no prose. For the
+  // person whose record is the list of what got done, and who will never
+  // write a paragraph about it.
+  { key: "tally", label: "The tally", blurb: "what got done, and nothing to write" },
 ];
 
 const FELT_META: Record<string, { label: string; icon: string; color: string }> = {
@@ -127,6 +131,8 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
   const [answers, setAnswers] = useState<Record<string, string>>(existingRef?.answers ?? {});
   const [items, setItems] = useState<Record<string, string>>(existingRef?.items ?? {});
   const [promptIdx, setPromptIdx] = useState(0);
+  const [winText, setWinText] = useState("");
+  const [winSaving, setWinSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -161,6 +167,25 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
     return rows;
   }, [momentum, date, dayDetail]);
 
+  async function addWin() {
+    if (!testerId || winSaving || !winText.trim()) return;
+    setWinSaving(true);
+    try {
+      const r = await fetch("/api/planning/wins", {
+        method: "POST",
+        headers: { "x-tester-id": testerId, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: winText.trim(), date, tz: new Date().getTimezoneOffset() }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      qc.invalidateQueries({ queryKey: ["momentum"] });
+      setWinText("");
+    } catch {
+      setErr("Didn't save. It's still in the box.");
+    } finally {
+      setWinSaving(false);
+    }
+  }
+
   const prompts = useMemo(() => promptsFor({
     date,
     ledgerCount: ledger.length,
@@ -180,12 +205,14 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
         variant === "asks"
           ? ASKS.map((a) => (answers[a.key]?.trim() ? `${a.q} ${answers[a.key].trim()}` : null))
               .filter(Boolean).join("\n\n")
+          : variant === "tally"
+          ? existingNotes   // the tally writes no prose; whatever was there stays
           : note.trim();
       // Merge rather than replace: while three shapes are live, saving in one
       // must not throw away what another already wrote for this day.
       const reflection = {
         ...(existingRef ?? {}),
-        ...(variant === "page" ? { prompt } : variant === "asks" ? { answers } : { items }),
+        ...(variant === "page" ? { prompt } : variant === "asks" ? { answers } : variant === "margin" ? { items } : {}),
       };
 
       const body: Record<string, unknown> = { date, notes: plain || null, reflection };
@@ -275,6 +302,39 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {variant === "tally" && (
+        <div>
+          {ledger.length === 0 ? (
+            <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, marginBottom: 8 }}>Nothing on the tally yet.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+              {ledger.map((row) => (
+                <div key={row.key} style={{ display: "flex", alignItems: "baseline", gap: 9, fontSize: 13 }}>
+                  <span style={{ color: "#3f7a4a", fontSize: 11 }}>✓</span>
+                  <span style={{ flex: 1, color: "var(--color-foreground)" }}>{row.label}</span>
+                  {row.sub && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{row.sub}</span>}
+                </div>
+              ))}
+              <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2 }}>{ledger.length} on the day</div>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={winText}
+              onChange={(e) => setWinText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addWin(); }}
+              placeholder="Something else you did that day"
+              style={{ ...BOX, resize: "none", padding: "7px 11px", fontSize: 12.5 } as React.CSSProperties}
+            />
+            <button onClick={addWin} disabled={winSaving || !winText.trim()} style={{
+              padding: "7px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500,
+              cursor: winText.trim() ? "pointer" : "default",
+              background: winText.trim() ? "#1a2a3a" : "var(--color-border)", color: winText.trim() ? "#fff" : "var(--text-3)",
+            }}>{winSaving ? "…" : "Add"}</button>
+          </div>
         </div>
       )}
 

@@ -19,6 +19,11 @@ import { entitlementFor, TRIAL_DAYS } from "../lib/entitlements.js";
 import { claimAccount, mintSessionFor, hashSessionToken, clearSessionCache } from "../lib/accountAuth.js";
 import { accountSessions } from "@workspace/db";
 import { requireTesterId } from "../middlewares/testerId.js";
+import { requireFeature } from "../middlewares/entitlement.js";
+import { natalCharts, rhythmDays, dailyCheckIns, wins } from "@workspace/db";
+import { and, gte, desc } from "drizzle-orm";
+import { computeNatalChart } from "../lib/natal.js";
+import { proposeRhythm, currentGear } from "../lib/rhythmProposal.js";
 import { deleteAccount } from "../lib/accountDeletion.js";
 
 const router: IRouter = Router();
@@ -377,3 +382,101 @@ router.post("/account/trial", requireTesterId, async (_req, res) => {
 });
 
 export default router;
+
+
+// ── Working rhythm: the chart's proposal, the sky's gear, the record ─────────
+// DESIGN-WORKING-RHYTHM-2026-08-21 §2, §3, §7 steps 2–4. The chart is the
+// prior; behavior is the posterior. Everything here is offered, never applied.
+
+async function chartFor(testerId: string) {
+  const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+  if (!stored?.birthDate || stored.birthTime == null) return null;
+  return computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
+}
+
+/** GET /account/rhythm-proposal — per-function trims read off the natal chart. */
+router.get("/account/rhythm-proposal", requireTesterId, requireFeature("rhythm.astro"), async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  try {
+    const natal = await chartFor(testerId);
+    if (!natal) { res.json({ available: false, reason: "no-chart" }); return; }
+    const proposal = proposeRhythm(natal);
+    if (!proposal) { res.json({ available: false, reason: "incomplete-chart" }); return; }
+    res.json({ available: true, proposal });
+  } catch {
+    res.status(503).json({ error: "could not read the chart" });
+  }
+});
+
+/** GET /account/gear — the transit, if any, lighting one working style now. */
+router.get("/account/gear", requireTesterId, requireFeature("rhythm.astro"), async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  try {
+    const natal = await chartFor(testerId);
+    if (!natal) { res.json({ available: false, reason: "no-chart", gear: null }); return; }
+    res.json({ available: true, gear: currentGear(natal) });
+  } catch {
+    res.status(503).json({ error: "could not read the sky" });
+  }
+});
+
+/** PUT /account/rhythm-day { date, rhythm } — which rhythm Home led with today. */
+router.put("/account/rhythm-day", requireTesterId, async (req, res) => {
+  const testerId = res.locals.testerId as string;
+  const { date, rhythm } = req.body ?? {};
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !["tide", "campaign", "route", "field"].includes(rhythm)) {
+    res.status(400).json({ error: "date (YYYY-MM-DD) and rhythm (tide|campaign|route|field) required" });
+    return;
+  }
+  await db.insert(rhythmDays).values({ testerId, date, rhythm })
+    .onConflictDoUpdate({ target: [rhythmDays.testerId, rhythmDays.date], set: { rhythm } });
+  res.json({ ok: true });
+});
+
+/**
+ * GET /account/rhythm-audit — the record, grouped by the rhythm in force.
+ * A suggestion appears only when both the current rhythm and a rival have
+ * enough rated days to compare, and the rival's share of aligned days is
+ * clearly higher. The person can prove Compass wrong; that is the feature.
+ */
+router.get("/account/rhythm-audit", requireTesterId, requireFeature("history.patterns"), async (_req, res) => {
+  const testerId = res.locals.testerId as string;
+  const since = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+  const days = await db.select().from(rhythmDays).where(and(eq(rhythmDays.testerId, testerId), gte(rhythmDays.date, since))).orderBy(desc(rhythmDays.date));
+  if (!days.length) { res.json({ enough: false, rows: [], current: null, suggestion: null }); return; }
+  const checkIns = await db.select({ date: dailyCheckIns.date, tags: dailyCheckIns.behaviorTags })
+    .from(dailyCheckIns).where(and(eq(dailyCheckIns.testerId, testerId), gte(dailyCheckIns.date, since)));
+  const feltByDate = new Map<string, string>();
+  for (const c of checkIns) {
+    const felt = (c.tags ?? []).find((t: string) => t.startsWith("felt:"))?.slice(5);
+    if (felt) feltByDate.set(c.date, felt);
+  }
+  const winRows = await db.select({ date: wins.date }).from(wins).where(and(eq(wins.testerId, testerId), gte(wins.date, since)));
+  const winsByDate = new Map<string, number>();
+  for (const w of winRows) winsByDate.set(w.date, (winsByDate.get(w.date) ?? 0) + 1);
+
+  const rows = new Map<string, { rhythm: string; days: number; rated: number; aligned: number; mixed: number; off: number; wins: number }>();
+  for (const d of days) {
+    const r = rows.get(d.rhythm) ?? { rhythm: d.rhythm, days: 0, rated: 0, aligned: 0, mixed: 0, off: 0, wins: 0 };
+    r.days++;
+    const felt = feltByDate.get(d.date);
+    if (felt) { r.rated++; if (felt === "aligned") r.aligned++; else if (felt === "mixed") r.mixed++; else if (felt === "off") r.off++; }
+    r.wins += winsByDate.get(d.date) ?? 0;
+    rows.set(d.rhythm, r);
+  }
+  const current = days[0].rhythm;
+  const cur = rows.get(current)!;
+  const MIN_DAYS = 7, MIN_RATED = 5, MARGIN = 0.2;
+  let suggestion: { rhythm: string; alignedShare: number; currentShare: number; days: number } | null = null;
+  if (cur.rated >= MIN_RATED) {
+    const curShare = cur.aligned / cur.rated;
+    for (const r of rows.values()) {
+      if (r.rhythm === current || r.days < MIN_DAYS || r.rated < MIN_RATED) continue;
+      const share = r.aligned / r.rated;
+      if (share - curShare >= MARGIN && (!suggestion || share > suggestion.alignedShare)) {
+        suggestion = { rhythm: r.rhythm, alignedShare: share, currentShare: curShare, days: r.days };
+      }
+    }
+  }
+  res.json({ enough: [...rows.values()].some(r => r.days >= MIN_DAYS), rows: [...rows.values()], current, suggestion });
+});

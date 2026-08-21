@@ -13,6 +13,8 @@ import { useCurrents } from "@/hooks/useTides";
 import { HOUSE_MEANINGS } from "@/lib/currents-content";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
 import { jsonArray } from "@/lib/jsonArray";
+import RhythmProposal from "@/components/RhythmProposal";
+import { usePreferences } from "@/contexts/preferences-context";
 
 interface StarLite {
   id: number; title: string; status?: string; planet?: string | null;
@@ -123,6 +125,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
     enabled: !!testerId && expanded,
   });
   const [openChapter, setOpenChapter] = useState<string | null>(null);
+  const baseRhythm = usePreferences().prefs.display.rhythm ?? "tide";
 
   if (!testerId || !data) return null;
   if (!data.available) {
@@ -232,6 +235,17 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
                 paddingLeft: 9, borderLeft: "2px solid var(--color-border)",
               }}>{fix.chapter.renovations[openTransit].note}</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── WORKING RHYTHM, by the chart (design §7 step 2). Read-only here;
+             the switch lives in Settings and on Home. */}
+      {expanded && (
+        <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>RHYTHM</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <RhythmProposal testerId={testerId} current={baseRhythm} compact />
           </div>
         </div>
       )}

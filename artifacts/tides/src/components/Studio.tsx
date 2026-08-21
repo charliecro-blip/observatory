@@ -1,3 +1,5 @@
+import { useTester } from "@/contexts/tester-context";
+import { useRhythmProposal } from "@/components/RhythmProposal";
 import React, { useRef, useState } from "react";
 import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
@@ -20,7 +22,7 @@ import { SIGN_MYTHOS } from "@/lib/mythos";
  * thinning as an SVG stroke painted in the surface color).
  */
 
-type Subject = "day" | "week" | "lunation" | "activity";
+type Subject = "day" | "week" | "lunation" | "activity" | "rhythm";
 type Format = "story" | "post";
 
 // Exported so the sprint card (components/SprintCard.tsx) shares this exact
@@ -168,6 +170,43 @@ function DayCard({ now, W, H, theme }: { now: any; W: number; H: number; theme: 
         )}
       </g>
     </g>
+  );
+}
+
+// ── Your Compass Rhythm ──────────────────────────────────────────────────────
+
+/**
+ * THE COMPOSITE, as the shareable object (design §6). Four functions, four
+ * placements, four presets — never one type. The differentiator is in the
+ * sentence itself: a person contains several working styles.
+ */
+function RhythmCard({ proposal, W, H, theme }: {
+  proposal: { overall: string; functions: { label: string; trim: string; literal: string }[] } | null; W: number; H: number; theme: GlyphTheme;
+}) {
+  const s = SURFACE[theme];
+  const story = H > 1500;
+  const NAME: Record<string, string> = { tide: "Tide", campaign: "Campaign", route: "Route", field: "Field" };
+  const top = story ? 760 : 600;
+  if (!proposal) {
+    return (
+      <text x={W / 2} y={story ? 900 : 700} textAnchor="middle" fill={s.sub} fontSize={30} fontFamily={SERIF}>add a birth chart and this card reads it</text>
+    );
+  }
+  return (
+    <>
+      <text x={W / 2} y={story ? 470 : 360} textAnchor="middle" fill={s.sub}
+        fontSize={30} letterSpacing={7} fontFamily={SERIF}>YOUR COMPASS RHYTHM</text>
+      <text x={W / 2} y={story ? 590 : 460} textAnchor="middle" fill={s.ink}
+        fontSize={story ? 110 : 90} fontFamily={SERIF}>{NAME[proposal.overall] ?? proposal.overall}</text>
+      {proposal.functions.map((f, i) => (
+        <g key={f.label}>
+          <text x={W / 2 - 30} y={top + i * 120} textAnchor="end" fill={s.sub} fontSize={26} letterSpacing={4} fontFamily={SERIF}>{f.label.toUpperCase()}</text>
+          <text x={W / 2} y={top + i * 120} fill={s.ink} fontSize={46} fontFamily={SERIF}>{NAME[f.trim] ?? f.trim}</text>
+          <text x={W / 2} y={top + i * 120 + 40} fill={s.sub} fontSize={25} fontFamily={SERIF}>{f.literal}</text>
+        </g>
+      ))}
+      <text x={W / 2} y={top + 4 * 120 + 30} textAnchor="middle" fill={s.sub} fontSize={24} fontFamily={SERIF}>read from a birth chart</text>
+    </>
   );
 }
 
@@ -415,6 +454,10 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
     enabled: subject === "activity",
   });
 
+  // The chart's proposal, only once that card is chosen.
+  const studioTesterId = useTester().profile?.testerId ?? null;
+  const { data: rhythmData } = useRhythmProposal(studioTesterId, subject === "rhythm");
+
   // One 30-day pull covers both the week and the lunation.
   const { data: month } = useQuery<any>({
     queryKey: ["studio-month", lat, lon],
@@ -465,7 +508,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           </div>
           <div>
             <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Subject</div>
-            <Seg value={subject} onPick={setSubject} options={[["day", "The day"], ["week", "The week"], ["lunation", "The lunation"], ["activity", "One activity"]]} />
+            <Seg value={subject} onPick={setSubject} options={[["day", "The day"], ["week", "The week"], ["lunation", "The lunation"], ["activity", "One activity"], ["rhythm", "My rhythm"]]} />
           </div>
           {subject === "activity" && (
             <div>
@@ -504,6 +547,7 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
           style={{ width: format === "story" ? 300 : 340, height: "auto", borderRadius: 14, boxShadow: "0 10px 40px rgba(0,0,0,0.3)", flexShrink: 0 }}>
           <rect width={W} height={H} fill={s.bg} />
           {subject === "day" && <DayCard now={now} W={W} H={H} theme={theme} />}
+          {subject === "rhythm" && <RhythmCard proposal={rhythmData?.proposal ?? null} W={W} H={H} theme={theme} />}
           {subject === "activity" && <ActivityCard label={(cardActs?.activities ?? []).find(a => a.key === cardActivity)?.label ?? cardActivity} windows={cardWindows?.windows ?? []} W={W} H={H} theme={theme} />}
           {subject === "week" && <WeekCard days={days} weekTone={month?.weekTone} W={W} H={H} theme={theme} />}
           {subject === "lunation" && <LunationCard days={days} W={W} H={H} theme={theme} />}

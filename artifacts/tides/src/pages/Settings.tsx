@@ -9,7 +9,9 @@ import { PREMIUM_FEATURES, FREE_KEEPS } from "@/lib/premium";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
-import { RHYTHMS, type NotificationPrefs, type DisplayPrefs } from "@/lib/preferences";
+import { RHYTHMS, TRIM_FOLDS, type NotificationPrefs, type DisplayPrefs } from "@/lib/preferences";
+import RhythmProposal from "@/components/RhythmProposal";
+import { RhythmRecordTable } from "@/components/RhythmRecord";
 import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
 import { Guide } from "@/components/Guide";
 import { enablePush } from "@/lib/pushSubscribe";
@@ -584,6 +586,7 @@ const RAIL_SECTIONS = [
 function DisplaySection() {
   const { prefs, updateDisplay } = usePreferences();
   const d = prefs.display;
+  const testerId = useTester().profile?.testerId ?? null;
 
   function toggleRailSection(key: typeof RAIL_SECTIONS[number]["key"]) {
     const next = d.railSections.includes(key)
@@ -635,7 +638,7 @@ function DisplaySection() {
       <Row label="How Compass meets you" sub="Same tasks and the same sky, with a different first question. One clear move leads with the thing to push on; Protect my routines with what you keep; Keep options open with a few ways in. Read the day first is the app as it has been.">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {RHYTHMS.map(r => (
-            <button key={r.key} onClick={() => updateDisplay({ rhythm: r.key })} title={r.blurb} style={{
+            <button key={r.key} onClick={() => updateDisplay({ rhythm: r.key, rhythmOverride: null, collapsedModules: TRIM_FOLDS[r.key] })} title={r.blurb} style={{
               fontSize: 11, padding: "4px 11px", borderRadius: 7, cursor: "pointer",
               border: `1px solid ${(d.rhythm ?? "tide") === r.key ? "var(--color-primary)" : "var(--color-border)"}`,
               background: (d.rhythm ?? "tide") === r.key ? "var(--color-primary)" : "var(--color-card-2)",
@@ -644,6 +647,14 @@ function DisplaySection() {
             }}>{r.label}</button>
           ))}
         </div>
+      </Row>
+      <Row label="By your chart" sub="Four functions, read off four placements. The chart proposes them; the record below is what decides.">
+        <div style={{ maxWidth: 560 }}>
+          <RhythmProposal testerId={testerId} current={d.rhythm ?? "tide"} onUse={(r) => updateDisplay({ rhythm: r, rhythmOverride: null, collapsedModules: TRIM_FOLDS[r] })} />
+        </div>
+      </Row>
+      <Row label="Your record" sub="Which rhythm Home led with each day, against how you rated the day in the Log.">
+        <div style={{ maxWidth: 560 }}><RhythmRecordTable testerId={testerId} /></div>
       </Row>
       <Divider />
       <Row label="How much on screen" sub="Essential: the tide, today's plan, your aims. Expanded: adds rhythm, big sky, pulse, and standing conditions.">

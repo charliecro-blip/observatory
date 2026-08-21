@@ -324,3 +324,40 @@ Shipped in one commit:
 
 Step 1 of §7 is therefore live. The step-1 question — do these feel like
 four different ways of being helped? — is the owner's to answer next.
+
+## 11. Steps 2–4 and the step-1 leftovers, built the same evening
+
+Owner verdict on step 1: "they feel helpful! elegant. build the rest."
+
+- **Route's one rule** (plan persistence): Shape Day under Route keeps an
+  item's usual slot — same title, placed within 45 minutes of the same
+  clock at least twice in six weeks — when it fits and no deferred
+  session overlaps it, and reports the elected slot it was kept over on
+  the placement. The astrology yields to continuity, visibly.
+- **Progress language** follows the rhythm in "Where you are": a campaign
+  counts wins, a route counts what was kept and for how long, the field
+  counts what was touched.
+- **Fold defaults** per rhythm, applied once at the moment of choosing.
+- **The fourth Log shape**, "The tally": wins only, no prose.
+- **Element as payoff language**: one line under the Home card, from the
+  chart's Sun element, attributed ("By your chart, …").
+- **Step 2 — the chart proposes**: `lib/rhythmProposal.ts` reads Mercury,
+  Mars, Moon and Saturn into per-function trims (modality → campaign/
+  route/field; water → tide; recovery by element), literal placement
+  first. Shown in Settings ("By your chart", with "use it"), in the
+  Bearings room, and as a Studio card ("My rhythm"). Gated `rhythm.astro`.
+- **Step 3 — the record audits the prior**: `rhythm_days` stamps which
+  rhythm Home led with each day; `/account/rhythm-audit` joins it with
+  felt ratings and wins; a notice offers the switch when a rival has ≥7
+  days, ≥5 rated, and an aligned share ≥20 points higher. Gated
+  `history.patterns`. The table is in Settings.
+- **Step 4 — gear changes**: `/account/gear` finds the transit lighting
+  one style (Mars → campaign, Saturn → route, Neptune → tide, Uranus or
+  Mercury retrograde → field) with an `until`, and Home offers it as an
+  invitation. Yes sets a dated override; Home says so and offers to end
+  it early. Never applied on its own.
+- Also: habits can be created serving several stars at once (owner ask).
+
+Read on the owner's chart: Field overall (Planning Field, Action Field,
+Recovery Route, Commitment Route), earth payoff; gear offered today:
+Saturn square the Ascendant, 2.8°, Route through Oct 20.

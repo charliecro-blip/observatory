@@ -83,9 +83,36 @@ export interface DisplayPrefs {
    *   field     — a few good ways in, chosen late
    */
   rhythm: Rhythm;
+  /**
+   * A temporary gear, accepted from a sky invitation (§3 "current gear"):
+   * the chart says a transit is lighting one working style, the person says
+   * yes, and Home leads that way until the date — then falls back to
+   * `rhythm`. Never set by the app on its own.
+   */
+  rhythmOverride?: { rhythm: Rhythm; until: string; reason?: string } | null;
 }
 
 export type Rhythm = "tide" | "campaign" | "route" | "field";
+/** The preset's own name — the word on the shareable card, and in the doc. */
+export const TRIM_NAME: Record<Rhythm, string> = { tide: "Tide", campaign: "Campaign", route: "Route", field: "Field" };
+/**
+ * What each rhythm folds shut on Home when it is chosen. Applied ONCE at the
+ * moment of choosing (a default, not a lock): a campaign hides the horizon
+ * and the reading; a route keeps the week open; the field keeps the day's
+ * options up. The person can refold anything afterward.
+ */
+export const TRIM_FOLDS: Record<Rhythm, string[]> = {
+  tide: ["reading", "tide"],
+  campaign: ["reading", "tide", "week", "ask"],
+  route: ["reading", "tide", "ask"],
+  field: ["reading", "tide"],
+};
+/** The rhythm in force right now — the override while it lasts, else the base. */
+export function effectiveRhythm(d: Pick<DisplayPrefs, "rhythm" | "rhythmOverride">, now = new Date()): Rhythm {
+  const o = d.rhythmOverride;
+  if (o && o.until && Date.parse(o.until) > now.getTime()) return o.rhythm;
+  return d.rhythm ?? "tide";
+}
 export const RHYTHMS: { key: Rhythm; label: string; blurb: string }[] = [
   { key: "tide",     label: "Read the day first",  blurb: "what kind of day it is, then what fits it" },
   { key: "campaign", label: "One clear move",      blurb: "the thing to push on now; the rest waits" },
