@@ -149,16 +149,16 @@ const HARD = new Set(["Conjunction", "Square", "Opposition"]);
 const GEAR_RULES: { transit: string; natal: Set<string>; orb: number; rhythm: Rhythm; reading: string; why: string }[] = [
   { transit: "Mars", natal: new Set(["Mars", "Sun", "Ascendant"]), orb: 3, rhythm: "campaign",
     reading: "your action gear is louder than usual; shorter pushes and tighter decisions tend to suit it",
-    why: "Mars transits to the Sun, Mars or Ascendant are read in the tradition as a rise in drive and friction. Compass pairs that with Campaign because one clear move gives the drive a target and keeps decisions short." },
+    why: "Mars transits to the Sun, Mars or Ascendant are read in the tradition as a rise in drive and friction; leading with one clear move gives the drive a target and keeps decisions short." },
   { transit: "Saturn", natal: new Set(["Sun", "Moon", "Mercury", "Ascendant"]), orb: 3, rhythm: "route",
     reading: "a consolidating stretch; protecting the route tends to suit it",
-    why: "Saturn transits to the Sun, Moon, Mercury or Ascendant are read as seasons of pruning and consolidation. Compass pairs that with Route because protecting what you already keep tends to hold up better than re-planning under it." },
+    why: "Saturn transits to the Sun, Moon, Mercury or Ascendant are read as seasons of pruning and consolidation; protecting the routines you already keep tends to hold up better than re-planning under it." },
   { transit: "Neptune", natal: new Set(["Sun", "Moon", "Mercury"]), orb: 2, rhythm: "tide",
     reading: "a foggy stretch for decisions; reading the day before committing tends to suit it",
-    why: "Neptune transits to the Sun, Moon or Mercury are read as a loss of edge in judgment. Compass pairs that with Tide because reading the day before committing builds a pause in." },
+    why: "Neptune transits to the Sun, Moon or Mercury are read as a loss of edge in judgment; reading the day before committing builds a pause in." },
   { transit: "Uranus", natal: new Set(["Mercury", "Sun", "Ascendant"]), orb: 2, rhythm: "field",
     reading: "plans want to move; keeping options open tends to suit it",
-    why: "Uranus transits to Mercury, the Sun or Ascendant are read as sudden changes of plan. Compass pairs that with Field because a plan held as options costs less to change." },
+    why: "Uranus transits to Mercury, the Sun or Ascendant are read as sudden changes of plan; a plan held as options costs less to change." },
 ];
 
 export function currentGear(natal: Chart, now = new Date()): Gear | null {
@@ -182,10 +182,10 @@ export function currentGear(natal: Chart, now = new Date()): Gear | null {
       reading: rule.reading,
       until: untilStr,
       detail: [
-        `Transiting ${hit.transitPlanet} is ${Number(hit.orb).toFixed(1)}° from a ${String(hit.aspect).toLowerCase()} to your natal ${hit.natalPlanet}. Compass offers a gear change when a hard aspect from ${hit.transitPlanet} is within ${rule.orb}°.`,
+        `Transiting ${hit.transitPlanet} is ${Number(hit.orb).toFixed(1)}° from a ${String(hit.aspect).toLowerCase()} to your natal ${hit.natalPlanet}; a gear change is offered when a hard aspect from ${hit.transitPlanet} is within ${rule.orb}°.`,
         `The end date is where that orb opens past ${rule.orb}° again, checked a day at a time: about ${untilStr}. A retrograde can bring it back; if it does, the offer returns.`,
         rule.why,
-        "The transit-to-rhythm pairing is Compass's own reading, while the aspect and the dates are measured.",
+        "The pairing of transit to rhythm is our own reading, while the aspect and the dates are measured.",
       ],
     };
   }
@@ -207,7 +207,7 @@ export function currentGear(natal: Chart, now = new Date()): Gear | null {
       detail: [
         "Mercury is moving retrograde, apparently backward against the stars, which the tradition reads as a season of revision and re-sending rather than clean starts.",
         `The end date is the station, where it turns direct: about ${untilStr}.`,
-        "Compass pairs it with Field because a plan held as options costs less to change; that pairing is Compass's own reading, while the motion and the date are measured.",
+        "Keeping options open suits it because a plan held as options costs less to change; that pairing is our own reading, while the motion and the date are measured.",
       ],
     };
   }
