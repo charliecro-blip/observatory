@@ -267,7 +267,15 @@ and it is copy, not code.
   0.2° of Horizons across six dates; the four asteroids read from a
   Horizons table 1940–2070 (the Kepler model was 1–4° off for births in
   the 1960s–90s). Both pinned by `tests/ephemeris-reference.test.ts`.
-- Not yet: the single sign/planet table served from the server (§6.1), and
-  the rewrite of the sign sentences themselves in the approach register
-  (§6.4) — the base lines are still the mythos essences. That is the copy
-  job, and it is next.
+- **One sign record** (`lib/lexicon/src/signs.ts`, §6.1): the client's
+  SIGN_MYTHOS and SIGN_INFLECTION, the server's SIGN_GUIDE and the share
+  card's favors are all built from it; `tests/lexicon.test.ts` pins that
+  they agree. PAIR_MEANINGS (dead) and the hardcoded client eclipse table
+  are gone.
+- **The sign sentences in the approach register** (§6.4): each sign has an
+  `approach` line — how work wants doing under it, one clause with a hinge
+  — and the rail's SEASON and MOON bases read it, with one favor as the
+  example. The old picture line survives as `image` for the dossier and
+  the card; the water metaphors survive as `tideFeel`, tide-only.
+- Still open: the planet tables (theme/roads/literacy/approach-by-part) are
+  server-and-client duplicates in the same way the signs were.

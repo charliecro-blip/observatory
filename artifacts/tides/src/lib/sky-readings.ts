@@ -1,3 +1,4 @@
+import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs";
 // Composable readings for the sky's big moments.
 //
 // Design principles this file exists to serve:
@@ -13,20 +14,10 @@ export type AspectName = "conjunction" | "sextile" | "square" | "trine" | "oppos
 
 // ── How a sign colors any planet standing in it ──────────────────────────────
 
-export const SIGN_INFLECTION: Record<string, string> = {
-  Aries:       "fast, direct, and impatient — acting first and refining later",
-  Taurus:      "slow, steady, and sensory — wanting things tangible and lasting",
-  Gemini:      "quick, curious, and double-tracked — moving through words and options",
-  Cancer:      "protective, tidal, and memory-driven — moving by feel, holding close what it loves",
-  Leo:         "warm, expressive, and proud — wanting to be seen and to mean it",
-  Virgo:       "precise, useful, and self-correcting — perfecting through detail",
-  Libra:       "relational, weighing, and diplomatic — leaning toward balance and the other person",
-  Scorpio:     "intense, private, and all-or-nothing — going straight to the root",
-  Sagittarius: "expansive, blunt, and meaning-hungry — aiming at the far horizon",
-  Capricorn:   "structured, patient, and ambitious — building for the long term",
-  Aquarius:    "systemic, cool, and contrary — thinking in patterns and exceptions",
-  Pisces:      "porous, imaginative, and dissolving — feeling everything, blurring edges",
-};
+// From the lexicon — one voice for the sign everywhere.
+export const SIGN_INFLECTION: Record<string, string> = Object.fromEntries(
+  Object.values(LEXICON_SIGNS).map(e => [e.key, e.inflection]),
+);
 
 // ── What each planet fundamentally is ────────────────────────────────────────
 

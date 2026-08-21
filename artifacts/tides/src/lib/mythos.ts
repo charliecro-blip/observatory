@@ -1,3 +1,4 @@
+import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs";
 // Element hues follow the active palette — see lib/elements.ts for why they
 // stay hex rather than var().
 import { ELEMENT_COLORS } from "@/lib/elements";
@@ -139,98 +140,26 @@ export interface SignMythos {
   name: string;
   element: string;       // fire | earth | air | water
   glyph: string;
-  essence: string;       // one line — the sign's core motion
-  feel: string;          // what the water feels like when the Moon is here
-  favors: string[];      // concrete activities this placement supports
+  /** HOW work wants doing under this sign — the rail's base line. */
+  approach: string;
+  /** The sign's picture in one line; kept for the dossier and the share card. */
+  essence: string;
+  /** Tide vocabulary — shown inside the tide instrument only. */
+  feel: string;
+  favors: string[];      // examples; surfaces show one
   shadow: string;        // the tendency to watch for
 }
 
-export const SIGN_MYTHOS: Record<string, SignMythos> = {
-  Aries: {
-    key: "Aries", name: "Aries", element: "fire", glyph: "♈︎",
-    essence: "The spark that acts before it thinks — pure beginning.",
-    feel: "Quick, impatient water — short waves, fast sets, no patience for rereading.",
-    favors: ["start the thing you've been circling", "hard training", "the direct ask", "quick decisive errands", "healthy competition", "first drafts, not final ones"],
-    shadow: "Starts what nothing finishes; picks fights out of boredom.",
-  },
-  Taurus: {
-    key: "Taurus", name: "Taurus", element: "earth", glyph: "♉︎",
-    essence: "The slow field — worth that accrues by staying.",
-    feel: "Heavy, calm water that resists being hurried and rewards settling in.",
-    favors: ["finish and polish", "cook well & provision", "tend money slowly", "garden, body, pleasure", "one long steady work block", "touch actual ground"],
-    shadow: "Comfort hardens into rut; stubborn past the point of sense.",
-  },
-  Gemini: {
-    key: "Gemini", name: "Gemini", element: "air", glyph: "♊︎",
-    essence: "The messenger's crossroads — everything wants to be said twice.",
-    feel: "Choppy, glittering water — a hundred small currents, none of them deep yet.",
-    favors: ["write & edit", "calls, errands, emails", "learn something quick", "pair work & good banter", "gather information widely", "short trips"],
-    shadow: "Scattered; talks about the thing instead of doing it.",
-  },
-  Cancer: {
-    key: "Cancer", name: "Cancer", element: "water", glyph: "♋︎",
-    essence: "The tide's own house — memory, shelter, the inner shore.",
-    feel: "Deep familiar water; the Moon is home and everything felt is felt more.",
-    favors: ["tend home & kitchen", "family and chosen family", "journal from feeling", "rest that actually restores", "care for someone directly", "be in or near water"],
-    shadow: "Moods steer the ship; retreats into the shell mid-conversation.",
-  },
-  Leo: {
-    key: "Leo", name: "Leo", element: "fire", glyph: "♌︎",
-    essence: "The heart on stage — warmth that wants witnesses.",
-    feel: "Sunlit surf — bright, generous, theatrical water that lifts what it touches.",
-    favors: ["perform, present, publish", "creative play without a goal", "host generously", "romance & delight", "praise someone properly", "wear the good thing"],
-    shadow: "Needs applause to move; pride blocks the apology.",
-  },
-  Virgo: {
-    key: "Virgo", name: "Virgo", element: "earth", glyph: "♍︎",
-    essence: "The craftsman's eye — love expressed as precision.",
-    feel: "Clear shallow water where every pebble on the bottom is visible.",
-    favors: ["edit & refine", "organize the system", "health routines & checkups", "clean the workshop", "detailed analysis", "repair small broken things"],
-    shadow: "Polishes forever, ships never; the criticism leaks outward.",
-  },
-  Libra: {
-    key: "Libra", name: "Libra", element: "air", glyph: "♎︎",
-    essence: "The balance point — truth found between two people.",
-    feel: "Mirror-still water that shows you the other person's side of the sky.",
-    favors: ["negotiate & mediate", "partner on the work", "aesthetic decisions", "host, match, introduce", "agreements & contracts", "beautify a shared room"],
-    shadow: "Decides by not deciding; keeps the peace at truth's expense.",
-  },
-  Scorpio: {
-    key: "Scorpio", name: "Scorpio", element: "water", glyph: "♏︎",
-    essence: "The deep dive — nothing survives the descent unchanged.",
-    feel: "Black still water of unknown depth; the surface tells you nothing.",
-    favors: ["deep, sealed-off focus", "research & investigation", "the honest hard conversation", "end what needs ending", "intimacy over small talk", "shadow work"],
-    shadow: "Control disguised as depth; grudges compound interest.",
-  },
-  Sagittarius: {
-    key: "Sagittarius", name: "Sagittarius", element: "fire", glyph: "♐︎",
-    essence: "The arrow over the horizon — meaning found in motion.",
-    feel: "Open ocean under full sail — the far shore matters more than this one.",
-    favors: ["plan the trip", "study the big idea", "teach — and preach a little", "go far on foot", "publish the thesis", "bet on the larger story"],
-    shadow: "Promises past capacity; truth delivered without aim.",
-  },
-  Capricorn: {
-    key: "Capricorn", name: "Capricorn", element: "earth", glyph: "♑︎",
-    essence: "The mountain path — ambition with patience for stone.",
-    feel: "Cold, disciplined water moving exactly where the channel was cut.",
-    favors: ["the unglamorous right thing", "long-term structure", "the career move", "duty kept quietly", "prune what wastes time", "build what outlasts you"],
-    shadow: "Mistakes grimness for seriousness; the work eats the feast.",
-  },
-  Aquarius: {
-    key: "Aquarius", name: "Aquarius", element: "air", glyph: "♒︎",
-    essence: "The far signal — the pattern only distance reveals.",
-    feel: "High thin air over the water — everything visible at once, nothing close.",
-    favors: ["systems thinking", "the unconventional approach", "community & collective work", "plan for the future self", "tools & technology", "break one useless convention"],
-    shadow: "Principles over people; detached past reach.",
-  },
-  Pisces: {
-    key: "Pisces", name: "Pisces", element: "water", glyph: "♓︎",
-    essence: "The open sea — boundaries dissolve, everything connects.",
-    feel: "Warm fog on slack water; edges soften, time gets generous and strange.",
-    favors: ["make art from feeling", "meditate, pray, drift", "music & poetry", "compassion without a ledger", "sleep and dream generously", "let the plan blur productively"],
-    shadow: "Escapes instead of rests; boundaries dissolve that shouldn't.",
-  },
-};
+// ONE SOURCE. Built from lib/lexicon/src/signs.ts rather than written here,
+// so this table, the dossier's inflections, the server's SIGN_GUIDE and the
+// share card cannot drift apart again (AUDIT-EXPLAINERS-2026-08-21 §2a).
+export const SIGN_MYTHOS: Record<string, SignMythos> = Object.fromEntries(
+  Object.values(LEXICON_SIGNS).map(e => [e.key, {
+    key: e.key, name: e.key, element: e.element, glyph: e.glyph,
+    approach: e.approach, essence: e.image, feel: e.tideFeel, favors: e.favors, shadow: e.watch,
+  }]),
+);
+
 
 // Sort a plain-language intention into an element — the cheap, transparent layer
 // before the advisor's richer LLM sorting. Returns the best-matching element key

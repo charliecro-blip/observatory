@@ -13,6 +13,7 @@
  * Rule of thumb baked in here: the Moon (fast, personal, today) leads a daily;
  * the slow outer transits are the long weather — a footnote, never a headline.
  */
+import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs.js";
 import { ACTIVITIES, type ActivityCorrespondence } from "./activityCorrespondences.js";
 
 // ── Moon-sign guidance (condensed from tides/src/lib/mythos.ts SIGN_MYTHOS) ──
@@ -22,44 +23,15 @@ export interface SignGuide {
   favors: string[];  // concrete things the day is good for
   ease: string;      // the one thing to ease off / the shadow to watch
 }
-export const SIGN_GUIDE: Record<string, SignGuide> = {
-  Aries: { element: "fire", feel: "quick, initiating fire — appetite for the direct move",
-    favors: ["start the thing you've been circling", "hard training", "the direct ask", "decisive errands"],
-    ease: "finishing and fine detail — Aries starts more than it closes" },
-  Taurus: { element: "earth", feel: "slow, settled ground that rewards staying put",
-    favors: ["finish and polish", "cook well and provision", "tend money slowly", "the body and its pleasures"],
-    ease: "rushing or pivoting — Taurus resents being hurried" },
-  Gemini: { element: "air", feel: "bright, darting air — a hundred small currents",
-    favors: ["write and edit", "calls, errands, emails", "learn something quick", "pair work and good talk"],
-    ease: "deep solo focus — the day scatters attention" },
-  Cancer: { element: "water", feel: "deep familiar water — everything felt is felt more",
-    favors: ["tend home and kitchen", "family and chosen family", "journal from feeling", "rest that restores"],
-    ease: "cold public performance — the day wants the inner shore" },
-  Leo: { element: "fire", feel: "sunlit, generous fire that wants witnesses",
-    favors: ["perform, present, publish", "creative play", "host generously", "romance and delight"],
-    ease: "quiet background work — the day asks to be seen" },
-  Virgo: { element: "earth", feel: "clear, exacting water where every detail shows",
-    favors: ["edit and refine", "organize the system", "health routines and checkups", "repair small things"],
-    ease: "big vague launches — the day is for precision, not scope" },
-  Libra: { element: "air", feel: "mirror-still air that shows you the other side",
-    favors: ["negotiate and mediate", "partner on the work", "aesthetic decisions", "host, match, introduce"],
-    ease: "going it alone or forcing a call — the day decides best with someone" },
-  Scorpio: { element: "water", feel: "deep, still water of unknown depth",
-    favors: ["sealed-off focus", "research and investigation", "the honest hard conversation", "ending what needs ending"],
-    ease: "light small talk and scattered multitasking — the day wants the descent" },
-  Sagittarius: { element: "fire", feel: "open-ocean fire — the far shore matters most",
-    favors: ["plan the journey", "study the big idea", "teach", "go far on foot", "publish the thesis"],
-    ease: "fussy detail and staying in — the day is built for range" },
-  Capricorn: { element: "earth", feel: "cold, disciplined water running exactly in its channel",
-    favors: ["the unglamorous right thing", "long-term structure", "the career move", "prune what wastes time"],
-    ease: "spontaneity and play — the day rewards the patient climb" },
-  Aquarius: { element: "air", feel: "high, thin air — everything visible, nothing close",
-    favors: ["systems thinking", "the unconventional approach", "community and collective work", "tools and tech"],
-    ease: "intimacy and hand-holding — the day thinks in patterns, not people" },
-  Pisces: { element: "water", feel: "warm fog on slack water — edges soften, time gets generous",
-    favors: ["make art from feeling", "meditate and drift", "music and poetry", "sleep and dream generously"],
-    ease: "hard logic and firm deadlines — the day blurs the plan productively" },
-};
+// From the lexicon (lib/lexicon/src/signs.ts) — the same sign record the
+// client renders, so the reading and the rail cannot describe Leo in two
+// voices. `feel` is the inflection (the manner, not the tide image), `ease`
+// is the watch line.
+export const SIGN_GUIDE: Record<string, SignGuide> = Object.fromEntries(
+  Object.values(LEXICON_SIGNS).map(e => [e.key, {
+    element: e.element, feel: e.inflection, favors: e.favors.slice(0, 4), ease: e.watch.replace(/\.$/, ""),
+  }]),
+);
 
 // ── Moon phase → what the point in the cycle is for ──────────────────────────
 export const PHASE_GUIDE: Record<string, { thrust: string; do: string }> = {

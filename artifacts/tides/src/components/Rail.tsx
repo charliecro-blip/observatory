@@ -748,7 +748,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             // sentence comes last, as the base. "The feel" left this rotation:
             // its surf-and-fog lines are tide vocabulary outside the tide.
             const takes = takesFor(["Sun", "season"], now?.qualifiers, {
-              label: "essence", approach: sm.essence.replace(/\.$/, ""), example: sm.favors[0],
+              label: "the season's way", approach: sm.approach, example: sm.favors[0],
             }, astroLevel);
             takes.push({ key: "shadow", label: "watch for", condition: "", approach: sm.shadow.replace(/\.$/, "") });
             const t = takes[seasonTakeIdx % takes.length];
@@ -835,7 +835,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             // void reading, so `instead` is not repeated here.
             const fav = moonFavours(sm, now?.voc);
             const takes = takesFor(["Moon"], now?.qualifiers, {
-              label: "the mood", approach: sm.essence.replace(/\.$/, ""),
+              label: "the mood", approach: sm.approach,
               example: now?.voc?.isVOC ? undefined : sm.favors[0],
             }, astroLevel);
             if (!now?.voc?.isVOC) takes.push({ key: "favors", label: fav.label, condition: "", approach: fav.text });

@@ -14,6 +14,7 @@
  * handoff values ever change.
  */
 
+import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs.js";
 import { julianDay, moonLongitude, sunLongitude, moonPhase, getSunriseSunset, SIGNS, scanMoonPerfections, type MoonPerfection } from "./astro.js";
 
 // Waxing = the Moon is AHEAD of the Sun by <180° of elongation. Phase-NAME
@@ -59,21 +60,10 @@ const SURFACE: Record<CardTheme, { bg: string; ink: string; sub: string; line: s
   observatory: { bg: "#0E1420", ink: "#E8ECF4", sub: "#8F9AB4", line: "#263044" },
   minimal: { bg: "#FFFFFF", ink: "#111111", sub: "#777777", line: "#E2E2E2" },
 };
-// Condensed copy of the frontend SIGN_MYTHOS "favors" (first three per sign).
-const SIGN_FAVORS: Record<string, string> = {
-  Aries: "start the thing · hard training · the direct ask",
-  Taurus: "finish and polish · cook well · tend money slowly",
-  Gemini: "write & edit · calls, errands, emails · learn something quick",
-  Cancer: "tend home & kitchen · family · journal from feeling",
-  Leo: "perform, present, publish · creative play · host generously",
-  Virgo: "edit & refine · organize the system · health routines",
-  Libra: "negotiate & mediate · partner on the work · beautify a shared room",
-  Scorpio: "deep sealed-off focus · research · the honest hard conversation",
-  Sagittarius: "plan the journey · study the big idea · teach",
-  Capricorn: "the unglamorous right thing · long-term structure · prune",
-  Aquarius: "systems thinking · the unconventional approach · community",
-  Pisces: "make art from feeling · meditate, drift · rest generously",
-};
+// The first three favors per sign, from the lexicon — the same list the rail shows.
+const SIGN_FAVORS: Record<string, string> = Object.fromEntries(
+  Object.values(LEXICON_SIGNS).map(e => [e.key, e.favors.slice(0, 3).join(" · ")]),
+);
 const WEEKDAY_RULERS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"] as const;
 
 const SERIF = "Spectral, Georgia, serif";

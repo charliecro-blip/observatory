@@ -61,7 +61,7 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
     // really prominent"; the ask was to expand it, not to bury it). Here it
     // can be as long as it needs to be, and the Stars overview gets its
     // first screen back.
-    {id:"bearings",  label:"Your bearings"},
+    {id:"bearings",  label:"Your Bearings"},
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
