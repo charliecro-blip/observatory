@@ -1,4 +1,5 @@
 import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs";
+import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets";
 // Element hues follow the active palette — see lib/elements.ts for why they
 // stay hex rather than var().
 import { ELEMENT_COLORS } from "@/lib/elements";
@@ -66,69 +67,20 @@ export interface PlanetMythos {
   color: string;
 }
 
-export const PLANET_MYTHOS: Record<string, PlanetMythos> = {
-  Sun: {
-    key: "Sun", name: "Sun", glyph: "☉︎", archetype: "The Sovereign", color: "#c08020",
-    essence: "Identity, vitality, and the center that everything else orbits.",
-    myth: "The Sun is the voice of coherence — the part of the day that asks whether your actions still orbit your actual center. When it speaks, questions of purpose, visibility, and self-respect come forward.",
-    speaksFor: ["purpose", "visibility", "vitality", "authority", "self-expression"],
-    whenLoud: "Step into the light on purpose: lead, present, decide as yourself. Vitality is available — spend it on what's actually yours.",
-  },
-  Moon: {
-    key: "Moon", name: "Moon", glyph: "☽︎", archetype: "The Nurturer", color: "#7080a0",
-    essence: "Feeling, habit, memory — the daily inner weather.",
-    myth: "The Moon is the fastest voice and the closest: the mood of the body, the pull of habit, the tide itself. When it speaks, the question is what needs tending — in you, in your home, in the people you keep.",
-    speaksFor: ["mood & instinct", "home", "nourishment", "habit", "the past"],
-    whenLoud: "Tend rather than push. Feed what keeps you alive — body, home, sleep, the people who are your ground.",
-  },
-  Mercury: {
-    key: "Mercury", name: "Mercury", glyph: "☿︎", archetype: "The Messenger", color: "#608060",
-    essence: "Language, exchange, and the paths between things.",
-    myth: "Mercury is the voice of connection-in-motion: words, messages, routes, trades, jokes. When it speaks, information wants to move — and the quality of your day depends on how cleanly it does.",
-    speaksFor: ["writing & speech", "learning", "commerce", "travel & errands", "wit"],
-    whenLoud: "Move the words: write, send, ask, sort, name the thing precisely. Friction in communication is the day's real work.",
-  },
-  Venus: {
-    key: "Venus", name: "Venus", glyph: "♀︎", archetype: "The Connector", color: "#c06090",
-    essence: "Attraction, beauty, and what makes life worth arranging.",
-    myth: "Venus is the voice of value — what you're drawn to, what you find beautiful, who you want near. When it speaks, harmony becomes available: in rooms, in relationships, in work made pleasing.",
-    speaksFor: ["love & friendship", "beauty & art", "pleasure", "diplomacy", "worth"],
-    whenLoud: "Arrange, beautify, reconcile, enjoy. Reach toward people and things you value — grace is doing half the work today.",
-  },
-  Mars: {
-    key: "Mars", name: "Mars", glyph: "♂︎", archetype: "The Warrior", color: "#c04040",
-    essence: "Drive, edge, and the courage to cut.",
-    myth: "Mars is the voice of force — the part of you that acts, defends, competes, and separates what must be separated. When it speaks, energy demands a worthy target; unaimed, it turns to friction.",
-    speaksFor: ["action & effort", "the body's power", "boundaries", "conflict", "decisiveness"],
-    whenLoud: "Give the force a job: train hard, make the cut, have the direct conversation. Aim it or it will aim itself.",
-  },
-  Jupiter: {
-    key: "Jupiter", name: "Jupiter", glyph: "♃︎", archetype: "The Sage", color: "#6040a0",
-    essence: "Growth, meaning, and the larger frame.",
-    myth: "Jupiter is the voice of more — more scope, more meaning, more generosity. When it speaks, doors are looser on their hinges and the question is which larger story you're willing to step into.",
-    speaksFor: ["opportunity", "teaching & belief", "travel & horizon", "generosity", "luck you position for"],
-    whenLoud: "Say yes bigger: publish, apply, invite, teach, expand the plan one honest size up.",
-  },
-  Saturn: {
-    key: "Saturn", name: "Saturn", glyph: "♄︎", archetype: "The Builder", color: "#807060",
-    essence: "Structure, time, and the dignity of limits.",
-    myth: "Saturn is the slowest classical voice and the most honest: it speaks for what holds when enthusiasm doesn't. When it's loud, the day rewards discipline, pruning, and promises kept — and quietly taxes everything else.",
-    speaksFor: ["commitment", "structure", "boundaries in time", "mastery", "consequence"],
-    whenLoud: "Do the unglamorous right thing: keep the commitment, cut the excess, build the part no one sees. It compounds.",
-  },
-};
+// From the planet lexicon (lib/lexicon/src/planets.ts) — one record per
+// planet for every surface.
+export const PLANET_MYTHOS: Record<string, PlanetMythos> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.voice).map(p => [p.key, {
+    key: p.key, name: p.key, glyph: p.glyph, archetype: p.voice!.archetype, color: p.voice!.color,
+    essence: p.voice!.essence, myth: p.voice!.myth, speaksFor: p.voice!.speaksFor, whenLoud: p.voice!.whenLoud,
+  }]),
+);
 
 // Concrete activities each planetary voice favors when it's loud (hours, day
 // rulers, aspects). Complements PLANET_MYTHOS.whenLoud with pickable items.
-export const PLANET_ACTIVITIES: Record<string, string[]> = {
-  Sun:     ["lead the meeting", "make the decision as yourself", "be seen — present, publish", "tend vitality: light, movement", "claim credit honestly", "set the week's direction"],
-  Moon:    ["tend home & body", "cook for someone", "nap without guilt", "journal the mood", "call your people", "water rituals — bathe, swim"],
-  Mercury: ["write & send", "sort & name things", "learn the skill", "run the errands", "negotiate the detail", "fix the words"],
-  Venus:   ["reconcile & connect", "beautify the space", "enjoy something on purpose", "tend love & friendship", "choose the pleasing option", "make it beautiful"],
-  Mars:    ["train hard", "make the cut", "have the direct conversation", "compete at something", "do the brave errand", "finish by force if needed"],
-  Jupiter: ["say yes bigger", "apply & publish", "teach what you know", "plan the expansion", "be generous first", "zoom out to the larger story"],
-  Saturn:  ["keep the commitment", "prune & cancel", "do the boring foundation", "review the long game", "pay the debt", "build the part no one sees"],
-};
+export const PLANET_ACTIVITIES: Record<string, string[]> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.activities).map(p => [p.key, p.activities!]),
+);
 
 // ── The twelve signs — where the Moon (or any voice) is standing ──────────────
 // The Moon changes sign every ~2.5 days; this is the app's answer to "so what

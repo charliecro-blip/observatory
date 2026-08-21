@@ -15,6 +15,7 @@
  *   • Every voice carries two roads — a GIFT to spend and a SHADOW to watch;
  *     the counterpoint and caution-windows draw on the shadow.        [Arroyo/Forrest]
  */
+import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets.js";
 import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidOfCourse, julianDay, getSunriseSunset } from "./astro.js";
 import type { PlanetAspect } from "./astro.js";
 import { dignity } from "./dignity.js";
@@ -27,15 +28,9 @@ type Element = "fire" | "earth" | "air" | "water";
 const PLANET_ELEMENT: Record<string, Element> = {
   Sun: "fire", Moon: "water", Mercury: "air", Venus: "earth", Mars: "fire", Jupiter: "fire", Saturn: "earth",
 };
-const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = {
-  Sun:     { verb: "vitality and wholehearted action", activities: ["decide", "creative work", "the essential task"] },
-  Moon:    { verb: "tending and feeling", activities: ["rest", "tend home", "care for someone"] },
-  Mercury: { verb: "thinking and exchanging", activities: ["write", "sort", "learn", "run errands"] },
-  Venus:   { verb: "relating and refining", activities: ["connect", "make something beautiful", "money"] },
-  Mars:    { verb: "effort and the decisive cut", activities: ["train", "push", "the hard task"] },
-  Jupiter: { verb: "growth and the bigger frame", activities: ["teach", "the big ask", "reach wider"] },
-  Saturn:  { verb: "structure and the unglamorous right thing", activities: ["finish", "commit", "prune"] },
-};
+const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.theme).map(p => [p.key, p.theme!]),
+);
 
 // Two roads — the gift to spend and the shadow to watch (same neutral energy,
 // high road / low road). Arroyo's positive-negative table + Forrest's elements.
@@ -46,22 +41,9 @@ const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = {
 // label. `work` is the outlet — where the same energy can legitimately go,
 // concrete enough to act on within the hour.
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
-const PLANET_ROADS: Record<string, { gift: string; shadow: string; work: string }> = {
-  Sun:     { gift: "warmth, and the nerve to be seen", shadow: "needing to be the centre of it",
-             work: "put the wanting-to-be-seen into making one thing worth seeing" },
-  Moon:    { gift: "care, and reading the room", shadow: "the mood running the day sideways",
-             work: "feel it on purpose for ten minutes, so it doesn't leak into everything" },
-  Mercury: { gift: "quickness, and real curiosity", shadow: "the thought that keeps circling",
-             work: "write the loop down — it stops circling once it's on paper" },
-  Venus:   { gift: "ease, and warmth toward people", shadow: "smoothing it over instead of saying the hard thing",
-             work: "have the pleasant thing, then say the true thing — in that order" },
-  Mars:    { gift: "nerve, and the will to finish", shadow: "the short fuse, the rush",
-             work: "spend the edge on something physical with an end, before it finds a person" },
-  Jupiter: { gift: "generosity, and the wider view", shadow: "saying yes too big, skipping the detail",
-             work: "say yes to the size, then check the one detail you'd rather skip" },
-  Saturn:  { gift: "patience, and the long haul", shadow: "the gloom, the stiffening, the fear",
-             work: "do the smallest real piece — it lifts by moving, not by solving" },
-};
+const PLANET_ROADS: Record<string, { gift: string; shadow: string; work: string }> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.roads).map(p => [p.key, p.roads!]),
+);
 const ELEMENT_ROADS: Record<Element, { gift: string; shadow: string; work: string }> = {
   fire:  { gift: "nerve, and a fast start", shadow: "burning out, or through people",
            work: "spend it on the first hard thing, then let it bank" },

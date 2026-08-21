@@ -1,4 +1,5 @@
 import { SIGNS as LEXICON_SIGNS } from "../../../../lib/lexicon/src/signs";
+import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets";
 // Composable readings for the sky's big moments.
 //
 // Design principles this file exists to serve:
@@ -21,18 +22,9 @@ export const SIGN_INFLECTION: Record<string, string> = Object.fromEntries(
 
 // ── What each planet fundamentally is ────────────────────────────────────────
 
-export const PLANET_CORE: Record<string, { name: string; is: string; short: string; use: string }> = {
-  Sun:     { name: "Sun",     is: "your center of gravity — identity, vitality, what the day organizes around", short: "the will to shine",      use: "visibility, leading, putting your name on it" },
-  Moon:    { name: "Moon",    is: "the feeling body — moods, needs, the inner weather",                          short: "the need to feel safe",   use: "tending, resting, listening inward" },
-  Mercury: { name: "Mercury", is: "the mind in motion — words, plans, connections",                              short: "the urge to connect ideas", use: "writing, sorting, conversation" },
-  Venus:   { name: "Venus",   is: "what draws you — pleasure, relating, worth",                                  short: "the pull toward beauty",  use: "relating, refining, enjoying" },
-  Mars:    { name: "Mars",    is: "the engine — drive, courage, the cutting edge",                               short: "the drive to act",        use: "physical effort, decisive cuts, brave starts" },
-  Jupiter: { name: "Jupiter", is: "the expander — growth, faith, the bigger frame",                              short: "the urge to grow",        use: "teaching, publishing, saying yes bigger" },
-  Saturn:  { name: "Saturn",  is: "the builder — limits, time, what must be earned",                             short: "the need for structure",  use: "committing, pruning, doing the unglamorous work" },
-  Uranus:  { name: "Uranus",  is: "the awakener — disruption, freedom, the sudden turn",                         short: "the urge to break free",  use: "experiments, reversals, updating what's stale" },
-  Neptune: { name: "Neptune", is: "the dissolver — imagination, longing, the soft focus",                        short: "the pull toward the ideal", use: "art, compassion, letting edges blur" },
-  Pluto:   { name: "Pluto",   is: "the transformer — power, depth, what must die to grow",                       short: "the pressure to transform", use: "deep work, endings, telling the whole truth" },
-};
+export const PLANET_CORE: Record<string, { name: string; is: string; short: string; use: string }> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).map(p => [p.key, p.core]),
+);
 
 // ── Aspect geometry, explained plainly (the concept layer) ───────────────────
 

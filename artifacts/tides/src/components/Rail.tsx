@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { HelpBadge, Tooltip } from "@/components/Tooltip";
 import { usePreferences, useUiDensity, useAstroDetail, useTimeFormat } from "@/contexts/preferences-context";
 import { takesFor, lineOf } from "@/lib/explain";
+import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets";
 import type { TidesNow } from "@/lib/types";
 import { SIGN_MYTHOS, PLANET_ACTIVITIES } from "@/lib/mythos";
 import { suggestApproach, approachOptions } from "@/lib/approach";
@@ -396,15 +397,9 @@ function progressPct(began: string, ends: string) {
   return Math.min(100, Math.max(0, ((cur - b) / (e - b)) * 100));
 }
 
-const PLANET_SIGNIFICATION: Record<string, string> = {
-  Sun: "Visibility, leadership, vitality. Good for presenting yourself, making decisions, and creative assertion.",
-  Moon: "Nourishment, care, routine. Tend to home, body, and emotional space.",
-  Mercury: "Communication, ideas, movement. Write, pitch, learn, travel.",
-  Venus: "Beauty, pleasure, connection. Relationship, art, sensory enjoyment.",
-  Mars: "Action, ignition, assertion. Physical work, bold starts, decisive moves.",
-  Jupiter: "Expansion, abundance, generosity. Think big, share widely, grow.",
-  Saturn: "Structure, focus, consolidation. Slow down, commit, build foundations.",
-};
+const PLANET_SIGNIFICATION: Record<string, string> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.signification).map(p => [p.key, p.signification!]),
+);
 
 const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: string }> = {
   conjunction: { name:"Conjunction ☌︎", nature:"Amplifying", desc:"The two planets merge energies — their themes intensify and blend. Effects depend on the planets involved." },
@@ -414,18 +409,9 @@ const ASPECT_MEANINGS: Record<string, { name: string; nature: string; desc: stri
   opposition:  { name:"Opposition ☍︎", nature:"Polarity", desc:"180° apart — polarization between two themes. Integration and balance are needed; others may mirror this tension." },
 };
 
-const PLANET_MEANING: Record<string, string> = {
-  Sun:     "Core identity, vitality, authority, creative expression",
-  Moon:    "Emotions, intuition, instinct, the body's wisdom",
-  Mercury: "Mind, communication, movement, craft, perception",
-  Venus:   "Beauty, values, pleasure, relationship, aesthetics",
-  Mars:    "Drive, assertion, courage, desire, physical force",
-  Jupiter: "Expansion, meaning, abundance, generosity, philosophy",
-  Saturn:  "Structure, discipline, time, responsibility, limits",
-  Uranus:  "Liberation, disruption, innovation, awakening",
-  Neptune: "Imagination, dissolution, spirituality, the subtle",
-  Pluto:   "Transformation, power, depth, endings, regeneration",
-};
+const PLANET_MEANING: Record<string, string> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).map(p => [p.key, p.meaning]),
+);
 
 // Approximate sunrise/sunset for the Rail (mirrors Today.tsx logic)
 export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
@@ -1041,8 +1027,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   what it does from its sign. The two are the condition; the
                   approach below is what to do with it. */}
               {(() => {
-                const takes = takesFor([planetaryHour.planet], now?.qualifiers, { label: "", approach: "" }, astroLevel)
-                  .filter(t => t.key !== "base");
+                // The base is the planet's own way of working the hour, from
+                // the lexicon; the moment's qualifiers lead when there are any.
+                const takes = takesFor([planetaryHour.planet], now?.qualifiers, {
+                  label: "the hour's way", approach: LEXICON_PLANETS[planetaryHour.planet]?.approach ?? "",
+                }, astroLevel).filter(t => t.approach);
                 if (!takes.length) return null;
                 const t = takes[hourTakeIdx % takes.length];
                 return (
@@ -1050,7 +1039,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     <span style={{ display: "block", color: "var(--text-3)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px" }}>
                       {t.label}{t.provenance === "compass" && astroLevel === "full" ? " · Compass reading" : ""}
                     </span>
-                    <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>{lineOf({ ...t, condition: "" })}
+                    {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}{lineOf({ ...t, condition: "" })}
                     {takes.length > 1 && (
                       <button onClick={() => setHourTakeIdx(i => i + 1)} title={`The next thing qualifying ${planetaryHour.planet} (${(hourTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="The next qualifier"
                         style={{ marginLeft: 5, fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>

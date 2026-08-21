@@ -277,5 +277,13 @@ and it is copy, not code.
   — and the rail's SEASON and MOON bases read it, with one favor as the
   example. The old picture line survives as `image` for the dossier and
   the card; the water metaphors survive as `tideFeel`, tide-only.
-- Still open: the planet tables (theme/roads/literacy/approach-by-part) are
-  server-and-client duplicates in the same way the signs were.
+- **One planet record** (`lib/lexicon/src/planets.ts`): the client's
+  PLANET_MYTHOS / PLANET_ACTIVITIES / PLANET_CORE / PLANET_LITERACY, the
+  rail's signification and meaning lines, and the server's PLANET_THEME /
+  PLANET_ROADS are all views of it; `tests/lexicon-planets.test.ts` pins
+  that. Each planet has an `approach` line — how work wants doing in its
+  hour — which is THIS HOUR's base take, composed under the dignity line
+  with the moment's qualifiers. The approach-by-part examples (approach.ts)
+  stay where they are: they are the examples, keyed to the person's clock.
+- Open: nothing from the audit. The copy in both lexicons is the owner's to
+  revise in one place now.
