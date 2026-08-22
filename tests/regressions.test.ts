@@ -3028,7 +3028,15 @@ describe("testimony facts agree with the prose they replaced", () => {
     expect(aspects.length).toBeGreaterThan(5);
     for (const t of aspects) {
       expect(t.note).toContain(`${t.facts.orbDeg.toFixed(1)}°`);
-      expect(t.facts.applying).toBe(true);   // separating aspects are skipped
+      // Separating aspects were filtered out entirely until 2026-08-22, when a
+      // Moon 0.31° PAST exact conjunction with Uranus was found being discarded
+      // while the day led with "the Mercury hour". Applying-only is the right
+      // rule for prediction; this card describes present conditions. A
+      // separation still inside a degree and a half counts, and the sentence
+      // says which it is.
+      expect(t.facts.applying === true || t.facts.orbDeg <= 1.5, t.note).toBe(true);
+      expect(t.note).toContain(t.facts.applying ? "applying" : "separating");
+      if (false) expect(t.facts.applying).toBe(true);   // separating aspects are skipped
     }
   });
 

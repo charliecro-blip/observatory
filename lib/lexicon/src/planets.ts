@@ -136,6 +136,11 @@ export const PLANETS: Record<string, PlanetEntry> = {
     feelings: ["restless", "trapped", "want out", "need to break", "wired", "erratic", "anxious", "unsettled", "claustrophobic", "rebellious", "done with this", "can't settle", "cant settle", "crawl out of my skin", "jump out of my skin"],
     literacy: {"adjective": "uranian", "undertone": "a uranian undertone — restlessness, static, the urge to break pattern", "feelsLike": "Uranian time is electric: sudden insights, itchiness inside routines, surprises in the schedule. Genuinely good for experiments and unsticking stuck things.", "shadow": "Its edge is disruption for its own sake — the impulsive quit, the 2am reinvention, anxiety wearing the costume of excitement.", "useIt": "Experiment, automate, rearrange, question a default, and give the restlessness a sandbox.", "weeklyNote": "When the Moon contacts Uranus (about weekly), days go a little static-charged — plans wobble, insights arrive sideways. Loosen the schedule that day rather than gripping it.", "longArc": "Uranus takes 84 years to circle the chart — its transits mark the awakening seasons, a year or more where one area of life refuses to stay in its old container. The mid-life 'Uranus opposition' (~age 42) is the classic one."},
     core: {"name": "Uranus", "is": "the awakener — disruption, freedom, the sudden turn", "short": "the urge to break free", "use": "experiments, reversals, updating what's stale"},
+    // The outer planets had no roads, so anything reading gift/shadow/work
+    // from the lexicon got undefined for them — the feelings door printed an
+    // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
+    // synthesis's OUTER_THEME, which now sources these from here.
+    roads: { gift: 'fresh air, honest change', shadow: 'restlessness, the break for its own sake', work: 'change one real thing on purpose, so the restlessness has somewhere to land' },
   },
   Neptune: {
     key: "Neptune", glyph: "♆︎", classical: false,
@@ -144,6 +149,11 @@ export const PLANETS: Record<string, PlanetEntry> = {
     feelings: ["foggy", "dreamy", "dissociated", "lost", "unmoored", "escapist", "confused", "porous", "spacey", "drifting", "blurry", "not really here", "checked out", "overwhelmed by everyone"],
     literacy: {"adjective": "neptunian", "undertone": "a neptunian undertone — fog, porousness, imagination running high", "feelsLike": "Neptunian time blurs edges: daydreams are vivid, empathy is high, music and images land deeper than words. Wonderful for creative and spiritual work; unreliable for contracts and estimates.", "shadow": "Its edge is fog — idealizing people, losing hours, escapism, being lied to easily (mostly by yourself). Don't sign anything important in the fog.", "useIt": "Create, meditate, listen to music, rest without a goal, let the imagination off-leash.", "weeklyNote": "The Moon's weekly touch on Neptune makes a soft-focus day — dreamy, permeable, a bit unmoored. Schedule the creative work there and the spreadsheets elsewhere.", "longArc": "Neptune's transits run for years and dissolve rather than build — a long season where an old certainty quietly stops being true. Confusing in the middle, and usually a genuine refinement of what you believe by the end."},
     core: {"name": "Neptune", "is": "the dissolver — imagination, longing, the soft focus", "short": "the pull toward the ideal", "use": "art, compassion, letting edges blur"},
+    // The outer planets had no roads, so anything reading gift/shadow/work
+    // from the lexicon got undefined for them — the feelings door printed an
+    // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
+    // synthesis's OUTER_THEME, which now sources these from here.
+    roads: { gift: 'imagination, and a softer heart', shadow: 'fog, drift, the story you tell yourself', work: "make something, or rest — both use the fog; deciding in it doesn't" },
   },
   Pluto: {
     key: "Pluto", glyph: "⯓︎", classical: false,
@@ -152,6 +162,11 @@ export const PLANETS: Record<string, PlanetEntry> = {
     feelings: ["obsessive", "obsessed", "fixated", "resentful", "powerless", "controlling", "controlled", "grudge", "intense", "churning", "buried", "compulsive", "can't let it go", "cant let it go", "ruminating", "festering"],
     literacy: {"adjective": "plutonian", "undertone": "a plutonian undertone — intensity, depth, an all-or-nothing pull", "feelsLike": "Plutonian time runs deep and slightly obsessive: surface conversation feels unbearable, real conversation feels urgent. Power dynamics get visible. Good for research, therapy-grade honesty, and finishing what needs to die.", "shadow": "Its edge is obsession and control — the grudge replayed, the power struggle nobody wins, intensity aimed at people instead of projects.", "useIt": "Go deep on one thing: purge, investigate, compost, have the real conversation.", "weeklyNote": "The Moon's weekly contact with Pluto makes a day with undertow — feelings pull harder and older than the situation deserves. Knowing that is most of the protection.", "longArc": "Pluto moves so slowly its transits define eras — multi-year transformations where something structural in a life is dismantled and rebuilt. You don't schedule Pluto; you cooperate with it."},
     core: {"name": "Pluto", "is": "the transformer — power, depth, what must die to grow", "short": "the pressure to transform", "use": "deep work, endings, telling the whole truth"},
+    // The outer planets had no roads, so anything reading gift/shadow/work
+    // from the lexicon got undefined for them — the feelings door printed an
+    // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
+    // synthesis's OUTER_THEME, which now sources these from here.
+    roads: { gift: 'depth, and the nerve to begin again', shadow: 'the grip, the fixation', work: "name what you're actually trying to control, then loosen one hand" },
   },
 };
 

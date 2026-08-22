@@ -70,14 +70,22 @@ describe("non-lunar aspect testimony", () => {
     const S: any = await import("../artifacts/api-server/src/lib/synthesis.js");
     const src = readFileSync(
       join(process.cwd(), "artifacts/api-server/src/lib/synthesis.ts"), "utf-8");
-    // Moon aspects scale by 0.9; non-lunar by 0.55.
-    expect(src).toMatch(/salience: 0\.9 \* \(0\.4 \+ 0\.6 \* exact\)/);
-    expect(src).toMatch(/salience: 0\.55 \* \(0\.35 \+ 0\.65 \* exact\)/);
+    // The scalars moved into the SAL table on 2026-08-22, when the owner's
+    // ordering (hours and days secondary to lunar placement, lunar aspects and
+    // other planetary aspects) was written down in one place. Assert the
+    // RELATION rather than the literals, which is what this test was ever
+    // about: non-lunar aspects are the weather, the Moon is the engine.
+    const num = (k: string) => Number(new RegExp(`${k}:\\s*Number\\(process\\.env\\.\\w+ \\?\\? ([\\d.]+)\\)`).exec(src)![1]);
+    expect(num("aspect")).toBeLessThan(num("moonAspect"));
+    expect(num("moonAspect")).toBeGreaterThan(num("hour"));
+    expect(num("aspect")).toBeGreaterThan(num("hour"));
     // And confirm it holds on real data for a day carrying both.
     for (let d = 1; d <= 28; d++) {
       const r = S.dayReading(new Date(Date.UTC(2026, 7, d, 15, 0, 0)), 40.7, -74.0, { tzOffsetMin: 300 });
       const nl = r.testimonies.filter((t: any) => t.source.startsWith("aspect:"));
-      for (const t of nl) expect(t.salience, `Aug${d} ${t.source}`).toBeLessThan(0.56);
+      // Against the Moon's own scalar rather than a literal — 0.56 was the old
+      // ceiling and pinned the constant, not the commitment.
+      for (const t of nl) expect(t.salience, `Aug${d} ${t.source}`).toBeLessThan(num("moonAspect"));
     }
   });
 

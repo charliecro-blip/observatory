@@ -112,6 +112,19 @@ function inPlay(
     // calling it "has been for a while" was simply false; Pluto at the same orb
     // is months.
     put(p, t.note, t.note, t.weight * t.salience, tempoOf(p));
+    // BOTH BODIES, for a Moon aspect. subjectOf answers "Moon" for
+    // moonAspect:Uranus — right as grammar, since the Moon is what the sentence
+    // is about — but it left the partner invisible here, so the door told
+    // someone who wrote "restless, want out" that Uranus wasn't doing anything
+    // while the Moon sat a third of a degree off it. A Moon conjunct an outer
+    // planet is one of the loudest things a month contains.
+    if (t.source.startsWith("moonAspect:")) {
+      const partner = t.source.slice("moonAspect:".length);
+      // Tempo follows the FASTER body. The Moon conjoins Uranus for a few hours
+      // once a month, so "and it's been live for a while" would be wrong here
+      // even though Uranus is otherwise a season-length voice.
+      put(partner, t.note, t.note, t.weight * t.salience, "today");
+    }
   }
   for (const q of qualifiers) {
     for (const b of q.bodies) {

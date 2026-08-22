@@ -28,7 +28,12 @@ describe("the reading's subject", () => {
     const s = read(AT).subject;
     expect(s).toBeTruthy();
     expect(s!.planet).toBe("Venus");
-    expect(s!.count).toBeGreaterThanOrEqual(4);
+    // Was 5 of 8 when this was written, 3 of 8 since 2026-08-22 — not because
+    // Venus got quieter but because that evening gained testimony the engine
+    // had been blind to (the Sun on the South Node, and the Venus–Saturn
+    // opposition itself, which no non-lunar aspect involving those bodies had
+    // ever spoken). She still carries the largest share, which is the claim.
+    expect(s!.count).toBeGreaterThanOrEqual(3);
     expect(s!.ofTop).toBe(8);
     expect(s!.supports).toContain("your sense of yourself");
     expect(s!.presses).toContain("your need for room");

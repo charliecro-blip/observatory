@@ -18,6 +18,7 @@
 import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets.js";
 import { getPlanetPositions, getPlanetaryHour, getMajorAspects, moonPhase, voidOfCourse, julianDay, getSunriseSunset } from "./astro.js";
 import type { PlanetAspect } from "./astro.js";
+import { computeQualifiers } from "./qualifiers.js";
 import { dignity } from "./dignity.js";
 import { an } from "./article.js";
 import { voidReading } from "./voidOfCourse.js";
@@ -27,6 +28,9 @@ import { SIGN_GUIDE } from "./interpretation.js";
 type Element = "fire" | "earth" | "air" | "water";
 const PLANET_ELEMENT: Record<string, Element> = {
   Sun: "fire", Moon: "water", Mercury: "air", Venus: "earth", Mars: "fire", Jupiter: "fire", Saturn: "earth",
+  // By modern rulership (Aquarius, Pisces, Scorpio). Their absence meant every
+  // Moon-to-outer testimony would have carried element: undefined.
+  Uranus: "air", Neptune: "water", Pluto: "water",
 };
 const PLANET_THEME: Record<string, { verb: string; activities: string[] }> = Object.fromEntries(
   Object.values(LEXICON_PLANETS).filter(p => p.theme).map(p => [p.key, p.theme!]),
@@ -70,6 +74,55 @@ const MEAN_MOTION: Record<string, number> = {
   Jupiter: 0.083, Saturn: 0.034, Uranus: 0.012, Neptune: 0.006, Pluto: 0.004,
 };
 
+/**
+ * WHAT THE DAY IS ABOUT — the owner's ordering, 2026-08-22:
+ *
+ *   "planetary hours and days are very much secondary to lunar placement and
+ *    aspects and other planetary aspects… that rule can be applied pretty much
+ *    throughout the app. VoC is also very useful"
+ *
+ * The engine had it close to backwards. Measured over 2026, the day led with an
+ * AMBIENT fact — sect, the hour, the out-of-sect malefic — on 45% of days.
+ * Those are not events: sect is fixed all day, the hour rotates every sixty
+ * minutes, and the out-of-sect malefic is the same planet every daytime of the
+ * year. Meanwhile a Venus–Saturn opposition at 0.2° ranked NINTH of eleven, and
+ * a Moon 0.18° off Pluto ranked fourth.
+ *
+ * Salience is now assigned by that hierarchy rather than by feel, and the lead
+ * rates it produces are in the commit message. Env overrides exist so the next
+ * person can re-sweep instead of guessing.
+ */
+const SAL = {
+  // Primary: the Moon, and real aspects between planets.
+  moonAspect: Number(process.env.COMPASS_SAL_MOONASPECT ?? 0.90),
+  aspect:     Number(process.env.COMPASS_SAL_ASPECT ?? 0.78),
+  moonSign:   Number(process.env.COMPASS_SAL_MOONSIGN ?? 0.55),
+  phase:      Number(process.env.COMPASS_SAL_PHASE ?? 0.50),
+  // Exactness is rarity. A partile aspect is the headline, whatever it joins.
+  partileBoost: Number(process.env.COMPASS_PARTILE_BOOST ?? 1.45),
+  // Secondary: ambient conditions, true most days by construction.
+  sect:        Number(process.env.COMPASS_SAL_SECT ?? 0.34),
+  sectMalefic: Number(process.env.COMPASS_SAL_SECTMALEFIC ?? 0.30),
+  hour:        Number(process.env.COMPASS_SAL_HOUR ?? 0.26),
+  dayRuler:    Number(process.env.COMPASS_SAL_DAYRULER ?? 0.22),
+  // The Sun meets a node about twice a year; the Moon about twice a month.
+  nodeSun:     Number(process.env.COMPASS_SAL_NODESUN ?? 0.92),
+  nodeMoon:    Number(process.env.COMPASS_SAL_NODEMOON ?? 0.62),
+  // AN ERA IS AMBIENT TOO. Rarity is salience, and a configuration that has
+  // been in orb for two years is not what today is about. Uranus–Pluto sits in
+  // orb for ~750 days and led 34 days of 2026 once these aspects were given a
+  // voice; Saturn–Neptune (~214 days) led 24. They belong in the reading — they
+  // had none at all before — but as the weather the day happens inside, which
+  // is what this collector's own comment always said they were. durationDays
+  // was already computed and filed in the facts; nothing read it.
+  eraAnchor:   Number(process.env.COMPASS_ERA_ANCHOR ?? 45),
+  eraExp:      Number(process.env.COMPASS_ERA_EXP ?? 0.5),
+};
+/** 1.0 for a configuration that passes within a few weeks, falling away for one
+ *  that stands for years. */
+const eraFactor = (durationDays: number) =>
+  Math.min(1, Math.pow(SAL.eraAnchor / Math.max(1, durationDays), SAL.eraExp));
+
 const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; word: string; ing: string }> = {
   conjunction: { harmony: 0, strength: 1.0, word: "meets", ing: "meeting" },
   sextile:     { harmony: 1, strength: 0.5, word: "reaches easily to", ing: "reaching easily to" },
@@ -94,7 +147,7 @@ const ASPECT_NATURE: Record<string, { harmony: -1 | 0 | 1; strength: number; wor
  * than refuse. That is what keeps an LLM voice layer safe to depend on.
  */
 export interface TestimonyFacts {
-  kind: "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect" | "aspect" | "phase" | "voc";
+  kind: "sect" | "sectMalefic" | "hour" | "dayRuler" | "moonSign" | "moonAspect" | "aspect" | "phase" | "voc" | "node";
   /** The planet whose voice this is, where there is one. */
   planet?: string;
   /** The Moon's partner in an aspect. */
@@ -234,14 +287,17 @@ const HAND_EASY = new Map<string, PairScope>([
 ]);
 
 // Themes for transiting bodies the mundane collectors don't cover.
-const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> = {
-  Uranus:  { verb: "breaking the old pattern", gift: "fresh air, honest change", shadow: "restlessness, the break for its own sake",
-             work: "change one real thing on purpose, so the restlessness has somewhere to land" },
-  Neptune: { verb: "dissolving and imagining", gift: "imagination, and a softer heart", shadow: "fog, drift, the story you tell yourself",
-             work: "make something, or rest — both use the fog; deciding in it doesn't" },
-  Pluto:   { verb: "deep renovation", gift: "depth, and the nerve to begin again", shadow: "the grip, the fixation",
-             work: "name what you're actually trying to control, then loosen one hand" },
+// The outers' verbs. Their gift/shadow/work come from the lexicon, which is the
+// one record per planet — they were duplicated here and the copies had already
+// started to matter, since anything reading PLANET_ROADS got undefined.
+const OUTER_VERB: Record<string, string> = {
+  Uranus: "breaking the old pattern", Neptune: "dissolving and imagining", Pluto: "deep renovation",
 };
+const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> =
+  Object.fromEntries(Object.entries(OUTER_VERB).map(([k, verb]) => {
+    const r = LEXICON_PLANETS[k]?.roads;
+    return [k, { verb, gift: r?.gift ?? "", shadow: r?.shadow ?? "", work: r?.work ?? "" }];
+  }));
 // What a natal point MEANS when something lands on it.
 const NATAL_POINT_WORD: Record<string, string> = {
   Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "the way you relate",
@@ -379,6 +435,7 @@ function collectPersonal(m: Moment, natal: NatalForReading, limit = 4): Testimon
 // One gather of the sky, shared by the testimony collectors and the pattern matcher.
 interface Moment {
   positions: ReturnType<typeof getPlanetPositions>;
+  jd: number;
   aspects: PlanetAspect[];
   sunLon: number; isDay: boolean;
   hour: ReturnType<typeof getPlanetaryHour>; dayRuler: string;
@@ -411,7 +468,7 @@ function gather(date: Date, lat: number, lon: number, opts: ReadingOptions = {})
   // Day-of-week ruler in the VIEWER's calendar (matches the /tides/now convention).
   const tz = opts.tzOffsetMin ?? 0;
   return {
-    positions, aspects, sunLon, isDay,
+    positions, jd, aspects, sunLon, isDay,
     hour: getPlanetaryHour(date, lat, lon),
     dayRuler: ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"][new Date(date.getTime() - tz * 60000).getUTCDay()],
     phaseName: moonPhase(jd).name,
@@ -439,7 +496,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   const sect = sectOf(m.isDay);
   const hero = sect.team.slice().sort((a, b) => dig(b) - dig(a))[0];
   const hw = dig(hero), hTheme = PLANET_THEME[hero];
-  push({ source: "sect", element: PLANET_ELEMENT[hero], activities: hTheme.activities, weight: hw, salience: 0.55, polarity: 1,
+  push({ source: "sect", element: PLANET_ELEMENT[hero], activities: hTheme.activities, weight: hw, salience: SAL.sect, polarity: 1,
     facts: { kind: "sect", planet: hero, dignity: hw, isDay: m.isDay, verb: hTheme.verb },
     gift: PLANET_ROADS[hero].gift, shadow: PLANET_ROADS[hero].shadow,
     // "STEADIEST", not strongest — and deliberately not "carried by", which
@@ -454,7 +511,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     carriedBy: `${hero} steady underneath — ${hTheme.verb}`,
     note: `${hero} is the ${m.isDay ? "day" : "night"}'s most reliable voice${hw >= 1.2 ? ", strongly placed" : hw <= 0.7 ? ", though faintly placed" : ""} — ${hTheme.verb} carries best all day` });
   const mw = dig(sect.malefic);
-  push({ source: "sectMalefic", activities: [], weight: mw, salience: 0.6, polarity: -1,
+  push({ source: "sectMalefic", activities: [], weight: mw, salience: SAL.sectMalefic, polarity: -1,
     facts: { kind: "sectMalefic", planet: sect.malefic, dignity: mw, isDay: m.isDay },
     shadow: PLANET_ROADS[sect.malefic].shadow,
     work: PLANET_ROADS[sect.malefic].work,
@@ -463,7 +520,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // Planetary hour — the rotating sub-mood, weighted by the hour ruler's dignity.
   // Skipped at day scope: an hour-bound voice would go stale over a whole day.
   const hourW = dig(m.hour.ruler), ht = PLANET_THEME[m.hour.ruler];
-  if (ht && opts.scope !== "day") push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: 0.6, polarity: 1,
+  if (ht && opts.scope !== "day") push({ source: "hour", element: PLANET_ELEMENT[m.hour.ruler], activities: ht.activities, weight: hourW, salience: SAL.hour, polarity: 1,
     facts: { kind: "hour", planet: m.hour.ruler, dignity: hourW, verb: ht.verb },
     gift: PLANET_ROADS[m.hour.ruler].gift, shadow: PLANET_ROADS[m.hour.ruler].shadow,
     carriedBy: `the ${m.hour.ruler} hour, leaning toward ${ht.verb}`,
@@ -471,7 +528,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
 
   // The planetary day — a whole day has one keynote.
   const dw = dig(m.dayRuler), dt = PLANET_THEME[m.dayRuler];
-  if (dt) push({ source: "dayRuler", element: PLANET_ELEMENT[m.dayRuler], activities: dt.activities, weight: dw, salience: 0.5, polarity: 1,
+  if (dt) push({ source: "dayRuler", element: PLANET_ELEMENT[m.dayRuler], activities: dt.activities, weight: dw, salience: SAL.dayRuler, polarity: 1,
     facts: { kind: "dayRuler", planet: m.dayRuler, dignity: dw, verb: dt.verb },
     gift: PLANET_ROADS[m.dayRuler].gift, shadow: PLANET_ROADS[m.dayRuler].shadow,
     carriedBy: `${m.dayRuler}'s day — ${dt.verb}`,
@@ -479,7 +536,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
 
   // The Moon's sign — the day's felt character (weighted by the Moon's dignity).
   const sg = SIGN_GUIDE[m.moonSign];
-  if (sg) push({ source: "moonSign", element: sg.element as Element, activities: sg.favors.slice(0, 3), weight: dig("Moon"), salience: 0.45, polarity: 1,
+  if (sg) push({ source: "moonSign", element: sg.element as Element, activities: sg.favors.slice(0, 3), weight: dig("Moon"), salience: SAL.moonSign, polarity: 1,
     facts: { kind: "moonSign", planet: "Moon", sign: m.moonSign, dignity: dig("Moon") },
     gift: ELEMENT_ROADS[sg.element as Element].gift, shadow: ELEMENT_ROADS[sg.element as Element].shadow,
     carriedBy: `${an(m.moonSign)} Moon — ${sg.feel}`,
@@ -488,24 +545,94 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // Applying Moon aspects — the day's engine. Nature sets polarity + strength;
   // salience scales with exactness × the aspect's strength; weight from the
   // partner's dignity. Separating aspects are framing-only — skipped here.
-  for (const a of m.moonAspects.filter(a => a.applying).slice(0, 3)) {
+  // THREE BUGS LIVED HERE, and together they threw away the most striking
+  // thing a month contains. On 2026-06-13 the Moon sat 0.31° from Uranus and
+  // the day led with "the Mercury hour"; on 2026-05-08 it was 0.18° from Pluto
+  // and led with Mars-by-sect, which is true every daytime of the year.
+  //
+  //  1. PLANET_THEME is built from the lexicon entries that carry a `theme`,
+  //     and Uranus, Neptune and Pluto carry none — so `if (!th) continue`
+  //     silently dropped EVERY Moon-to-outer aspect that has ever occurred.
+  //     OUTER_THEME already existed for exactly this and collectPersonal
+  //     already falls back to it; this loop never did.
+  //  2. `.slice(0, 3)` ran on the array in whatever order the aspect scan
+  //     emitted, so a partile conjunction lost its slot to looser aspects
+  //     that merely came first. Sorted by orb now.
+  //  3. Separating aspects were skipped as framing-only. That is the right
+  //     rule for prediction — the event has passed — but this card describes
+  //     present conditions, and a Moon a third of a degree past exact is
+  //     unmistakably the current weather. Still-partile separations count.
+  const PARTILE = 1.5;
+  // RARITY IS SALIENCE. Measured over 2026, the day led with an AMBIENT fact on
+  // 45% of days — "Jupiter is the day's most reliable voice" (sect, 17%), "the
+  // Mercury hour" (13%), "Mars runs with a rougher edge by day" (12%). Sect is
+  // fixed all day, the hour rotates every sixty minutes, and the out-of-sect
+  // malefic is the same planet every daytime of the year. None of them is what
+  // today is ABOUT.
+  //
+  // Meanwhile a Moon aspect inside 1° — which happens on 34% of days and lasts
+  // a couple of hours — led only 40% of the time it occurred, because `weight`
+  // is dignity and a dignified Mars (1.80) outscores an undignified Pluto
+  // (1.00) by enough to overturn the salience gap. So the Moon 0.18° from Pluto
+  // came fourth, under two facts that are true every daytime of the year.
+  //
+  // The boost is on exactness, not on the aspect or the partner: a partile
+  // Moon-Saturn square is a headline for the same reason a Moon-Pluto
+  // conjunction is. Calibrated by sweep — see the table in the commit.
+
+  const moonAspects = m.moonAspects
+    .filter(a => a.applying || a.orb <= PARTILE)
+    .sort((x, y) => x.orb - y.orb)
+    .slice(0, 3);
+  for (const a of moonAspects) {
     const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-    const th = PLANET_THEME[other]; const nat = ASPECT_NATURE[a.aspect];
-    if (!th || !nat) continue;  // no theme, or an aversion — no testimony
+    const nat = ASPECT_NATURE[a.aspect];
+    const outer = OUTER_THEME[other];
+    const th = PLANET_THEME[other] ?? (outer ? { verb: outer.verb, activities: [] as string[] } : null);
+    const roads = PLANET_ROADS[other] ?? (outer ? { gift: outer.gift, shadow: outer.shadow } : null);
+    if (!th || !nat || !roads) continue;  // an aversion, or a body with no voice
     const exact = Math.max(0, 1 - a.orb / 8);
     // Combine aspect harmony with the partner's valence: a trine to a malefic is
     // still mildly supportive; a square to a benefic is still mildly hard.
     const score = nat.harmony !== 0 ? nat.harmony + 0.5 * (VALENCE[other] ?? 0) : (VALENCE[other] || 0.3);
     const polarity: 1 | -1 = score >= 0 ? 1 : -1;
+    const motion = a.applying ? "applying" : "separating";
     push({ source: `moonAspect:${other}`, element: PLANET_ELEMENT[other], activities: th.activities,
-      weight: dig(other), salience: 0.9 * (0.4 + 0.6 * exact) * nat.strength, polarity,
+      weight: dig(other),
+      salience: SAL.moonAspect * (0.4 + 0.6 * exact) * nat.strength * (a.orb <= 1 ? SAL.partileBoost : 1),
+      polarity,
       // The orb and the aspect name were readable only by parsing `note` back
       // out of English — the one thing a second register could never do.
       facts: { kind: "moonAspect", planet: "Moon", partner: other, aspect: a.aspect,
-               orbDeg: a.orb, applying: true, dignity: dig(other), verb: th.verb },
-      gift: PLANET_ROADS[other].gift, shadow: PLANET_ROADS[other].shadow,
+               orbDeg: a.orb, applying: a.applying, dignity: dig(other), verb: th.verb },
+      gift: roads.gift, shadow: roads.shadow,
       carriedBy: `the Moon ${nat.ing} ${other} — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}`,
-      note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° applying) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
+      note: `Moon ${nat.word} ${other} (${a.orb.toFixed(1)}° ${motion}) — ${polarity > 0 ? "flow toward" : "friction around"} ${th.verb}` });
+  }
+
+  // ── The nodes ──────────────────────────────────────────────────────────────
+  //
+  // These produced NO testimony at all — grep for "node" in this file before
+  // 2026-08-22 and there was nothing. The owner built a client reading around a
+  // Sun–South Node conjunction on 2026-08-21 and the engine had no word for it.
+  // The Sun meets a node about twice a year, which makes it one of the rarest
+  // things the reading can ever say, and rarity is salience.
+  //
+  // The copy is lifted from qualifiers.ts rather than rewritten, so the node's
+  // voice has one home and the two surfaces cannot drift.
+  for (const q of computeQualifiers(m.jd, m.positions)) {
+    if (!q.key.endsWith("-node")) continue;
+    const planet = q.bodies[0];
+    if (!planet) continue;
+    const south = q.key.includes("-south-");
+    push({ source: `node:${planet}-${south ? "South" : "North"}`, element: PLANET_ELEMENT[planet],
+      activities: [], weight: dig(planet),
+      salience: planet === "Sun" ? SAL.nodeSun : SAL.nodeMoon,
+      polarity: south ? -1 : 1,
+      facts: { kind: "node", planet, partner: south ? "South Node" : "North Node" },
+      gift: PLANET_ROADS[planet]?.gift, shadow: PLANET_ROADS[planet]?.shadow,
+      carriedBy: q.plain,
+      note: `${q.literal} — ${q.approach}` });
   }
 
   // ── Non-lunar aspects: the standing weather ────────────────────────────────
@@ -522,12 +649,27 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   // applying Moon aspect but persist for days or months rather than hours.
   // `durationDays` is what lets the dashboard file them under "this stretch"
   // instead of guessing from the planets involved.
+  // CAPPED, like the Moon loop above. This one was unbounded, which never
+  // showed while every outer-planet pair was being silently dropped: once they
+  // gained a voice the average moment carried 6.2 non-lunar aspects and the
+  // worst carried 17. That diluted the shares the reading's SUBJECT and its
+  // QUIET state are computed from — the quiet sky fell from 20% of moments to
+  // 1.7%, which is the exact bug ("quiet was impossible") those thresholds were
+  // set to fix. Three loudest, and the receipt can show the rest.
+  const nonLunar: Testimony[] = [];
   for (const a of m.aspects.filter(x => x.planet1 !== "Moon" && x.planet2 !== "Moon")) {
     // Tight only. A 6° Jupiter–Saturn is real but it is background to the
     // background; the surface has no room for it and the receipt can show it.
     if (a.orb > 3) continue;
     const nat = ASPECT_NATURE[a.aspect];
-    const th1 = PLANET_THEME[a.planet1], th2 = PLANET_THEME[a.planet2];
+    // THE SAME OUTER-PLANET GAP AS THE MOON LOOP. PLANET_THEME covers only the
+    // seven traditional planets, so `!th1 || !th2` silenced every tight aspect
+    // involving Uranus, Neptune or Pluto — 66 distinct ones across 2026, the
+    // Saturn–Neptune conjunction this collector's own comment was written for
+    // among them. OUTER_THEME supplies the verb; activities stay empty, since
+    // an outer planet has no list of things to go and do.
+    const th1 = PLANET_THEME[a.planet1] ?? (OUTER_THEME[a.planet1] ? { verb: OUTER_THEME[a.planet1].verb, activities: [] as string[] } : null);
+    const th2 = PLANET_THEME[a.planet2] ?? (OUTER_THEME[a.planet2] ? { verb: OUTER_THEME[a.planet2].verb, activities: [] as string[] } : null);
     if (!nat || !th1 || !th2) continue;
     const exact = Math.max(0, 1 - a.orb / 3);
     // Same harmony+valence blend the Moon aspects use, averaged over the pair.
@@ -538,22 +680,34 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     // speed. Slow pairs are the ones worth naming as an era; fast pairs pass.
     const rel = Math.abs((MEAN_MOTION[a.planet1] ?? 1) - (MEAN_MOTION[a.planet2] ?? 1));
     const durationDays = rel > 0 ? Math.round(6 / rel) : 999;
-    push({
-      source: `aspect:${a.planet1}-${a.planet2}`,
+    nonLunar.push({
+      score: 0, source: `aspect:${a.planet1}-${a.planet2}`,
       element: PLANET_ELEMENT[a.planet1],
       activities: [...th1.activities.slice(0, 2), ...th2.activities.slice(0, 1)],
       // Weight from both dignities; salience low relative to lunar work but
       // rising sharply as it perfects.
       weight: (dig(a.planet1) + dig(a.planet2)) / 2,
-      salience: 0.55 * (0.35 + 0.65 * exact) * nat.strength,
+      // Capped below the Moon's own scalar, deliberately. These persist for
+      // days; the Moon moves in hours. If the standing weather could outshout
+      // her the read would stop changing between morning and evening, which is
+      // the one thing this family must never do — it is the weather the day
+      // happens inside, and the Moon is the engine. Raising SAL.aspect to 0.78
+      // let a partile Venus–Mars reach 1.13 without this.
+      salience: Math.min(
+        SAL.moonAspect * 0.95,
+        SAL.aspect * (0.35 + 0.65 * exact) * nat.strength * (a.orb <= 1 ? SAL.partileBoost : 1) * eraFactor(durationDays),
+      ),
       polarity,
       facts: { kind: "aspect", planet: a.planet1, partner: a.planet2, aspect: a.aspect,
                orbDeg: a.orb, applying: a.applying, durationDays },
-      gift: PLANET_ROADS[a.planet1]?.gift, shadow: PLANET_ROADS[a.planet2]?.shadow,
+      gift: PLANET_ROADS[a.planet1]?.gift ?? OUTER_THEME[a.planet1]?.gift,
+      shadow: PLANET_ROADS[a.planet2]?.shadow ?? OUTER_THEME[a.planet2]?.shadow,
       carriedBy: `${a.planet1} ${nat.ing} ${a.planet2}`,
       note: `${a.planet1} ${nat.word} ${a.planet2} (${a.orb.toFixed(1)}°${a.applying ? " applying" : " separating"}) — ${polarity > 0 ? "supports" : "complicates"} ${th2.verb}`,
     });
   }
+  nonLunar.sort((x, y) => y.salience * y.weight - x.salience * x.weight);
+  for (const t of nonLunar.slice(0, 3)) push(t as Parameters<typeof push>[0]);
 
   // Phase — where in the cycle.
   const waxing = !/wan|last quarter|balsamic/i.test(m.phaseName);
@@ -632,10 +786,36 @@ export function readingSubject(T: Testimony[]): ReadingSubject | undefined {
   const total = earnedAll.reduce((n, t) => n + mag(t), 0);
   if (total <= 0) return undefined;
 
+  // A TWO-BODY TESTIMONY BELONGS TO BOTH, HALF EACH.
+  //
+  // subjectOf answers null for `aspect:` — right, since a pair has no single
+  // subject — but the share arithmetic then put those testimonies in the
+  // DENOMINATOR and in nobody's numerator. Any planet whose loudest appearance
+  // was a planet-to-planet aspect was penalised for it, and once those aspects
+  // stopped being silent (2026-08-22) the penalty got much worse: on the
+  // evening of 2026-08-21 the day's second-loudest voice was Venus opposite
+  // Saturn at 0.2° and Venus lost the subject she had held.
   const by = new Map<string, Testimony[]>();
+  const shareBy = new Map<string, number>();
+  const credit = (p: string, m: number, t: Testimony) => {
+    shareBy.set(p, (shareBy.get(p) ?? 0) + m);
+    by.set(p, [...(by.get(p) ?? []), t]);
+  };
   for (const t of earnedAll) {
+    const m = mag(t);
+    if (t.source.startsWith("aspect:")) {
+      const [a, b] = t.source.slice(7).split("-");
+      if (a && b) { credit(a, m / 2, t); credit(b, m / 2, t); }
+      continue;
+    }
+    if (t.source.startsWith("moonAspect:")) {
+      const partner = t.source.slice("moonAspect:".length);
+      credit("Moon", m / 2, t);
+      if (partner) credit(partner, m / 2, t);
+      continue;
+    }
     const p = subjectOf(t);
-    if (p) by.set(p, [...(by.get(p) ?? []), t]);
+    if (p) credit(p, m, t);
   }
   const ranked = [...T].sort((a, b) => mag(b) - mag(a));
   const ofTop = Math.min(8, ranked.length);
@@ -645,7 +825,7 @@ export function readingSubject(T: Testimony[]): ReadingSubject | undefined {
   let best: ReadingSubject | undefined;
   for (const [planet, ts] of by) {
     if (ts.length < SUBJECT_MIN_EARNED) continue;
-    const share = ts.reduce((n, t) => n + mag(t), 0) / total;
+    const share = (shareBy.get(planet) ?? 0) / total;
     if (share < SUBJECT_SHARE) continue;
     if (best && best.share >= share) continue;
     const roads = PLANET_ROADS[planet];

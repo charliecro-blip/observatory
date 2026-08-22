@@ -89,9 +89,14 @@ describe("the three states are all reachable", () => {
   });
 
   it("reports crosscurrents rather than picking a winner", () => {
+    // Weights raised from 1.2 when LEAD_FLOOR was re-measured to 1.15
+    // (2026-08-22): at 1.2 these fixtures score 1.08 and now read as a quiet
+    // sky, so the crosscurrent branch under test was never reached. The rescale
+    // keeps them representing what they always meant — two loud, opposed
+    // voices — rather than changing what is asserted.
     const res = pickLead([
-      t({ source: "moonAspect:Mars", salience: 0.9, weight: 1.2, polarity: 1 }),
-      t({ source: "aspect:Saturn-Neptune", salience: 0.88, weight: 1.2, polarity: -1 }),
+      t({ source: "moonAspect:Mars", salience: 0.9, weight: 1.6, polarity: 1 }),
+      t({ source: "aspect:Saturn-Neptune", salience: 0.88, weight: 1.6, polarity: -1 }),
     ]);
     expect(res.state).toBe("crosscurrents");
   });
@@ -100,8 +105,8 @@ describe("the three states are all reachable", () => {
     // Two lunar aspects disagreeing is the Moon being complicated, not two
     // independent forces pulling apart.
     const res = pickLead([
-      t({ source: "moonAspect:Jupiter", salience: 0.9, weight: 1.2, polarity: 1 }),
-      t({ source: "moonAspect:Saturn", salience: 0.89, weight: 1.2, polarity: -1 }),
+      t({ source: "moonAspect:Jupiter", salience: 0.9, weight: 1.6, polarity: 1 }),
+      t({ source: "moonAspect:Saturn", salience: 0.89, weight: 1.6, polarity: -1 }),
     ]);
     expect(res.state).toBe("leads");
   });

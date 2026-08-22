@@ -152,7 +152,25 @@ export function bandOf(t: LeadTestimony): DurationBand {
 // about the sky. They mean "louder than most moments", which is the honest
 // reading of a scale built from salience × dignity. Re-measure if the synthesis
 // weights change — tests/lead.test.ts fails loudly if the rates drift.
-const LEAD_FLOOR = 0.65;
+//
+// RE-MEASURED 2026-08-22, because the synthesis weights did change — exactly
+// the case this note anticipated. The owner's ordering ("planetary hours and
+// days are very much secondary to lunar placement and aspects and other
+// planetary aspects") demoted the ambient families and gave 66 previously
+// silent outer-planet aspect families a voice, which lifted the whole impact
+// distribution. At the old floor, quiet fell to 1.7% — the original bug,
+// reintroduced from the other direction.
+//
+// Fresh sweep, three sampling schemes (the note above is why all three):
+//     floor   Aug 9/15/21     Jan weekly      spread hours
+//     1.15    L68 C11 Q22     L72 C13 Q16     L69 C6 Q26   ← chosen
+//     1.20    L66 C11 Q23     L70 C13 Q18     L67 C6 Q28
+//     1.30    L63 C10 Q28     L63 C10 Q27     L64 C6 Q30
+//
+// 1.15 restores the intended shape — one clear lead ordinary, quiet a real
+// minority near 20%, crosscurrents notable but not routine — and holds within
+// ±5 points across the three schemes.
+const LEAD_FLOOR = 1.15;
 const CROSSCURRENT_RATIO = 0.78;
 
 /**
