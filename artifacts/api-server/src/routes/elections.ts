@@ -9,10 +9,10 @@
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq, and, gte } from "drizzle-orm";
-import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity } from "../lib/activityCorrespondences.js";
+import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity, activityByKey, rankActivities } from "../lib/activityCorrespondences.js";
 import { computeElections } from "../lib/electionEngine.js";
 import { findRareWindows, rareToday } from "../lib/rareWindows.js";
-import { linesUp, type HeldItem, needsWeaving } from "../lib/linesUp.js";
+import { linesUp, type HeldItem, needsWeaving, pickBestWindow } from "../lib/linesUp.js";
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
@@ -21,6 +21,8 @@ import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals, habits, habitLogs, planningWindows, testerProfiles } from "@workspace/db";
 import { fetchGcalBusy } from "./googleCal.js";
 import { computeNatalChart } from "../lib/natal.js";
+import { vocSpansBetween } from "../lib/dayarc.js";
+import { julianDay, eclipseWindow } from "../lib/astro.js";
 import { requireFeature } from "../middlewares/entitlement.js";
 
 const router: IRouter = Router();
@@ -542,3 +544,156 @@ router.get("/elections/rare", (req, res) => {
 });
 
 export default router;
+
+
+/**
+ * GET /plan/inventory — what you're holding, and where the week has room.
+ *
+ * The Schedule room used to render seven open tasks as the sentence "You're
+ * holding 7 things already" and offer a paste box for work not yet captured
+ * (workshop, 2026-08-21). This is the inventory itself: every open task with
+ * the kind of work it is, whether it can be placed at all, and the hour this
+ * week that suits it.
+ *
+ * SPREAD, NOT STACKED. Asked independently, five different tasks all answer
+ * "Friday 7 AM" — the engine's day opens at the waking hour and a whole-day
+ * sign affinity starts there too, so the naive version of this view would put
+ * the entire list on one morning. Windows are handed out greedily by
+ * practical priority, at most two a day, and a day already used is skipped
+ * when another day is available. The elections are computed ONCE per distinct
+ * activity, not once per task.
+ */
+const INVENTORY_MEMO = new Map<string, ReturnType<typeof computeElections>>();
+
+router.get("/plan/inventory", async (req, res) => {
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+  if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
+  const hasCoords = req.query.lat != null && req.query.lon != null;
+  const locationKnown = hasCoords && req.query.locationKnown !== "false";
+  const lat = parseFloat((req.query.lat as string) ?? "40.7");
+  const lon = parseFloat((req.query.lon as string) ?? "-74.0");
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
+  const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
+
+  let natal = null; let timeKnown = true;
+  try {
+    const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+    if (stored?.birthDate && stored.birthTime != null) {
+      natal = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
+      timeKnown = stored.timeKnown !== false;
+    }
+  } catch { /* chartless is fine */ }
+
+  let rows: Array<typeof tasks.$inferSelect> = [];
+  try { rows = await db.select().from(tasks).where(eq(tasks.testerId, testerId)); }
+  catch { res.status(503).json({ error: "could not read your list" }); return; }
+
+  const open = rows.filter(t => t.done !== "true");
+  // Practical priority — the same order the weaver uses, so the two agree
+  // about what comes first.
+  const today = new Date(Date.now() - tzOffsetMin * 60000).toISOString().slice(0, 10);
+  const rank = (t: typeof tasks.$inferSelect) =>
+    t.planningWindowId != null ? 5
+    : t.dueDate && t.dueDate < today ? 0
+    : t.dueDate === today ? 1
+    : t.dueDate ? 2 : 3;
+  const ordered = [...open].sort((a, b) => rank(a) - rank(b) || (a.dueDate ?? "9").localeCompare(b.dueDate ?? "9"));
+
+  // One election scan per DISTINCT activity, reused across every task that
+  // shares it — and MEMOIZED across requests, because the engine is
+  // synchronous and a week scan is ~380ms. Five of them measured 1.9s of
+  // blocked thread, which is how this repo has produced a 90-second calendar
+  // request before. The key carries everything the answer depends on
+  // (chart included, via the tester) and the day, so it cannot serve
+  // yesterday's week or another person's houses.
+  const dayKey = today;
+  const scanFor = (key: string) => {
+    const memoKey = `${testerId}|${dayKey}|${key}|${lat.toFixed(2)}|${lon.toFixed(2)}|${tzOffsetMin}|${timeZone ?? ""}|${locationKnown}`;
+    const hit = INVENTORY_MEMO.get(memoKey);
+    if (hit) return hit;
+    const out = computeElections({
+      activityKey: key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
+    });
+    if (INVENTORY_MEMO.size >= 200) INVENTORY_MEMO.delete(INVENTORY_MEMO.keys().next().value!);
+    INVENTORY_MEMO.set(memoKey, out);
+    return out;
+  };
+  // Bounded work per request: a list spanning a dozen kinds of work would
+  // otherwise scan a dozen weeks. Beyond the cap a task is still placeable and
+  // simply has no proposed hour, which the interface says rather than hides.
+  const MAX_SCANS = 6;
+  const scanned = new Set<string>();
+
+  const usedPerDay = new Map<string, number>();
+  const nowMs = Date.now();
+  const holding = ordered.map(t => {
+    // The stored kind first; failing that, the same deterministic read of the
+    // title the weaver uses, at the same bar (a weak match is not a
+    // classification). Inferred, never written: naming the work is the
+    // person's to confirm, and the interface marks which is which. Without
+    // this six of seven ordinary tasks said "needs a kind of work" for a fact
+    // the app could derive for free.
+    const stored = t.activityKey ? activityByKey(t.activityKey) : null;
+    const guess = stored ? null : (() => {
+      const r = rankActivities(t.title, 2);
+      return r[0] && r[0].score >= 2.0 ? r[0].activity : null;
+    })();
+    const act = stored ?? guess;
+    // When nothing matches well enough, offer the nearest few rather than
+    // only reporting the gap — a row that says "needs a kind of work" and
+    // gives no way to give it one is a scolding, not a control.
+    const kindOptions = act ? [] : rankActivities(t.title, 3)
+      .filter(r => r.score > 0)
+      .map(r => ({ key: r.activity.key, label: r.activity.label }));
+    const base = {
+      id: t.id, title: t.title, dueDate: t.dueDate ?? null,
+      estMinutes: t.estMinutes ?? null, goalId: t.goalId ?? null,
+      activityKey: act?.key ?? null, activityLabel: act?.label ?? null,
+      inferredKind: !!guess,
+      kindOptions,
+    };
+    if (t.planningWindowId != null) return { ...base, state: "scheduled" as const };
+    if (!act) return { ...base, state: "needs-kind" as const };
+    if (!t.estMinutes) return { ...base, state: "needs-duration" as const };
+
+    if (!scanned.has(act.key) && scanned.size >= MAX_SCANS) {
+      return { ...base, state: "placeable" as const, window: null, unscanned: true };
+    }
+    scanned.add(act.key);
+    const scan = scanFor(act.key);
+    const all = scan?.windows ?? [];
+    // Skip days that already have their share, unless nothing else is left.
+    const roomy = all.filter(w => (usedPerDay.get(w.date) ?? 0) < 2);
+    const win = pickBestWindow(roomy.length ? roomy : all, nowMs);
+    if (win) usedPerDay.set(win.date, (usedPerDay.get(win.date) ?? 0) + 1);
+    return {
+      ...base,
+      state: "placeable" as const,
+      window: win ? {
+        date: win.date, dow: win.dow, startAt: win.startAt, endAt: win.endAt,
+        startClock: win.startClock, endClock: win.endClock, allDay: !!win.allDay,
+        tier: win.tier, why: win.why,
+      } : null,
+    };
+  });
+
+  // The week's own conditions, said before anything is offered — the room
+  // promised "the stretches of your week that suit each kind of work" and
+  // showed no stretches at all.
+  const dayMs = 86400000;
+  const startOfToday = Date.parse(`${today}T00:00:00Z`) + tzOffsetMin * 60000;
+  const voidDays = new Set(
+    vocSpansBetween(startOfToday, startOfToday + 7 * dayMs)
+      .map(v => new Date(Date.parse(v.start) - tzOffsetMin * 60000).toISOString().slice(0, 10)),
+  );
+  // The corridor as the rest of the app reads it, from today — an eclipse
+  // eight days out still shapes the week the room is about to place work in.
+  const ecl = eclipseWindow(julianDay(new Date(startOfToday + 12 * 3600000)));
+  const eclipse = ecl.active && ecl.kind
+    ? { kind: ecl.kind, date: new Date(startOfToday + (ecl.daysAway ?? 0) * dayMs).toISOString().slice(0, 10), daysAway: ecl.daysAway ?? 0 }
+    : null;
+  res.json({
+    holding,
+    week: { days: 7, voidDays: [...voidDays].sort(), eclipse },
+  });
+});

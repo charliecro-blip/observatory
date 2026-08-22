@@ -421,7 +421,7 @@ router.get("/planning/windows", requireTesterId, async (req, res) => {
 
 router.post("/planning/windows", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, windowType, startTime, endTime, projectId, goalId, notes, adHoc } = req.body;
+  const { title, windowType, startTime, endTime, projectId, goalId, notes, adHoc, taskId } = req.body;
   if (!title?.trim() || !startTime || !endTime) {
     res.status(400).json({ error: "title, startTime, and endTime are required" }); return;
   }
@@ -436,6 +436,16 @@ router.post("/planning/windows", requireTesterId, async (req, res) => {
     adHoc: !!adHoc,
     completedAt: adHoc ? new Date() : null, // ad-hoc sessions are logged as already done
   }).returning();
+  // PLACING AN EXISTING TASK links it here, in the same call. Without the
+  // link the task never leaves the "holding" list, so the Schedule room would
+  // offer to place the same thing forever (workshop, 2026-08-21). Ownership is
+  // checked in the same statement: a taskId belonging to someone else matches
+  // nothing and links nothing.
+  if (Number.isInteger(taskId) && taskId > 0 && !adHoc) {
+    await db.update(tasks)
+      .set({ planningWindowId: inserted.id, updatedAt: new Date() })
+      .where(and(eq(tasks.id, taskId), eq(tasks.testerId, testerId)));
+  }
   res.status(201).json(inserted);
 });
 

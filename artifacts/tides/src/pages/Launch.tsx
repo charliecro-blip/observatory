@@ -4,6 +4,7 @@ import { useTester } from "@/contexts/tester-context";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import type { AskElectionContext } from "@/App";
 import Planets from "@/pages/Planets";
+import PlanInventory from "@/components/PlanInventory";
 import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useElectionCategories, useElectionScan, type ElectionResult, type ElectionVerdict } from "@/hooks/useElection";
@@ -237,10 +238,12 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
   // Opt-in: a proposed week appearing unasked is the app telling someone how to
   // spend seven days.
   const [weekOpen, setWeekOpen] = useState(false);
+  // The paste box is a secondary door now, not the room's front one.
+  const [pasteOpen, setPasteOpen] = useState(false);
   const { locationKnown } = useTester();
   const { data: week, isFetching: weaving } = useWeekShape(testerId, lat, lon, locationKnown, weekOpen);
   // A dump arriving from quick capture always lands in Schedule mode.
-  React.useEffect(() => { if (plannerSeed) setMode("schedule"); }, [plannerSeed]);
+  React.useEffect(() => { if (plannerSeed) { setMode("schedule"); setPasteOpen(true); } }, [plannerSeed]);
   const { data: catData } = useElectionCategories();
   const { data: scan, isLoading } = useElectionScan(category, days, lat, lon);
   const categories = catData?.categories ?? [];
@@ -278,7 +281,24 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
         {/* SCHEDULE — "when should I do all of this?" */}
         {mode === "schedule" && (
           <>
-            <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />
+            {/* THE ROOM'S OWN QUESTION, AND THE INVENTORY UNDER IT (workshop
+                2026-08-21). The paste box used to be the front door, which is
+                the right door for a first session and the wrong one for the
+                hundredth: the seven tasks the person was already holding
+                appeared as the sentence "You're holding 7 things already" and
+                could not be placed from this room at all. */}
+            <PlanInventory
+              testerId={testerId} lat={lat} lon={lon}
+              onSpread={() => setWeekOpen(true)}
+              spreading={weaving}
+              onPaste={() => setPasteOpen(true)}
+            />
+
+            {pasteOpen && (
+              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--color-border)" }}>
+                <Planner testerId={testerId} lat={lat} lon={lon} seedList={plannerSeed} onSeedConsumed={onPlannerSeedConsumed} />
+              </div>
+            )}
 
             {/* Plan's memory: what has actually been committed, in the tab
                 that committed it. Without this the page could place a week
@@ -290,14 +310,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
                 carry five consecutive major blocks, because each day alone had
                 room. */}
             <div style={{ marginTop: 22, borderTop: "1px solid var(--color-border)", paddingTop: 16 }}>
-              {!weekOpen ? (
-                <button onClick={() => setWeekOpen(true)} style={{
-                  fontSize: 12.5, background: "none", border: "none", padding: 0,
-                  cursor: "pointer", color: "var(--color-primary)",
-                }}>
-                  Shape the whole week around what you're holding →
-                </button>
-              ) : (
+              {!weekOpen ? null : (
                 <>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)" }}>Your week</div>
