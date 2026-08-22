@@ -33,7 +33,8 @@ interface HabitDay { date: string; done: boolean; isToday: boolean; }
 interface Habit {
   id: number; name: string; emoji?: string; description?: string;
   // Merged practices model: the server now returns these as arrays + a
-  // computed resonance (element + planetary hour + phase + planet timing).
+  // computed resonance (the Moon's timing and phase first, then element,
+  // then the planetary hour — lib/habitTiming.ts).
   favoredElements?: string[]; favoredPhases?: string[]; favoredPlanets?: string[];
   bestWindowType?: string; minimumViable?: string; streak: number; doneToday: boolean;
   days: HabitDay[]; goalId?: number; projectId?: number;

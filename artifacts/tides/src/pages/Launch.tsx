@@ -136,8 +136,17 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
           <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>
             {fmtRange(result.windowStart, result.windowEnd)}
           </div>
-          <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 1 }}>
-            {PLANET_ICONS[result.planetaryHour] ?? ""} {result.planetaryHour} hour{result.planetaryHourMatch ? " · matches this venture" : ""}
+          {/* THE MOON FIRST. This line was the planetary hour and nothing else,
+              with every lunar rule — void, via combusta, her final degree, what
+              she applies to next — folded away behind the disclosure. On the
+              screen where someone decides when to begin something, the hour was
+              the only evidence they saw. The hour stays, after her, in the
+              smaller type it belongs in. */}
+          <div style={{ fontSize: 10.5, color: "var(--text-2)", marginTop: 1 }}>
+            {(result as { moonLine?: string }).moonLine ?? ""}
+          </div>
+          <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>
+            {PLANET_ICONS[result.planetaryHour] ?? ""} {result.planetaryHour} hour{result.planetaryHourMatch ? " · suits this venture" : ""}
           </div>
         </div>
         <div style={{ fontSize: 11, color: "var(--text-3)" }}>{open ? "▲" : "▼"}</div>
@@ -178,7 +187,7 @@ function locationIsReal(lat: number, lon: number): boolean {
 // Advanced timing layer for a beginning (#10): the personal angle crossings in
 // the scan range — moments a planet crosses your Ascendant/Midheaven, i.e. rises
 // or culminates over your horizon. Off by default and clearly explained, since
-// it's a subtler, more advanced signal than the planetary hour / Moon's aspects.
+// it's a subtler, more advanced signal than the Moon's aspects or the hour.
 function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lon: number }) {
   const { data: week } = useTidesWeek(Math.min(days, 14), lat, lon);
   const real = locationIsReal(lat, lon);

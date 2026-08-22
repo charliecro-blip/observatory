@@ -90,13 +90,21 @@ export function scoreHabitTiming(
     score += 2;
     why.push(`this kind of work suits a ${sky.element} day`);
   }
-  if (favored.includes(sky.hourRuler)) { score += 2; why.push(`${sky.hourRuler}'s hour is running`); }
+  // THE MOON BEFORE THE HOUR, in the weights and in the order.
+  //
+  // The hour ruler scored +2 while the Moon applying to a favored planet scored
+  // +1 and the phase +1 — the hour worth double either, in the code that
+  // decides when to suggest a habit. And because its `why` was pushed first, it
+  // became the headline reason: "Strongly backed right now — Mars's hour is
+  // running", for something that turns over every sixty minutes. Owner's
+  // ordering, 2026-08-22; VoC is weighted as the useful signal they called it.
   for (const fp of favored) {
-    if (sky.moonApplyingTo.has(fp)) { score += 1; why.push(`the Moon is lighting up ${fp}`); }
+    if (sky.moonApplyingTo.has(fp)) { score += 2; why.push(`the Moon is lighting up ${fp}`); }
     if (sky.retro.has(fp)) { score -= 1; }
   }
-  if (phases.includes(sky.phase)) { score += 1; why.push(`the ${sky.phase} moon favors it`); }
-  if (sky.voc) score -= 1;
+  if (phases.includes(sky.phase)) { score += 2; why.push(`the ${sky.phase} moon favors it`); }
+  if (favored.includes(sky.hourRuler)) { score += 1; why.push(`${sky.hourRuler}'s hour is running`); }
+  if (sky.voc) score -= 2;
 
   const match = score >= 5 ? "resonant" : score >= 2 ? "supported" : score >= 0 ? "neutral" : score >= -2 ? "soften" : "protect";
   const note =

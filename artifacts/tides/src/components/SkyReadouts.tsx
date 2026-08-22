@@ -6,8 +6,8 @@
  * on Planets: the surface someone reaches when they have decided to go
  * looking, which is exactly who these are for.
  *
- * RESONANT NOW answers "what fits right now" from the hour and the Moon's
- * sign. THE BIG SKY is the planet-to-planet read-out — the densest jargon in
+ * RESONANT NOW answers "what fits right now" from the Moon's sign, the aspect
+ * she is applying to, and then the hour. THE BIG SKY is the planet-to-planet read-out — the densest jargon in
  * the product, and the reason both are full-detail only.
  */
 
@@ -77,7 +77,54 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
 
   const suggestions: { options: string[]; seed: number; source: string; color: string; title?: string; suffix?: string }[] = [];
 
-  // 1 — the hour's voice (seed rotates with the hour so untouched cards vary)
+  // 1 — the Moon's sign (seed rotates daily so a 2.5-day sign doesn't repeat)
+  if (sm) {
+    suggestions.push({
+      options: sm.favors,
+      seed: new Date().getDate(),
+      source: `Moon in ${moonSign}`,
+      color: ELEMENT_COLORS[sm.element as Element] ?? "#4a6a90",
+      title: sm.feel,
+    });
+  }
+
+  // 2 — the strongest applying Moon aspect: harmonious → lean into the partner's
+  // activities; hard → the partner's voice needs a deliberate, softer outlet.
+  const applying = (now?.moonAspects ?? [])
+    .filter((a: any) => a.applying)
+    .sort((a: any, b: any) => (a.hoursToExact ?? 99) - (b.hoursToExact ?? 99))[0];
+  if (applying) {
+    const partner = applying.planet1 === "Moon" ? applying.planet2 : applying.planet1;
+    // Fourth site, found by the broadened test rather than by reading. Same
+    // rule: the aspect partner's verbs must respect the clock and the void
+    // like every other card's do.
+    const partnerOpts = approachOptions({
+      planet: partner,
+      at: new Date(),
+      wakeTime: pulseProfile?.chronotype?.wakeTime,
+      sleepTime: pulseProfile?.chronotype?.sleepTime,
+      voc: !!now?.voc?.isVOC,
+      moonSign,
+    });
+    const acts = partnerOpts.length ? partnerOpts : PLANET_ACTIVITIES[partner];
+    const hard = applying.aspect === "square" || applying.aspect === "opposition";
+    if (acts?.length) {
+      suggestions.push({
+        options: acts,
+        seed: hard ? 0 : new Date().getDate(),
+        suffix: hard ? " — gently; this current runs hot" : undefined,
+        source: `Moon ${applying.aspect} ${partner}`,
+        color: hard ? "#a05050" : "#4a7aa0",
+        title: PLANET_MYTHOS[partner]?.essence,
+      });
+    }
+  }
+
+  // 3 — the hour's voice, LAST (seed rotates with the hour so untouched cards
+  //     vary). It was pushed first, so the opening card on this panel was
+  //     always the planetary hour and the Moon came after it. The owner's
+  //     ordering puts her placement and her aspects above a ruler that turns
+  //     over every sixty minutes (2026-08-22).
   //
   // Through the approach layer, not PLANET_ACTIVITIES. This card was the third
   // surface found still reading the flat list raw — after Today's ahead rows
@@ -110,49 +157,6 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
       color: PLANET_THEMES[hourPlanet]?.color ?? "#4a6a90",
       title: PLANET_MYTHOS[hourPlanet]?.whenLoud,
     });
-  }
-
-  // 2 — the Moon's sign (seed rotates daily so a 2.5-day sign doesn't repeat)
-  if (sm) {
-    suggestions.push({
-      options: sm.favors,
-      seed: new Date().getDate(),
-      source: `Moon in ${moonSign}`,
-      color: ELEMENT_COLORS[sm.element as Element] ?? "#4a6a90",
-      title: sm.feel,
-    });
-  }
-
-  // 3 — the strongest applying Moon aspect: harmonious → lean into the partner's
-  // activities; hard → the partner's voice needs a deliberate, softer outlet.
-  const applying = (now?.moonAspects ?? [])
-    .filter((a: any) => a.applying)
-    .sort((a: any, b: any) => (a.hoursToExact ?? 99) - (b.hoursToExact ?? 99))[0];
-  if (applying) {
-    const partner = applying.planet1 === "Moon" ? applying.planet2 : applying.planet1;
-    // Fourth site, found by the broadened test rather than by reading. Same
-    // rule: the aspect partner's verbs must respect the clock and the void
-    // like every other card's do.
-    const partnerOpts = approachOptions({
-      planet: partner,
-      at: new Date(),
-      wakeTime: pulseProfile?.chronotype?.wakeTime,
-      sleepTime: pulseProfile?.chronotype?.sleepTime,
-      voc: !!now?.voc?.isVOC,
-      moonSign,
-    });
-    const acts = partnerOpts.length ? partnerOpts : PLANET_ACTIVITIES[partner];
-    const hard = applying.aspect === "square" || applying.aspect === "opposition";
-    if (acts?.length) {
-      suggestions.push({
-        options: acts,
-        seed: hard ? 0 : new Date().getDate(),
-        suffix: hard ? " — gently; this current runs hot" : undefined,
-        source: `Moon ${applying.aspect} ${partner}`,
-        color: hard ? "#a05050" : "#4a7aa0",
-        title: PLANET_MYTHOS[partner]?.essence,
-      });
-    }
   }
 
   if (suggestions.length === 0) return null;

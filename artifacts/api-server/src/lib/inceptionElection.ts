@@ -239,6 +239,18 @@ export interface ElectionResult {
   rules: ElectionRule[];
   planetaryHour: string;
   planetaryHourMatch: boolean;
+  /**
+   * The Moon's own state, in one short line — her sign, and what she applies to
+   * next, which is the classical heart of an election ("what the Moon applies
+   * to next is what comes of it").
+   *
+   * Added 2026-08-22. The Launch result showed the planetary hour as the single
+   * line of evidence under each window, with every lunar rule folded away behind
+   * a disclosure — the owner's ordering inverted on the surface where a person
+   * decides when to begin something. Composed here rather than parsed out of a
+   * rule's English on the client.
+   */
+  moonLine: string;
   summary: string;
 }
 
@@ -456,7 +468,15 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
     date: date.toISOString(),
     windowStart: planHour.startTime.toISOString(), windowEnd: planHour.endTime.toISOString(),
     category: categoryKey, verdict, rules,
-    planetaryHour: planHour.ruler, planetaryHourMatch: hourMatch, summary,
+    planetaryHour: planHour.ruler, planetaryHourMatch: hourMatch,
+    moonLine: (() => {
+      const sign = SIGNS[Math.floor(moonLon / 30) % 12];
+      if (voc) return `Moon void in ${sign} — she perfects nothing further`;
+      if (!nextApplying) return `Moon in ${sign}`;
+      const other = nextApplying.planet1 === "Moon" ? nextApplying.planet2 : nextApplying.planet1;
+      return `Moon in ${sign} · next ${nextApplying.aspect} ${other}`;
+    })(),
+    summary,
     // Which ruleset spoke. Saved with the result so a verdict recorded today
     // still says what it was judged by after the rules change.
     ruleset: ELECTION_RULESET,

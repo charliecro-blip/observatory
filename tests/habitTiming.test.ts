@@ -70,16 +70,37 @@ describe("kind of work feeds habit timing", () => {
   });
 
   it("prefers a stated element over a derived one", () => {
-    // Both land on "supported" here, so the ordering is asserted where it is
-    // actually visible: adding a second weak signal tips the stated version
-    // into resonant and the derived version only as far as supported.
-    const withHour = { hourRuler: "Mars" };
+    // Both land on "supported" alone, so the ordering is asserted where it is
+    // actually visible: adding a second signal tips the stated version into
+    // resonant and the derived version only as far as supported.
+    //
+    // That second signal was the Mars HOUR until 2026-08-22, when the hour
+    // dropped from +2 to +1 under the owner's ordering and stopped being a big
+    // enough tip to cross a band. The Moon applying to Mars is the better probe
+    // anyway — it is the signal this scorer is now supposed to weigh most, and
+    // the thing being tested is the element ordering, not the hour.
+    const withMoon = { moonApplyingTo: new Set(["Mars"]) };
     const stated = scoreHabitTiming(
-      habit({ favoredElements: "earth", favoredPlanets: "Mars" }), sky(withHour));
+      habit({ favoredElements: "earth", favoredPlanets: "Mars" }), sky(withMoon));
     const derived = scoreHabitTiming(
-      habit({ bestWindowType: "deep_work", favoredPlanets: "Mars" }), sky(withHour));
+      habit({ bestWindowType: "deep_work", favoredPlanets: "Mars" }), sky(withMoon));
     expect(stated.match).toBe("resonant");
     expect(derived.match).toBe("supported");
+  });
+
+  it("weighs the Moon above the planetary hour", () => {
+    // The inversion this file did not catch: the hour ruler paid +2 while the
+    // Moon applying to the same planet paid +1, so "Mars's hour is running"
+    // outscored the Moon lighting Mars up — and, being pushed first, became the
+    // headline reason for a habit suggestion.
+    const base = habit({ favoredPlanets: "Mars" });
+    const byHour = scoreHabitTiming(base, sky({ hourRuler: "Mars", element: "fire" }));
+    const byMoon = scoreHabitTiming(base, sky({ moonApplyingTo: new Set(["Mars"]), element: "fire" }));
+    const rank = ["protect", "soften", "neutral", "supported", "resonant"];
+    expect(rank.indexOf(byMoon.match)).toBeGreaterThan(rank.indexOf(byHour.match));
+    // And when both are present, she is the reason the person is shown.
+    const both = scoreHabitTiming(base, sky({ hourRuler: "Mars", moonApplyingTo: new Set(["Mars"]), element: "fire" }));
+    expect(both.note).toMatch(/Moon/);
   });
 
   it("reads every window type the form can offer", () => {

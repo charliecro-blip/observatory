@@ -137,7 +137,12 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
         <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: ELEMENT_COLORS.air, fontFamily: "var(--font-display)" }}>· Auspice</span>
       </div>
       <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 10 }}>
-        Pick an activity — Auspice reads its good and great times from the sky{times?.chartAvailable ? " and your chart" : ""}.
+        {/* Second person. This read "Auspice reads its good and great times
+            from the sky", which is the app naming itself in the third person on
+            a control — the tic the owner has flagged twice and the house rule
+            forbids. The sub-brand tag above still carries the name, which is
+            where a name belongs. */}
+        Pick an activity to see its good and great times, read from the sky{times?.chartAvailable ? " and your chart" : ""}.
       </div>
 
       {/* Categories */}

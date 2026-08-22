@@ -127,6 +127,17 @@ function DayCard({ now, W, H, theme }: { now: any; W: number; H: number; theme: 
   const phase = now?.moonPhase ?? "";
   const dayRuler = now?.dayRuler ?? "Sun";
   const events: any[] = ((now?.dayArc?.events ?? []) as any[]).filter(e => e.kind === "aspect" || e.kind === "ingress").slice(0, story ? 3 : 2);
+  // The tightest planet-to-planet aspect, if there is a tight one. dayArc's
+  // events are lunar and angular only, so a Venus opposite Saturn at 0.2° could
+  // never reach a card whose stated stance is that it leads with PRIMARY sky
+  // facts — "moon sign, phase, planetary day, timed aspects". It is exactly
+  // that, and it is more defensible and more teachable than the planetary day.
+  const skyAspect = (((now?.aspects ?? []) as any[])
+    .filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon" && a.orb <= 2)
+    .sort((a, b) => a.orb - b.orb))[0] ?? null;
+  const ASPECT_WORD: Record<string, string> = {
+    conjunction: "meets", opposition: "opposite", square: "square", trine: "trine", sextile: "sextile",
+  };
   const favors = (SIGN_MYTHOS[moonSign]?.favors ?? []).slice(0, 3).join(" · ");
   const favLines = wrap(favors, 40);
   const date = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -136,9 +147,16 @@ function DayCard({ now, W, H, theme }: { now: any; W: number; H: number; theme: 
   const signY = story ? 800 : 640;
   const titleY = story ? 910 : 730;
   const phaseY = story ? 962 : 778;
-  const rulerY = story ? 1080 : 880;
-  const evY0 = story ? 1210 : 990;
+  // The timed events sit ABOVE the planetary day now. The day ruler had a
+  // divider and 36px type over them, so a keynote true for twenty-four hours
+  // outranked the day's actual timed events — the owner's ordering inverted on
+  // the one surface people publish under the brand's name (2026-08-22).
+  const evY0 = story ? 1080 : 880;
   const evGap = story ? 74 : 64;
+  // The planet aspect, when there is one, takes a line between the timed events
+  // and the day ruler — so the ruler needs that line's height as well, or the
+  // two sit 38px apart at 31px and 28px type and very nearly touch.
+  const rulerY = evY0 + (story ? 3 : 2) * evGap + (skyAspect ? (story ? 82 : 70) : (story ? 40 : 30));
   const favY = story ? 1560 : 1180;
 
   return (
@@ -151,15 +169,20 @@ function DayCard({ now, W, H, theme }: { now: any; W: number; H: number; theme: 
         <text x={W / 2} y={phaseY} textAnchor="middle" fontSize={30} fill={s.sub}>
           {phase}{typeof frac === "number" ? ` · ${Math.round(frac * 100)}% lit` : ""}
         </text>
-        <line x1={W / 2 - 120} y1={rulerY - 68} x2={W / 2 + 120} y2={rulerY - 68} stroke={s.line} strokeWidth={2} />
-        <G name={dayRuler} x={W / 2 - 30} y={rulerY + 12} size={42} theme={theme} anchor="end" />
-        <text x={W / 2 - 6} y={rulerY + 10} fontSize={36} fill={s.ink}>{dayRuler}'s day</text>
+        <line x1={W / 2 - 120} y1={evY0 - 58} x2={W / 2 + 120} y2={evY0 - 58} stroke={s.line} strokeWidth={2} />
         {events.map((e, i) => (
           <g key={i}>
             <text x={W / 2 - 40} y={evY0 + i * evGap} textAnchor="end" fontSize={28} fill={s.sub}>{e.clock}</text>
             <text x={W / 2 - 10} y={evY0 + i * evGap} fontSize={31} fill={s.ink}>{e.label}</text>
           </g>
         ))}
+        {skyAspect && (
+          <text x={W / 2} y={evY0 + events.length * evGap + (story ? 12 : 8)} textAnchor="middle" fontSize={31} fill={s.ink}>
+            {skyAspect.planet1} {ASPECT_WORD[skyAspect.aspect] ?? skyAspect.aspect} {skyAspect.planet2}
+          </text>
+        )}
+        <G name={dayRuler} x={W / 2 - 30} y={rulerY + 12} size={34} theme={theme} anchor="end" />
+        <text x={W / 2 - 6} y={rulerY + 10} fontSize={28} fill={s.sub}>{dayRuler}'s day</text>
         {story && favLines.length > 0 && (
           <g>
             <text x={W / 2} y={favY} textAnchor="middle" fontSize={24} letterSpacing={4} fill={s.sub}>FAVORS</text>

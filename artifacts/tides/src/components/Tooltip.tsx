@@ -118,10 +118,6 @@ export const GLOSSARY = {
     title: "Day Element",
     body: "The element of the current lunar sign shapes the day's underlying quality. Fire (Aries, Leo, Sagittarius) — dynamic, initiating, high energy. Earth (Taurus, Virgo, Capricorn) — grounded, practical, productive. Air (Gemini, Libra, Aquarius) — social, communicative, intellectual. Water (Cancer, Scorpio, Pisces) — intuitive, emotional, receptive.",
   },
-  qualityScore: {
-    title: "Quality Score",
-    body: "A 1–7 composite score drawing on lunar aspects, element, void of course status, and planetary hour quality. 6–7 = excellent or good window; 4–5 = workable; 1–3 = mixed or challenging. The score is a guide, not a guarantee.",
-  },
   angleCrossing: {
     title: "Angle Crossing",
     body: "The exact moment a planet crosses one of the four chart angles: Ascendant (ASC, eastern horizon), Midheaven (MC, highest point), Descendant (DSC), or Imum Coeli (IC, lowest point). These are considered peak moments of that planet's influence. Venus crossing the ASC or MC is especially notable for creative and social timing.",
@@ -138,10 +134,13 @@ export const GLOSSARY = {
     title: "Lunar Phase",
     body: "The Moon's 29.5-day cycle from new to full and back. New Moon — plant seeds, set intentions. Waxing Crescent to First Quarter — build momentum. Waxing Gibbous — refine and adjust. Full Moon — peak energy, harvest, illuminate. Waning Gibbous — gratitude, share. Last Quarter — release and evaluate. Balsamic — rest and let go.",
   },
-  resonance: {
-    title: "Cycle Resonance",
-    body: "The alignment of multiple timing cycles simultaneously. A high-resonance moment occurs when the planetary hour, lunar phase, element, and aspect quality all point in the same direction. The bands below the wave show each cycle independently — look for moments when all three glow warm at the same column.",
-  },
+  // REMOVED 2026-08-22: `qualityScore` and `resonance`. Nothing referenced
+  // either (the live terms are angleCrossing, moonAspects, moonPhase and
+  // planetaryHour), and both described the planetary hour as a component it
+  // isn't. The 1–7 score has no hour term at all — it moves with the Moon's
+  // applying aspects, her void state, the day's element and any planet on an
+  // angle — and the day arc treats the hour as an explicit whisper. Copy
+  // nobody can reach is copy nobody corrects.
 } as const;
 
 export function HelpBadge({ term, style }: HelpBadgeProps) {
