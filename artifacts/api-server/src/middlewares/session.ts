@@ -9,10 +9,11 @@
  * healthz, the iCal feed with its own scoped token) never presented one, and
  * the per-route guards still enforce presence where identity is required.
  *
- * Unclaimed accounts also pass — that is the rollout, not a hole: the bare
- * id works exactly until the account's own client claims it on next boot,
- * so the deploy that ships this cannot lock anyone out. See
- * lib/accountAuth.ts for the model and the TOFU window it accepts.
+ * Unclaimed accounts pass too, but only until the TOFU deadline — the bare id
+ * works until the account's own client claims it, and no later than that date.
+ * Without the deadline the rollout never ended: an account nobody opens never
+ * claims, so it stays open forever (measured 2026-08-19: 19 of 20 profiles).
+ * See lib/accountAuth.ts for the deadline and why recovery stays open past it.
  */
 import { type Request, type Response, type NextFunction } from "express";
 import { verifySession } from "../lib/accountAuth.js";
@@ -38,8 +39,14 @@ export async function requireValidSession(req: Request, res: Response, next: Nex
     const verdict = await verifySession(testerId, token);
     if (verdict.state === "invalid") {
       // One named reason, so the client can tell "restore your session" apart
-      // from every other 401-shaped failure without parsing prose.
-      res.status(401).json({ error: "session_required", reason: "invalid-or-missing-session" });
+      // from every other 401-shaped failure without parsing prose. The reason
+      // distinguishes a dead/absent token from an account whose trust-on-first-
+      // use window simply ran out — different stories, same repair, and the
+      // second one is what every dormant account meets on its first boot back.
+      res.status(401).json({
+        error: "session_required",
+        reason: verdict.reason === "window-closed" ? "claim-window-closed" : "invalid-or-missing-session",
+      });
       return;
     }
     next();

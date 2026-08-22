@@ -6,6 +6,9 @@
  *   · claim is trust-on-FIRST-use — exactly once, ever
  *   · a claimed account rejects a bare id and a wrong token, accepts its own
  *   · an unclaimed account still passes (the no-lockout rollout)
+ *   · and stops passing once the TOFU deadline is behind us
+ *   · but the recovery code still works after it — the guarantee that the
+ *     close is a close and not a lockout
  *   · recovery mints a session AND claims, so the second device path works
  *   · sessions die with the account (via the deletion sweep's discovery)
  *
@@ -16,7 +19,7 @@
  *   (cd lib/db && DATABASE_URL=postgres://localhost:5432/compass_auth_test npx drizzle-kit push --force)
  *   TEST_DATABASE_URL=postgres://localhost:5432/compass_auth_test pnpm test
  */
-import { describe, it, expect, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 
 const TEST_DB = process.env["TEST_DATABASE_URL"];
 const TESTER = "obs_auth_test";
@@ -116,6 +119,57 @@ describe.skipIf(!TEST_DB)("account sessions (integration)", () => {
     await sql(`DELETE FROM account_sessions WHERE tester_id = $1`, [TESTER]);
     A.clearSessionCache();
     expect((await A.verifySession(TESTER, token)).state).toBe("invalid");
+  });
+
+  describe("past the TOFU deadline", () => {
+    // The deadline is read at call time, so moving it is how a test reaches a
+    // future the wall clock has not arrived at yet.
+    beforeEach(() => { process.env["COMPASS_TOFU_DEADLINE"] = "2020-01-01T00:00:00Z"; });
+    afterEach(() => { delete process.env["COMPASS_TOFU_DEADLINE"]; });
+
+    it("an unclaimed account stops passing on the bare id", async () => {
+      const verdict = await A.verifySession(TESTER, null);
+      expect(verdict.state).toBe("invalid");
+      expect(verdict.reason).toBe("window-closed");
+    });
+
+    it("claiming stops issuing sessions — the exempt route is the other half", async () => {
+      // The gate refusing unclaimed ids while /account/claim still mints for
+      // them would move the hole, not fill it: that route is EXEMPT.
+      const result = await A.claimAccount(TESTER);
+      expect(result.ok).toBe(false);
+      expect(result.reason).toBe("window-closed");
+      const rows = await sql(`SELECT count(*) FROM account_sessions WHERE tester_id = $1`, [TESTER]);
+      expect(Number(rows.rows[0].count)).toBe(0);
+    });
+
+    it("the recovery code still gets a dormant tester back in", async () => {
+      // THE guarantee. Someone who has not opened Compass since the rollout
+      // meets a closed window on their next boot; the code their device has
+      // held since it first synced is what makes that a silent restore rather
+      // than a lockout.
+      const token = await A.mintSessionFor(TESTER, "recovery");
+      A.clearSessionCache();
+      expect((await A.verifySession(TESTER, token)).state).toBe("valid");
+      const claimed = await sql(`SELECT claimed_at FROM tester_profiles WHERE tester_id = $1`, [TESTER]);
+      expect(claimed.rows[0].claimed_at).not.toBeNull();
+    });
+
+    it("an account that already claimed is untouched by the deadline", async () => {
+      // The close is about accounts that never claimed. A device holding a
+      // good token must not be signed out by a date passing.
+      delete process.env["COMPASS_TOFU_DEADLINE"];
+      const { token } = await A.claimAccount(TESTER);
+      process.env["COMPASS_TOFU_DEADLINE"] = "2020-01-01T00:00:00Z";
+      A.clearSessionCache();
+      expect((await A.verifySession(TESTER, token)).state).toBe("valid");
+    });
+
+    it("an unsynced id still passes — a closed window must not break signup", async () => {
+      // No profile row means nothing to protect yet, and a 401 here would 401
+      // the first boot of every new account.
+      expect((await A.verifySession("obs_never_synced", null)).state).toBe("unknown-account");
+    });
   });
 
   it("sessions are inside the deletion sweep's discovery", async () => {

@@ -102,6 +102,11 @@ router.post("/account/sync", requireTesterId, async (req, res) => {
  * already hold (POST /account/recover mints their session). NOT behind the
  * session gate, per middlewares/session.ts EXEMPT: this is how a token is
  * obtained.
+ *
+ * Past the TOFU deadline it stops issuing anything (410). That is the half of
+ * the close that is easy to forget: this route is exempt from the gate, so a
+ * gate that refuses unclaimed ids while this still hands out sessions for them
+ * has moved the hole rather than filled it.
  */
 router.post("/account/claim", requireTesterId, async (_req, res) => {
   const testerId = res.locals.testerId as string;
@@ -109,6 +114,15 @@ router.post("/account/claim", requireTesterId, async (_req, res) => {
   if (!result.ok) {
     if (result.reason === "no-profile") {
       res.status(404).json({ error: "no_profile", message: "Sync the account first." });
+      return;
+    }
+    if (result.reason === "window-closed") {
+      // 410, not 403: the difference is "someone else has it" versus "this
+      // door no longer exists". Both send the client to the same repair, and
+      // the client treats every non-404 refusal alike — but the log should say
+      // which one happened, because a burst of these is testers coming back
+      // and a burst of 403s is two devices racing.
+      res.status(410).json({ error: "claim_window_closed" });
       return;
     }
     res.status(403).json({ error: "already_claimed" });
