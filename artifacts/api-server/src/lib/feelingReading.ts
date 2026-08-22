@@ -168,7 +168,7 @@ export function feelingReading(opts: {
   if (!planets.length) {
     return {
       blocked: false, mirror, live: null,
-      quiet: "These words don't land on any one thing in the sky. That doesn't make them less true; it means this door has nothing useful to add to them.",
+      quiet: "These words don't land on any one thing in the sky, so there's nothing useful to add here.",
     };
   }
 
@@ -222,8 +222,8 @@ export function feelingReading(opts: {
     return {
       blocked: false, mirror, live: null,
       quiet: play.has(planets[0])
-        ? `${named} is what that has the shape of, and it's in the background today rather than driving anything. Nothing up there is loud enough to be worth reading into how you feel.`
-        : `${named} is what that has the shape of, and ${planets.length === 1 ? "it isn't" : "neither is"} doing anything in the sky right now. Nothing up there matches what you named, which doesn't make it less real.`,
+        ? `That has the shape of ${named}, and ${named} is in the background today rather than driving anything. Nothing up there is loud enough to be worth reading into how you feel.`
+        : `That has the shape of ${named}, and ${planets.length === 1 ? "it isn't" : "neither is"} doing anything in the sky right now. Nothing matches what you named, which doesn't make it less real.`,
     };
   }
 

@@ -109,7 +109,7 @@ export default function TurnIt({
         onChange={e => { setText(e.target.value); if (result) setResult(null); }}
         onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); }}
         rows={2}
-        placeholder="Restless and can't settle. Flat. Wound up about one conversation."
+        placeholder="wound up about one conversation and can't settle"
         style={BOX}
       />
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -129,7 +129,7 @@ export default function TurnIt({
 
       {ask.isError && (
         <div style={{ fontSize: 12, color: "var(--color-muted)" }}>
-          That didn't reach the sky. Try again in a moment.
+          That didn't go through, so try again in a moment.
         </div>
       )}
 
@@ -184,9 +184,7 @@ function Answer({
           That has the shape of {live.planet}
         </div>
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 3 }}>
-          {live.tempo === "season"
-            ? `${live.planet} is live right now, and has been for a while.`
-            : `${live.planet} is live right now.`}
+          {live.tempo === "season" ? "and it's been live for a while" : "and it's live right now"}
         </div>
       </div>
 
@@ -215,10 +213,6 @@ function Answer({
           ))}
         </div>
       )}
-
-      <p style={{ margin: 0, fontSize: 10.5, lineHeight: 1.6, color: "var(--text-3)" }}>
-        A resemblance between what you named and what the sky is doing, not a cause of it.
-      </p>
     </div>
   );
 }
