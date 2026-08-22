@@ -136,8 +136,34 @@ export interface Testimony {
   score: number;               // weight × salience × polarity (signed)
 }
 
+/**
+ * THE SUBJECT — the body running this moment, when one genuinely is.
+ *
+ * Measured after the owner read a panel in which five of the eight strongest
+ * testimonies were Venus and the interface said so nowhere, splitting her
+ * across three duration bands in three grammars (2026-08-21). When one body
+ * carries a large enough share of the moment's weight, that IS the finding,
+ * and the ways it pulls are the detail. Absent on an ordinary day, which is
+ * most days — see SUBJECT_SHARE.
+ */
+export interface ReadingSubject {
+  planet: string;
+  /** Share of the moment's total weight (salience × weight) carried by this body. */
+  share: number;
+  /** How many of the strongest `ofTop` testimonies are this body's. */
+  count: number;
+  ofTop: number;
+  /** Where it helps, where it presses, what it argues with — its own words. */
+  supports: string[];
+  presses: string[];
+  against: string[];
+  gift?: string;
+  shadow?: string;
+}
+
 export interface DayReading {
   flavour: string;             // the woven whole, one sentence
+  subject?: ReadingSubject;    // the body running the moment, when one is
   element: string;             // the convergent element (the flavour's key)
   foci: string[];              // concrete things it favours
   watch: { note: string; salience: number; source?: string }[];  // top salience — "focus on this"
@@ -320,7 +346,14 @@ function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
           : `${t.planet} ${wordIng} ${targetWord}`,
         note: isReturn
           ? `your ${t.planet} return (${best.orb.toFixed(1)}°) — its cycle starts a new lap; ${verb} is renewed`
-          : `${t.planet} ${word} ${targetWord} (${best.orb.toFixed(1)}°) — ${polarity > 0 ? "support for" : "pressure on"} ${targetWord}${polarity < 0 && roads ? `; watch ${roads.shadow}` : ""}`,
+          // THE SECOND HALF SAYS SOMETHING NEW. It used to read "— support for
+          // {targetWord}" after naming {targetWord}, so the line stated its own
+          // subject twice and added one valence word ("Venus strikes sparks
+          // with your sense of yourself — support for your sense of yourself",
+          // owner 2026-08-21). The transiting planet's own gift or shadow is
+          // the information the reader did not already have.
+          : `${t.planet} ${word} ${targetWord} (${best.orb.toFixed(1)}°)${
+              roads ? (polarity > 0 ? ` — ${roads.gift}` : ` — watch ${roads.shadow}`) : ""}`,
         score: 0, // filled by caller
       });
     }
@@ -543,6 +576,84 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   return T;
 }
 
+/**
+ * Which body a testimony speaks for. Structural Moon sources (her sign, the
+ * phase, the void) are excluded from CANDIDACY below: the Moon is in every
+ * reading by construction, so "the Moon runs today" would be a label rather
+ * than news. She still has to earn it through aspects and transits.
+ */
+function subjectOf(t: Testimony): string | null {
+  const src = t.source;
+  if (src.startsWith("transit:")) return src.slice(8).split("→")[0];
+  if (src.startsWith("moonAspect:")) return "Moon";
+  if (src.startsWith("aspect:")) return null;         // a pair, not a subject
+  const f = t.facts as { planet?: string } | undefined;
+  return f?.planet ?? null;
+}
+/**
+ * Sources that are true of their body EVERY day — the Moon's sign, the phase,
+ * the void, the weekday's ruler. They are excluded from the share arithmetic
+ * on both sides, so the question the share answers is "of what is specifically
+ * true right now, how much is this body's" rather than "who appears most",
+ * which the Moon wins by construction.
+ */
+const STRUCTURAL = new Set(["moonSign", "phase", "voc", "dayRuler"]);
+/**
+ * The bar, set by measured fire rate rather than taste (memory: calibrate
+ * thresholds by fire rate, never by the median). Over 120 days from this
+ * build, counting earned testimonies only:
+ *
+ *   0.34 → 54% of moments   too common to be a finding
+ *   0.38 → 33%              Moon 19, Mars 12, Mercury 3, Jupiter 3, Venus 2, Sun 1
+ *   0.42 → 20%
+ *   0.50 →  8%              nearly always the Moon; a curiosity, not a feature
+ *
+ * 0.38 fires on about one moment in three and spreads across six bodies,
+ * which is what "one body is running this" should mean.
+ */
+const SUBJECT_SHARE = 0.38;
+const SUBJECT_MIN_EARNED = 2;
+
+export function readingSubject(T: Testimony[]): ReadingSubject | undefined {
+  const mag = (t: Testimony) => t.weight * t.salience;
+  const kindOf = (t: Testimony) => ((t.facts as { kind?: string } | undefined)?.kind) ?? "";
+  const earnedAll = T.filter(t => !STRUCTURAL.has(kindOf(t)));
+  const total = earnedAll.reduce((n, t) => n + mag(t), 0);
+  if (total <= 0) return undefined;
+
+  const by = new Map<string, Testimony[]>();
+  for (const t of earnedAll) {
+    const p = subjectOf(t);
+    if (p) by.set(p, [...(by.get(p) ?? []), t]);
+  }
+  const ranked = [...T].sort((a, b) => mag(b) - mag(a));
+  const ofTop = Math.min(8, ranked.length);
+  const targetOf = (t: Testimony) => t.source.split("\u2192")[1] ?? "";
+  const word = (k: string) => NATAL_POINT_WORD[k] ?? k;
+
+  let best: ReadingSubject | undefined;
+  for (const [planet, ts] of by) {
+    if (ts.length < SUBJECT_MIN_EARNED) continue;
+    const share = ts.reduce((n, t) => n + mag(t), 0) / total;
+    if (share < SUBJECT_SHARE) continue;
+    if (best && best.share >= share) continue;
+    const roads = PLANET_ROADS[planet];
+    best = {
+      planet,
+      share: parseFloat(share.toFixed(3)),
+      count: ranked.slice(0, ofTop).filter(t => subjectOf(t) === planet).length,
+      ofTop,
+      supports: ts.filter(t => t.polarity > 0 && t.source.startsWith("transit:")).map(t => word(targetOf(t))),
+      presses: ts.filter(t => t.polarity < 0 && t.source.startsWith("transit:")).map(t => word(targetOf(t))),
+      against: T.filter(t => t.source.startsWith("aspect:") && t.source.includes(planet) && t.polarity < 0)
+        .map(t => t.source.slice(7).split("-").find(x => x !== planet) ?? "").filter(Boolean),
+      gift: roads?.gift,
+      shadow: roads?.shadow,
+    };
+  }
+  return best;
+}
+
 export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayReading {
   // Aggregate element pull (signed by polarity), and gather favoured activities.
   const elementScore: Record<string, number> = { fire: 0, earth: 0, air: 0, water: 0 };
@@ -610,6 +721,7 @@ export function synthesize(T: Testimony[], patterns: NamedPattern[] = []): DayRe
 
   return {
     flavour, element: topElement[0], foci, watch, counterpoint,
+    subject: readingSubject(T),
     // Which testimony the counterpoint speaks for. The client's hero card may
     // already have said this in its own voice (the guidance line reconciles a
     // void directly), and a card that states one fact three ways stops sounding
