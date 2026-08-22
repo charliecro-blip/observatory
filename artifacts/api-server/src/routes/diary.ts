@@ -12,9 +12,6 @@ import { and, eq, desc } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { julianDay, getPlanetPositions, moonPhase, voidOfCourse, getPlanetaryHour, getSunriseSunset } from "../lib/astro.js";
 import { computeQualifiers } from "../lib/qualifiers.js";
-import { feelingReading } from "../lib/feelingReading.js";
-import { natalCharts } from "@workspace/db";
-import { computeNatalChart } from "../lib/natal.js";
 
 const router: IRouter = Router();
 
@@ -88,35 +85,3 @@ router.delete("/diary/:id", requireTesterId, async (req, res) => {
 
 export default router;
 
-
-/**
- * POST /feeling — "here's how I am", read against the sky.
- *
- * The crisis gate runs inside feelingReading(), before anything else, and a
- * blocked read returns support and NO astrology. Nothing is stored: this is a
- * reading, not a record, and a person who typed the hardest sentence they have
- * should not find it saved somewhere afterwards. Keeping it is a separate,
- * explicit act — the diary above.
- */
-router.post("/feeling", requireTesterId, async (req, res) => {
-  const testerId = res.locals.testerId as string;
-  const { text, lat, lon } = req.body ?? {};
-  if (typeof text !== "string" || !text.trim()) { res.status(400).json({ error: "text required" }); return; }
-  if (text.length > 2000) { res.status(400).json({ error: "text too long" }); return; }
-
-  let natal;
-  try {
-    const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
-    if (stored?.birthDate && stored.birthTime != null && stored.timeKnown !== false) {
-      const n = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
-      natal = { planets: n.planets.map(p => ({ planet: p.planet, longitude: p.longitude })), asc: n.ascendant.longitude, mc: n.midheaven.longitude };
-    }
-  } catch { /* chartless is a first-class case here as everywhere */ }
-
-  res.json(feelingReading({
-    text,
-    lat: typeof lat === "number" ? lat : 40.7,
-    lon: typeof lon === "number" ? lon : -74.0,
-    natal,
-  }));
-});

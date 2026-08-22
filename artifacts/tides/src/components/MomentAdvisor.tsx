@@ -237,6 +237,13 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             .map((s: any) => ({ id: s.id, title: s.title }));
           return (
             <div style={{ padding: "14px 20px 4px", flexShrink: 0 }}>
+              {/* No "Turn it" door here. The other three doors send a question
+                  to the advisor; that one answers locally and never calls the
+                  model. In this panel its composer stacked directly above the
+                  advisor's own — two fields, no visual difference between them,
+                  and typing "restless" into the wrong one silently gets you a
+                  different kind of answer. It lives on Home, where the doors
+                  open in place and nothing competes with it. */}
               <AskDoors
                 layout="rows"
                 stars={activeStars}

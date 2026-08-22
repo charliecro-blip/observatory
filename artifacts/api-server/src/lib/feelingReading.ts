@@ -33,7 +33,7 @@ export type Capacity = "depleted" | "restless" | "social";
 // the form people actually write.
 const CAPACITY_WORDS: Record<Capacity, RegExp> = {
   depleted: /\b(tired|exhaust|drain|empty|flat|numb|spent|wiped|no energy|burnt? out|burned out|deplet|foggy|heavy|listless)/i,
-  restless: /\b(restless|agitat|antsy|can'?t settle|can'?t sit|wired|jumpy|irritab|itchy|twitchy|fidget|keyed up|on edge|angry|angri|furious|rage|frustrat)/i,
+  restless: /\b(restless|agitat|antsy|can'?t settle|can'?t sit|wired|jumpy|irritab|itchy|twitchy|fidget|keyed up|on edge|wound up|angry|angri|furious|rage|frustrat)/i,
   social: /\b(lonely|alone|isolat|disconnect|miss(ing)? (my|them|him|her|people)|left out|unseen|no one)/i,
 };
 
@@ -85,6 +85,8 @@ function capacityOf(text: string): Capacity | null {
 
 /** Every body doing something right now, with its strongest statement. */
 type Tempo = "today" | "season";
+const tempoOf = (planet: string): Tempo =>
+  SOCIAL_BODIES.has(planet) || OUTER_BODIES.has(planet) ? "season" : "today";
 function inPlay(
   testimonies: Testimony[],
   qualifiers: Qualifier[],
@@ -105,7 +107,11 @@ function inPlay(
     // and impatient" find Mars on 365 days out of 365. A door that always opens
     // tells you nothing, which is the same failure as one that never does.
     if (kind === "moonSign" || kind === "phase" || kind === "sect" || kind === "sectMalefic") continue;
-    put(p, t.note, t.note, t.weight * t.salience, t.source.startsWith("transit:") ? "season" : "today");
+    // TEMPO IS THE PLANET'S SPEED, not whether the source is a transit. Venus
+    // moves about a degree a day, so a 2.3° Venus-to-natal aspect is days, and
+    // calling it "has been for a while" was simply false; Pluto at the same orb
+    // is months.
+    put(p, t.note, t.note, t.weight * t.salience, tempoOf(p));
   }
   for (const q of qualifiers) {
     for (const b of q.bodies) {

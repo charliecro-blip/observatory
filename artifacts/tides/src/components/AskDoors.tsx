@@ -34,7 +34,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 export interface AskPick { send: string; fill?: string }
 
 interface DoorItem { label: string; sub?: string; pick: AskPick }
-type DoorKey = "orient" | "moment" | "timing";
+type DoorKey = "orient" | "moment" | "timing" | "turn";
 
 // Hues come from the element table, never re-frozen as literals here — the
 // palette themes rewrite those tokens, and a hardcoded hex survives the theme
@@ -43,6 +43,11 @@ const DOOR_META: Record<DoorKey, { title: string; blurb: string; color: string }
   orient: { title: "Orient",      blurb: "Toward a Guiding Star",           color: ELEMENT_COLORS.air },
   moment: { title: "This moment", blurb: "Why this, and what it can't see", color: ELEMENT_COLORS.water },
   timing: { title: "Timing",      blurb: "When, and which window",          color: ELEMENT_COLORS.fire },
+  // The fourth door is the odd one: the other three are relationships to TIME,
+  // and this one is a relationship to how you are. It also answers itself
+  // rather than sending a question onward, which is why it renders its own
+  // body instead of a list of prompts.
+  turn:   { title: "Turn it",     blurb: "How you are, against the sky",    color: ELEMENT_COLORS.earth },
 };
 
 function DoorIcon({ door, size = 21 }: { door: DoorKey; size?: number }) {
@@ -53,6 +58,10 @@ function DoorIcon({ door, size = 21 }: { door: DoorKey; size?: number }) {
   }
   if (door === "moment") {
     return <svg {...common}><circle cx="12" cy="12" r="8.4" /><circle cx="12" cy="12" r="2.6" fill={c} stroke="none" /></svg>;
+  }
+  if (door === "turn") {
+    // The vessel: a crucible, and the thing rising off it.
+    return <svg {...common}><path d="M8 4.6h8" /><path d="M9.4 4.6v4.2L5.6 17a2.4 2.4 0 0 0 2.2 3.4h8.4a2.4 2.4 0 0 0 2.2-3.4l-3.8-8.2V4.6" /><path d="M7.6 14.2h8.8" /></svg>;
   }
   return <svg {...common}><circle cx="12" cy="12" r="8.4" /><path d="M12 7.4 L12 12 L15.4 13.8" /></svg>;
 }
@@ -96,6 +105,11 @@ export function buildDoors(
       },
     ],
 
+    // "turn" carries no prompts — TurnIt renders its own field and answers
+    // locally, so nothing is sent onward. The key exists to keep the door set
+    // in one place.
+    turn: [],
+
     timing: [
       {
         label: "Is now a good time?",
@@ -126,7 +140,7 @@ export function buildDoors(
 }
 
 export default function AskDoors({
-  stars, strongestFit, layout, onPick, note,
+  stars, strongestFit, layout, onPick, note, turnIt,
 }: {
   stars: { id: number; title: string }[];
   strongestFit?: { title?: string; why?: string } | null;
@@ -134,10 +148,13 @@ export default function AskDoors({
   layout: "tiles" | "rows";
   onPick: (pick: AskPick) => void;
   note?: string;
+  /** The fourth door's body. Passed in rather than imported so the surfaces
+   *  that have no feelings door (and the tests) stay at three. */
+  turnIt?: React.ReactNode;
 }) {
   const [open, setOpen] = useState<DoorKey | null>(null);
   const doors = buildDoors(stars, strongestFit);
-  const keys: DoorKey[] = ["orient", "moment", "timing"];
+  const keys: DoorKey[] = turnIt ? ["orient", "moment", "timing", "turn"] : ["orient", "moment", "timing"];
 
   const Tile = ({ k }: { k: DoorKey }) => {
     const meta = DOOR_META[k];
@@ -179,13 +196,16 @@ export default function AskDoors({
       )}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        // Four tiles in a three-column grid leave one stranded on its own row.
+        gridTemplateColumns: `repeat(${keys.length === 4 ? 2 : 3}, minmax(0, 1fr))`,
         gap: 8,
       }}>
         {keys.map(k => <Tile key={k} k={k} />)}
       </div>
 
-      {open && (
+      {open === "turn" && turnIt}
+
+      {open && open !== "turn" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {doors[open].map((item, i) => (
             <button key={i} onClick={() => onPick(item.pick)} style={{

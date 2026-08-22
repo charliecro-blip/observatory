@@ -58,6 +58,7 @@ import { NotificationOptIn } from "@/components/NotificationOptIn";
 import WhereYouAre from "@/components/WhereYouAre";
 import Sprints from "@/components/Sprints";
 import AskDoors from "@/components/AskDoors";
+import TurnIt from "@/components/TurnIt";
 import { fetchJson, HttpError } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
 import { touchLine, type TouchTrail } from "@/lib/touches";
@@ -1134,7 +1135,7 @@ export default function Home({
       {onAskAboutElection && (
         <div style={{ ...PANEL, overflow: "hidden" }}>
           <div style={{ height: 3, background: `linear-gradient(90deg, ${PERSONAL}, ${PERSONAL}66 55%, var(--color-border))` }} />
-          <SectionTitle fold="ask" summary="three doors">Ask</SectionTitle>
+          <SectionTitle fold="ask" summary="four doors">Ask</SectionTitle>
           <Fold id="ask"><div style={{ padding: "0 16px 14px" }}>
             <AskDoors
               layout="tiles"
@@ -1143,6 +1144,12 @@ export default function Home({
                 .slice(0, 4)
                 .map((g: any) => ({ id: g.id, title: g.title }))}
               strongestFit={null}
+              turnIt={<TurnIt
+                testerId={testerId}
+                lat={lat} lon={lon}
+                wakeTime={profile?.chronotype?.wakeTime}
+                sleepTime={profile?.chronotype?.sleepTime}
+              />}
               onPick={(pick) => onAskAboutElection(
                 { activity: "", windows: [] },
                 // Home has no text field, so a fragment would strand the
