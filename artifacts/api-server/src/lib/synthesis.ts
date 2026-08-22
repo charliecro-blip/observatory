@@ -196,7 +196,10 @@ export interface NatalForReading {
  *  "moment" includes the rotating planetary hour; "day" (reports, spanning the
  *  whole day) drops hour-bound voices — and the natal chart, which unlocks the
  *  personal testimony layer (transits-to-natal join the convergence). */
-export interface ReadingOptions { tzOffsetMin?: number; ascRuler?: string; scope?: "moment" | "day"; natal?: NatalForReading; }
+export interface ReadingOptions {
+  /** How many transit-to-natal testimonies survive. 4 (the default) keeps a day
+   *  card about today; the feeling door raises it so slow transits can speak. */
+  personalLimit?: number; tzOffsetMin?: number; ascRuler?: string; scope?: "moment" | "day"; natal?: NatalForReading; }
 
 // ── Personal testimony layer — transits to the natal chart ───────────────────
 // The mundane sky speaks to everyone; these voices speak to YOU. Each
@@ -265,7 +268,7 @@ function transitSalienceBase(p: string): number {
 const ASPECT_ANGLES: [string, number][] = [["conjunction", 0], ["sextile", 60], ["square", 90], ["trine", 120], ["opposition", 180]];
 function sepDeg(a: number, b: number): number { const d = Math.abs(((a - b) % 360 + 360) % 360); return d > 180 ? 360 - d : d; }
 
-function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
+function collectPersonal(m: Moment, natal: NatalForReading, limit = 4): Testimony[] {
   const out: Testimony[] = [];
   // Natal Lot of Fortune (George Ch.33, sect-reversed: day Asc+Moon−Sun,
   // night Asc+Sun−Moon). Needs the Ascendant, so birth time must be known.
@@ -359,9 +362,17 @@ function collectPersonal(m: Moment, natal: NatalForReading): Testimony[] {
     }
   }
   // The loudest few join the reading — enrich the convergence, don't drown the sky.
+  //
+  // The cut is by salience × dignity, and outer-planet transits carry salience
+  // 0.45 against 0.7–0.85 for the fast ones, so they never survive four slots.
+  // That is right for a day card, where a Pluto square is the chapter and not
+  // the news. It is wrong for a reader who has just typed "obsessive, can't let
+  // it go", which is a question ABOUT the chapter — measured across 2026, the
+  // feeling door found Uranus and Pluto live on 0 days out of 365 because of
+  // this line. Callers who want the slow voices raise the limit.
   return out
     .sort((a, b) => b.salience * b.weight - a.salience * a.weight)
-    .slice(0, 4)
+    .slice(0, limit)
     .map(t => ({ ...t, score: t.weight * t.salience * t.polarity }));
 }
 
@@ -571,7 +582,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   }
 
   // Personal layer — transits to the natal chart, when a chart is present.
-  if (opts.natal) T.push(...collectPersonal(m, opts.natal));
+  if (opts.natal) T.push(...collectPersonal(m, opts.natal, opts.personalLimit));
 
   return T;
 }
@@ -582,7 +593,7 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
  * reading by construction, so "the Moon runs today" would be a label rather
  * than news. She still has to earn it through aspects and transits.
  */
-function subjectOf(t: Testimony): string | null {
+export function subjectOf(t: Testimony): string | null {
   const src = t.source;
   if (src.startsWith("transit:")) return src.slice(8).split("→")[0];
   if (src.startsWith("moonAspect:")) return "Moon";
