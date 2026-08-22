@@ -29,6 +29,11 @@ interface Win {
   date: string; dow: string;
   startAt: string; endAt: string;
   startClock: string; endClock: string;
+  /** A whole-day condition (the Moon's sign favors this), not a timed window.
+   *  Rendered by its start time it read "7 AM" — the hour the engine's day
+   *  begins — so a day-long affinity looked like a dawn appointment
+   *  (found in the Plan workshop, 2026-08-21). */
+  allDay?: boolean;
   tier: string; score: number; why?: string;
 }
 
@@ -143,7 +148,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                         border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
                         cursor: w.why ? "pointer" : "default",
                       }}>
-                        {w.startClock}
+                        {w.allDay ? "all day" : w.startClock}
                       </div>
                     );
                   })}

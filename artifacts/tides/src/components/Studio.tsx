@@ -261,7 +261,7 @@ function ActivityCard({ label, windows, W, H, theme }: {
                 <rect x={x} y={top + 24 + j * 62} width={colW} height={52} rx={9}
                   fill={s.ink} fillOpacity={w.tier === "great" ? 0.88 : 0.12} />
                 <text x={x + colW / 2} y={top + 56 + j * 62} textAnchor="middle"
-                  fill={w.tier === "great" ? s.bg : s.ink} fontSize={24} fontFamily={SERIF}>{w.startClock}</text>
+                  fill={w.tier === "great" ? s.bg : s.ink} fontSize={w.allDay ? 20 : 24} fontFamily={SERIF}>{w.allDay ? "all day" : w.startClock}</text>
               </g>
             ))}
           </g>
