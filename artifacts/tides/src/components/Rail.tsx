@@ -541,7 +541,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // Which sections survive the essential density: the nesting ladder's top
   // three rungs (year → month → hour). Aspects, transits, retrogrades, stars
   // and waves are the instrument panel, and waves/stars are already on Today.
-  const ESSENTIAL_RAIL = new Set(["season", "moon", "hour"]);
+  // WHAT SURVIVES THE ESSENTIAL CUT. This was ["season", "moon", "hour"] — at
+  // the density most people run, the planetary hour was one of only three
+  // things kept and aspects, lunar AND planetary, were dropped entirely. That
+  // is the owner's ordering exactly inverted (2026-08-22: "planetary hours and
+  // days are very much secondary to lunar placement and aspects and other
+  // planetary aspects"). The hour is still there at expanded density, where
+  // someone has asked for the whole instrument.
+  const ESSENTIAL_RAIL = new Set(["season", "moon", "aspects"]);
   const show = (id: string) => !essential || ESSENTIAL_RAIL.has(id);
   // A clear, always-visible minimize control for an open section header.
   const Collapse = ({ id }: { id: string }) => (
@@ -933,6 +940,95 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         </div>
       )}
 
+      {/* PLANET-TO-PLANET ASPECTS.
+          Moved above THIS DAY and THIS HOUR, and sorted by orb, on 2026-08-22.
+          It sat below both, collapsed, in scan order — so a Venus opposite
+          Saturn at 0.2° was two sections beneath "Saturn's day" and behind a
+          click, while the hour had a row of its own. That is the owner's
+          ordering inverted. The tightest two now show without the toggle;
+          the toggle still opens the rest. */}
+      {show("aspects") && railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
+        <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--color-border)" }}>
+          <button onClick={() => setShowNonMoonAspects(v => !v)} style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
+            background:"none", border:"none", cursor:"pointer", padding:0,
+          }}>
+            <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"var(--text-3)" }}>
+              Planetary aspects
+            </span>
+            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
+              {showNonMoonAspects ? "▲ hide" : `${now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length} ▼`}
+            </span>
+          </button>
+          {!showNonMoonAspects && (() => {
+            // The loudest two, always visible. A partile aspect hidden behind a
+            // disclosure is the same as not having it.
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
+            const top = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon")
+              .slice().sort((x, y) => x.orb - y.orb).slice(0, 2);
+            return (
+              <div style={{ marginTop:6, display:"flex", flexDirection:"column", gap:3 }}>
+                {top.map((a, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10.5 }}>
+                    <span style={{ color:planetColor(a.planet1), fontWeight:600 }}><PG p={a.planet1} /></span>
+                    <span style={{ color:"var(--text-2)", fontWeight:700 }}>{aspSym[a.aspect] ?? a.aspect}</span>
+                    <span style={{ color:planetColor(a.planet2), fontWeight:600 }}><PG p={a.planet2} /></span>
+                    <span style={{ color:"var(--text-3)", fontSize:9, marginLeft:2 }}>{a.orb.toFixed(1)}°</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {showNonMoonAspects && (() => {
+            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
+            const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
+            const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon")
+              .slice().sort((x, y) => x.orb - y.orb).slice(0, 8);
+            return (
+              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:0 }}>
+                {nonMoon.map((a, i) => {
+                  const sym = aspSym[a.aspect] ?? a.aspect;
+                  const col = aspColor[a.aspect] ?? "#888888";
+                  const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
+                  const aspMeaning = ASPECT_MEANINGS[a.aspect];
+                  const isExp = expandedNonMoon === i;
+                  return (
+                    <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid var(--color-border)" : "none" }}>
+                      <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
+                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
+                        <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
+                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
+                        <span style={{ flex:1, fontSize:9, color:"var(--color-muted)", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
+                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400 }} title={
+                          a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
+                          : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
+                          : undefined
+                        }>
+                          {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
+                        </span>
+                        <span style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
+                      </button>
+                      {isExp && aspMeaning && (
+                        <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
+                          <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
+                          <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
+                          <div style={{ color:"var(--text-3)" }}>
+                            <strong style={{ color:p1c }}>{a.planet1}:</strong> {PLANET_MEANING[a.planet1] ?? ""}
+                          </div>
+                          <div style={{ color:"var(--text-3)", marginTop:1 }}>
+                            <strong style={{ color:p2c }}>{a.planet2}:</strong> {PLANET_MEANING[a.planet2] ?? ""}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Retrogrades */}
 
       {/* THIS DAY — the day's planetary ruler (24h). Bigger and simpler than the
@@ -1137,69 +1233,6 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Non-moon aspects — expand toggle */}
-      {show("aspects") && railSections.includes("aspects") && now.aspects && now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length > 0 && (
-        <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <button onClick={() => setShowNonMoonAspects(v => !v)} style={{
-            display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-            background:"none", border:"none", cursor:"pointer", padding:0,
-          }}>
-            <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"var(--text-3)" }}>
-              Planetary aspects
-            </span>
-            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
-              {showNonMoonAspects ? "▲ hide" : `${now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length} ▼`}
-            </span>
-          </button>
-          {showNonMoonAspects && (() => {
-            const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
-            const aspColor: Record<string,string> = { conjunction:"#f0b060", opposition:"#e06060", square:"#e06060", trine:"#60a060", sextile:"#6090d0" };
-            const nonMoon = now.aspects!.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").slice(0, 8);
-            return (
-              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:0 }}>
-                {nonMoon.map((a, i) => {
-                  const sym = aspSym[a.aspect] ?? a.aspect;
-                  const col = aspColor[a.aspect] ?? "#888888";
-                  const p1c = planetColor(a.planet1), p2c = planetColor(a.planet2);
-                  const aspMeaning = ASPECT_MEANINGS[a.aspect];
-                  const isExp = expandedNonMoon === i;
-                  return (
-                    <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid var(--color-border)" : "none" }}>
-                      <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
-                        <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
-                        <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
-                        <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
-                        <span style={{ flex:1, fontSize:9, color:"var(--color-muted)", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400 }} title={
-                          a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
-                          : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
-                          : undefined
-                        }>
-                          {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
-                        </span>
-                        <span style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
-                      </button>
-                      {isExp && aspMeaning && (
-                        <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
-                          <div style={{ fontWeight:600, color:col, marginBottom:2 }}>{aspMeaning.name} · {aspMeaning.nature}</div>
-                          <div style={{ marginBottom:3 }}>{aspMeaning.desc}</div>
-                          <div style={{ color:"var(--text-3)" }}>
-                            <strong style={{ color:p1c }}>{a.planet1}:</strong> {PLANET_MEANING[a.planet1] ?? ""}
-                          </div>
-                          <div style={{ color:"var(--text-3)", marginTop:1 }}>
-                            <strong style={{ color:p2c }}>{a.planet2}:</strong> {PLANET_MEANING[a.planet2] ?? ""}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
         </div>
       )}
 

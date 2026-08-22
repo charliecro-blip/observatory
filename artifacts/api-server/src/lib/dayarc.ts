@@ -452,7 +452,13 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   const cosH = Math.max(-1, Math.min(1, -Math.tan(_lat * DEG2RAD) * Math.tan(decl)));
   const daylightFrac = Math.acos(cosH) / Math.PI;                          // 0..1
 
-  // Standing non-lunar aspects (classical planets, tight) — smallest weight.
+  // Standing non-lunar aspects (classical planets, tight).
+  //
+  // These carried 0.05 of the floor — the same order as the planetary hour's
+  // ±0.03 whisper — which put a Venus–Saturn opposition at 0.2° on a par with
+  // "it is the Mercury hour". The owner's ordering (2026-08-22) puts planetary
+  // aspects with the Moon in the primary tier and hours and days below both, so
+  // they carry more of the day's height than the hour moves it.
   let standing = 0;
   for (let i = 0; i < ASPECT_PLANETS.length; i++) {
     for (let j = i + 1; j < ASPECT_PLANETS.length; j++) {
@@ -468,7 +474,7 @@ export function computeDayArc(now: Date, _lat: number, _lon: number, tzOffsetMin
   // standing background weather. Aspect *cluster* was removed from the floor —
   // individual aspects belong in the SHAPE as crests, not raising the whole day
   // (that double-counted, and let soft aspects inflate a quiet day's baseline).
-  const height = Math.max(0, Math.min(1, 0.15 + 0.50 * illum + 0.13 * daylightFrac + 0.05 * standingH));
+  const height = Math.max(0, Math.min(1, 0.15 + 0.50 * illum + 0.13 * daylightFrac + 0.14 * standingH));
 
   // ── SHAPE: aspect crests + VOC becalming + hour whisper ──────────────────────
   // (Moon/sun *altitude* was removed — where the Moon sits above the horizon is

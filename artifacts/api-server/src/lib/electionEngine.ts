@@ -263,8 +263,24 @@ const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
 ]);
 const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
   ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
-/** Acts for which an hour by itself is too small a thing to suggest. */
-const SUBSTANTIAL_MODES = new Set<ReturnType<typeof modeOf>>(["inception", "execution"]);
+/**
+ * Acts for which an hour by itself is too small a thing to suggest.
+ *
+ * `revision` joined on 2026-08-22, after measuring what actually sources a
+ * window across all 50 activities over a week:
+ *
+ *     execution     0/144   0%      inception   0/81    0%
+ *     revision     23/ 50  46%   ← editing, finishing, repairing a bond
+ *     maintenance  27/ 50  54%      recovery   13/60   22%
+ *
+ * The guard was working exactly as written for the two modes it named, and
+ * nearly half of revision's windows were the planetary hour and nothing else.
+ * The note below defends hour-only rows for UPKEEP and RECOVERY — "a Mercury
+ * hour is exactly the right grain for errands" — and revision is neither.
+ * Redrafting a chapter or repairing a bond is substantial work, and an hour
+ * alone is not a reason to schedule it.
+ */
+const SUBSTANTIAL_MODES = new Set<ReturnType<typeof modeOf>>(["inception", "execution", "revision"]);
 
 /**
  * THE AGREEMENT RULE, in one place.
