@@ -19,6 +19,12 @@ deny() { jq -n --arg r "$1" \
 
 [ "${COMPASS_SKIP_PUSH_GATE:-}" = "1" ] && exit 0
 
+# Self-gating. settings.json also carries an `if` filter, but a gate that runs
+# on the wrong command costs two minutes of someone's attention, so it checks
+# for itself rather than trusting the filter.
+cmd="$(jq -r '.tool_input.command // ""' 2>/dev/null)" || exit 0
+printf '%s' "$cmd" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+push([[:space:]]|$)' || exit 0
+
 log="$(mktemp)"; trap 'rm -f "$log"' EXIT
 
 # The integration tests skip silently without this, which is how 15 of 20 tests
