@@ -18,6 +18,7 @@ import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { starsNeedingLook } from "@/lib/checkInState";
 import { servesStar } from "@/lib/starLinks";
+import { scrollBehavior } from "@/lib/reducedMotion";
 
 const ELEMENTS = ["fire", "earth", "air", "water"] as const;
 const MAX_ACTIVE_STARS = 5;
@@ -157,7 +158,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     if (focusStarId == null || !stars) return;
     const el = cardRefs.current[focusStarId];
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
       setHighlightId(focusStarId);
       const t = setTimeout(() => setHighlightId(null), 2400);
       onFocusConsumed?.();
@@ -682,7 +683,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
               cursor: "pointer", padding: 0, fontSize: 10.5, color: "var(--text-3)", textAlign: "left",
             }}>
-              <span style={{ fontSize: 8, display: "inline-block", transition: "transform 0.15s", transform: showTimingOverrides ? "rotate(180deg)" : "none" }}>▾</span>
+              <span aria-hidden="true" style={{ fontSize: 8, display: "inline-block", transition: "transform 0.15s", transform: showTimingOverrides ? "rotate(180deg)" : "none" }}>▾</span>
               Adjust timing signature
               {!showTimingOverrides && effPlanet && (
                 <span style={{ color: "var(--color-muted)" }}>
@@ -766,7 +767,9 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 0", borderBottom: "1px solid var(--color-border)" }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>{a.label}</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>
+                        <span aria-hidden="true">{a.planet ? PLANET_GLYPH[a.planet] ?? "" : ""}</span> {a.label}
+                      </div>
                       <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
                       </div>
@@ -795,11 +798,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                           sub={`Ruler of the year: ${prof.timeLord}`} isRiding={riding("profection", prof.house)} />
                       )}
                       {chapters.map((t: any) => (
-                        <Row key={t.planet} a={{ kind: "chapter", planet: t.planet, house: t.house, until: t.leavesHouse ?? null, element: houseElement(t.house), label: `${PLANET_GLYPH[t.planet] ?? ""} ${t.planet} through your ${ordinal(t.house)} · ${HOUSE_MEANINGS[t.house]?.title ?? ""}` }}
+                        <Row key={t.planet} a={{ kind: "chapter", planet: t.planet, house: t.house, until: t.leavesHouse ?? null, element: houseElement(t.house), label: `${t.planet} through your ${ordinal(t.house)} · ${HOUSE_MEANINGS[t.house]?.title ?? ""}` }}
                           sub={`A slow chapter${t.retrograde ? " · currently retrograde" : ""}`} isRiding={riding("chapter", t.house, t.planet)} />
                       ))}
                       {(currentsData.majorTransits ?? []).slice(0, 3).map((t: any, i: number) => (
-                        <Row key={`mt${i}`} a={{ kind: "transit", planet: t.transitPlanet, house: t.natalHouse, until: null, element: houseElement(t.natalHouse), label: `${PLANET_GLYPH[t.transitPlanet] ?? ""} ${t.transitPlanet} ${String(t.aspect).toLowerCase()} your natal ${t.natalPlanet}` }}
+                        <Row key={`mt${i}`} a={{ kind: "transit", planet: t.transitPlanet, house: t.natalHouse, until: null, element: houseElement(t.natalHouse), label: `${t.transitPlanet} ${String(t.aspect).toLowerCase()} your natal ${t.natalPlanet}` }}
                           sub={`Active now${t.exact ? " · exact" : ` · ${t.orb}° orb`}`} isRiding={list.some(g => g.anchorKind === "transit" && g.anchorPlanet === t.transitPlanet && g.anchorHouse === t.natalHouse)} />
                       ))}
                     </div>
@@ -824,7 +827,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
         )}
         {list.length === 0 && !starsError && !showForm && (
           <div style={{ textAlign: "center", padding: "44px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
+            <div aria-hidden="true" style={{ fontSize: 30, opacity: 0.6 }}>✦</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-primary)" }}>Set your first Guiding Star</div>
             <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, maxWidth: 380 }}>
               A Guiding Star is a direction you're steering toward — something bigger than a task. Everything else on this page hangs off it: you'll break it into steps, tasks, and habits, and Compass helps you time them to the sky.
@@ -1199,7 +1202,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
                       <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.transitPlanet]}</span></span>
                       <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
-                      <span style={{ fontSize: 8, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
+                      <span aria-hidden="true" style={{ fontSize: 8, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
                     </button>
                     {isExp && <TransitTake t={t} accent="#8a8ba0" />}
                   </div>

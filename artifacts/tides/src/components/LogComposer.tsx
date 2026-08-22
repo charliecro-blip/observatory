@@ -313,7 +313,7 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
               {ledger.map((row) => (
                 <div key={row.key} style={{ display: "flex", alignItems: "baseline", gap: 9, fontSize: 13 }}>
-                  <span style={{ color: "#3f7a4a", fontSize: 11 }}>✓</span>
+                  <span aria-hidden="true" style={{ color: "#3f7a4a", fontSize: 11 }}>✓</span>
                   <span style={{ flex: 1, color: "var(--color-foreground)" }}>{row.label}</span>
                   {row.sub && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{row.sub}</span>}
                 </div>

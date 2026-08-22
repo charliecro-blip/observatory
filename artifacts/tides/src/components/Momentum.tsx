@@ -96,7 +96,7 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
                   observation. The star and what is next on it stay; when to
                   do it is the person's. `bestWindowToday` is still computed
                   and still served, for the surfaces you ASK. */}
-              <span style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>→</span>
+              <span aria-hidden="true" style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>→</span>
             </button>
           );
         })}
@@ -354,7 +354,7 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, su
           <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 7 }}>
             {topNamed.map((w, i) => (
               <div key={i} style={{ fontSize: 11, color: "var(--color-foreground)" }}>
-                <span style={{ color: "#c8a04a" }}>★</span> {w.text}{starTitle(w.goalId) ? ` · ${starTitle(w.goalId)}` : ""}
+                <span aria-hidden="true" style={{ color: "#c8a04a" }}>★</span> {w.text}{starTitle(w.goalId) ? ` · ${starTitle(w.goalId)}` : ""}
               </div>
             ))}
           </div>

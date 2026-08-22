@@ -18,7 +18,13 @@
 export interface PlanetEntry {
   key: string;
   glyph: string;
-  /** The seven classical planets carry a voice, a hour, a theme and roads; the three outer carry literacy and meaning only. */
+  /** Every planet now carries all of these. The three outer ones carried only
+   *  literacy and meaning until 2026-08-22, which was defensible while they
+   *  could never lead a reading — and stopped being so the moment they could.
+   *  On the day the Moon sat 0.3° from Uranus the reading's loudest voice was
+   *  "flow toward breaking the old pattern" and the day's foci were "write ·
+   *  sort · write & edit", borrowed from quieter testimony, because Uranus had
+   *  no activities of its own to offer. */
   classical: boolean;
   approach: string;
   meaning: string;
@@ -141,6 +147,10 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'fresh air, honest change', shadow: 'restlessness, the break for its own sake', work: 'change one real thing on purpose, so the restlessness has somewhere to land' },
+    voice: {"archetype": "The Awakener", "color": "#3090a0", "essence": "Sudden change, and the freedom to do it differently.", "myth": "Uranus is the voice that will not repeat itself — the part of you that notices the arrangement everyone has settled into and asks why it has to be that way. When it's loud, the settled thing goes restless and the new angle arrives before you have asked for it.", "speaksFor": ["change", "independence", "the unexpected", "invention", "breaking a pattern"], "whenLoud": "Change one real thing on purpose, so the restlessness has somewhere to land."},
+    activities: ["change one real thing", "try the version you haven't tried", "break the routine on purpose", "unstick what's stuck", "ask the question you have been circling"],
+    signification: "Change, independence, invention: shake a pattern, try the other way.",
+    theme: {"verb": "breaking the old pattern", "activities": ["change one thing", "try it differently", "unstick something"]},
   },
   Neptune: {
     key: "Neptune", glyph: "♆︎", classical: false,
@@ -154,6 +164,10 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'imagination, and a softer heart', shadow: 'fog, drift, the story you tell yourself', work: "make something, or rest — both use the fog; deciding in it doesn't" },
+    voice: {"archetype": "The Dreamer", "color": "#5060b0", "essence": "Imagination, softened edges, and what won't be pinned down.", "myth": "Neptune is the voice with no outline — the part of you that makes things up, feels what isn't said, and would rather the edges stayed soft. When it's loud, the imagination runs generous and the facts turn slippery, which is wonderful for making and unreliable for deciding.", "speaksFor": ["imagination", "compassion", "music and image", "rest", "what is unsaid"], "whenLoud": "The fog is good material and bad information, so it suits making and rest better than it suits a decision."},
+    activities: ["make something without a plan", "rest without earning it", "put something on and let it play", "let the edges blur", "sit with what isn't said"],
+    signification: "Imagination, compassion, dissolution: make, rest, hold decisions loosely.",
+    theme: {"verb": "dissolving and imagining", "activities": ["make something", "rest", "imagine"]},
   },
   Pluto: {
     key: "Pluto", glyph: "⯓︎", classical: false,
@@ -167,6 +181,10 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // empty "what it's for" on a Moon-conjunct-Pluto day. Text matches
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'depth, and the nerve to begin again', shadow: 'the grip, the fixation', work: "name what you're actually trying to control, then loosen one hand" },
+    voice: {"archetype": "The Renovator", "color": "#703060", "essence": "Depth, power, and what has to end before the next thing starts.", "myth": "Pluto is the voice underneath — the part of you that refuses the surface version and keeps digging until it finds what is driving it. When it's loud, what has been buried comes up, and what has been quietly rotting gets hard to keep ignoring.", "speaksFor": ["depth", "power", "what's buried", "endings", "the truth under the story"], "whenLoud": "Name what you're actually trying to control, then loosen one hand."},
+    activities: ["clear out what's finished", "go one layer deeper", "name what you're controlling", "let something end properly", "face the buried thing"],
+    signification: "Depth, power, endings: clear out, dig under, let something finish.",
+    theme: {"verb": "deep renovation", "activities": ["clear something out", "go deeper", "let something end"]},
   },
 };
 

@@ -136,7 +136,7 @@ const RAIL_W = 186;
 // instrument a fluent user reads at a glance. Click anywhere to expand.
 function GlyphRow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} title={`Expand ${label}`} style={{
+    <button onClick={onClick} aria-expanded={false} title={`Expand ${label}`} style={{
       width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 14px",
       borderBottom: "1px solid var(--color-border)", background: "none", border: "none",
       borderBottomWidth: 1, cursor: "pointer", textAlign: "left",
@@ -358,8 +358,8 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         <button onClick={() => setOpen(o => o === "moon" ? null : "moon")} style={chipStyle("moon", moon?.color ?? "#888888")}>
           <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={15} />
           <span style={{ color: "var(--text-2)" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
-          <span style={{ color: moon?.color }}>{moon?.glyph}</span>
-          {isVOC && <span style={{ color: VOC_COLOR }}>◒</span>}
+          <span aria-hidden="true" style={{ color: moon?.color }}>{moon?.glyph}</span>
+          {isVOC && <span role="img" aria-label="void of course" style={{ color: VOC_COLOR }}>◒</span>}
         </button>
         {dayRuler && (
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
@@ -551,16 +551,16 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   const ESSENTIAL_RAIL = new Set(["season", "moon", "aspects"]);
   const show = (id: string) => !essential || ESSENTIAL_RAIL.has(id);
   // A clear, always-visible minimize control for an open section header.
-  const Collapse = ({ id }: { id: string }) => (
-    <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} title="Minimize" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>▾</button>
+  const Collapse = ({ id, label }: { id: string; label: string }) => (
+    <button onClick={(e) => { e.stopPropagation(); toggleOpen(id); }} aria-label={`Collapse ${label}`} aria-expanded title="Minimize" style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1 }}><span aria-hidden="true">▾</span></button>
   );
   // Section header — the WHOLE row toggles (clicking exactly on the tiny ▾
   // was the only target before, which read as broken). Inner controls like
   // HelpBadge stop propagation themselves.
-  const SectionHeader = ({ id, children }: { id: string; children: React.ReactNode }) => (
+  const SectionHeader = ({ id, label, children }: { id: string; label: string; children: React.ReactNode }) => (
     <div onClick={() => toggleOpen(id)} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
       <span style={{ display: "flex", alignItems: "center" }}>{children}</span>
-      <Collapse id={id} />
+      <Collapse id={id} label={label} />
     </div>
   );
   const [wavesOpen, setWavesOpen] = useState(true);
@@ -727,7 +727,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* SEASON — the slowest, simplest signifier: what sign the Sun is in. */}
       {sunSign && (isOpen("season") ? (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="season">Season</SectionHeader>
+          <SectionHeader id="season" label="Season">Season</SectionHeader>
           <SignChip glyph="☉︎" label={`${sunSign} season`} sign={sunSign} />
           {/* The season gets the same "another take" treatment the Moon has —
               it was the one chip in the rail with a single static line and
@@ -786,14 +786,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <GlyphRow label="Moon" onClick={() => toggleOpen("moon")}>
           <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} size={16} />
           <span style={{ fontSize: 10, color: "var(--color-muted)" }}>{Math.round((moonIllumination ?? 0) * 100)}%</span>
-          <span style={{ fontSize: 12, color: signGlyphInfo(moonSign)?.color }}>{signGlyphInfo(moonSign)?.glyph}</span>
+          <span aria-hidden="true" style={{ fontSize: 12, color: signGlyphInfo(moonSign)?.color }}>{signGlyphInfo(moonSign)?.glyph}</span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{moonSign}</span>
-          {isVOC && <span style={{ fontSize: 11, color: VOC_COLOR }}>◒</span>}
+          {isVOC && <span role="img" aria-label="void of course" style={{ fontSize: 11, color: VOC_COLOR }}>◒</span>}
         </GlyphRow>
       )}
       {railSections.includes("moon") && isOpen("moon") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="moon">Moon<HelpBadge term="moonPhase"/></SectionHeader>
+          <SectionHeader id="moon" label="Moon">Moon<HelpBadge term="moonPhase"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MoonDisc illum={moonIllumination ?? 0} waxing={!/waning|last/i.test(moonPhase ?? "")} />
             <div>
@@ -878,13 +878,13 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Moon Aspects */}
       {show("aspects") && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && !isOpen("aspects") && (
         <GlyphRow label="Moon aspects" onClick={() => toggleOpen("aspects")}>
-          <span style={{ fontSize: 12, color: "var(--color-muted)" }}>☽</span>
+          <span aria-hidden="true" style={{ fontSize: 12, color: "var(--color-muted)" }}>☽</span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{now.moonAspects.length} aspect{now.moonAspects.length === 1 ? "" : "s"}</span>
         </GlyphRow>
       )}
       {show("aspects") && railSections.includes("aspects") && now.moonAspects && now.moonAspects.length > 0 && isOpen("aspects") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
+          <SectionHeader id="aspects" label="Moon aspects">Moon aspects<HelpBadge term="moonAspects"/></SectionHeader>
           {sortMoonAspects(now.moonAspects).slice(0, 5).map((a, i) => {
             const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
             const aspSym: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
@@ -922,7 +922,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                           : <span style={{ color:"var(--text-3)", fontVariantNumeric:"tabular-nums" }}>{a.orb.toFixed(1)}° past</span>
                       }
                     </div>
-                    <span style={{ fontSize:8, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+                    <span aria-hidden="true" style={{ fontSize:8, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
                   </div>
                 </button>
                 {isExpanded && aspMeaning && (
@@ -1006,7 +1006,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                         }>
                           {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
                         </span>
-                        <span style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
+                        <span aria-hidden="true" style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
                       </button>
                       {isExp && aspMeaning && (
                         <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
@@ -1041,7 +1041,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {show("day") && dayRuler && railSections.includes("hour") && isOpen("day") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="day">This day</SectionHeader>
+          <SectionHeader id="day" label="This day">This day</SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0, background: `${planetColor(dayRuler)}1e`, color: planetColor(dayRuler) }}>
               <PG p={dayRuler} />
@@ -1077,7 +1077,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           location is real, with the fix offered in its place. */}
       {railSections.includes("hour") && !locationKnown && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
+          <SectionHeader id="hour" label="This hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
           <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
             Planetary hours are cut from your local sunrise and sunset, so they need to know where you are.
           </div>
@@ -1097,7 +1097,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       )}
       {railSections.includes("hour") && locationKnown && isOpen("hour") && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border)" }}>
-          <SectionHeader id="hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
+          <SectionHeader id="hour" label="This hour">This hour<HelpBadge term="planetaryHour"/></SectionHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center",
@@ -1288,7 +1288,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <button onClick={() => setExpandedPersonal(v => v === key ? null : key)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "var(--text-2)", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{t.summary}</span>
-                <span style={{ fontSize: 7, color: isExp ? "#8a7a50" : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+                <span aria-hidden="true" style={{ fontSize: 7, color: isExp ? "#8a7a50" : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
               </button>
               {isExp && <TransitTake t={t} />}
             </div>
@@ -1302,7 +1302,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
             }}>
               <span style={{ display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></span>
-              <span style={{ fontSize: 8, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+              <span aria-hidden="true" style={{ fontSize: 8, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
             </button>
             {transitsOpen && (
               <div style={{ padding: "0 14px 10px" }}>
@@ -1360,7 +1360,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           color: "var(--text-3)",
         }}>
           <span>Waves · what to ride today</span>
-          <span style={{ fontSize: 8, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+          <span aria-hidden="true" style={{ fontSize: 8, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
         </button>
 
         {wavesOpen && (

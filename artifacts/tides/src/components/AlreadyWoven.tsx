@@ -92,7 +92,7 @@ export default function AlreadyWoven({ testerId, days = 7, onNavigate }: {
                   textDecoration: w.completedAt ? "line-through" : "none",
                   opacity: w.completedAt ? 0.55 : 1,
                 }}>{w.title}</span>
-                {w.completedAt && <span style={{ fontSize: 10, color: "#4a8060", flexShrink: 0 }}>✓</span>}
+                {w.completedAt && <span aria-hidden="true" style={{ fontSize: 10, color: "#4a8060", flexShrink: 0 }}>✓</span>}
               </div>
             ))}
           </div>

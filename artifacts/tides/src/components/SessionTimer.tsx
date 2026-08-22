@@ -217,7 +217,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
           position: "absolute", top: "calc(100% + 6px)", right: 0,
           background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12,
           boxShadow: "0 6px 24px rgba(0,0,0,0.12)", padding: "16px 18px",
-          width: 240, zIndex: 500,
+          width: 240, zIndex: "var(--z-session)",
         }}>
           {/* Planetary hour context */}
           {planet && !timerQuiet && (
@@ -316,7 +316,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
 
           {phase === "done" && !logging && (
             <div style={{ textAlign: "center", padding: "8px 0" }}>
-              <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+              <div aria-hidden="true" style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 4 }}>Session complete</div>
               {note && <div style={{ fontSize: 11, color: "var(--color-muted)", fontStyle: "italic", marginBottom: 10 }}>"{note}"</div>}
               {/* The maker-schedule loop's last step: session ends → the

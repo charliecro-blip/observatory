@@ -287,7 +287,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
                     background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", textAlign: "left",
                     color: isOpen ? "var(--color-primary)" : "inherit",
                   }}>
-                    <span style={{ fontSize: 10, marginRight: 5, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>▸</span>
+                    <span aria-hidden="true" style={{ fontSize: 10, marginRight: 5, display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }}>▸</span>
                     {line}
                   </button>
                   {isOpen && (

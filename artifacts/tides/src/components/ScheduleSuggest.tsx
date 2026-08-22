@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { localToday } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
+import { useDialog } from "@/hooks/useDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
 import { useEntitlements } from "@/contexts/entitlements-context";
@@ -35,6 +36,9 @@ export function ScheduleSuggest({
   kind: "task" | "habit";
   onClose: (scheduled: boolean) => void;
 }) {
+  // onClose carries "did we schedule anything"; Escape and the scrim are
+  // both a plain dismissal, so both pass false.
+  const { ref, props } = useDialog(() => onClose(false), "Find a good time");
   const qc = useQueryClient();
   const { profile } = useTester();
   // Finding a task's best times ACROSS THE WEEK is orchestration — the paid
@@ -131,8 +135,8 @@ export function ScheduleSuggest({
   const ec = ELEMENT_COLOR[element] ?? "#8a8278";
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "20px 22px", maxWidth: 440, width: "100%" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: "var(--z-dialog-nested)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
+      <div ref={ref} {...props} onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "20px 22px", maxWidth: 440, width: "100%" }}>
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>Find a good time</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)", marginBottom: 8 }}>{title}</div>
 

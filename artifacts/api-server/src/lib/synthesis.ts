@@ -287,17 +287,6 @@ const HAND_EASY = new Map<string, PairScope>([
 ]);
 
 // Themes for transiting bodies the mundane collectors don't cover.
-// The outers' verbs. Their gift/shadow/work come from the lexicon, which is the
-// one record per planet — they were duplicated here and the copies had already
-// started to matter, since anything reading PLANET_ROADS got undefined.
-const OUTER_VERB: Record<string, string> = {
-  Uranus: "breaking the old pattern", Neptune: "dissolving and imagining", Pluto: "deep renovation",
-};
-const OUTER_THEME: Record<string, { verb: string; gift: string; shadow: string; work: string }> =
-  Object.fromEntries(Object.entries(OUTER_VERB).map(([k, verb]) => {
-    const r = LEXICON_PLANETS[k]?.roads;
-    return [k, { verb, gift: r?.gift ?? "", shadow: r?.shadow ?? "", work: r?.work ?? "" }];
-  }));
 // What a natal point MEANS when something lands on it.
 const NATAL_POINT_WORD: Record<string, string> = {
   Sun: "your sense of yourself", Moon: "your inner life", Mercury: "your thinking", Venus: "the way you relate",
@@ -386,9 +375,8 @@ function collectPersonal(m: Moment, natal: NatalForReading, limit = 4): Testimon
       const salience = transitSalienceBase(t.planet) * (0.4 + 0.6 * exact) * nat.strength
         * (PERSONAL_POINTS.has(target.name) ? 1.25 : 1);
       const theme = PLANET_THEME[t.planet] ?? null;
-      const outer = OUTER_THEME[t.planet];
-      const verb = theme?.verb ?? outer?.verb ?? "its work";
-      const roads = PLANET_ROADS[t.planet] ?? (outer ? { gift: outer.gift, shadow: outer.shadow, work: outer.work } : undefined);
+      const verb = theme?.verb ?? "its work";
+      const roads = PLANET_ROADS[t.planet];
       const isReturn = t.planet === target.name;
       const targetWord = NATAL_POINT_WORD[target.name] ?? `your ${target.name}`;
       out.push({
@@ -553,8 +541,9 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   //  1. PLANET_THEME is built from the lexicon entries that carry a `theme`,
   //     and Uranus, Neptune and Pluto carry none — so `if (!th) continue`
   //     silently dropped EVERY Moon-to-outer aspect that has ever occurred.
-  //     OUTER_THEME already existed for exactly this and collectPersonal
-  //     already falls back to it; this loop never did.
+  //     A fallback table existed for exactly this and collectPersonal already
+  //     used it; this loop never did. All ten planets carry a theme now, so
+  //     the fallback is gone rather than spread further.
   //  2. `.slice(0, 3)` ran on the array in whatever order the aspect scan
   //     emitted, so a partile conjunction lost its slot to looser aspects
   //     that merely came first. Sorted by orb now.
@@ -587,9 +576,8 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
   for (const a of moonAspects) {
     const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
     const nat = ASPECT_NATURE[a.aspect];
-    const outer = OUTER_THEME[other];
-    const th = PLANET_THEME[other] ?? (outer ? { verb: outer.verb, activities: [] as string[] } : null);
-    const roads = PLANET_ROADS[other] ?? (outer ? { gift: outer.gift, shadow: outer.shadow } : null);
+    const th = PLANET_THEME[other];
+    const roads = PLANET_ROADS[other];
     if (!th || !nat || !roads) continue;  // an aversion, or a body with no voice
     const exact = Math.max(0, 1 - a.orb / 8);
     // Combine aspect harmony with the partner's valence: a trine to a malefic is
@@ -662,14 +650,12 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
     // background; the surface has no room for it and the receipt can show it.
     if (a.orb > 3) continue;
     const nat = ASPECT_NATURE[a.aspect];
-    // THE SAME OUTER-PLANET GAP AS THE MOON LOOP. PLANET_THEME covers only the
-    // seven traditional planets, so `!th1 || !th2` silenced every tight aspect
-    // involving Uranus, Neptune or Pluto — 66 distinct ones across 2026, the
-    // Saturn–Neptune conjunction this collector's own comment was written for
-    // among them. OUTER_THEME supplies the verb; activities stay empty, since
-    // an outer planet has no list of things to go and do.
-    const th1 = PLANET_THEME[a.planet1] ?? (OUTER_THEME[a.planet1] ? { verb: OUTER_THEME[a.planet1].verb, activities: [] as string[] } : null);
-    const th2 = PLANET_THEME[a.planet2] ?? (OUTER_THEME[a.planet2] ? { verb: OUTER_THEME[a.planet2].verb, activities: [] as string[] } : null);
+    // PLANET_THEME covered only the seven classical planets until 2026-08-22,
+    // so `!th1 || !th2` silenced every tight aspect involving Uranus, Neptune
+    // or Pluto — 66 distinct ones across 2026, the Saturn–Neptune conjunction
+    // this collector's own comment was written for among them. All ten carry a
+    // theme now, so the guard means what it says again.
+    const th1 = PLANET_THEME[a.planet1], th2 = PLANET_THEME[a.planet2];
     if (!nat || !th1 || !th2) continue;
     const exact = Math.max(0, 1 - a.orb / 3);
     // Same harmony+valence blend the Moon aspects use, averaged over the pair.
@@ -700,8 +686,8 @@ function collectFrom(m: Moment, opts: ReadingOptions = {}): Testimony[] {
       polarity,
       facts: { kind: "aspect", planet: a.planet1, partner: a.planet2, aspect: a.aspect,
                orbDeg: a.orb, applying: a.applying, durationDays },
-      gift: PLANET_ROADS[a.planet1]?.gift ?? OUTER_THEME[a.planet1]?.gift,
-      shadow: PLANET_ROADS[a.planet2]?.shadow ?? OUTER_THEME[a.planet2]?.shadow,
+      gift: PLANET_ROADS[a.planet1]?.gift,
+      shadow: PLANET_ROADS[a.planet2]?.shadow,
       carriedBy: `${a.planet1} ${nat.ing} ${a.planet2}`,
       note: `${a.planet1} ${nat.word} ${a.planet2} (${a.orb.toFixed(1)}°${a.applying ? " applying" : " separating"}) — ${polarity > 0 ? "supports" : "complicates"} ${th2.verb}`,
     });

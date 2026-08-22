@@ -538,7 +538,7 @@ function ConnectCalendarPrompt({ testerId }: { testerId: string | null }) {
       borderLeft: "3px solid var(--color-primary)", borderRadius: 10,
       padding: "10px 14px", marginBottom: 14,
     }}>
-      <span style={{ fontSize: 15, flexShrink: 0 }}>▦</span>
+      <span aria-hidden="true" style={{ fontSize: 15, flexShrink: 0 }}>▦</span>
       <div style={{ flex: 1, minWidth: 220, fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
         Connect a calendar and Compass will plan <b>around what's already there</b> —
         otherwise it's placing work into a week it can't see.

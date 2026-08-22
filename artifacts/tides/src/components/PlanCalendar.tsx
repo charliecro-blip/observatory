@@ -98,7 +98,14 @@ export default function PlanCalendar({ items, dropped }: {
                         background: `${col}26`, borderLeft: `2px solid ${col}`, borderRadius: 4,
                         padding: "1px 4px", overflow: "hidden",
                       }}>
-                      <div style={{ fontSize: 8.5, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {/* The visible label is truncated to a few characters at
+                          this width, and the start time was readable only by
+                          hovering for the `title` — nothing a phone or a
+                          keyboard can do. Both are spelled out here instead. */}
+                      <span className="sr-only">
+                        {it.title} at {new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                      <div aria-hidden="true" style={{ fontSize: 8.5, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {it.title}
                       </div>
                     </div>

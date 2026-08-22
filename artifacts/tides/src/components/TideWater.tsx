@@ -8,6 +8,7 @@ import { isWithinFreeWindow, isAwakeDuring, sleepIntervals } from "@/lib/chronot
 import { railSunTimes } from "@/components/Rail";
 import { useTidesWeek } from "@/hooks/useTides";
 import type { WeekDay } from "@/lib/types";
+import { prefersReducedMotion } from "@/lib/reducedMotion";
 
 // The hero. If the app is called Tides, this picture carries the brand — it has
 // to read as WATER under a real SKY, and answer three questions at a glance:
@@ -210,7 +211,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
     setOptsState(o => { const n = { ...o, [k]: v }; localStorage.setItem("tw_options", JSON.stringify(n)); return n; });
   const lenses: { key: string; label: string }[] = arc.lenses ?? [{ key: "overall", label: "Overall" }];
   const dark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
-  const reduceMotion = useRef(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches).current;
+  const reduceMotion = useRef(prefersReducedMotion()).current;
 
   // Hover-to-inspect (#tide-chart): scrub the day and read what's driving the
   // water at that moment — the level, the character, and any aspect/ingress/void.
@@ -478,7 +479,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
           cursor: "pointer", padding: 0, marginBottom: 6, fontSize: 10, color: "var(--text-3)",
         }}>
-          <span style={{ fontSize: 8 }}>▸</span> Compare elements
+          <span aria-hidden="true" style={{ fontSize: 8 }}>▸</span> Compare elements
         </button>
       )}
 
@@ -527,8 +528,8 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
               const awake = isAwakeDuring(w, chronotype);
               return (
                 <span key={i} style={{ fontWeight: 500, color: awake ? "var(--color-foreground)" : "var(--text-3)" }}>
-                  {fits && awake && <span title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
-                  {!awake && <span title="You're usually asleep" style={{ marginRight: 2 }}>☾</span>}
+                  {fits && awake && <span aria-hidden="true" title="Fits your usual free time" style={{ color: "#4a8060", marginRight: 2 }}>✓</span>}
+                  {!awake && <span role="img" aria-label="You're usually asleep" title="You're usually asleep" style={{ marginRight: 2 }}>☾</span>}
                   {new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" })} {w.startClock}–{w.endClock}
                   {i < shown.length - 1 ? " ·" : ""}
                 </span>

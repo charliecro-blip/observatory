@@ -19,6 +19,8 @@ import { aiErrorMessage } from "@/lib/aiError";
 import AskDoors from "@/components/AskDoors";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import type { AskElectionContext } from "@/App";
+import { useDialog } from "@/hooks/useDialog";
+import { scrollBehavior } from "@/lib/reducedMotion";
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
@@ -43,6 +45,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
   now?: any;
   northStars?: any[] | null;
 }) {
+  const { ref, props } = useDialog(onClose, "Ask");
   const [history, setHistory] = useState<AdvisorMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -56,7 +59,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
   const pins: { content: string; ts: string }[] = JSON.parse(localStorage.getItem(pinsKey) ?? "[]");
 
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [history, streamBuffer]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: scrollBehavior() }); }, [history, streamBuffer]);
   // Opened from a "reflect with Compass" prompt elsewhere (e.g. a planet
   // check-in) — auto-ask it once so the conversation starts on that thread.
   const seededRef = useRef(false);
@@ -167,10 +170,10 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: "rgba(15,20,30,0.55)", zIndex: 1000,
+      position: "fixed", inset: 0, background: "rgba(15,20,30,0.55)", zIndex: "var(--z-sheet)",
       display: "flex", alignItems: "center", justifyContent: "center",
     }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{
+      <div ref={ref} {...props} style={{
         background: "var(--color-card-2)", borderRadius: 16, width: 520, maxWidth: "calc(100vw - 40px)",
         maxHeight: "80vh", display: "flex", flexDirection: "column",
         boxShadow: "0 12px 48px rgba(0,0,0,0.22)", border: "1px solid #ddd8d0",

@@ -80,7 +80,7 @@ export default function DayConditions({ now, cycle, habits, skyQuiet, showVoid =
         background: RISK.bg, border: `1px solid ${RISK.border}`, borderLeft: `3px solid ${RISK.rule}`,
         borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0,
       }}>
-        <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+        <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: RISK.fg }}>Rhythm-risk window · move gently</div>
           {factors.length > 0 && (

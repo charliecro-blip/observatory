@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 
 interface TooltipProps {
   content: React.ReactNode;
@@ -46,12 +46,20 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
     setPinned(true);
   }, [pinned, place]);
 
+  // The catcher below is a mouse gesture; this is the keyboard's way out.
+  useEffect(() => {
+    if (!pinned) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPinned(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pinned]);
+
   return (
     <>
       {/* A full-screen catcher behind the pinned tooltip — tapping anywhere
           else dismisses it, since there's no mouseleave to fall back on. */}
       {pinned && (
-        <div onClick={() => setPinned(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+        <div onClick={() => setPinned(false)} style={{ position: "fixed", inset: 0, zIndex: "var(--z-catcher)" }} />
       )}
       <div ref={triggerRef} onMouseEnter={show} onMouseLeave={hide} onClick={toggle} style={{ display: "inline-flex" }}>
         {children}
@@ -62,7 +70,7 @@ export function Tooltip({ content, children, width = 220, delay = 120 }: Tooltip
           top: pos.top,
           left: pos.left,
           transform: pos.below ? "translate(-50%, 0)" : "translate(-50%, -100%)",
-          zIndex: 9999,
+          zIndex: "var(--z-tooltip)",
           pointerEvents: "none",
         }}>
           {/* Arrow (top when showing above, bottom when showing below) */}

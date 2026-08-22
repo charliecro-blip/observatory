@@ -15,6 +15,7 @@
  */
 import React, { useState } from "react";
 import { logEvent } from "@/lib/analytics";
+import { useDialog } from "@/hooks/useDialog";
 
 interface Section {
   key: string;
@@ -125,20 +126,20 @@ export function Guide({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState<string | null>("loop");
 
   React.useEffect(() => { logEvent("guide_opened"); }, []);
+  const { ref, props } = useDialog(onClose, "How Compass works");
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="How Compass works"
       onClick={onClose}
       style={{
-        position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)",
+        position: "fixed", inset: 0, zIndex: "var(--z-dialog)", background: "rgba(0,0,0,0.45)",
         display: "flex", alignItems: "flex-start", justifyContent: "center",
         padding: "24px 16px", overflowY: "auto",
       }}
     >
       <div
+        ref={ref}
+        {...props}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--color-card)", border: "1px solid var(--color-border)",

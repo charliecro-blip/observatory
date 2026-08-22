@@ -11,6 +11,7 @@ import ChartWheel from "@/components/ChartWheel";
 import { ReferenceSection } from "@/components/ReferenceSection";
 import { ModulePulse, BigSky } from "@/components/SkyReadouts";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { scrollBehavior } from "@/lib/reducedMotion";
 
 // Star Base — the cosmic-navigation console. Move between the ten planets (the
 // drives you're made of) and the twelve houses (the arenas of your life), see
@@ -261,7 +262,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
             <div style={{ marginBottom: myHabits.length || myTasks.length ? 8 : 0 }}>
               {myStars.map((g: any) => (
                 <div key={g.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0" }}>
-                  <span style={{ fontSize: 11, color: col }}>✦</span>
+                  <span aria-hidden="true" style={{ fontSize: 11, color: col }}>✦</span>
                   <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>{g.title}</span>
                   <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
                 </div>
@@ -279,7 +280,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
           )}
           {myTasks.length > 0 && myTasks.map((t: any) => (
             <div key={t.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "1px 0" }}>
-              <span style={{ fontSize: 10, color: "var(--text-3)" }}>○</span>
+              <span aria-hidden="true" style={{ fontSize: 10, color: "var(--text-3)" }}>○</span>
               <span style={{ fontSize: 11.5, color: "var(--text-2)" }}>{t.title}</span>
             </div>
           ))}
@@ -610,7 +611,7 @@ export default function StarBase({ testerId, lat = 40.7, lon = -74.0, onReflect,
         <div style={{ marginTop: 28 }}>
           <ReferenceSection
             onStartStar={onStartStar}
-            onVisitPlanet={(p) => { setRefJump(p); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onVisitPlanet={(p) => { setRefJump(p); scrollRef.current?.scrollTo({ top: 0, behavior: scrollBehavior() }); }}
           />
         </div>
       </div>

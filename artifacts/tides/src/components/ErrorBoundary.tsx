@@ -29,7 +29,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
         background: "var(--color-background)", flexDirection: "column", gap: 12, padding: 40,
       }}>
-        <div style={{ fontSize: 28, opacity: 0.4 }}>◌</div>
+        <div aria-hidden="true" style={{ fontSize: 28, opacity: 0.4 }}>◌</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>Something went wrong</div>
         <div style={{ fontSize: 11, color: "var(--text-3)", maxWidth: 300, textAlign: "center" }}>
           {this.state.message || "An unexpected error occurred."}

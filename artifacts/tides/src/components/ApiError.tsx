@@ -6,7 +6,7 @@ export function ApiErrorBanner({ retry }: { retry?: () => void }) {
       background: "#fff8f0", border: "1px solid #f0d8b0", borderTop: "2px solid #e0a040",
       padding: "8px 20px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
     }}>
-      <span style={{ fontSize: 13 }}>⚠</span>
+      <span aria-hidden="true" style={{ fontSize: 13 }}>⚠</span>
       <div style={{ fontSize: 11, color: "#8a5020", flex: 1 }}>
         Can't reach Compass right now — this is usually a brief connection hiccup. Your data is safe; try again in a moment.
       </div>

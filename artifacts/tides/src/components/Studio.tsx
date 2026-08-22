@@ -1,6 +1,7 @@
 import { useTester } from "@/contexts/tester-context";
 import { useRhythmProposal } from "@/components/RhythmProposal";
 import React, { useRef, useState } from "react";
+import { useDialog } from "@/hooks/useDialog";
 import { localToday } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -454,6 +455,7 @@ export async function exportPng(svg: SVGSVGElement, w: number, h: number, filena
 
 // ── The Studio ───────────────────────────────────────────────────────────────
 export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon: number; onClose: () => void }) {
+  const { ref, props } = useDialog(onClose, "Studio");
   const svgRef = useRef<SVGSVGElement>(null);
   const [subject, setSubject] = useState<Subject>("day");
   const [format, setFormat] = useState<Format>("story");
@@ -515,10 +517,10 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
 
   return (
     <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{
-      position: "fixed", inset: 0, background: "rgba(15,20,30,0.6)", zIndex: 1100,
+      position: "fixed", inset: 0, background: "rgba(15,20,30,0.6)", zIndex: "var(--z-share)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
-      <div style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
+      <div ref={ref} {...props} style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
         <button onClick={onClose} aria-label="Close the studio" style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
 
         {/* Controls */}

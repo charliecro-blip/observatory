@@ -61,7 +61,7 @@ export function NotificationOptIn({ lat, lon }: { lat?: number; lon?: number }) 
       background: "var(--color-card)", border: "1px solid var(--color-border)",
       borderRadius: 12, padding: "12px 14px", marginBottom: 14,
     }}>
-      <div style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>☾</div>
+      <div aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>☾</div>
       <div style={{ flex: 1, minWidth: 180 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
           Keep the rhythm going?

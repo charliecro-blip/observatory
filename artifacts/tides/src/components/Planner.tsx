@@ -713,7 +713,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               background: "#a0502010", border: "1px solid #a0502033", borderLeft: "3px solid #a05020",
               borderRadius: 8, padding: "9px 12px", display: "flex", gap: 8, alignItems: "flex-start",
             }}>
-              <span style={{ flexShrink: 0 }}>⚠</span>
+              <span aria-hidden="true" style={{ flexShrink: 0 }}>⚠</span>
               <div style={{ flex: 1 }}>
                 <b>Compass couldn't check your calendar.</b> This plan was built as though
                 nothing else is booked, so it may sit on top of real commitments.

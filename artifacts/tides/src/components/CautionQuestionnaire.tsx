@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTester } from "@/contexts/tester-context";
+import { useDialog } from "@/hooks/useDialog";
 import { CAUTION_PLANETS, CAUTION_PLANET_ARCHETYPE, type CautionPlanet } from "@/lib/tester-profile";
 import { PLANET_GLYPH } from "@/lib/glyphs";
 
@@ -21,6 +22,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
   sensitivity?: { planet: string; score: number }[];
   onClose: () => void;
 }) {
+  const { ref, props } = useDialog(onClose, "Which of these tend to be hard for you?");
   const { profile, updateCautionPlanets } = useTester();
   const suggested = new Set((sensitivity ?? []).filter((s) => s.score >= 3).map((s) => s.planet));
   const [picked, setPicked] = useState<Set<CautionPlanet>>(
@@ -73,8 +75,8 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "26px 24px", maxWidth: 460, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: "var(--z-dialog)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div ref={ref} {...props} onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "26px 24px", maxWidth: 460, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ fontSize: 17, fontWeight: 700, color: "var(--color-primary)", marginBottom: 5 }}>Which of these tend to be hard for you?</div>
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 6 }}>
           Pick up to three. When the Sun or Moon touches one of these in your chart, you'll get a gentle heads-up for that short stretch — nothing more. Most people start with the three slow, powerful ones below.

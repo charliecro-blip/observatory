@@ -131,6 +131,35 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Text for assistive tech only. Used where a value is legible on screen as a
+   position or a shape but has no words — a calendar block whose start time was
+   readable only as a `title` tooltip, which touch and keyboards never see. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* THE OVERLAY LADDER.
+   Twenty-one distinct z-index values were spread across the app, each picked
+   by looking at whatever was nearby and going one higher. These are the
+   layers that actually exist, named, so the next overlay picks a rung instead
+   of a number. Three values were raised to land on a rung: the check-in sheet
+   (60) and the guide (200) both now sit at --z-dialog, and the new-event
+   modal (999) joins the advisor at --z-sheet. Nothing sat between them, and
+   the check-in at 60 had been under Settings' own field dropdown at 100. */
+:root {
+  --z-field:         100;  /* a dropdown pinned under its own field */
+  --z-dialog:        300;  /* a dialog and its scrim */
+  --z-dialog-nested: 320;  /* a dialog opened from inside another */
+  --z-session:       500;  /* the running-session timer */
+  --z-sheet:        1000;  /* full-bleed sheets: Ask, the new-event modal */
+  --z-share:        1100;  /* the export sheets: Studio, the sprint card */
+  --z-tour:         2000;  /* the walkthrough, above what it points at */
+  --z-catcher:      9998;  /* a pinned tooltip's tap-anywhere-else catcher */
+  --z-tooltip:      9999;  /* and the tooltip itself, always last */
+}
+
 body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); transition: background 0.2s, color 0.2s; }
 
 /* Keyboard focus, made visible.
@@ -155,3 +184,22 @@ body { background: var(--color-background); color: var(--color-foreground); font
   to   { opacity: 1; transform: none; }
 }
 .phrase-in { animation: phrase-in 0.18s ease-out; display: inline-block; }
+
+/* LESS MOVEMENT, WHEN THAT IS ASKED FOR.
+   Sixteen inline `transition` declarations sit in component style objects, and
+   a stylesheet cannot beat an inline declaration without !important — which is
+   exactly the case the keyword is for. Durations collapse rather than dropping
+   to `none`, so transitionend/animationend listeners still fire and nothing
+   waiting on them hangs.
+
+   This reaches every CSS transition and animation in the app, including the
+   skeleton shimmer and the phrase-cycle above. It cannot reach a smooth
+   scrollIntoView — see lib/reducedMotion.ts for those. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -808,7 +808,7 @@ function LocationSearchInput({
       top: rect.bottom + 4,
       left: rect.left,
       width: rect.width,
-      zIndex: 9999,
+      zIndex: "var(--z-tooltip)",
       background: "var(--color-card)",
       border: "1px solid var(--color-border)",
       borderRadius: 8,
@@ -1400,7 +1400,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
               </div>
             )}
             {locationResults.length > 0 && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, marginTop: 2, maxHeight: 180, overflowY: "auto" }}>
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: "var(--z-field)", marginTop: 2, maxHeight: 180, overflowY: "auto" }}>
                 {locationResults.map((r, i) => (
                   <button key={i} type="button" onClick={() => pickLocation(r)}
                     style={{ display: "block", width: "100%", padding: "8px 12px", textAlign: "left", border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-1)", borderBottom: "1px solid var(--color-border)" }}>

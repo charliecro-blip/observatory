@@ -170,7 +170,7 @@ export default function MomentsAhead({
           <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
           <span style={{ color: "var(--color-foreground)" }}>
             {m.lunar
-              ? <><span style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>
+              ? <><span role="img" aria-label="Moon" style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>
               : <>{m.planet} hour</>}
             {(() => {
               const note = m.lunar ? planetNote(m.lunar.other) : m.generic;

@@ -1,10 +1,12 @@
 import React from "react";
 import { PREMIUM_FEATURES, FREE_KEEPS } from "@/lib/premium";
+import { useDialog } from "@/hooks/useDialog";
 
 export function PremiumExploreModal({ onClose }: { onClose: () => void }) {
+  const { ref, props } = useDialog(onClose, "Across the week");
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "28px 26px", maxWidth: 420, width: "100%" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: "var(--z-dialog)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div ref={ref} {...props} onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "28px 26px", maxWidth: 420, width: "100%" }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)", marginBottom: 4 }}>Across the week</div>
         <div style={{ fontSize: 12, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 18 }}>
           Everyone gets Compass's answer for right now; these are the parts that reach across days.

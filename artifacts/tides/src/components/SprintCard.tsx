@@ -24,6 +24,7 @@ import { useRef, useState } from "react";
 import { SURFACE, SERIF, Chrome, exportPng } from "@/components/Studio";
 import type { GlyphTheme } from "@/lib/celestialGlyphs";
 import { useAstroDetail } from "@/contexts/preferences-context";
+import { useDialog } from "@/hooks/useDialog";
 
 export interface SprintCardSubject {
   title: string;
@@ -49,6 +50,7 @@ function wrapTitle(text: string, max: number): string[] {
 }
 
 export default function SprintCard({ sprint, onClose }: { sprint: SprintCardSubject; onClose: () => void }) {
+  const { ref, props } = useDialog(onClose, "Sprint card");
   const [theme, setTheme] = useState<GlyphTheme>("tide");
   const [format, setFormat] = useState<"story" | "post">("post");
   const [busy, setBusy] = useState(false);
@@ -95,10 +97,10 @@ export default function SprintCard({ sprint, onClose }: { sprint: SprintCardSubj
 
   return (
     <div onClick={(e) => e.target === e.currentTarget && onClose()} style={{
-      position: "fixed", inset: 0, background: "rgba(15,20,30,0.6)", zIndex: 1100,
+      position: "fixed", inset: 0, background: "rgba(15,20,30,0.6)", zIndex: "var(--z-share)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
-      <div style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
+      <div ref={ref} {...props} style={{ background: "var(--color-card)", borderRadius: 16, padding: 20, position: "relative", maxHeight: "94vh", overflowY: "auto", display: "flex", gap: 22 }}>
         <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 10, right: 14, background: "none", border: "none", fontSize: 20, color: "var(--text-3)", cursor: "pointer", zIndex: 1 }}>×</button>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 210, paddingTop: 6 }}>

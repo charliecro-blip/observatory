@@ -144,7 +144,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
                   {inside && !done && (
                     <span style={{ fontSize: 9.5, color: "var(--color-primary)", flexShrink: 0 }}>now</span>
                   )}
-                  {done && <span style={{ fontSize: 9.5, color: "#4a8060", flexShrink: 0 }}>✓</span>}
+                  {done && <span aria-hidden="true" style={{ fontSize: 9.5, color: "#4a8060", flexShrink: 0 }}>✓</span>}
                 </div>
               </div>
             );

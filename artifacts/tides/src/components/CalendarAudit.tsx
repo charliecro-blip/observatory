@@ -31,6 +31,7 @@
 import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { GCalEvent } from "@/hooks/useTides";
+import { useDialog } from "@/hooks/useDialog";
 
 type Reading =
   | { id: string; state: "assessed"; activityKey: string; suitability: "clear" | "qualified" | "defer";
@@ -62,6 +63,7 @@ export default function CalendarAudit({ testerId, events, onClose }: {
   events: GCalEvent[];
   onClose: () => void;
 }) {
+  const { ref, props } = useDialog(onClose, "Reading your week");
   const qc = useQueryClient();
   const [picking, setPicking] = useState<string | null>(null);
 
@@ -114,8 +116,8 @@ export default function CalendarAudit({ testerId, events, onClose }: {
   const quiet = readings.filter(r => r.state === "quiet" || r.state === "not-timeable");
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: "var(--z-dialog-nested)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div ref={ref} {...props} onClick={e => e.stopPropagation()} style={{
         background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16,
         padding: "20px 22px", maxWidth: 560, width: "100%", maxHeight: "82vh", overflowY: "auto",
       }}>

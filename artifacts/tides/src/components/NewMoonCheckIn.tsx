@@ -19,6 +19,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 import { localDateStr } from "@/lib/dates";
 import { checkInSaveKey, CHECKIN_CYCLE_KEY } from "@/lib/checkInState";
 import { useMomentum } from "@/components/Momentum";
+import { useDialog } from "@/hooks/useDialog";
 
 const ACCENT = ELEMENT_COLORS.fire; // Leo. Each cycle names its own accent.
 
@@ -247,6 +248,9 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
   });
   const [dismissals, setDismissals] = useState<number>(() => dismissCount(cycle.key));
   const [open, setOpen] = useState(false);
+  // This component stays mounted and holds its own open state, so the trap
+  // arms and disarms on `open` rather than on mount like the other dialogs.
+  const { ref, props } = useDialog(() => setOpen(false), C.name, open);
   // The ledger, fetched only while the sheet is open: it exists to answer the
   // promise the old cycle-review card made — "the wake will answer at the next
   // New Moon". That card retired to end the two-surfaces-one-ritual split
@@ -353,11 +357,11 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
 
   const overlay = open && (
     <div onClick={() => setOpen(false)} style={{
-      position: "fixed", inset: 0, zIndex: 60, background: "rgba(20,16,12,0.45)",
+      position: "fixed", inset: 0, zIndex: "var(--z-dialog)", background: "rgba(20,16,12,0.45)",
       display: "flex", alignItems: "flex-start", justifyContent: "center",
       padding: "6vh 16px 16px", overflowY: "auto",
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+      <div ref={ref} {...props} onClick={(e) => e.stopPropagation()} style={{
         width: "100%", maxWidth: 560, background: "var(--color-card)",
         border: "1px solid var(--color-border)", borderTop: `3px solid ${ACCENT}`,
         borderRadius: 14, padding: "22px 24px 20px",

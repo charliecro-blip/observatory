@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { TOUR_STEPS, TOUR_VERSION, saveTourRecord } from "@/lib/tour";
 import { logEvent } from "@/lib/analytics";
+import { prefersReducedMotion } from "@/lib/reducedMotion";
 
 /**
  * Coach marks over the real interface — dim the page, cut a spotlight around
@@ -37,7 +38,7 @@ export default function SpotlightTour({ testerId, onDone, onFinalCta }: {
   const [rect, setRect] = useState<Box | null>(null);
   const startedRef = useRef(false);
   const reduceMotion = typeof window !== "undefined"
-    && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    && prefersReducedMotion();
 
   const s = TOUR_STEPS[step];
   const isLast = step === TOUR_STEPS.length - 1;
@@ -164,7 +165,12 @@ export default function SpotlightTour({ testerId, onDone, onFinalCta }: {
       ? rect.top - pad - 6 - CARD_H
       : Math.max(12, (vh - CARD_H) / 2);
   const cardStyle: React.CSSProperties = narrow
-    ? { position: "fixed", left: 12, right: 12, bottom: 12, width: "auto" }
+    ? {
+        position: "fixed", left: 12, right: 12, width: "auto",
+        // Clear of the home indicator. index.html already sets
+        // viewport-fit=cover, so env() resolves to a real inset here.
+        bottom: "calc(12px + env(safe-area-inset-bottom))",
+      }
     : {
         position: "fixed",
         left: Math.max(12, Math.min(rect.left, vw - cardW - 12)),
@@ -180,7 +186,7 @@ export default function SpotlightTour({ testerId, onDone, onFinalCta }: {
   // getBoundingClientRect returns, on any browser, at any text scale.
   const appZoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
   return createPortal(
-    <div role="dialog" aria-label={`Walkthrough — ${s.title}`} style={{ position: "fixed", inset: 0, zIndex: 2000, zoom: 1 / appZoom }}>
+    <div role="dialog" aria-label={`Walkthrough — ${s.title}`} style={{ position: "fixed", inset: 0, zIndex: "var(--z-tour)", zoom: 1 / appZoom }}>
       {/* The dim: four plain panels around the hole. The obvious one-liner —
           a transparent div with a 9999px box-shadow — painted phantom bright
           strips on this GPU (huge shadow spreads tile unreliably), which cost
@@ -204,7 +210,7 @@ export default function SpotlightTour({ testerId, onDone, onFinalCta }: {
         );
       })()}
       <div style={{
-        ...cardStyle, zIndex: 2001,
+        ...cardStyle, zIndex: "calc(var(--z-tour) + 1)",
         background: "var(--color-card)", border: "1px solid var(--color-border)",
         borderRadius: 14, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
       }}>

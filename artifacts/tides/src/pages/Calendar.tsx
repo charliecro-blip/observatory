@@ -15,6 +15,7 @@ import { Studio } from "@/components/Studio";
 import CalendarAudit from "@/components/CalendarAudit";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { useDialog } from "@/hooks/useDialog";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
 function hasRealLocation(lat: number, lon: number): boolean {
@@ -212,6 +213,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
     endTime: minutesToTime(((startHour ?? 9) + 1) * 60),
     notes: "",
   });
+  const { ref, props } = useDialog(onClose, "New event");
   const save = useMutation({
     mutationFn: async () => {
       const start = new Date(`${dateStr}T${form.startTime}:00`);
@@ -232,11 +234,11 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
     onSuccess: () => { invalidateWindows(qc); onClose(); },
   });
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100,padding:"100px 16px 16px" }}
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex: "var(--z-sheet)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100,padding:"100px 16px 16px" }}
       onClick={e => e.target===e.currentTarget && onClose()}>
       {/* Was a fixed 380px, no maxWidth — Cancel/Save clipped off-screen on
           phones, and this is the only way to add an event (audit P0 #7). */}
-      <div style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,maxWidth:"100%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
+      <div ref={ref} {...props} style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,maxWidth:"100%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
         <div style={{ fontSize:14,fontWeight:600,color: "var(--color-primary)",marginBottom:14 }}>
           New event · {new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
         </div>
@@ -399,7 +401,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
         background:"#a0602018", color:"#a06020", cursor:"pointer",
         display:"flex", alignItems:"center", gap:4,
       }}>
-        <span style={{ fontSize:10 }}>⚠</span> Google signed us out · Reconnect
+        <span aria-hidden="true" style={{ fontSize:10 }}>⚠</span> Google signed us out · Reconnect
       </button>
     );
   }
@@ -519,6 +521,13 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
   // elsewhere) clears (beta pass §B5 — this explainer was hover-only).
   const [pinnedCross, setPinnedCross] = useState<{ x: number; y: number; text: string; color: string } | null>(null);
   const shownCross = pinnedCross ?? hoverCross;
+  // Escape unpins, so the pin is not a mouse-only trap.
+  useEffect(() => {
+    if (!pinnedCross) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPinnedCross(null); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pinnedCross]);
 
   const { data: hoursData } = usePlanetaryHours(dates, lat, lon);
 
@@ -840,12 +849,12 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
       {/* Tapping anywhere else dismisses a pinned crossing — there's no
           mouseleave on a touch screen to fall back on. */}
       {pinnedCross && (
-        <div onClick={()=>setPinnedCross(null)} style={{ position:"fixed", inset:0, zIndex:9998 }} />
+        <div onClick={()=>setPinnedCross(null)} style={{ position:"fixed", inset:0, zIndex: "var(--z-catcher)" }} />
       )}
       {shownCross && (
         <div style={{
           position:"fixed", left:Math.min(shownCross.x+14, window.innerWidth-236), top:shownCross.y+14,
-          zIndex:9999, width:220, pointerEvents:"none",
+          zIndex: "var(--z-tooltip)", width:220, pointerEvents:"none",
           background:"var(--color-card)", border:`1px solid ${shownCross.color}55`, borderLeft:`3px solid ${shownCross.color}`,
           borderRadius:8, padding:"8px 10px", fontSize:11, lineHeight:1.5, color:"var(--color-foreground)",
           boxShadow:"0 6px 20px rgba(0,0,0,0.18)",
@@ -1113,9 +1122,9 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                   const col = ASP_COL[a.aspect] ?? "#888888";
                   return (
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
-                      <span style={{ color:PLANET_COLORS.Moon }}>☽</span>
-                      <span style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
-                      <span style={{ color:PLANET_COLORS[other]??"var(--text-2)" }}>{PLANET_ICONS[other]??""}</span>
+                      <span role="img" aria-label="Moon" style={{ color:PLANET_COLORS.Moon }}>☽</span>
+                      <span role="img" aria-label={a.aspect} style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
+                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)" }}>{PLANET_ICONS[other]??""}</span>
                       <span style={{ flex:1,color:"var(--text-2)" }}>{other}</span>
                       <span style={{ fontSize:8.5,color:a.applying?col:"var(--text-3)" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
                     </div>
