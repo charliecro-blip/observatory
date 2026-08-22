@@ -301,8 +301,12 @@ export function scoreElection(date: Date, latDeg: number, lonDeg: number, catego
   });
 
   // 4. Moon separating from a hard aspect with nothing supportive following — soft
-  const lastAspect = getLastMoonAspect(jd);
-  const currentAspects = getMajorAspects(jd);
+  // Moon pairs only. This line read `getMajorAspects(jd)` and then discarded
+  // everything that was not the Moon's — paying for a 14-day station sweep
+  // across thirty-six other pairs, 336 times per election scan. Same output,
+  // measured identical across 120 moments spread over a year.
+  const currentAspects = getMajorAspects(jd, true);
+  const lastAspect = getLastMoonAspect(jd, currentAspects);
   const moonApplying = currentAspects
     .filter((a) => (a.planet1 === "Moon" || a.planet2 === "Moon") && a.applying && a.hoursToExact != null)
     .sort((a, b) => (a.hoursToExact ?? 999) - (b.hoursToExact ?? 999));

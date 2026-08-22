@@ -272,7 +272,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               <input
                 value={note} onChange={e => setNote(e.target.value)}
                 placeholder="Session label (optional)"
-                style={{ width: "100%", padding: "6px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, marginBottom: 10, outline: "none", background: "var(--color-card-2)" }}
+                style={{ width: "100%", padding: "6px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, marginBottom: 10, background: "var(--color-card-2)" }}
               />
               <button onClick={start} style={{
                 width: "100%", padding: "8px 0", borderRadius: 8, border: "none",

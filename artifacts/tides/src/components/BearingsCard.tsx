@@ -162,7 +162,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
         <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THIS YEAR</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           {artFor(fix.year.house)} {ord(fix.year.house)}-house year — <b>{fix.year.theme.split(" — ")[0]}</b>
-          <span style={{ color: "var(--color-muted)" }}> · {PLANET_GLYPH[fix.year.lord] ?? ""} {fix.year.lord} holds the year</span>
+          <span style={{ color: "var(--color-muted)" }}> · <span aria-hidden="true">{PLANET_GLYPH[fix.year.lord] ?? ""}</span> {fix.year.lord} holds the year</span>
           {nextHit && (
             <span style={{ color: "#8a6a30" }}> · next power day {fmtDate(nextHit.date)} ({nextHit.label})</span>
           )}
@@ -264,7 +264,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
               const isOpen = expanded && openChapter === key;
               const line = (
                 <>
-                  {PLANET_GLYPH[t.planet] ?? ""} {t.planet} through your {ord(t.house)}
+                  <span aria-hidden="true">{PLANET_GLYPH[t.planet] ?? ""}</span> {t.planet} through your {ord(t.house)}
                   {HOUSE_MEANINGS[t.house] && (
                     <span style={{ color: "var(--color-muted)" }}> — {HOUSE_MEANINGS[t.house].domains}</span>
                   )}
@@ -335,7 +335,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
                 r.line.includes(t.transitPlanet) && r.line.includes(t.natalPlanet)))
               .slice(0, 4).map((t: any, i: number) => (
               <div key={i}>
-                {PLANET_GLYPH[t.transitPlanet] ?? ""} {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
+                <span aria-hidden="true">{PLANET_GLYPH[t.transitPlanet] ?? ""}</span> {t.transitPlanet} {String(t.aspect).toLowerCase()} your {t.natalPlanet}
                 <span style={{ color: "var(--text-3)" }}>
                   {t.exact ? " · exact now" : ` · ${t.orb}° off`}
                   {t.natalHouse ? ` · ${ord(t.natalHouse)} house` : ""}
@@ -356,7 +356,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
           <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
             {(currents!.cautionWindows as any[]).slice(0, 3).map((w: any, i: number) => (
               <div key={i}>
-                {PLANET_GLYPH[w.transitPlanet] ?? ""} {w.transitPlanet} {String(w.aspect ?? "").toLowerCase()} your {w.natalPlanet}
+                <span aria-hidden="true">{PLANET_GLYPH[w.transitPlanet] ?? ""}</span> {w.transitPlanet} {String(w.aspect ?? "").toLowerCase()} your {w.natalPlanet}
                 <span style={{ color: "var(--text-3)" }}> · you flagged this one</span>
               </div>
             ))}

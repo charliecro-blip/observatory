@@ -472,7 +472,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             value={rawList} onChange={(e) => setRawList(e.target.value)}
             placeholder={"write the quarterly report — deep focus, ~2h, due Friday\nreply to the landlord\ngo for a 45 min run\nbrainstorm names for the launch\ncall mom"}
             rows={6}
-            style={{ width: "100%", padding: "11px 13px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", outline: "none", fontFamily: "inherit" }}
+            style={{ width: "100%", padding: "11px 13px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", fontFamily: "inherit" }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
             <button onClick={() => parse.mutate(undefined)} disabled={parse.isPending || !rawList.trim()} style={{
@@ -512,9 +512,9 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               <div key={i} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                   <input value={c.title} onChange={(e) => editCard(i, { title: e.target.value })}
-                    style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none", outline: "none" }} />
+                    style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none" }} />
                   {!skyQuiet && c.planets?.length > 0 && (
-                    <span style={{ fontSize: 10, color: "var(--text-3)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
+                    <span role="img" aria-label={c.planets.join(", ")} style={{ fontSize: 10, color: "var(--text-3)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
                   )}
                   <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
                 </div>
@@ -653,7 +653,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                 autoFocus value={moreText} onChange={(e) => setMoreText(e.target.value)}
                 placeholder={"anything else? one line each"}
                 rows={3}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", outline: "none", fontFamily: "inherit" }}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-border)", fontSize: 12.5, lineHeight: 1.6, background: "var(--color-card-2)", color: "var(--color-foreground)", resize: "vertical", fontFamily: "inherit" }}
               />
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 7 }}>
                 <button onClick={() => moreText.trim() && parse.mutate(moreText)} disabled={parse.isPending || !moreText.trim()} style={{
@@ -769,7 +769,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                         {fmtTime(item.startAt)}–{fmtTime(item.endAt)} · {item.estimatedMinutes}m
                         {!skyQuiet && <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>}
-                        {!skyQuiet && <span style={{ color: "var(--text-3)", marginLeft: 6 }}>{PLANET_GLYPH[item.planetaryHour] ?? ""} {item.planetaryHour} hour</span>}
+                        {!skyQuiet && <span style={{ color: "var(--text-3)", marginLeft: 6 }}><span aria-hidden="true">{PLANET_GLYPH[item.planetaryHour] ?? ""}</span> {item.planetaryHour} hour</span>}
                       </div>
                       {/* Timing tier — the grading language for the slot itself */}
                       {item.tierNote && (

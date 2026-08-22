@@ -22,7 +22,7 @@ planetary hour or day. Everything below is measured, not read.
 | 8 | `SkyReadouts.tsx` | "Resonant now" pushed the hour card first | **fixed** |
 | 9 | `habitTiming.ts` | Hour ruler +2 against a Moon aspect +1, and its reason shown first | **fixed** |
 | 10 | `ElectionPicker.tsx` | "Auspice reads its good and great times…" — third person on a control | **fixed** |
-| 11 | `election.ts` | A 14-day scan blocked the event loop for 66 seconds | **memoized** |
+| 11 | `election.ts` | A 14-day scan blocked the event loop for 42 seconds | **memoized + engine 42s → 8s** |
 
 ## 1. The election engine — the thing you complained about
 
@@ -202,8 +202,67 @@ minute. This repo has shipped a 90-second calendar request before, the same way.
 Memoized on (category, day, range, place): **cold 42s → warm 3ms**, and a
 different latitude correctly misses.
 
-**The memo is not the fix.** The first view still pays the full cost. The real
-fix is to stop scoring all 336 hours to show 30 windows — rank days coarsely,
-then score hours only inside the best few. That is a change to the scan
-strategy, it wants its own measurement, and it is the largest piece of work this
-audit turned up.
+**The memo is not the fix.** The first view still pays the full cost — see the
+next section.
+
+
+---
+
+# The scan itself, 2026-08-22
+
+The memo made the second view instant and left the first at 42 seconds. The
+engine is **8 seconds** now, and every step was verified to leave the answers
+untouched rather than assumed to.
+
+Profiling first, because the obvious suspect was wrong. Per scored moment:
+
+    getLastMoonAspect        39.4 ms
+    getMajorAspects          14.0 ms
+    voidOfCourse              0.3 ms
+    everything else          ~0
+
+**One call was buying thirty-six pairs to read nine.** `getMajorAspects` walks
+every non-Moon pair through a 6-hour, 14-day station sweep, to catch a planet
+stationing short of perfection. `scoreElection` reads only the Moon's aspects
+and discards the rest — and so, one level down, does `getLastMoonAspect`, whose
+own cost turned out to be almost entirely a full `getMajorAspects` call inside
+it. That is the same defect this repo already has a memory about, in two more
+places. A Moon-only path skips the sweep: **110ms → 5.2ms**, output identical
+across 120 moments spread over a year.
+
+**And the same value was computed twice per moment** — once in `scoreElection`,
+once inside `getLastMoonAspect`. Passed in now, not cached: the same object,
+handed over.
+
+**The refinement search was computing precision that rounding threw away.** A
+60-iteration ternary search narrows a 24-hour bracket to about 5×10⁻¹¹ hours,
+for a number then rounded to 0.01h. But the arithmetic answer — 21 iterations —
+was wrong in practice: at 26, twenty-seven of 400 sampled moments moved by one
+unit in that last decimal, 36 seconds, and these times print to the minute. 30
+is the first count byte-identical to 60 across 400 moments and 7,845 aspects;
+32 ships, with margin.
+
+## What was tried and reverted
+
+Anchoring `getLastMoonAspect`'s 48-hour lookback to whole hours, so its 294
+ephemeris samples would be shared between callers instead of falling on
+instants that never repeat. The memo worked perfectly — 98,784 hits, zero
+misses — and **saved nothing**, because the sampling was never the cost. Worse,
+the differential caught what the reasoning had missed: shifting the grid by up
+to half an hour flipped `moon_friction` on 12 windows out of 1080, changing
+nine verdicts. Reverted. A speedup that buys nothing and changes answers is
+strictly worse than no speedup.
+
+## The result
+
+    14-day scan   42s → 8.1s        7-day 4.1s    30-day 9.8s
+    served route  cold 8.0s, warm 3.8ms
+
+Verified **byte-identical** across 36 scans and 1,080 windows — four
+categories, three latitudes including the southern hemisphere, three seasons —
+comparing verdict, every rule's pass/fail, the hour, the match flag and the
+Moon line. `tests/election-scan-cost.test.ts` pins each step.
+
+8 seconds is survivable rather than good, which is why the memo stays. Going
+below it means not scoring 336 hours to show 30 windows, and that is a change
+to what the scan *means* rather than to how fast it computes the same thing.

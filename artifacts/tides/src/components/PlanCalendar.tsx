@@ -107,7 +107,7 @@ export default function PlanCalendar({ items, dropped }: {
               </div>
               {/* The day's load, stated — the picture shows crowding, this
                   says how much. */}
-              <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3, textAlign: "center" }}>
+              <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
                 {load >= 60 ? `${Math.round(load / 60 * 10) / 10}h` : `${load}m`}
               </div>
             </div>

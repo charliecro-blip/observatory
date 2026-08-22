@@ -449,11 +449,11 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               <input value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} placeholder="🌿" maxLength={2}
                 title="Pick any emoji for this habit — tap and type or paste one"
                 aria-label="Habit icon"
-                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",outline:"none",cursor:"text"}}/>
+                style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",cursor:"text"}}/>
               <input autoFocus value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
                 onKeyDown={e=>e.key==="Enter"&&form.name.trim()&&addHabit.mutate()}
                 placeholder="Habit name…"
-                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)",outline:"none"}}/>
+                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)"}}/>
             </div>
 
             {/* Cadence leads the form — the rhythm a practice wants is more
@@ -648,7 +648,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <input value={form.minimumViable} onChange={e=>setForm(f=>({...f,minimumViable:e.target.value}))}
                 placeholder="Minimum viable (e.g. 5 min walk)…"
-                style={{flex:1,padding:"6px 9px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",outline:"none",color:"var(--text-2)"}}/>
+                style={{flex:1,padding:"6px 9px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"var(--text-2)"}}/>
               <button onClick={()=>form.name.trim()&&addHabit.mutate()} disabled={!form.name.trim()}
                 style={{padding:"6px 16px",borderRadius:7,border:"none",fontSize:11,background:form.name.trim()?"#1a2a3a":"var(--color-border)",color:form.name.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
                 Add
@@ -745,7 +745,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   </div>
                 )}
                 {asArr(h.favoredPlanets).length > 0 && (
-                  <span style={{display:"flex",gap:3,flexShrink:0,fontSize:12}} title={`Supports: ${asArr(h.favoredPlanets).join(", ")}`}>
+                  <span role="img" aria-label={`Supports: ${asArr(h.favoredPlanets).join(", ")}`} style={{display:"flex",gap:3,flexShrink:0,fontSize:12}} title={`Supports: ${asArr(h.favoredPlanets).join(", ")}`}>
                     {asArr(h.favoredPlanets).map(p => <Glyph key={p} name={p} size={12} bg="var(--color-card)" />)}
                   </span>
                 )}

@@ -106,7 +106,7 @@ export default function AngleCrossing({ crossings, enabled = true }: {
             background: `${col}14`, border: `1px solid ${col}55`, borderLeft: `3px solid ${col}`,
             borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
           }}>
-            <span className="phrase-in" style={{ fontSize: 16, flexShrink: 0 }}>{PLANET_GLYPH[c.planet] ?? "⚡"}</span>
+            <span className="phrase-in" style={{ fontSize: 16, flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[c.planet] ?? "⚡"}</span></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: col }}>
                 {c.planet} crosses {c.angle} · active now

@@ -133,6 +133,22 @@
 * { box-sizing: border-box; }
 body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); transition: background 0.2s, color 0.2s; }
 
+/* Keyboard focus, made visible.
+   Thirty-nine controls carried an inline `outline: "none"` and nothing ever
+   replaced it, so tabbing through the app moved an invisible cursor. Those
+   declarations are gone; this is what stands in their place. `:focus-visible`
+   rather than `:focus`, so a mouse click on a button stays quiet while a text
+   field — which does take keyboard input — still shows where you are.
+
+   Brass rather than the foreground color: at `--color-primary` the ring was
+   the same near-black as the text around it and read as a border, not as a
+   signal. Brass is defined in both themes, so it follows the theme. */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 /* Phrase-cycle transitions (Resonant Now, CycleLine) — a breath, not a show */
 @keyframes phrase-in {
   from { opacity: 0; transform: translateY(3px); }

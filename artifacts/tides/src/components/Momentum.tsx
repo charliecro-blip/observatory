@@ -169,7 +169,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
         <input value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === "Enter" && text.trim() && nameWin.mutate()}
           placeholder="Name a win in your own words…"
-          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)" }} />
         {data.stars.length > 0 && (
           <select value={starId} onChange={e => setStarId(e.target.value ? Number(e.target.value) : "")}
             style={{ padding: "6px 6px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 10, color: "var(--color-muted)", background: "var(--color-card)", maxWidth: 110 }}>
@@ -186,7 +186,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
         <input value={kept} onChange={e => setKept(e.target.value)}
           onKeyDown={e => e.key === "Enter" && kept.trim() && nameKept.mutate()}
           placeholder="What restored you, or what you let be…"
-          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)", outline: "none" }} />
+          style={{ flex: 1, minWidth: 140, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card)" }} />
         <button onClick={() => kept.trim() && nameKept.mutate()} disabled={!kept.trim() || nameKept.isPending}
           style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: kept.trim() ? "#4a6080" : "var(--color-border)", color: kept.trim() ? "#ffffff" : "var(--text-3)", fontSize: 10.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
           ☾ kept

@@ -105,7 +105,11 @@ These override the upstream rules above for this repo.
   under 200ms for feedback, respect `prefers-reduced-motion`.
 - **`motion/react`.** The repo is on `framer-motion` and stays there. Do not
   propose the package rename as a finding.
-- **Base UI.** The repo is on Radix. Do not propose migrating primitives.
+- **Primitives.** `@radix-ui/*` is in package.json but has zero imports in
+  `src` — leftover shadcn scaffolding, not a system in use. Every control is
+  hand-rolled from `<button>`/`<div>` with inline styles. Do not describe the
+  repo as "on Radix", and treat adopting a primitive library as a real
+  decision with a cost, not a free win.
 - **Copy.** Any user-facing string this skill touches still goes through the
   `no-ai-slop` skill before it ships (CLAUDE.md).
 

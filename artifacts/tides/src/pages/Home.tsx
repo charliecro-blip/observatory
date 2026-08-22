@@ -891,8 +891,7 @@ export default function Home({
               }}
               placeholder="Add a task. Say when, and it's read as a due date."
               style={{
-                width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
-                border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, border: "1px solid var(--color-border)", background: "var(--color-card-2)",
                 color: "var(--color-foreground)",
               }}
             />
@@ -919,8 +918,7 @@ export default function Home({
                   }}
                   placeholder="What did you do? It goes in today's log."
                   style={{
-                    width: "100%", padding: "7px 11px", borderRadius: 8, fontSize: 12, outline: "none",
-                    border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                    width: "100%", padding: "7px 11px", borderRadius: 8, fontSize: 12, border: "1px solid var(--color-border)", background: "var(--color-card-2)",
                     color: "var(--color-foreground)",
                   }}
                 />

@@ -101,7 +101,7 @@ const BOX: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8,
   border: "1px solid var(--color-border)", background: "var(--color-card-2)",
   fontSize: 13, lineHeight: 1.6, color: "var(--color-foreground)",
-  outline: "none", resize: "vertical", fontFamily: "inherit",
+  resize: "vertical", fontFamily: "inherit",
 };
 
 const CARD: React.CSSProperties = {

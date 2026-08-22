@@ -21,8 +21,8 @@ import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 // Rail planet glyph — the design-system glyph (Noto symbol face, optically
 // thinned), inheriting the surrounding span's color (tint=false) so the rail's
 // per-planet colouring is preserved. bg defaults to the rail surface.
-const PG = ({ p, size = 12, bg = "var(--color-rail)" }: { p: string; size?: number; bg?: string }) =>
-  <Glyph name={p} size={size} tint={false} bg={bg} />;
+const PG = ({ p, size = 12, bg = "var(--color-rail)", label }: { p: string; size?: number; bg?: string; label?: string }) =>
+  <Glyph name={p} size={size} tint={false} bg={bg} label={label} />;
 
 // A small, accurate moon-phase disc. The old rail moon was a fixed radial
 // gradient that always looked ~full regardless of the real phase. This renders
@@ -363,7 +363,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         </button>
         {dayRuler && (
           <button onClick={() => setOpen(o => o === "day" ? null : "day")} style={chipStyle("day", planetColor(dayRuler))}>
-            <span style={{ color: planetColor(dayRuler) }}><PG p={dayRuler} /></span>
+            <span style={{ color: planetColor(dayRuler) }}><PG p={dayRuler} label={dayRuler} /></span>
             <span style={{ color: "var(--text-2)" }}>day</span>
           </button>
         )}
@@ -374,7 +374,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
           </button>
         )}
         <button onClick={() => setOpen(o => o === "hour" ? null : "hour")} style={chipStyle("hour", planetColor(planetaryHour.planet))}>
-          <span style={{ color: planetColor(planetaryHour.planet) }}><PG p={planetaryHour.planet} /></span>
+          <span style={{ color: planetColor(planetaryHour.planet) }}><PG p={planetaryHour.planet} label={planetaryHour.planet} /></span>
           <span style={{ color: "var(--text-2)" }}>hr</span>
         </button>
       </div>
@@ -898,8 +898,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div key={i} style={{ borderBottom: i < now.moonAspects!.length-1 ? "1px solid var(--color-border)" : "none" }}>
                 <button onClick={() => toggleAspect(i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", width:"100%", background:"none", border:"none", cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
-                    <span style={{ fontSize:11, color:PLANET_COLORS.Moon }}>☽</span>
-                    <span style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
+                    <span role="img" aria-label="Moon" style={{ fontSize:11, color:PLANET_COLORS.Moon }}>☽</span>
+                    <span role="img" aria-label={a.aspect} style={{ color:col, fontWeight:700, fontSize:12 }}>{sym}</span>
                     <span style={{ color:pCol, fontWeight:600 }}><PG p={other} /></span>
                     <span style={{ color:"var(--text-2)", fontSize:10 }}>{other}</span>
                   </div>
@@ -917,9 +917,9 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                               const exactAt = new Date(now_.getTime() + hrsToExact * 3600 * 1000);
                               const hh = exactAt.getHours().toString().padStart(2,"0");
                               const mm = exactAt.getMinutes().toString().padStart(2,"0");
-                              return <span style={{ color:col, fontWeight:500 }}>→ {hh}:{mm}</span>;
+                              return <span style={{ color:col, fontWeight:500, fontVariantNumeric:"tabular-nums" }}>→ {hh}:{mm}</span>;
                             })()
-                          : <span style={{ color:"var(--text-3)" }}>{a.orb.toFixed(1)}° past</span>
+                          : <span style={{ color:"var(--text-3)", fontVariantNumeric:"tabular-nums" }}>{a.orb.toFixed(1)}° past</span>
                       }
                     </div>
                     <span style={{ fontSize:8, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
@@ -970,10 +970,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div style={{ marginTop:6, display:"flex", flexDirection:"column", gap:3 }}>
                 {top.map((a, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10.5 }}>
-                    <span style={{ color:planetColor(a.planet1), fontWeight:600 }}><PG p={a.planet1} /></span>
-                    <span style={{ color:"var(--text-2)", fontWeight:700 }}>{aspSym[a.aspect] ?? a.aspect}</span>
-                    <span style={{ color:planetColor(a.planet2), fontWeight:600 }}><PG p={a.planet2} /></span>
-                    <span style={{ color:"var(--text-3)", fontSize:9, marginLeft:2 }}>{a.orb.toFixed(1)}°</span>
+                    <span style={{ color:planetColor(a.planet1), fontWeight:600 }}><PG p={a.planet1} label={a.planet1} /></span>
+                    <span role="img" aria-label={a.aspect} style={{ color:"var(--text-2)", fontWeight:700 }}>{aspSym[a.aspect] ?? a.aspect}</span>
+                    <span style={{ color:planetColor(a.planet2), fontWeight:600 }}><PG p={a.planet2} label={a.planet2} /></span>
+                    <span style={{ color:"var(--text-3)", fontSize:9, marginLeft:2, fontVariantNumeric:"tabular-nums" }}>{a.orb.toFixed(1)}°</span>
                   </div>
                 ))}
               </div>
@@ -996,10 +996,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     <div key={i} style={{ borderBottom: i < nonMoon.length-1 ? "1px solid var(--color-border)" : "none" }}>
                       <button onClick={() => toggleNonMoon(i)} style={{ display:"flex", alignItems:"center", gap:4, width:"100%", background:"none", border:"none", cursor:"pointer", padding:"5px 0" }}>
                         <span style={{ color:p1c, fontWeight:700, fontSize:12 }}><PG p={a.planet1} /></span>
-                        <span style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
+                        <span role="img" aria-label={a.aspect} style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
                         <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
                         <span style={{ flex:1, fontSize:9, color:"var(--color-muted)", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400 }} title={
+                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400, fontVariantNumeric:"tabular-nums" }} title={
                           a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
                           : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
                           : undefined
@@ -1221,7 +1221,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     <span style={{ flex: 1, fontSize: 10, color: isWatched ? "var(--color-foreground)" : "var(--color-muted)", fontWeight: isWatched ? 600 : 400, textAlign: "left" }}>
                       {h.planet}
                     </span>
-                    <span style={{ fontSize: 9, color: isWatched ? hCol : "var(--text-3)", fontWeight: isWatched ? 600 : 400 }}>{h.time}</span>
+                    <span style={{ fontSize: 9, color: isWatched ? hCol : "var(--text-3)", fontWeight: isWatched ? 600 : 400, fontVariantNumeric: "tabular-nums" }}>{h.time}</span>
                     <span style={{ fontSize: 7, color: "var(--text-3)" }}>{isExpanded ? "▲" : "▾"}</span>
                   </button>
                   {isExpanded && (
@@ -1428,7 +1428,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                     if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); }
                   }}
                   placeholder="Add task…"
-                  style={{ flex: 1, padding: "4px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10.5, outline: "none", background: "var(--color-card-2)" }}
+                  style={{ flex: 1, padding: "4px 7px", borderRadius: 5, border: "1px solid var(--color-border)", fontSize: 10.5, background: "var(--color-card-2)" }}
                 />
                 {addTask.isError && <span style={{ fontSize: 9, color: "#a03030", alignSelf: "center" }}>failed</span>}
               </div>

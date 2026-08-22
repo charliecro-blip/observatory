@@ -10,22 +10,20 @@ import { ELECTION_CATEGORIES, scanElection } from "../lib/inceptionElection.js";
 const router: IRouter = Router();
 
 /**
- * MEMOIZED, because the engine is synchronous and this scan is the slowest
- * request the app makes. A 14-day scan — the default the Launch page asks for —
- * scores every planetary hour in the range: 336 calls to scoreElection, each
- * doing its own getMajorAspects (26ms) and getLastMoonAspect (16ms). Measured
- * end to end at 66 SECONDS of blocked event loop, so one person opening Launch
- * stalls every other request on the server for over a minute. This repo has
- * shipped a 90-second calendar request before, the same way.
+ * MEMOIZED, because the engine is synchronous and this is the slowest request
+ * the app makes. A 14-day scan — the Launch page's default — scores every
+ * planetary hour in the range, 336 calls to scoreElection.
+ *
+ * It measured 42 seconds of blocked event loop, so one person opening Launch
+ * stalled every other request for most of a minute; this repo has shipped a
+ * 90-second calendar request before, the same way. The engine itself is ~8s now
+ * (see tests/election-scan-cost.test.ts for what changed and why each step
+ * leaves the answers untouched), which is survivable rather than good, so the
+ * memo stays.
  *
  * The key carries everything the answer depends on — category, range, place and
  * the day — so it cannot serve yesterday's scan or another latitude's hours.
  * Bounded, because an unbounded memo on a per-location key is a slow leak.
- *
- * This makes the SECOND view instant; the first still pays the full cost. The
- * real fix is to stop scoring all 336 hours to show 30 windows — rank the days
- * coarsely first, then score hours only inside the best few — which is a change
- * to the scan strategy rather than a cache, and wants its own measurement.
  */
 const SCAN_MEMO = new Map<string, ReturnType<typeof scanElection>>();
 const SCAN_MEMO_MAX = 64;

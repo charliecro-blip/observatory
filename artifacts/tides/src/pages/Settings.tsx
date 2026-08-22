@@ -321,7 +321,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address for the bulletin"
-          style={{ flex: 1, minWidth: 190, padding: "7px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, outline: "none", background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
+          style={{ flex: 1, minWidth: 190, padding: "7px 11px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", color: "var(--color-foreground)" }} />
         <select value={sendHour} onChange={e => setSendHour(parseInt(e.target.value, 10))} aria-label="Hour to send the bulletin" style={{ padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 11.5, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>
           {[5, 6, 7, 8, 9, 10].map(h => <option key={h} value={h}>{h} AM</option>)}
         </select>
@@ -854,7 +854,7 @@ function LocationSearchInput({
         <input ref={inputRef} id={id} value={value} onChange={e => handleChange(e.target.value)}
           placeholder={placeholder ?? "Search city…"}
           onFocus={() => { if (results.length > 0) { updateDropPos(); setOpen(true); } }}
-          style={{ width: "100%", padding: "7px 28px 7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" }}
+          style={{ width: "100%", padding: "7px 28px 7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", boxSizing: "border-box" }}
         />
         {loading && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--text-3)" }}>…</span>}
       </div>
@@ -908,7 +908,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function SettingsInput({ value, onChange, ...rest }: { value: string; onChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange">) {
   return (
     <input value={value} onChange={e => onChange(e.target.value)} {...rest}
-      style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", outline: "none", ...(rest.style ?? {}) }} />
+      style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 13, background: "var(--color-card-2)", ...(rest.style ?? {}) }} />
   );
 }
 
@@ -1148,7 +1148,7 @@ function ChronotypeSection() {
     setTimeout(() => setSaved(false), 3000);
   }
 
-  const inputStyle: React.CSSProperties = { flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", boxSizing: "border-box" };
 
   return (
     <SectionCard title="Your rhythm" sub="When you're usually free and how you naturally run — used to suggest timing that fits your life, not just the sky.">
@@ -1348,7 +1348,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
   }
 
   const hasChart = !!chart;
-  const inputStyle: React.CSSProperties = { width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 12, background: "var(--color-card-2)", boxSizing: "border-box" };
 
   return (
     <SectionCard title="Birth chart" sub="Used for personal transits — which planetary cycles are active in your chart right now.">

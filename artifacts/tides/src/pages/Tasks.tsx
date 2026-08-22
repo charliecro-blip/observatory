@@ -290,7 +290,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
               <input autoFocus value={reflectText} onChange={e=>setReflectText(e.target.value)}
                 onKeyDown={e=>{ if(e.key==="Enter"&&reflectText.trim()) saveReflection.mutate(reflectText.trim()); if(e.key==="Escape"){setReflectOn(null);setReflectText("");} }}
                 placeholder="how it went, what you noticed…"
-                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,outline:"none",background:"var(--color-card)"}} />
+                style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid #c8d8b8",fontSize:12.5,background:"var(--color-card)"}} />
               <button onClick={()=>reflectText.trim()&&saveReflection.mutate(reflectText.trim())} disabled={!reflectText.trim()||saveReflection.isPending}
                 style={{padding:"7px 14px",borderRadius:7,border:"none",fontSize:11.5,fontWeight:600,cursor:reflectText.trim()?"pointer":"default",background:reflectText.trim()?"#5a7040":"#dde5d3",color:reflectText.trim()?"#ffffff":"var(--text-3)"}}>Log it</button>
               <button onClick={()=>{setReflectOn(null);setReflectText("");}} style={{padding:"7px 8px",background:"none",border:"none",color:"var(--color-muted)",cursor:"pointer",fontSize:11}}>skip</button>
@@ -304,14 +304,14 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             {newDueDate === today && activeCautionMatches.length > 0 && (
               <div style={{fontSize:10.5,color:"#a04040",background:"#a0404008",border:"1px solid #a0404030",borderRadius:7,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>
                 Heads up — {activeCautionMatches.map((t:any,i:number) => (
-                  <span key={i}>{i>0 && ", "}{PLANET_GLYPH[t.triggerPlanet]} {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
+                  <span key={i}>{i>0 && ", "}<span aria-hidden="true">{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
                 ))} is active today — one of your advisories.
               </div>
             )}
             <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)}
               onKeyDown={e => e.key==="Enter" && newTitle.trim() && addTask.mutate()}
               placeholder="Task title…"
-              style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,marginBottom:8,outline:"none",background: "var(--color-card-2)"}}
+              style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,marginBottom:8,background: "var(--color-card-2)"}}
             />
             <div style={{display:"flex",gap:8,marginBottom:6}}>
               <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}

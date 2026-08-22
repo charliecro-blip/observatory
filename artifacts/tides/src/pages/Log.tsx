@@ -125,8 +125,7 @@ function DayWinComposer({ testerId, date }: { testerId: string | null; date: str
           onKeyDown={(e) => { if (e.key === "Enter") save(); }}
           placeholder="Something you did that day, planned or not."
           style={{
-            flex: 1, padding: "7px 11px", borderRadius: 8, fontSize: 12.5, outline: "none",
-            border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+            flex: 1, padding: "7px 11px", borderRadius: 8, fontSize: 12.5, border: "1px solid var(--color-border)", background: "var(--color-card-2)",
             color: "var(--color-foreground)",
           }}
         />
@@ -279,8 +278,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
             width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
             borderRadius: 6, border: "1px solid var(--color-border)",
             background: "var(--color-card-2)", color: "var(--color-foreground)",
-            fontSize: 11, outline: "none",
-          }}
+            fontSize: 11, }}
         />
         {/* Readback-by-flavor — "show me my saturnine days" */}
         <select
@@ -290,13 +288,13 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
             width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
             borderRadius: 6, border: flavor ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
             background: "var(--color-card-2)", color: flavor ? "var(--color-primary)" : "var(--color-foreground)",
-            fontSize: 11, outline: "none", fontWeight: flavor ? 600 : 400,
+            fontSize: 11, fontWeight: flavor ? 600 : 400,
           }}
         >
           <option value="">All days</option>
           {FLAVOR_PLANETS.map((p) => (
             <option key={p} value={p}>
-              {PLANET_GLYPH[p]} {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} days · Moon × {p}
+              <span aria-hidden="true">{PLANET_GLYPH[p]}</span> {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} days · Moon × {p}
             </option>
           ))}
         </select>

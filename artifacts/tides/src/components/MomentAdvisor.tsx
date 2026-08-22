@@ -325,7 +325,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               rows={2}
               style={{
                 flex: 1, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--color-border)",
-                fontSize: 13, outline: "none", background: "var(--color-card)", resize: "none",
+                fontSize: 13, background: "var(--color-card)", resize: "none",
                 fontFamily: "inherit", lineHeight: 1.4, color: "var(--color-primary)",
               }}
             />

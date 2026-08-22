@@ -121,7 +121,7 @@ export default function LogDone({ testerId, defaultTitle = "", defaultMinutes, o
         value={title}
         onChange={e => setTitle(e.target.value)}
         placeholder="What were you working on?"
-        style={{ width: "100%", padding: "6px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, marginBottom: 6, outline: "none", background: "var(--color-card-2)", color: "var(--color-foreground)" }}
+        style={{ width: "100%", padding: "6px 10px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, marginBottom: 6, background: "var(--color-card-2)", color: "var(--color-foreground)" }}
       />
       <select value={link} onChange={e => setLink(e.target.value)}
         style={{ width: "100%", padding: "6px 8px", borderRadius: 7, border: "1px solid var(--color-border)", fontSize: 11, marginBottom: 6, background: "var(--color-card-2)", color: "var(--color-foreground)" }}>

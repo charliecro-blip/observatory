@@ -361,8 +361,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               onKeyDown={e => { if (e.key === "Enter" && title.trim()) startSprint.mutate(); if (e.key === "Escape") setSheet(null); }}
               placeholder="The push — morning pages, no sugar, ten cold calls…"
               style={{
-                width: "100%", padding: "7px 11px", borderRadius: 8, fontSize: 12, outline: "none",
-                border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-foreground)",
+                width: "100%", padding: "7px 11px", borderRadius: 8, fontSize: 12, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-foreground)",
               }}
             />
             {/* When the window has its own ideas (Astrolyrica's pair table,

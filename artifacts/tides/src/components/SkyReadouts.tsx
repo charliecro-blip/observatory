@@ -159,7 +159,20 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
     });
   }
 
-  if (suggestions.length === 0) return null;
+  // A blank module and a module that never loaded looked identical, so an
+  // absent Moon sign read as a page still thinking. Name the missing voices.
+  if (suggestions.length === 0) {
+    return (
+      <div style={{ margin: "12px 0" }}>
+        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
+          Resonant now
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--text-3)", lineHeight: 1.55 }}>
+          The Moon's sign and the planetary hour didn't come through, so there's nothing here to draw from.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ margin: "12px 0" }}>
@@ -221,7 +234,10 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
     <div style={{ border: `1px solid ${accent}30`, borderLeft: `3px solid ${accent}`, borderRadius: 12, background: "var(--color-card)", overflow: "hidden" }}>
       <button onClick={() => setOpen(v => !v)} style={{ width: "100%", textAlign: "left", padding: "12px 14px", border: "none", background: "none", cursor: "pointer" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 15, letterSpacing: 1 }}>
+          {/* The pair drawn in symbols, then written out in words on the next
+              line. Decorative, so it is hidden rather than announced as three
+              raw codepoints ahead of the sentence saying the same thing. */}
+          <span aria-hidden="true" style={{ fontSize: 15, letterSpacing: 1 }}>
             {BIGSKY_PLANET_GLYPH[a.planet]}<span style={{ color: accent, fontWeight: 700 }}>{geo.symbol}</span>{BIGSKY_PLANET_GLYPH[b.planet]}
           </span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-primary)" }}>
@@ -264,7 +280,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
               const pc = PLANET_CORE[p.planet];
               return (
                 <div key={p.planet} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-                  <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}>{BIGSKY_PLANET_GLYPH[p.planet]} {p.planet} in {p.sign}</span>
+                  <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}><span aria-hidden="true">{BIGSKY_PLANET_GLYPH[p.planet]}</span> {p.planet} in {p.sign}</span>
                   {pc ? ` — ${pc.is}.` : ""}
                   <span style={{ color: "var(--text-3)" }}> In {p.sign}: {SIGN_INFLECTION[p.sign] ?? ""}.</span>
                 </div>
@@ -296,7 +312,19 @@ export function BigSky({ now }: { now: any }) {
     .filter(({ score }, i) => i === 0 || score >= 12)
     .map(({ a }) => a);
 
-  if (headliners.length === 0) return null;
+  // A quiet sky is an answer, not an absence. When every planet outside the
+  // Moon is more than six degrees off every other, say so rather than leaving
+  // the reader to wonder whether the module broke.
+  if (headliners.length === 0) {
+    return (
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 7 }}>The big sky</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-3)", lineHeight: 1.55 }}>
+          Away from the Moon, no two planets are within six degrees of each other right now.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flexShrink: 0 }}>

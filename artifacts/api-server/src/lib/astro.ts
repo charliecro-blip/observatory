@@ -833,7 +833,37 @@ export function getAspectOrbs(jd: number): Array<Pick<PlanetAspect, "planet1" | 
  * "Applying" means the two bodies are moving toward the exact angle.
  * Applying aspects carry forward momentum; separating aspects describe what's completing.
  */
-export function getMajorAspects(jd: number): PlanetAspect[] {
+/**
+ * All in-orb aspects at `jd`.
+ *
+ * `onlyMoon` restricts the pair loop to Moon pairs and is not a cosmetic
+ * filter — it skips the non-Moon branch below, which walks the real ephemeris
+ * in 6-hour steps across 14 days per pair to catch a planet stationing short of
+ * perfection. That sweep is the reason a full call costs ~63ms, and a caller
+ * that reads only the Moon's aspects was paying it for thirty-six pairs it then
+ * discarded. The election scan did exactly that, 336 times per request.
+ *
+ * The Moon branch is untouched, so Moon-pair output is identical either way —
+ * pinned by a test.
+ */
+/**
+ * Ternary-search iterations for refining a perfection time.
+ *
+ * Was 60. Each iteration evaluates the ephemeris twice and narrows the bracket
+ * by a third, so 60 iterations shrink a 24-hour window to about 5×10⁻¹¹ hours —
+ * for a number that is then rounded to two decimals (0.01h = 36 seconds). Every
+ * iteration past ~21 was computing precision that `toFixed(2)` threw away, and
+ * this search is the dominant cost in an election scan.
+ *
+ * Swept against the 60-iteration output over 400 moments across 2026 (7,845
+ * aspects, both the Moon and station-sweep branches). 26 was NOT enough — it
+ * moved 27 moments by exactly one unit in the last decimal, a rounding-boundary
+ * flip of 36 seconds, and this repo prints these times to the minute. 30 is the
+ * first count that is byte-identical; 32 is that with margin.
+ */
+const TERNARY_ITERS = 32;
+
+export function getMajorAspects(jd: number, onlyMoon = false): PlanetAspect[] {
   const planets     = getPlanetPositions(jd);
   const planetsNext = getPlanetPositions(jd + 1 / 24); // 1 hour forward
 
@@ -865,6 +895,7 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
     for (let j = i + 1; j < planets.length; j++) {
       const p1 = planets[i];
       const p2 = planets[j];
+      if (onlyMoon && p1.planet !== "Moon" && p2.planet !== "Moon") continue;
 
       const raw  = normalize360(p1.longitude - p2.longitude);
       const angle = raw > 180 ? 360 - raw : raw;
@@ -920,7 +951,7 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
             // approach; 24h covers any orb we report at ~0.5°/h.
             const dir = applying ? 1 : -1;
             let lo = 0, hi = 24;
-            for (let k = 0; k < 60; k++) {
+            for (let k = 0; k < TERNARY_ITERS; k++) {
               const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
               if (sepAt(dir * m1, p1.planet, p2.planet, def.angle)
                 < sepAt(dir * m2, p1.planet, p2.planet, def.angle)) hi = m2; else lo = m1;
@@ -945,7 +976,7 @@ export function getMajorAspects(jd: number): PlanetAspect[] {
               // lands at 33h. Refine within one step either side, same ternary
               // search the Moon branch uses.
               let lo = Math.max(0, minAtH - SCAN_STEP_H), hi = minAtH + SCAN_STEP_H;
-              for (let k = 0; k < 60; k++) {
+              for (let k = 0; k < TERNARY_ITERS; k++) {
                 const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
                 if (sepAt(dir * m1, p1.planet, p2.planet, def.angle)
                   < sepAt(dir * m2, p1.planet, p2.planet, def.angle)) hi = m2; else lo = m1;
@@ -1001,7 +1032,7 @@ export interface LastMoonAspect {
  * a trine to Jupiter leaves benevolent residue; a square to Saturn carries friction.
  * Scans back 48 hours in 1-hour steps to find local orb minima.
  */
-export function getLastMoonAspect(jd: number): LastMoonAspect | null {
+export function getLastMoonAspect(jd: number, aspectsAtJd?: PlanetAspect[]): LastMoonAspect | null {
   const STEP_H   = 1;
   const LOOKBACK = 48;
   const MAX_ORB  = 1.5; // must have been within 1.5° to count as perfected
@@ -1056,7 +1087,17 @@ export function getLastMoonAspect(jd: number): LastMoonAspect | null {
   }
 
   // Also catch very-recent separating aspects missed by 1h steps (orb < 0.5° now, separating)
-  const currentAspects = getMajorAspects(jd);
+  //
+  // Moon pairs only — the loop below skips everything else, and the full call
+  // walks thirty-six other pairs through a 6-hour, 14-day station sweep to
+  // build them. THIS LINE was the single largest cost in an election scan: 336
+  // moments × ~110ms, most of it computing aspects this function then dropped
+  // on the next line.
+  // Reuse the caller's aspects when it already has them for this exact jd.
+  // scoreElection computed the same Moon aspects a few lines earlier and then
+  // this function computed them again — the identical call, twice per moment,
+  // 336 times per scan. Not a memo: the same value, handed over.
+  const currentAspects = aspectsAtJd ?? getMajorAspects(jd, true);
   for (const asp of currentAspects) {
     if (asp.applying) continue;
     if (asp.planet1 !== "Moon" && asp.planet2 !== "Moon") continue;

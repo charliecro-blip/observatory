@@ -182,8 +182,7 @@ const LABEL: React.CSSProperties = {
   color: "var(--text-3)", marginBottom: 6,
 };
 const INPUT: React.CSSProperties = {
-  width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 13, outline: "none",
-  border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+  width: "100%", padding: "8px 11px", borderRadius: 8, fontSize: 13, border: "1px solid var(--color-border)", background: "var(--color-card-2)",
   color: "var(--color-foreground)",
 };
 const PILL: React.CSSProperties = {

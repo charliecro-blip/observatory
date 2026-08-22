@@ -31,7 +31,7 @@ const FELT: { key: string; label: string; icon: string; color: string }[] = [
 const BOX: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8,
   border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-  fontSize: 13, lineHeight: 1.55, color: "var(--color-foreground)", outline: "none", resize: "vertical", fontFamily: "inherit",
+  fontSize: 13, lineHeight: 1.55, color: "var(--color-foreground)", resize: "vertical", fontFamily: "inherit",
 };
 const CHIP = (on: boolean): React.CSSProperties => ({
   fontSize: 10.5, padding: "3px 9px", borderRadius: 11, cursor: "pointer",

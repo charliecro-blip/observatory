@@ -244,7 +244,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
           <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
             onKeyDown={e=>{if(e.key==="Enter"&&form.title.trim())save.mutate();if(e.key==="Escape")onClose();}}
             placeholder={WINDOW_LABELS[form.type]}
-            style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:13,outline:"none",background: "var(--color-card-2)" }}/>
+            style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)" }}/>
           <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
             style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",color:"var(--text-1)" }}>
             {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
@@ -261,7 +261,7 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
           </div>
           <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
             placeholder="Notes (optional)" rows={2}
-            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",resize:"vertical",outline:"none" }}/>
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",resize:"vertical" }}/>
         </div>
         {save.isError && <div style={{ marginTop:10,fontSize:11.5,color:"#a03030" }}>Couldn't save — the event wasn't added. Check your connection and try again.</div>}
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
