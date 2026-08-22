@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-production-db.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking which database that would talk to"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-push.sh\"",
+            "timeout": 600,
+            "statusMessage": "Typecheck + suite in three timezones before the push"
+          }
+        ]
+      }
+    ]
+  }
+}

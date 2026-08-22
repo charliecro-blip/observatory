@@ -36,6 +36,13 @@ Also standing:
 
 ## Engineering
 
+Two of the rules below are now hooks rather than requests — `.claude/settings.json`
+wires them, `.claude/hooks/` holds them. Booting the api-server without naming a
+database is refused, and `git push` waits for `pnpm run typecheck` plus a green
+suite in all three timezones (`COMPASS_SKIP_PUSH_GATE=1` when you mean it).
+`.claude/agents/verifier.md` is the read-only agent that measures a claim
+instead of reading the code that makes it.
+
 - **Root `.env` is PRODUCTION Neon.** Start the API only via the
   `api-scratch` launch config. Never a bare `npx tsx …/index.ts`.
 - CI runs the full suite three times — `America/Chicago`, `Asia/Kolkata`,
