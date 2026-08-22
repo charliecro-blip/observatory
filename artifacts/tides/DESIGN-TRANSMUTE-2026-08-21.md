@@ -187,3 +187,86 @@ Steps 1–4 are a day. Step 5 waits for beta testers, like the rhythm record.
   and asking "does this match how you feel?" That is a notification, and
   notifications about feelings are a different product with a different
   risk profile.
+
+---
+
+## 11. What shipped, 2026-08-22
+
+Steps 1–4 of §9. Step 5 (the record and the personal correspondence table)
+still waits for testers, as planned.
+
+| | |
+|---|---|
+| `artifacts/api-server/src/lib/crisisGate.ts` | The gate. Deterministic, no model, no key. |
+| `artifacts/api-server/src/lib/feelingReading.ts` | gate → mirror → check → turn. |
+| `artifacts/api-server/src/routes/feeling.ts` | Its own file so nothing here can be made to write to the db. |
+| `lib/lexicon/src/planets.ts` | New `feelings: string[]` per planet. |
+| `artifacts/tides/src/components/TurnIt.tsx` | The composer and the three cards. |
+| `tests/crisis-gate.test.ts`, `tests/feeling-reading.test.ts` | 77 tests, green under all three CI zones. |
+
+### The mirror needed its own vocabulary
+
+`associate.ts` is built for tasks. Asked what "irritable, can't settle,
+snapping at people" is, it answered **Saturn and Pluto** — its keyword tables
+have no word for how anything *feels*. Each planet's literacy does, so the
+lexicon now carries the words people use for that planet's weather in
+themselves, and the same sentence reads as Mars.
+
+### The live-check, and what measuring found
+
+Two defects that reading the code would not have surfaced:
+
+- **Mars fired on 365 days out of 365.** The malefic out of sect is Mars every
+  daytime — a permanent condition of the chart of the day, not evidence about
+  this afternoon. It joins `moonSign` and `phase` in the exclusion.
+- **Uranus and Pluto fired on 0 days out of 365.** `collectPersonal` keeps the
+  loudest four transits, and outer planets carry salience 0.45 against the
+  Moon's 0.85, so they never survived. Right for a day card; wrong for someone
+  asking about the chapter. `personalLimit` now lets a caller raise it.
+
+An absolute strength floor turned out to be the wrong instrument (p25 0.51,
+p50 0.65, p75 0.83 — continuous, no natural break). The test is relative
+instead: is this planet one of the moment's loud voices. That needed **three
+pools**, because one ladder silenced the outers again — they came last on every
+day at top-3, top-4 and top-5 alike. The pools are synthesis's own salience
+tiers, which already are the claim that these speeds aren't comparable.
+
+At **3 fast / 1 social / 2 outer**:
+
+| | speaks | of those, a season |
+|---|---|---|
+| with a chart | **52%** | — |
+| without one | **35%** | — |
+| Moon | 92% | |
+| Venus | 65% | |
+| Saturn | 65% | 100% |
+| Neptune | 89% | 100% |
+| Uranus | 35% | 100% |
+| Pluto | 11% | 100% |
+
+Pluto is *in play* for this chart on 11% of days and heard on all of it —
+each planet's rate now matches how often it actually aspects the chart, which
+is the honest answer rather than a tuned one.
+
+**Do not raise this rate.** A door that speaks four times in five is the
+horoscope app this was designed not to be.
+
+### Answered from §10
+
+- **Does the refusal offer anything else?** No. It gets a designed card with
+  the same weight as an answer, and three reasons depending on why: the planet
+  is quiet, the planet is doing nothing, or the words land on nothing.
+- **Does it ever run as a notification?** Not built. Still a different product
+  with a different risk profile.
+- **Does "not quite" let people correct the planet?** Still open — it belongs
+  with the record in step 5.
+
+### Two calls made while building
+
+- **Not in the advisor panel.** The other three doors send a question to the
+  model; this one never does. Rendered there, its composer stacked directly
+  above the advisor's own — two fields, no visual difference, and typing
+  "restless" into the wrong one silently got you a different kind of answer.
+- **The footer went.** "A resemblance between what you named and what the sky
+  is doing, not a cause of it" was a caption saying what the card isn't. The
+  headline's grammar already carries it.
