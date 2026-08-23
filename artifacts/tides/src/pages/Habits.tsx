@@ -153,6 +153,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     return !!(d && (d.name.trim() || d.emoji.trim()));
   });
   const [form, setForm] = useState(() => readHabitDraft() ?? BLANK_FORM);
+  /**
+   * The habit being edited, or null while the form is creating a new one.
+   *
+   * A cadence chosen once at creation was permanent — a daily entered by
+   * mistake could only be archived and retyped, losing its whole record with
+   * it (owner, 2026-08-22: "I accidentally put in a daily habit that should
+   * be a weekly"). The PATCH has always taken cadence and targetPerWeek;
+   * nothing in the app ever sent them. This is that door.
+   *
+   * It reuses the creation form rather than growing a second one, so the two
+   * can never drift apart in what they can express.
+   */
+  const [editingId, setEditingId] = useState<number|null>(null);
   // Written on every keystroke rather than on unmount: a tab change can
   // unmount without a cleanup pass running in time, and the whole point is
   // to survive leaving unexpectedly.
@@ -160,10 +173,13 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     const worth = form.name.trim() || form.emoji.trim() || form.minimumViable.trim()
       || form.favoredElements.length || form.favoredPhases.length || form.favoredPlanets.length;
     try {
-      if (showAdd && worth) localStorage.setItem(HABIT_DRAFT_KEY, JSON.stringify(form));
-      else if (!worth) localStorage.removeItem(HABIT_DRAFT_KEY);
+      // Only a NEW habit's form is a draft worth surviving a tab change. An
+      // edit is of something already saved, so persisting it would overwrite
+      // a real draft with a copy of an existing habit.
+      if (showAdd && worth && editingId === null) localStorage.setItem(HABIT_DRAFT_KEY, JSON.stringify(form));
+      else if (!worth && editingId === null) localStorage.removeItem(HABIT_DRAFT_KEY);
     } catch { /* private mode */ }
-  }, [form, showAdd, HABIT_DRAFT_KEY]);
+  }, [form, showAdd, editingId, HABIT_DRAFT_KEY]);
 
   // Several stars at creation, not one (owner 2026-08-21: "set habits to
   // match multiple stars"). The edit chips below could already do this; the
@@ -253,6 +269,61 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
   });
 
   /**
+   * Save a change to a habit that already exists. Every field the creation
+   * form can set, the edit can change — including the cadence pair, which is
+   * the whole reason this exists.
+   */
+  const editHabit = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await fetch(`/api/habits/${id}`, {
+        method: "PATCH", headers: authH(testerId),
+        body: JSON.stringify({
+          name: form.name.trim(), emoji: form.emoji || null,
+          favoredElements: form.favoredElements.join(",") || null,
+          favoredPhases: form.favoredPhases.join(",") || null,
+          favoredPlanets: form.favoredPlanets.join(",") || null,
+          bestWindowType: form.bestWindowType || null,
+          minimumViable: form.minimumViable.trim() || null,
+          cadence: form.cadence,
+          // The server nulls the target for any cadence but weekly, so this
+          // only has to be right when it means something.
+          targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
+          // "" means no anchor. Sent as null so clearing one actually clears
+          // it rather than being skipped as undefined.
+          solarAnchor: form.solarAnchor || null,
+        }),
+      });
+      if (!r.ok) throw new Error(`save habit failed (${r.status})`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({queryKey:["habits"]});
+      setShowAdd(false); setEditingId(null); setForm(BLANK_FORM);
+    },
+  });
+
+  /** Load an existing habit into the shared form and open it for editing. */
+  const startEditing = (h: Habit) => {
+    setEditingId(h.id);
+    setForm({
+      name: h.name ?? "", emoji: h.emoji ?? "",
+      favoredElements: asArr(h.favoredElements), favoredPhases: asArr(h.favoredPhases),
+      favoredPlanets: asArr(h.favoredPlanets),
+      bestWindowType: h.bestWindowType ?? "", minimumViable: h.minimumViable ?? "",
+      cadence: (h.cadence ?? "daily") as Cadence,
+      targetPerWeek: h.windowTarget ?? 3,
+      solarAnchor: (h.solarAnchor ?? "") as ""|SolarAnchor,
+      chore: h.flavor === "chore",
+    });
+    setShowAdd(true);
+  };
+
+  /** Leave the form without saving, whichever mode it is in. */
+  const cancelForm = () => {
+    setShowAdd(false); setEditingId(null); setForm(BLANK_FORM);
+    setNewGoalIds([]); setNewProjectId("");
+  };
+
+  /**
    * Mark or unmark a habit on a DAY — today by default, any of the last
    * fourteen on request.
    *
@@ -340,8 +411,9 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             );
           })()}
         </div>
-        <button onClick={() => setShowAdd(v=>!v)} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
-          + New habit
+        <button onClick={() => { if (showAdd) { cancelForm(); } else { setEditingId(null); setForm(readHabitDraft() ?? BLANK_FORM); setShowAdd(true); } }}
+          style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
+          {showAdd ? "Close" : "+ New habit"}
         </button>
       </div>
 
@@ -362,7 +434,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               <button onClick={() => onNavigate("home")} style={{
                 marginTop: 6, fontSize: 10.5, background: "none", border: "none", padding: 0,
                 cursor: "pointer", color: "#50608a", fontWeight: 600,
-              }}>Open this new moon's check-in →</button>
+              }}>Open this new moon's check-in <span aria-hidden="true">→</span></button>
             )}
           </div>
         )}
@@ -451,7 +523,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 aria-label="Habit icon"
                 style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",cursor:"text"}}/>
               <input autoFocus value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
-                onKeyDown={e=>e.key==="Enter"&&form.name.trim()&&addHabit.mutate()}
+                onKeyDown={e=>{ if (e.key!=="Enter"||!form.name.trim()) return; editingId === null ? addHabit.mutate() : editHabit.mutate(editingId); }}
                 placeholder="Habit name…"
                 style={{flex:1,padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)"}}/>
             </div>
@@ -649,9 +721,15 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               <input value={form.minimumViable} onChange={e=>setForm(f=>({...f,minimumViable:e.target.value}))}
                 placeholder="Minimum viable (e.g. 5 min walk)…"
                 style={{flex:1,padding:"6px 9px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"var(--text-2)"}}/>
-              <button onClick={()=>form.name.trim()&&addHabit.mutate()} disabled={!form.name.trim()}
+              <button onClick={cancelForm}
+                style={{padding:"6px 12px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:11,background:"var(--color-card-2)",color:"var(--text-3)",cursor:"pointer"}}>
+                Cancel
+              </button>
+              <button
+                onClick={()=>{ if (!form.name.trim()) return; editingId === null ? addHabit.mutate() : editHabit.mutate(editingId); }}
+                disabled={!form.name.trim() || editHabit.isPending || addHabit.isPending}
                 style={{padding:"6px 16px",borderRadius:7,border:"none",fontSize:11,background:form.name.trim()?"#1a2a3a":"var(--color-border)",color:form.name.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
-                Add
+                {editHabit.isPending || addHabit.isPending ? "Saving…" : editingId === null ? "Add" : "Save changes"}
               </button>
             </div>
           </div>
@@ -755,6 +833,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     out when to schedule.' */}
                 <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
                   style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+                <button onClick={()=>startEditing(h)} aria-label={`Edit ${h.name}`} title="Edit — including how often"
+                  style={{fontSize:10,color: editingId===h.id ? "var(--color-brass)" : "var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 4px",fontWeight:editingId===h.id?600:400}}>Edit</button>
                 <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
               </div>
 
