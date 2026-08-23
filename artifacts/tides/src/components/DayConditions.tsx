@@ -152,7 +152,7 @@ export default function DayConditions({ now, cycle, habits, skyQuiet, showVoid =
           <div style={{ fontSize: 11, fontWeight: 600, color: phase.color }}>{phase.name} · day {dayOfCycle} of cycle</div>
           <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{phase.desc}</div>
         </div>
-        <div style={{ fontSize: 8, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
+        <div style={{ fontSize: 9, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
       </div>
     );
   }

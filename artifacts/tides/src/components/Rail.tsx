@@ -89,7 +89,7 @@ function PlanetReading({ planet, planets }: { planet: string; planets?: any[] })
     <div style={{ fontSize: 9, color: "var(--text-3)", lineHeight: 1.55 }}>
       {r.dignity && (
         <span style={{
-          fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700,
+          fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700,
           color: DIGNITY_COLOR[r.dignity] ?? "var(--text-3)", marginRight: 5,
         }}>{r.dignity}</span>
       )}
@@ -141,7 +141,12 @@ function GlyphRow({ label, onClick, children }: { label: string; onClick: () => 
       borderBottom: "1px solid var(--color-border)", background: "none", border: "none",
       borderBottomWidth: 1, cursor: "pointer", textAlign: "left",
     }}>
-      <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", width: 34, flexShrink: 0 }}>{label}</span>
+      {/* minWidth, not width. As a fixed 34px this box was narrower than most
+          of the labels it holds — "Moon aspects" ran 45px past its own edge and
+          over the glyphs beside it, with no overflow rule to stop it. A minimum
+          keeps the gutter aligned for the short labels and lets the long ones
+          push the glyphs along instead of sitting on top of them. */}
+      <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", minWidth: 34, flexShrink: 0 }}>{label}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>{children}</span>
     </button>
   );
@@ -215,11 +220,11 @@ function CycleLine({ prefix, options, seed = 0, show = 1, style }: {
           labelled field (owner, 2026-08-13). The rail already has a
           micro-label idiom (SEASON, MOON, THIS HOUR); these now use it. */}
       <span style={{
-        display: "block", color: "var(--text-3)", fontSize: 8,
+        display: "block", color: "var(--text-3)", fontSize: 9,
         textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
       }}>{prefix}</span>
       <span key={start} className="phrase-in">{shown.join(" · ")}</span>
-      <span style={{ marginLeft: 5, color: "var(--text-3)", fontSize: 8.5, whiteSpace: "nowrap" }}>
+      <span style={{ marginLeft: 5, color: "var(--text-3)", fontSize: 9, whiteSpace: "nowrap" }}>
         ⟳ {show === 1 ? `${start + 1}/${n}` : "more"}
       </span>
     </button>
@@ -748,7 +753,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
                 <span style={{
-                  display: "block", color: "var(--text-3)", fontSize: 8,
+                  display: "block", color: "var(--text-3)", fontSize: 9,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
                 }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}</span>
                 {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
@@ -848,7 +853,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               : null;
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 7, lineHeight: 1.5 }}>
-                <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 3 }}>
+                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 3 }}>
                   The Moon's mood{left ? ` · ${left}` : ""}
                 </div>
                 {prog && (
@@ -862,7 +867,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   </div>
                 )}
                 <span style={{
-                  display: "block", color: "var(--text-3)", fontSize: 8,
+                  display: "block", color: "var(--text-3)", fontSize: 9,
                   textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 1,
                 }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}</span>
                 {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
@@ -906,7 +911,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <div style={{ fontSize:9 }}>
                       {a.orb < 0.5
-                        ? <span style={{ fontSize:8, background:"#b0703024", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
+                        ? <span style={{ fontSize:9, background:"#b0703024", color:"#b07030", padding:"1px 4px", borderRadius:3, fontWeight:600 }}>exact now</span>
                         : a.applying
                           ? (() => {
                               // Use the backend's real per-pair closing speed so this
@@ -956,7 +961,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             <span style={{ fontSize:9, textTransform:"uppercase", letterSpacing:"0.7px", color:"var(--text-3)" }}>
               Planetary aspects
             </span>
-            <span style={{ fontSize:8, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
+            <span style={{ fontSize:9, color:"#c8b870", fontWeight:600, background:"#c8b87026", padding:"1px 5px", borderRadius:4, border:"1px solid #e8d890" }}>
               {showNonMoonAspects ? "▲ hide" : `${now.aspects.filter(a => a.planet1 !== "Moon" && a.planet2 !== "Moon").length} ▼`}
             </span>
           </button>
@@ -999,7 +1004,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                         <span role="img" aria-label={a.aspect} style={{ color:col, fontWeight:700, fontSize:13 }}>{sym}</span>
                         <span style={{ color:p2c, fontWeight:700, fontSize:12 }}><PG p={a.planet2} /></span>
                         <span style={{ flex:1, fontSize:9, color:"var(--color-muted)", textAlign:"left" }}>{a.planet1} · {a.planet2}</span>
-                        <span style={{ fontSize:8, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400, fontVariantNumeric:"tabular-nums" }} title={
+                        <span style={{ fontSize:9, color:a.applying?col:"var(--text-3)", fontWeight:a.applying?600:400, fontVariantNumeric:"tabular-nums" }} title={
                           a.stationsBeforeExact ? "Closing now, but a station turns it back before the aspect perfects"
                           : a.neverPerfected ? "Separating — a station turned it back before the aspect ever perfected"
                           : undefined
@@ -1132,7 +1137,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 const t = takes[hourTakeIdx % takes.length];
                 return (
                   <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 3, lineHeight: 1.45 }}>
-                    <span style={{ display: "block", color: "var(--text-3)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                    <span style={{ display: "block", color: "var(--text-3)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px" }}>
                       {t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}
                     </span>
                     {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}{lineOf({ ...t, condition: "" })}
@@ -1222,7 +1227,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                       {h.planet}
                     </span>
                     <span style={{ fontSize: 9, color: isWatched ? hCol : "var(--text-3)", fontWeight: isWatched ? 600 : 400, fontVariantNumeric: "tabular-nums" }}>{h.time}</span>
-                    <span style={{ fontSize: 7, color: "var(--text-3)" }}>{isExpanded ? "▲" : "▾"}</span>
+                    <span style={{ fontSize: 9, color: "var(--text-3)" }}>{isExpanded ? "▲" : "▾"}</span>
                   </button>
                   {isExpanded && (
                     <div style={{ padding: "4px 8px 6px 24px", fontSize: 9, color: "var(--color-muted)", lineHeight: 1.45, borderLeft: `2px solid ${hCol}40`, marginLeft: 11, marginBottom: 2 }}>
@@ -1263,7 +1268,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 </div>
               </div>
             } width={280}>
-              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:8.5, fontWeight:600, background:"var(--color-border)", color:"var(--color-muted)", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
+              <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:14, height:14, borderRadius:"50%", fontSize:9, fontWeight:600, background:"var(--color-border)", color:"var(--color-muted)", cursor:"help", marginLeft:4, flexShrink:0 }}>?</span>
             </Tooltip>
           </div>
         </div>
@@ -1307,11 +1312,11 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             {transitsOpen && (
               <div style={{ padding: "0 14px 10px" }}>
                 {fast.length > 0 && (
-                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "2px 0 2px" }}>this week — fast</div>
+                  <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "2px 0 2px" }}>this week — fast</div>
                 )}
                 {fast.map((t: any, i: number) => (count++ < shown ? row(t, i) : null))}
                 {slow.length > 0 && (
-                  <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "6px 0 2px" }}>chapters — slow</div>
+                  <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", margin: "6px 0 2px" }}>chapters — slow</div>
                 )}
                 {slow.map((t: any, i: number) => (count++ < shown ? row(t, i + 100) : null))}
                 {now.personalTransits!.length > 3 && (
@@ -1339,7 +1344,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: m?.color ?? "#c8b89a", flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 10.5, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
-                <span style={{ fontSize: 8.5, color: "var(--color-muted)", flexShrink: 0 }}>{done > 0 ? done : ""}</span>
+                <span style={{ fontSize: 9, color: "var(--color-muted)", flexShrink: 0 }}>{done > 0 ? done : ""}</span>
               </button>
             );
           })}
@@ -1367,19 +1372,19 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <div style={{ paddingBottom: 8 }}>
             {/* What a "wave" is — the doable pieces (tasks & habits), not the
                 long-term stars (those live in Aims). */}
-            <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
+            <div style={{ fontSize: 9, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
               The doable pieces — your tasks and habits — surfaced when today's conditions support them.
             </div>
             {/* The read failing is not the same as having none, and the rail
                 says which one happened rather than showing a list that is
                 missing a section without saying so. */}
             {habitsFailed && (
-              <div style={{ fontSize: 8.5, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
+              <div style={{ fontSize: 9, color: "var(--color-muted)", lineHeight: 1.5, padding: "0 14px 6px" }}>
                 Couldn't read your habits just now, so none are shown below.
               </div>
             )}
             {railHabits.filter((p: any) => p.resonance === "resonant" && !p.doneToday).length > 0 && (
-              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "0 14px 2px" }}>resonant now — conditions back these</div>
             )}
             {/* Habits the current sky backs */}
             {railHabits.filter((p: any) => p.resonance === "resonant" && !p.doneToday).slice(0, 3).map((p: any) => (
@@ -1390,14 +1395,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#60a060", flexShrink: 0 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10.5, color: "#2a5020", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  {p.resonanceNote && <div style={{ fontSize: 8, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.resonanceNote}</div>}
+                  {p.resonanceNote && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.resonanceNote}</div>}
                 </div>
               </div>
             ))}
 
             {/* Tasks */}
             {(tasks as any[]).filter(t => t.done !== "true").length > 0 && (
-              <div style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "4px 14px 2px" }}>open tasks</div>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", padding: "4px 14px 2px" }}>open tasks</div>
             )}
             {(tasks as any[]).filter(t => t.done !== "true").slice(0, 6).map((t: any) => (
               <div key={t.id} style={{

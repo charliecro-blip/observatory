@@ -105,7 +105,7 @@ export default function PlanCalendar({ items, dropped }: {
                       <span className="sr-only">
                         {it.title} at {new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                       </span>
-                      <div aria-hidden="true" style={{ fontSize: 8.5, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div aria-hidden="true" style={{ fontSize: 9, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {it.title}
                       </div>
                     </div>

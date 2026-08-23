@@ -86,7 +86,7 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>Your stars today</span>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>Your stars today</span>
         {(data?.streak ?? 0) > 0 && (
           <span style={{ fontSize: 9, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
             ⚓ {data!.streak} day{data!.streak === 1 ? "" : "s"} at the helm
@@ -165,7 +165,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
     <div style={{ marginBottom: 8 }}>
       {todayWins.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
             Today's wins · {todayWins.length}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>

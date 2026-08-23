@@ -193,7 +193,7 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
                 {s.options[idx]}{s.suffix && <span style={{ fontWeight: 400, color: "#a05050" }}>{s.suffix}</span>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
-                <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
+                <span style={{ fontSize: 9, color: s.color, fontWeight: 600 }}>{s.source}</span>
                 {/* explicit invitation — the muted counter alone read as decoration */}
                 <span style={{ fontSize: 9, color: "var(--color-muted)", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>

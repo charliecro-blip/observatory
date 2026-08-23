@@ -49,7 +49,7 @@ export default function RareMomentBanner({ suppressed, onNavigate }: {
       borderLeft: `3px solid ${ACCENT}`, borderRadius: 12, padding: "11px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
           A rare one · top {Math.max(0.1, Math.round((100 - lead.percentile) * 10) / 10)}% of two years
         </span>
         {onNavigate && (

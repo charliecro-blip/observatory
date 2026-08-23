@@ -79,7 +79,7 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
     <span style={{ display: "inline-flex", flexDirection: "column", gap: 3 }}>
       <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         title={`${match.gloss} — its best times this week`}
-        style={{ fontSize: 8.5, color: "#8a7a5e", background: "#c8b06a12", border: "1px solid #c8b06a40",
+        style={{ fontSize: 9, color: "#8a7a5e", background: "#c8b06a12", border: "1px solid #c8b06a40",
           borderRadius: 6, padding: "1px 6px", cursor: "pointer", whiteSpace: "nowrap" }}>
         ⚡ reads as {match.label}{open ? " ▴" : " ▾"}
       </button>
@@ -95,7 +95,7 @@ export function ActivityTimesHint({ title, testerId, lat, lon, windowType }: {
                 <span style={{ color: "var(--color-muted)", flexShrink: 0 }}>{w.dow} {w.allDay ? "all day" : `${w.startClock}–${w.endClock}`}</span>
                 {!w.allDay && (scheduled === key
                   ? <span aria-hidden="true" style={{ color: "#4a8060", fontWeight: 600 }}>✓</span>
-                  : <button onClick={() => schedule.mutate(w)} style={{ fontSize: 8.5, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>schedule</button>)}
+                  : <button onClick={() => schedule.mutate(w)} style={{ fontSize: 9, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>schedule</button>)}
               </div>
             );
           })}

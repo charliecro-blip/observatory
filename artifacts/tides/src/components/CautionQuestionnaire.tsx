@@ -65,7 +65,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: isPicked ? "var(--color-foreground)" : "var(--color-foreground)" }}>
             {p} <span style={{ fontWeight: 400, color: "var(--text-3)" }}>· {arch.label}</span>
-            {isSuggested && <span style={{ fontSize: 8.5, color: "#a04040", marginLeft: 6, fontWeight: 600 }}>chart suggests this</span>}
+            {isSuggested && <span style={{ fontSize: 9, color: "#a04040", marginLeft: 6, fontWeight: 600 }}>chart suggests this</span>}
           </div>
           <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2, lineHeight: 1.4 }}>{arch.feel}</div>
         </div>

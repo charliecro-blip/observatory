@@ -576,7 +576,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
   if (open.length === 0) return null;
   return (
     <div style={{ marginBottom: 9 }}>
-      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
         Did these happen?
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

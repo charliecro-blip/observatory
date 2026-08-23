@@ -574,7 +574,7 @@ export default function Home({
       <>
         {!bare && (
           <div style={{
-            fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
+            fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
             padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
           }}>{label} · {items.length}</div>
         )}
@@ -930,7 +930,7 @@ export default function Home({
           {/* Resolution chips live here now, with the work they act on. */}
           {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
             <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
                 how much room should these get?
               </div>
               {resolution.needsDuration.map((n) => (
@@ -951,7 +951,7 @@ export default function Home({
           )}
           {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
             <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
                 what kind of work are these?
               </div>
               {resolution.needsActivity.slice(0, 4).map((n) => (
@@ -974,7 +974,7 @@ export default function Home({
           {/* The shaped day, when asked for. */}
           {shapeOpen && shaped && (
             <div style={{ borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
+              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
                 {shaping ? "shaping…" : "today, shaped"}
               </div>
               {shaped.placed.map((p) => (

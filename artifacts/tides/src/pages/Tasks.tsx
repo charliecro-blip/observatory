@@ -453,39 +453,39 @@ function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule
           say "worked on", and only `done` says done. */}
       {!isDone && touchLine(touch) && (
         <div title={touch!.minutes > 0 ? `${touch!.minutes} minutes logged` : undefined}
-          style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}}>
+          style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}}>
           {touchLine(touch)}
         </div>
       )}
       {/* Auto-rollover moved this here; say where it came from rather than
           letting the date silently read as if it were always due today. */}
       {!isDone && carriedLabel(task, today) && (
-        <div title={`Originally due ${task.originalDueDate}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#c0802014",color:"#a07830",fontWeight:600,flexShrink:0}}>↻ {carriedLabel(task, today)}</div>
+        <div title={`Originally due ${task.originalDueDate}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#c0802014",color:"#a07830",fontWeight:600,flexShrink:0}}>↻ {carriedLabel(task, today)}</div>
       )}
       {task.dueDate && task.dueDate !== today && !isDone && (
-        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
+        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
       )}
       {task.estMinutes && !isDone && (
-        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"var(--text-2)",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
+        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"var(--text-2)",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
       )}
       {task.energy && ENERGY_META[task.energy] && !isDone && (
-        <div title={`${task.energy} energy`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
+        <div title={`${task.energy} energy`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
       )}
       {goal && !isDone && (
-        <div title={`Goal: ${goal.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "var(--color-muted)",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
+        <div title={`Goal: ${goal.title}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "var(--color-muted)",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
       )}
       {project && !isDone && (
-        <div title={`Project: ${project.title}`} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
+        <div title={`Project: ${project.title}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
       )}
       {task.planningWindowId && !isDone ? (
-        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0}}>▦ block</div>
+        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0}}>▦ block</div>
       ) : (!isDone && onSchedule && (
         // Schedule an EXISTING task — the sky picks a good time (owner: 'if a
         // task exists, I should be encouraged to schedule it').
-        <button onClick={onSchedule} title="Find a good time for this" style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+        <button onClick={onSchedule} title="Find a good time for this" style={{fontSize:9,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
       ))}
       {task.bestWindowType && !isDone && (
-        <div style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
+        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
       )}
       <button onClick={onDelete} aria-label="Delete task" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
     </div>

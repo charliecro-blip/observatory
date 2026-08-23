@@ -246,7 +246,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             width: 14, height: 14, borderRadius: h.flavor === "chore" ? 4 : "50%",
             border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
             background: h.doneToday ? KEPT : "transparent",
-            color: "#ffffff", fontSize: 8.5, lineHeight: 1,
+            color: "#ffffff", fontSize: 9, lineHeight: 1,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>{h.doneToday ? "✓" : ""}</span></button>
         <span style={{

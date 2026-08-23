@@ -187,7 +187,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 6 }}>
               ✦ Ask
               {/* Sub-brand tag (brand kit): Ask signs in Meridian small-caps. */}
-              <span style={{ fontSize: 8.5, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
+              <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
             </div>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
