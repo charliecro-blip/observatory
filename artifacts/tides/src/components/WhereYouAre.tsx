@@ -66,8 +66,28 @@ interface Habit {
   cadenceMet?: boolean; flavor?: string | null;
   goalId?: number | null; starIds?: string | null;
 }
-interface Star { id: number; title: string; status?: string; completedCount?: number; scheduledCount?: number }
+interface Star { id: number; title: string; status?: string; completedCount?: number; scheduledCount?: number;
+  /** A real end date, or null. Null is a star you hold; a date makes it a project that finishes. */
+  endsOn?: string | null }
 interface Task { id: number; title: string; done: string | null; dueDate: string | null; goalId?: number | null }
+
+/**
+ * A project's date, and how far off it is. Noon anchors the parse so the day
+ * cannot roll backwards in a western timezone.
+ *
+ * The count of days appears only inside a fortnight. Further out it is noise,
+ * and a countdown on something eight months away manufactures a pressure the
+ * date does not carry on its own.
+ */
+function endsLabel(endsOn: string, today: string): { text: string; near: boolean } {
+  const day = new Date(endsOn + "T12:00:00");
+  const when = day.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const days = Math.round((day.getTime() - new Date(today + "T12:00:00").getTime()) / 86400000);
+  if (days < 0) return { text: `${when} — the date has passed`, near: true };
+  if (days === 0) return { text: `${when} — today`, near: true };
+  if (days <= 14) return { text: `${when} · ${days} day${days === 1 ? "" : "s"}`, near: true };
+  return { text: `by ${when}`, near: false };
+}
 
 const KEPT = "#3f7a4a";
 const BEHIND = "#a08040";
@@ -147,6 +167,8 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
   // is already the door to the star; a second control going the same place
   // would make the count decorative twice over.
   const [openStars, setOpenStars] = useState<Set<number>>(new Set());
+  // Both by default — seeing them together is the whole point of one card.
+  const [lens, setLens] = useState<"both" | "held" | "moving">("both");
   const toggleStar = (id: number) => setOpenStars(prev => {
     const next = new Set(prev);
     if (!next.delete(id)) next.add(id);
@@ -175,6 +197,14 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
   const untiedTasks = openTasks.filter(t => !t.goalId || !starIdSet.has(t.goalId));
   const grouped = tiedHabits.length > 0
     || openTasks.some(t => t.goalId != null && starIdSet.has(t.goalId));
+
+  // Two objects were living in one list under one word: things you HOLD, which
+  // never finish, and things you are MOVING, which do. They read differently —
+  // a quiet week against a value is a quiet week, while a quiet week against a
+  // date is slippage — so they are drawn apart rather than interleaved.
+  const held = liveStars.filter(s => !s.endsOn);
+  const moving = liveStars.filter(s => !!s.endsOn)
+    .sort((a, b) => (a.endsOn ?? "").localeCompare(b.endsOn ?? ""));
 
   const starTitle = new Map(liveStars.map(s => [s.id, s.title]));
   const folded = isFolded("whereYouAre");
@@ -264,8 +294,11 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
               rows are short and the card is wide, so half of it was empty
               margin. `auto-fit` with a 250px floor gives two columns on a
               laptop and one on a phone without a breakpoint to maintain. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "11px 20px" }}>
-          {liveStars.map(s => {
+          {(() => {
+            // One renderer, two bands. The bands differ in what they say ABOUT
+            // a row, never in how a row is drawn — a project's habits are still
+            // habits.
+            const renderStar = (s: Star) => {
             const mine = sorted.filter(h => (habitStars.get(h.id) ?? []).includes(s.id));
             const myTasks = openTasks.filter(t => t.goalId === s.id);
             if (!mine.length && !myTasks.length) return null;
@@ -288,9 +321,22 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                     flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>{s.title}</span>
-                  <span style={{ fontSize: 10, flexShrink: 0, color: done > 0 ? KEPT : "var(--text-3)" }}>
-                    {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "nothing yet"}
-                  </span>
+                  {/* A project is read against its date; a star is read against
+                      its week. The same span, because they answer the same
+                      question — how is this going — in the two different terms
+                      the two objects actually have. */}
+                  {s.endsOn ? (() => {
+                    const e = endsLabel(s.endsOn, today);
+                    return (
+                      <span style={{ fontSize: 10, flexShrink: 0, color: e.near ? "var(--color-brass)" : "var(--text-3)", fontWeight: e.near ? 600 : 400 }}>
+                        {e.text}
+                      </span>
+                    );
+                  })() : (
+                    <span style={{ fontSize: 10, flexShrink: 0, color: done > 0 ? KEPT : "var(--text-3)" }}>
+                      {done > 0 ? `${done} this week` : scheduled > 0 ? `${scheduled} scheduled` : "nothing yet"}
+                    </span>
+                  )}
                 </button>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 10, borderLeft: "1px solid var(--color-border)" }}>
                   {shownHabits.map(h => {
@@ -332,8 +378,57 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                 </div>
               </div>
             );
-          })}
-          </div>
+            };
+
+            const bands: Array<{ key: "held" | "moving"; head: string; note: string; rows: Star[] }> = [
+              { key: "held" as const, head: "What you're holding", note: "no end, and none needed", rows: held },
+              { key: "moving" as const, head: "What you're moving", note: "these finish", rows: moving },
+            ].filter(b => b.rows.length > 0 && (lens === "both" || lens === b.key));
+
+            // The switch earns its place only when there is something on both
+            // sides — otherwise it is a control with one setting.
+            const showLens = held.length > 0 && moving.length > 0;
+
+            return (
+              <>
+                {showLens && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -2 }} role="group" aria-label="Which to show">
+                    {(["both", "held", "moving"] as const).map((k, i, arr) => (
+                      <button key={k} onClick={() => setLens(k)} aria-pressed={lens === k}
+                        style={{
+                          fontSize: 9.5, padding: "2px 9px", cursor: "pointer",
+                          border: "1px solid var(--color-border)",
+                          borderLeftWidth: i === 0 ? 1 : 0,
+                          borderRadius: i === 0 ? "5px 0 0 5px" : i === arr.length - 1 ? "0 5px 5px 0" : 0,
+                          background: lens === k ? "var(--color-foreground)" : "var(--color-card-2)",
+                          color: lens === k ? "var(--color-card)" : "var(--text-3)",
+                          fontWeight: lens === k ? 600 : 400,
+                        }}>
+                        {k === "both" ? "Both" : k === "held" ? "Holding" : "Moving"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {bands.map(b => (
+                  <div key={b.key}>
+                    {(bands.length > 1 || lens !== "both") && (
+                      <div style={{
+                        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase",
+                        color: b.key === "moving" ? "var(--color-meridian)" : "var(--color-brass)",
+                        marginBottom: 6, display: "flex", alignItems: "baseline", gap: 7,
+                      }}>
+                        {b.head}
+                        <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, color: "var(--text-3)" }}>· {b.note}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "11px 20px" }}>
+                      {b.rows.map(renderStar)}
+                    </div>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
 
           {/* Stars nothing points at yet, named in one line rather than given
               an empty heading each. The count is the useful part and the door

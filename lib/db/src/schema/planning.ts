@@ -39,6 +39,21 @@ export const goals = pgTable("goals", {
   anchorPlanet: text("anchor_planet"), // e.g. Saturn (chapter anchors only)
   anchorHouse: integer("anchor_house"), // 1-12 natal house
   anchorUntil: text("anchor_until"), // ISO date the chapter/year closes
+  // Does this one END? (owner 2026-08-23.) The list held two different objects
+  // under one word: things you hold with no end — "Initiation into the
+  // Mysteries", "Aligned Spine" — and things that finish, like "Take Board
+  // Exams Quickly". The tell was in the data: "Ship the launch" appeared three
+  // times, because a thing that completes gets recreated and a value never
+  // does.
+  //
+  // NULL is a star: no end, and none wanted. A date makes it a project, and it
+  // is a REAL deadline rather than the invented kind `anchorUntil` exists to
+  // avoid — board exams sit on a day somebody else picked. The two coexist: a
+  // project may still ride a chapter.
+  //
+  // One nullable column rather than a projects table, deliberately. Every
+  // existing row stays a star by saying nothing, and nothing has to migrate.
+  endsOn: text("ends_on"), // ISO date YYYY-MM-DD, or null for a star
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

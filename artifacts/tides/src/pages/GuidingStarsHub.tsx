@@ -405,6 +405,25 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     onError: (e: any) => setFormError(e.message),
   });
 
+  /**
+   * The date this one finishes, or null if it never does.
+   *
+   * A star and a project were living in one list under one word — "Aligned
+   * Spine", which you hold, beside "Take Board Exams Quickly", which has a day
+   * somebody else picked. A date here is a REAL deadline, unlike the anchor
+   * beside it, which exists precisely to give a value a season instead of an
+   * invented one. Both can be true at once: a project may still ride a chapter.
+   */
+  const setEndsOn = useMutation({
+    mutationFn: async ({ id, endsOn }: { id: number; endsOn: string | null }) => {
+      const r = await fetch(`/api/planning/goals/${id}`, {
+        method: "PATCH", headers: authHeaders, body: JSON.stringify({ endsOn }),
+      });
+      if (!r.ok) throw new Error(`could not set the date (${r.status})`);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["north-stars"] }); qc.invalidateQueries({ queryKey: ["goals"] }); },
+  });
+
   const clearAnchor = useMutation({
     mutationFn: async (id: number) => {
       { const _r = await fetch(`/api/planning/goals/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify({ anchorKind: null, anchorPlanet: null, anchorHouse: null, anchorUntil: null }) }); if (!_r.ok) throw new Error(`request failed (${_r.status})`); }
@@ -775,9 +794,9 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       </div>
                     </div>
                     {isRiding
-                      ? <span style={{ fontSize: 9, color: "#80a870", flexShrink: 0 }}>✓ riding this</span>
+                      ? <span style={{ fontSize: 9, color: "#80a870", flexShrink: 0 }}><span aria-hidden="true">✓</span> riding this</span>
                       : <button onClick={() => start(a)} style={{ fontSize: 9.5, padding: "3px 10px", borderRadius: 8, border: `1px solid ${ec}50`, background: `${ec}10`, color: ec, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                          Ride this →
+                          Ride this <span aria-hidden="true">→</span>
                         </button>}
                   </div>
                 );
@@ -786,7 +805,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
                   {!showSeasons ? (
                     <button onClick={() => setShowSeasons(true)} style={{ fontSize: 10.5, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
-                      Optional: anchor it to a season the sky is backing →
+                      Optional: anchor it to a season the sky is backing <span aria-hidden="true">→</span>
                     </button>
                   ) : (
                     <div style={{ background: "var(--color-card-2)", borderRadius: 10, padding: "10px 14px 4px" }}>
@@ -835,7 +854,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             <button onClick={() => setShowForm(true)} style={{
               marginTop: 4, padding: "8px 20px", borderRadius: 9, border: "none",
               background: "#1a2a3a", color: "#ffffff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-            }}>✦ Name your first star</button>
+            }}><span aria-hidden="true">✦</span> Name your first star</button>
           </div>
         )}
 
@@ -896,6 +915,30 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         <button onClick={() => clearAnchor.mutate(g.id)} title="Unlink from this cycle" aria-label="Unlink from this cycle" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
                       </div>
                     )}
+                    {/* Does this one end? Null is a star; a date makes it a
+                        project, and the dashboard reads it to decide which of
+                        the two ways to draw its progress. */}
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 9.5, color: "var(--text-3)" }}>
+                      {(g as any).endsOn ? (
+                        <>
+                          <span style={{ color: "var(--color-meridian)", border: "1px solid var(--color-border)", borderRadius: 6, padding: "2px 7px" }}>
+                            finishes {fmtDay((g as any).endsOn)}
+                          </span>
+                          <button onClick={() => setEndsOn.mutate({ id: g.id, endsOn: null })}
+                            title="No end date — hold this one as a star instead"
+                            aria-label={`Remove the end date from ${g.title}`}
+                            style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
+                        </>
+                      ) : (
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+                          <span>does this finish?</span>
+                          <input type="date" value=""
+                            onChange={(e) => e.target.value && setEndsOn.mutate({ id: g.id, endsOn: e.target.value })}
+                            aria-label={`Set an end date for ${g.title}`}
+                            style={{ fontSize: 9.5, padding: "1px 4px", borderRadius: 5, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer" }} />
+                        </label>
+                      )}
+                    </div>
                     {!g.element && (
                       <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
                         {Object.entries(ELEMENT_INFO).map(([key, ei]) => (
@@ -1009,14 +1052,14 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                                 const already = stepHabits.length > 0;
                                 const recur = looksRecurring(m.title);
                                 return already ? (
-                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "var(--text-2)" }}>↻ habit</span>
+                                  <span title="This step is a recurring habit" style={{ fontSize: 9, color: "var(--text-2)" }}><span aria-hidden="true">↻</span> habit</span>
                                 ) : (
                                   <button
                                     onClick={() => addHabitFromStep.mutate({ milestoneId: m.id, starId: g.id, title: m.title, element: g.element ?? undefined, planet: (g as any).planet ?? undefined })}
                                     disabled={addHabitFromStep.isPending}
                                     title={recur ? "This reads like a recurring practice — make it a habit" : "Make this step a recurring habit"}
                                     style={{ fontSize: 9, color: recur ? "#7a6cae" : "var(--text-3)", background: recur ? "#7a6cae12" : "none", border: "none", borderRadius: 5, cursor: "pointer", padding: recur ? "1px 6px" : "0 2px", fontWeight: recur ? 600 : 400, lineHeight: 1 }}
-                                  >↻ habit</button>
+                                  ><span aria-hidden="true">↻</span> habit</button>
                                 );
                               })()}
                               <button onClick={() => { setStepTaskAdd(m.id); setStepTaskTitle(""); }} title="Add a task to this step"
@@ -1147,7 +1190,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         <button onClick={() => { setBreakdownFor(g.id); setProposedSteps([]); runBreakdown.mutate({ title: g.title, description: g.description ?? undefined }); }}
                           disabled={runBreakdown.isPending}
                           style={{ fontSize: 10.5, color: "#7a6cae", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", fontWeight: 600 }}>
-                          {runBreakdown.isPending && breakdownFor === g.id ? "thinking…" : "✦ break into steps"}
+                          {runBreakdown.isPending && breakdownFor === g.id ? "thinking…" : <><span aria-hidden="true">✦</span> break into steps</>}
                         </button>
                       )}
                     </div>

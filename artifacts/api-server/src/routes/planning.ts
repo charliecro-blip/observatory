@@ -181,10 +181,28 @@ router.get("/planning/goals", requireTesterId, async (req, res) => {
 // focus tool, not a second to-do list.
 const MAX_ACTIVE_GUIDING_STARS = 5;
 
+/**
+ * A goal's end date, if it has one. Null means a star — no end, and none
+ * wanted; a date means a project. Anything that is not a plain ISO day is
+ * refused rather than stored, because a half-parsed date here would render as
+ * a deadline somewhere.
+ */
+function normalizeEndsOn(v: unknown): string | null | undefined {
+  if (v === null || v === undefined || v === "") return null;
+  const s = String(v).trim();
+  const ok = /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + "T12:00:00Z"));
+  // `undefined` = it did not parse. NOT null: null is the deliberate "this has
+  // no end", and quietly turning a typo into that would delete a real deadline
+  // and report success. A refusal is output, with a reason.
+  return ok ? s : undefined;
+}
+
 router.post("/planning/goals", requireTesterId, async (req, res) => {
   const testerId = res.locals.testerId as string;
-  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
+  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil, endsOn } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
+  const endsOnValue = normalizeEndsOn(endsOn);
+  if (endsOnValue === undefined) { res.status(400).json({ error: "bad_ends_on", message: "An end date must be a calendar day, as YYYY-MM-DD." }); return; }
   if ((status ?? "active") === "active") {
     const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
     if (active.length >= MAX_ACTIVE_GUIDING_STARS) {
@@ -203,6 +221,7 @@ router.post("/planning/goals", requireTesterId, async (req, res) => {
     anchorKind: anchorKind ?? null,
     anchorPlanet: anchorPlanet ?? null,
     anchorHouse: anchorHouse ?? null,
+    endsOn: endsOnValue,
     anchorUntil: anchorUntil ?? null,
   }).returning();
   res.status(201).json(inserted);
@@ -213,7 +232,7 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const existing = (await db.select().from(goals).where(and(eq(goals.id, id), eq(goals.testerId, testerId))).limit(1))[0] ?? null;
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return; }
-  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil } = req.body;
+  const { title, description, horizon, status, element, planet, activityKey, anchorKind, anchorPlanet, anchorHouse, anchorUntil, endsOn } = req.body;
   if (status === "active" && existing.status !== "active") {
     const active = await db.select().from(goals).where(and(eq(goals.testerId, testerId), eq(goals.status, "active")));
     if (active.length >= MAX_ACTIVE_GUIDING_STARS) {
@@ -233,6 +252,14 @@ router.patch("/planning/goals/:id", requireTesterId, async (req, res) => {
   if (anchorPlanet !== undefined) updates.anchorPlanet = anchorPlanet;
   if (anchorHouse !== undefined) updates.anchorHouse = anchorHouse;
   if (anchorUntil !== undefined) updates.anchorUntil = anchorUntil;
+  // Sent explicitly as null, a project becomes a star again — so the date has
+  // to be clearable, not just settable. Anything that is neither a day nor an
+  // explicit null is refused rather than swallowed.
+  if (endsOn !== undefined) {
+    const v = normalizeEndsOn(endsOn);
+    if (v === undefined) { res.status(400).json({ error: "bad_ends_on", message: "An end date must be a calendar day, as YYYY-MM-DD." }); return; }
+    updates.endsOn = v;
+  }
   const [updated] = await db.update(goals).set(updates).where(eq(goals.id, id)).returning();
   res.json(updated);
 });

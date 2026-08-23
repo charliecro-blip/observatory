@@ -19,8 +19,11 @@ cmd="$(jq -r '.tool_input.command // ""' 2>/dev/null)" || exit 0
 printf '%s' "$cmd" | grep -q 'api-server' || exit 0
 
 # ...and only if they actually START it, rather than grep/edit/typecheck it.
+# The runner has to be a COMMAND, not a file extension. Without the leading
+# boundary, `git add A.tsx artifacts/tides/src/B.tsx` reads as "tsx, then a
+# path containing src" and the guard blocks a commit.
 printf '%s' "$cmd" | grep -Eq \
-  '(tsx|ts-node|node)[[:space:]]+[^[:space:]]*(index|server|src)|run[[:space:]]+(dev|start)' \
+  '(^|[;&|]|[[:space:]])(npx[[:space:]]+)?(tsx|ts-node|node)[[:space:]]+[^[:space:]]*(index|server|src)|run[[:space:]]+(dev|start)' \
   || exit 0
 
 # An explicit database on the command line is the whole point of api-scratch.
