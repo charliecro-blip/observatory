@@ -78,8 +78,20 @@ export const PLANET_MYTHOS: Record<string, PlanetMythos> = Object.fromEntries(
 
 // Concrete activities each planetary voice favors when it's loud (hours, day
 // rulers, aspects). Complements PLANET_MYTHOS.whenLoud with pickable items.
+//
+// DERIVED, not authored. This used to be its own list in the lexicon beside the
+// day-part table in approach.ts — the same vocabulary in two places, which drifted
+// until one said "prune and focus" and the other "prune & cancel". Flattening
+// byPart means a line can only be written once.
+//
+// Order follows the day: a caller with no sense of the clock still gets the
+// morning's verbs before the night's, which is the least wrong flat ordering.
+const DAY_ORDER = ["early", "morning", "midday", "evening", "winddown", "night"] as const;
 export const PLANET_ACTIVITIES: Record<string, string[]> = Object.fromEntries(
-  Object.values(LEXICON_PLANETS).filter(p => p.activities).map(p => [p.key, p.activities!]),
+  Object.values(LEXICON_PLANETS).filter(p => p.byPart).map(p => [
+    p.key,
+    [...new Set(DAY_ORDER.flatMap(part => p.byPart![part] ?? []))],
+  ]),
 );
 
 // ── The twelve signs — where the Moon (or any voice) is standing ──────────────

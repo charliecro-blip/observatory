@@ -1,3 +1,4 @@
+import { PLANETS as LEXICON_PLANETS } from "../../../../lib/lexicon/src/planets";
 // The approach layer — same quality, different way in.
 //
 // `PLANET_ACTIVITIES` is a flat planet → verbs map with no awareness of the
@@ -84,69 +85,21 @@ export function dayPartFor(at: Date, wakeTime?: string | null, sleepTime?: strin
   return "evening";
 }
 
-/** Approaches for each planetary voice, by when in the day it lands. */
-const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
-  Sun: {
-    early:   ["get light on your face", "decide what today is actually for", "set the one intention that matters"],
-    morning: ["make the decision as yourself", "take the lead where you'd usually defer", "put your name on it", "ask for the thing directly"],
-    midday:  ["present or publish, and be seen doing it", "take the credit that's yours", "back someone in public", "make the call you've been putting off"],
-    evening: ["say the thing you meant to say", "let something you made be seen", "give someone your whole attention", "mark a finished thing"],
-    winddown:["name one thing that went right", "set the day down before you sleep", "thank someone in particular"],
-    night:   ["let it keep until morning"],
-  },
-  Moon: {
-    early:   ["notice the mood you woke in", "eat something properly", "move slower than you need to"],
-    morning: ["tend the house and the body", "call your people", "put the place back in order", "cook ahead"],
-    midday:  ["feed someone, including yourself", "check in with someone who'd like it", "tend the thing you've let slide", "ask how someone actually is"],
-    evening: ["a long shower, or a longer bath", "make the room comfortable", "eat with people", "put something away where it belongs"],
-    winddown:["nap without earning it", "write the mood down", "let the day settle", "make the room soft"],
-    night:   ["this is the hour for rest", "let the feeling pass without a verdict"],
-  },
-  Mercury: {
-    early:   ["sort the day before it starts", "write the list", "clear the desk first", "read one thing all the way through"],
-    morning: ["write it and send it", "learn the thing", "draft the hard message", "ask the question you've been guessing at"],
-    midday:  ["the small unfinished thing, done now", "settle the detail", "put the two options side by side on paper", "teach it to someone and find the gap", "say it out loud rather than in writing"],
-    evening: ["fix the wording", "reply to what's outstanding", "read back what you wrote this morning", "name tomorrow's first sentence"],
-    winddown:["stop mid-sentence so tomorrow starts easy", "note tomorrow's first task", "close the open loops in writing"],
-    night:   ["read something undemanding", "stop deciding and write it down"],
-  },
-  Venus: {
-    early:   ["give the morning something pleasant", "choose what you actually like"],
-    morning: ["make one corner of it beautiful", "take the pleasing option", "offer the small peace", "put care into how it looks"],
-    midday:  ["mend a connection", "tend a friendship", "choose the version that lasts", "make it look the way it should"],
-    evening: ["enjoy something on purpose", "share a meal", "say the fond thing out loud", "make a plan with someone"],
-    winddown:["something soft: music, a bath, company", "let it be enough", "put beauty in the room you'll wake in"],
-    night:   ["comfort over effort"],
-  },
-  Mars: {
-    early:   ["train hard", "do the brave errand first", "take the hardest task while you're fresh"],
-    morning: ["train hard", "make the cut", "start the thing you keep circling", "say the plain no"],
-    midday:  ["have the direct conversation", "push against something that pushes back", "force the stuck item through", "do the physical job"],
-    // Mars after dark is still Mars — decisive, sharp — but pointed at
-    // finishing and clearing rather than at exertion before bed.
-    evening: ["have the conversation you've dodged", "finish by force if you must", "throw something out", "settle it rather than sleep on it"],
-    winddown:["cut one thing loose", "clear one surface, sharply", "write the boundary you'll hold tomorrow"],
-    night:   ["let the edge keep until morning", "spend it walking, not arguing"],
-  },
-  Jupiter: {
-    early:   ["zoom out to the larger story", "ask what this is in service of"],
-    morning: ["apply, send, put it out", "say yes a size bigger", "make the introduction", "aim one notch past comfortable"],
-    midday:  ["teach what you know", "plan the bigger version", "make the generous offer", "back someone else's bigger idea"],
-    evening: ["be generous first", "make the bigger ask", "widen the plan before you narrow it", "feed people"],
-    winddown:["read something that widens the frame", "let the plan stay big and unwritten", "find one thing to be glad about"],
-    night:   ["dream it larger; write it tomorrow"],
-  },
-  Saturn: {
-    early:   ["do the dull groundwork while it's quiet", "start the thing that needs a long runway"],
-    morning: ["keep the promise", "build the part no one sees", "do the unglamorous hour first", "commit only to what you can deliver"],
-    midday:  ["pay the debt", "prune and focus", "fix it properly rather than again", "put the structure under it"],
-    evening: ["look at the long game", "finish what is nearly finished", "decline something to protect the rest", "check the work against the standard"],
-    // Saturn is not only "stop". It is the boring thing, the slow thing, the
-    // still thing, the thing done properly rather than quickly.
-    winddown:["put one thing in order, slowly", "the dull task, done right", "set the boundary and keep it", "end on time"],
-    night:   ["stillness counts as the work", "one slow, small thing, or nothing"],
-  },
-};
+/**
+ * Approaches for each planetary voice, by when in the day it lands.
+ *
+ * THE TABLE ITSELF LIVES IN THE LEXICON (lib/lexicon/src/planets.ts, `byPart`),
+ * which is upstream of both this file and the api-server, so it can be the one
+ * place a line is written. It used to live here while a second, flat list of
+ * the same vocabulary lived in the lexicon; they drifted for weeks, and a copy
+ * pass on one left the app contradicting itself.
+ *
+ * The logic stays here — day-parts, void forms, the pick — because that is
+ * about the clock and the lexicon is data.
+ */
+const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = Object.fromEntries(
+  Object.values(LEXICON_PLANETS).filter(p => p.byPart).map(p => [p.key, p.byPart!]),
+);
 
 /**
  * Void-of-course forms. The Moon makes no further aspects before changing

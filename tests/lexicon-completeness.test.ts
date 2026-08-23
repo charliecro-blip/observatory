@@ -22,7 +22,7 @@ describe("the planet lexicon is complete", () => {
     for (const p of ALL) expect(PLANETS[p], p).toBeTruthy();
   });
 
-  for (const field of ["approach", "meaning", "feelings", "literacy", "core", "voice", "activities", "signification", "theme", "roads"] as const) {
+  for (const field of ["approach", "meaning", "feelings", "literacy", "core", "voice", "byPart", "signification", "theme", "roads"] as const) {
     it(`gives every planet a ${field}`, () => {
       const missing = ALL.filter(p => {
         const v = (PLANETS[p] as Record<string, unknown>)[field];
@@ -37,7 +37,17 @@ describe("the planet lexicon is complete", () => {
     // reading and offers nothing to do is the defect this file exists for.
     for (const p of ALL) {
       expect(PLANETS[p].theme!.activities.length, `${p} theme.activities`).toBeGreaterThanOrEqual(3);
-      expect(PLANETS[p].activities!.length, `${p} activities`).toBeGreaterThanOrEqual(3);
+      // The flat `activities` list became `byPart` on 2026-08-23, when the two
+      // tables of this vocabulary were merged. The invariant is unchanged and
+      // now stronger: a planet must have something to say in EVERY part of the
+      // day, because approachOptions falls back to nothing when a day-part is
+      // missing — which is exactly how the outer three used to return [].
+      const byPart = PLANETS[p].byPart!;
+      const lines = Object.values(byPart).flat();
+      expect(lines.length, `${p} byPart lines`).toBeGreaterThanOrEqual(3);
+      for (const part of ["early", "morning", "midday", "evening", "winddown", "night"] as const) {
+        expect(byPart[part]?.length, `${p} byPart.${part}`).toBeGreaterThan(0);
+      }
       expect(PLANETS[p].theme!.verb.length, `${p} theme.verb`).toBeGreaterThan(4);
     }
   });
@@ -47,12 +57,22 @@ describe("the planet lexicon is complete", () => {
     for (const p of ALL) {
       const e = PLANETS[p];
       seen.push(e.theme!.verb, e.signification!, e.voice!.essence, e.voice!.whenLoud, e.voice!.myth,
-        ...e.activities!, ...e.theme!.activities, e.roads!.gift, e.roads!.shadow, e.roads!.work);
+        ...Object.values(e.byPart!).flat(), ...e.theme!.activities, e.roads!.gift, e.roads!.shadow, e.roads!.work);
     }
     for (const s of seen) {
       expect(s, `"overdue" is banned: ${s}`).not.toMatch(/\boverdue\b/i);
       // British spellings the tree does not use.
-      expect(s, `British spelling: ${s}`).not.toMatch(/\b\w+(ise|isation|ised|ising)\b/i);
+      //
+      // Not a bare /\w+ise\b/: that reads "keep the promise" as a Britishism,
+      // because the -ise is part of the root rather than the British form of
+      // -ize. It also failed on exercise, revise and overpromised. The guard
+      // was wrong for as long as it existed and only fired once the merged
+      // byPart table brought a string containing "promise" into its scope.
+      // The discriminator is that a real Britishism has an -ize counterpart.
+      const ROOT_ISE = /^(?:over)?(?:promis|exercis|revis|advis|devis|surpris|comprom|improvis|supervis|televis|disguis|apprais|premis|compris|aris|ris|wis|franchis|merchandis|demis|excis|incis)(?:e|ed|es|ing)$/i;
+      for (const m of s.matchAll(/\b\w+(?:ise|isation|ised|ising)\b/gi)) {
+        expect(ROOT_ISE.test(m[0]), `British spelling "${m[0]}" in: ${s}`).toBe(true);
+      }
       expect(s.trim(), "no empty string").not.toBe("");
     }
   });

@@ -12,7 +12,7 @@ describe("the planet lexicon", () => {
       expect(p.approach.length).toBeGreaterThan(10);
       expect(p.literacy.longArc.length).toBeGreaterThan(10);
       expect(p.core.use.length).toBeGreaterThan(3);
-      if (p.classical) { expect(p.voice).toBeTruthy(); expect(p.roads).toBeTruthy(); expect(p.theme).toBeTruthy(); expect(p.activities!.length).toBeGreaterThan(3); }
+      if (p.classical) { expect(p.voice).toBeTruthy(); expect(p.roads).toBeTruthy(); expect(p.theme).toBeTruthy(); expect(Object.values(p.byPart!).flat().length).toBeGreaterThan(3); }
     }
   });
   it("approach lines are one clause with a hinge, no full stop, no em dash, and do not all start the same way", () => {
@@ -28,7 +28,14 @@ describe("the planet lexicon", () => {
   it("the client's planet tables are views of the record", () => {
     for (const k of CLASSICAL) {
       expect(PLANET_MYTHOS[k].whenLoud).toBe(PLANETS[k].voice!.whenLoud);
-      expect(PLANET_ACTIVITIES[k]).toEqual(PLANETS[k].activities);
+      // PLANET_ACTIVITIES is now DERIVED from byPart rather than authored
+      // beside it — flattened in day order and deduped, which is what stops
+      // the two tables drifting. Mars is the case that proves the dedupe:
+      // "train hard" is guarded in both early and morning.
+      const DAY_ORDER = ["early", "morning", "midday", "evening", "winddown", "night"] as const;
+      expect(PLANET_ACTIVITIES[k]).toEqual([
+        ...new Set(DAY_ORDER.flatMap(part => PLANETS[k].byPart![part] ?? [])),
+      ]);
     }
     for (const k of PLANET_ORDER) {
       expect(PLANET_CORE[k]).toEqual(PLANETS[k].core);

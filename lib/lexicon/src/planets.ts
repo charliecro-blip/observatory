@@ -15,6 +15,9 @@
  *
  * Plain TypeScript with no imports, so both artifacts can import it by path.
  */
+/** Where an hour falls in the person's own waking day, not on the clock. */
+export type DayPart = "early" | "morning" | "midday" | "evening" | "winddown" | "night";
+
 export interface PlanetEntry {
   key: string;
   glyph: string;
@@ -37,7 +40,13 @@ export interface PlanetEntry {
   literacy: { adjective: string; undertone: string; feelsLike: string; shadow: string; useIt: string; weeklyNote: string; longArc: string; etymology?: string };
   core: { name: string; is: string; short: string; use: string };
   voice?: { archetype: string; color: string; essence: string; myth: string; speaksFor: string[]; whenLoud: string };
-  activities?: string[];
+  /** WHAT TO DO WITH IT, by where the hour falls in the person's own waking
+   *  day. The single source: approach.ts reads this, and the flat planet→verbs
+   *  map every other surface used to read is now derived from it. Two tables
+   *  of the same vocabulary drifted for weeks — one said "prune and focus" and
+   *  the other "prune & cancel", the owner's own correction applied to one and
+   *  not the other. */
+  byPart?: Partial<Record<DayPart, string[]>>;
   signification?: string;
   theme?: { verb: string; activities: string[] };
   roads?: { gift: string; shadow: string; work: string };
@@ -52,7 +61,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "solar", "undertone": "a solar undertone — visibility, vitality, the pull to be seen", "feelsLike": "Solar time feels like standing in good light: clearer sense of self, easier decisions, a wish to be witnessed. Confidence sits closer to the surface than usual.", "shadow": "Its edge is ego-friction — taking things personally, needing credit, glare. If you feel prickly about recognition today, that's the same current.", "useIt": "Lead, present, decide, be seen, and put your name on something.", "weeklyNote": "About once a week the Moon makes a hard angle to the Sun — those are the quarter moons, the little tension points of every month. Notice them: they're decision days.", "longArc": "Long solar arcs are about identity and direction — each birthday (your solar return) opens a new personal year. When slow planets aspect your natal Sun for months, the question is 'who am I becoming?'"},
     core: {"name": "Sun", "is": "your center of gravity — identity, vitality, what the day organizes around", "short": "the will to shine", "use": "visibility, leading, putting your name on it"},
     voice: {"archetype": "The Sovereign", "color": "#c08020", "essence": "Identity, vitality, and the center that everything else orbits.", "myth": "The Sun is the voice of coherence — the part of the day that asks whether your actions still orbit your actual center. When it speaks, questions of purpose, visibility, and self-respect come forward.", "speaksFor": ["purpose", "visibility", "vitality", "authority", "self-expression"], "whenLoud": "Step into the light on purpose: lead, present, decide as yourself. Vitality is available — spend it on what's actually yours."},
-    activities: ["take the lead where you'd usually defer", "make the decision as yourself", "present or publish, and be seen doing it", "tend vitality: light, movement", "claim credit honestly", "set the week's direction"],
+    byPart: {
+      early: ["get light on your face", "decide what today is actually for", "set the one intention that matters"],
+      morning: ["make the decision as yourself", "take the lead where you'd usually defer", "put your name on it", "ask for the thing directly"],
+      midday: ["present or publish, and be seen doing it", "take the credit that's yours", "back someone in public", "make the call you've been putting off"],
+      evening: ["say the thing you meant to say", "let something you made be seen", "give someone your whole attention", "mark a finished thing"],
+      winddown: ["name one thing that went right", "set the day down before you sleep", "thank someone in particular"],
+      night: ["let it keep until morning"],
+    },
     signification: "Visibility, leadership, vitality: presenting yourself, making decisions, creative assertion.",
     theme: {"verb": "vitality and wholehearted action", "activities": ["decide", "creative work", "the essential task"]},
     roads: {"gift": "warmth, and the nerve to be seen", "shadow": "needing to be the centre of it", "work": "put the wanting-to-be-seen into making one thing worth seeing"},
@@ -65,7 +81,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "lunar", "undertone": "a lunar undertone — feelings near the surface, the body asking to be tended", "feelsLike": "Lunar time is tidal: moods that move with no obvious cause, hunger for comfort and familiarity, sensitivity dialed up. The body speaks louder than the head.", "shadow": "Its edge is moodiness and clinging to the familiar — reactive feelings that feel truer than they are. Wait a few hours before believing a 3pm despair.", "useIt": "Tend, rest, cook, feel, remember: care for the body and the home.", "weeklyNote": "The Moon is the fastest teacher in the sky — it changes sign every ~2.5 days, which is why the day's whole character (Deep, Surge, Building, Clear) follows it. Learn the Moon and you've learned the app.", "longArc": "The Moon's long lessons come as the monthly cycle — new moon intentions to full moon visibility to dark moon rest. Track one full month in the Log and the shape becomes obvious."},
     core: {"name": "Moon", "is": "the feeling body — moods, needs, the inner weather", "short": "the need to feel safe", "use": "tending, resting, listening inward"},
     voice: {"archetype": "The Nurturer", "color": "#7080a0", "essence": "Feeling, habit, memory — the daily inner weather.", "myth": "The Moon is the fastest voice and the closest: the mood of the body, the pull of habit, the tide itself. When it speaks, the question is what needs tending — in you, in your home, in the people you keep.", "speaksFor": ["mood & instinct", "home", "nourishment", "habit", "the past"], "whenLoud": "Tend rather than push. Feed what keeps you alive — body, home, sleep, the people who are your ground."},
-    activities: ["tend home & body", "feed someone, including yourself", "nap without guilt", "journal the mood", "call your people", "a long shower, or a longer bath"],
+    byPart: {
+      early: ["notice the mood you woke in", "eat something properly", "move slower than you need to"],
+      morning: ["tend the house and the body", "call your people", "put the place back in order", "cook ahead"],
+      midday: ["feed someone, including yourself", "check in with someone who'd like it", "tend the thing you've let slide", "ask how someone actually is"],
+      evening: ["a long shower, or a longer bath", "make the room comfortable", "eat with people", "put something away where it belongs"],
+      winddown: ["nap without earning it", "write the mood down", "let the day settle", "make the room soft"],
+      night: ["this is the hour for rest", "let the feeling pass without a verdict"],
+    },
     signification: "Nourishment, care, routine: tending home, body, and emotional space.",
     theme: {"verb": "tending and feeling", "activities": ["rest", "tend home", "care for someone"]},
     roads: {"gift": "care, and reading the room", "shadow": "the mood running the day sideways", "work": "feel it on purpose for ten minutes, so it doesn't leak into everything"},
@@ -78,7 +101,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "mercurial", "undertone": "a mercurial undertone — a quick, talkative, slightly scattered current", "feelsLike": "Mercurial time is fast and bright: words come easily, errands chain together, curiosity jumps between tabs. Great for anything involving language, lists, or logistics.", "shadow": "Its edge is scatter and nerves — too many threads, saying the clever thing instead of the true one, doom-scrolling as fake thinking. If your attention feels like a startled bird, that's it.", "useIt": "Write, call, sort, schedule, negotiate, learn: move information.", "weeklyNote": "Roughly once a week the Moon contacts Mercury and the day takes on this chatty, quicksilver feel. That's the day to clear the inbox and make the calls.", "longArc": "Mercury's famous long lesson is the retrograde, three weeks a few times a year: revise, resume, reread — the re- words. It's not a curse; it's an editing pass.", "etymology": "'Mercurial' — quick, changeable, animated — entered English from exactly this flavor."},
     core: {"name": "Mercury", "is": "the mind in motion — words, plans, connections", "short": "the urge to connect ideas", "use": "writing, sorting, conversation"},
     voice: {"archetype": "The Messenger", "color": "#608060", "essence": "Language, exchange, and the paths between things.", "myth": "Mercury is the voice of connection-in-motion: words, messages, routes, trades, jokes. When it speaks, information wants to move — and the quality of your day depends on how cleanly it does.", "speaksFor": ["writing & speech", "learning", "commerce", "travel & errands", "wit"], "whenLoud": "Move the words: write, send, ask, sort, name the thing precisely. Friction in communication is the day's real work."},
-    activities: ["write & send", "sort & name things", "learn the skill", "the small unfinished thing, done now", "negotiate the detail", "fix the words"],
+    byPart: {
+      early: ["sort the day before it starts", "write the list", "clear the desk first", "read one thing all the way through"],
+      morning: ["write it and send it", "learn the thing", "draft the hard message", "ask the question you've been guessing at"],
+      midday: ["the small unfinished thing, done now", "settle the detail", "put the two options side by side on paper", "teach it to someone and find the gap", "say it out loud rather than in writing"],
+      evening: ["fix the wording", "reply to what's outstanding", "read back what you wrote this morning", "name tomorrow's first sentence"],
+      winddown: ["stop mid-sentence so tomorrow starts easy", "note tomorrow's first task", "close the open loops in writing"],
+      night: ["read something undemanding", "stop deciding and write it down"],
+    },
     signification: "Communication, ideas, movement: write, pitch, learn, travel.",
     theme: {"verb": "thinking and exchanging", "activities": ["write", "sort", "learn", "run errands"]},
     roads: {"gift": "quickness, and real curiosity", "shadow": "the thought that keeps circling", "work": "write the loop down — it stops circling once it's on paper"},
@@ -91,7 +121,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "venusian", "undertone": "a venusian undertone — warmth, ease, an appetite for beauty and company", "feelsLike": "Venusian time softens things: people are easier to like, food tastes better, aesthetics matter. Friction in relationships loosens; invitations land well.", "shadow": "Its edge is indulgence and conflict-avoidance — choosing pleasant over honest, buying the thing instead of feeling the feeling.", "useIt": "Connect, host, beautify, reconcile, enjoy: make the date, send the invitation, fix the room.", "weeklyNote": "About once a week the Moon touches Venus and the day carries this sweetness. Notice it — it's the natural day for the relational and aesthetic items on your list.", "longArc": "Venus retrograde (every ~18 months) famously reopens old relationships and re-questions what you value. Long Venus transits ask: what do you actually want, versus what you were told to want?"},
     core: {"name": "Venus", "is": "what draws you — pleasure, relating, worth", "short": "the pull toward beauty", "use": "relating, refining, enjoying"},
     voice: {"archetype": "The Connector", "color": "#c06090", "essence": "Attraction, beauty, and what makes life worth arranging.", "myth": "Venus is the voice of value — what you're drawn to, what you find beautiful, who you want near. When it speaks, harmony becomes available: in rooms, in relationships, in work made pleasing.", "speaksFor": ["love & friendship", "beauty & art", "pleasure", "diplomacy", "worth"], "whenLoud": "Arrange, beautify, reconcile, enjoy. Reach toward people and things you value — grace is doing half the work today."},
-    activities: ["reconcile & connect", "make one corner of it beautiful", "enjoy something on purpose", "tend love & friendship", "choose the pleasing option", "put care into how it looks"],
+    byPart: {
+      early: ["give the morning something pleasant", "choose what you actually like"],
+      morning: ["make one corner of it beautiful", "take the pleasing option", "offer the small peace", "put care into how it looks"],
+      midday: ["mend a connection", "tend a friendship", "choose the version that lasts", "make it look the way it should"],
+      evening: ["enjoy something on purpose", "share a meal", "say the fond thing out loud", "make a plan with someone"],
+      winddown: ["something soft: music, a bath, company", "let it be enough", "put beauty in the room you'll wake in"],
+      night: ["comfort over effort"],
+    },
     signification: "Beauty, pleasure, connection: relationship, art, sensory enjoyment.",
     theme: {"verb": "relating and refining", "activities": ["connect", "make something beautiful", "money"]},
     roads: {"gift": "ease, and warmth toward people", "shadow": "smoothing it over instead of saying the hard thing", "work": "have the pleasant thing, then say the true thing — in that order"},
@@ -104,7 +141,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "martial", "undertone": "a martial undertone — heat, drive, a shorter fuse", "feelsLike": "Martial time runs hot: more energy than patience, a push to act, cut, finish, confront. Workouts feel great; waiting rooms feel unbearable.", "shadow": "Its edge is irritability and haste — the snapped reply, the forced decision, the injury from rushing. If everyone seems annoying today, the heat is probably yours.", "useIt": "Move the body, do the hard physical task, have the direct conversation, make the clean cut you've been avoiding.", "weeklyNote": "Once a week or so the Moon makes a hard angle to Mars — a day with extra heat in it. Point it at something (exercise, decisive work) or it points itself at people.", "longArc": "Mars returns to its natal place every ~2 years — cycles of how you fight and pursue. Long Mars transits mark seasons where anger and drive both run closer to the skin.", "etymology": "'Martial' — of combat and drive — is Mars's name in English."},
     core: {"name": "Mars", "is": "the engine — drive, courage, the cutting edge", "short": "the drive to act", "use": "physical effort, decisive cuts, brave starts"},
     voice: {"archetype": "The Warrior", "color": "#c04040", "essence": "Drive, edge, and the courage to cut.", "myth": "Mars is the voice of force — the part of you that acts, defends, competes, and separates what must be separated. When it speaks, energy demands a worthy target; unaimed, it turns to friction.", "speaksFor": ["action & effort", "the body's power", "boundaries", "conflict", "decisiveness"], "whenLoud": "Give the force a job: train hard, make the cut, have the direct conversation. Aim it or it will aim itself."},
-    activities: ["train hard", "make the cut", "have the direct conversation", "push against something that pushes back", "do the brave errand", "finish by force if needed"],
+    byPart: {
+      early: ["train hard", "do the brave errand first", "take the hardest task while you're fresh"],
+      morning: ["train hard", "make the cut", "start the thing you keep circling", "say the plain no"],
+      midday: ["have the direct conversation", "push against something that pushes back", "force the stuck item through", "do the physical job"],
+      evening: ["have the conversation you've dodged", "finish by force if you must", "throw something out", "settle it rather than sleep on it"],
+      winddown: ["cut one thing loose", "clear one surface, sharply", "write the boundary you'll hold tomorrow"],
+      night: ["let the edge keep until morning", "spend it walking, not arguing"],
+    },
     signification: "Action, ignition, assertion: physical work, bold starts, decisive moves.",
     theme: {"verb": "effort and the decisive cut", "activities": ["train", "push", "the hard task"]},
     roads: {"gift": "nerve, and the will to finish", "shadow": "the short fuse, the rush", "work": "spend the edge on something physical with an end, before it finds a person"},
@@ -117,7 +161,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "jovial", "undertone": "a jovial undertone — optimism, appetite, the sense that more is possible", "feelsLike": "Jovial time feels expansive: bigger thinking, easier generosity, luck that's mostly just increased willingness to say yes. Good for asking, launching, teaching, celebrating.", "shadow": "Its edge is excess and overpromise — the yes you can't deliver, the plan that assumes the best case everywhere. Enthusiasm is not a schedule.", "useIt": "Ask for the bigger thing, publish, pitch, teach, celebrate, zoom out to the year view.", "weeklyNote": "The Moon meets Jupiter about weekly — a day that feels lighter and more open-handed than it strictly should. A natural day for asks and launches.", "longArc": "Jupiter takes ~12 years to circle your chart — one house per year, a slow tour of where growth wants to happen. Your Jupiter return (~ages 12, 24, 36…) opens a fresh 12-year chapter of growth.", "etymology": "'Jovial' — from Jove, Jupiter — has meant good-humored abundance for five hundred years."},
     core: {"name": "Jupiter", "is": "the expander — growth, faith, the bigger frame", "short": "the urge to grow", "use": "teaching, publishing, saying yes bigger"},
     voice: {"archetype": "The Sage", "color": "#6040a0", "essence": "Growth, meaning, and the larger frame.", "myth": "Jupiter is the voice of more — more scope, more meaning, more generosity. When it speaks, doors are looser on their hinges and the question is which larger story you're willing to step into.", "speaksFor": ["opportunity", "teaching & belief", "travel & horizon", "generosity", "luck you position for"], "whenLoud": "Say yes bigger: publish, apply, invite, teach, expand the plan one honest size up."},
-    activities: ["say yes bigger", "apply & publish", "teach what you know", "plan the expansion", "be generous first", "zoom out to the larger story"],
+    byPart: {
+      early: ["zoom out to the larger story", "ask what this is in service of"],
+      morning: ["apply, send, put it out", "say yes a size bigger", "make the introduction", "aim one notch past comfortable"],
+      midday: ["teach what you know", "plan the bigger version", "make the generous offer", "back someone else's bigger idea"],
+      evening: ["be generous first", "make the bigger ask", "widen the plan before you narrow it", "feed people"],
+      winddown: ["read something that widens the frame", "let the plan stay big and unwritten", "find one thing to be glad about"],
+      night: ["dream it larger; write it tomorrow"],
+    },
     signification: "Expansion, abundance, generosity: think big, share widely, grow.",
     theme: {"verb": "growth and the bigger frame", "activities": ["teach", "the big ask", "reach wider"]},
     roads: {"gift": "generosity, and the wider view", "shadow": "saying yes too big, skipping the detail", "work": "say yes to the size, then check the one detail you'd rather skip"},
@@ -130,7 +181,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     literacy: {"adjective": "saturnine", "undertone": "a saturnine undertone — gravity, focus, maybe a little heaviness", "feelsLike": "Saturnine time has weight: fewer illusions, more clarity about what's actually required. Quiet, structured, unglamorous work goes unusually well. Solitude feels right rather than lonely.", "shadow": "Its edge is heaviness — pessimism, self-criticism, the sense that everything is a test you're failing. A saturnine day can genuinely feel depressive. That's the flavor, not the truth; it passes within a day.", "useIt": "Do the disciplined thing: the budget, the edit, the maintenance, the boundary. Saturn days convert effort into structure better than any other.", "weeklyNote": "Most weeks have one saturnine day — when the Moon makes a hard angle to Saturn. Learn to spot yours: heavy morning, good focus, low small-talk tolerance. Check the Log after a few weeks and you'll see the pattern.", "longArc": "Saturn is the great teacher of the long game: ~29 years to circle your chart. Its return (~29, ~58) is the famous growing-up threshold. Multi-month Saturn transits are seasons of pruning and consolidation — heavy while they last, and usually what you're proudest of afterward.", "etymology": "'Saturnine' — grave, gloomy, serious — is centuries of people feeling exactly this day."},
     core: {"name": "Saturn", "is": "the builder — limits, time, what must be earned", "short": "the need for structure", "use": "committing, pruning, doing the unglamorous work"},
     voice: {"archetype": "The Builder", "color": "#807060", "essence": "Structure, time, and the dignity of limits.", "myth": "Saturn is the slowest classical voice and the most honest: it speaks for what holds when enthusiasm doesn't. When it's loud, the day rewards discipline, pruning, and promises kept — and quietly taxes everything else.", "speaksFor": ["commitment", "structure", "boundaries in time", "mastery", "consequence"], "whenLoud": "Do the unglamorous right thing: keep the commitment, cut the excess, build the part no one sees. It compounds."},
-    activities: ["keep the commitment", "prune and focus", "do the boring foundation", "review the long game", "pay the debt", "build the part no one sees"],
+    byPart: {
+      early: ["do the dull groundwork while it's quiet", "start the thing that needs a long runway"],
+      morning: ["keep the promise", "build the part no one sees", "do the unglamorous hour first", "commit only to what you can deliver"],
+      midday: ["pay the debt", "prune and focus", "fix it properly rather than again", "put the structure under it"],
+      evening: ["look at the long game", "finish what is nearly finished", "decline something to protect the rest", "check the work against the standard"],
+      winddown: ["put one thing in order, slowly", "the dull task, done right", "set the boundary and keep it", "end on time"],
+      night: ["stillness counts as the work", "one slow, small thing, or nothing"],
+    },
     signification: "Structure, focus, consolidation: slow down, commit, build foundations.",
     theme: {"verb": "structure and the unglamorous right thing", "activities": ["finish", "commit", "prune"]},
     roads: {"gift": "patience, and the long haul", "shadow": "the gloom, the stiffening, the fear", "work": "do the smallest real piece — it lifts by moving, not by solving"},
@@ -148,7 +206,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'fresh air, honest change', shadow: 'restlessness, the break for its own sake', work: 'change one real thing on purpose, so the restlessness has somewhere to land' },
     voice: {"archetype": "The Awakener", "color": "#3090a0", "essence": "Sudden change, and the freedom to do it differently.", "myth": "Uranus is the voice that will not repeat itself — the part of you that notices the arrangement everyone has settled into and asks why it has to be that way. When it's loud, the settled thing goes restless and the new angle arrives before you have asked for it.", "speaksFor": ["change", "independence", "the unexpected", "invention", "breaking a pattern"], "whenLoud": "Change one real thing on purpose, so the restlessness has somewhere to land."},
-    activities: ["change one real thing", "try the version you haven't tried", "break one routine you rely on", "unstick what's stuck", "ask the question you have been circling"],
+    byPart: {
+      early: ["change one small thing before the day sets"],
+      morning: ["try the version you haven't tried", "break one routine you rely on"],
+      midday: ["unstick what's stuck", "change one real thing", "ask the question you have been circling"],
+      evening: ["say the unexpected thing", "let the plan change"],
+      winddown: ["let one thing stay unsettled"],
+      night: ["the restlessness is not an instruction"],
+    },
     signification: "Change, independence, invention: shake a pattern, try the other way.",
     theme: {"verb": "breaking the old pattern", "activities": ["change one thing", "try it differently", "unstick something"]},
   },
@@ -165,7 +230,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'imagination, and a softer heart', shadow: 'fog, drift, the story you tell yourself', work: "make something, or rest — both use the fog; deciding in it doesn't" },
     voice: {"archetype": "The Dreamer", "color": "#5060b0", "essence": "Imagination, softened edges, and what won't be pinned down.", "myth": "Neptune is the voice with no outline — the part of you that makes things up, feels what isn't said, and would rather the edges stayed soft. When it's loud, the imagination runs generous and the facts turn slippery, which is wonderful for making and unreliable for deciding.", "speaksFor": ["imagination", "compassion", "music and image", "rest", "what is unsaid"], "whenLoud": "The fog is good material and bad information, so it suits making and rest better than it suits a decision."},
-    activities: ["make something without a plan", "rest without earning it", "put something on and let it play", "let the edges blur", "sit with what isn't said"],
+    byPart: {
+      early: ["wake slowly, without reaching for the day"],
+      morning: ["make something without a plan", "let the edges blur"],
+      midday: ["put something on and let it play", "sit with what isn't said"],
+      evening: ["let the day go soft", "listen to something all the way through"],
+      winddown: ["stop, without having finished"],
+      night: ["sleep on it; the answer is not tonight's"],
+    },
     signification: "Imagination, compassion, dissolution: make, rest, hold decisions loosely.",
     theme: {"verb": "dissolving and imagining", "activities": ["make something", "rest", "imagine"]},
   },
@@ -182,7 +254,14 @@ export const PLANETS: Record<string, PlanetEntry> = {
     // synthesis's OUTER_THEME, which now sources these from here.
     roads: { gift: 'depth, and the nerve to begin again', shadow: 'the grip, the fixation', work: "name what you're actually trying to control, then loosen one hand" },
     voice: {"archetype": "The Renovator", "color": "#703060", "essence": "Depth, power, and what has to end before the next thing starts.", "myth": "Pluto is the voice underneath — the part of you that refuses the surface version and keeps digging until it finds what is driving it. When it's loud, what has been buried comes up, and what has been quietly rotting gets hard to keep ignoring.", "speaksFor": ["depth", "power", "what's buried", "endings", "the truth under the story"], "whenLoud": "Name what you're actually trying to control, then loosen one hand."},
-    activities: ["clear out what's finished", "go one layer deeper", "name what you're controlling", "let something end cleanly", "face the buried thing"],
+    byPart: {
+      early: ["notice what you are avoiding before it hides"],
+      morning: ["go one layer deeper", "face the buried thing"],
+      midday: ["clear out what's finished", "name what you're controlling"],
+      evening: ["let something end cleanly", "say the true thing about it"],
+      winddown: ["put down what you have been gripping"],
+      night: ["let it be as heavy as it is"],
+    },
     signification: "Depth, power, endings: clear out, dig under, let something finish.",
     theme: {"verb": "deep renovation", "activities": ["clear something out", "go deeper", "let something end"]},
   },
