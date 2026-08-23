@@ -69,6 +69,12 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   /** The wall-clock instant the session ends. The one source of truth while
    *  active — `remaining` is always derived from it, never counted down. */
   const endsAtRef = useRef<number | null>(null);
+  /** The session's full length, captured once at start. The ring's
+   *  denominator has to be frozen: `duration` ignores the custom and
+   *  until-hour-end paths, and live `secsUntilHourEnd` shrinks in step with
+   *  `remaining`, so a ring divided by either drains at the wrong rate or
+   *  not at all. */
+  const sessionTotalRef = useRef(25 * 60);
 
   // Compute seconds until end of current planetary hour
   const hourEnd = planetaryHour?.ends ? parseHHMM(planetaryHour.ends) : null;
@@ -125,6 +131,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
 
   function start() {
     const dur = resolvedDuration();
+    sessionTotalRef.current = Math.max(dur, 1);
     setRemaining(dur);
     setPhase("active");
     setSessionQuiet(true);
@@ -178,8 +185,8 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   }, [phase]);
 
   // Progress ring params
-  const totalSecs = useUntilHourEnd ? secsUntilHourEnd || duration : duration;
-  const pct = phase !== "idle" ? (remaining / Math.max(totalSecs, 1)) : 1;
+  const totalSecs = sessionTotalRef.current;
+  const pct = phase !== "idle" ? (remaining / totalSecs) : 1;
   const R = 28;
   const circ = 2 * Math.PI * R;
   const planet = planetaryHour?.planet;
@@ -204,7 +211,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
           <svg width={10} height={10} viewBox="0 0 10 10">
             <circle cx={5} cy={5} r={4} stroke="#e0a040" strokeWidth={1.5} fill="none"/>
             <circle cx={5} cy={5} r={4} stroke="#e0a040" strokeWidth={1.5} fill="none"
-              strokeDasharray={`${(remaining / totalSecs) * 25.1} 25.1`}
+              strokeDasharray={`${pct * 25.1} 25.1`}
               transform="rotate(-90 5 5)" strokeLinecap="round"/>
           </svg>
         )}
@@ -338,10 +345,10 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
             <LogDone
               testerId={testerId}
               defaultTitle={note}
-              // resolvedDuration, not totalSecs: totalSecs ignores a custom
-              // duration (it exists for the ring), so a 1-minute custom
-              // session was offering to log 25 minutes it never ran.
-              defaultMinutes={Math.max(1, Math.round(resolvedDuration() / 60))}
+              // sessionTotalRef, not resolvedDuration(): for an until-hour-end
+              // session, resolvedDuration() re-reads the live clock here and
+              // offers the NEXT hour's remainder, not the stretch that ran.
+              defaultMinutes={Math.max(1, Math.round(sessionTotalRef.current / 60))}
               onLogged={() => { setLogging(false); setPhase("idle"); setNote(""); setRemaining(resolvedDuration()); }}
               onSkip={() => setLogging(false)}
             />
