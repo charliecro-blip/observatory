@@ -49,6 +49,7 @@
  * axis is the better one for a list you are working from.
  */
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
@@ -139,6 +140,19 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
 
   // Nothing held at all is not a state worth a card — the cold-start doors
   // below say it better, with the right offer attached.
+  // Stars whose hidden rows the reader has asked to see. "and 1 more" named
+  // something real and then refused to show it — the card knows the row, it
+  // is already loaded, and the only thing missing was somewhere to click.
+  // Opening in place rather than navigating, because the star's own heading
+  // is already the door to the star; a second control going the same place
+  // would make the count decorative twice over.
+  const [openStars, setOpenStars] = useState<Set<number>>(new Set());
+  const toggleStar = (id: number) => setOpenStars(prev => {
+    const next = new Set(prev);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
+
   if (habitsFailed || (liveHabits.length === 0 && liveStars.length === 0)) return null;
 
   // Counts are over DISTINCT habits, computed before any grouping, so a habit
@@ -239,7 +253,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
         <button onClick={() => onNavigate("work")} style={{
           marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
           padding: 0, cursor: "pointer", color: "var(--color-primary)",
-        }}>Open →</button>
+        }}>Open <span aria-hidden="true">→</span></button>
       </div>
 
       {folded ? null : grouped ? (
@@ -255,9 +269,13 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             const mine = sorted.filter(h => (habitStars.get(h.id) ?? []).includes(s.id));
             const myTasks = openTasks.filter(t => t.goalId === s.id);
             if (!mine.length && !myTasks.length) return null;
-            const shownHabits = mine.slice(0, perStar);
-            const shownTasks = myTasks.slice(0, Math.max(0, perStar - shownHabits.length));
+            const isOpen = openStars.has(s.id);
+            const shownHabits = isOpen ? mine : mine.slice(0, perStar);
+            const shownTasks = isOpen ? myTasks : myTasks.slice(0, Math.max(0, perStar - shownHabits.length));
             const hidden = (mine.length - shownHabits.length) + (myTasks.length - shownTasks.length);
+            // What the control would reveal, which stays constant while open —
+            // "fewer" needs to know there was something to fold back.
+            const foldable = (mine.length + myTasks.length) - perStar;
             const done = s.completedCount ?? 0;
             const scheduled = s.scheduledCount ?? 0;
             return (
@@ -299,8 +317,17 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                       )}
                     </button>
                   ))}
-                  {hidden > 0 && (
-                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>and {hidden} more</div>
+                  {(hidden > 0 || (isOpen && foldable > 0)) && (
+                    <button
+                      onClick={() => toggleStar(s.id)}
+                      aria-expanded={isOpen}
+                      style={{
+                        fontSize: 10, color: "var(--text-3)", background: "none", border: "none",
+                        padding: 0, textAlign: "left", cursor: "pointer", width: "fit-content",
+                      }}
+                    >
+                      {isOpen ? "fewer" : `and ${hidden} more`}
+                    </button>
                   )}
                 </div>
               </div>
@@ -324,7 +351,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                 <button onClick={() => onNavigate("work")} style={{
                   flexShrink: 0, fontSize: 10.5, background: "none", border: "none",
                   padding: 0, cursor: "pointer", color: "var(--color-primary)",
-                }}>Tie something to them →</button>
+                }}>Tie something to them <span aria-hidden="true">→</span></button>
               </div>
             );
           })()}
@@ -336,7 +363,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                 <button onClick={() => onNavigate("habits")} style={{
                   marginLeft: "auto", fontSize: 10.5, background: "none", border: "none",
                   padding: 0, cursor: "pointer", color: "var(--color-primary)",
-                }}>Tie them in →</button>
+                }}>Tie them in <span aria-hidden="true">→</span></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {untiedHabits.slice(0, perStar).map(h => <HabitRow key={h.id} h={h} />)}
@@ -414,7 +441,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             <button onClick={() => onNavigate("work")} style={{
               marginTop: 10, fontSize: 11, background: "none", border: "none",
               padding: 0, cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
-            }}>Name a Guiding Star these can count toward →</button>
+            }}>Name a Guiding Star these can count toward <span aria-hidden="true">→</span></button>
           )}
 
           {/* The door to the grouped view, offered only when both halves
@@ -429,7 +456,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             <button onClick={() => onNavigate("habits")} style={{
               marginTop: 10, fontSize: 10.5, background: "none", border: "none",
               padding: 0, cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
-            }}>Tie a habit to a star →</button>
+            }}>Tie a habit to a star <span aria-hidden="true">→</span></button>
           )}
         </>
       )}
