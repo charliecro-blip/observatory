@@ -160,7 +160,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
         )}
         {result.verdict !== "avoid" && (
           added ? (
-            <div style={{ fontSize: 11, color: "#3a6020", fontWeight: 600 }}>✓ Added to your calendar (Ahead)</div>
+            <div style={{ fontSize: 11, color: "#3a6020", fontWeight: 600 }}><span aria-hidden="true">✓</span> Added to your calendar (Ahead)</div>
           ) : (
             <button onClick={() => addToCalendar.mutate()} disabled={addToCalendar.isPending} style={{
               fontSize: 11, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer",
@@ -224,8 +224,10 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
   );
 }
 
-export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate, planets }: {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate, planets, openAlmanac = false }: {
   testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void;
+  /** Arrived from a list of sky events — open the almanac rather than the drawer. */
+  openAlmanac?: boolean;
   onAskAboutElection?: (ctx: AskElectionContext, seed: string) => void; onNavigate?: (v: string) => void;
   /** The planet dossiers' wiring, handed down from the shell so the room can
    *  render the same page the deep links do. */
@@ -341,7 +343,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
                 the season are visible in the tab where work gets placed
                 rather than only in Calendar. Reference, so it is collapsed
                 and fetches nothing until opened. */}
-            <Almanac />
+            <Almanac openOnMount={openAlmanac} />
           </>
         )}
 
@@ -419,7 +421,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
             <button onClick={() => setCategory(null)} style={{
               fontSize: 10.5, padding: "4px 12px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
               border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-muted)",
-            }}>← change</button>
+            }}><span aria-hidden="true">←</span> change</button>
           </div>
         )}
 
@@ -551,7 +553,7 @@ function ConnectCalendarPrompt({ testerId }: { testerId: string | null }) {
           fontSize: 10.5, fontWeight: 600, padding: "5px 12px", borderRadius: 8, cursor: "pointer",
           border: "1px solid var(--color-border)", background: "var(--color-card-2)",
           color: "var(--color-primary)", flexShrink: 0,
-        }}>Connect →</button>
+        }}>Connect <span aria-hidden="true">→</span></button>
       <button
         onClick={() => { try { localStorage.setItem(key, "1"); } catch { /* private mode */ } setDismissed(true); }}
         title="Not now"

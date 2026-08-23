@@ -105,7 +105,7 @@ const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
   Mercury: {
     early:   ["sort the day before it starts", "write the list", "clear the desk first", "read one thing properly"],
     morning: ["write it and send it", "learn the thing", "draft the hard message", "ask the question you've been guessing at"],
-    midday:  ["run the errands", "settle the detail", "put the two options side by side on paper", "teach it to someone and find the gap", "phone rather than email"],
+    midday:  ["run the errands", "settle the detail", "put the two options side by side on paper", "teach it to someone and find the gap", "say it out loud rather than in writing"],
     evening: ["fix the wording", "reply to what's outstanding", "read back what you wrote this morning", "name tomorrow's first sentence"],
     winddown:["tidy the inbox, then stop", "note tomorrow's first task", "close the open loops in writing"],
     night:   ["read something undemanding", "stop deciding — write it down instead"],
@@ -139,7 +139,7 @@ const BY_PART: Record<string, Partial<Record<DayPart, string[]>>> = {
   Saturn: {
     early:   ["do the dull groundwork while it's quiet", "start the thing that needs a long runway"],
     morning: ["keep the promise", "build the part no one sees", "do the unglamorous hour first", "commit only to what you can deliver"],
-    midday:  ["pay the debt", "prune and cancel", "fix it properly rather than again", "put the structure under it"],
+    midday:  ["pay the debt", "prune and focus", "fix it properly rather than again", "put the structure under it"],
     evening: ["look at the long game", "close the loop", "decline something to protect the rest", "check the work against the standard"],
     // Saturn is not only "stop". It is the boring thing, the slow thing, the
     // still thing, the thing done properly rather than quickly.

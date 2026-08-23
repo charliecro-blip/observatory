@@ -195,10 +195,16 @@ export default function CroppingUp({ testerId, onNavigate, water }: {
 
       {onNavigate && (
         <div style={{ padding: "8px 16px 12px", borderTop: "1px solid var(--color-border)" }}>
-          <button onClick={() => onNavigate("launch")} style={{
+          {/* "Open Plan" promised these events and could not keep it: three of
+              the four rows above are aspect spans, and Plan's almanac reads a
+              different endpoint that has no aspects in it at all. It now says
+              what it actually opens, and opens it — the almanac is collapsed
+              by default, so this used to land on a closed drawer. The aspects
+              still live only here until they have somewhere to go. */}
+          <button onClick={() => onNavigate("almanac")} style={{
             fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
             color: "var(--color-primary)",
-          }}>Open Plan →</button>
+          }}>The sky's calendar, in Plan <span aria-hidden="true">→</span></button>
         </div>
       )}
       </>}

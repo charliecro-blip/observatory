@@ -44,8 +44,12 @@ const FILTERS = [
 ] as const;
 type FilterId = typeof FILTERS[number]["id"];
 
-export default function Almanac({ days = 90 }: { days?: number }) {
-  const [open, setOpen] = useState(false);
+export default function Almanac({ days = 90, openOnMount = false }: { days?: number; openOnMount?: boolean }) {
+  // Arriving FROM a list of named sky events, a closed drawer is the wrong
+  // greeting: you clicked "Lunar eclipse · Mercury stations" and landed on a
+  // button asking whether you would like to see what the months are doing.
+  // Collapsed stays the default for anyone who simply opened Plan.
+  const [open, setOpen] = useState(openOnMount);
   const [filter, setFilter] = useState<FilterId>("all");
 
   const { data, isPending, isError } = useQuery<{ entries: AlmanacEntry[] }>({
@@ -82,7 +86,7 @@ export default function Almanac({ days = 90 }: { days?: number }) {
           fontSize: 12.5, background: "none", border: "none", padding: 0,
           cursor: "pointer", color: "var(--color-primary)", textAlign: "left",
         }}>
-        {open ? "Hide the almanac" : "What the next three months are doing →"}
+        {open ? "Hide the almanac" : <>What the next three months are doing <span aria-hidden="true">→</span></>}
       </button>
 
       {open && (

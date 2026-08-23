@@ -33,6 +33,7 @@ import { PLANET_COLORS } from "@/lib/planetColors";
 import { parseWhen, formatDueChip } from "@/lib/parseWhen";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import Home from "@/pages/Home";
+import { useDialog } from "@/hooks/useDialog";
 
 type WorkTab = "overview" | "tasks" | "habits" | "bearings";
 
@@ -213,6 +214,7 @@ const WINDOW_LABELS: Record<string,string> = {
 };
 
 function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string|null; onClose: () => void; onDumpToPlanner: (text: string) => void }) {
+  const { ref, props } = useDialog(onClose, "Add a task");
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [windowType, setWindowType] = useState("");
@@ -320,13 +322,13 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 999,
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: "var(--z-sheet)",
       display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 120,
       padding: "120px 16px 16px",
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       {/* Was a fixed 440px with no maxWidth — the Add button sat off-screen on
           a 390px phone, making quick capture unusable on mobile (audit P0 #7). */}
-      <div style={{
+      <div ref={ref} {...props} style={{
         background: "var(--color-card)", borderRadius: 14, padding: "20px 22px", width: 440, maxWidth: "100%",
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--color-border)",
       }}>
@@ -356,7 +358,7 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
             : mode === "habit" ? "morning walk\nread before bed"
             : "no sugar\nten cold calls"}
           rows={4}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, outline: "none", background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 13.5, lineHeight: 1.6, background: "var(--color-card-2)", marginBottom: 10, resize: "vertical", fontFamily: "inherit", color: "var(--color-foreground)" }}
         />
         {/* Live parse preview. Shows ONLY the lines a date was found in — the
             textarea above already shows everything else, and repeating it would
@@ -439,7 +441,7 @@ function QuickCapture({ testerId, onClose, onDumpToPlanner }: { testerId: string
           {mode === "todo" && <button onClick={() => { if (lines.length) { onDumpToPlanner(text); } }} disabled={lines.length === 0}
             title="Send these to the Planner to schedule"
             style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 12, cursor: lines.length ? "pointer" : "default", background: "var(--color-card)", color: lines.length ? "var(--color-foreground)" : "var(--text-3)", fontWeight: 500 }}>
-            ✦ Dump &amp; schedule →
+            <span aria-hidden="true">✦</span> Dump &amp; schedule <span aria-hidden="true">→</span>
           </button>}
           {mode !== "todo" && <div style={{ flex: 1 }} />}
           <button onClick={() => submitFor[mode]()} disabled={lines.length === 0 || adding}
@@ -519,7 +521,7 @@ function IntroVisual({ kind }: { kind: "today" | "star" | "plan" }) {
   if (kind === "star") {
     return (
       <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>✦ Finish the book</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}><span aria-hidden="true">✦</span> Finish the book</div>
         <div style={{ fontSize: 10.5, color: "var(--text-2)", marginTop: 4 }}>Next step · Outline chapter four</div>
         <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2 }}>A good stretch for it: Tue 10:30–12:00</div>
       </div>
@@ -584,7 +586,7 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
             (persona study) shouldn't have to tap through the slides first. */}
         {!isLast && (
           <button onClick={() => { logEvent("onboard_intro_skipped"); onDone(); }} style={{ marginTop:10, fontSize:11, color:"var(--text-3)", background:"none", border:"none", cursor:"pointer", textAlign:"center", width:"100%" }}>
-            Skip intro →
+            Skip intro <span aria-hidden="true">→</span>
           </button>
         )}
 
@@ -858,10 +860,10 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           <input
             value={name} onChange={e => setName(e.target.value)}
             placeholder="What should we call you?" autoFocus
-            style={{ width:"100%", padding:"10px 13px", borderRadius:9, border:"1px solid var(--color-border)", fontSize:14, marginBottom:16, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+            style={{ width:"100%", padding:"10px 13px", borderRadius:9, border:"1px solid var(--color-border)", fontSize:14, marginBottom:16, background: "var(--color-card-2)", boxSizing:"border-box" }}
           />
           <button type="submit" style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer", letterSpacing:"0.1px" }}>
-            Continue →
+            Continue <span aria-hidden="true">→</span>
           </button>
         </form>
 
@@ -878,7 +880,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                 value={restoreCode} onChange={e => { setRestoreCode(e.target.value); setRestoreError(null); }}
                 onKeyDown={e => e.key === "Enter" && handleRestore()}
                 placeholder="TIDE-XXXX-XXXX" autoFocus
-                style={{ flex:1, padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background:"var(--color-card-2)", letterSpacing:"1px", textTransform:"uppercase" }}
+                style={{ flex:1, padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background:"var(--color-card-2)", letterSpacing:"1px", textTransform:"uppercase" }}
               />
               <button onClick={handleRestore} disabled={restoring || !restoreCode.trim()}
                 style={{ padding:"9px 16px", borderRadius:8, border:"none", fontSize:12, fontWeight:600, cursor:"pointer",
@@ -888,7 +890,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </div>
             {restoreError && <div style={{ fontSize:10.5, color:"#a04030", marginTop:6 }}>{restoreError}</div>}
             <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:6, lineHeight:1.5 }}>
-              Your key is in Settings → Account on the device you signed up with.
+              Your key is in Settings <span aria-hidden="true">→</span> Account on the device you signed up with.
             </div>
           </div>
         )}
@@ -959,7 +961,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
           <div>
             <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Date of birth</div>
             <input type="date" value={birthDate} onChange={e => { setBirthDate(e.target.value); suggestDst(e.target.value, birthLat); }}
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background: "var(--color-card-2)", boxSizing:"border-box" }}
             />
           </div>
 
@@ -969,7 +971,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
               Time of birth <span style={{ fontWeight:400, textTransform:"none", letterSpacing:0 }}>(needed for your rising sign & houses)</span>
             </div>
             <input type="time" value={birthTime} disabled={timeUnknown} onChange={e => setBirthTime(e.target.value)}
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box", opacity: timeUnknown ? 0.45 : 1 }}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background: "var(--color-card-2)", boxSizing:"border-box", opacity: timeUnknown ? 0.45 : 1 }}
             />
             <label style={{ display:"flex", alignItems:"flex-start", gap:8, marginTop:7, cursor:"pointer" }}>
               <input type="checkbox" checked={timeUnknown}
@@ -987,10 +989,10 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             <input
               value={locationSearch} onChange={e => handleLocationInput(e.target.value)}
               placeholder="City, country…"
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background: "var(--color-card-2)", boxSizing:"border-box" }}
             />
             {locationResults.length > 0 && (
-              <div style={{ position:"absolute", top:"100%", left:0, right:0, background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:8, boxShadow:"0 4px 16px rgba(0,0,0,0.1)", zIndex:100, marginTop:2, maxHeight:180, overflowY:"auto" }}>
+              <div style={{ position:"absolute", top:"100%", left:0, right:0, background: "var(--color-card)", border:"1px solid var(--color-border)", borderRadius:8, boxShadow:"0 4px 16px rgba(0,0,0,0.1)", zIndex:"var(--z-field)", marginTop:2, maxHeight:180, overflowY:"auto" }}>
                 {locationResults.map((r, i) => (
                   <button key={i} type="button" onClick={() => pickLocation(r)}
                     style={{ display:"block", width:"100%", padding:"9px 13px", textAlign:"left", border:"none", background:"none", cursor:"pointer", fontSize:12, color:"var(--text-1)", borderBottom:"1px solid var(--color-border)" }}>
@@ -1009,7 +1011,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             <div>
               <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>UTC offset at birth (standard time)</div>
               <select value={utcOffset} onChange={e => setUtcOffset(Number(e.target.value))}
-                style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)" }}>
+                style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background: "var(--color-card-2)" }}>
                 {Array.from({ length: 27 }, (_, i) => i - 12).map(o => (
                   <option key={o} value={o}>UTC{o >= 0 ? "+" : ""}{o}:00</option>
                 ))}
@@ -1044,7 +1046,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
                 wall costs the growth + skeptic audiences before they see value). */}
             <button type="button" onClick={handleSkip}
               style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid #1a2a3a", background: "var(--color-card)", color:"var(--color-foreground)", fontSize:12.5, cursor:"pointer", fontWeight:600 }}>
-              Show me today →
+              Show me today <span aria-hidden="true">→</span>
             </button>
             <button type="submit" disabled={!birthDate || birthLat == null || saving}
               style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", cursor: (!birthDate || birthLat == null) ? "default" : "pointer", fontSize:12.5, fontWeight:600,
@@ -1109,7 +1111,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             alignSelf:"flex-start", background:"none", border:"none", cursor:"pointer", padding:0,
             fontSize:10.5, color:"var(--text-3)", display:"flex", alignItems:"center", gap:5,
           }}>
-            <span style={{ fontSize:8, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
+            <span aria-hidden="true" style={{ fontSize:8, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
             Fine-tune the hours
           </button>
 
@@ -1119,10 +1121,10 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually awake</div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
               <span style={{ color:"var(--text-3)", fontSize:11 }}>to</span>
               <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
             </div>
             <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:4, lineHeight:1.4 }}>
               Shapes your tide chart — hours you're asleep are shaded, and timing suggestions skip them.
@@ -1134,20 +1136,20 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually free — weekdays</div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               <input type="time" value={weekdayStart} onChange={e => setWeekdayStart(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
               <span style={{ color:"var(--text-3)", fontSize:11 }}>to</span>
               <input type="time" value={weekdayEnd} onChange={e => setWeekdayEnd(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
             </div>
           </div>
           <div>
             <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:5, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>Usually free — weekends</div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               <input type="time" value={weekendStart} onChange={e => setWeekendStart(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
               <span style={{ color:"var(--text-3)", fontSize:11 }}>to</span>
               <input type="time" value={weekendEnd} onChange={e => setWeekendEnd(e.target.value)}
-                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, outline:"none", background: "var(--color-card-2)" }} />
+                style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
             </div>
           </div>
 
@@ -1158,7 +1160,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             </div>
             <input value={chronoDescription} onChange={e => setChronoDescription(e.target.value)}
               placeholder="e.g. dead by 10pm, useless before coffee…"
-              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, outline:"none", background: "var(--color-card-2)", boxSizing:"border-box" }}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background: "var(--color-card-2)", boxSizing:"border-box" }}
             />
           </div>
           </>)}
@@ -1276,6 +1278,10 @@ function Shell() {
   // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
   // Planner, which parses and weaves it into good windows.
   const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+  // Set only by the sky-events card, so Plan opens its almanac instead of the
+  // collapsed drawer. Cleared on any other navigation — arriving at Plan the
+  // ordinary way should look the ordinary way.
+  const [openAlmanac, setOpenAlmanac] = useState(false);
   const dumpToPlanner = (text: string) => { setPlannerSeed(text); setCapture(false); setView("launch"); };
 
   const { data: now, isError: nowError, refetch: refetchNow } = useTidesNow(testerId, lat, lon);
@@ -1389,7 +1395,7 @@ function Shell() {
           return (
             <React.Fragment key={t.id}>
               {showDivider && <div style={{ width:1, height:16, background:"var(--color-border)", margin:"0 10px" }} />}
-              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => setView(t.id)} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
+              <button data-tour={t.id === "launch" ? "nav-plan" : t.id === "home" ? "nav-home" : t.id === "work" ? "nav-work" : undefined} onClick={() => { setOpenAlmanac(false); setView(t.id); }} title={t.zoom ? "Time view — further ahead →" : undefined} style={{
                 padding:"11px 16px", border:"none", background:"none", cursor:"pointer",
                 fontSize:12, fontWeight: view===t.id ? 600 : 400,
                 color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
@@ -1415,7 +1421,7 @@ function Shell() {
             fontSize: 10, padding: "4px 12px", borderRadius: 8, border: "1px solid #c0bab0",
             background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", fontWeight: 500, marginRight: 6,
           }}
-        >✦ Ask</button>
+        ><span aria-hidden="true">✦</span> Ask</button>
         {/* + task keeps its border. It is an ACTION, and it and Ask are the two
             controls a person actually reaches for. */}
         <button onClick={() => setCapture(true)} style={{
@@ -1460,7 +1466,7 @@ function Shell() {
           color: view==="settings" ? "var(--color-foreground)" : "var(--text-3)", cursor:"pointer", marginBottom:-1,
           opacity: view==="settings" ? 1 : 0.72,
           borderBottom: view==="settings" ? "2px solid var(--color-primary)" : "2px solid transparent",
-        }}>{isMobile ? "⚙" : "⚙ Settings"}</button>
+        }}>{isMobile ? "⚙" : <><span aria-hidden="true">⚙</span> Settings</>}</button>
       </div>
 
       {/* Mobile instrument strip — the rail's sky ladder as a horizontal glyph
@@ -1505,7 +1511,7 @@ function Shell() {
         {/* "habits" is not a view — it is the Stars tab opened on its habits
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else setView(v as View); }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {/* THE LOG IS ITS OWN DESTINATION (owner, 2026-08-20). It was a
             sub-tab of Calendar, which put the record of how things went
@@ -1513,7 +1519,7 @@ function Shell() {
             and the second one hid the first. */}
         {view==="log"      && <Log testerId={testerId} onVisitPlanet={goToPlanet} lat={lat} lon={lon}/>}
         {view==="work"     && <WorkPage testerId={testerId} now={now} lat={lat} lon={lon} seedElement={starSeedElement} onSeedConsumed={()=>setStarSeedElement(null)} focusStarId={focusStarId} onFocusConsumed={()=>setFocusStarId(null)} onOpenSettings={()=>setView("settings")} onLeaveWork={(v)=>setView(v as View)} seedTab={workSeedTab} onSeedTabConsumed={()=>setWorkSeedTab(null)}/>}
-        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)} planets={{ onReflect: askCompass, initialPlanet: visitPlanet, onStartStar: startStarInElement }}/>}
+        {view==="launch"   && <Launch   testerId={testerId} lat={lat} lon={lon} openAlmanac={openAlmanac} plannerSeed={plannerSeed} onPlannerSeedConsumed={()=>setPlannerSeed(null)} onAskAboutElection={askAboutElection} onNavigate={(v)=>setView(v as View)} planets={{ onReflect: askCompass, initialPlanet: visitPlanet, onStartStar: startStarInElement }}/>}
         {view==="planets"  && <Planets  testerId={testerId} lat={lat} lon={lon} onReflect={askCompass} initialPlanet={visitPlanet} onStartStar={startStarInElement}/>}
         {view==="settings" && <Settings testerId={testerId}/>}
       </div>
@@ -1531,7 +1537,7 @@ function Shell() {
               display:"flex", flexDirection:"column", alignItems:"center", gap:2,
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
             }}>
-              <span style={{ fontSize:16, lineHeight:1 }}>{TAB_GLYPHS[t.id] ?? "·"}</span>
+              <span aria-hidden="true" style={{ fontSize:16, lineHeight:1 }}>{TAB_GLYPHS[t.id] ?? "·"}</span>
               <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
           ))}
