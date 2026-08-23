@@ -85,6 +85,9 @@
   /* Brass — decorative rules/eyebrows/watermark only, NEVER body text; kept
      warmer/darker than Air (#CBA13C) so it never poses as the air element. */
   --color-brass: #a9772a;
+  /* The focus ring only. Brass at its normal weight measured 3.50:1 against
+     the page; this is the same hue carried down to 4.58:1. */
+  --color-focus: #8f6220;
 
   /* Elements — the semantic palette (LOAD-BEARING, unchanged). */
   --color-water: #3a5a80;
@@ -127,7 +130,16 @@
   /* Meridian glows on the dark ink; brass lifts a touch for contrast. */
   --color-meridian: #7a80e6;
   --color-meridian-core: #7a80e6;
+
+  /* A kept day, frozen at its light value, so dark drew a paper green on
+     ink. Lifted the way lib/elements.ts lifts its element hues for dark, and
+     for the same reason: the light hue is tuned to sit on paper, not to
+     carry a small mark. Not --color-water beside it — every palette in
+     lib/themes.ts sets that one inline, so a value here could never win. */
+  --color-quality-good: #7cba7c;
   --color-brass: #c8992e;
+  /* On the dark ground the ordinary brass already measures 7.41:1. */
+  --color-focus: #c8992e;
 }
 
 * { box-sizing: border-box; }
@@ -147,11 +159,16 @@
    of a number. Three values were raised to land on a rung: the check-in sheet
    (60) and the guide (200) both now sit at --z-dialog, and the new-event
    modal (999) joins the advisor at --z-sheet. Nothing sat between them, and
-   the check-in at 60 had been under Settings' own field dropdown at 100. */
+   the check-in at 60 had been under Settings' own field dropdown at 100.
+
+   There is deliberately no "nested dialog" rung. PremiumGate opens from
+   inside ScheduleSuggest, but it renders as a sibling of that dialog's panel
+   inside its scrim — and the scrim's own z-index establishes a stacking
+   context, so the child paints above whatever its number says. The nesting is
+   handled by the tree, not by the ladder. */
 :root {
   --z-field:         100;  /* a dropdown pinned under its own field */
   --z-dialog:        300;  /* a dialog and its scrim */
-  --z-dialog-nested: 320;  /* a dialog opened from inside another */
   --z-session:       500;  /* the running-session timer */
   --z-sheet:        1000;  /* full-bleed sheets: Ask, the new-event modal */
   --z-share:        1100;  /* the export sheets: Studio, the sprint card */
@@ -173,7 +190,7 @@ body { background: var(--color-background); color: var(--color-foreground); font
    the same near-black as the text around it and read as a border, not as a
    signal. Brass is defined in both themes, so it follows the theme. */
 :focus-visible {
-  outline: 2px solid var(--color-brass);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 3px;
 }

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TidesNow } from "@/lib/types";
 import { ScheduleSuggest } from "@/components/ScheduleSuggest";
 import { useTester } from "@/contexts/tester-context";
+import HabitProgress from "@/components/HabitProgress";
 import Glyph from "@/components/Glyph";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
@@ -72,31 +73,6 @@ const SOLAR_ANCHOR_OPTIONS: { key: SolarAnchor; label: string; glyph: string }[]
 // How a habit is doing, in its OWN terms. A 3×/week practice that's done 3
 // times is complete — not a broken 7-day streak. `occasional` never reports a
 // shortfall at all, which is the whole point of having it.
-function cadenceLabel(h: Habit): { text: string; tone: "met"|"progress"|"quiet" } {
-  const cadence = h.cadence ?? "daily";
-  const done = h.windowDone ?? 0;
-  const target = h.windowTarget ?? 0;
-  // A chore never speaks streak language, whatever its cadence — the record
-  // is the fact it happened, said once and quietly (owner F7).
-  if (h.flavor === "chore") {
-    return {
-      text: h.doneToday ? "done today" : done > 0 ? `done ${done}× this week` : "",
-      tone: "quiet",
-    };
-  }
-  if (cadence === "occasional") {
-    return { text: done > 0 ? `${done}× in the last week` : "whenever it fits", tone: "quiet" };
-  }
-  if (cadence === "daily") {
-    return h.streak > 0
-      ? { text: `${h.streak}-day run`, tone: h.doneToday ? "met" : "progress" }
-      : { text: h.doneToday ? "begun again" : "every day", tone: h.doneToday ? "met" : "progress" };
-  }
-  return {
-    text: done >= target ? `${done} of ${target} this week ✓` : `${done} of ${target} this week`,
-    tone: done >= target ? "met" : "progress",
-  };
-}
 const asArr = (v: unknown): string[] => Array.isArray(v) ? v : String(v ?? "").split(",").map(s=>s.trim()).filter(Boolean);
 
 // The bed landmark, from the chronotype's own sleep time ("HH:MM"). A time in
@@ -758,7 +734,10 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   {/* Progress in the habit's OWN cadence — a 3×/week practice
                       reads "2 of 3 this week", not a broken daily streak. */}
                   {(() => {
-                    const c = cadenceLabel(h);
+                    // The cadence reading moved INTO the drawing below, so it
+                    // is said once. Only the anchor — a different fact, about
+                    // when in the day rather than how the week is going —
+                    // stays on this line.
                     const anchor = h.solarAnchor ? SOLAR_ANCHOR_OPTIONS.find(s => s.key === h.solarAnchor) : null;
                     // Bed has no server instant — its time is the chronotype's
                     // own, computed here. Sky anchors keep the server's.
@@ -767,7 +746,6 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                       : null;
                     return (
                       <div style={{fontSize:9,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                        <span style={{color:c.tone==="met"?"#60a050":c.tone==="quiet"?"var(--text-3)":"var(--text-3)"}}>{c.text}</span>
                         {anchor && (anchorAt || h.solarAnchor === "bed") && (
                           <span style={{color:"#a08850"}} title={`${anchor.label} today`}>
                             {anchor.glyph} {h.solarAnchor === "bed" && anchorAt ? "by " : ""}{anchorAt ? fmtClock(anchorAt) : anchor.label.toLowerCase()}
@@ -838,48 +816,24 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
               </div>
 
-              {/* 14-day streak dots. "14d" alone named nothing — a row of
-                  dots beside an unexplained abbreviation is a mark the reader
-                  has to decode (owner, 2026-08-13). Each dot says its own
-                  date and whether it was done, and the label says what the
-                  row is.
-
-                  EACH DOT IS ALSO THE CONTROL FOR ITS DAY. A habit you did
-                  yesterday and forgot to check off had nowhere to be recorded:
-                  the day was right here on screen and the only writable day
-                  was today. The dots are the obvious place for it — the row
-                  already knows every date and already shows the answer, so it
-                  only ever lacked the click. */}
-              <div style={{display:"flex",gap:3,alignItems:"center"}} title="The last fourteen days — filled means done. Click a day to change it.">
-                {h.days.map((d) => {
-                  const label = new Date(d.date + "T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
-                  return (
-                    <button key={d.date}
-                      onClick={() => toggleLog.mutate({ id: h.id, done: d.done, date: d.date })}
-                      disabled={toggleLog.isPending}
-                      aria-pressed={d.done}
-                      aria-label={`${d.done ? "Unmark" : "Mark"} ${h.name} on ${label}`}
-                      title={`${label}${d.done ? " — done" : d.isToday ? " — today, not yet" : " — not done"}. Click to ${d.done ? "clear" : "mark done"}.`}
-                      style={{
-                        // The hit area is larger than the dot. A 7px target is
-                        // unhittable on a phone, and growing the dot itself
-                        // would wreck the row it has to read as.
-                        padding:4, margin:-4, background:"none", border:"none",
-                        cursor: toggleLog.isPending ? "default" : "pointer",
-                        lineHeight:0, flexShrink:0,
-                      }}>
-                      <span style={{
-                        display:"block",
-                        width:d.isToday?10:7, height:d.isToday?10:7, borderRadius:"50%",
-                        background:d.done?"#80b870":"var(--color-card-2)",
-                        border:d.isToday?`1.5px solid ${h.doneToday?"#60a050":"#c0bab0"}`:"none",
-                        opacity:d.done||d.isToday?1:0.4,
-                      }}/>
-                    </button>
-                  );
-                })}
-                <div style={{fontSize:8.5,color:"var(--text-3)",marginLeft:5}}>last 14 days · click to fill one in</div>
-              </div>
+              {/* The record, drawn in the habit's OWN cadence — see
+                  components/HabitProgress.tsx for why four drawings rather
+                  than one. Each day is still the control for itself: a habit
+                  you did yesterday and forgot to check off has somewhere to
+                  be recorded, which is what keeps this a record of doing
+                  rather than of remembering to tap. */}
+              <HabitProgress
+                cadence={(h.cadence ?? "daily") as "daily"|"most_days"|"weekly"|"occasional"}
+                days={h.days}
+                windowDone={h.windowDone ?? 0}
+                windowTarget={h.windowTarget ?? 0}
+                streak={h.streak}
+                doneToday={h.doneToday}
+                chore={h.flavor === "chore"}
+                name={h.name}
+                busy={toggleLog.isPending}
+                onToggleDay={(date, done) => toggleLog.mutate({ id: h.id, done, date })}
+              />
 
               {/* Timing note — the merged practices intelligence, in plain words */}
               {h.resonanceNote && h.timing !== "neutral" && (

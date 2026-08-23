@@ -38,6 +38,18 @@ describe.skipIf(!TEST_DB)("account sessions (integration)", () => {
     sql = (q, params) => S.pool.query(q, params);
   });
 
+  // The open-window tests below assert the ROLLOUT guarantee — an unclaimed
+  // account still passes on a bare id — which is only true before the
+  // deadline. They read the live clock through tofuDeadline()'s default, so
+  // at 2026-08-23T00:00Z the window shut and six of them began failing on
+  // time rather than on merit, blocking every deploy behind them.
+  //
+  // Anchored, the way linesUp was: the window's state is an INPUT to these
+  // tests, not the weather. The "past the TOFU deadline" block overrides this
+  // with a date in 2020 and keeps testing the other side of the same line.
+  beforeEach(() => { process.env["COMPASS_TOFU_DEADLINE"] = "2099-01-01T00:00:00Z"; });
+  afterEach(() => { delete process.env["COMPASS_TOFU_DEADLINE"]; });
+
   beforeEach(async () => {
     await sql(`DELETE FROM account_sessions WHERE tester_id = $1`, [TESTER]);
     await sql(`DELETE FROM tester_profiles WHERE tester_id = $1`, [TESTER]);
@@ -158,7 +170,12 @@ describe.skipIf(!TEST_DB)("account sessions (integration)", () => {
     it("an account that already claimed is untouched by the deadline", async () => {
       // The close is about accounts that never claimed. A device holding a
       // good token must not be signed out by a date passing.
-      delete process.env["COMPASS_TOFU_DEADLINE"];
+      //
+      // The open window is stated, not implied by deleting the override:
+      // deleting it fell back to the DEFAULT deadline, which meant "open"
+      // until 2026-08-23 and "closed" every day after — so this claim began
+      // 410ing and the token it asserts on was never issued.
+      process.env["COMPASS_TOFU_DEADLINE"] = "2099-01-01T00:00:00Z";
       const { token } = await A.claimAccount(TESTER);
       process.env["COMPASS_TOFU_DEADLINE"] = "2020-01-01T00:00:00Z";
       A.clearSessionCache();
