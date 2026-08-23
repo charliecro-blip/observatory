@@ -598,7 +598,7 @@ export default function Home({
             style={{
               display: "block", width: "100%", textAlign: "left", padding: "6px 16px 8px",
               background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-3)",
-            }}>{open ? "Show fewer ↑" : `Show all ${items.length} ↓`}</button>
+            }}>{open ? <>Show fewer <span aria-hidden="true">↑</span></> : <>Show all {items.length} <span aria-hidden="true">↓</span></>}</button>
         )}
       </>
     );
@@ -901,7 +901,7 @@ export default function Home({
               <button onClick={() => setLogOpen(true)} style={{
                 fontSize: 10.5, background: "none", border: "none", padding: "4px 0 0", cursor: "pointer",
                 color: "var(--text-3)",
-              }}>Log something done →</button>
+              }}>Log something done <span aria-hidden="true">→</span></button>
             ) : (
               <div style={{ marginTop: 6 }}>
                 <input
@@ -1073,7 +1073,7 @@ export default function Home({
                 <button onClick={() => onNavigate("launch")} style={{
                   fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
                   color: "var(--color-primary)",
-                }}>Open Plan →</button>
+                }}>Open Plan <span aria-hidden="true">→</span></button>
               }
               fold="week"
               summary={committed.length ? `${committed.length} committed` : "nothing committed"}
@@ -1098,7 +1098,7 @@ export default function Home({
                 <button onClick={() => onNavigate("log")} style={{
                   fontSize: 11, background: "none", border: "none", cursor: "pointer",
                   color: "var(--color-primary)", padding: 0,
-                }}>Add a note about how it went →</button>
+                }}>Add a note about how it went <span aria-hidden="true">→</span></button>
               </div>
             </div>
           )}

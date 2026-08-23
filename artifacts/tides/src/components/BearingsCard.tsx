@@ -141,7 +141,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
           <button onClick={onOpenSettings} style={{
             fontSize: 11, fontWeight: 600, padding: "5px 13px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap",
             border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)",
-          }}>Add it in Settings →</button>
+          }}>Add it in Settings <span aria-hidden="true">→</span></button>
         )}
       </div>
     );
@@ -179,7 +179,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
                 <div style={{ marginTop: 4 }}>
                   {riding.length > 0
                     ? <>Riding this year: {riding.map(s => <span key={s.id}>★ {s.title} </span>)}</>
-                    : <>No star is set on this year yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it →</button></>}</>}
+                    : <>No star is set on this year yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it <span aria-hidden="true">→</span></button></>}</>}
                 </div>
               </div>
             );
@@ -297,7 +297,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
                       <div style={{ marginTop: 4 }}>
                         {riding.length > 0
                           ? <>Riding this chapter: {riding.map(s => <span key={s.id}>★ {s.title} </span>)}</>
-                          : <>No star is set on this chapter yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it →</button></>}</>}
+                          : <>No star is set on this chapter yet.{onNavigate && <> <button onClick={() => onNavigate("overview")} style={LINK}>Set one on it <span aria-hidden="true">→</span></button></>}</>}
                       </div>
                       {(speaks.length > 0 || openTasks.length > 0) && (
                         <div style={{ marginTop: 2 }}>

@@ -1020,7 +1020,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
           <button onClick={() => save.mutate()} disabled={!form.cycleStartDate} style={{
             padding: "7px 16px", borderRadius: 7, border: "none", fontSize: 11,
             background: form.cycleStartDate ? "#1a2a3a" : "var(--color-border)", color: form.cycleStartDate ? "#ffffff" : "var(--text-3)", cursor: "pointer",
-          }}>{save.isPending ? "Saving…" : saved ? "Saved ✓" : cycle ? "Update" : "Save"}</button>
+          }}>{save.isPending ? "Saving…" : saved ? <>Saved <span aria-hidden="true">✓</span></> : cycle ? "Update" : "Save"}</button>
           {cycle && <button onClick={() => del.mutate()} style={{ fontSize: 10, color: "#c06060", background: "none", border: "none", cursor: "pointer" }}>Remove</button>}
           {save.isError && <span style={{ fontSize: 10, color: "#a03030" }}>Couldn't save — try again.</span>}
         </div>
@@ -1065,7 +1065,7 @@ function PlanSection() {
           </div>
         </div>
         <div style={{ background: "var(--color-card-2)", border: "1px solid var(--color-border)", borderRadius: 9, padding: "10px 12px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Paid ✦</div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "#8a6a30", marginBottom: 5 }}>Paid <span aria-hidden="true">✦</span></div>
           <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
             {PREMIUM_FEATURES.map(f => f.title).join(" · ")}
           </div>
@@ -1169,7 +1169,7 @@ function ChronotypeSection() {
               Edit
             </button>
           </div>
-          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}>✓ Saved</div>}
+          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}><span aria-hidden="true">✓</span> Saved</div>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1375,7 +1375,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
               Edit
             </button>
           </div>
-          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}>✓ Saved</div>}
+          {saved && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth }}><span aria-hidden="true">✓</span> Saved</div>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1409,7 +1409,7 @@ function NatalChartSection({ testerId }: { testerId: string | null }) {
                 ))}
               </div>
             )}
-            {form.birthLat != null && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth, marginTop: 3 }}>✓ Location set</div>}
+            {form.birthLat != null && <div style={{ fontSize: 10, color: ELEMENT_COLORS.earth, marginTop: 3 }}><span aria-hidden="true">✓</span> Location set</div>}
           </div>
 
           {form.birthLat != null && (
@@ -1560,7 +1560,7 @@ function ExportSection({ testerId }: { testerId: string | null }) {
       )}
       <Row label="One-time download" sub="A snapshot — won't update later">
         <button onClick={downloadIcal} style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer" }}>
-          ↓ .ics
+          <span aria-hidden="true">↓</span> .ics
         </button>
       </Row>
     </SectionCard>
@@ -1623,7 +1623,7 @@ function GoogleCalSection({ testerId }: { testerId: string | null }) {
           // simply empty, with the app still claiming it is connected.
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, color: "#a06020", padding: "3px 10px", border: "1px solid #e0c0a0", borderRadius: 6, background: "#a0602018" }}>
-              ⚠ Google signed us out
+              <span aria-hidden="true">⚠</span> Google signed us out
             </span>
             <button onClick={connect} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer" }}>
               Reconnect
@@ -1674,7 +1674,7 @@ function HouseSystemSection() {
             background: system === h.id ? "#f2f4f8" : "var(--color-card-2)",
           }}>
             <div style={{ fontSize: 12.5, fontWeight: system === h.id ? 600 : 500, color: "var(--color-primary)" }}>
-              {h.label}{system === h.id && <span style={{ color: "#3a4a68", fontSize: 10, marginLeft: 6 }}>✓ selected</span>}
+              {h.label}{system === h.id && <span style={{ color: "#3a4a68", fontSize: 10, marginLeft: 6 }}><span aria-hidden="true">✓</span> selected</span>}
             </div>
             <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2, lineHeight: 1.4 }}>{h.note}</div>
           </button>
@@ -1718,7 +1718,7 @@ function AccountSection() {
               padding: "10px 16px", borderRadius: 9, border: "1px solid var(--color-border)",
               background: copied ? "#e8f5e0" : "var(--color-card)", color: copied ? "#3a6020" : "var(--color-primary)",
               fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
-            }}>{copied ? "Copied ✓" : "Copy"}</button>
+            }}>{copied ? <>Copied <span aria-hidden="true">✓</span></> : "Copy"}</button>
           </div>
           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 8, lineHeight: 1.55 }}>
             On another device: open Compass → "Been here before?" on the first screen → enter this key.
@@ -2040,7 +2040,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
             <Field label="Longitude"><SettingsInput value={locationForm.lon} onChange={v => setLocationForm(f => ({ ...f, lon: v }))} placeholder="-74.0" /></Field>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-            {locSaved && <span style={{ fontSize: 10, color: "#60a060" }}>Saved ✓ All calculations now use this location.</span>}
+            {locSaved && <span style={{ fontSize: 10, color: "#60a060" }}>Saved <span aria-hidden="true">✓</span> All calculations now use this location.</span>}
             <button onClick={() => {
               const la = parseFloat(locationForm.lat), lo = parseFloat(locationForm.lon);
               if (!isNaN(la) && !isNaN(lo)) {

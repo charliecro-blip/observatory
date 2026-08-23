@@ -256,7 +256,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
               <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
               <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                another take ↻ <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
+                another take <span aria-hidden="true">↻</span> <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
               </button>
             </div>
             <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.65 }}>{takes[takeIdx].text}</div>

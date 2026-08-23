@@ -81,7 +81,7 @@ function CheckInCard({ label, question, accent, onReflect, seed }: { label: stri
       <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 13.5, color: "var(--color-foreground)", lineHeight: 1.6, fontStyle: "italic", marginBottom: 10 }}>{question}</div>
       {onReflect && (
-        <button onClick={() => onReflect(seed)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${accent}`, background: `${accent}12`, color: accent }}>✦ Ask about this →</button>
+        <button onClick={() => onReflect(seed)} style={{ fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${accent}`, background: `${accent}12`, color: accent }}><span aria-hidden="true">✦</span> Ask about this <span aria-hidden="true">→</span></button>
       )}
     </div>
   );

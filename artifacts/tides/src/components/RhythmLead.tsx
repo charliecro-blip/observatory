@@ -180,7 +180,7 @@ export default function RhythmLead({
             <button onClick={onShape} style={{
               fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
               border: "none", background: "var(--color-primary)", color: "#fff",
-            }}>{shapeOpen ? "Hide the hours" : "Find it an hour →"}</button>
+            }}>{shapeOpen ? "Hide the hours" : <>Find it an hour <span aria-hidden="true">→</span></>}</button>
           </>
         ) : (
           <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Nothing on the list. Add the one thing that matters and it leads here.</div>
@@ -217,10 +217,18 @@ export default function RhythmLead({
                 <button onClick={() => toggle.mutate({ id: h.id, done: !!h.doneToday })} disabled={toggle.isPending}
                   aria-pressed={!!h.doneToday} aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
                   style={{
-                    width: 15, height: 15, borderRadius: h.flavor === "chore" ? 4 : "50%", flexShrink: 0, padding: 0, cursor: "pointer",
+                    // 15px mark, 24px target — the same trade as WhereYouAre's
+                    // HabitRow, for the same reason.
+                    width: 24, height: 24, margin: -4.5, flexShrink: 0, padding: 0, cursor: "pointer",
+                    border: "none", background: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                  <span style={{
+                    width: 15, height: 15, borderRadius: h.flavor === "chore" ? 4 : "50%",
                     border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
                     background: h.doneToday ? KEPT : "transparent", color: "#fff", fontSize: 9, lineHeight: 1,
-                  }}>{h.doneToday ? "✓" : ""}</button>
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{h.doneToday ? "✓" : ""}</span></button>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)", textDecoration: h.doneToday ? "line-through" : "none" }}>
                   {h.emoji ? `${h.emoji} ` : ""}{h.name}

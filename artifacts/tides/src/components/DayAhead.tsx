@@ -101,7 +101,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
           <button onClick={() => onNavigate("calendar")} style={{
             fontSize: 10.5, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--color-primary)",
-          }}>Open Calendar →</button>
+          }}>Open Calendar <span aria-hidden="true">→</span></button>
         )}
       </div>
       {!folded && <>

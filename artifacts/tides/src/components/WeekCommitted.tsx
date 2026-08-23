@@ -190,7 +190,7 @@ export function CommittedWeekStrip({ windows, onOpen }: {
         <button onClick={onOpen} style={{
           fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
           cursor: "pointer", color: "var(--color-primary)",
-        }}>Open Plan →</button>
+        }}>Open Plan <span aria-hidden="true">→</span></button>
       )}
     </div>
   );

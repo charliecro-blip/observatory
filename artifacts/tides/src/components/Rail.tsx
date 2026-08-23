@@ -351,7 +351,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
       <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "7px 10px" }}>
         {sunSign && (
           <button onClick={() => setOpen(o => o === "sun" ? null : "sun")} style={chipStyle("sun", sun?.color ?? "#888888")}>
-            <span style={{ color: sun?.color }}>☉ {sun?.glyph}</span>
+            <span aria-hidden="true" style={{ color: sun?.color }}>☉ {sun?.glyph}</span>
             <span style={{ color: "var(--text-2)" }}>{sunSign}</span>
           </button>
         )}
@@ -369,7 +369,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         )}
         {((now as any).moonAspects ?? []).length > 0 && (
           <button onClick={() => setOpen(o => o === "aspects" ? null : "aspects")} style={chipStyle("aspects", PLANET_COLORS.Moon)}>
-            <span style={{ color: PLANET_COLORS.Moon }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
+            <span role="img" aria-label="Moon aspects" style={{ color: PLANET_COLORS.Moon }}>☽{{ conjunction: "☌︎", sextile: "⚹", square: "□", trine: "△", opposition: "☍︎" }[((now as any).moonAspects[0].aspect) as string] ?? "·"}</span>
             <span style={{ color: "var(--text-2)" }}>{(now as any).moonAspects.length}</span>
           </button>
         )}
@@ -768,7 +768,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
             const drift = d.deltaMin === 0 ? "holding steady" : `${Math.abs(d.deltaMin)} min ${d.deltaMin > 0 ? "longer" : "shorter"} than yesterday`;
             return (
               <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 5, lineHeight: 1.5 }}>
-                ☀ {h}h {String(m).padStart(2, "0")}m of light · <b style={{ color: "#a08a50" }}>{d.phase}</b> · {drift}
+                <span aria-hidden="true">☀</span> {h}h {String(m).padStart(2, "0")}m of light · <b style={{ color: "#a08a50" }}>{d.phase}</b> · {drift}
               </div>
             );
           })()}
@@ -1084,7 +1084,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           <button onClick={() => onNavigate?.("settings")}
             style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer",
                      fontSize: 10.5, color: "var(--color-primary)", fontWeight: 600 }}>
-            Set your location →
+            Set your location <span aria-hidden="true">→</span>
           </button>
         </div>
       )}
@@ -1454,7 +1454,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           borderTop: "1px solid var(--color-border)", background: "none",
           border: "none", cursor: "pointer", fontSize: 9.5, color: "var(--text-3)",
         }}>
-          ⊞ Show the full instrument panel
+          <span aria-hidden="true">⊞</span> Show the full instrument panel
         </button>
       )}
     </aside>

@@ -263,7 +263,7 @@ export default function ReadZone({ reading, testerId, accent }: {
             padding: "4px 8px 4px 0", fontSize: 11.5, color: "var(--text-2)",
             display: "inline-flex", alignItems: "center", gap: 5,
           }}>
-            <span style={{ fontSize: 13, lineHeight: 1 }}>{showSlow ? "▾" : "▸"}</span>
+            <span aria-hidden="true" style={{ fontSize: 13, lineHeight: 1 }}>{showSlow ? "▾" : "▸"}</span>
             {showSlow ? "fewer" : `the ${testimonies.length} signals behind this`}
           </button>
           {showSlow && (

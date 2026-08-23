@@ -196,7 +196,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               <button onClick={() => { setHistory([]); setStreamBuffer(""); setInput(""); }} style={{
                 fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
                 background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer",
-              }}>← New question</button>
+              }}><span aria-hidden="true">←</span> New question</button>
             )}
             {pins.length > 0 && (
               <button onClick={() => setShowPins(v => !v)} style={{
@@ -221,11 +221,11 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
                   <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
                     fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
                     background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer",
-                  }}>→ task</button>
+                  }}><span aria-hidden="true">→</span> task</button>
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}>← Back to conversation</button>
+            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}><span aria-hidden="true">←</span> Back to conversation</button>
           </div>
         )}
 

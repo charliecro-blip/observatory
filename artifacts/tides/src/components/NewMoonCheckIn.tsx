@@ -508,7 +508,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         <button onClick={() => setExpanded(true)} style={{
           fontSize: 10.5, background: "none", border: "none", padding: 0,
           cursor: "pointer", color: "var(--color-primary)", flexShrink: 0,
-        }}>read it →</button>
+        }}>read it <span aria-hidden="true">→</span></button>
       </div>
     );
   }
@@ -624,7 +624,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
             fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8,
             border: "none", cursor: "pointer", background: "var(--color-primary)",
             color: "var(--color-card)",
-          }}>Take ten minutes →</button>
+          }}>Take ten minutes <span aria-hidden="true">→</span></button>
           <button onClick={dismiss} style={{
             fontSize: 11, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--text-3)",

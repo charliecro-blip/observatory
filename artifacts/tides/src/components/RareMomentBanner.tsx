@@ -56,7 +56,7 @@ export default function RareMomentBanner({ suppressed, onNavigate }: {
           <button onClick={() => onNavigate("launch")} style={{
             fontSize: 10.5, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--color-primary)",
-          }}>find a time →</button>
+          }}>find a time <span aria-hidden="true">→</span></button>
         )}
       </div>
 

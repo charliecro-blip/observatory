@@ -136,7 +136,7 @@ function DayWinComposer({ testerId, date }: { testerId: string | null; date: str
           color: text.trim() ? "#ffffff" : "var(--text-3)",
         }}>{saving ? "Saving…" : "Log it"}</button>
       </div>
-      {saved && <div style={{ fontSize: 10.5, color: "#3a6020", marginTop: 6 }}>In the ledger ✓</div>}
+      {saved && <div style={{ fontSize: 10.5, color: "#3a6020", marginTop: 6 }}>In the ledger <span aria-hidden="true">✓</span></div>}
       {err && <div style={{ fontSize: 10.5, color: "#a03030", marginTop: 6 }}>Didn't save — try again.</div>}
     </div>
   );
@@ -407,7 +407,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
             fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left", flexShrink: 0,
           }}
         >
-          ← Back to the log
+          <span aria-hidden="true">←</span> Back to the log
         </button>
       )}
       {!selectedDate ? (
@@ -454,7 +454,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
           </div>
           <WakeList testerId={testerId} />
           <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 20 }}>
-            ← or select a day to read its full log
+            <span aria-hidden="true">←</span> or select a day to read its full log
           </div>
           </>)}
         </div>

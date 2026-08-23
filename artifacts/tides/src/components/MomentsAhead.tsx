@@ -162,7 +162,7 @@ export default function MomentsAhead({
           <button onClick={onOpen} style={{
             marginLeft: "auto", fontSize: 10.5, textTransform: "none", letterSpacing: 0,
             background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)",
-          }}>Open Today →</button>
+          }}>Open Today <span aria-hidden="true">→</span></button>
         )}
       </div>
       {!folded && rows.map((m: any, i: number) => (
