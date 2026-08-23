@@ -18,6 +18,34 @@
 # supervised baseline against the live database (the tables already exist, so
 # the first generated migration has to be marked applied rather than run), and
 # that is not something to attempt unattended.
+# WHICH CHANGES TRIGGER A DEPLOY. Set on the service in Railway's dashboard
+# until 2026-08-23, where it read `/artifacts/api-server/**` and
+# `/artifacts/tides/**` and nothing else — so a commit touching only `lib/` was
+# marked SKIPPED and never shipped, while `gh api .../status` reported success.
+# It happened once for real (a copy fix in lib/lexicon) and self-corrected only
+# because a later commit touched artifacts/ and carried it along.
+#
+# The dangerous case had not happened yet: a change under lib/db/src/schema
+# alone would neither deploy NOR run `drizzle-kit push`, so the schema the code
+# expects and the schema in production could part company silently.
+#
+# Everything the build reads is listed. tests/ is here on purpose — the suite
+# runs inside the build, so a test change should get the chance to fail the
+# deploy rather than wait to block someone else's.
+watchPatterns = [
+  "artifacts/api-server/**",
+  "artifacts/tides/**",
+  "lib/**",
+  "scripts/**",
+  "tests/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "tsconfig.json",
+  "vitest.config.ts",
+  "railway.toml",
+]
+
 buildCommand = "pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push"
 
 [deploy]
