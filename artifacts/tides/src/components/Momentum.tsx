@@ -3,6 +3,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { logEvent } from "@/lib/analytics";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
+/** The week whose wake this device has already read, or null. */
+function readWake(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function markWakeRead(key: string, weekStart: string) {
+  try { localStorage.setItem(key, weekStart); } catch { /* private mode */ }
+}
+
 /**
  * Momentum — the daily progress loop's shared UI (owner 2026-07-17):
  *   morning : StarRows — one tappable row per Guiding Star (next move + today's
@@ -234,7 +242,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
               } catch { /* retryable */ }
             }}
             style={{ fontSize: 9.5, color: "#8a6a20", background: "none", cursor: "pointer", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
-            title="Your lunation in wins, as a card">↗ cycle card</button>
+            title="Your lunation in wins, as a card"><span aria-hidden="true">↗</span> cycle card</button>
         </div>
       </div>
       <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>
@@ -325,7 +333,18 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, su
   // reviewed is genuinely empty of both wins and stars. `?review=` still
   // forces either card for design work.
   const nothingToReview = data.ledger.length === 0 && data.stars.length === 0;
-  if (!force && !summoned && (firstRun || nothingToReview)) return null;
+
+  // A review you have read is not a review you are owed. The card had no read
+  // state at all — "Read the whole wake" navigated and the card was still
+  // there on the way back, which turns a weekly retrospective into a banner
+  // that outlasts its own purpose (owner 2026-08-23).
+  //
+  // Keyed to the WEEK, not to a boolean: read this Sunday's and next
+  // Sunday's still arrives. Client-side because it is a display preference —
+  // a device that has not seen it should still be shown it.
+  const readKey = `compass-wake-read-${testerId}`;
+  const alreadyRead = readWake(readKey) === data.weekStart;
+  if (!force && !summoned && (firstRun || nothingToReview || alreadyRead)) return null;
 
   const named = (from: string, to?: string) => data.ledger
     .filter(l => l.source === "named" && l.date >= from && (!to || l.date < to))
@@ -359,8 +378,10 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, su
             ))}
           </div>
         )}
-        <button onClick={onOpenLog} style={{ fontSize: 10.5, padding: "4px 12px", borderRadius: 8, border: "1px solid #c8b06a55", background: "var(--color-card)", color: "#8a6a20", cursor: "pointer", fontWeight: 600 }}>
-          Read the whole wake →
+        <button
+          onClick={() => { markWakeRead(readKey, data.weekStart); onOpenLog?.(); }}
+          style={{ fontSize: 10.5, padding: "4px 12px", borderRadius: 8, border: "1px solid #c8b06a55", background: "var(--color-card)", color: "#8a6a20", cursor: "pointer", fontWeight: 600 }}>
+          Read the whole wake <span aria-hidden="true">→</span>
         </button>
       </div>
   );

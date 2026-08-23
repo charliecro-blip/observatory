@@ -20,7 +20,7 @@ import { claimAccount, mintSessionFor, hashSessionToken, clearSessionCache } fro
 import { accountSessions } from "@workspace/db";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { requireFeature } from "../middlewares/entitlement.js";
-import { natalCharts, rhythmDays, dailyCheckIns, wins } from "@workspace/db";
+import { natalCharts, rhythmDays, dailyCheckIns, wins, habitLogs, tasks } from "@workspace/db";
 import { and, gte, desc } from "drizzle-orm";
 import { computeNatalChart } from "../lib/natal.js";
 import { proposeRhythm, currentGear } from "../lib/rhythmProposal.js";
@@ -423,12 +423,50 @@ router.get("/account/rhythm-proposal", requireTesterId, requireFeature("rhythm.a
 });
 
 /** GET /account/gear — the transit, if any, lighting one working style now. */
+/**
+ * Days on which this person recorded ANYTHING — not a streak, which resets,
+ * and not account age, which counts days nobody opened the app.
+ */
+async function daysRecorded(testerId: string): Promise<number> {
+  const [checks, logs, winRows, taskRows] = await Promise.all([
+    db.select({ d: dailyCheckIns.date }).from(dailyCheckIns).where(eq(dailyCheckIns.testerId, testerId)),
+    db.select({ d: habitLogs.date }).from(habitLogs).where(eq(habitLogs.testerId, testerId)),
+    db.select({ d: wins.date }).from(wins).where(eq(wins.testerId, testerId)),
+    db.select({ d: tasks.createdAt }).from(tasks).where(eq(tasks.testerId, testerId)),
+  ]);
+  const days = new Set<string>();
+  for (const r of [...checks, ...logs, ...winRows]) if (r.d) days.add(String(r.d).slice(0, 10));
+  // Tasks carry a timestamp rather than a day. Sliced in UTC, which can put a
+  // late-evening task on tomorrow — acceptable here, where the number only has
+  // to cross a threshold of seven and is never shown as a date.
+  for (const r of taskRows) if (r.d) days.add(new Date(r.d).toISOString().slice(0, 10));
+  return days.size;
+}
+
+/**
+ * How much use earns the gear change. Measured rather than picked: across the
+ * profiles in production on 2026-08-23, the two accounts in real daily use sat
+ * at 14 and 11 recorded days and every other profile at 5 or fewer — a friend
+ * who took the tour and left has exactly 1. Seven falls in that gap, and says
+ * a plain thing: about a week of actually using it.
+ */
+const GEAR_MIN_DAYS = 7;
+
 router.get("/account/gear", requireTesterId, requireFeature("rhythm.astro"), async (_req, res) => {
   const testerId = res.locals.testerId as string;
   try {
     const natal = await chartFor(testerId);
     if (!natal) { res.json({ available: false, reason: "no-chart", gear: null }); return; }
-    res.json({ available: true, gear: currentGear(natal) });
+    // "Saturn square your Ascendant · 2.7°" is a sentence for someone who has
+    // a rhythm to interrupt. On a first session it is jargon arriving before
+    // the thing it modifies, so it waits — and says it is waiting rather than
+    // returning a bare no (owner 2026-08-23).
+    const days = await daysRecorded(testerId);
+    if (days < GEAR_MIN_DAYS) {
+      res.json({ available: false, reason: "too-new", daysRecorded: days, needs: GEAR_MIN_DAYS, gear: null });
+      return;
+    }
+    res.json({ available: true, daysRecorded: days, gear: currentGear(natal) });
   } catch {
     res.status(503).json({ error: "could not read the sky" });
   }
