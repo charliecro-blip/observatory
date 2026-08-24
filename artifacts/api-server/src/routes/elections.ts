@@ -16,10 +16,12 @@ import { linesUp, type HeldItem, needsWeaving, pickBestWindow } from "../lib/lin
 import { findLongSessions } from "../lib/longSession.js";
 import { narrateSession } from "../lib/sessionNarration.js";
 import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
-import { weaveWeek, type WeekItem } from "../lib/weekWeaver.js";
+import { weaveWeek, weekDates, type WeekItem } from "../lib/weekWeaver.js";
 import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals, habits, habitLogs, planningWindows, testerProfiles } from "@workspace/db";
 import { fetchGcalBusy } from "./googleCal.js";
+import { readCalendar, bucketByDay, spanOf } from "../lib/calendarCommitments.js";
+import { dayBoundsIn, dayBoundsInZone } from "../lib/localClock.js";
 import { computeNatalChart } from "../lib/natal.js";
 import { vocSpansBetween } from "../lib/dayarc.js";
 import { julianDay, eclipseWindow } from "../lib/astro.js";
@@ -214,7 +216,7 @@ router.get("/elections/lines-up", async (req, res) => {
  * length exists it reports the shortfall — a four-hour request must never
  * quietly become the activity's twenty-minute minimum viable form.
  */
-router.get("/elections/long-session", requireFeature("sessions.long"), (req, res) => {
+router.get("/elections/long-session", requireFeature("sessions.long"), async (req, res) => {
   const activityKey = (req.query.activity as string) ?? "";
   const minutes = Math.min(600, Math.max(30, parseInt((req.query.minutes as string) ?? "240", 10) || 240));
   const hasCoords = req.query.lat != null && req.query.lon != null;
@@ -242,11 +244,28 @@ router.get("/elections/long-session", requireFeature("sessions.long"), (req, res
   // exactly why every callee treats it as optional.
   const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
-  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone });
+  // "Where does a week actually have hours free in a row" is a claim about
+  // AVAILABILITY, and until now it was only a claim about waking hours: the
+  // scan knew when you were awake and nothing about what you had already
+  // agreed to. A four-hour span with a one-hour meeting inside it was returned
+  // as uninterrupted.
+  //
+  // No tester header is not an error here — it just means there is no calendar
+  // to read, and the answer says so rather than implying the hours were checked.
+  const testerId = (req.headers["x-tester-id"] as string | undefined)?.trim();
+  const [dayStart, dayEnd] = timeZone ? dayBoundsInZone(date, timeZone) : dayBoundsIn(date, tzOffsetMin);
+  const cal = readCalendar(
+    testerId
+      ? await (async () => { try { return await fetchGcalBusy(testerId, dayStart.toISOString(), dayEnd.toISOString()); } catch { return null; } })()
+      : { ok: true, connected: false, busy: [] },
+  );
+
+  const result = findLongSessions({ activityKey, minutes, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments: cal.commitments });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
 
   res.json({
     ...result,
+    calendar: { consulted: cal.consulted, connected: cal.connected, commitments: cal.commitments.length },
     options: result.options.map(o => ({ ...o, narration: narrateSession(o.candidate, tzOffsetMin) })),
     shortfall: result.shortfall && {
       ...result.shortfall,
@@ -416,7 +435,37 @@ router.get("/elections/shape-week", requireFeature("shape.week"), async (req, re
     return;
   }
 
-  res.json(weaveWeek({ items, startDate: new Date(), lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin, timeZone }));
+  // THE WEEK'S REAL COMMITMENTS. Shape Today has consulted the calendar since
+  // it was built; the week never did, so the two rooms could disagree about
+  // the same Tuesday — Today routing around the dentist while the week placed
+  // an afternoon of deep work straight through it.
+  //
+  // The days come from `weekDates` rather than being recomputed here, because
+  // the weaver reads `commitmentsByDay` by those exact keys and quietly
+  // ignores any others; a near-miss key would restore the bug while looking
+  // like a fix.
+  const startDate = new Date();
+  const { dates, keys } = weekDates(startDate, days, tzOffsetMin, timeZone);
+  const { startIso, endIso } = spanOf(dates, tzOffsetMin, timeZone);
+  const cal = readCalendar(
+    await (async () => { try { return await fetchGcalBusy(testerId, startIso, endIso); } catch { return null; } })(),
+  );
+  const commitmentsByDay = bucketByDay(cal.commitments, dates, keys, tzOffsetMin, timeZone);
+
+  const woven = weaveWeek({ items, startDate, lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin, timeZone, commitmentsByDay });
+
+  res.json({
+    ...woven,
+    // Said out loud, because a week shaped around a calendar and a week shaped
+    // in ignorance of one look exactly alike once the placements are drawn.
+    // The warning rides the channel the surface already renders, so no client
+    // has to remember to check a flag before believing the hours.
+    warnings: cal.consulted ? woven.warnings : [
+      ...woven.warnings,
+      "Your calendar didn't answer just now, so these times were chosen without it and may land on something you've already agreed to.",
+    ],
+    calendar: { consulted: cal.consulted, connected: cal.connected, commitments: cal.commitments.length },
+  });
 });
 
 /**

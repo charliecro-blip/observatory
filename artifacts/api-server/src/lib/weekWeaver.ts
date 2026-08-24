@@ -115,6 +115,27 @@ export function demandOf(item: WeekItem): Demand {
   return "moderate";
 }
 
+/**
+ * The week's days and their keys — exported because anyone BUILDING
+ * `commitmentsByDay` has to key it exactly the way the weaver reads it. A
+ * caller that derives its own keys and gets them subtly wrong (a UTC slice, a
+ * stale offset across a DST boundary) hands over a map the weaver never looks
+ * in, and the result is indistinguishable from passing no commitments at all:
+ * work placed straight through a meeting, with no error anywhere.
+ */
+export function weekDates(
+  startDate: Date, days: number, tzOffsetMin: number, timeZone?: string,
+): { dates: Date[]; keys: string[] } {
+  const dates: Date[] = timeZone
+    ? Array.from({ length: days }, (_, i) => civilDayOffsetIn(startDate, i, timeZone))
+    : (() => {
+        const [day0Start] = dayBoundsIn(startDate, tzOffsetMin);
+        return Array.from({ length: days }, (_, i) => new Date(day0Start.getTime() + i * 86400000 + 12 * 3600000));
+      })();
+  const keys = timeZone ? dates.map(d => dayKeyInZone(d, timeZone)) : dates.map(d => dayKeyIn(d, tzOffsetMin));
+  return { dates, keys };
+}
+
 export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   const {
     items, startDate, lat, lon, wakeHour = 7, sleepHour = 23,
@@ -130,13 +151,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   // transition inside the span, silently relabeling every day after it.
   // Falls back to the ms step for callers with only a numeric offset, so
   // nothing already using this changes behavior without opting in.
-  const dates: Date[] = timeZone
-    ? Array.from({ length: days }, (_, i) => civilDayOffsetIn(startDate, i, timeZone))
-    : (() => {
-        const [day0Start] = dayBoundsIn(startDate, tzOffsetMin);
-        return Array.from({ length: days }, (_, i) => new Date(day0Start.getTime() + i * 86400000 + 12 * 3600000));
-      })();
-  const keys = timeZone ? dates.map(d => dayKeyInZone(d, timeZone)) : dates.map(d => dayKeyIn(d, tzOffsetMin));
+  const { dates, keys } = weekDates(startDate, days, tzOffsetMin, timeZone);
 
   // ── Assign items to days. Deadlines bind; demand and recovery shape.
   const assigned: Record<string, WeekItem[]> = Object.fromEntries(keys.map(k => [k, []]));
