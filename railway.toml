@@ -54,6 +54,13 @@ watchPatterns = [
   "railway.toml",
 ]
 
+# THIS is the build. The service in Railway's dashboard also carried a
+# buildCommand — `pnpm --filter @workspace/api-server build`, which builds the
+# API and nothing else: no typecheck, no tests, no frontend, no schema push.
+# It was inert, because this file wins, but it was a stale second answer to the
+# same question sitting where nobody in the repo could see it. Cleared
+# 2026-08-23 and proven: a rebuild with the dashboard field empty logged this
+# command verbatim, ran 82 test files, built tides, and applied the schema.
 buildCommand = "pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test && pnpm --filter @workspace/tides run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push"
 
 [deploy]
