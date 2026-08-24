@@ -55,7 +55,20 @@ export function useMomentum(testerId: string | null, lat = 40.7, lon = -74.0, en
     queryFn: async () => {
       const r = await fetch(`/api/planning/momentum?tz=${tz}&lat=${lat}&lon=${lon}`,
         { headers: { "x-tester-id": testerId ?? "" } });
-      return r.json();
+      // A refusal is not a momentum record. Unchecked, a 401's error body
+      // became `data`, every consumer's `if (!data) return null` passed it
+      // through, and `data.ledger.filter` threw the whole of Home into its
+      // error boundary — "Cannot read properties of undefined (reading
+      // 'filter')" in EveningHarvest. Thrown here so react-query calls it what
+      // it is and the cards stand down instead.
+      if (!r.ok) throw new Error(`momentum unavailable (${r.status})`);
+      const j = await r.json();
+      // And a 200 that is not a momentum record is a server bug, not an empty
+      // day — the same rule jsonArray() enforces for lists.
+      if (!j || !Array.isArray(j.ledger) || !Array.isArray(j.stars)) {
+        throw new Error("momentum came back in a shape this cannot read");
+      }
+      return j;
     },
     enabled: !!testerId && enabled,
     staleTime: 1000 * 60 * 5,

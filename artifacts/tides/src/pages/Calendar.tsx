@@ -16,6 +16,7 @@ import CalendarAudit from "@/components/CalendarAudit";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { useDialog } from "@/hooks/useDialog";
+import AlmanacView from "@/components/AlmanacView";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
 function hasRealLocation(lat: number, lon: number): boolean {
@@ -97,7 +98,11 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const WEEKDAY_RULERS: string[] = ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
 
-type CalView = "agenda" | "month" | "week" | "day";
+// "almanac" is the sky's own calendar plus the lens that scores days against a
+// question. A fourth way of looking at time rather than a sixth place to go —
+// the Almanac had its own tab once and it was retired as unreachable, because
+// reference with no work to do does not earn a nav slot. The lens is the work.
+type CalView = "agenda" | "month" | "week" | "day" | "almanac";
 type LayerLevel = 0 | 1 | 2;
 
 interface PlanetHour {
@@ -607,7 +612,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     display:"flex",alignItems:"center",justifyContent:"center",
                   }}>{dayNum}</div>
                   {isDay && !skyQuiet && dayRuler && (
-                    <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}>{PLANET_ICONS[dayRuler]} {dayRuler}</div>
+                    <div style={{ fontSize:8,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> {dayRuler}</div>
                   )}
                 </div>
 
@@ -619,10 +624,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                 }}>
                   <div style={{ display:"flex",alignItems:"center",gap:4 }}>
                     {phase && <span style={{ fontSize:9 }}>{MOON_EMOJI[phase]??""}</span>}
-                    {signKey && <span style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}>{SIGN_SYMBOL[signKey]} {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
+                    {signKey && <span style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
                     {/* week: show current planetary hour planet */}
                     {!isDay && isToday && nowHour && (
-                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}>{PLANET_ICONS[nowHour.ruler]}</span>
+                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize:9,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`}>{PLANET_ICONS[nowHour.ruler]}</span></span>
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
@@ -668,7 +673,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                           opacity:ph.isDayHour||(isNow)?1:0.5,
                           fontWeight:isNow?700:400,
                         }}>
-                          <span style={{ fontSize:8,color:col }}>{PLANET_ICONS[ph.ruler]}</span>
+                          <span style={{ fontSize:8,color:col }}><span role="img" aria-label={ph.ruler}>{PLANET_ICONS[ph.ruler]}</span></span>
                           <span style={{ fontSize:7.5,color:col }}>{fmtTime(ph.startTime)}</span>
                         </div>
                       );
@@ -703,7 +708,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         }}>
                           {(botPx-topPx)>=15 && (
                             <div style={{ padding:"1px 4px",fontSize:7.5,color:col,fontWeight:600,lineHeight:1.3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis" }}>
-                              {PLANET_ICONS[ph.ruler]} {ph.ruler}
+                              <span aria-hidden="true">{PLANET_ICONS[ph.ruler]}</span> {ph.ruler}
                             </div>
                           )}
                         </div>
@@ -780,7 +785,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         background:`linear-gradient(to bottom,transparent 0%,${pCol}35 40%,${pCol}55 50%,${pCol}35 60%,transparent 100%)`,
                       }}>
                         <div style={{ position:"absolute",bottom:1,right:3,fontSize:7.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>
-                          {PLANET_ICONS[c.planet]??c.planet[0]} {c.angle}
+                          <span aria-hidden="true">{PLANET_ICONS[c.planet]??c.planet[0]}</span> {c.angle}
                         </div>
                       </div>
                     );
@@ -938,7 +943,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             <span title={`${dayRuler}'s day`} style={{
               fontSize:9, color:rulerCol, background:`${rulerCol}18`, borderRadius:8,
               padding:"1px 5px", fontWeight:600, lineHeight:1.4,
-            }}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span>
+            }}><span role="img" aria-label={dayRuler}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span></span>
           )}
           {phase && <span style={{ fontSize:12 }}>{MOON_EMOJI[phase]??""}</span>}
         </div>
@@ -947,7 +952,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Row 2: moon sign + element */}
       {dayData && signKey && showSignNames && (
         <div style={{ fontSize:11,fontWeight:500,lineHeight:1.3,color:ELEMENT_LABEL[elem]??"var(--text-3)",marginBottom:1 }}>
-          {SIGN_SYMBOL[signKey]} {moonSign.split(" ").slice(0,2).join(" ")}
+          <span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {moonSign.split(" ").slice(0,2).join(" ")}
         </div>
       )}
       {dayData && !showSignNames && !cellQuiet && elem && (
@@ -1056,7 +1061,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
       <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData&&!panelQuiet?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
         <div style={{ fontSize:9,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
-        {!panelQuiet && dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}>{PLANET_ICONS[dayRuler]} Day of {dayRuler}</div>}
+        {!panelQuiet && dayRuler && <div style={{ fontSize:9.5,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
         <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
@@ -1064,10 +1069,10 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
         {dayData && (<>
           {!panelQuiet && <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4 }}>
-              <span style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
+              <span aria-hidden="true" style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
               <div>
                 <div style={{ fontSize:10.5,fontWeight:600,color: "var(--color-primary)" }}>{phase}</div>
-                {signKey && <div style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--text-3)" }}>{SIGN_SYMBOL[signKey]} {moonSign}</div>}
+                {signKey && <div style={{ fontSize:9,color:ELEMENT_LABEL[elem]??"var(--text-3)" }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {moonSign}</div>}
               </div>
             </div>
             <div style={{ fontSize:9.5,color:"var(--text-2)",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
@@ -1144,7 +1149,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                 const ANGLE_WORD: Record<string,string> = { ASC:"rises", MC:"culminates", DSC:"sets", IC:"grounds" };
                 return (
                   <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
-                    <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{PLANET_ICONS[c.planet]??c.planet[0]}</div>
+                    <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><span role="img" aria-label={c.planet}>{PLANET_ICONS[c.planet]??c.planet[0]}</span></div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:10,fontWeight:500,color:"var(--text-1)" }}>{c.planet} {ANGLE_WORD[c.angle] ?? `crosses ${c.angle}`}</div>
                       <div style={{ fontSize:8,color:"var(--text-3)" }}>{c.time}</div>
@@ -1269,7 +1274,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
       <div style={{ maxWidth: 620, margin: "0 auto" }}>
         {/* The day's character */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: `${accent}0e`, border: `1px solid ${accent}33`, marginBottom: 16 }}>
-          <div style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽︎"}</div>
+          <div aria-hidden="true" style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽︎"}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-primary)" }}>
               {dayData?.tide?.character ? `${dayData.tide.character.charAt(0).toUpperCase()}${dayData.tide.character.slice(1)} Tide` : "The day"}
@@ -1294,7 +1299,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
               return (
                 <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", borderTop: i === 0 ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
                   <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "var(--text-3)", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
-                  <div style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
+                  <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
                     {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
@@ -1471,6 +1476,9 @@ export default function Calendar({ testerId, now, lat, lon }: {
   });
 
   function periodLabel() {
+    // The almanac is not a period. It runs forward from today, so there is no
+    // month to name and nothing for the arrows to step through.
+    if (calView==="almanac") return "The next three months";
     if (calView==="month") return `${MONTH_NAMES[month]} ${year}`;
     if (calView==="week") {
       const dates = getWeekDates(selectedDate);
@@ -1498,13 +1506,15 @@ export default function Calendar({ testerId, now, lat, lon }: {
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
       <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
+        {calView!=="almanac" && (<>
         <button onClick={prevPeriod} title="Previous — press ←" aria-label={`Previous ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>‹</button>
         <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
         <button onClick={nextPeriod} title="Next — press →" aria-label={`Next ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        </>)}
         <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
-          {(["agenda","day","week","month"] as CalView[]).map(v=>(
+          {(["agenda","day","week","month","almanac"] as CalView[]).map(v=>(
             // The title carries the shortcut — an undiscoverable shortcut is a
             // shortcut nobody uses.
             <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
@@ -1546,7 +1556,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
           <button onClick={()=>setShowAudit(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>◷ Read the week</button>
         )}
         {!pageQuiet && now && (
-          <button onClick={()=>setShowStudio(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>↗ Share</button>
+          <button onClick={()=>setShowStudio(true)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}><span aria-hidden="true">↗</span> Share</button>
         )}
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
@@ -1581,14 +1591,14 @@ export default function Calendar({ testerId, now, lat, lon }: {
                 {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
                 {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
                 <span><span style={{ background:"#6f6a9022",color:"var(--text-2)",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
-                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span>⚠️ = a caution day for you — tap the day to see what & why</span>}
+                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span><span aria-hidden="true">⚠️</span> = a caution day for you — tap the day to see what & why</span>}
               </div>}
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
                   const ruler = WEEKDAY_RULERS[i];
                   return (
                     <div key={d} title={pageQuiet ? undefined : `${ruler}'s day`} style={{ textAlign:"center",fontSize:9,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}>{PLANET_ICONS[ruler]}</span>}
+                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler}>{PLANET_ICONS[ruler]}</span></span>}
                     </div>
                   );
                 })}
@@ -1641,6 +1651,14 @@ export default function Calendar({ testerId, now, lat, lon }: {
             onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
             onDeleteWindow={id=>delWindow.mutate(id)}
           />
+        )}
+
+        {/* The almanac — the sky's own dates, and a lens that scores days
+            against a question. Full width: it has no grid to sit beside, and
+            the detail panel answers about a selected day, which this view does
+            not have. */}
+        {calView==="almanac" && (
+          <AlmanacView testerId={testerId} lat={lat} lon={lon} />
         )}
 
         {/* Week / Day view */}

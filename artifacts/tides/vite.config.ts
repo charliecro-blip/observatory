@@ -33,7 +33,10 @@ export default defineConfig({
     port: 5174,
     host: "0.0.0.0",
     proxy: {
-      "/api": "http://localhost:3000",
+      // Default unchanged. The override exists so a second dev server can run
+      // beside the first — two sessions in one checkout otherwise fight over
+      // port 3000, and the loser silently proxies to the winner's API.
+      "/api": process.env["API_TARGET"] ?? "http://localhost:3000",
     },
   },
   preview: {
