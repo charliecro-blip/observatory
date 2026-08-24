@@ -24,7 +24,7 @@ const router: IRouter = Router();
  *
  * Ingest (POST /events) stays open — the app has to be able to write.
  */
-const requireAdmin: RequestHandler = (req, res, next) => {
+export const requireAdmin: RequestHandler = (req, res, next) => {
   const expected = process.env["ADMIN_TOKEN"];
   if (!expected) {
     // No token set: usable locally, invisible in production.

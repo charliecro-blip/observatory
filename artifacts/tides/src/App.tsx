@@ -28,6 +28,7 @@ import Log from "@/pages/Log";
 import Settings from "@/pages/Settings";
 import { useTidesNow, useTidesWeek } from "@/hooks/useTides";
 import { logEvent } from "@/lib/analytics";
+import FeedbackDoor from "@/components/FeedbackDoor";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { parseWhen, formatDueChip } from "@/lib/parseWhen";
@@ -1226,6 +1227,7 @@ function Shell() {
   // state including a cold start.
   const [tourArmed, setTourArmed] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   useEffect(() => {
     if (!testerId || view !== "home" || tourArmed || !tourPending(testerId)) return;
     let tries = 0;
@@ -1381,6 +1383,9 @@ function Shell() {
           empty page and mark itself complete before the data arrives. */}
       {tourArmed && <SpotlightTour testerId={testerId} onDone={() => setTourArmed(false)} onFinalCta={() => setView("work")} />}
       {showGuide && <Guide onClose={() => setShowGuide(false)} />}
+      {feedbackOpen && (
+        <FeedbackDoor testerId={testerId} view={view} onClose={() => setFeedbackOpen(false)} />
+      )}
 
       {/* ── Top bar ── */}
       <div data-tour={isMobile ? undefined : "nav-tabs"} style={{
@@ -1453,6 +1458,15 @@ function Shell() {
           fontSize:12, padding:"4px 7px", borderRadius:6, border:"none",
           background:"transparent", color:"var(--text-3)", cursor:"pointer", opacity:0.72,
         }}>?</button>
+        {/* THE BETA'S COMPLAINT DOOR. It sits in the utilities because it has
+            to be reachable from wherever the thing went wrong, and this is the
+            only cluster on every surface. It costs one quiet glyph; the mailto
+            in Settings it replaces cost a tester the whole app. */}
+        <button onClick={() => setFeedbackOpen(true)}
+          aria-label="Send feedback" title="Send feedback" style={{
+          fontSize:12, padding:"4px 7px", borderRadius:6, border:"none",
+          background:"transparent", color:"var(--text-3)", cursor:"pointer", opacity:0.72,
+        }}><span aria-hidden="true">◇</span></button>
         <button onClick={toggleTheme}
           aria-label={theme === "light" ? "Switch to dark" : "Switch to light"}
           title={theme === "light" ? "Switch to dark" : "Switch to light"} style={{

@@ -1735,8 +1735,12 @@ function AccountSection() {
       {/* Feedback — beta channel */}
       <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Send feedback</div>
-          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>Something confusing, wrong, or missing? Tell us — every note shapes the next build.</div>
+          {/* Now the SECOND door, not the only one: the ◇ in the topbar sends
+              from wherever you are and brings the page and your settings with
+              it. This stays for the case that one cannot cover — the app too
+              broken to post anything. */}
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>Email us instead</div>
+          <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 1 }}>The ◇ in the top bar is quicker and carries the details. Use this when the app itself is the thing that's broken.</div>
         </div>
         <a href="mailto:charliecro@gmail.com?subject=Compass%20feedback"
           style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 14px", textDecoration: "none", background: "var(--color-card-2)", flexShrink: 0 }}>
