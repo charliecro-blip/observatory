@@ -101,8 +101,13 @@ const MAX_HABIT_ROWS = 5;      // ungrouped layout
 const MAX_ROWS_PER_STAR = 3;
 const MAX_ROWS_PER_STAR_MOBILE = 2;
 
-export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar }: {
+export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar, compact = false }: {
   testerId: string | null; lat: number; lon: number; onNavigate: (v: string) => void;
+  /** Home's version: three facts on one line, tapping through to Stars.
+   *  The full relational map — every habit, every star, the lens switch — is
+   *  what Stars is FOR, and rendering it on Home too made the page carry the
+   *  same picture twice at different sizes (audit 2026-08-24). */
+  compact?: boolean;
   /** Open one star's game plan, scrolled to and highlighted. It rode on the
    *  morning card's star rows until those merged into this one (2026-08-19);
    *  the affordance follows the stars rather than the card. */
@@ -204,6 +209,33 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
   // never finish, and things you are MOVING, which do. They read differently —
   // a quiet week against a value is a quiet week, while a quiet week against a
   // date is slippage — so they are drawn apart rather than interleaved.
+  // ── HOME'S ONE LINE ──────────────────────────────────────────────────────
+  // Practices kept, one star with a date on it, and one that has had nothing
+  // yet. The waiting star is the fact worth carrying: the other two are
+  // progress, and progress is the part a person already remembers.
+  if (compact) {
+    const movingFirst = liveStars.filter(s => !!s.endsOn)
+      .sort((a, b) => (a.endsOn ?? "").localeCompare(b.endsOn ?? ""))[0];
+    // "Waiting" means nothing is tied to it — no habit serves this star yet,
+    // so it has no way to move even on a good day.
+    const tiedStarIds = new Set([...habitStars.values()].flat());
+    const waiting = liveStars.find(s => !tiedStarIds.has(s.id));
+    const bits = [
+      `${doneToday} of ${liveHabits.length} practices kept`,
+      movingFirst ? `${movingFirst.title} moving` : null,
+      waiting ? `${waiting.title} still waiting` : null,
+    ].filter(Boolean);
+    if (!bits.length) return null;
+    return (
+      <button onClick={() => onNavigate("work")} style={{
+        alignSelf: "flex-start", textAlign: "left", border: "none", background: "none",
+        padding: "2px 2px", cursor: "pointer", fontSize: 12.5, color: "var(--text-2)",
+      }}>
+        {bits.join(" · ")} <span aria-hidden="true" style={{ color: "var(--color-primary)" }}>→</span>
+      </button>
+    );
+  }
+
   const held = liveStars.filter(s => !s.endsOn);
   const moving = liveStars.filter(s => !!s.endsOn)
     .sort((a, b) => (a.endsOn ?? "").localeCompare(b.endsOn ?? ""));

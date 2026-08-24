@@ -1399,10 +1399,21 @@ describe("the guide", () => {
       .filter((f) => f.endsWith(".tsx"))
       .map((f) => readFileSync(join(pages, f), "utf-8"));
 
-    const host = sources.find((src) => src.includes("<NotificationOptIn"));
-    expect(host, "nothing renders the notification opt-in any more").toBeTruthy();
-    expect(host!, "the opt-in asks for permission before the tour is answered")
-      .toMatch(/\{!firstRun && <NotificationOptIn/);
+    // THE OPT-IN LEFT HOME (2026-08-24). It used to sit in the same column as
+    // the day's work, guarded by `{!firstRun && …}` so it could not ask before
+    // the walkthrough was answered. Under the four-zone Home a permission
+    // request does not get a band at all: Settings owns it, and Settings can
+    // enable push itself — `enableNotifications()` calls the same `enablePush`,
+    // so nothing was stranded by the move.
+    //
+    // The guard inverts rather than disappears. The claim worth holding is no
+    // longer "the opt-in is guarded on Home" but "Home does not ask at all".
+    const homeSrc = readFileSync(join(pages, "Home.tsx"), "utf-8");
+    expect(homeSrc, "a permission request is back on Home, competing with the day's work")
+      .not.toMatch(/<NotificationOptIn/);
+    const settings = readFileSync(join(pages, "Settings.tsx"), "utf-8");
+    expect(settings, "Settings no longer offers a way to turn notifications on")
+      .toMatch(/enablePush\(/);
 
     // Every self-promoting block carries the same guard, wherever it sits.
     //
@@ -1413,8 +1424,21 @@ describe("the guide", () => {
     // weak assertion anyway — what matters is that whatever asks something of
     // a first-time user waits for the walkthrough, which the check above
     // enforces on the one ask that remains.
-    const guards = sources.reduce((n, src) => n + (src.match(/\{!firstRun /g)?.length ?? 0), 0);
-    expect(guards).toBeGreaterThanOrEqual(1);
+    // ZERO IS NOW THE RIGHT COUNT, and the assertion changes shape to say so.
+    // The floor used to be 1 because exactly one self-promoting ask remained;
+    // with the opt-in moved to Settings there are none on any page, which is
+    // the end state the four-zone Home was aiming at rather than a regression.
+    //
+    // So the rule stops being "at least one guard exists" — a count that only
+    // ever described how many asks we happened to have — and becomes the claim
+    // that actually matters: any ask that IS rendered waits for the
+    // walkthrough. Vacuously true today, load-bearing the moment someone adds
+    // one back.
+    for (const src of sources) {
+      for (const m of src.matchAll(/(.{0,24})<NotificationOptIn/g)) {
+        expect(m[1], "an ask renders without waiting for the walkthrough").toMatch(/!firstRun && $/);
+      }
+    }
   });
 });
 

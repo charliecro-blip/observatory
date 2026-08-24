@@ -106,10 +106,19 @@ export const TRIM_NAME: Record<Rhythm, string> = { tide: "Tide", campaign: "Camp
  * options up. The person can refold anything afterward.
  */
 export const TRIM_FOLDS: Record<Rhythm, string[]> = {
-  tide: ["reading", "tide"],
-  campaign: ["reading", "tide", "week", "ask"],
-  route: ["reading", "tide", "ask"],
-  field: ["reading", "tide"],
+  // "readday" is the single door the tide chart, the lunar cycle, the full
+  // reading and the day's conditions now sit behind (four-zone Home,
+  // 2026-08-24). It replaces the separate "reading" and "tide" entries: those
+  // ids still exist INSIDE the door, and folding them too meant opening the
+  // door onto two more closed doors.
+  //
+  // The tide rhythm is the one that leaves it open, because "read the day
+  // first" is precisely what that rhythm asked for. "ask" is gone with the Ask
+  // panel it named.
+  tide: [],
+  campaign: ["readday", "week"],
+  route: ["readday"],
+  field: ["readday"],
 };
 /** The rhythm in force right now — the override while it lasts, else the base. */
 export function effectiveRhythm(d: Pick<DisplayPrefs, "rhythm" | "rhythmOverride">, now = new Date()): Rhythm {

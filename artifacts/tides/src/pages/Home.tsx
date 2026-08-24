@@ -39,6 +39,7 @@
  * building a settings shape nobody can reach.
  */
 
+import { chooseOpening, DEFERRED_LABEL } from "@/lib/opening";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ElectionPicker } from "@/components/ElectionPicker";
@@ -52,7 +53,7 @@ import LunarCycle from "@/components/LunarCycle";
 import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/elements";
 import MomentsAhead from "@/components/MomentsAhead";
 import DayConditions from "@/components/DayConditions";
-import AngleCrossing from "@/components/AngleCrossing";
+import AngleCrossing, { activeCrossings } from "@/components/AngleCrossing";
 import { useFold, FoldToggle, FoldedSummary, Fold } from "@/components/ModuleFold";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 import WhereYouAre from "@/components/WhereYouAre";
@@ -319,6 +320,11 @@ export default function Home({
   onQuickCapture?: () => void;
   /** The walkthrough is armed or running. Asking for notification permission
    *  is a poor first sentence, so the opt-in waits until it is answered. */
+  /** Still threaded through, and deliberately unused since 2026-08-24: the
+   *  notification opt-in was the last thing on Home that asked a newcomer for
+   *  something, and it moved to Settings. This is the guard any future ask
+   *  would need, kept rather than removed so the next one cannot be added
+   *  without it — tests/regressions checks exactly that. */
   firstRun?: boolean;
   /** Deep link from a morning star row into that star's game plan. It was
    *  wired to Today and went unpassed when the ritual card moved here — the
@@ -451,6 +457,28 @@ export default function Home({
   }, [testerId, today, rhythm]);
   const showVoid = usePreferences().prefs.display.todayShowVOC;
   const showCrossings = usePreferences().prefs.display.todayShowCrossings;
+
+  // ── WHAT LEADS THE PAGE ──────────────────────────────────────────────────
+  // Five modules used to be able to open Home at once. They compete for one
+  // slot now (lib/opening.ts), and the losers are DEFERRED: not rendered, so
+  // never marked seen, so still live on the next load once whatever outranked
+  // them has expired.
+  //
+  // Liveness is asked with PREDICATES, never by rendering a candidate to see
+  // whether it wanted the slot. Mounting a loser is what would quietly turn
+  // deferral back into dropping — NewMoonCheckIn and RareMomentBanner both
+  // record having been offered.
+  const openingLive = {
+    crossing: !skyQuiet && showCrossings && activeCrossings(now?.crossings).length > 0,
+    ritual:   !!ritualMode && !!now,
+    newmoon:  turningPointPromptOpen(now?.moonCycle?.cycleStart),
+    rare:     !skyQuiet && rareShowing,
+    review:   !!(reviewForced || sundayToday),
+  };
+  const opening = chooseOpening(openingLive);
+  // The door's state, read once: Moments Ahead follows it rather than carrying
+  // a second switch for the same idea.
+  const readDayFolded = useFold().isFolded("readday");
   const showJournal = usePreferences().prefs.display.todayShowJournal;
   /** Sets the link. Symmetric: the row's verdict and the hero title both call it. */
   const linkRow = (id: number) => { setFocusedTask(id); setEvidenceOpen(true); };
@@ -659,7 +687,15 @@ export default function Home({
           twenty-minute window already closing. It renders on a tiny fraction
           of loads, so the ordinary page pays nothing for the place it
           holds. */}
-      {!skyQuiet && <AngleCrossing crossings={now?.crossings} enabled={showCrossings} />}
+      {/* ══ ZONE 1 · THE OPENING ══════════════════════════════════════════
+          ONE slot. Five modules could previously open the page at once and
+          all of them are defensible alone; the stack was the failure. The
+          winner is chosen by lib/opening.ts, expiring-soonest first, and the
+          losers are named on one line rather than given rectangles of their
+          own — deferred, still live tomorrow, not dropped today. */}
+      {opening.shown === "crossing" && (
+        <AngleCrossing crossings={now?.crossings} enabled={showCrossings} />
+      )}
 
       {/* ══ HOW COMPASS MEETS YOU ═════════════════════════════════════════
           The first question, shaped by the person's own choice — one move,
@@ -671,6 +707,17 @@ export default function Home({
           fourth rhythm silently untaught, which is exactly how the previous
           one was lost. The wrapper is one flex item in a gap column and
           changes nothing visually. */}
+      {/* WHAT LOST THE SLOT, in one line. Deferral is only honest if the
+          person can tell something was there — otherwise a rare alignment
+          suppressed by a ritual is indistinguishable from no rare alignment.
+          A line, not a rectangle: the audit's rule is that a transient state
+          modifies the opening rather than adding to it. */}
+      {opening.deferred.length > 0 && (
+        <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: -4 }}>
+          Also today: {opening.deferred.map(k => DEFERRED_LABEL[k]).join(" · ")}
+        </div>
+      )}
+
       <div data-tour="home-answer">
       <RhythmLead
         rhythm={rhythm}
@@ -707,7 +754,7 @@ export default function Home({
           lands on. It leads when it renders at all, because during those
           hours it IS the reason someone opened the app; the rest of the day
           it renders nothing and Home is unchanged. */}
-      {ritualMode && now && (
+      {opening.shown === "ritual" && ritualMode && now && (
         <RitualCard
           mode={ritualMode}
           now={now}
@@ -721,7 +768,12 @@ export default function Home({
         />
       )}
 
-      <WhereYouAre testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} onOpenStar={onOpenStar} />
+      {/* ══ ZONE 3 · ALREADY YOURS ════════════════════════════════════════
+          Three facts and a way through, not the whole map. The full
+          relational picture — every habit, every star, the lens switch — is
+          what Stars is for, and having both meant Home carried the same
+          picture twice at two sizes. */}
+      <WhereYouAre compact testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} onOpenStar={onOpenStar} />
 
 
       {/* ══ THE DAY, IN ONE LINE ═══════════════════════════════════════════
@@ -737,56 +789,72 @@ export default function Home({
           down only when there is no reading to report. */}
       <TideStrip now={now} minimal={skyQuiet} />
 
-      {/* THE TIDE, ON REQUEST. It went to Calendar when Today retired and
-          came back here (owner, 2026-08-20) — where it also stops crushing
-          Calendar's grid, since that page is a flex column with no room for
-          a fixed-height chart above it.
+      {/* ══ ZONE 4 · READ THE DAY ═════════════════════════════════════════
+          One door where there were three sections. The tide chart, the lunar
+          cycle, the full reading and the day's conditions were each
+          defensible and each took a band of the page every morning, whether
+          or not anyone had asked the sky a question that day.
 
-          Folded by default: it is the heaviest thing on the page and the
-          strip above already says what kind of day it is in one line. The
-          chart is for when you want the hours. */}
-      {!skyQuiet && now?.dayArc && (
-        <div style={{ ...PANEL, overflow: "hidden" }}>
-          <SectionTitle fold="tide" summary="the hours, and where the water runs high">The tide</SectionTitle>
-          <Fold id="tide">
-            <LunarCycle now={now} />
-            <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />
-          </Fold>
-        </div>
-      )}
+          Nothing became unreachable. What changed is who pays: the reader who
+          wants the hours opens them, instead of every reader scrolling past
+          them to reach their own work. The strip above still says what kind
+          of day it is in one line, which is the part that earns its place
+          unasked. */}
+      <div style={{ ...PANEL, overflow: "hidden" }}>
+        <SectionTitle fold="readday" summary="the hours, the reading, and today's conditions">Read the day</SectionTitle>
+        <Fold id="readday">
+        {/* THE TIDE, ON REQUEST. It went to Calendar when Today retired and
+            came back here (owner, 2026-08-20) — where it also stops crushing
+            Calendar's grid, since that page is a flex column with no room for
+            a fixed-height chart above it.
 
-      {/* THE READING UNDER THE LINE. The strip says what kind of day it is;
-          this is the synthesis engine's evidence for saying so — the one
-          thing in Today's hero that nothing on Home carried. Folded by
-          default: it came from a page built to be read to one built to be
-          acted on. */}
-      {!skyQuiet && now?.reading && (
-        <div style={{ ...PANEL, overflow: "hidden" }}>
-          <SectionTitle fold="reading" summary="what the sky is doing today">The reading</SectionTitle>
-          <Fold id="reading">
-            <div style={{ padding: "0 16px 14px" }}>
-              <DayReading
-                now={now}
-                level={astroLevel}
-                testerId={testerId}
-                accent={ELEMENT_COLORS[CHARACTER_ELEMENT[(now?.tide?.character ?? "deep") as TideCharacter] ?? "water"]}
-              />
-            </div>
-          </Fold>
-        </div>
-      )}
+            Folded by default: it is the heaviest thing on the page and the
+            strip above already says what kind of day it is in one line. The
+            chart is for when you want the hours. */}
+        {!skyQuiet && now?.dayArc && (
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            <SectionTitle fold="tide" summary="the hours, and where the water runs high">The tide</SectionTitle>
+            <Fold id="tide">
+              <LunarCycle now={now} />
+              <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />
+            </Fold>
+          </div>
+        )}
 
-      {/* ── THE CONDITION SLOT · one at a time, ranked by rarity.
-          Rhythm risk, then the void Moon, then where you are in a cycle.
-          Three banners folded into one slot (audit §5): rhythm risk and the
-          cycle phase lived on Today, where nobody lands, and the void was
-          drawn on both pages in two different voices.
+        {/* THE READING UNDER THE LINE. The strip says what kind of day it is;
+            this is the synthesis engine's evidence for saying so — the one
+            thing in Today's hero that nothing on Home carried. Folded by
+            default: it came from a page built to be read to one built to be
+            acted on. */}
+        {!skyQuiet && now?.reading && (
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            <SectionTitle fold="reading" summary="what the sky is doing today">The reading</SectionTitle>
+            <Fold id="reading">
+              <div style={{ padding: "0 16px 14px" }}>
+                <DayReading
+                  now={now}
+                  level={astroLevel}
+                  testerId={testerId}
+                  accent={ELEMENT_COLORS[CHARACTER_ELEMENT[(now?.tide?.character ?? "deep") as TideCharacter] ?? "water"]}
+                />
+              </div>
+            </Fold>
+          </div>
+        )}
 
-          Conditions are NOT in the notice queue below and never were: a
-          condition is information about the hour you are already in rather
-          than an offer competing for attention, and letting a common one
-          suppress a rare one is exactly backwards. */}
-      <DayConditions now={now} cycle={cycle} habits={habitsForRisk} skyQuiet={skyQuiet} showVoid={showVoid} />
+        {/* ── THE CONDITION SLOT · one at a time, ranked by rarity.
+            Rhythm risk, then the void Moon, then where you are in a cycle.
+            Three banners folded into one slot (audit §5): rhythm risk and the
+            cycle phase lived on Today, where nobody lands, and the void was
+            drawn on both pages in two different voices.
+
+            Conditions are NOT in the notice queue below and never were: a
+            condition is information about the hour you are already in rather
+            than an offer competing for attention, and letting a common one
+            suppress a rare one is exactly backwards. */}
+        <DayConditions now={now} cycle={cycle} habits={habitsForRisk} skyQuiet={skyQuiet} showVoid={showVoid} />
+        </Fold>
+      </div>
 
       {/* ── TURNING POINT · the check-in prompt during a cycle window, or the
           kept one-pager after. Renders nothing on ordinary days.
@@ -808,6 +876,7 @@ export default function Home({
       {/* The lunation's boundaries come from the sky, on the reading Home
           already fetches — so the check-in's window and the cycle the ledger
           stamps intentions with cannot drift apart. */}
+      {opening.shown === "newmoon" && (
       <NewMoonCheckIn
         testerId={testerId}
         onNavigate={onNavigate}
@@ -816,17 +885,18 @@ export default function Home({
         lat={lat}
         lon={lon}
       />
+      )}
       {/* The rare-day banner leads with aspect lines — sky vocabulary the
           quiet lens exists to fold away, however rare the day. The turning-
           point check-in above stays: its language is the app's own. */}
-      {!skyQuiet && <RareMomentBanner onNavigate={onNavigate} suppressed={turningPointPromptOpen(now?.moonCycle?.cycleStart)} />}
+      {opening.shown === "rare" && <RareMomentBanner onNavigate={onNavigate} />}
       {/* THE SUNDAY REVIEW, third in the rarity order (HOME study W1). It
           lived on Today, where Home-landers never met it. Monthly outranks
           roughly-fortnightly outranks weekly, so it stands down whenever
           either notice above holds the slot — and it renders at all only on
           its own day, so the ledger read it depends on is not paid for on
           the six days it would return nothing. */}
-      {(reviewForced || (sundayToday && !turningPointPromptOpen(now?.moonCycle?.cycleStart) && !rareShowing)) && (
+      {opening.shown === "review" && (
         <ReviewCard testerId={testerId} lat={lat} lon={lon} onOpenLog={() => onNavigate("log")} />
       )}
 
@@ -839,7 +909,12 @@ export default function Home({
 
           Below the notice queue on purpose: this is an ask rather than a
           notice, so it never competes for the rarity slot. */}
-      {!firstRun && <NotificationOptIn lat={lat} lon={lon} />}
+      {/* THE PUSH OPT-IN LEFT HOME (2026-08-24). A permission request is
+          setup, not steering, and it was sitting in the same column as the
+          day's actual work — the audit's rule is that it must not outrank
+          today's work, and on a page with one opening slot the only way to
+          honour that is not to be on the page. It lives in Settings, where
+          the other notification controls already are. */}
 
       {/* THE WORK comes BEFORE the reading now.
           Compass answers "what now" at the top of the page, so the big
@@ -1065,8 +1140,15 @@ export default function Home({
 
               Sky vocabulary end to end, so the quiet lens hides it outright.
               There is nothing here to translate: the rows ARE the planetary
-              hours and the Moon's applying contacts. */}
-          {!skyQuiet && (
+              hours and the Moon's applying contacts.
+
+              IT WAITS FOR THE DOOR NOW (four-zone Home, 2026-08-24). "The
+              hours I have left for" is the same question Read the day already
+              answers, and answering it twice on one page — once in the context
+              column, once behind the door — is the duplication the zones exist
+              to remove. Whoever opens the day gets these; whoever does not is
+              not charged a band of the page for them. */}
+          {!skyQuiet && !readDayFolded && (
             <MomentsAhead
               now={now}
               tasks={open.map(t => ({ id: t.id, title: t.title, planet: t.planet }))}
@@ -1145,79 +1227,31 @@ export default function Home({
           unprompted on 2026-08-19, so there is no pick above for these doors
           to reason about — which means "This moment" asks a question rather
           than explaining an answer nobody requested. */}
-      {onAskAboutElection && (
-        <div style={{ ...PANEL, overflow: "hidden" }}>
-          <div style={{ height: 3, background: `linear-gradient(90deg, ${PERSONAL}, ${PERSONAL}66 55%, var(--color-border))` }} />
-          <SectionTitle fold="ask" summary="four doors">Ask</SectionTitle>
-          <Fold id="ask"><div style={{ padding: "0 16px 14px" }}>
-            <AskDoors
-              layout="tiles"
-              stars={(northStars ?? [])
-                .filter((g: any) => g.status !== "done" && g.status !== "paused")
-                .slice(0, 4)
-                .map((g: any) => ({ id: g.id, title: g.title }))}
-              strongestFit={null}
-              turnIt={<TurnIt
-                testerId={testerId}
-                lat={lat} lon={lon}
-                wakeTime={profile?.chronotype?.wakeTime}
-                sleepTime={profile?.chronotype?.sleepTime}
-              />}
-              onPick={(pick) => onAskAboutElection(
-                { activity: "", windows: [] },
-                // Home has no text field, so a fragment would strand the
-                // reader mid-sentence: send the complete question instead.
-                pick.send,
-              )}
-            />
-          </div></Fold>
-        </div>
-      )}
+      {/* ASK LEFT HOME (2026-08-24). The four-door panel duplicated a tool
+          that is already one tap away in the topbar from every surface, and
+          it was holding a full band of the page to do it. The button stays;
+          what goes is the second copy of it here. Contextual "ask about
+          this" actions belong on the objects they are about, which is a
+          different change from keeping a panel that asks in the abstract. */}
 
-      {/* ══ THE HORIZON ═══════════════════════════════════════════════════
-          Home's second question — "what's coming?" — which nothing on the
-          page looked far enough ahead to answer. Two facts at two scales:
-          the fortnight's shape, and the fixed dates beyond it.
+      {/* ══ ZONE 4 · LOOK AHEAD ════════════════════════════════════════════
+          The fortnight's shape and the dates beyond it were two cards here,
+          and the comment above them argued they were safe because each was
+          low-resolution and handed you a door. Both things were true and the
+          page still carried a second almanac at the bottom of it.
 
-          BREADTH AT LOW RESOLUTION, which is the whole guard against Home
-          becoming the everything-page again. Neither of these explains
-          itself; both hand you a door to the tab that owns the detail.
-
-          `auto-fit` rather than two fixed columns, because `CroppingUp`
-          renders nothing on a genuinely quiet stretch and a fixed grid
-          would leave a hole where a card declined to speak.
-
-          IT SITS BELOW THE ANSWER NOW (audit 2026-08-19 §6). The horizon
-          used to interrupt the page between Compass's answer and the
-          receipt for that answer — a forecast wedged into the middle of an
-          argument. Home's first question is "what now"; this is the second
-          one, and it reads that way only when it comes second. */}
-      {/* THE HORIZON, IN ONE BREATH. The dates ahead and the shape of the
-          days they land in were two cards asking the same question, so the
-          reader answered it twice (owner, 2026-08-19: "cropping up and the
-          water ahead should be shown in one breath"). The chart still opens
-          on request — it is the heavier half — but it opens INSIDE the card
-          whose question it finishes. */}
-      {!skyQuiet && (
-        <CroppingUp
-          testerId={testerId}
-          onNavigate={onNavigate}
-          water={!waterOpen ? (
-            <button onClick={() => setWaterOpen(true)} style={{
-              fontSize: 11, background: "none", border: "none", cursor: "pointer",
-              color: "var(--color-primary)", padding: "2px 16px 12px", textAlign: "left",
-            }}>Show the next two weeks</button>
-          ) : (
-            <div>
-              {water && <QualityStrip week={water} days={14} onPick={() => onNavigate("calendar")} />}
-              <button onClick={() => setWaterOpen(false)} style={{
-                fontSize: 11, background: "none", border: "none", cursor: "pointer",
-                color: "var(--text-3)", padding: "6px 16px 10px", textAlign: "left",
-              }}>Hide it</button>
-            </div>
-          )}
-        />
-      )}
+          Calendar owns the future properly now — it has the Almanac view,
+          which separates the sky's fixed dates from what a run of days is
+          good FOR. A link is the honest size for this on Home. */}
+      <button onClick={() => onNavigate("calendar")} style={{
+        alignSelf: "flex-start", display: "flex", alignItems: "baseline", gap: 7,
+        fontSize: 12.5, padding: "9px 2px", border: "none", background: "none",
+        color: "var(--color-primary)", cursor: "pointer", fontWeight: 500,
+      }}>Look ahead <span aria-hidden="true">→</span>
+        <span style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 400 }}>
+          the dates coming, and the shape of the days they land in
+        </span>
+      </button>
     </div>
   );
 }

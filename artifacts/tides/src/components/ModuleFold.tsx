@@ -21,11 +21,37 @@
 import React from "react";
 import { usePreferences } from "@/contexts/preferences-context";
 
+/**
+ * Ids that start CLOSED for anyone who has not said otherwise.
+ *
+ * `collapsedModules` records what a person folded, and TRIM_FOLDS seeds it —
+ * but only when a rhythm is CHOSEN. An account that picked its rhythm before a
+ * new door existed has a stored list that cannot mention it, so a door added
+ * later opens for every existing tester however it is registered: exactly what
+ * happened to "readday", which the four-zone Home added as the single door for
+ * the tide, the reading and the day's conditions.
+ *
+ * Reading the retired ids as consent covers that. Anyone whose stored list
+ * folded "reading" or "tide" had already asked for this content to be closed,
+ * and the door is where that content now lives — so their answer carries over
+ * instead of being lost to a rename. Open it once and the toggle writes a real
+ * entry, which then wins.
+ */
+const FOLDED_UNLESS_TOLD: Record<string, string[]> = {
+  readday: ["reading", "tide"],
+};
+
 export function useFold() {
   const { prefs, updateDisplay } = usePreferences();
   const folded = prefs.display.collapsedModules ?? [];
+  const impliedFold = (id: string) => {
+    const heirs = FOLDED_UNLESS_TOLD[id];
+    if (!heirs) return false;
+    // Only when nothing has been said about the door itself.
+    return !folded.includes(id) && heirs.some(h => folded.includes(h));
+  };
   return {
-    isFolded: (id: string) => folded.includes(id),
+    isFolded: (id: string) => folded.includes(id) || impliedFold(id),
     // Computed from the CURRENT list, not this render's copy of it. Reading
     // the snapshot lost every fold but the last when several landed in one
     // tick — each toggle saw the same array and wrote over the others.

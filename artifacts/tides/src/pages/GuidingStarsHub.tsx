@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import WhereYouAre from "@/components/WhereYouAre";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
@@ -535,6 +536,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             {showForm ? "Cancel" : "+ New Guiding Star"}
           </button>
         </div>
+
+        {/* THE FULL RELATIONAL MAP, moved here from Home on 2026-08-24.
+            Every habit against every star, with the held/moving lens. This is
+            the picture Stars exists to show, and Home was drawing it too —
+            the same facts at two sizes on two pages. Home keeps three of them
+            and a way through to here. */}
+        <WhereYouAre
+          testerId={testerId} lat={lat} lon={lon}
+          onNavigate={(v) => onNavigate(v as "tasks" | "habits")}
+        />
 
         {activeCautionMatches.length > 0 && (
           <div style={{ background: "#a0404008", border: "1px solid #a0404030", borderLeft: "3px solid #a04040", borderRadius: 10, padding: "10px 14px" }}>
