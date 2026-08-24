@@ -25,6 +25,7 @@ import { planetInSign } from "../lib/planetInSign.js";
 import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
 import { newMoonDates, nextNewMoonDate } from "../lib/lunarCycle.js";
 import { buildAlmanac } from "../lib/almanac.js";
+import { scoreElection, getElectionCategory, ELECTION_CATEGORIES } from "../lib/inceptionElection.js";
 
 const router: IRouter = Router();
 
@@ -1291,6 +1292,65 @@ router.get("/tides/events", (req, res) => {
 
 // The almanac's computation lives in lib/almanac.ts so it can be tested
 // against a fixed moment. The route is the transport and nothing else.
+/**
+ * THE ALMANAC'S SECOND AXIS — not what the sky does, but what it is good for.
+ *
+ * /tides/almanac answers "what happens regardless of me": eclipses, stations,
+ * ingresses, fixed before anyone arrives. Useful, impersonal, and on its own a
+ * page you visit twice. This answers the question people actually arrive with
+ * — when is a good day for THIS — which is the half only Compass can render,
+ * because it can also say no.
+ *
+ * Built on scoreElection, one call per day rather than the window search
+ * /elections/times runs. Measured before it was written: 32ms a day, so a
+ * month is about a second, where thirteen activities through the window search
+ * would have been forty. This codebase has shipped a 42-second election scan
+ * and a 90-second calendar request, both from scanning in a loop; the cheap
+ * primitive existed and the expensive one was the obvious choice.
+ *
+ * Impersonal like its sibling — no chart is read, so no auth. Capped at 60
+ * days because past that the answer is weather forecasting.
+ */
+router.get("/tides/almanac/lens", (req, res) => {
+  const category = String(req.query.category ?? "");
+  if (!getElectionCategory(category)) {
+    res.status(400).json({
+      error: "unknown_category",
+      message: "Pass one of the election categories.",
+      categories: ELECTION_CATEGORIES.map(c => ({ key: c.key, label: c.label })),
+    });
+    return;
+  }
+  const days = Math.min(Math.max(parseInt(String(req.query.days ?? "30"), 10) || 30, 1), 60);
+  const lat = parseFloat(String(req.query.lat ?? "40.7"));
+  const lon = parseFloat(String(req.query.lon ?? "-74.0"));
+
+  const start = new Date();
+  const entries = Array.from({ length: days }, (_, i) => {
+    // Noon local-ish, so a day is judged by its middle rather than its edge.
+    const at = new Date(start);
+    at.setDate(start.getDate() + i);
+    at.setHours(12, 0, 0, 0);
+    const r = scoreElection(at, lat, lon, category);
+    return {
+      date: at.toISOString().slice(0, 10),
+      verdict: r.verdict,
+      // Only what FAILED, and only its label: the receipts are the point, but
+      // ten passing rules a day is noise the reader did not ask for. The full
+      // ruleset stays available from the election routes.
+      against: r.rules.filter(x => !x.passed && x.severity !== "support").map(x => x.label),
+      supports: r.rules.filter(x => x.passed && x.severity === "support").map(x => x.label),
+      planetaryHour: r.planetaryHour,
+    };
+  });
+
+  res.json({
+    asOf: start.toISOString(), category,
+    label: getElectionCategory(category)!.label,
+    days, entries,
+  });
+});
+
 router.get("/tides/almanac", (req, res) => {
   const days = Math.min(Math.max(parseInt((req.query.days as string) ?? "45"), 1), 120);
   const now = new Date();

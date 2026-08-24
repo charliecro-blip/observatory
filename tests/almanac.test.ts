@@ -12,6 +12,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { buildAlmanac } from "../artifacts/api-server/src/lib/almanac.js";
+import { scoreElection } from "../artifacts/api-server/src/lib/inceptionElection.js";
 
 const AT = new Date(Date.UTC(2026, 0, 1, 12));
 const FAR = new Date(Date.UTC(2026, 6, 1, 12)); // a second, unrelated sky
@@ -112,5 +113,64 @@ describe("almanac", () => {
     const t0 = Date.now();
     buildAlmanac(AT, 120);
     expect(Date.now() - t0).toBeLessThan(5000);
+  });
+});
+
+/**
+ * THE LENS — the almanac's second axis, and the only half that has an opinion.
+ *
+ * /tides/almanac says what the sky does; /tides/almanac/lens says what a run of
+ * days is good FOR, one scoreElection call per day. Anchored for the same
+ * reason as everything above: a lens graded against the live sky would be a
+ * test of the week rather than of the code.
+ */
+describe("the almanac lens", () => {
+  const LAT = 30.27, LON = -97.74;
+  const scan = (from: Date, days: number, category: string) =>
+    Array.from({ length: days }, (_, i) => {
+      const at = new Date(from);
+      at.setUTCDate(from.getUTCDate() + i);
+      return scoreElection(at, LAT, LON, category);
+    });
+
+  it("does not grade every day the same — it discriminates, or it is decoration", () => {
+    // A lens that says "strong" every day is a calendar with no opinion, and a
+    // lens that says "avoid" every day is a guilt ledger. Both are failures of
+    // the same kind: the verdict has to vary with the sky.
+    const verdicts = new Set(scan(AT, 30, "creative_launch").map(r => r.verdict));
+    expect(verdicts.size, `only ${[...verdicts]} across 30 days`).toBeGreaterThan(1);
+  });
+
+  it("refuses some days, and can say why", () => {
+    const refused = scan(AT, 30, "creative_launch").filter(r => r.verdict === "avoid");
+    expect(refused.length, "nothing refused in a month").toBeGreaterThan(0);
+    for (const r of refused) {
+      const failed = r.rules.filter(x => !x.passed && x.severity !== "support");
+      expect(failed.length, `refused ${r.date} with no reason to give`).toBeGreaterThan(0);
+      for (const f of failed) expect(f.label.trim()).not.toBe("");
+    }
+  });
+
+  it("two different questions do not get the same answer", () => {
+    // The lens is worth having only if the category changes the verdict. Same
+    // days, same place, different question.
+    const a = scan(AT, 30, "creative_launch").map(r => r.verdict);
+    const b = scan(AT, 30, "financial_venture").map(r => r.verdict);
+    expect(a.join("|"), "every category grades identically").not.toBe(b.join("|"));
+  });
+
+  it("holds from an unrelated sky too", () => {
+    const verdicts = new Set(scan(FAR, 30, "conversation").map(r => r.verdict));
+    expect(verdicts.size).toBeGreaterThan(1);
+  });
+
+  it("stays affordable — this is the reason it uses scoreElection at all", () => {
+    // Measured at ~32ms/day when written. The ceiling is deliberately loose:
+    // it exists to catch a regression that makes the lens a loop of window
+    // searches again, not to police normal variance. This repo has shipped a
+    // 42-second election scan and a 90-second calendar request.
+    const t0 = Date.now();
+    scan(AT, 30, "creative_launch");
+    expect(Date.now() - t0, "a 30-day lens should stay near a second").toBeLessThan(8000);
   });
 });

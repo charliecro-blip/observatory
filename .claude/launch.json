@@ -4,19 +4,32 @@
     {
       "name": "tides",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@workspace/tides", "run", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@workspace/tides",
+        "run",
+        "dev"
+      ],
       "port": 5174
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@workspace/api-server",
+        "run",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "api-scratch",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd /Users/charlescross/Desktop/observatory-main && DATABASE_URL=postgres://localhost:5432/compass_scratch pnpm --filter @workspace/api-server run dev"],
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/charlescross/Desktop/observatory-main && DATABASE_URL=postgres://localhost:5432/compass_scratch pnpm --filter @workspace/api-server run dev"
+      ],
       "port": 3000
     },
     {
@@ -31,8 +44,20 @@
     {
       "name": "daemon",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd /Users/charlescross/Desktop/daemon && pnpm dev"],
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/charlescross/Desktop/daemon && pnpm dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "api-scratch-b",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "PORT=3001 DATABASE_URL=postgres://localhost:5432/compass_scratch pnpm --filter @workspace/api-server run dev"
+      ],
+      "port": 3001
     }
   ]
 }
