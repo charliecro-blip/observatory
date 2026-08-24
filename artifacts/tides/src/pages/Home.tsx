@@ -992,7 +992,14 @@ export default function Home({
                   </span>
                   <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
                     {p.item.title}
-                    {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
+                    {/* Same wording as WeekShape's — one fact, one phrasing.
+                        Both narrated the bookkeeping until 2026-08-24; only one got
+                        changed, and the deploy probe caught the other because
+                        it checked that the OLD string was gone rather than
+                        only that the new one had arrived. */}
+                    {p.assumedDuration && (
+                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}> · guessing {p.minutes}m — set a length in Plan</span>
+                    )}
                     {/* Under Route the weave keeps the usual slot and says what
                         it kept it over. Output, never a silent trade. */}
                     {(p as any).basis === "usual" && (
