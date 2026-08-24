@@ -48,11 +48,10 @@ interface LensResponse { category: string; label: string; days: number; entries:
 interface SkyEntry {
   at: string; kind: string; title: string; note: string; glyph: string;
   eclipse?: "solar" | "lunar";
+  // Aspects carry a window rather than an instant.
+  startDate?: string; endDate?: string; active?: boolean;
 }
-interface Span {
-  key: string; transitPlanet: string; aspect: string; targetPlanet: string;
-  startDate: string; peakDate: string; endDate: string; active: boolean; theme?: string;
-}
+interface Horizon { days: number; aspectsThrough: string }
 
 /** The questions the engine can actually answer, in its own words. */
 const LENSES: { key: string; label: string }[] = [
@@ -118,28 +117,18 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
     staleTime: 6 * 60 * 60 * 1000,
   });
 
-  const skyQ = useQuery<{ entries: SkyEntry[] }>({
+  // ONE call. The aspect spans used to come from /transits/spans and get
+  // stitched together with these client-side — the same facts, dated the same
+  // way, assembled somewhere that had to remember to do it. They are folded in
+  // at the source now, so this is the sky's calendar rather than two thirds of
+  // it plus an assembly step.
+  const skyQ = useQuery<{ entries: SkyEntry[]; horizon: Horizon }>({
     queryKey: ["almanac-sky", 90],
     queryFn: async () => {
-      const r = await fetch("/api/tides/almanac?days=90");
+      const r = await fetch(`/api/tides/almanac?days=90&tz=${new Date().getTimezoneOffset()}`);
       if (!r.ok) throw new Error("almanac unavailable");
       return r.json();
     },
-    staleTime: 6 * 60 * 60 * 1000,
-  });
-
-  // The aspect spans lived ONLY on Home's sky-events card, whose "open Plan"
-  // link pointed at a surface that reads a different endpoint and has no
-  // aspects in it at all. This is the destination that card never had.
-  const spanQ = useQuery<{ spans: Span[] }>({
-    queryKey: ["almanac-spans", testerId],
-    queryFn: async () => {
-      const r = await fetch(`/api/transits/spans?tz=${new Date().getTimezoneOffset()}`,
-        { headers: testerId ? { "x-tester-id": testerId } : {} });
-      if (!r.ok) throw new Error("spans unavailable");
-      return r.json();
-    },
-    enabled: !!testerId,
     staleTime: 6 * 60 * 60 * 1000,
   });
 
@@ -247,25 +236,14 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
 
       {(() => {
         const entries = skyQ.data?.entries ?? [];
-        // Aspect spans folded in beside the fixed dates, sorted together —
-        // they are the same KIND of fact (the sky, dated, impersonal) and were
-        // only separate because they come from a different endpoint.
-        const spanRows = (spanQ.data?.spans ?? []).map(s => ({
-          at: `${s.peakDate}T12:00:00`,
-          kind: "aspect" as const,
-          glyph: "✦",
-          title: `${s.transitPlanet} ${ASPECT_WORD[s.aspect] ?? "meets"} ${s.targetPlanet}`,
-          note: s.active ? `in force now, through ${dayLabel(s.endDate)}` : `${dayLabel(s.startDate)} to ${dayLabel(s.endDate)}`,
-          eclipse: undefined,
-        }));
-        const all = [...entries, ...spanRows].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-        if (!all.length && !skyQ.isPending) return null;
+        if (!entries.length && !skyQ.isPending) return null;
 
         let month = "";
-        return all.map((e, i) => {
+        return entries.map((e, i) => {
           const m = monthOf(e.at.slice(0, 10));
           const newMonth = m !== month;
           month = m;
+          const isAspect = e.kind === "aspect";
           return (
             <div key={`${e.at}-${i}`}>
               {newMonth && (
@@ -277,12 +255,29 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
                 </span>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, fontSize: 11, color: e.eclipse ? "var(--color-brass)" : "var(--color-meridian)" }}>{e.glyph}</span>
                 <span style={{ fontSize: 12, color: "var(--color-foreground)", fontWeight: e.eclipse ? 600 : 400, flexShrink: 0 }}>{e.title}</span>
-                <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.note}</span>
+                <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* An aspect is a stretch, so it says its stretch. A fixed
+                      event is an instant and says what it means instead. */}
+                  {isAspect && e.startDate && e.endDate
+                    ? (e.active ? `in force now, through ${dayLabel(e.endDate)}` : `${dayLabel(e.startDate)} to ${dayLabel(e.endDate)}`)
+                    : e.note}
+                </span>
               </div>
             </div>
           );
         });
       })()}
+
+      {/* WHERE THE ASPECTS STOP. The fixed events run the full ninety days;
+          the aspect scan reaches twenty-one. Without this line the list simply
+          thins out and reads as a quiet autumn, which is the false-emptiness
+          this app has spent real time removing everywhere else. */}
+      {skyQ.data?.horizon && (
+        <div style={{ marginTop: 12, paddingTop: 8, borderTop: "1px solid var(--color-border)", fontSize: 10.5, color: "var(--text-3)" }}>
+          Fixed dates run to the end of this list. Aspects are only scanned to{" "}
+          {dayLabel(skyQ.data.horizon.aspectsThrough)} — past that the sky here is unread, not empty.
+        </div>
+      )}
     </div>
   );
 }

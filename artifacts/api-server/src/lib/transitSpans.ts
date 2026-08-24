@@ -36,7 +36,10 @@ const MAX_DAYS = 21;
 /** Days scanned behind/ahead of the anchor. Behind, so a span already underway
  *  shows its real start; ahead, three weeks of horizon. */
 const SCAN_BACK = 10;
-const SCAN_AHEAD = 21;
+/** How far ahead the aspect scan reaches. Exported because the almanac folds
+ *  these in and has to be able to say where its aspect data stops — a list
+ *  that simply ends reads as an empty sky. */
+export const SCAN_AHEAD = 21;
 
 export interface TransitSpan {
   /** Stable identity for dedupe and dismissal: pair + aspect + peak date. */

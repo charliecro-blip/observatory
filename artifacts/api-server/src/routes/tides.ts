@@ -24,7 +24,7 @@ import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
 import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
 import { newMoonDates, nextNewMoonDate } from "../lib/lunarCycle.js";
-import { buildAlmanac } from "../lib/almanac.js";
+import { buildAlmanac, almanacHorizon } from "../lib/almanac.js";
 import { scoreElection, getElectionCategory, ELECTION_CATEGORIES } from "../lib/inceptionElection.js";
 
 const router: IRouter = Router();
@@ -1353,8 +1353,20 @@ router.get("/tides/almanac/lens", (req, res) => {
 
 router.get("/tides/almanac", (req, res) => {
   const days = Math.min(Math.max(parseInt((req.query.days as string) ?? "45"), 1), 120);
+  // The aspect spans are dated in the VIEWER's civil days, so the offset has to
+  // reach the scan. Absent, it falls back to UTC — which is what every caller
+  // did before the spans lived here, and is wrong by less than a day.
+  const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
   const now = new Date();
-  res.json({ asOf: now.toISOString(), days, entries: buildAlmanac(now, days) });
+  res.json({
+    asOf: now.toISOString(),
+    days,
+    // Stated, not implied: the fixed events run to `days`, the aspects only to
+    // the scan's own horizon. A caller that draws the tail without saying so
+    // shows an empty sky it has not actually looked at.
+    horizon: almanacHorizon(now, days),
+    entries: buildAlmanac(now, days, tzOffsetMin),
+  });
 });
 
 export default router;

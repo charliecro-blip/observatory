@@ -51,15 +51,7 @@ function whenPhrase(iso: string, now: Date): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-interface Span {
-  key: string; transitPlanet: string; aspect: string; targetPlanet: string;
-  startDate: string; peakDate: string; endDate: string; active: boolean;
-}
 
-const ASPECT_WORD: Record<string, string> = {
-  conjunction: "meets", sextile: "runs with", trine: "runs with",
-  square: "grinds against", opposition: "faces",
-};
 
 export default function CroppingUp({ testerId, onNavigate, water }: {
   testerId?: string | null;
@@ -81,18 +73,6 @@ export default function CroppingUp({ testerId, onNavigate, water }: {
   // excluded there by construction, which is exactly right here too: a lunar
   // aspect lasts hours and this card's whole claim is "close enough ahead to
   // steer around".
-  const spanQ = useQuery<{ spans: Span[] }>({
-    queryKey: ["transit-spans", testerId, new Date().toISOString().slice(0, 10)],
-    queryFn: async () => {
-      const r = await fetch(`/api/transits/spans?tz=${new Date().getTimezoneOffset()}`,
-        { headers: testerId ? { "x-tester-id": testerId } : {} });
-      if (!r.ok) throw new Error("spans unavailable");
-      return r.json();
-    },
-    enabled: !!testerId,
-    staleTime: 6 * 60 * 60 * 1000,
-  });
-
   const { data, isPending, isError } = useQuery<{ entries: AlmanacEntry[] }>({
     queryKey: ["almanac", HORIZON_DAYS],
     queryFn: async () => {
@@ -107,18 +87,24 @@ export default function CroppingUp({ testerId, onNavigate, water }: {
   const fixed = (data?.entries ?? [])
     .filter((e) => e.eclipse || e.kind === "station" || e.kind === "ingress");
 
-  // Spans that have not started yet — what is COMING, which is the card's
-  // question. One per pairing, soonest first.
-  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const aspectRows = (spanQ.data?.spans ?? [])
-    .filter((sp) => !sp.active && sp.startDate > todayStr)
-    .map((sp) => ({
-      at: `${sp.startDate}T12:00:00`,
+  // ONE SOURCE. These came from /transits/spans and were stitched onto the
+  // almanac's entries here; both endpoints dated the same facts the same way,
+  // and this card was the place that had to remember to combine them. The
+  // spans are folded in at the source now, so the aspects arrive in the same
+  // list as the eclipses.
+  //
+  // The card's own question is unchanged: what is COMING, so a pair already in
+  // force is not news. `active` still carries that, it just arrives here
+  // rather than being computed from a second response.
+  const aspectRows = (data?.entries ?? [])
+    .filter((e) => e.kind === "aspect" && !e.active)
+    .map((e) => ({
+      at: e.startDate ? `${e.startDate}T12:00:00` : e.at,
       glyph: "✦",
-      title: `${sp.transitPlanet} ${ASPECT_WORD[sp.aspect] ?? "meets"} ${sp.targetPlanet}`,
+      title: e.title,
       eclipse: false,
       kind: "aspect" as const,
-      key: sp.key,
+      key: `${e.title}-${e.startDate ?? e.at}`,
     }));
 
   // Interleaved by date and capped together, so a busy fortnight of aspects

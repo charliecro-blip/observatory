@@ -1,6 +1,7 @@
 import {
   julianDay, SIGNS, sunLongitude, moonLongitude, isRetrograde, eclipseWindow,
 } from "./astro.js";
+import { transitSpans, SCAN_AHEAD } from "./transitSpans.js";
 
 // ── The almanac: the sky's own calendar, independent of anyone's task list ───
 //
@@ -21,14 +22,79 @@ import {
 
 export type AlmanacEntry = {
   at: string;                                   // ISO instant; client formats in its own zone
-  kind: "lunation" | "quarter" | "station" | "ingress";
+  kind: "lunation" | "quarter" | "station" | "ingress" | "aspect";
   title: string;
   note: string;
   glyph: string;
   eclipse?: "solar" | "lunar";
+  /** Aspects only: the window, since a span is a stretch rather than an instant. */
+  startDate?: string;
+  endDate?: string;
+  /** Aspects only: today sits inside the window. */
+  active?: boolean;
 };
 
-export function buildAlmanac(now: Date, days: number): AlmanacEntry[] {
+/**
+ * What the almanac can and cannot see.
+ *
+ * The fixed events are computed to the horizon asked for. The ASPECTS are not:
+ * transitSpans scans a fixed 21 days ahead, so a 90-day almanac has aspect data
+ * for the first three weeks and none after. Reported rather than implied,
+ * because a list that simply stops looks like a quiet sky, and this codebase
+ * has spent real time removing exactly that lie from other surfaces.
+ */
+export type AlmanacHorizon = { days: number; aspectsThrough: string };
+
+/**
+ * THE ASPECT SPANS, folded in where they belong.
+ *
+ * They were a separate call with a separate shape, and the Almanac view
+ * stitched the two together client-side. That is one stitch away from the two
+ * copy tables that drifted for weeks — the same facts, dated the same way,
+ * assembled in a place that has to remember to do it. The sky's own calendar
+ * is one list.
+ *
+ * transitSpans is impersonal (it takes a timezone and nothing else). The
+ * personal layer — which star or habit a pair touches — stays where it was, on
+ * /transits/spans, which is a sprint proposal rather than a calendar.
+ */
+function aspectEntries(now: Date, tzOffsetMin: number, endJd: number, jdToIso: (jd: number) => string): AlmanacEntry[] {
+  const startJd = julianDay(now);
+  return transitSpans({ tzOffsetMin, now })
+    // transitSpans scans ten days BACK as well as forward, and the almanac is
+    // what is ahead — its window contract, and its test, say every entry sits
+    // inside [now, now+days]. A span that already peaked is winding down; one
+    // still peaking ahead shows as "in force now" if today is inside it.
+    .filter(sp => {
+      const peak = julianDay(new Date(`${sp.peakDate}T12:00:00Z`));
+      return peak >= startJd && peak <= endJd;
+    })
+    .map(sp => ({
+      at: `${sp.peakDate}T12:00:00.000Z`,
+      kind: "aspect" as const,
+      glyph: "✦",
+      title: `${sp.transitPlanet} ${ASPECT_WORD[sp.aspect] ?? "meets"} ${sp.targetPlanet}`,
+      // The theme is a conditions phrase, never a promise — its own comment
+      // says so, and it is the only sentence these rows carry.
+      note: sp.theme,
+      startDate: sp.startDate,
+      endDate: sp.endDate,
+      active: sp.active,
+    }));
+}
+
+const ASPECT_WORD: Record<string, string> = {
+  conjunction: "meets", opposition: "opposes", square: "grinds against",
+  trine: "flows with", sextile: "supports",
+};
+
+/** Where the aspect half of the almanac stops seeing, as a civil date. */
+export function almanacHorizon(now: Date, days: number): AlmanacHorizon {
+  const through = new Date(now.getTime() + Math.min(days, SCAN_AHEAD) * 86400000);
+  return { days, aspectsThrough: through.toISOString().slice(0, 10) };
+}
+
+export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacEntry[] {
   const startJd = julianDay(now);
   const endJd = startJd + days;
 
@@ -154,6 +220,8 @@ export function buildAlmanac(now: Date, days: number): AlmanacEntry[] {
       prev = cur;
     }
   }
+
+  entries.push(...aspectEntries(now, tzOffsetMin, endJd, jdToIso));
 
   entries.sort((a, b) => a.at.localeCompare(b.at));
   return entries;

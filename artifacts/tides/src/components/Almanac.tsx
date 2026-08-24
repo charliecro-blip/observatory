@@ -18,13 +18,25 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+/**
+ * Mirrors AlmanacEntry in api-server/src/lib/almanac.ts. A hand-kept copy of a
+ * server contract, which is the third one this week to drift — the practices
+ * route renamed its fields and nothing noticed, and the election verdict union
+ * lost "caution" the same way. Typecheck only catches it when the copy is used
+ * somewhere the compiler can see the mismatch, which is luck rather than
+ * design. If a fourth turns up, generate these from the server types.
+ */
 export interface AlmanacEntry {
   at: string;
-  kind: "lunation" | "quarter" | "station" | "ingress";
+  kind: "lunation" | "quarter" | "station" | "ingress" | "aspect";
   title: string;
   note: string;
   glyph: string;
   eclipse?: "solar" | "lunar";
+  /** Aspects only: a span is a stretch, not an instant. */
+  startDate?: string;
+  endDate?: string;
+  active?: boolean;
 }
 
 const dayLabel = (iso: string) =>

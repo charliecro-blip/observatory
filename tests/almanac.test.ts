@@ -11,7 +11,7 @@
  * start; a second anchor half a year away is checked for exactly that reason.
  */
 import { describe, it, expect } from "vitest";
-import { buildAlmanac } from "../artifacts/api-server/src/lib/almanac.js";
+import { buildAlmanac, almanacHorizon } from "../artifacts/api-server/src/lib/almanac.js";
 import { scoreElection } from "../artifacts/api-server/src/lib/inceptionElection.js";
 
 const AT = new Date(Date.UTC(2026, 0, 1, 12));
@@ -80,7 +80,9 @@ describe("almanac", () => {
       expect(e.title.trim().length).toBeGreaterThan(0);
       expect(e.note.trim().length).toBeGreaterThan(0);
       expect(e.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-      expect(["lunation", "quarter", "station", "ingress"]).toContain(e.kind);
+      // "aspect" joined the list on 2026-08-24, when the transit spans were folded
+      // into the almanac instead of being a second call the client stitched on.
+      expect(["lunation", "quarter", "station", "ingress", "aspect"]).toContain(e.kind);
     }
   });
 
@@ -172,5 +174,49 @@ describe("the almanac lens", () => {
     const t0 = Date.now();
     scan(AT, 30, "creative_launch");
     expect(Date.now() - t0, "a 30-day lens should stay near a second").toBeLessThan(8000);
+  });
+});
+
+/**
+ * ONE LIST. The aspect spans used to be a second endpoint the client stitched
+ * onto this one — the same facts, dated the same way, assembled somewhere that
+ * had to remember to do it. These pin the merge.
+ */
+describe("the almanac holds the aspects too", () => {
+  it("includes them, and they obey the same window as everything else", () => {
+    const entries = buildAlmanac(AT, 45, 0);
+    const aspects = entries.filter(e => e.kind === "aspect");
+    expect(aspects.length, "no aspects folded in at all").toBeGreaterThan(0);
+    const start = AT.getTime(), end = start + 45 * 86400000;
+    for (const a of aspects) {
+      const t = Date.parse(a.at);
+      expect(t, `${a.title} peaks before the window`).toBeGreaterThanOrEqual(start);
+      expect(t, `${a.title} peaks after the window`).toBeLessThanOrEqual(end);
+      // A span is a stretch: without both ends the view cannot say "through
+      // Friday" and falls back to the note, which is a conditions phrase.
+      expect(a.startDate, `${a.title} has no start`).toBeTruthy();
+      expect(a.endDate, `${a.title} has no end`).toBeTruthy();
+    }
+  });
+
+  it("stays sorted once they are in it", () => {
+    const times = buildAlmanac(AT, 45, 0).map(e => Date.parse(e.at));
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it("says where its aspect data stops, rather than trailing off", () => {
+    // The fixed events run the full horizon; the scan reaches 21 days. A list
+    // that simply thins out reads as a quiet sky it never actually looked at.
+    const h = almanacHorizon(AT, 90);
+    expect(h.days).toBe(90);
+    const through = Date.parse(h.aspectsThrough + "T12:00:00Z");
+    expect(through).toBeLessThan(AT.getTime() + 90 * 86400000);
+    expect(through).toBeGreaterThan(AT.getTime());
+  });
+
+  it("a short horizon does not claim more aspect coverage than it has", () => {
+    const h = almanacHorizon(AT, 7);
+    expect(Date.parse(h.aspectsThrough + "T12:00:00Z"))
+      .toBeLessThanOrEqual(AT.getTime() + 7 * 86400000);
   });
 });
