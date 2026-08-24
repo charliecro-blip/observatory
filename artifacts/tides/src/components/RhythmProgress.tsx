@@ -107,7 +107,7 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
           <button onClick={() => onNavigate("habits")} style={{
             fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
             color: "var(--color-primary)",
-          }}>Open Habits →</button>
+          }}>Open Habits <span aria-hidden="true">→</span></button>
         </div>
       </div>
 
@@ -125,14 +125,22 @@ export default function RhythmProgress({ testerId, lat, lon, onNavigate }: {
                 aria-pressed={!!h.doneToday}
                 aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
                 style={{
+                  // 15px mark, 24px target — the same trade as WhereYouAre's
+                  // HabitRow, for the same reason.
+                  width: 24, height: 24, margin: -4.5, flexShrink: 0, padding: 0,
+                  border: "none", background: "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: toggleToday.isPending ? "default" : "pointer",
+                }}>
+                <span style={{
                   // A chore checks off in the tasks' own square voice; the
                   // circle stays the mark of a practice.
-                  width: 15, height: 15, borderRadius: chore ? 4 : "50%", flexShrink: 0, padding: 0,
-                  cursor: toggleToday.isPending ? "default" : "pointer",
+                  width: 15, height: 15, borderRadius: chore ? 4 : "50%",
                   border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
                   background: h.doneToday ? KEPT : "transparent",
                   color: "#ffffff", fontSize: 9, lineHeight: 1,
-                }}>{h.doneToday ? "✓" : ""}</button>
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{h.doneToday ? "✓" : ""}</span></button>
               <span style={{
                 fontSize: 12, flex: 1, minWidth: 0, color: "var(--color-foreground)",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

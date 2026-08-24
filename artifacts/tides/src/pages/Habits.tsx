@@ -469,7 +469,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                             width: 13, height: 13, borderRadius: h.flavor === "chore" ? 3 : "50%", flexShrink: 0,
                             border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
                             background: h.doneToday ? "#3f7a4a" : "transparent",
-                            color: "#ffffff", fontSize: 8, lineHeight: "13px", textAlign: "center",
+                            color: "#ffffff", fontSize: 9, lineHeight: "13px", textAlign: "center",
                           }}>{h.doneToday ? "✓" : ""}</span>
                           <span style={{
                             fontSize: 11.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -729,7 +729,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"var(--text-3)":"var(--color-foreground)",textDecoration:h.doneToday?"line-through":"none"}}>
                     {h.name}
-                    {h.flavor === "chore" && <span style={{fontSize:8,padding:"1px 6px",borderRadius:4,background:"var(--color-card-2)",border:"1px solid var(--color-border)",color:"var(--text-3)",fontWeight:600,marginLeft:6,verticalAlign:"middle",textDecoration:"none",display:"inline-block"}}>chore</span>}
+                    {h.flavor === "chore" && <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"var(--color-card-2)",border:"1px solid var(--color-border)",color:"var(--text-3)",fontWeight:600,marginLeft:6,verticalAlign:"middle",textDecoration:"none",display:"inline-block"}}>chore</span>}
                   </div>
                   {/* Progress in the habit's OWN cadence — a 3×/week practice
                       reads "2 of 3 this week", not a broken daily streak. */}
@@ -771,7 +771,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                           <button key={g.id} disabled={linkStars.isPending}
                             onClick={()=>linkStars.mutate({ id: h.id, goalIds: on ? linked.filter(x=>x!==g.id) : [...linked, g.id] })}
                             title={on ? `Unlink from ${g.title}` : `Also serves ${g.title}`}
-                            style={{fontSize:8.5,padding:"2px 7px",borderRadius:10,cursor:"pointer",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                            style={{fontSize:9,padding:"2px 7px",borderRadius:10,cursor:"pointer",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                               border:on?"1.5px solid #c8a04a":"1px solid var(--color-border)",
                               background:on?"#c8a04a18":"var(--color-card-2)",
                               color:on?"#8a6a20":"var(--text-3)",fontWeight:on?600:400}}>
@@ -779,12 +779,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                           </button>
                         );
                       })}
-                      <button onClick={()=>setLinking(null)} style={{fontSize:8.5,padding:"2px 6px",background:"none",border:"none",cursor:"pointer",color:"var(--text-3)"}}>done</button>
+                      <button onClick={()=>setLinking(null)} style={{fontSize:9,padding:"2px 6px",background:"none",border:"none",cursor:"pointer",color:"var(--text-3)"}}>done</button>
                     </span>
                   ) : (
                     <button onClick={()=>setLinking(h.id)}
                       title={linked.length ? `Serves ${linked.map(id=>goalsById[id]?.title ?? "a star").join(", ")} — click to change` : "Tie this habit to a Guiding Star"}
-                      style={{fontSize:8,padding:"2px 7px",borderRadius:4,flexShrink:0,cursor:"pointer",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                      style={{fontSize:9,padding:"2px 7px",borderRadius:4,flexShrink:0,cursor:"pointer",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                         border:"1px solid #c8a04a45",background:linked.length?"#c8a04a12":"none",
                         color:linked.length?"#8a6a20":"var(--text-3)",fontWeight:600}}>
                       {linked.length
@@ -805,12 +805,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     {asArr(h.favoredPlanets).map(p => <Glyph key={p} name={p} size={12} bg="var(--color-card)" />)}
                   </span>
                 )}
-                <div style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
+                <div style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
                 {/* Schedule this habit — habits want recurring good-time blocks;
                     this finds the next one. Owner: 'habits need help figuring
                     out when to schedule.' */}
                 <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
-                  style={{fontSize:8.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+                  style={{fontSize:9,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
                 <button onClick={()=>startEditing(h)} aria-label={`Edit ${h.name}`} title="Edit — including how often"
                   style={{fontSize:10,color: editingId===h.id ? "var(--color-brass)" : "var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 4px",fontWeight:editingId===h.id?600:400}}>Edit</button>
                 <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>

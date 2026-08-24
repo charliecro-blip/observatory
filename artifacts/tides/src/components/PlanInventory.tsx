@@ -125,12 +125,12 @@ export default function PlanInventory({ testerId, lat, lon, onSpread, spreading,
           <button onClick={onSpread} disabled={spreading} style={{
             fontSize: 12.5, fontWeight: 600, padding: "8px 17px", borderRadius: 9,
             border: "none", background: "#1a2a3a", color: "#fff", cursor: spreading ? "default" : "pointer",
-          }}>{spreading ? "Working…" : "Spread them →"}</button>
+          }}>{spreading ? "Working…" : <>Spread them <span aria-hidden="true">→</span></>}</button>
         )}
         <button onClick={onPaste} style={{
           fontSize: 12, background: "none", border: "none", padding: 0,
           cursor: "pointer", color: "var(--color-primary)",
-        }}>{n === 0 ? "Paste a list →" : "Paste a new list →"}</button>
+        }}>{n === 0 ? <>Paste a list <span aria-hidden="true">→</span></> : <>Paste a new list <span aria-hidden="true">→</span></>}</button>
       </div>
       {conditions && (
         <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 10, lineHeight: 1.55 }}>{conditions}</div>
@@ -200,7 +200,7 @@ export default function PlanInventory({ testerId, lat, lon, onSpread, spreading,
                     <button onClick={() => place.mutate({ t })} disabled={place.isPending} style={{
                       fontSize: 11, fontWeight: 600, padding: "3px 11px", borderRadius: 8, cursor: "pointer",
                       border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-primary)",
-                    }}>place →</button>
+                    }}>place <span aria-hidden="true">→</span></button>
                   </span>
                 )}
                 {t.state === "placeable" && !t.window && (

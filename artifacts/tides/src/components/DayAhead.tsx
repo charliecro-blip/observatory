@@ -87,7 +87,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
         <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
           <FoldToggle id="dayAhead" label="Your day" />
-          <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
             Your day
           </span>
           {/* Folded, the count is what the card was for. */}
@@ -101,7 +101,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
           <button onClick={() => onNavigate("calendar")} style={{
             fontSize: 10.5, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--color-primary)",
-          }}>Open Calendar →</button>
+          }}>Open Calendar <span aria-hidden="true">→</span></button>
         )}
       </div>
       {!folded && <>
@@ -137,7 +137,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
                   }}>{w.title}</span>
                   {w.gcal && (
                     <span title="From your calendar" style={{
-                      fontSize: 8.5, color: "var(--text-3)", border: "1px solid var(--color-border)",
+                      fontSize: 9, color: "var(--text-3)", border: "1px solid var(--color-border)",
                       borderRadius: 4, padding: "0 5px", flexShrink: 0, lineHeight: "14px",
                     }}>calendar</span>
                   )}

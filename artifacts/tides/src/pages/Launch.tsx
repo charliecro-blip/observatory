@@ -68,7 +68,7 @@ function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-foreground)" }}>
           {rule.label}
-          <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, textTransform: "uppercase", fontSize: 8.5, letterSpacing: "0.4px" }}>
+          <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.4px" }}>
             {rule.severity}
           </span>
         </div>

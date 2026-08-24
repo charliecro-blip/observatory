@@ -576,7 +576,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
   if (open.length === 0) return null;
   return (
     <div style={{ marginBottom: 9 }}>
-      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
         Did these happen?
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -602,7 +602,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
                       fontSize: 10, padding: "2px 9px", borderRadius: 12, cursor: "pointer",
                       border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-3)",
                     }}
-                  >{moving === w.id ? "never mind" : "→ move it"}</button>
+                  >{moving === w.id ? "never mind" : <><span aria-hidden="true">→</span> move it</>}</button>
                 )}
                 <button
                   onClick={() => markBlock.mutate({ id: w.id, done: true })}
@@ -611,7 +611,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
                     fontSize: 10, padding: "2px 10px", borderRadius: 12, cursor: "pointer",
                     border: `1px solid ${elColor}40`, background: `${elColor}12`, color: elColor, fontWeight: 600,
                   }}
-                >✓ did it</button>
+                ><span aria-hidden="true">✓</span> did it</button>
               </div>
               {moving === w.id && (
                 <RehomeInline

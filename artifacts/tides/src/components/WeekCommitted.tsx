@@ -133,14 +133,14 @@ export function CommittedWeekStrip({ windows, onOpen }: {
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {first && (
-                  <span style={{ fontSize: 8.5, fontWeight: 600, color: PLACED }}>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: PLACED }}>
                     {clock(first.startTime).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
                     {list.length > 1 && ` +${list.length - 1}`}
                   </span>
                 )}
               </div>
               <div style={{
-                fontSize: 8.5, marginTop: 3, color: "var(--color-muted)", lineHeight: 1.25,
+                fontSize: 9, marginTop: 3, color: "var(--color-muted)", lineHeight: 1.25,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center",
               }}>{first ? first.title : ""}</div>
             </div>
@@ -160,7 +160,7 @@ export function CommittedWeekStrip({ windows, onOpen }: {
       {beyond.length > 0 && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
           <div style={{
-            fontSize: 8, textTransform: "uppercase", letterSpacing: "0.7px",
+            fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px",
             color: "var(--text-3)", marginBottom: 3,
           }}>Committed</div>
           {beyond.slice(0, 3).map((w) => (
@@ -190,7 +190,7 @@ export function CommittedWeekStrip({ windows, onOpen }: {
         <button onClick={onOpen} style={{
           fontSize: 10.5, background: "none", border: "none", padding: 0, marginTop: 6,
           cursor: "pointer", color: "var(--color-primary)",
-        }}>Open Plan →</button>
+        }}>Open Plan <span aria-hidden="true">→</span></button>
       )}
     </div>
   );

@@ -232,12 +232,23 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
           aria-pressed={!!h.doneToday}
           aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for today`}
           style={{
-            width: 14, height: 14, borderRadius: h.flavor === "chore" ? 4 : "50%", flexShrink: 0, padding: 0,
+            // The mark stays 14px — the row is meant to be quiet. The TARGET is
+            // 24px, which is WCAG 2.5.8's floor and what this failed at: on a
+            // phone it rendered 17px, and it is the gesture a daily user makes
+            // more than any other. The negative margin hands the extra space
+            // back to the layout, so the row sits exactly where it did.
+            width: 24, height: 24, margin: -5, flexShrink: 0, padding: 0,
+            border: "none", background: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
             cursor: toggleToday.isPending ? "default" : "pointer",
+          }}>
+          <span style={{
+            width: 14, height: 14, borderRadius: h.flavor === "chore" ? 4 : "50%",
             border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
             background: h.doneToday ? KEPT : "transparent",
-            color: "#ffffff", fontSize: 8.5, lineHeight: 1,
-          }}>{h.doneToday ? "✓" : ""}</button>
+            color: "#ffffff", fontSize: 9, lineHeight: 1,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>{h.doneToday ? "✓" : ""}</span></button>
         <span style={{
           flex: 1, minWidth: 0, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)",

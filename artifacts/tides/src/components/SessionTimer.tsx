@@ -215,7 +215,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               transform="rotate(-90 5 5)" strokeLinecap="round"/>
           </svg>
         )}
-        {phase === "active" ? fmt(remaining) : "⏱ Session"}
+        {phase === "active" ? fmt(remaining) : <><span aria-hidden="true">⏱</span> Session</>}
       </button>
 
       {/* Panel */}

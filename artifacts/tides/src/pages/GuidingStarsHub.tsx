@@ -684,7 +684,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     change as they retype has caught the app overclaiming.
                     Naming the actual source is what makes the override below
                     make sense. */}
-                <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>
+                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 4 }}>
                   We read your wording as
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{diagnosis.rationale}</div>
@@ -1046,7 +1046,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                                 style={{ width: 8, height: 8, borderRadius: "50%", background: STEP_COL[m.status] ?? "var(--color-border)", flexShrink: 0, cursor: "pointer" }} />
                               <span style={{ fontSize: 10.5, flex: 1, color: m.status === "completed" ? "var(--text-3)" : "var(--color-muted)", textDecoration: m.status === "completed" ? "line-through" : "none" }}>{m.title}</span>
                               {m.status !== "completed" && <ActivityTimesHint title={m.title} testerId={testerId} lat={lat} lon={lon} />}
-                              {stepTasks.length > 0 && <span style={{ fontSize: 8.5, color: "var(--text-3)" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
+                              {stepTasks.length > 0 && <span style={{ fontSize: 9, color: "var(--text-3)" }}>{stepTasks.filter((t) => t.done === "true").length}/{stepTasks.length}</span>}
                               {(() => {
                                 const stepHabits = (allHabits as any[]).filter((h) => h.milestoneId === m.id);
                                 const already = stepHabits.length > 0;
@@ -1287,12 +1287,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{m.name}</span>
-                    {tally.stars.length === 0 && <span style={{ fontSize: 8.5, color: "var(--text-3)", marginLeft: "auto" }}>no Guiding Star</span>}
+                    {tally.stars.length === 0 && <span style={{ fontSize: 9, color: "var(--text-3)", marginLeft: "auto" }}>no Guiding Star</span>}
                   </div>
                   <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.45 }}>{m.essence}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
                     {m.domains.slice(0, 3).map((d, i) => (
-                      <span key={i} style={{ fontSize: 8.5, color: m.color, background: `${m.color}12`, padding: "2px 7px", borderRadius: 8 }}>{d}</span>
+                      <span key={i} style={{ fontSize: 9, color: m.color, background: `${m.color}12`, padding: "2px 7px", borderRadius: 8 }}>{d}</span>
                     ))}
                   </div>
                   {tally.completed > 0 && (

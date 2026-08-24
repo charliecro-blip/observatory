@@ -71,7 +71,7 @@ export default function FeltPattern({ testerId, days = 60 }: { testerId: string 
         background: "var(--color-card)", border: "1px solid var(--color-border)",
         borderRadius: 12, padding: "12px 16px",
       }}>
-        <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
           Your pattern
         </div>
         <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55, marginTop: 4 }}>
@@ -91,7 +91,7 @@ export default function FeltPattern({ testerId, days = 60 }: { testerId: string 
       background: "var(--color-card)", border: "1px solid var(--color-border)",
       borderLeft: `3px solid ${topElement}`, borderRadius: 12, padding: "13px 16px 14px",
     }}>
-      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
         Your pattern · last {Math.round(data.windowDays / 30)} month{data.windowDays >= 60 ? "s" : ""}
       </div>
 

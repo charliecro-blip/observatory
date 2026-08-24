@@ -120,7 +120,7 @@ export default function AngleCrossing({ crossings, enabled = true }: {
                 </div>
               )}
             </div>
-            <div style={{ fontSize: 8, background: `${col}22`, color: col, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ fontSize: 9, background: `${col}22`, color: col, padding: "2px 7px", borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
               ● {rising ? "↑" : ""} {c.angle}
             </div>
           </div>

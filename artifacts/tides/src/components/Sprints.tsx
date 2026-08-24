@@ -231,7 +231,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
       <button onClick={() => openSheet()} style={{
         fontSize: 11, background: "none", border: "none", cursor: "pointer",
         color: "var(--text-3)", padding: "2px 0", textAlign: "left",
-      }}>Start a sprint — a short push with an end date →</button>
+      }}>Start a sprint — a short push with an end date <span aria-hidden="true">→</span></button>
     );
   }
 
@@ -342,7 +342,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               <button onClick={() => openSheet(suggestion)} style={{
                 fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer",
                 color: "var(--color-primary)", fontWeight: 600,
-              }}>Ride it →</button>
+              }}>Ride it <span aria-hidden="true">→</span></button>
               <button onClick={() => { store.dismiss(suggestion.key, today); setDismissedNow(n => n + 1); }} style={{
                 fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
               }}>not this one</button>

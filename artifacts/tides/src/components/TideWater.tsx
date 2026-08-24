@@ -503,7 +503,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           )}
           <button onClick={() => { setShowLenses(false); setLens("overall"); }} title="Hide the element comparison"
             style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", marginLeft: "auto" }}>
-            ▾ hide
+            <span aria-hidden="true">▾</span> hide
           </button>
         </div>
       )}

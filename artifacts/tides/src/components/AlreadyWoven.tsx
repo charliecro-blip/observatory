@@ -66,7 +66,7 @@ export default function AlreadyWoven({ testerId, days = 7, onNavigate }: {
           <button onClick={() => onNavigate("calendar")} style={{
             fontSize: 11, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--color-primary)",
-          }}>Open the calendar →</button>
+          }}>Open the calendar <span aria-hidden="true">→</span></button>
         )}
       </div>
 

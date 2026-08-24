@@ -116,7 +116,7 @@ export default function CalendarAudit({ testerId, events, onClose }: {
   const quiet = readings.filter(r => r.state === "quiet" || r.state === "not-timeable");
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: "var(--z-dialog-nested)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.45)", zIndex: "var(--z-dialog)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
       <div ref={ref} {...props} onClick={e => e.stopPropagation()} style={{
         background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16,
         padding: "20px 22px", maxWidth: 560, width: "100%", maxHeight: "82vh", overflowY: "auto",

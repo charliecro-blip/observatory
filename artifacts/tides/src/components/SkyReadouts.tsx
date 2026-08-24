@@ -193,7 +193,7 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
                 {s.options[idx]}{s.suffix && <span style={{ fontWeight: 400, color: "#a05050" }}>{s.suffix}</span>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
-                <span style={{ fontSize: 8.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
+                <span style={{ fontSize: 9, color: s.color, fontWeight: 600 }}>{s.source}</span>
                 {/* explicit invitation — the muted counter alone read as decoration */}
                 <span style={{ fontSize: 9, color: "var(--color-muted)", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>
@@ -256,7 +256,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
               <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
               <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                another take ↻ <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
+                another take <span aria-hidden="true">↻</span> <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
               </button>
             </div>
             <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.65 }}>{takes[takeIdx].text}</div>

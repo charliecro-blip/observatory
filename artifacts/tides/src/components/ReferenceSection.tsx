@@ -68,7 +68,7 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
               fontSize: 10, padding: "3px 11px", borderRadius: 20, cursor: "pointer", textTransform: "capitalize",
               border: tab === t ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
               background: tab === t ? "#1a2a3a" : "var(--color-card)", color: tab === t ? "#ffffff" : "var(--color-muted)", fontWeight: tab === t ? 600 : 400,
-            }}>{t === "learn" ? "✦ learn the sky" : t}</button>
+            }}>{t === "learn" ? <><span aria-hidden="true">✦</span> learn the sky</> : t}</button>
           ))}
         </div>
       </div>

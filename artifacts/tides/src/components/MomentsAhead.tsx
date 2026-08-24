@@ -148,7 +148,7 @@ export default function MomentsAhead({
   const inner = (
     <>
       <div style={{
-        fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px",
+        fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px",
         color: "var(--text-3)", marginBottom: 5, display: "flex", alignItems: "baseline", gap: 8,
       }}>
         {framed && <FoldToggle id="momentsAhead" label={label} />}
@@ -162,7 +162,7 @@ export default function MomentsAhead({
           <button onClick={onOpen} style={{
             marginLeft: "auto", fontSize: 10.5, textTransform: "none", letterSpacing: 0,
             background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)",
-          }}>Open Today →</button>
+          }}>Open Today <span aria-hidden="true">→</span></button>
         )}
       </div>
       {!folded && rows.map((m: any, i: number) => (

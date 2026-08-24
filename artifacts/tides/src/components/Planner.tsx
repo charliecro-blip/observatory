@@ -462,7 +462,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           <button onClick={() => setIntakeOpen(true)} style={{
             fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer",
             color: "var(--color-primary)",
-          }}>Add more →</button>
+          }}>Add more <span aria-hidden="true">→</span></button>
         </div>
       )}
 
@@ -478,7 +478,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <button onClick={() => parse.mutate(undefined)} disabled={parse.isPending || !rawList.trim()} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600,
               cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#ffffff" : "var(--text-3)",
-            }}>{parse.isPending ? "Reading your list…" : "Read my list →"}</button>
+            }}>{parse.isPending ? "Reading your list…" : <>Read my list <span aria-hidden="true">→</span></>}</button>
             {/* A way back out, but only when there is something to go back to. */}
             {intakeOpen && openTaskCount > 0 && (
               <button onClick={() => { setIntakeOpen(false); setRawList(""); }} style={{
@@ -628,7 +628,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       }}>
                       {breakDown.isPending && breakDown.variables?.index === i
                         ? "thinking it through…"
-                        : "✦ break into moments"}
+                        : <><span aria-hidden="true">✦</span> break into moments</>}
                     </button>
                     <span style={{ fontSize: 9.5, color: "var(--text-3)", marginLeft: 8 }}>
                       {Math.round(c.estimatedMinutes / 60 * 10) / 10}h — the sky may suit its parts differently
@@ -675,7 +675,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             <button onClick={() => weave.mutate()} disabled={weave.isPending || cards.length === 0} style={{
               padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
               background: "#1a2a3a", color: "#ffffff",
-            }}>{weave.isPending ? (skyQuiet ? "Placing…" : "Reading the sky…") : (skyQuiet ? "Weave it in" : "✦ Weave it in")}</button>
+            }}>{weave.isPending ? (skyQuiet ? "Placing…" : "Reading the sky…") : (skyQuiet ? "Weave it in" : <><span aria-hidden="true">✦</span> Weave it in</>)}</button>
             <button onClick={reset} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>start over</button>
             {weave.isError && <span style={{ fontSize: 11, color: "#a03030" }}>{(weave.error as Error)?.message ?? "Something went wrong — try again."}</span>}
           </div>
@@ -812,7 +812,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         nine should not have to be taken whole or abandoned. */}
                     {!committed && (
                       keptOne.has(idx)
-                        ? <span style={{ fontSize: 10, color: "#3a6020", fontWeight: 600, flexShrink: 0 }}>✓ kept</span>
+                        ? <span style={{ fontSize: 10, color: "#3a6020", fontWeight: 600, flexShrink: 0 }}><span aria-hidden="true">✓</span> kept</span>
                         : <button onClick={() => commitOne.mutate({ idx })} disabled={commitOne.isPending}
                             title="Put just this one on the calendar" style={{
                               fontSize: 9.5, padding: "3px 9px", borderRadius: 7, cursor: "pointer", flexShrink: 0,
@@ -840,8 +840,8 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             {keptCount > 0 && !committed && (
               <button onClick={() => commit.mutate()} disabled={commit.isPending} style={{ padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, background: "#3a6020", color: "#ffffff", cursor: "pointer" }}>{commit.isPending ? "Scheduling…" : `Schedule all ${keptCount} →`}</button>
             )}
-            {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}>✓ Woven into your calendar (Ahead) and added to Tasks.</span>}
-            <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>← back to edit</button>
+            {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}><span aria-hidden="true">✓</span> Woven into your calendar (Ahead) and added to Tasks.</span>}
+            <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}><span aria-hidden="true">←</span> back to edit</button>
           </div>
         </div>
       )}

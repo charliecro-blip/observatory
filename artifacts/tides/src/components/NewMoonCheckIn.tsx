@@ -508,7 +508,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
         <button onClick={() => setExpanded(true)} style={{
           fontSize: 10.5, background: "none", border: "none", padding: 0,
           cursor: "pointer", color: "var(--color-primary)", flexShrink: 0,
-        }}>read it →</button>
+        }}>read it <span aria-hidden="true">→</span></button>
       </div>
     );
   }
@@ -522,7 +522,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
           borderLeft: `3px solid ${ACCENT}`, borderRadius: 12, padding: "12px 16px",
         }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+            <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
               {cycle.curated ? "This cycle · set at the Leo eclipse" : "This cycle · set at the new moon"}
             </span>
             <div style={{ display: "flex", gap: 10 }}>
@@ -624,7 +624,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
             fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8,
             border: "none", cursor: "pointer", background: "var(--color-primary)",
             color: "var(--color-card)",
-          }}>Take ten minutes →</button>
+          }}>Take ten minutes <span aria-hidden="true">→</span></button>
           <button onClick={dismiss} style={{
             fontSize: 11, background: "none", border: "none", padding: 0,
             cursor: "pointer", color: "var(--text-3)",

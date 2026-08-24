@@ -369,7 +369,7 @@ export default function LogComposer({ testerId, date, dayDetail, variant, onPick
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 10 }}>
-        {saved && <span style={{ fontSize: 10.5, color: "#4a8060" }}>saved ✓</span>}
+        {saved && <span style={{ fontSize: 10.5, color: "#4a8060" }}>saved <span aria-hidden="true">✓</span></span>}
         {err && <span style={{ fontSize: 10.5, color: "#a03030" }}>{err}</span>}
         <button onClick={save} disabled={saving} style={{
           padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500,

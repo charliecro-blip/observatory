@@ -213,7 +213,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           )}
           {!isFetching && allWindows.length > 0 && shownWindows.length === 0 && (
             <div style={{ fontSize: 11, color: "var(--text-3)", padding: "6px 0" }}>
-              No window falls in your free times this {span}. <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "var(--text-2)", cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>show all →</button>
+              No window falls in your free times this {span}. <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "var(--text-2)", cursor: "pointer", textDecoration: "underline", fontSize: 11, padding: 0 }}>show all <span aria-hidden="true">→</span></button>
             </div>
           )}
 
@@ -241,7 +241,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
                   </div>
                   {!w.allDay && (
                     scheduled === key
-                      ? <span style={{ fontSize: 10, color: "#4a8060", fontWeight: 600, flexShrink: 0 }}>✓ on the calendar</span>
+                      ? <span style={{ fontSize: 10, color: "#4a8060", fontWeight: 600, flexShrink: 0 }}><span aria-hidden="true">✓</span> on the calendar</span>
                       : <button onClick={() => schedule.mutate(w)} disabled={schedule.isPending} style={{
                           fontSize: 9.5, padding: "4px 11px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
                           border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", fontWeight: 600,
@@ -295,7 +295,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
               <button onClick={askAboutTimes} style={{
                 marginTop: 10, width: "100%", fontSize: 11.5, padding: "9px 12px", borderRadius: 9, cursor: "pointer", fontWeight: 600,
                 border: "1px solid #c0bab0", background: "var(--color-card)", color: "var(--text-2)",
-              }}>✦ Ask which one — and how to make the most of it</button>
+              }}><span aria-hidden="true">✦</span> Ask which one — and how to make the most of it</button>
             )}
           </div>
 

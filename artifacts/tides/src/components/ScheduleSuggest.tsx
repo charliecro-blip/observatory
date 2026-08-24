@@ -135,7 +135,7 @@ export function ScheduleSuggest({
   const ec = ELEMENT_COLOR[element] ?? "#8a8278";
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: "var(--z-dialog-nested)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: "var(--z-dialog)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
       <div ref={ref} {...props} onClick={(e) => e.stopPropagation()} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "20px 22px", maxWidth: 440, width: "100%" }}>
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>Find a good time</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)", marginBottom: 8 }}>{title}</div>
@@ -144,7 +144,7 @@ export function ScheduleSuggest({
         {!unlocked && (
           <div style={{ background: `${ec}0c`, border: `1px solid ${ec}33`, borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
             <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.55 }}>
-              <b style={{ color: "var(--color-primary)" }}>✦ Let Compass find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
+              <b style={{ color: "var(--color-primary)" }}><span aria-hidden="true">✦</span> Let Compass find the best time</b> — it reads what this is really about and matches it to the sky and your free hours.
             </div>
             <button onClick={() => setShowPremium(true)} style={{ marginTop: 7, fontSize: 10.5, padding: "5px 12px", borderRadius: 8, border: `1px solid ${ec}55`, background: "var(--color-card)", color: ec, cursor: "pointer", fontWeight: 600 }}>
               Explore premium
@@ -177,7 +177,7 @@ export function ScheduleSuggest({
                     {free && awake ? "fits your usual free time" : awake ? "you're usually awake" : "outside your usual awake hours"}
                   </div>
                 </div>
-                <span style={{ fontSize: 10.5, color: ec, fontWeight: 600, flexShrink: 0 }}>Schedule →</span>
+                <span style={{ fontSize: 10.5, color: ec, fontWeight: 600, flexShrink: 0 }}>Schedule <span aria-hidden="true">→</span></span>
               </button>
             );
           })}
@@ -190,7 +190,7 @@ export function ScheduleSuggest({
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
           {!customOpen ? (
             <button onClick={() => setCustomOpen(true)} style={{ fontSize: 11, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
-              Or pick my own time →
+              Or pick my own time <span aria-hidden="true">→</span>
             </button>
           ) : (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

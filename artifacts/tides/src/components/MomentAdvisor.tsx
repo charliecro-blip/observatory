@@ -187,7 +187,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 6 }}>
               ✦ Ask
               {/* Sub-brand tag (brand kit): Ask signs in Meridian small-caps. */}
-              <span style={{ fontSize: 8.5, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
+              <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
             </div>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
@@ -196,7 +196,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               <button onClick={() => { setHistory([]); setStreamBuffer(""); setInput(""); }} style={{
                 fontSize: 10, padding: "3px 10px", borderRadius: 8, border: "1px solid var(--color-border)",
                 background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer",
-              }}>← New question</button>
+              }}><span aria-hidden="true">←</span> New question</button>
             )}
             {pins.length > 0 && (
               <button onClick={() => setShowPins(v => !v)} style={{
@@ -221,11 +221,11 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
                   <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
                     fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
                     background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer",
-                  }}>→ task</button>
+                  }}><span aria-hidden="true">→</span> task</button>
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}>← Back to conversation</button>
+            <button onClick={() => setShowPins(false)} style={{ fontSize: 10, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", alignSelf: "center", marginTop: 4 }}><span aria-hidden="true">←</span> Back to conversation</button>
           </div>
         )}
 
