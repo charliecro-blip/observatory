@@ -665,6 +665,13 @@ export default function Home({
           The first question, shaped by the person's own choice — one move,
           the route, or a few ways in. Read-the-day-first renders only the
           switch, and the page below is the app as built. */}
+      {/* The tour's "what now" stop anchors HERE, on the wrapper, rather
+          than inside RhythmLead: that component returns a different root per
+          rhythm — four of them — so an anchor added to three would leave the
+          fourth rhythm silently untaught, which is exactly how the previous
+          one was lost. The wrapper is one flex item in a gap column and
+          changes nothing visually. */}
+      <div data-tour="home-answer">
       <RhythmLead
         rhythm={rhythm}
         onPickRhythm={pickRhythm}
@@ -679,6 +686,7 @@ export default function Home({
         tideLevel={now?.tide?.level ?? null}
         stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
       />
+      </div>
 
       {/* A GEAR CHANGE, offered — the sky lighting one working style for a
           stretch. Sky vocabulary, so the quiet lens hides it. */}

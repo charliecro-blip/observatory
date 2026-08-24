@@ -23,17 +23,23 @@ export interface TourStep {
   cta?: string;
 }
 
-// Five stops, one per job, ALL ANCHORED TO HOME OR THE NAV — the tour never
+// Four stops, one per job, ALL ANCHORED TO HOME OR THE NAV — the tour never
 // navigates away mid-flight (a route change under a spotlight is
 // disorienting; the last step's CTA is the one deliberate exit), so every
 // anchor has to exist on the surface the tour runs on. Stops that describe
 // another surface point at its nav tab instead.
 //
 // Every anchor here survives a COLD START, which is the state a first-run
-// account is actually in. That rules out the loop hero (renders nothing until
-// something is held) and the Guiding Stars card (renders nothing until a star
-// exists) — SpotlightTour advances past a missing anchor silently, so an
-// anchor that isn't there on day one is a stop nobody is ever taught.
+// account is actually in. That rules out the Guiding Stars card (renders
+// nothing until a star exists) — SpotlightTour advances past a missing anchor
+// silently, so an anchor that isn't there on day one is a stop nobody is ever
+// taught.
+//
+// This paragraph was already here on 2026-08-24 and was already false: the
+// "home-answer" target had been deleted in 825b08e and the step had been
+// skipping in silence ever since, teaching nobody, failing nothing. A comment
+// asserting an invariant is not the same as a check for it, which is why
+// tests/tour-anchors.test.ts now holds this list to its promise.
 export const TOUR_STEPS: TourStep[] = [
   {
     anchor: "home-work",
@@ -43,7 +49,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     anchor: "home-answer",
     title: "The answer to \"what now\"",
-    body: "Once there's something on your list, Compass names one thing to do next and says why. Its reasons are deadlines, your calendar, and — if you want it — the sky. When nothing stands out, it says that instead of inventing work.",
+    body: "Once you have things on the list, this is where Compass answers — one move, a few ways in, or what to protect, depending on how you asked to be met. Its reasons are deadlines, your calendar and, if you want it, the sky. When nothing stands out it says so rather than inventing work for you.",
   },
   {
     anchor: "nav-plan",

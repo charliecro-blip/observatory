@@ -32,7 +32,7 @@ const SECTIONS: Section[] = [
     title: "The daily loop",
     lead: "Two moments a day, and everything else is optional.",
     points: [
-      { term: "Morning — Cast off", text: "Today opens with the day's character, your first few things, and one good window. It appears in the first hours after you wake, not at a fixed clock time." },
+      { term: "Morning — Cast off", text: "Home opens with the day's character, your first few things, and one good window. It appears in the first hours after you wake, not at a fixed clock time." },
       { term: "Evening — Log the day", text: "A line about the day, if you want one. It lands in the Log stamped with that day's sky. Optional — nothing depends on it." },
       { term: "Your pattern", text: "Built from what you actually finish — tasks, habits, blocks — against the kind of day it was, including void spells. Nothing extra to log: it accrues from work you were doing anyway. It stays silent until there is enough of it to mean something, and it reports what happened, never what a day does to you." },
     ],
@@ -48,7 +48,7 @@ const SECTIONS: Section[] = [
       { term: "A sprint", text: "A short push with a hard end date — a week of cold showers, ten cold calls. Sometimes it rides a transit; ending early is allowed and recorded honestly." },
       { term: "A Guiding Star", text: "The long thing you're steering toward. Stars don't get scheduled — their steps and habits do, and everything done in their service counts toward them." },
       { term: "A win", text: "The record that something happened, planned or not. Finished tasks, kept habits, sprint days and named moments all land in the wake on their own." },
-      { term: "Home and Today", text: "Home steers what you're holding; Today runs the day itself." },
+      { term: "Home", text: "One page for both jobs: what you are holding, and the day you are holding it in." },
     ],
   },
   {
@@ -92,7 +92,7 @@ const SECTIONS: Section[] = [
     lead: "The long things, and the daily things.",
     points: [
       { term: "Guiding Stars", text: "A few long-term aims. Each gets an element, which is how Compass knows which days suit moving it forward." },
-      { term: "Tasks", text: "Anything with a due date. Undone tasks carry forward on their own and say so — 'carried from Mon' — rather than quietly disappearing." },
+      { term: "Tasks", text: "Anything with a due date. Switch on carrying forward and an undone task moves to today marked 'carried from Mon'; leave it off, as new accounts do, and the task keeps the date you gave it." },
       { term: "Habits", text: "Things you do repeatedly. Set a cadence — every day, most days, a number of times a week, or whenever it fits — and Compass stops nagging about the ones that never had a schedule." },
       { term: "Solar anchors", text: "A daily can be anchored to sunrise or sunset instead of a clock time, so it moves with the season. Your two starter habits already are." },
     ],
