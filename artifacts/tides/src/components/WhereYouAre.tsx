@@ -7,10 +7,12 @@
  * thing that actually changes daily and actually accrues: how the habits are
  * going, and what has moved toward the Guiding Stars.
  *
- * IT ABSORBS TWO CARDS RATHER THAN ADDING A THIRD VOICE. RhythmProgress and
- * Home's Guiding Stars card both folded into this, so the page's module count
- * goes DOWN while gaining the report — the one-voice-per-fact rule those two
- * were already straining against.
+ * IT ABSORBS TWO CARDS RATHER THAN ADDING A THIRD VOICE. A rhythm-progress
+ * card and Home's Guiding Stars card both folded into this, so the page's
+ * module count goes DOWN while gaining the report — the one-voice-per-fact
+ * rule those two were already straining against. The rhythm card's file went
+ * on sitting there unreachable for five days after the merge; it was deleted
+ * 2026-08-24, which is why this paragraph no longer names it.
  *
  * The tap survives: a check-off is a tally mark, not a workflow (HOME study
  * D5), and it was the busy-parent persona's one daily gesture. Editing,
