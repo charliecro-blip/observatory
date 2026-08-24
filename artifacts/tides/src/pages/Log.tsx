@@ -4,6 +4,7 @@ import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
 import LogComposer, { type LogVariant } from "@/components/LogComposer";
 import Diary from "@/components/Diary";
+import DayCheckOff from "@/components/DayCheckOff";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
@@ -597,6 +598,9 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
               </div>
             </div>
           )}
+
+          {/* Check off — the day's practices and, on today, the open to-dos */}
+          <DayCheckOff testerId={testerId} date={dayDetail.date} lat={lat} lon={lon} />
 
           {/* Activities */}
           {dayDetail.activities.length > 0 && (
