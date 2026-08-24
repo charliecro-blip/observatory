@@ -71,8 +71,13 @@ instead of reading the code that makes it.
         -H "x-tester-id: obs_you_$(date +%s)" -H "content-type: application/json" \
         -d '{"displayName":"You"}'      # → recoveryCode + sessionToken
 
-  then set `obs_tester_id`, `compass-tester-id`, `obs_session_token` (plus
-  `obs_birth_skipped` and `obs_saw_intro` to skip onboarding) in localStorage.
+  then set `obs_tester_id`, **`obs_display_name`**, `compass-tester-id`,
+  `obs_session_token` (plus `obs_birth_skipped` and `obs_saw_intro` to skip
+  onboarding) in localStorage. The display name is not optional and sync does
+  not return it: `loadProfile()` gates on `testerId && displayName`, so without
+  it you get the sign-in screen back while holding a perfectly good token —
+  which sends you looking at auth and the database instead of at one absent
+  string.
   Nothing else is needed: sync is what CREATES the profile, and `plan` defaults
   to `beta`. A 402 on a gated route means there is no profile row — you made a
   chart or a habit without syncing first, and `effectivePlan(null)` is `free`.
