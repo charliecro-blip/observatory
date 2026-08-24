@@ -23,6 +23,7 @@
  * drift.
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { localToday } from "@/lib/dates";
 
 interface Habit {
   id: number; name: string; status?: string;
@@ -37,7 +38,7 @@ export default function DayCheckOff({ testerId, date, lat = 40.7, lon = -74.0 }:
 }) {
   const qc = useQueryClient();
   const headers = { "x-tester-id": testerId ?? "", "Content-Type": "application/json" };
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = localToday();
   const isToday = date === today;
   // Log lists days that have happened, but a timeline can be scrolled and a
   // date field can be typed into, so this is cheap insurance against offering
