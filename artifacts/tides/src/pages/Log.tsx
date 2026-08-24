@@ -8,7 +8,6 @@ import DayCheckOff from "@/components/DayCheckOff";
 import { format, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PLANET_LITERACY } from "@/lib/sky-literacy";
-import { PLANET_GLYPH } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
 const ELEMENTS = {
@@ -71,6 +70,12 @@ interface DayDetail {
 }
 
 const FLAVOR_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+// "mercurial", "saturnine" — sentence-cased so the filter list reads evenly
+// against its own "All days" option.
+const flavorWord = (p: string) => {
+  const w = PLANET_LITERACY[p]?.adjective ?? p.toLowerCase();
+  return w.charAt(0).toUpperCase() + w.slice(1);
+};
 
 // The felt-rating lives in behaviorTags as `felt:aligned`, `tideChar:deep`, …
 function decodeFelt(tags: string[] | null | undefined) {
@@ -293,9 +298,12 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
           }}
         >
           <option value="">All days</option>
+          {/* No glyph here: <option> content is plain text, so the aria-hidden
+              wrapper that hides a decorative symbol everywhere else in the app
+              is not available. The flavor word carries it. */}
           {FLAVOR_PLANETS.map((p) => (
             <option key={p} value={p}>
-              <span aria-hidden="true">{PLANET_GLYPH[p]}</span> {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} days · Moon × {p}
+              {flavorWord(p)} days · Moon × {p}
             </option>
           ))}
         </select>
