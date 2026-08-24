@@ -31,6 +31,13 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
 }) {
   const today = localToday();
   const { data: windows } = useTodayWindows(testerId, today);
+  // Above the early return on purpose. useFold reaches useContext through
+  // usePreferences, so calling it below `if (!scheduled.length) return null`
+  // made this component call 16 hooks on an empty day and 17 on a day with
+  // something on it — React saw the count change the moment the windows query
+  // resolved and the card went from empty to filled. Nothing here depends on
+  // `scheduled`, so it belongs with the other hooks.
+  const folded = useFold().isFolded("dayAhead");
 
   // YOUR CALENDAR IS PART OF YOUR DAY (owner, 2026-08-19). This card promised
   // "what is actually on today, in order, with now marked" and showed only
@@ -77,7 +84,6 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
   if (!scheduled.length && !calendarUnreachable) return null;
 
   const nextIdx = scheduled.findIndex((w: any) => Date.parse(w.startTime) > nowMs);
-  const folded = useFold().isFolded("dayAhead");
 
   return (
     <div style={{
