@@ -32,7 +32,7 @@ interface Inventory {
   week: { days: number; voidDays: string[]; eclipse: { kind: string; date: string; daysAway: number } | null };
 }
 
-const DURATIONS = [15, 30, 60, 90];
+const DURATIONS = [15, 30, 60, 90, 120];
 const fmtDay = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" });
 
 export default function PlanInventory({ testerId, lat, lon, onSpread, spreading, onPaste }: {

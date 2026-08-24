@@ -98,7 +98,16 @@ export function WeekWeave({ week }: { week: WovenWeek }) {
               </span>
               <span style={{ fontSize: 12, flex: 1, minWidth: 0 }}>
                 {p.item.title}
-                {p.assumedDuration && <span style={{ fontSize: 9, color: "var(--text-3)" }}> · {p.minutes}m assumed</span>}
+                {/* The block is drawn at a length nobody chose — the weaver
+                    derives it from the kind of work when a task carries no
+                    estimate. Saying "assumed" narrated our bookkeeping; saying
+                    it is a guess at a size, and naming who can settle it, is
+                    the same fact in the reader's terms. Nothing here is
+                    committed: keeping a placement happens in Plan, which asks
+                    for a real duration before it will schedule anything. */}
+                {p.assumedDuration && (
+                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}> · guessing {p.minutes}m — set a length in Plan</span>
+                )}
               </span>
             </div>
           ))}
