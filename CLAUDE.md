@@ -79,3 +79,11 @@ instead of reading the code that makes it.
   `COMPASS_TOFU_DEADLINE=2099-01-01T00:00:00Z` on the API is the other way in.
 - Onboarding does not advance from a synthetic `.click()` in the console —
   React state does not take. Drive it with real mouse events.
+- **From a worktree, the `tides` launch config serves MAIN.** It is the only
+  config with no `cd`, so `pnpm --filter @workspace/tides` resolves the
+  workspace from the project root wherever the harness starts it. And
+  `preview_start` reads the root `.claude/launch.json`, so adding a config to
+  the worktree's own copy does nothing. The failure is silent — you measure
+  your change, find it absent, and go hunting a bug that is not there. Start
+  vite from the worktree explicitly (`cd <worktree>/artifacts/tides && npx
+  vite --port 5176 --strictPort`) and open that URL.
