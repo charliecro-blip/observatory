@@ -57,3 +57,25 @@ instead of reading the code that makes it.
   the code and guessing.
 - Verify a deploy by probing a user-visible string in the served bundle,
   not by `healthz` — that can answer from the old instance.
+- **Signing in locally needs a minted session, not the UI.** Since the
+  trust-on-first-use window shut (2026-08-23), a scratch profile that exists
+  but never claimed is refused with 401, and `/account/claim` 410s — so
+  creating an account through the sign-in screen leaves you unable to claim
+  it. Dev StrictMode makes it worse: it double-mounts the claim, the first
+  call succeeds, the remount drops the token, and the second returns 403
+  `already_claimed`. Mint one instead, with a **fresh** id — `/account/sync`
+  hands back a token on an id's FIRST call only; run it twice and the second
+  response carries no token, which reads as the recipe being broken:
+
+      curl -s -X POST localhost:3000/api/account/sync \
+        -H "x-tester-id: obs_you_$(date +%s)" -H "content-type: application/json" \
+        -d '{"displayName":"You"}'      # → recoveryCode + sessionToken
+
+  then set `obs_tester_id`, `compass-tester-id`, `obs_session_token` (plus
+  `obs_birth_skipped` and `obs_saw_intro` to skip onboarding) in localStorage.
+  Nothing else is needed: sync is what CREATES the profile, and `plan` defaults
+  to `beta`. A 402 on a gated route means there is no profile row — you made a
+  chart or a habit without syncing first, and `effectivePlan(null)` is `free`.
+  `COMPASS_TOFU_DEADLINE=2099-01-01T00:00:00Z` on the API is the other way in.
+- Onboarding does not advance from a synthetic `.click()` in the console —
+  React state does not take. Drive it with real mouse events.
