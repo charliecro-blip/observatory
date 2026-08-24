@@ -18,10 +18,18 @@
 # supervised baseline against the live database (the tables already exist, so
 # the first generated migration has to be marked applied rather than run), and
 # that is not something to attempt unattended.
-# WHICH CHANGES TRIGGER A DEPLOY. Set on the service in Railway's dashboard
-# until 2026-08-23, where it read `/artifacts/api-server/**` and
-# `/artifacts/tides/**` and nothing else — so a commit touching only `lib/` was
-# marked SKIPPED and never shipped, while `gh api .../status` reported success.
+# WHICH CHANGES TRIGGER A DEPLOY. This list is the one to edit.
+#
+# It used to live on the service in Railway's dashboard, invisible from the
+# repo, reading `/artifacts/api-server/**` and `/artifacts/tides/**` and
+# nothing else — so a commit touching only `lib/` was marked SKIPPED and never
+# shipped, while `gh api .../status` reported success.
+#
+# The dashboard field is now `**` (Railway's own documented match-everything,
+# from the docs' `**` / `!/*.md` example) rather than empty: an empty list
+# reads back as `[]`, and "when specified, any changes that don't match the
+# patterns will skip" makes an empty list mean NOTHING matches. `**` cannot be
+# misread. So the dashboard filters nothing and this file decides.
 # It happened once for real (a copy fix in lib/lexicon) and self-corrected only
 # because a later commit touched artifacts/ and carried it along.
 #
