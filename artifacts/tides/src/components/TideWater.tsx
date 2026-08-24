@@ -479,7 +479,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
           cursor: "pointer", padding: 0, marginBottom: 6, fontSize: 10, color: "var(--text-3)",
         }}>
-          <span aria-hidden="true" style={{ fontSize: 8 }}>▸</span> Compare elements
+          <span aria-hidden="true" style={{ fontSize: 9 }}>▸</span> Compare elements
         </button>
       )}
 

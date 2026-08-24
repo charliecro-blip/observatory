@@ -896,6 +896,34 @@ function clientSourceFiles(): string[] {
   return out;
 }
 
+describe("the 9px floor holds", () => {
+  // The craft pass (2026-08-23) raised every readable string to 9px and left
+  // nine decorative carets below it — an aria-hidden ▾ is an affordance, not
+  // text, so the rule never reached them. That was defensible and it was also
+  // unenforceable: a floor with nine exceptions cannot be checked by anything
+  // but a person remembering which nine. They were raised on 2026-08-24 so the
+  // rule could become a test, which is the only form in which it survives the
+  // next person who needs a slightly smaller chevron.
+  const files = clientSourceFiles();
+
+  it("finds the client source at all", () => {
+    expect(files.length).toBeGreaterThan(30);
+  });
+
+  it("nothing renders below 9px, decorative glyphs included", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8").split("\n");
+      src.forEach((line, i) => {
+        for (const m of line.matchAll(/fontSize: ?([0-9.]+)/g)) {
+          if (parseFloat(m[1]) < 9) offenders.push(`${f}:${i + 1} -> ${m[1]}`);
+        }
+      });
+    }
+    expect(offenders, `below the 9px floor:\n${offenders.join("\n")}`).toEqual([]);
+  });
+});
+
 describe("no theme-breaking colours", () => {
   // These files ARE the palette definitions — raw hex is their whole job.
   const SOURCE_TABLES = ["lib/themes.ts", "lib/elements.ts", "lib/planetColors.ts",

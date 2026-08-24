@@ -702,7 +702,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
               cursor: "pointer", padding: 0, fontSize: 10.5, color: "var(--text-3)", textAlign: "left",
             }}>
-              <span aria-hidden="true" style={{ fontSize: 8, display: "inline-block", transition: "transform 0.15s", transform: showTimingOverrides ? "rotate(180deg)" : "none" }}>▾</span>
+              <span aria-hidden="true" style={{ fontSize: 9, display: "inline-block", transition: "transform 0.15s", transform: showTimingOverrides ? "rotate(180deg)" : "none" }}>▾</span>
               Adjust timing signature
               {!showTimingOverrides && effPlanet && (
                 <span style={{ color: "var(--color-muted)" }}>
@@ -1245,7 +1245,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
                       <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.transitPlanet]}</span></span>
                       <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
-                      <span aria-hidden="true" style={{ fontSize: 8, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
+                      <span aria-hidden="true" style={{ fontSize: 9, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
                     </button>
                     {isExp && <TransitTake t={t} accent="#8a8ba0" />}
                   </div>

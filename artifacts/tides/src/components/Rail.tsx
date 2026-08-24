@@ -927,7 +927,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                           : <span style={{ color:"var(--text-3)", fontVariantNumeric:"tabular-nums" }}>{a.orb.toFixed(1)}° past</span>
                       }
                     </div>
-                    <span aria-hidden="true" style={{ fontSize:8, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+                    <span aria-hidden="true" style={{ fontSize:9, color: isExpanded ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
                   </div>
                 </button>
                 {isExpanded && aspMeaning && (
@@ -1011,7 +1011,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                         }>
                           {a.orb.toFixed(1)}°{a.stationsBeforeExact || a.neverPerfected ? " ℞↩" : a.applying ? " →" : "←"}
                         </span>
-                        <span aria-hidden="true" style={{ fontSize:8, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
+                        <span aria-hidden="true" style={{ fontSize:9, color: isExp ? col : "var(--text-3)", transition:"transform 0.15s", display:"inline-block", transform: isExp ? "rotate(180deg)" : "none", marginLeft:3 }}>▾</span>
                       </button>
                       {isExp && aspMeaning && (
                         <div style={{ padding:"4px 6px 8px 14px", fontSize:9, color:"var(--color-muted)", lineHeight:1.55, borderLeft:`2px solid ${col}60`, background:`${col}08`, marginBottom:3, borderRadius:"0 0 4px 4px" }}>
@@ -1293,7 +1293,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <button onClick={() => setExpandedPersonal(v => v === key ? null : key)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", fontSize: 10, color: "var(--text-2)", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.exact ? "#e0a040" : "#c0c0c0", flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{t.summary}</span>
-                <span aria-hidden="true" style={{ fontSize: 7, color: isExp ? "#8a7a50" : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+                <span aria-hidden="true" style={{ fontSize: 9, color: isExp ? "#8a7a50" : "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
               </button>
               {isExp && <TransitTake t={t} />}
             </div>
@@ -1307,7 +1307,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
             }}>
               <span style={{ display: "flex", alignItems: "center" }}>Your transits<HelpBadge term="angleCrossing"/></span>
-              <span aria-hidden="true" style={{ fontSize: 8, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+              <span aria-hidden="true" style={{ fontSize: 9, transform: transitsOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
             </button>
             {transitsOpen && (
               <div style={{ padding: "0 14px 10px" }}>
@@ -1365,7 +1365,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
           color: "var(--text-3)",
         }}>
           <span>Waves · what to ride today</span>
-          <span aria-hidden="true" style={{ fontSize: 8, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
+          <span aria-hidden="true" style={{ fontSize: 9, transform: wavesOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>▾</span>
         </button>
 
         {wavesOpen && (

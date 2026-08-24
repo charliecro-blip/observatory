@@ -1111,7 +1111,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
             alignSelf:"flex-start", background:"none", border:"none", cursor:"pointer", padding:0,
             fontSize:10.5, color:"var(--text-3)", display:"flex", alignItems:"center", gap:5,
           }}>
-            <span aria-hidden="true" style={{ fontSize:8, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
+            <span aria-hidden="true" style={{ fontSize:9, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
             Fine-tune the hours
           </button>
 
