@@ -1323,6 +1323,9 @@ function Shell() {
   // state including a cold start.
   const [tourArmed, setTourArmed] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  // What Home has pointed the session timer at. Cleared the moment the timer
+  // takes it, so choosing the same thing twice still opens.
+  const [sessionOn, setSessionOn] = useState<{ title: string } | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   useEffect(() => {
     if (!testerId || view !== "home" || tourArmed || !tourPending(testerId)) return;
@@ -1576,7 +1579,7 @@ function Shell() {
         <div style={{flex:1}}/>
         {!isMobile && <span style={{fontSize:11,color:"var(--color-muted)",marginRight:12}}>{profile?.displayName}</span>}
         {now?.planetaryHour && (
-          <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} /></div>
+          <div style={{ marginRight: 8 }}><SessionTimer planetaryHour={now.planetaryHour} openOn={sessionOn} onOpened={() => setSessionOn(null)} /></div>
         )}
         <button
           onClick={() => { setAskContext(null); setAdvisorSeed(null); setShowAdvisor(true); }}
@@ -1683,7 +1686,7 @@ function Shell() {
         {/* "habits" is not a view — it is the Stars tab opened on its habits
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
-        {view==="home"     && <Home     testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {view==="home"     && <Home     onStartSession={(title: string) => setSessionOn({ title })} testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
         {/* THE LOG IS ITS OWN DESTINATION (owner, 2026-08-20). It was a
             sub-tab of Calendar, which put the record of how things went

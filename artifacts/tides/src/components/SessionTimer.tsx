@@ -11,6 +11,16 @@ type Phase = "idle" | "active" | "paused" | "done";
 
 interface SessionTimerProps {
   planetaryHour?: { planet: string; began: string; ends: string };
+  /**
+   * Open the panel already pointed at something, from elsewhere in the app.
+   *
+   * A session's subject is its note — it labels the run and pre-fills the
+   * done-composer when the timer stops — so "start a session on this task" is
+   * exactly "open, with the note set". Consumed once and cleared by the
+   * parent, so picking the same task again opens it again.
+   */
+  openOn?: { title: string } | null;
+  onOpened?: () => void;
 }
 
 const PRESETS = [
@@ -32,7 +42,7 @@ function fmt(s: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export function SessionTimer({ planetaryHour }: SessionTimerProps) {
+export function SessionTimer({ planetaryHour, openOn, onOpened }: SessionTimerProps) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   // Starting a session is the one-tap door into the astro-quiet lens: the
@@ -64,6 +74,15 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
   const [useCustom, setUseCustom] = useState(false);
   const [useUntilHourEnd, setUseUntilHourEnd] = useState(false);
   const [note, setNote] = useState("");
+
+  // Pointed at from Home: open, take the subject, and tell the parent so the
+  // same task can be picked again later.
+  useEffect(() => {
+    if (!openOn) return;
+    setNote(openOn.title);
+    setOpen(true);
+    onOpened?.();
+  }, [openOn, onOpened]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedRef = useRef<Date | null>(null);
   /** The wall-clock instant the session ends. The one source of truth while

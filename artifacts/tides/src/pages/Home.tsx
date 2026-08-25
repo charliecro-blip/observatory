@@ -309,7 +309,7 @@ function SectionTitle({ children, note, action, fold, summary }: {
 }
 
 export default function Home({
-  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun, onOpenStar,
+  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun, onOpenStar, onStartSession,
 }: {
   testerId: string | null;
   lat: number;
@@ -325,6 +325,8 @@ export default function Home({
    *  something, and it moved to Settings. This is the guard any future ask
    *  would need, kept rather than removed so the next one cannot be added
    *  without it — tests/regressions checks exactly that. */
+  /** Point the topbar's session timer at something and open it. */
+  onStartSession?: (title: string) => void;
   firstRun?: boolean;
   /** Deep link from a morning star row into that star's game plan. It was
    *  wired to Today and went unpassed when the ritual card moved here — the
@@ -730,6 +732,7 @@ export default function Home({
         committedCount={committed.length}
         onShape={() => setShapeOpen(v => !v)} shapeOpen={shapeOpen}
         onFocus={linkRow}
+        onStart={onStartSession}
         tideLevel={now?.tide?.level ?? null}
         stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
       />

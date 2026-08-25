@@ -54,6 +54,7 @@ const CAP: React.CSSProperties = {
 };
 
 export default function RhythmLead({
+  onStart,
   rhythm, onPickRhythm, testerId, lat, lon,
   overdue, dueToday, undated, later, committedCount,
   onShape, shapeOpen, onFocus, gear, onEndGear, element, tideLevel, stars,
@@ -75,6 +76,15 @@ export default function RhythmLead({
   committedCount: number;
   onShape: () => void; shapeOpen: boolean;
   onFocus: (id: number) => void;
+  /**
+   * Start a session on something, by name.
+   *
+   * "Pick one now" has to MEAN something. It used to call onFocus, which
+   * highlights the matching row further down Your Work and opens its evidence
+   * — real feedback, off-screen and subtle, so it read as a dead card
+   * (reported from a real pass, 2026-08-25). Choosing now starts the thing.
+   */
+  onStart?: (title: string) => void;
 }) {
   const qc = useQueryClient();
   const today = localToday();
@@ -177,10 +187,24 @@ export default function RhythmLead({
               {overdue.includes(move) ? "Past its date, so it comes first." : dueToday.includes(move) ? "Due today." : "Top of what you're holding."}
               {next && <> After it: {next.title}.</>}
             </div>
-            <button onClick={onShape} style={{
-              fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
-              border: "none", background: "var(--color-primary)", color: "#fff",
-            }}>{shapeOpen ? "Hide the hours" : <>Find it an hour <span aria-hidden="true">→</span></>}</button>
+            {/* TWO DIFFERENT INTENTIONS, and Home only ever offered the weaker.
+                "Find it an hour" means not now, put it somewhere. "Start now"
+                means I am doing this, count the time — which is the one that
+                closes the loop today and produces the record the whole app is
+                built around. It leads, and scheduling stays beside it. */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {onStart && (
+                <button onClick={() => onStart(move.title)} style={{
+                  fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, cursor: "pointer",
+                  border: "none", background: "var(--color-primary)", color: "#fff",
+                }}>Start now <span aria-hidden="true">→</span></button>
+              )}
+              <button onClick={onShape} style={{
+                fontSize: 12, fontWeight: onStart ? 500 : 600, padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+                border: onStart ? "1px solid var(--color-border)" : "none",
+                background: onStart ? "transparent" : "var(--color-primary)", color: onStart ? "var(--color-primary)" : "#fff",
+              }}>{shapeOpen ? "Hide the hours" : <>Find it an hour <span aria-hidden="true">→</span></>}</button>
+            </div>
           </>
         ) : (
           <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Nothing on the list. Add the one thing that matters and it leads here.</div>
@@ -262,14 +286,24 @@ export default function RhythmLead({
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${picks.length + (keeping ? 1 : 0)}, minmax(0, 1fr))`, gap: 8, marginBottom: 8 }}>
+              {/* This was a div among buttons — same size, same place, same
+                  weight, and nothing happened when you pressed it, which is
+                  the clearest way to teach someone the others are dead too.
+                  A keeping is as startable as a task. */}
             {keeping && (
-              <div style={{ textAlign: "left", padding: "9px 11px", borderRadius: 9, border: "1px dashed var(--color-border)", background: "var(--color-card-2)" }}>
+              <button type="button"
+                onClick={() => onStart?.(keeping.title)}
+                title={onStart ? `Start a session on ${keeping.title}` : undefined}
+                style={{ textAlign: "left", padding: "9px 11px", borderRadius: 9, border: "1px dashed var(--color-border)", background: "var(--color-card-2)", cursor: onStart ? "pointer" : "default", font: "inherit", color: "inherit" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", lineHeight: 1.3 }}>{keeping.title}</div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>a keeping</div>
-              </div>
+              </button>
             )}
             {picks.map(t => (
-              <button key={t.id} onClick={() => onFocus(t.id)} style={{
+              <button key={t.id}
+                onClick={() => { onFocus(t.id); onStart?.(t.title); }}
+                title={onStart ? `Start a session on ${t.title}` : undefined}
+                style={{
                 textAlign: "left", padding: "9px 11px", borderRadius: 9, cursor: "pointer",
                 border: "1px solid var(--color-border)", background: "var(--color-card-2)",
               }}>
