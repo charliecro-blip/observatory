@@ -32,6 +32,7 @@ import FeedbackDoor from "@/components/FeedbackDoor";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { parseWhen, formatDueChip } from "@/lib/parseWhen";
+import { localDateStr } from "@/lib/dates";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import Home from "@/pages/Home";
 import { useDialog } from "@/hooks/useDialog";
@@ -603,12 +604,37 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 
-type OnboardStep = "name" | "birth" | "chronotype" | "done";
+/**
+ * FIRST RUN, 2026-08-24.
+ *
+ * The sequence was: intro, name, how-much-astrology, working rhythm, birth
+ * date, birth time, birth place, a DST question, chronotype, free windows —
+ * ten answers before anyone had seen the product do anything. That is a lot of
+ * trust to ask for before delivering any, and it front-loads the two questions
+ * (chart, chronotype) that only make sense once you want the thing they
+ * improve.
+ *
+ * It is now: your name, how Compass should meet you, and three real things you
+ * are holding. Then the app. The third is the point — Compass is empty until
+ * it knows what you are carrying, and every screen before that is a screen
+ * spent describing a product the person has not used.
+ *
+ * `birth` and `chronotype` survive as steps because they are the CONTEXTUAL
+ * asks: the shell enters this modal at `birth` when someone wants a chart, and
+ * chronotype belongs at the moment scheduling first needs to know when you are
+ * awake. Neither is in the first run any more.
+ */
+type OnboardStep = "name" | "meet" | "hold" | "birth" | "chronotype" | "done";
 
-function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
-  onComplete: (name: string) => void;
+function OnboardingModal({ onComplete, existingTesterId, startAt }: {
+  /** `holding` is the three-things capture; empty when skipped. */
+  onComplete: (name: string, holding?: string[]) => void;
   existingTesterId?: string | null;
-  skipNameStep?: boolean;
+  /** Where to enter. Absent = the first run. `birth` and `chronotype` are
+   *  the contextual asks, opened by the shell at the moment each becomes
+   *  worth answering rather than before anyone has used the thing it
+   *  improves. */
+  startAt?: OnboardStep;
 }) {
   const { updateChronotype, restoreFromCode } = useTester();
   // THROUGH THE PROVIDER, not around it. This modal renders inside Shell,
@@ -619,7 +645,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   // as "medium" until the next reload (found 2026-08-21 while adding the
   // rhythm question, which failed the same way).
   const { updateDisplay } = usePreferences();
-  const [step, setStep] = useState<OnboardStep>(skipNameStep ? "birth" : "name");
+  const [step, setStep] = useState<OnboardStep>(startAt ?? "name");
   const [name, setName] = useState("");
   // How much astrology to show — the intake question (owner 2026-07-22).
   // Default "medium" is the friendlier middle for the glaze-over majority.
@@ -632,6 +658,10 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
   const chooseRhythm = (r: Rhythm) => { logEvent("onboard_rhythm", { rhythm: r }); setRhythmState(r); updateDisplay({ rhythm: r, collapsedModules: TRIM_FOLDS[r] }); };
   // Returning-user path: restore an existing identity from its account key
   // instead of creating a fresh one.
+  // The three lines are held here, not saved as they are typed: the account
+  // does not exist until the run finishes, and a half-created account holding
+  // one task is a worse state than none.
+  const [holding, setHolding] = useState<string[]>(["", "", ""]);
   const [showRestore, setShowRestore] = useState(false);
   const [restoreCode, setRestoreCode] = useState("");
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -747,7 +777,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     // Store in localStorage so TesterProvider picks it up
     localStorage.setItem("obs_tester_id", tid);
     localStorage.setItem("obs_display_name", n);
-    setStep("birth");
+    setStep("meet");
   }
 
   async function searchLocation(q: string) {
@@ -825,7 +855,23 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
       if (!ok) return; // stay on this step — don't advance past a save that didn't happen
     }
     logEvent("onboard_chart_added");
-    setStep("chronotype");
+    // Contextual now, so this is the end of the errand rather than the middle
+    // of a queue. Nothing follows the chart.
+    onComplete(name.trim() || "Observer");
+  }
+
+  function finishFirstRun() {
+    const lines = holding.map(l => l.trim()).filter(Boolean);
+    logEvent("onboard_hold", { count: lines.length });
+    // BOTH DEFERRALS ARE RECORDED, not silently assumed. Without the birth
+    // flag the shell re-arms its chart prompt on the very next load, which is
+    // how removing a question from the first run turns into asking it one
+    // screen later — the loop the old skip handler existed to prevent.
+    try {
+      localStorage.setItem("obs_birth_skipped", "1");
+      localStorage.setItem("obs_saw_intro", "1");
+    } catch { /* private browsing — the prompt reappearing is survivable */ }
+    onComplete(name.trim() || "Observer", lines);
   }
 
   function handleSkip() {
@@ -841,7 +887,7 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     // — an onboarding loop (caught live, first browser run of this change).
     localStorage.setItem("obs_birth_skipped", "1");
     logEvent("onboard_chart_skipped");
-    setStep("chronotype");
+    onComplete(name.trim() || "Observer");
   }
 
   const cardStyle: React.CSSProperties = {
@@ -903,59 +949,87 @@ function OnboardingModal({ onComplete, existingTesterId, skipNameStep }: {
     </div>
   );
 
+  // ── 2 · HOW SHOULD COMPASS MEET YOU ──────────────────────────────────────
+  // Situations, not traits. People answer "structure or flexibility?"
+  // aspirationally and "a free afternoon appears" honestly, and this answer is
+  // the only one of the old intake questions that changes what the first Home
+  // actually says — which is why it is the one that stayed.
+  if (step === "meet") return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
+      <div style={cardStyle}>
+        <div style={{ fontSize:18, fontWeight:700, color:"var(--color-primary)", marginBottom:6 }}>How should Compass meet you?</div>
+        <div style={{ fontSize:12, color:"var(--color-muted)", lineHeight:1.65, marginBottom:18 }}>
+          A free afternoon opens up. What should come first? You can change this whenever it stops fitting.
+        </div>
+        <div style={{ display:"grid", gap:7, marginBottom:20 }}>
+          {RHYTHMS.map(o => (
+            <button key={o.key} type="button" onClick={() => chooseRhythm(o.key)}
+              style={{
+                padding:"11px 12px", borderRadius:9, textAlign:"left", cursor:"pointer",
+                border: rhythm === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
+                background: rhythm === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
+              }}>
+              <div style={{ fontSize:12.5, fontWeight:600, color: rhythm === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
+              <div style={{ fontSize:10.5, color:"var(--text-3)", marginTop:2, lineHeight:1.45 }}>{o.blurb}</div>
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => setStep("hold")}
+          style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
+          Continue →
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── 3 · THE VALUE THRESHOLD ──────────────────────────────────────────────
+  // Compass has nothing to say to an empty account. Every screen before this
+  // one describes a product; this is the one that makes the next screen about
+  // the person. Three lines, none of them required — the skip is real, and
+  // someone who takes it lands on a Home that says so rather than pretending.
+  if (step === "hold") return (
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
+      <div style={cardStyle}>
+        <div style={{ fontSize:18, fontWeight:700, color:"var(--color-primary)", marginBottom:6 }}>What are you holding?</div>
+        <div style={{ fontSize:12, color:"var(--color-muted)", lineHeight:1.65, marginBottom:18 }}>
+          Three things on your mind — a deadline, an errand, something you keep meaning to start. Say when, and the date is read from your words.
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
+          {[0,1,2].map(i => (
+            <input key={i} value={holding[i] ?? ""} autoFocus={i === 0}
+              onChange={e => setHolding(h => { const n = [...h]; n[i] = e.target.value; return n; })}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); finishFirstRun(); } }}
+              placeholder={["Draft the quarterly report Friday", "Call the dentist", "Start the reading list"][i]}
+              style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:13, background:"var(--color-card-2)", boxSizing:"border-box" }}
+            />
+          ))}
+        </div>
+        <button type="button" onClick={finishFirstRun}
+          style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
+          {holding.some(l => l.trim()) ? "Enter Compass →" : "Skip for now →"}
+        </button>
+      </div>
+    </div>
+  );
+
   if (step === "birth") return (
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background: "var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
       <div style={cardStyle}>
         <div style={{ marginBottom:18 }}>
           <div style={{ fontSize:18, fontWeight:700, color: "var(--color-primary)", marginBottom:6 }}>Your daily sky is ready ☾</div>
           <div style={{ fontSize:12, color:"var(--color-muted)", lineHeight:1.65 }}>
-            You can jump in and read today right now. Adding your birth chart means the timing gets read from <em>your</em> own chart — the "great" times, your personal cycles. Optional, kept private to your account, and easy to add later.
+            Adding your chart lets Compass show when the wider timing is personally reinforced, and opens your longer cycles. Everything works without it, it is kept private to your account, and you can add it whenever.
           </div>
         </div>
 
-        {/* Astro-detail intake — how much astrology to show. Same engine at every
-            level; only what's on screen changes (owner: reduce the jargon that
-            makes most people's eyes glaze over). */}
-        <div style={{ marginBottom:18 }}>
-          <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>How much astrology do you want to see?</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:7 }}>
-            {([
-              { key: "minimal", label: "Just the guidance", desc: "Plain language. What to do and when — no jargon." },
-              { key: "medium",  label: "A little sky",       desc: "The moon and the day's character, kept simple." },
-              { key: "full",    label: "The full chart",     desc: "Everything — glyphs, aspects, transits." },
-            ] as const).map(o => (
-              <button key={o.key} type="button" onClick={() => chooseAstroDetail(o.key)}
-                style={{
-                  padding:"9px 9px", borderRadius:9, textAlign:"left", cursor:"pointer",
-                  border: astroDetail === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
-                  background: astroDetail === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
-                }}>
-                <div style={{ fontSize:11.5, fontWeight:600, color: astroDetail === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
-                <div style={{ fontSize:9, color:"var(--text-3)", marginTop:2, lineHeight:1.4 }}>{o.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Working-rhythm intake. Situations, not traits: people answer
-            "structure or flexibility?" aspirationally and "a free afternoon
-            appears" honestly. Each answer is a default Home can act on. */}
-        <div style={{ marginBottom:18 }}>
-          <div style={{ fontSize:10.5, color:"var(--text-3)", marginBottom:6, fontWeight:500, textTransform:"uppercase", letterSpacing:"0.5px" }}>A free afternoon opens up; what should come first?</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
-            {RHYTHMS.map(o => (
-              <button key={o.key} type="button" onClick={() => chooseRhythm(o.key)}
-                style={{
-                  padding:"9px 9px", borderRadius:9, textAlign:"left", cursor:"pointer",
-                  border: rhythm === o.key ? "1.5px solid var(--color-meridian, #3b3f8f)" : "1px solid var(--color-border)",
-                  background: rhythm === o.key ? "color-mix(in srgb, var(--color-meridian, #3b3f8f) 8%, transparent)" : "var(--color-card-2)",
-                }}>
-                <div style={{ fontSize:11.5, fontWeight:600, color: rhythm === o.key ? "var(--color-meridian, #3b3f8f)" : "var(--color-foreground)" }}>{o.label}</div>
-                <div style={{ fontSize:9, color:"var(--text-3)", marginTop:2, lineHeight:1.4 }}>{o.blurb}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* The astro-detail and working-rhythm questions used to sit here, in
+            the middle of the chart form. Rhythm moved to its own first-run
+            step, where it is the only intake question that changes what the
+            first Home says. Astro-detail left the first run entirely: it asks
+            how much of a vocabulary you want before you have met any of it,
+            and it lives in Settings, which is where someone goes once the
+            answer means something. This screen is now about the chart and
+            nothing else. */}
 
         <form onSubmit={handleBirthSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
           {/* Birth date */}
@@ -1313,6 +1387,15 @@ function Shell() {
     }
   }, [chartLoading, existingChart, isReady, showModal]);
 
+  // Fires on Plan, once, for anyone whose waking hours are still assumed.
+  const [showChronotypePrompt, setShowChronotypePrompt] = useState(false);
+  useEffect(() => {
+    if (view !== "launch" || showModal || showBirthPrompt) return;
+    if (localStorage.getItem("obs_chronotype_asked")) return;
+    if (profile?.chronotype && !profile.chronotype.assumed) return;
+    setShowChronotypePrompt(true);
+  }, [view, showModal, showBirthPrompt, profile?.chronotype]);
+
   const [sawIntro, setSawIntro] = useState(() => !!localStorage.getItem("obs_saw_intro"));
   // Hooks must run on every render — keep these above the onboarding early-returns,
   // or the hook count changes when a user crosses from onboarding into the app.
@@ -1323,8 +1406,39 @@ function Shell() {
     if (!sawIntro) {
       return <IntroSlides onDone={() => { localStorage.setItem("obs_saw_intro","1"); setSawIntro(true); }} />;
     }
-    return <OnboardingModal onComplete={name => {
+    return <OnboardingModal onComplete={(name, holding) => {
       const p = createAndApply(name);
+      // The three lines become real tasks immediately, so the first Home is
+      // about this person rather than a demo. Same header-only auth the
+      // starter-habit seed uses, and the same rule: a failed save must never
+      // strand someone outside the app they just signed up for.
+      //
+      // THROUGH parseWhen, because the screen promises "the date is read from
+      // your words" and a raw POST does not read anything. Verified the hard
+      // way: the first version of this shipped "Finish the grant application
+      // Friday" as a title with Friday still in it, on the one screen whose
+      // whole job is to make the next screen feel like it knows you.
+      // UNDATED STAYS UNDATED HERE, which is deliberately unlike Home's capture.
+      // That one defaults a dateless line to today, because a line typed into
+      // today's page is about today. These three are the answer to "what are
+      // you holding" — a question about the whole load, not about this
+      // afternoon — so dating them all today would put three invented
+      // deadlines on the first screen someone ever sees.
+      const todayStr = localDateStr();
+      for (const raw of holding ?? []) {
+        let title = raw, dueDate: string | undefined;
+        try {
+          const parsed = parseWhen(raw, todayStr);
+          if (parsed.title.trim()) title = parsed.title;
+          if (parsed.dueDate) dueDate = parsed.dueDate;
+        } catch { /* a date guess must never block the add */ }
+        fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-tester-id": p.testerId },
+          body: JSON.stringify(dueDate ? { title, dueDate } : { title }),
+        }).catch(() => {});
+      }
+      logEvent("onboard_complete", { held: (holding ?? []).length });
       // Seed the two starter dailies so the first screen isn't empty. Server-
       // side and idempotent (only into an account with zero habits), and
       // fire-and-forget — a failed seed must never block someone from getting
@@ -1337,8 +1451,30 @@ function Shell() {
     return (
       <OnboardingModal
         existingTesterId={testerId}
-        skipNameStep={true}
+        startAt="birth"
         onComplete={() => { localStorage.setItem("obs_birth_skipped", "1"); setShowBirthPrompt(false); }}
+      />
+    );
+  }
+
+  // ── THE CHRONOTYPE ASK, AT THE MOMENT IT MEANS SOMETHING ─────────────────
+  // It used to be the last screen of a first run, asked of someone who had not
+  // yet seen Compass place anything. Now it waits for Plan, which is where
+  // scheduling first needs to know when you are actually awake — the one room
+  // where the answer changes the output rather than filling a field.
+  //
+  // Asked once. The deferral is recorded, same rule as the chart: a question
+  // removed from the first run that re-arms every load has not been moved, it
+  // has been relocated to somewhere more annoying.
+  if (showChronotypePrompt) {
+    return (
+      <OnboardingModal
+        existingTesterId={testerId}
+        startAt="chronotype"
+        onComplete={() => {
+          try { localStorage.setItem("obs_chronotype_asked", "1"); } catch { /* private mode */ }
+          setShowChronotypePrompt(false);
+        }}
       />
     );
   }
