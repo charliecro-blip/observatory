@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Disclosure } from "@/components/primitives";
 import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -570,129 +571,141 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               </div>
             </div>
 
-            {/* THE TIMING IS SECONDARY TO DOING THE THING (owner, 2026-08-13).
-                Everything below this line is optional and says so once, at the
-                top, rather than leaving a reader to guess whether a habit is
-                incomplete without an element, a phase and a planet. A habit
-                with none of it set is a perfectly good habit; the sky just
-                has less to say about when it suits. */}
-            <div style={{
-              fontSize:10.5, color:"var(--color-muted)", lineHeight:1.5,
-              borderTop:"1px solid var(--color-border)", paddingTop:9, marginTop:4, marginBottom:8,
-            }}>
-              <b style={{fontWeight:600}}>Timing — all optional.</b> Skip it and the habit works exactly the same; fill any of it in and Compass can suggest when it fits.
-            </div>
+            {/* THE WHOLE SKY HALF IS NOW BEHIND ONE LINE.
+                It already said it was optional, in a paragraph at the top of
+                itself — which is a fair thing to write and a poor thing to
+                need. Favored elements, phases, planets, the window type and
+                the planet link are five grids of chips that opened alongside
+                a text box asking what the habit is called, so the form's
+                first impression was its deepest feature.
 
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best elements</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                {ELEMENTS.map(el => (
-                  <button key={el} onClick={()=>toggleEl(el)} style={{
-                    fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
-                    borderColor:form.favoredElements.includes(el)?elementColor(el):"#d8d2ca",
-                    background:form.favoredElements.includes(el)?`${elementColor(el)}20`:"transparent",
-                    color:form.favoredElements.includes(el)?elementColor(el):"var(--color-muted)",
-                  }}>{el}</button>
-                ))}
+                Name it, say how often, save. The correspondences are one tap
+                down, unchanged, for the day someone wants them. */}
+            <Disclosure label="Tune when this fits">
+              {/* THE TIMING IS SECONDARY TO DOING THE THING (owner, 2026-08-13).
+                  Everything below this line is optional and says so once, at the
+                  top, rather than leaving a reader to guess whether a habit is
+                  incomplete without an element, a phase and a planet. A habit
+                  with none of it set is a perfectly good habit; the sky just
+                  has less to say about when it suits. */}
+              <div style={{
+                fontSize:10.5, color:"var(--color-muted)", lineHeight:1.5,
+                borderTop:"1px solid var(--color-border)", paddingTop:9, marginTop:4, marginBottom:8,
+              }}>
+                <b style={{fontWeight:600}}>Timing — all optional.</b> Skip it and the habit works exactly the same; fill any of it in and Compass can suggest when it fits.
               </div>
-            </div>
 
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best moon phase</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                {PHASES.map(p => (
-                  <button key={p.key} onClick={()=>togglePhase(p.key)} style={{
-                    fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
-                    borderColor:form.favoredPhases.includes(p.key)?PLANET_COLORS.Moon:"#d8d2ca",
-                    background:form.favoredPhases.includes(p.key)?"#7080a020":"transparent",
-                    color:form.favoredPhases.includes(p.key)?"#50608a":"var(--color-muted)",
-                  }}>{p.label}</button>
-                ))}
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best elements</div>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {ELEMENTS.map(el => (
+                    <button key={el} onClick={()=>toggleEl(el)} style={{
+                      fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
+                      borderColor:form.favoredElements.includes(el)?elementColor(el):"#d8d2ca",
+                      background:form.favoredElements.includes(el)?`${elementColor(el)}20`:"transparent",
+                      color:form.favoredElements.includes(el)?elementColor(el):"var(--color-muted)",
+                    }}>{el}</button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Planet linking — the merged practices intelligence: a habit can
-                declare the planet(s) it serves, so its own hour lifts it. */}
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Supported by planet</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                {PLANET_CHOICES.map(p => {
-                  const on = form.favoredPlanets.includes(p);
-                  return (
-                    <button key={p} type="button" onClick={()=>togglePlanet(p)} style={{
-                      display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:14,cursor:"pointer",fontSize:11,
-                      border:on?"1.5px solid #7a6cae":"1px solid var(--color-border)",
-                      background:on?"#7a6cae18":"var(--color-card-2)",color:on?"#6a5c9e":"var(--color-muted)",fontWeight:on?600:400,
-                    }}><Glyph name={p} size={12} bg="var(--color-card-2)" tint={on} style={on?undefined:{color:"var(--text-3)"}} />{p}</button>
-                  );
-                })}
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best moon phase</div>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {PHASES.map(p => (
+                    <button key={p.key} onClick={()=>togglePhase(p.key)} style={{
+                      fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
+                      borderColor:form.favoredPhases.includes(p.key)?PLANET_COLORS.Moon:"#d8d2ca",
+                      background:form.favoredPhases.includes(p.key)?"#7080a020":"transparent",
+                      color:form.favoredPhases.includes(p.key)?"#50608a":"var(--color-muted)",
+                    }}>{p.label}</button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* MULTIPLE KINDS, because a practice can be more than one thing —
-                a morning sit is recovery and study at once (owner asked twice:
-                "i also want to be able to select multiple of them").
-                Stored comma-separated in the same column, which is the
-                convention the sibling fields already use (favoredElements,
-                favoredPhases), so this needs no migration.
-
-                THIS FIELD NOW DRIVES TIMING (2026-08-14). It sits under the
-                "Timing — all optional" heading above, beside three fields that
-                always did, and for months it was the only one nothing read:
-                choosing "deep work" looked like telling Compass when to want
-                the habit and told it nothing. Each kind maps to an element via
-                timingTier.WINDOW_ELEMENT, scored as a weaker signal than an
-                element chosen outright — see lib/habitTiming.ts. */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Kind of work</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                {WINDOW_TYPES.map(t => {
-                  const chosen = form.bestWindowType ? form.bestWindowType.split(",").filter(Boolean) : [];
-                  const on = chosen.includes(t);
-                  return (
-                    <button key={t} onClick={() => setForm(f => {
-                      const cur = f.bestWindowType ? f.bestWindowType.split(",").filter(Boolean) : [];
-                      const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
-                      return { ...f, bestWindowType: next.join(",") };
-                    })} style={{
-                      fontSize:10,padding:"3px 9px",borderRadius:10,cursor:"pointer",
-                      border: on ? "1px solid #5a6a8a" : "1px solid var(--color-border)",
-                      background: on ? "#5a6a8a14" : "transparent",
-                      color: on ? "#4a5a7a" : "var(--color-muted)", fontWeight: on ? 600 : 400,
-                    }}>{WINDOW_LABELS[t]}</button>
-                  );
-                })}
+              {/* Planet linking — the merged practices intelligence: a habit can
+                  declare the planet(s) it serves, so its own hour lifts it. */}
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Supported by planet</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {PLANET_CHOICES.map(p => {
+                    const on = form.favoredPlanets.includes(p);
+                    return (
+                      <button key={p} type="button" onClick={()=>togglePlanet(p)} style={{
+                        display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:14,cursor:"pointer",fontSize:11,
+                        border:on?"1.5px solid #7a6cae":"1px solid var(--color-border)",
+                        background:on?"#7a6cae18":"var(--color-card-2)",color:on?"#6a5c9e":"var(--color-muted)",fontWeight:on?600:400,
+                      }}><Glyph name={p} size={12} bg="var(--color-card-2)" tint={on} style={on?undefined:{color:"var(--text-3)"}} />{p}</button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            {(goalsList.length > 0 || projectsList.length > 0) && (
-              <div style={{display:"flex",gap:8,marginBottom:8}}>
-                {goalsList.length > 0 && (
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:9.5,color:"var(--text-3)",marginBottom:4}}>Counts toward {newGoalIds.length === 0 ? "no star yet" : newGoalIds.length === 1 ? "one star" : `${newGoalIds.length} stars`}</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {goalsList.map(g => {
-                        const on = newGoalIds.includes(g.id);
-                        return (
-                          <button key={g.id} type="button" onClick={()=>setNewGoalIds(on ? newGoalIds.filter(x=>x!==g.id) : [...newGoalIds, g.id])}
-                            aria-pressed={on}
-                            style={{fontSize:10.5,padding:"3px 9px",borderRadius:11,cursor:"pointer",
-                              border:`1px solid ${on ? "var(--color-primary)" : "var(--color-border)"}`,
-                              background: on ? "var(--color-primary)" : "var(--color-card-2)",
-                              color: on ? "#fff" : "var(--color-muted)"}}>★ {g.title}</button>
-                        );
-                      })}
+
+              {/* MULTIPLE KINDS, because a practice can be more than one thing —
+                  a morning sit is recovery and study at once (owner asked twice:
+                  "i also want to be able to select multiple of them").
+                  Stored comma-separated in the same column, which is the
+                  convention the sibling fields already use (favoredElements,
+                  favoredPhases), so this needs no migration.
+
+                  THIS FIELD NOW DRIVES TIMING (2026-08-14). It sits under the
+                  "Timing — all optional" heading above, beside three fields that
+                  always did, and for months it was the only one nothing read:
+                  choosing "deep work" looked like telling Compass when to want
+                  the habit and told it nothing. Each kind maps to an element via
+                  timingTier.WINDOW_ELEMENT, scored as a weaker signal than an
+                  element chosen outright — see lib/habitTiming.ts. */}
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Kind of work</div>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {WINDOW_TYPES.map(t => {
+                    const chosen = form.bestWindowType ? form.bestWindowType.split(",").filter(Boolean) : [];
+                    const on = chosen.includes(t);
+                    return (
+                      <button key={t} onClick={() => setForm(f => {
+                        const cur = f.bestWindowType ? f.bestWindowType.split(",").filter(Boolean) : [];
+                        const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
+                        return { ...f, bestWindowType: next.join(",") };
+                      })} style={{
+                        fontSize:10,padding:"3px 9px",borderRadius:10,cursor:"pointer",
+                        border: on ? "1px solid #5a6a8a" : "1px solid var(--color-border)",
+                        background: on ? "#5a6a8a14" : "transparent",
+                        color: on ? "#4a5a7a" : "var(--color-muted)", fontWeight: on ? 600 : 400,
+                      }}>{WINDOW_LABELS[t]}</button>
+                    );
+                  })}
+                </div>
+              </div>
+              {(goalsList.length > 0 || projectsList.length > 0) && (
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                  {goalsList.length > 0 && (
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:9.5,color:"var(--text-3)",marginBottom:4}}>Counts toward {newGoalIds.length === 0 ? "no star yet" : newGoalIds.length === 1 ? "one star" : `${newGoalIds.length} stars`}</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {goalsList.map(g => {
+                          const on = newGoalIds.includes(g.id);
+                          return (
+                            <button key={g.id} type="button" onClick={()=>setNewGoalIds(on ? newGoalIds.filter(x=>x!==g.id) : [...newGoalIds, g.id])}
+                              aria-pressed={on}
+                              style={{fontSize:10.5,padding:"3px 9px",borderRadius:11,cursor:"pointer",
+                                border:`1px solid ${on ? "var(--color-primary)" : "var(--color-border)"}`,
+                                background: on ? "var(--color-primary)" : "var(--color-card-2)",
+                                color: on ? "#fff" : "var(--color-muted)"}}>★ {g.title}</button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {projectsList.length > 0 && (
-                  <select value={newProjectId} onChange={e=>setNewProjectId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                    <option value="">Project: none</option>
-                    {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
+                  )}
+                  {projectsList.length > 0 && (
+                    <select value={newProjectId} onChange={e=>setNewProjectId(e.target.value ? Number(e.target.value) : "")}
+                      style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                      <option value="">Project: none</option>
+                      {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
+            </Disclosure>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <input value={form.minimumViable} onChange={e=>setForm(f=>({...f,minimumViable:e.target.value}))}
                 placeholder="Minimum viable (e.g. 5 min walk)…"

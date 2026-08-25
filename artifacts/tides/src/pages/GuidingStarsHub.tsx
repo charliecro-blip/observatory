@@ -905,7 +905,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-foreground)" }}>{g.title}</span>
+                      <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--color-foreground)" }}>{g.title}</span>
                       {flagged && (
                         <span title="You marked this for a second look at the new moon" style={{
                           fontSize: 9, padding: "2px 7px", borderRadius: 999, whiteSpace: "nowrap",
@@ -917,6 +917,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 9, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;
                       })()}
                       {info && <span style={{ fontSize: 9, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
+                    </div>
+                    {/* HOLDING or MOVING, as a word, under the name.
+                        The distinction lives in `endsOn` — null is something
+                        you inhabit, a date is something that finishes — and it
+                        was legible only as a "finishes 12 Nov" chip further
+                        down, which reads as a property of the card rather than
+                        as what kind of thing this is. It is the most useful
+                        thing a star can tell you at a glance, so it says it. */}
+                    <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginTop: 3 }}>
+                      {(g as any).endsOn ? "Moving" : "Holding"}
                     </div>
                     {g.description && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>{g.description}</div>}
                     {g.anchorKind && g.anchorHouse != null && (

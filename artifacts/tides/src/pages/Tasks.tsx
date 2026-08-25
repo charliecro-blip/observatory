@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Row as Row_, Disclosure } from "@/components/primitives";
 import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -313,65 +314,74 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
               placeholder="Task title…"
               style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,marginBottom:8,background: "var(--color-card-2)"}}
             />
-            <div style={{display:"flex",gap:8,marginBottom:6}}>
-              <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}
-              />
-              <select value={newWindow} onChange={e => setNewWindow(e.target.value)}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                <option value="">Best time: any</option>
-                {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
-              </select>
-            </div>
-            {/* How long + how much energy — the scheduler fits a block of this
-                length into a window, and "quick + low" tasks surface on flat days. */}
-            <div style={{display:"flex",gap:8,marginBottom:6}}>
-              <select value={newEstMinutes} onChange={e => setNewEstMinutes(e.target.value ? Number(e.target.value) : "")}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                <option value="">Takes: any length</option>
-                <option value={15}>~15 min</option>
-                <option value={30}>~30 min</option>
-                <option value={60}>~1 hour</option>
-                <option value={120}>~2 hours</option>
-                <option value={240}>half a day</option>
-              </select>
-              <select value={newEnergy} onChange={e => setNewEnergy(e.target.value as ""|"low"|"medium"|"high")}
-                style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                <option value="">Energy: any</option>
-                <option value="low">Low energy</option>
-                <option value="medium">Medium energy</option>
-                <option value="high">High energy</option>
-              </select>
-            </div>
-            {(goalsList.length > 0 || projectsList.length > 0) && (
+            {/* EVERYTHING BUT THE TITLE IS OPTIONAL, AND NOW FOLDED.
+                This form opened with a date, a best-window select, a length,
+                an energy band, a star, a project and a window link — seven
+                controls in the way of typing "call the dentist", which is why
+                the one-line capture on Home is where tasks actually get made.
+                The fields are unchanged and one tap away. What changed is
+                that the form asks your question before it asks the schema. */}
+            <Disclosure label="Details…">
               <div style={{display:"flex",gap:8,marginBottom:6}}>
-                {goalsList.length > 0 && (
-                  <select value={newGoalId} onChange={e => setNewGoalId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                    <option value="">Guiding Star: none</option>
-                    {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-                  </select>
-                )}
-                {projectsList.length > 0 && (
-                  <select value={newProjectId} onChange={e => setNewProjectId(e.target.value ? Number(e.target.value) : "")}
-                    style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                    <option value="">Project: none</option>
-                    {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
-            {upcomingWindows.length > 0 && (
-              <div style={{marginBottom:8}}>
-                <select value={newPlanWindow} onChange={e => setNewPlanWindow(e.target.value ? Number(e.target.value) : "")}
-                  style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
-                  <option value="">Link to calendar block: none</option>
-                  {upcomingWindows.slice(0,10).map(w => (
-                    <option key={w.id} value={w.id}>{w.title} · {w.startTime.slice(0,16).replace("T"," ")}</option>
-                  ))}
+                <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
+                  style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}
+                />
+                <select value={newWindow} onChange={e => setNewWindow(e.target.value)}
+                  style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                  <option value="">Best time: any</option>
+                  {WINDOW_TYPES.map(t => <option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
                 </select>
               </div>
-            )}
+              {/* How long + how much energy — the scheduler fits a block of this
+                  length into a window, and "quick + low" tasks surface on flat days. */}
+              <div style={{display:"flex",gap:8,marginBottom:6}}>
+                <select value={newEstMinutes} onChange={e => setNewEstMinutes(e.target.value ? Number(e.target.value) : "")}
+                  style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                  <option value="">Takes: any length</option>
+                  <option value={15}>~15 min</option>
+                  <option value={30}>~30 min</option>
+                  <option value={60}>~1 hour</option>
+                  <option value={120}>~2 hours</option>
+                  <option value={240}>half a day</option>
+                </select>
+                <select value={newEnergy} onChange={e => setNewEnergy(e.target.value as ""|"low"|"medium"|"high")}
+                  style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                  <option value="">Energy: any</option>
+                  <option value="low">Low energy</option>
+                  <option value="medium">Medium energy</option>
+                  <option value="high">High energy</option>
+                </select>
+              </div>
+              {(goalsList.length > 0 || projectsList.length > 0) && (
+                <div style={{display:"flex",gap:8,marginBottom:6}}>
+                  {goalsList.length > 0 && (
+                    <select value={newGoalId} onChange={e => setNewGoalId(e.target.value ? Number(e.target.value) : "")}
+                      style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                      <option value="">Guiding Star: none</option>
+                      {goalsList.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                    </select>
+                  )}
+                  {projectsList.length > 0 && (
+                    <select value={newProjectId} onChange={e => setNewProjectId(e.target.value ? Number(e.target.value) : "")}
+                      style={{flex:1,padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                      <option value="">Project: none</option>
+                      {projectsList.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
+              {upcomingWindows.length > 0 && (
+                <div style={{marginBottom:8}}>
+                  <select value={newPlanWindow} onChange={e => setNewPlanWindow(e.target.value ? Number(e.target.value) : "")}
+                    style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid var(--color-border)",fontSize:11,color:"var(--text-2)",background: "var(--color-card-2)"}}>
+                    <option value="">Link to calendar block: none</option>
+                    {upcomingWindows.slice(0,10).map(w => (
+                      <option key={w.id} value={w.id}>{w.title} · {w.startTime.slice(0,16).replace("T"," ")}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </Disclosure>
             <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
               {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
               <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
@@ -435,59 +445,100 @@ function Sect({ label, children, accent, color, muted }: any) {
   );
 }
 
+/**
+ * ONE TASK, AS A LINE.
+ *
+ * This row used to render up to EIGHT chips at 9px — a touch trail, where it
+ * carried from, its due date, an estimate, an energy band, its star, its
+ * project, whether it held a block, and which window type suited it — plus a
+ * schedule button and a delete. Every one of those is a real field, and
+ * together they turned a to-do list into a rendering of the schema.
+ *
+ * The line now says what you need to decide whether to do it:
+ *
+ *     ○  Revise the formulas notes
+ *        Today · carried from Mon
+ *
+ * Everything else is one tap away, on the row itself. Nothing was removed from
+ * the model; what changed is which half of it greets you.
+ *
+ * The delete stays hidden until the row is hovered or focused. Permanent
+ * furniture on every line is most of what makes a list look like a database,
+ * and it is reachable from the keyboard because focus reveals it too.
+ */
 function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule, highlight, dim }: {
-  task:Task; goal?:GoalLite; project?:ProjectLite; today:string; touch?:TouchTrail;
-  onToggle:()=>void; onDelete:()=>void; onSchedule?:()=>void; highlight?:boolean; dim?:boolean;
+  task: Task; goal?: GoalLite; project?: ProjectLite; today: string; touch?: TouchTrail;
+  onToggle: () => void; onDelete: () => void; onSchedule?: () => void;
+  highlight?: boolean; dim?: boolean;
 }) {
-  const isDone = task.done === "true";
-  const wc = task.bestWindowType ? WINDOW_COLORS[task.bestWindowType] : undefined;
+  const [open, setOpen] = React.useState(false);
+  const [hot, setHot] = React.useState(false);
+  const isDone = String(task.done) === "true";
   const goalColor = goal?.element ? elementColor(goal.element) : undefined;
+
+  // The meta line: at most the three facts that change what you would do.
+  // Due date first because it is the one that decides today; the carry note
+  // second because "this is older than it looks" is the other thing worth
+  // knowing before you skip it again.
+  const bits: string[] = [];
+  if (task.dueDate) bits.push(task.dueDate === today ? "Today" : task.dueDate);
+  const carried = carriedLabel(task, today);
+  if (carried && !isDone) bits.push(`carried from ${carried.replace(/^from /, "")}`);
+  if (task.planningWindowId && !isDone) bits.push("has a block");
+
   return (
-    <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,border:`1px solid ${highlight?"#c0d8b0":"#e8e4de"}`,background:highlight?"#f5faf2":"var(--color-card-2)",opacity:dim?0.5:1}}>
-      <button onClick={onToggle} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${isDone?"#80b870":"#c0bab0"}`,background:isDone?"#80b870":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#ffffff"}}>
-        {isDone?"✓":""}
-      </button>
-      <div style={{flex:1,minWidth:0,fontSize:12,color:isDone?"var(--text-3)":"var(--color-foreground)",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</div>
-      {/* The touch trail — partial progress as dated record, never a gauge.
-          A touched task's checkbox is exactly as open as any other: touches
-          say "worked on", and only `done` says done. */}
-      {!isDone && touchLine(touch) && (
-        <div title={touch!.minutes > 0 ? `${touch!.minutes} minutes logged` : undefined}
-          style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0,whiteSpace:"nowrap"}}>
-          {touchLine(touch)}
+    <div onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)} onFocus={() => setHot(true)} onBlur={() => setHot(false)}>
+      <Row_
+        muted={dim || isDone}
+        mark={
+          <button onClick={onToggle} aria-pressed={isDone} aria-label={`${isDone ? "Reopen" : "Complete"} ${task.title}`}
+            style={{
+              width: 24, height: 24, margin: -4, padding: 0, border: "none", background: "none",
+              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+            }}>
+            <span style={{
+              width: 15, height: 15, borderRadius: 4,
+              border: isDone ? "none" : `1.5px solid ${highlight ? "var(--color-quality-good)" : "var(--color-border)"}`,
+              background: isDone ? "var(--color-quality-good)" : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#ffffff", fontSize: 9, lineHeight: 1,
+            }}>{isDone ? "✓" : ""}</span>
+          </button>
+        }
+        title={<span style={{ textDecoration: isDone ? "line-through" : "none" }}>{task.title}</span>}
+        meta={bits.length ? bits.join(" · ") : undefined}
+        onClick={() => setOpen(v => !v)}
+        trailing={
+          <>
+            {onSchedule && !task.planningWindowId && !isDone && (
+              <button onClick={e => { e.stopPropagation(); onSchedule(); }}
+                style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "1px solid var(--color-border)", background: "transparent", color: "var(--color-primary)", cursor: "pointer" }}>
+                Find a time
+              </button>
+            )}
+            <button onClick={e => { e.stopPropagation(); onDelete(); }} aria-label={`Delete ${task.title}`}
+              style={{
+                fontSize: 12, color: "var(--text-3)", background: "none", border: "none",
+                cursor: "pointer", padding: "0 2px",
+                visibility: hot ? "visible" : "hidden",
+              }}>✕</button>
+          </>
+        }
+      />
+      {open && (
+        <div style={{ padding: "2px 0 8px 34px", display: "flex", flexWrap: "wrap", gap: "4px 12px", fontSize: 11.5, color: "var(--text-3)" }}>
+          {task.estMinutes ? <span>about {fmtEst(task.estMinutes)}</span> : <span>no length set</span>}
+          {task.energy && ENERGY_META[task.energy] && <span>{ENERGY_META[task.energy].label.toLowerCase()} energy</span>}
+          {goal && <span style={{ color: goalColor ?? "var(--color-muted)" }}>toward {goal.title}</span>}
+          {project && <span>part of {project.title}</span>}
+          {task.bestWindowType && <span>suits {WINDOW_LABELS[task.bestWindowType]}</span>}
+          {touch && <span>{touchLine(touch)}</span>}
+          {/* No "nothing recorded" fallback: "no length set" above is always
+              printed when there is no estimate, so the empty case already says
+              something true. Both at once read as the row contradicting
+              itself, which is what it did on the first run of this. */}
         </div>
       )}
-      {/* Auto-rollover moved this here; say where it came from rather than
-          letting the date silently read as if it were always due today. */}
-      {!isDone && carriedLabel(task, today) && (
-        <div title={`Originally due ${task.originalDueDate}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#c0802014",color:"#a07830",fontWeight:600,flexShrink:0}}>↻ {carriedLabel(task, today)}</div>
-      )}
-      {task.dueDate && task.dueDate !== today && !isDone && (
-        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"var(--color-rail)",color:"var(--text-3)",fontWeight:600,flexShrink:0}}>{task.dueDate}</div>
-      )}
-      {task.estMinutes && !isDone && (
-        <div title={`About ${task.estMinutes} minutes`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#eef0f2",color:"var(--text-2)",fontWeight:600,flexShrink:0}}>◴ {fmtEst(task.estMinutes)}</div>
-      )}
-      {task.energy && ENERGY_META[task.energy] && !isDone && (
-        <div title={`${task.energy} energy`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:ENERGY_META[task.energy].bg,color:ENERGY_META[task.energy].fg,fontWeight:600,flexShrink:0}}>{ENERGY_META[task.energy].label}</div>
-      )}
-      {goal && !isDone && (
-        <div title={`Goal: ${goal.title}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:`${goalColor ?? "#8a8278"}18`,color:goalColor ?? "var(--color-muted)",fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>★ {goal.title}</div>
-      )}
-      {project && !isDone && (
-        <div title={`Project: ${project.title}`} style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#3a5a8018",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>◆ {project.title}</div>
-      )}
-      {task.planningWindowId && !isDone ? (
-        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:"#e8f0f8",color:ELEMENT_COLORS.water,fontWeight:600,flexShrink:0}}>▦ block</div>
-      ) : (!isDone && onSchedule && (
-        // Schedule an EXISTING task — the sky picks a good time (owner: 'if a
-        // task exists, I should be encouraged to schedule it').
-        <button onClick={onSchedule} title="Find a good time for this" style={{fontSize:9,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
-      ))}
-      {task.bestWindowType && !isDone && (
-        <div style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:`${wc}20`,color:wc,fontWeight:600,flexShrink:0}}>{WINDOW_LABELS[task.bestWindowType]}</div>
-      )}
-      <button onClick={onDelete} aria-label="Delete task" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
     </div>
   );
 }

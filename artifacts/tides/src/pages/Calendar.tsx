@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Disclosure } from "@/components/primitives";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
@@ -1527,22 +1528,31 @@ export default function Calendar({ testerId, now, lat, lon }: {
 
         <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#ffffff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
 
-        {calView==="agenda" && !pageQuiet && (
-          <>
-            <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"var(--text-3)",cursor:"pointer" }}>Planetary hours</button>
-            <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"var(--text-3)",cursor:"pointer" }}>Crossings</button>
-          </>
-        )}
+        {/* ONE SKY DOOR, NOT FOUR LOOSE SWITCHES.
+            Planetary hours, crossings, simple-vs-detailed and sign names sat
+            in the header as permanent chips at 9px, so a calendar announced
+            itself as an astrological instrument before it looked like a
+            calendar. They are the same switches, behind the word that says
+            what they are all about. Default view: dates, real commitments,
+            slow sky. Details on request. */}
+        <Disclosure label="Sky">
+          {calView==="agenda" && !pageQuiet && (
+            <>
+              <button onClick={()=>setAgHours(v=>!v)} title="Show every planetary hour" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agHours?"#fff8f0":"var(--color-background)",color:agHours?"#b07020":"var(--text-3)",cursor:"pointer" }}>Planetary hours</button>
+              <button onClick={()=>setAgCrossings(v=>!v)} title="Show angle crossings (advanced)" style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:agCrossings?"#fff8f0":"var(--color-background)",color:agCrossings?"#b07020":"var(--text-3)",cursor:"pointer" }}>Crossings</button>
+            </>
+          )}
 
-        {calView==="month" && (
-          <>
-            {!pageQuiet && (
-              <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"var(--color-muted)":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
-            )}
-            {!pageQuiet && <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"var(--text-3)",cursor:"pointer" }}>Signs</button>}
-            <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"var(--color-muted)",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
-          </>
-        )}
+          {calView==="month" && (
+            <>
+              {!pageQuiet && (
+                <button onClick={()=>setMonthSimple(v=>!v)} title={monthSimple?"Show aspect times and detail":"Show just the essentials"} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:monthSimple?"var(--color-background)":"#fff8f0",color:monthSimple?"var(--color-muted)":"#b07020",cursor:"pointer" }}>{monthSimple?"Simple":"Detailed"}</button>
+              )}
+              {!pageQuiet && <button onClick={()=>setShowSignNames(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showSignNames?"#fff8f0":"var(--color-background)",color:showSignNames?"#b07020":"var(--text-3)",cursor:"pointer" }}>Signs</button>}
+              <button onClick={()=>setShowDetail(v=>!v)} style={{ fontSize:9,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:showDetail?"var(--color-background)":"transparent",color:"var(--color-muted)",cursor:"pointer" }}>{showDetail?"Hide panel":"Show panel"}</button>
+            </>
+          )}
+        </Disclosure>
 
         {/* THE STUDIO — shareable day/week/lunation cards, inherited from
             Today's hero as it retires (2026-08-19). Calendar is where the

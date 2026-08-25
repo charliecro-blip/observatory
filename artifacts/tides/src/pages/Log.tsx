@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { Disclosure } from "@/components/primitives";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
@@ -240,74 +241,85 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
         flex: isMobile ? 1 : undefined,
       }}
     >
-      {/* Date range selector */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>
-          Lookback
+      {/* BROWSING A DIARY IS NOT ANALYSING ONE.
+          Four lookback pills, a date jump and a nine-option planetary-flavour
+          select sat above the days themselves — the apparatus of pattern
+          analysis, permanently in front of the thing a person came to read.
+          "Show me my saturnine days" is a real question and a rare one; "what
+          happened last Tuesday" is the ordinary one, and it was answered
+          underneath a control panel.
+
+          Same controls, one line down. The days lead. */}
+      <Disclosure label="Find and compare days">
+        {/* Date range selector */}
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>
+            Lookback
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[7, 14, 30, 90].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDateRange(d)}
+                style={{
+                  flex: 1,
+                  padding: "6px 0",
+                  fontSize: 11,
+                  borderRadius: 6,
+                  border: dateRange === d ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                  // A real theme token, not an alpha-suffixed var:
+                  // `var(--color-primary)20` is not a colour and fails SILENTLY
+                  // to transparent, so the selected pill had no background at
+                  // all — the documented alpha-suffix trap, again. And a fixed
+                  // hex tint is no better here, because --color-primary flips
+                  // from near-black to near-white across themes; card-2 is the
+                  // one fill that reads as "selected" in both.
+                  background: dateRange === d ? "var(--color-card-2)" : "transparent",
+                  color: dateRange === d ? "var(--color-primary)" : "var(--color-muted)",
+                  cursor: "pointer",
+                  fontWeight: dateRange === d ? 600 : 400,
+                }}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+          {/* Jump to any day — the list only shows days with entries, but every
+              day is reachable for hindsight reflection. */}
+          <input
+            type="date"
+            max={endDate}
+            value={selectedDate ?? ""}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            style={{
+              width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
+              borderRadius: 6, border: "1px solid var(--color-border)",
+              background: "var(--color-card-2)", color: "var(--color-foreground)",
+              fontSize: 11, }}
+          />
+          {/* Readback-by-flavor — "show me my saturnine days" */}
+          <select
+            value={flavor}
+            onChange={(e) => setFlavor(e.target.value)}
+            style={{
+              width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
+              borderRadius: 6, border: flavor ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+              background: "var(--color-card-2)", color: flavor ? "var(--color-primary)" : "var(--color-foreground)",
+              fontSize: 11, fontWeight: flavor ? 600 : 400,
+            }}
+          >
+            <option value="">All days</option>
+            {/* No glyph here: <option> content is plain text, so the aria-hidden
+                wrapper that hides a decorative symbol everywhere else in the app
+                is not available. The flavor word carries it. */}
+            {FLAVOR_PLANETS.map((p) => (
+              <option key={p} value={p}>
+                {flavorWord(p)} days · Moon × {p}
+              </option>
+            ))}
+          </select>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[7, 14, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDateRange(d)}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                fontSize: 11,
-                borderRadius: 6,
-                border: dateRange === d ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
-                // A real theme token, not an alpha-suffixed var:
-                // `var(--color-primary)20` is not a colour and fails SILENTLY
-                // to transparent, so the selected pill had no background at
-                // all — the documented alpha-suffix trap, again. And a fixed
-                // hex tint is no better here, because --color-primary flips
-                // from near-black to near-white across themes; card-2 is the
-                // one fill that reads as "selected" in both.
-                background: dateRange === d ? "var(--color-card-2)" : "transparent",
-                color: dateRange === d ? "var(--color-primary)" : "var(--color-muted)",
-                cursor: "pointer",
-                fontWeight: dateRange === d ? 600 : 400,
-              }}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-        {/* Jump to any day — the list only shows days with entries, but every
-            day is reachable for hindsight reflection. */}
-        <input
-          type="date"
-          max={endDate}
-          value={selectedDate ?? ""}
-          onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-          style={{
-            width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
-            borderRadius: 6, border: "1px solid var(--color-border)",
-            background: "var(--color-card-2)", color: "var(--color-foreground)",
-            fontSize: 11, }}
-        />
-        {/* Readback-by-flavor — "show me my saturnine days" */}
-        <select
-          value={flavor}
-          onChange={(e) => setFlavor(e.target.value)}
-          style={{
-            width: "100%", boxSizing: "border-box", marginTop: 8, padding: "6px 10px",
-            borderRadius: 6, border: flavor ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
-            background: "var(--color-card-2)", color: flavor ? "var(--color-primary)" : "var(--color-foreground)",
-            fontSize: 11, fontWeight: flavor ? 600 : 400,
-          }}
-        >
-          <option value="">All days</option>
-          {/* No glyph here: <option> content is plain text, so the aria-hidden
-              wrapper that hides a decorative symbol everywhere else in the app
-              is not available. The flavor word carries it. */}
-          {FLAVOR_PLANETS.map((p) => (
-            <option key={p} value={p}>
-              {flavorWord(p)} days · Moon × {p}
-            </option>
-          ))}
-        </select>
-      </div>
+      </Disclosure>
 
       {/* Timeline list */}
       <div style={{ flex: 1, overflow: "auto", padding: "0 16px", paddingTop: 12 }}>
