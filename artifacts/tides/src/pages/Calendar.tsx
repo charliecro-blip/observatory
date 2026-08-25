@@ -486,7 +486,7 @@ function usePlanetaryHours(dates: string[], lat: number, lon: number) {
   });
 }
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay }: {
   dates: string[];
   dataMap: Map<string, WeekDay>;
   windowsMap: Map<string, PlanningWindow[]>;
@@ -498,6 +498,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
   today: string;
   lat: number; lon: number;
   isDay: boolean;
+  /** Tapping a day's header in the week narrows to that day — the way
+   *  into the hour ladder now that it is not a tab. Absent in day view,
+   *  where there is nothing to narrow to. */
+  onZoomDay?: (date: string) => void;
   onAddEvent: (date: string, hour: number) => void;
   onDeleteWindow: (id: number) => void;
 }) {
@@ -603,8 +607,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                 background:isToday?`${ec}18`:"var(--color-card-2)",
                 position:"sticky", top:0, zIndex:20,
               }}>
-                {/* Day + date */}
-                <div style={{ height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
+                {/* Day + date — and, in the week, the door to that day's hours. */}
+                <div onClick={onZoomDay ? () => onZoomDay(dateStr) : undefined}
+                  title={onZoomDay ? "Open this day's hours" : undefined}
+                  style={{ cursor: onZoomDay ? "pointer" : "default", height:HEADER_H,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"4px 0" }}>
                   <div style={{ fontSize:isDay?10:9,color:isToday?ec:"var(--text-3)",textTransform:"uppercase",fontWeight:600,letterSpacing:"0.3px" }}>{dayLabel}</div>
                   <div style={{
                     fontSize:isDay?18:15,fontWeight:700,color:isToday?"#ffffff":"var(--color-foreground)",lineHeight:1,
@@ -1515,7 +1521,13 @@ export default function Calendar({ testerId, now, lat, lon }: {
         <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
-          {(["agenda","day","week","month","almanac"] as CalView[]).map(v=>(
+          {/* FOUR VIEWS, NOT FIVE. "Day" is not deleted — it is the only place
+              that draws the full planetary-hour ladder, with its legend and the
+              night hours the week deliberately suppresses, so it carries a job
+              nothing else does. What it did not earn was a permanent tab beside
+              Agenda: it is the zoom you reach FROM a week, by tapping the day
+              you want, which is also how you would look for it. */}
+          {(["agenda","week","month","almanac"] as CalView[]).map(v=>(
             // The title carries the shortcut — an undiscoverable shortcut is a
             // shortcut nobody uses.
             <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
@@ -1676,6 +1688,17 @@ export default function Calendar({ testerId, now, lat, lon }: {
         )}
 
         {/* Week / Day view */}
+        {/* THE WAY BACK. Day is now entered from the week rather than from a
+            tab, so without this it is a room with the door removed — reachable,
+            and then not leavable except by picking another view entirely. */}
+        {calView==="day" && (
+          <button onClick={() => setCalView("week")} style={{
+            alignSelf: "flex-start", margin: "0 0 6px 2px", display: "flex", alignItems: "center", gap: 6,
+            background: "none", border: "none", padding: "4px 2px", cursor: "pointer",
+            fontSize: 12, color: "var(--color-primary)", fontWeight: 500,
+          }}><span aria-hidden="true">←</span> Back to the week</button>
+        )}
+
         {(calView==="week"||calView==="day") && (
           <TimeGrid
             dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
@@ -1683,6 +1706,7 @@ export default function Calendar({ testerId, now, lat, lon }: {
             gcalMap={gcalMap} cautionMap={cautionMap}
             testerId={testerId} today={today} lat={lat} lon={lon}
             isDay={calView==="day"}
+            onZoomDay={calView==="week" ? (d) => { setSelectedDate(d); setCalView("day"); } : undefined}
             onAddEvent={(date,hour)=>setAddModal({date,hour})}
             onDeleteWindow={id=>delWindow.mutate(id)}
           />
