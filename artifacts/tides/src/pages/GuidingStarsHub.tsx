@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { starIdsOf } from "@/lib/starLinks";
 import WhereYouAre from "@/components/WhereYouAre";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday, addDaysLocal } from "@/lib/dates";
@@ -901,11 +902,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               boxShadow: highlightId === g.id ? `0 0 0 3px ${ec}30` : "none",
               transition: "box-shadow 0.4s, border-color 0.4s",
             }}>
-              <div style={{ padding: "12px 14px" }}>
+              <div style={{ padding: "18px 20px" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--color-foreground)" }}>{g.title}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--color-foreground)" }}>{g.title}</span>
                       {flagged && (
                         <span title="You marked this for a second look at the new moon" style={{
                           fontSize: 10.5, padding: "2px 7px", borderRadius: 999, whiteSpace: "nowrap",
@@ -928,6 +929,27 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginTop: 3 }}>
                       {(g as any).endsOn ? "Moving" : "Holding"}
                     </div>
+                    {/* WHAT SERVES THIS DIRECTION, in one line.
+                        A star had a name, a state and then its machinery; how
+                        much of your life is actually pointed at it was
+                        recoverable only by opening the constellation and
+                        counting. It is the number that says whether a star is a
+                        direction or a wish. */}
+                    {(() => {
+                      const hs = (allHabits as any[]).filter(h => starIdsOf(h).includes(g.id)).length;
+                      const ts = (allTasks as any[]).filter(t => t.goalId === g.id && t.done !== "true").length;
+                      if (!hs && !ts) return (
+                        <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 7 }}>
+                          Nothing serves this yet.
+                        </div>
+                      );
+                      return (
+                        <div style={{ fontSize: 12.5, color: "var(--text-2)", marginTop: 7 }}>
+                          {[hs && `${hs} ${hs === 1 ? "practice" : "practices"}`,
+                            ts && `${ts} open ${ts === 1 ? "task" : "tasks"}`].filter(Boolean).join(" · ")}
+                        </div>
+                      );
+                    })()}
                     {g.description && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>{g.description}</div>}
                     {g.anchorKind && g.anchorHouse != null && (
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, fontSize: 11, color: ec, background: `${ec}10`, border: `1px solid ${ec}30`, borderRadius: 6, padding: "2px 7px" }}>

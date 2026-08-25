@@ -482,67 +482,25 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
             <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-primary)", marginBottom: 8 }}>
               {format(parseISO(dayDetail.date), "EEEE, MMMM d, yyyy")}
             </div>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 14px",
-                background: "var(--color-card)",
-                border: "1px solid var(--color-border)",
-                borderRadius: 10,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>That day's weather</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
-                  {ELEMENTS[dayDetail.sky.element as keyof typeof ELEMENTS]?.label ?? dayDetail.sky.element}
+            {/* WHAT THE DAY WAS, BEFORE WHAT THE SKY WAS.
+                This page opened with the date and then, immediately, a bordered
+                card of element, flavour and moon phase — the astrological stamp
+                sitting where the day's own account belongs. Log's object is a
+                day that happened, not a reading that was taken.
+
+                The sky has not been removed; it has been moved below the human
+                record, under a heading that says what it is. */}
+            {(() => {
+              const kept = (dayDetail.activities ?? []).length;
+              const wrote = dayDetail.checkIn?.notes?.trim();
+              if (!kept && !wrote) return null;
+              return (
+                <div style={{ marginTop: 6, fontSize: 14, lineHeight: 1.55, color: "var(--text-2)", maxWidth: "60ch" }}>
+                  {kept > 0 && <span>{kept === 1 ? "One thing" : `${kept} things`} landed on this day.</span>}
+                  {wrote && <span style={{ display: "block", marginTop: 4, fontStyle: "italic", color: "var(--color-foreground)" }}>“{wrote}”</span>}
                 </div>
-                {(dayDetail.sky.flavors ?? []).length > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, flexWrap: "wrap" }}>
-                    {(dayDetail.sky.flavors ?? []).map((p) => (
-                      /* The Log looks back AND checks in — each flavor is a
-                         door to that planet's page (natal + transits + goals). */
-                      <button key={p} onClick={() => onVisitPlanet?.(p)} disabled={!onVisitPlanet} style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: onVisitPlanet ? "pointer" : "default",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-3)",
-                      }}>
-                        a {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} day{onVisitPlanet ? " · check in →" : ""}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {dayDetail.sky.moonPhase !== undefined && (
-                <div style={{ fontSize: 18, paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>
-                  {dayDetail.sky.moonPhase < 0.125 || dayDetail.sky.moonPhase >= 0.875
-                    ? "🌑"
-                    : dayDetail.sky.moonPhase < 0.25
-                      ? "🌒"
-                      : dayDetail.sky.moonPhase < 0.375
-                        ? "🌓"
-                        : dayDetail.sky.moonPhase < 0.625
-                          ? "🌕"
-                          : dayDetail.sky.moonPhase < 0.75
-                            ? "🌖"
-                            : "🌗"}
-                </div>
-              )}
-              {feltMeta && (
-                <div style={{ paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>
-                  <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>It felt</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: feltMeta.color }}>
-                    {feltMeta.icon} {feltMeta.label}
-                    {feltInfo?.tideChar && (
-                      <span style={{ fontWeight: 400, color: "var(--text-3)" }}>
-                        {" "}· during a {feltInfo.tideChar} tide
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+              );
+            })()}
 
           {/* Reflect on this day — felt + writing, editable in hindsight. Three
               shapes are live at once while the owner picks one; the losers get
@@ -667,6 +625,73 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
           )}
 
           {/* Personal transits */}
+          {/* The sky that day — the stamp, kept and demoted. */}
+          <div style={{ marginTop: 26, paddingTop: 16, borderTop: "1px solid var(--color-border)" }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 10 }}>
+              The sky that day
+            </div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "10px 14px",
+                background: "var(--color-card)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>That day's weather</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>
+                  {ELEMENTS[dayDetail.sky.element as keyof typeof ELEMENTS]?.label ?? dayDetail.sky.element}
+                </div>
+                {(dayDetail.sky.flavors ?? []).length > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3, flexWrap: "wrap" }}>
+                    {(dayDetail.sky.flavors ?? []).map((p) => (
+                      /* The Log looks back AND checks in — each flavor is a
+                         door to that planet's page (natal + transits + goals). */
+                      <button key={p} onClick={() => onVisitPlanet?.(p)} disabled={!onVisitPlanet} style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 10, cursor: onVisitPlanet ? "pointer" : "default",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-3)",
+                      }}>
+                        a {PLANET_LITERACY[p]?.adjective ?? p.toLowerCase()} day{onVisitPlanet ? " · check in →" : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {dayDetail.sky.moonPhase !== undefined && (
+                <div style={{ fontSize: 18, paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>
+                  {dayDetail.sky.moonPhase < 0.125 || dayDetail.sky.moonPhase >= 0.875
+                    ? "🌑"
+                    : dayDetail.sky.moonPhase < 0.25
+                      ? "🌒"
+                      : dayDetail.sky.moonPhase < 0.375
+                        ? "🌓"
+                        : dayDetail.sky.moonPhase < 0.625
+                          ? "🌕"
+                          : dayDetail.sky.moonPhase < 0.75
+                            ? "🌖"
+                            : "🌗"}
+                </div>
+              )}
+              {feltMeta && (
+                <div style={{ paddingLeft: 12, borderLeft: "1px solid var(--color-border)" }}>
+                  <div style={{ fontSize: 11, color: "var(--color-muted)", textTransform: "uppercase" }}>It felt</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: feltMeta.color }}>
+                    {feltMeta.icon} {feltMeta.label}
+                    {feltInfo?.tideChar && (
+                      <span style={{ fontWeight: 400, color: "var(--text-3)" }}>
+                        {" "}· during a {feltInfo.tideChar} tide
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          </div>
           {dayDetail.sky.personalTransits && dayDetail.sky.personalTransits.length > 0 && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", textTransform: "uppercase", marginBottom: 10 }}>
