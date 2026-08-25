@@ -85,7 +85,7 @@ export function WeekWeave({ week }: { week: WovenWeek }) {
             <span style={{ fontSize: 12.5, fontWeight: 600 }}>{dayName(d.key)}</span>
             <span style={{ fontSize: 10, color: "var(--text-3)" }}>{d.key.slice(5)}</span>
             {d.recovering && (
-              <span style={{ fontSize: 9, color: "#6f6a90" }} title="the day before carried a major piece of work">
+              <span style={{ fontSize: 10.5, color: "#6f6a90" }} title="the day before carried a major piece of work">
                 lighter on purpose
               </span>
             )}
@@ -124,7 +124,7 @@ export function WeekWeave({ week }: { week: WovenWeek }) {
 
       {week.unplaced.length > 0 && (
         <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px", background: "var(--color-card)" }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
             didn't fit this week
           </div>
           {week.unplaced.map((u, i) => (

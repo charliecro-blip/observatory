@@ -68,7 +68,7 @@ export default function PlanCalendar({ items, dropped }: {
           const load = dayItems.reduce((n, it) => n + (it.estimatedMinutes || 0), 0);
           return (
             <div key={key} style={{ flex: "1 1 0", minWidth: 74 }}>
-              <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 4, whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 4, whiteSpace: "nowrap" }}>
                 {new Date(dayItems[0].startAt).toLocaleDateString("en-US", { weekday: "short", day: "numeric" })}
               </div>
               <div style={{
@@ -105,7 +105,7 @@ export default function PlanCalendar({ items, dropped }: {
                       <span className="sr-only">
                         {it.title} at {new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                       </span>
-                      <div aria-hidden="true" style={{ fontSize: 9, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div aria-hidden="true" style={{ fontSize: 10.5, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {it.title}
                       </div>
                     </div>
@@ -114,7 +114,7 @@ export default function PlanCalendar({ items, dropped }: {
               </div>
               {/* The day's load, stated — the picture shows crowding, this
                   says how much. */}
-              <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
                 {load >= 60 ? `${Math.round(load / 60 * 10) / 10}h` : `${load}m`}
               </div>
             </div>

@@ -65,7 +65,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: isPicked ? "var(--color-foreground)" : "var(--color-foreground)" }}>
             {p} <span style={{ fontWeight: 400, color: "var(--text-3)" }}>· {arch.label}</span>
-            {isSuggested && <span style={{ fontSize: 9, color: "#a04040", marginLeft: 6, fontWeight: 600 }}>chart suggests this</span>}
+            {isSuggested && <span style={{ fontSize: 10.5, color: "#a04040", marginLeft: 6, fontWeight: 600 }}>chart suggests this</span>}
           </div>
           <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2, lineHeight: 1.4 }}>{arch.feel}</div>
         </div>
@@ -83,7 +83,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
         </div>
         <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 14 }}>{picked.size}/{MAX_PICKS} chosen</div>
 
-        <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>The three to start with</div>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>The three to start with</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 14 }}>
           {STARTER.map(renderPlanet)}
         </div>
@@ -94,7 +94,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
           </button>
         ) : (
           <>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>The rest</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>The rest</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 16 }}>
               {OTHERS.map(renderPlanet)}
             </div>

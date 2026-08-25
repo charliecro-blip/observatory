@@ -117,7 +117,7 @@ export function CommittedWeekStrip({ windows, onOpen }: {
           return (
             <div key={key} style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: 9, textAlign: "center", color: isToday ? "var(--color-foreground)" : "var(--text-3)",
+                fontSize: 10.5, textAlign: "center", color: isToday ? "var(--color-foreground)" : "var(--text-3)",
                 fontWeight: isToday ? 700 : 400,
               }}>
                 {new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short" })}
@@ -133,14 +133,14 @@ export function CommittedWeekStrip({ windows, onOpen }: {
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {first && (
-                  <span style={{ fontSize: 9, fontWeight: 600, color: PLACED }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: PLACED }}>
                     {clock(first.startTime).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
                     {list.length > 1 && ` +${list.length - 1}`}
                   </span>
                 )}
               </div>
               <div style={{
-                fontSize: 9, marginTop: 3, color: "var(--color-muted)", lineHeight: 1.25,
+                fontSize: 10.5, marginTop: 3, color: "var(--color-muted)", lineHeight: 1.25,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center",
               }}>{first ? first.title : ""}</div>
             </div>
@@ -160,7 +160,7 @@ export function CommittedWeekStrip({ windows, onOpen }: {
       {beyond.length > 0 && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
           <div style={{
-            fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px",
+            fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px",
             color: "var(--text-3)", marginBottom: 3,
           }}>Committed</div>
           {beyond.slice(0, 3).map((w) => (

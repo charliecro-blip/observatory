@@ -264,7 +264,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
                 <div key={g.id} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0" }}>
                   <span aria-hidden="true" style={{ fontSize: 11, color: col }}>✦</span>
                   <span style={{ fontSize: 12.5, color: "var(--color-foreground)" }}>{g.title}</span>
-                  <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>{g.anchorPlanet === selected ? `rides ${selected}` : "element kin"}</span>
                 </div>
               ))}
             </div>
@@ -284,7 +284,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
               <span style={{ fontSize: 11.5, color: "var(--text-2)" }}>{t.title}</span>
             </div>
           ))}
-          <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 6 }}>
             {selected === "Moon" ? "Work that shares the Moon's water." : `Guiding Stars anchored to ${selected} or sharing its ${planetEl} nature — overlap with other planets is normal.`}
           </div>
         </SectionCard>
@@ -513,7 +513,7 @@ function ChartView({ testerId }: { testerId: string | null }) {
                   {a.transitPlanet} {a.aspect.toLowerCase()} natal {a.natalPlanet}
                   {a.natalHouse ? <span style={{ color: "var(--text-3)" }}> · {ordinal(a.natalHouse)} house</span> : null}
                 </span>
-                {a.exact && <span style={{ fontSize: 9, color: "#a8862e", fontWeight: 600 }}>exact</span>}
+                {a.exact && <span style={{ fontSize: 10.5, color: "#a8862e", fontWeight: 600 }}>exact</span>}
                 <span style={{ fontSize: 10, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{a.orb.toFixed(1)}°</span>
               </button>
               {isPicked && (

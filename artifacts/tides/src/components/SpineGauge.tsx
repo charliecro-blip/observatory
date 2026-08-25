@@ -50,12 +50,12 @@ export default function SpineGauge({ compact = false, dark = false }: { compact?
                 }}>
                   {isAspect ? "↕ " : ""}{r.name}
                 </div>
-                {!compact && <div style={{ fontSize: 9.5, color: subColor, marginTop: 1, letterSpacing: "0.04em" }}>{r.period}</div>}
+                {!compact && <div style={{ fontSize: 11, color: subColor, marginTop: 1, letterSpacing: "0.04em" }}>{r.period}</div>}
               </div>
               {!compact && (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: isAspect ? 11 : 12, color: onDark ? "rgba(255,255,255,0.85)" : "#2a3a43", lineHeight: 1.5 }}>{r.line}</div>
-                  <div style={{ fontSize: 9.5, color: subColor, marginTop: 2, lineHeight: 1.45 }}>{r.feel}</div>
+                  <div style={{ fontSize: 11, color: subColor, marginTop: 2, lineHeight: 1.45 }}>{r.feel}</div>
                 </div>
               )}
               {compact && (

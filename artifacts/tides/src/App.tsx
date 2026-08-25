@@ -511,7 +511,7 @@ function IntroVisual({ kind }: { kind: "today" | "star" | "plan" }) {
       <div style={card}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: ELEMENT_COLORS.earth }}>Building Tide</span>
-          <span style={{ fontSize: 9.5, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>high · rising</span>
+          <span style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>high · rising</span>
         </div>
         <div style={{ fontSize: 11, color: "var(--text-2)", margin: "4px 0 8px" }}>Good for patient, constructive work.</div>
         <div style={{ fontSize: 10.5, color: "var(--text-2)", borderTop: "1px solid var(--color-border)", paddingTop: 7 }}>
@@ -936,7 +936,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
               </button>
             </div>
             {restoreError && <div style={{ fontSize:10.5, color:"#a04030", marginTop:6 }}>{restoreError}</div>}
-            <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:6, lineHeight:1.5 }}>
+            <div style={{ fontSize: 11, color:"var(--text-3)", marginTop:6, lineHeight:1.5 }}>
               Your key is in Settings <span aria-hidden="true">→</span> Account on the device you signed up with.
             </div>
           </div>
@@ -1104,7 +1104,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
                 </label>
               )}
               {!timeUnknown && (
-                <div style={{ fontSize:9.5, color:"var(--color-muted)", marginTop:4 }}>
+                <div style={{ fontSize: 11, color:"var(--color-muted)", marginTop:4 }}>
                   Chart will use UTC{(utcOffset + (dstAtBirth ? 1 : 0)) >= 0 ? "+" : ""}{utcOffset + (dstAtBirth ? 1 : 0)}:00
                 </div>
               )}
@@ -1186,7 +1186,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
             alignSelf:"flex-start", background:"none", border:"none", cursor:"pointer", padding:0,
             fontSize:10.5, color:"var(--text-3)", display:"flex", alignItems:"center", gap:5,
           }}>
-            <span aria-hidden="true" style={{ fontSize:9, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
+            <span aria-hidden="true" style={{ fontSize: 10.5, display:"inline-block", transform: chronoDetail ? "rotate(180deg)" : "none" }}>▾</span>
             Fine-tune the hours
           </button>
 
@@ -1201,7 +1201,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
               <input type="time" value={sleepTime} onChange={e => setSleepTime(e.target.value)}
                 style={{ flex:1, padding:"8px 10px", borderRadius:8, border:"1px solid var(--color-border)", fontSize:12.5, background: "var(--color-card-2)" }} />
             </div>
-            <div style={{ fontSize:9.5, color:"var(--text-3)", marginTop:4, lineHeight:1.4 }}>
+            <div style={{ fontSize: 11, color:"var(--text-3)", marginTop:4, lineHeight:1.4 }}>
               Shapes your tide chart — hours you're asleep are shaded, and timing suggestions skip them.
             </div>
           </div>
@@ -1688,7 +1688,7 @@ function Shell() {
               color: view===t.id ? "var(--color-primary)" : "var(--color-muted)",
             }}>
               <span aria-hidden="true" style={{ fontSize:16, lineHeight:1 }}>{TAB_GLYPHS[t.id] ?? "·"}</span>
-              <span style={{ fontSize:9, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
+              <span style={{ fontSize: 10.5, fontWeight: view===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
           ))}
         </div>

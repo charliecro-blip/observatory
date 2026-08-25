@@ -142,7 +142,7 @@ export default function Almanac({ days = 90, openOnMount = false }: { days?: num
           {[...byMonth.entries()].map(([month, list]) => (
             <div key={month} style={{ marginBottom: 18 }}>
               <div style={{
-                fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.7px",
+                fontSize: 11, textTransform: "uppercase", letterSpacing: "0.7px",
                 color: "var(--text-3)", marginBottom: 7,
               }}>{month}</div>
 

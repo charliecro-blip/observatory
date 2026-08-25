@@ -130,7 +130,7 @@ export default function CroppingUp({ testerId, onNavigate, water }: {
       <div style={{ padding: folded ? "11px 16px" : "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
         <FoldToggle id="croppingUp" label="Cropping up" />
         <div style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
+          fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
           color: "var(--text-3)",
         }}>Cropping up</div>
         {/* The count is the whole fact this card holds at a glance, and it is

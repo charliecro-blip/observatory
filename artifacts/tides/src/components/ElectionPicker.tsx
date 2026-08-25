@@ -134,7 +134,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
         <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>Find the time for anything</div>
         {/* Sub-brand tag (Compass brand kit): small-caps after a hairline dot,
             air-gold — Auspice is the timing engine, a feature of Compass. */}
-        <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: ELEMENT_COLORS.air, fontFamily: "var(--font-display)" }}>· Auspice</span>
+        <span style={{ fontSize: 10.5, letterSpacing: "1.6px", textTransform: "uppercase", color: ELEMENT_COLORS.air, fontFamily: "var(--font-display)" }}>· Auspice</span>
       </div>
       <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 10 }}>
         {/* Second person. This read "Auspice reads its good and great times
@@ -180,7 +180,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
             <div style={{ display: "flex", gap: 4 }}>
               {(["day", "week", "month"] as const).map(s => (
                 <button key={s} onClick={() => setSpan(s)} style={{
-                  fontSize: 9.5, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
+                  fontSize: 11, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                   border: span === s ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
                   background: span === s ? "#1a2a3a" : "transparent", color: span === s ? "#ffffff" : "var(--color-muted)",
                 }}>{s}</button>
@@ -194,7 +194,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
             </div>
           ))}
           {times && !times.chartAvailable && (
-            <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>
               ○ Add your birth chart in Settings and ★ great times get read from your own houses.
             </div>
           )}
@@ -202,7 +202,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
               and chose not to list are counted here, so nobody wonders where
               the Mercury hours went. */}
           {(times?.withheld?.hourOnly ?? 0) > 0 && (
-            <div style={{ fontSize: 9.5, color: "var(--text-3)", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>
               {times!.withheld!.hourOnly} matching planetary hour{times!.withheld!.hourOnly === 1 ? "" : "s"} this {span} aren't listed on their own, only where they fall inside a window above.
             </div>
           )}
@@ -235,7 +235,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)" }}>
                       {w.dow} {w.date} · {w.allDay ? "all day" : `${w.startClock}–${w.endClock}`}
                     </div>
-                    <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginTop: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, lineHeight: 1.45 }}>
+                    <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, lineHeight: 1.45 }}>
                       {w.why}
                     </div>
                   </div>
@@ -243,7 +243,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
                     scheduled === key
                       ? <span style={{ fontSize: 10, color: "#4a8060", fontWeight: 600, flexShrink: 0 }}><span aria-hidden="true">✓</span> on the calendar</span>
                       : <button onClick={() => schedule.mutate(w)} disabled={schedule.isPending} style={{
-                          fontSize: 9.5, padding: "4px 11px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+                          fontSize: 11, padding: "4px 11px", borderRadius: 8, cursor: "pointer", flexShrink: 0,
                           border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", fontWeight: 600,
                         }}>schedule</button>
                   )}
@@ -253,7 +253,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
           </div>
 
           {filteredOut > 0 && shownWindows.length > 0 && (
-            <div style={{ fontSize: 9, color: "var(--color-muted)", marginTop: 5 }}>{filteredOut} more outside your free times · <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "var(--color-muted)", cursor: "pointer", textDecoration: "underline", fontSize: 9, padding: 0 }}>show all</button></div>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginTop: 5 }}>{filteredOut} more outside your free times · <button onClick={() => setFreeParts(new Set())} style={{ background: "none", border: "none", color: "var(--color-muted)", cursor: "pointer", textDecoration: "underline", fontSize: 10.5, padding: 0 }}>show all</button></div>
           )}
 
           {/* Add details — Layer 1 (free-time filter, deterministic) + Layer 2
@@ -265,7 +265,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
               }}>＋ Narrow it down · tell Ask more</button>
             ) : (
               <div>
-                <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>When are you free?</div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>When are you free?</div>
                 <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
                   {(["morning", "afternoon", "evening"] as PartOfDay[]).map(p => {
                     const on = freeParts.has(p);
@@ -278,7 +278,7 @@ export function ElectionPicker({ testerId, lat, lon, onAsk }: { testerId: string
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>Anything Ask should know?</div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.5px" }}>Anything Ask should know?</div>
                 <textarea
                   value={note} onChange={e => setNote(e.target.value)} rows={2}
                   placeholder="what you're hoping for, worried about, or working around…"
@@ -334,7 +334,7 @@ function RareWindows({ activityKey, label, tzOffset }: { activityKey: string; la
 
   return (
     <div style={{ borderTop: "1px dashed var(--color-border)", marginTop: 11, paddingTop: 9 }}>
-      <div style={{ fontSize: 9.5, color: "var(--color-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+      <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>
         Exceptional days for {label.toLowerCase()}
       </div>
       {isFetching && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Reading the next two years…</div>}
@@ -349,7 +349,7 @@ function RareWindows({ activityKey, label, tzOffset }: { activityKey: string; la
               </span>
               {/* The claim states its own basis — "top 1% of two years" is
                   checkable in a way that a star rating is not. */}
-              <span style={{ fontSize: 9.5, color: "#8a7a50" }}>
+              <span style={{ fontSize: 11, color: "#8a7a50" }}>
                 top {Math.max(0.1, Math.round((100 - d.percentile) * 10) / 10)}% of two years
               </span>
             </div>

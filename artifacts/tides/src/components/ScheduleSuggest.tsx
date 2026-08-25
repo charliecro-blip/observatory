@@ -173,7 +173,7 @@ export function ScheduleSuggest({
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)" }}>{fmtDay(w.startAt)} · {w.startClock}–{w.endClock}</div>
-                  <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
                     {free && awake ? "fits your usual free time" : awake ? "you're usually awake" : "outside your usual awake hours"}
                   </div>
                 </div>

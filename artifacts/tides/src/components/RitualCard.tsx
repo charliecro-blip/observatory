@@ -219,11 +219,11 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>⛵ Cast off{firstName ? `, ${firstName}` : ""}</span>
           <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             {streak > 0 && (
-              <span style={{ fontSize: 9, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
+              <span style={{ fontSize: 10.5, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
                 ⚓ {streak} day{streak === 1 ? "" : "s"} at the helm
               </span>
             )}
-            <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
+            <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>morning</span>
           </span>
         </div>
 
@@ -273,7 +273,7 @@ export default function RitualCard({ mode, now, week, todayTasks, windows, teste
           <FoldToggle id="ritual" label="the evening check-in" />
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--color-primary)" }}>🌙 Log the day{firstName ? `, ${firstName}` : ""}</span>
         </span>
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>evening</span>
+        <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: elColor }}>evening</span>
       </div>
       {!folded && <>
 
@@ -576,7 +576,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
   if (open.length === 0) return null;
   return (
     <div style={{ marginBottom: 9 }}>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+      <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
         Did these happen?
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -593,7 +593,7 @@ function BlockCheck({ wins, markBlock, blockError, elColor, testerId, lat, lon, 
                   {t} · {w.title}
                 </span>
                 {blockError === w.id && (
-                  <span style={{ fontSize: 9, color: "#a03030" }}>didn't save</span>
+                  <span style={{ fontSize: 10.5, color: "#a03030" }}>didn't save</span>
                 )}
                 {past && (
                   <button
@@ -730,12 +730,12 @@ function EveningReflection({ now, today, testerId, showJournal }: {
             {/* Four states that are each literally true, rather than one
                 reassuring sentence that wasn't. "Failed" offers the verb it
                 names — a Retry button that retries. */}
-            <span style={{ fontSize: 9, display: "flex", alignItems: "center", gap: 6, color: journalSync === "failed" ? "#a03030" : "var(--color-muted)" }}>
+            <span style={{ fontSize: 10.5, display: "flex", alignItems: "center", gap: 6, color: journalSync === "failed" ? "#a03030" : "var(--color-muted)" }}>
               {journalSync === "failed" ? (
                 <>
                   saved on this device — couldn't sync
                   <button onClick={() => outboxRef.current?.retryNow()}
-                    style={{ fontSize: 9, padding: "1px 7px", borderRadius: 10, cursor: "pointer",
+                    style={{ fontSize: 10.5, padding: "1px 7px", borderRadius: 10, cursor: "pointer",
                              border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)" }}>
                     Retry
                   </button>
@@ -812,7 +812,7 @@ function DonePattern({ today, testerId }: { today: string; testerId: string | nu
     if (data.itemsCompleted === 0) return null;
     return (
       <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "11px 14px" }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 5 }}>Your pattern</div>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 5 }}>Your pattern</div>
         <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
           {data.itemsCompleted} finished across {data.activeDays} of the last {data.daysObserved} days. Not enough yet to say which kinds of day suit you — it builds as you go, with nothing extra to log.
         </div>
@@ -822,7 +822,7 @@ function DonePattern({ today, testerId }: { today: string; testerId: string | nu
 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "12px 14px" }}>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
+      <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--color-muted)", marginBottom: 6 }}>
         What you've finished
       </div>
       <div style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
@@ -835,7 +835,7 @@ function DonePattern({ today, testerId }: { today: string; testerId: string | nu
           On void-of-course days: <b>{rate(voc.perDay)} a day</b> across {voc.days} — against {rate(voc.otherPerDay)} on the other {voc.otherDays}.
         </div>
       )}
-      <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 5 }}>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
         {data.itemsCompleted} items · {data.range.from} to {data.range.to}. What happened on those days, not what they do to you.
       </div>
     </div>

@@ -252,7 +252,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, flexShrink: 0 }}>
       <div style={{ padding: "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
-        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)" }}>
           Sprints
         </div>
         {active.length > 0 && !sheet && (
@@ -326,8 +326,8 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
                 {s.tally > 0 && <span style={{ color: "#4a7a52" }}>{s.habitId ? "kept" : "logged"} {s.tally}×{s.targetCount ? ` of ${s.targetCount}` : ""}</span>}
                 {!skyQuiet && s.transitLabel && <span style={{ color: "#a08850" }}>{s.transitLabel}</span>}
                 <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                  <button onClick={() => setStatus.mutate({ id: s.id, status: "done" })} style={{ fontSize: 9.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>finish</button>
-                  <button onClick={() => setStatus.mutate({ id: s.id, status: "ended" })} style={{ fontSize: 9.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>set down</button>
+                  <button onClick={() => setStatus.mutate({ id: s.id, status: "done" })} style={{ fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>finish</button>
+                  <button onClick={() => setStatus.mutate({ id: s.id, status: "ended" })} style={{ fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)" }}>set down</button>
                 </span>
               </div>
             </div>
@@ -370,12 +370,12 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
                 different offer from "no sugar". The generic list stays for a
                 self-chosen sprint and for pairs the table doesn't cover. */}
             <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>
                 {sheet.span?.ideas?.length ? "for this window:" : "or borrow one:"}
               </span>
               {(sheet.span?.ideas?.length ? sheet.span.ideas : TEMPLATES).map(t => (
                 <button key={t} onClick={() => { setTitle(t); setHabitId(""); }} style={{
-                  fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer", textAlign: "left",
+                  fontSize: 11, padding: "2px 8px", borderRadius: 10, cursor: "pointer", textAlign: "left",
                   border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)",
                 }}>{t}</button>
               ))}
@@ -384,7 +384,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
                 the habit itself, so the record stays in one place. */}
             {habitsList.length > 0 && (
               <div style={{ display: "flex", gap: 5, marginTop: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>or turn a habit up:</span>
+                <span style={{ fontSize: 11, color: "var(--text-3)" }}>or turn a habit up:</span>
                 <select value={habitId}
                   onChange={e => {
                     const id = e.target.value ? Number(e.target.value) : "";
@@ -401,10 +401,10 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               </div>
             )}
             <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>how long:</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>how long:</span>
               {sheet.span && (
                 <button onClick={() => setDays("transit")} style={{
-                  fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+                  fontSize: 11, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
                   border: days === "transit" ? "1.5px solid #c8a04a" : "1px solid var(--color-border)",
                   background: days === "transit" ? "#c8a04a18" : "var(--color-card-2)",
                   color: days === "transit" ? "#8a6a20" : "var(--text-2)", fontWeight: days === "transit" ? 600 : 400,
@@ -412,7 +412,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               )}
               {DURATIONS.map(d => (
                 <button key={d} onClick={() => setDays(d)} style={{
-                  fontSize: 9.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+                  fontSize: 11, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
                   border: days === d ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
                   background: days === d ? "#1a2a3a10" : "var(--color-card-2)",
                   color: days === d ? "var(--color-foreground)" : "var(--text-2)", fontWeight: days === d ? 600 : 400,
@@ -420,7 +420,7 @@ export default function Sprints({ testerId }: { testerId: string | null }) {
               ))}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <label style={{ fontSize: 9.5, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4 }}>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4 }}>
                 aim for
                 <input type="number" min={1} max={99} value={target} onChange={e => setTarget(e.target.value)}
                   placeholder="—"

@@ -47,7 +47,7 @@ const BOX: React.CSSProperties = {
   resize: "vertical", fontFamily: "inherit",
 };
 const ROW_LABEL: React.CSSProperties = {
-  fontSize: 9.5, letterSpacing: "0.09em", textTransform: "uppercase",
+  fontSize: 11, letterSpacing: "0.09em", textTransform: "uppercase",
   color: "var(--text-3)", minWidth: 74, paddingTop: 2,
 };
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (

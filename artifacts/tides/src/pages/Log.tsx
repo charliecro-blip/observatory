@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Disclosure } from "@/components/primitives";
+import { Disclosure, Chip, ChipGroup } from "@/components/primitives";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { WakeList, ReviewCard } from "@/components/Momentum";
 import FeltPattern from "@/components/FeltPattern";
@@ -251,39 +251,15 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
 
           Same controls, one line down. The days lead. */}
       <Disclosure label="Find and compare days">
-        {/* Date range selector */}
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6, textTransform: "uppercase" }}>
-            Lookback
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[7, 14, 30, 90].map((d) => (
-              <button
-                key={d}
-                onClick={() => setDateRange(d)}
-                style={{
-                  flex: 1,
-                  padding: "6px 0",
-                  fontSize: 11,
-                  borderRadius: 6,
-                  border: dateRange === d ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
-                  // A real theme token, not an alpha-suffixed var:
-                  // `var(--color-primary)20` is not a colour and fails SILENTLY
-                  // to transparent, so the selected pill had no background at
-                  // all — the documented alpha-suffix trap, again. And a fixed
-                  // hex tint is no better here, because --color-primary flips
-                  // from near-black to near-white across themes; card-2 is the
-                  // one fill that reads as "selected" in both.
-                  background: dateRange === d ? "var(--color-card-2)" : "transparent",
-                  color: dateRange === d ? "var(--color-primary)" : "var(--color-muted)",
-                  cursor: "pointer",
-                  fontWeight: dateRange === d ? 600 : 400,
-                }}
-              >
-                {d}d
-              </button>
+        {/* The lookback, as chips. It was four flex-1 pills with their own
+            radius, their own selected-fill and a 10px label — the same idea
+            the rest of the app now says once. */}
+        <div style={{ padding: "12px 16px 0" }}>
+          <ChipGroup label="Lookback">
+            {[7, 14, 30, 90].map(d => (
+              <Chip key={d} on={dateRange === d} onClick={() => setDateRange(d)}>{d} days</Chip>
             ))}
-          </div>
+          </ChipGroup>
           {/* Jump to any day — the list only shows days with entries, but every
               day is reachable for hindsight reflection. */}
           <input
@@ -399,7 +375,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
                     )}
                   </div>
                   {entry.notes && (
-                    <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
                       "{entry.notes.substring(0, 50)}
                       {entry.notes.length > 50 ? "…" : ""}"
                     </div>
@@ -607,7 +583,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
                     ({ label, val }) =>
                       val !== null && (
                         <div key={label}>
-                          <div style={{ fontSize: 9, color: "var(--color-muted)" }}>{label}</div>
+                          <div style={{ fontSize: 10.5, color: "var(--color-muted)" }}>{label}</div>
                           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)" }}>
                             {val}
                           </div>

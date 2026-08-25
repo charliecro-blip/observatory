@@ -50,7 +50,7 @@ const CARD: React.CSSProperties = {
   borderRadius: 12, padding: "12px 16px 14px", flexShrink: 0,
 };
 const CAP: React.CSSProperties = {
-  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)",
+  fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)",
 };
 
 export default function RhythmLead({
@@ -226,7 +226,7 @@ export default function RhythmLead({
                   <span style={{
                     width: 15, height: 15, borderRadius: h.flavor === "chore" ? 4 : "50%",
                     border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
-                    background: h.doneToday ? KEPT : "transparent", color: "#fff", fontSize: 9, lineHeight: 1,
+                    background: h.doneToday ? KEPT : "transparent", color: "#fff", fontSize: 10.5, lineHeight: 1,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>{h.doneToday ? "✓" : ""}</span></button>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

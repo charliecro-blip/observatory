@@ -119,7 +119,7 @@ export default function ReadZone({ reading, testerId, accent }: {
     const isLead = t.source === leadSource;
     return (
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", padding: "2px 0" }}>
-        <span style={{ fontSize: 9.5, color: "var(--text-3)", width: 72, flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: "var(--text-3)", width: 72, flexShrink: 0 }}>
           {BAND_LABEL[band]}
         </span>
         <span style={{
@@ -162,7 +162,7 @@ export default function ReadZone({ reading, testerId, accent }: {
   const SubjectRow = ({ label, items }: { label: string; items: string[] }) =>
     items.length === 0 ? null : (
       <div style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "1px 0" }}>
-        <span style={{ fontSize: 9.5, color: "var(--text-3)", width: 82, flexShrink: 0 }}>{label}</span>
+        <span style={{ fontSize: 11, color: "var(--text-3)", width: 82, flexShrink: 0 }}>{label}</span>
         <span style={{ fontSize: 11.5, lineHeight: 1.5, color: "var(--color-muted)" }}>
           {[...new Set(items)].join(" · ")}
         </span>
@@ -197,7 +197,7 @@ export default function ReadZone({ reading, testerId, accent }: {
           {/* The verdict line — one of three genuinely different states. */}
           {result.state === "leads" && (
             <div style={{ fontSize: 12.5, color: "var(--text-1)", lineHeight: 1.55 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.8px", marginRight: 6 }}>LED BY</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: accent, letterSpacing: "0.8px", marginRight: 6 }}>LED BY</span>
               {literalFirst && literalForRow(result.lead) ? (
                 <>
                   <span style={{ fontWeight: 700 }}>{literalForRow(result.lead)}</span>
@@ -213,7 +213,7 @@ export default function ReadZone({ reading, testerId, accent }: {
           )}
           {result.state === "crosscurrents" && (
             <div style={{ fontSize: 12.5, color: "var(--text-1)", lineHeight: 1.55 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "#8a6a30", letterSpacing: "0.8px", marginRight: 6 }}>MIXED CURRENT</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#8a6a30", letterSpacing: "0.8px", marginRight: 6 }}>MIXED CURRENT</span>
               Two things pull different ways — {literalFirst && literalForRow(result.a)
                 ? <><b>{literalForRow(result.a)}</b>{", "}{interpretationOf(result.a.note)}</>
                 : result.a.note}; and {literalFirst && literalForRow(result.b)
@@ -223,7 +223,7 @@ export default function ReadZone({ reading, testerId, accent }: {
           )}
           {result.state === "quiet" && (
             <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.55 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.8px", marginRight: 6 }}>QUIET SKY</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.8px", marginRight: 6 }}>QUIET SKY</span>
               Nothing in particular is pulling. The ordinary reading stands.
             </div>
           )}
@@ -239,13 +239,13 @@ export default function ReadZone({ reading, testerId, accent }: {
         <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: 3 }}>
           {foci.length > 0 && (
             <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)", width: 82, flexShrink: 0 }}>favors</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)", width: 82, flexShrink: 0 }}>favors</span>
               <span style={{ fontSize: 11.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>{foci.join(" · ")}</span>
             </div>
           )}
           {watch && (
             <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-              <span style={{ fontSize: 9.5, color: "var(--text-3)", width: 82, flexShrink: 0 }}>watch</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)", width: 82, flexShrink: 0 }}>watch</span>
               <span style={{ fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.5 }}>{watch}</span>
             </div>
           )}

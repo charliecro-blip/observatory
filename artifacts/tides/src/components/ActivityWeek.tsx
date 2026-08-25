@@ -96,13 +96,13 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
   return (
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "13px 16px 14px" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)" }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)" }}>
           The week for
         </span>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}>{label}</span>
         {data?.personalized && (
           <span title="Read against your own chart, not just the universal sky"
-            style={{ fontSize: 9, padding: "1px 7px", borderRadius: 8, background: "#6f6a9018", color: "#6f6a90" }}>
+            style={{ fontSize: 10.5, padding: "1px 7px", borderRadius: 8, background: "#6f6a9018", color: "#6f6a90" }}>
             your chart
           </span>
         )}
@@ -131,7 +131,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 5 }}>
             {days.map(d => (
               <div key={d.key} style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 9, color: "var(--text-3)", marginBottom: 3, textAlign: "center" }}>
+                <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 3, textAlign: "center" }}>
                   {d.dow}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -144,7 +144,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                     return (
                       <div key={i} title={w.why ?? ""} onClick={() => setWhy(w.why ? `${d.dow} ${w.startClock} — ${w.why}` : null)} style={{
                         background: t.fill, color: t.ink, borderRadius: 5,
-                        padding: "4px 3px", fontSize: 9, lineHeight: 1.3, textAlign: "center",
+                        padding: "4px 3px", fontSize: 10.5, lineHeight: 1.3, textAlign: "center",
                         border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
                         cursor: w.why ? "pointer" : "default",
                       }}>

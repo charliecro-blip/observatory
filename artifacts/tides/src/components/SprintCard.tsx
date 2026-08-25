@@ -111,11 +111,11 @@ export default function SprintCard({ sprint, onClose }: { sprint: SprintCardSubj
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Format</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Format</div>
             <Seg value={format} onPick={setFormat} options={[["post", "Post 4:5"], ["story", "Story 9:16"]]} />
           </div>
           <div>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Theme</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Theme</div>
             <Seg value={theme} onPick={setTheme} options={[["tide", "Tide"], ["almanac", "Almanac"], ["observatory", "Observatory"], ["minimal", "Minimal"]]} />
           </div>
           <button onClick={doExport} disabled={busy} style={{

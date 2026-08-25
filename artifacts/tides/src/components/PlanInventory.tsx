@@ -145,7 +145,7 @@ export default function PlanInventory({ testerId, lat, lon, onSpread, spreading,
       {/* ── WHAT YOU'RE HOLDING ──────────────────────────────────────── */}
       {holding.length > 0 && (
         <div style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid var(--color-border)" }}>
-          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 6 }}>
             Holding · {holding.length}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>

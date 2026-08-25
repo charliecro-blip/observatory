@@ -93,7 +93,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
         <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
           <FoldToggle id="dayAhead" label="Your day" />
-          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+          <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
             Your day
           </span>
           {/* Folded, the count is what the card was for. */}
@@ -126,7 +126,7 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
                     than as a badge on whichever row is nearest. */}
                 {i === nextIdx && nextIdx > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
-                    <span style={{ fontSize: 9, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", minWidth: 52 }}>now</span>
+                    <span style={{ fontSize: 10.5, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", minWidth: 52 }}>now</span>
                     <div style={{ flex: 1, height: 1, background: "var(--color-primary)", opacity: 0.35 }} />
                   </div>
                 )}
@@ -143,14 +143,14 @@ export default function DayAhead({ testerId, lat, lon, onNavigate }: {
                   }}>{w.title}</span>
                   {w.gcal && (
                     <span title="From your calendar" style={{
-                      fontSize: 9, color: "var(--text-3)", border: "1px solid var(--color-border)",
+                      fontSize: 10.5, color: "var(--text-3)", border: "1px solid var(--color-border)",
                       borderRadius: 4, padding: "0 5px", flexShrink: 0, lineHeight: "14px",
                     }}>calendar</span>
                   )}
                   {inside && !done && (
-                    <span style={{ fontSize: 9.5, color: "var(--color-primary)", flexShrink: 0 }}>now</span>
+                    <span style={{ fontSize: 11, color: "var(--color-primary)", flexShrink: 0 }}>now</span>
                   )}
-                  {done && <span aria-hidden="true" style={{ fontSize: 9.5, color: "#4a8060", flexShrink: 0 }}>✓</span>}
+                  {done && <span aria-hidden="true" style={{ fontSize: 11, color: "#4a8060", flexShrink: 0 }}>✓</span>}
                 </div>
               </div>
             );

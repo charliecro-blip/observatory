@@ -896,7 +896,14 @@ function clientSourceFiles(): string[] {
   return out;
 }
 
-describe("the 9px floor holds", () => {
+describe("the 10px floor holds", () => {
+  // Raised to TEN on 2026-08-25. The craft pass set the floor at 9 and the
+  // visual sprint then found 359 elements sitting exactly on it — the floor
+  // used as the default size for anything secondary, which is what the beta
+  // audit warned about in the same breath as praising the guard: "9px is a
+  // floor, not a target". Nothing in the client is below 10.5 now, so the
+  // guard moves up to hold that rather than permitting a drift back.
+  //
   // The craft pass (2026-08-23) raised every readable string to 9px and left
   // nine decorative carets below it — an aria-hidden ▾ is an affordance, not
   // text, so the rule never reached them. That was defensible and it was also
@@ -910,17 +917,17 @@ describe("the 9px floor holds", () => {
     expect(files.length).toBeGreaterThan(30);
   });
 
-  it("nothing renders below 9px, decorative glyphs included", () => {
+  it("nothing renders below 10px, decorative glyphs included", () => {
     const offenders: string[] = [];
     for (const f of files) {
       const src = readFileSync(f, "utf8").split("\n");
       src.forEach((line, i) => {
         for (const m of line.matchAll(/fontSize: ?([0-9.]+)/g)) {
-          if (parseFloat(m[1]) < 9) offenders.push(`${f}:${i + 1} -> ${m[1]}`);
+          if (parseFloat(m[1]) < 10) offenders.push(`${f}:${i + 1} -> ${m[1]}`);
         }
       });
     }
-    expect(offenders, `below the 9px floor:\n${offenders.join("\n")}`).toEqual([]);
+    expect(offenders, `below the 10px floor:\n${offenders.join("\n")}`).toEqual([]);
   });
 });
 

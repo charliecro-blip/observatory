@@ -148,7 +148,7 @@ export default function MomentsAhead({
   const inner = (
     <>
       <div style={{
-        fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px",
+        fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px",
         color: "var(--text-3)", marginBottom: 5, display: "flex", alignItems: "baseline", gap: 8,
       }}>
         {framed && <FoldToggle id="momentsAhead" label={label} />}

@@ -187,7 +187,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 6 }}>
               ✦ Ask
               {/* Sub-brand tag (brand kit): Ask signs in Meridian small-caps. */}
-              <span style={{ fontSize: 9, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
+              <span style={{ fontSize: 10.5, letterSpacing: "1.6px", textTransform: "uppercase", color: "var(--color-meridian, #3b3f8f)", fontFamily: "var(--font-display)", fontWeight: 500 }}>· the advisor</span>
             </div>
             <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 1 }}>What do you want to orient to?</div>
           </div>
@@ -217,9 +217,9 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               <div key={i} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
                 <div style={{ fontSize: 13, color: "var(--color-primary)", lineHeight: 1.5 }}>{p.content}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                  <span style={{ fontSize: 9, color: "var(--text-3)" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>{new Date(p.ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                   <button onClick={() => onAddTask(p.content.slice(0, 80))} style={{
-                    fontSize: 9, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
+                    fontSize: 10.5, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--color-border)",
                     background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer",
                   }}><span aria-hidden="true">→</span> task</button>
                 </div>
@@ -302,12 +302,12 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
                   <button
                     onClick={() => saveToMemory(m.content, i)}
                     title="Save to daemon memory (persists across sessions)"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: memSaved === i ? "#9060c0" : "var(--text-3)", padding: "1px 3px" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10.5, color: memSaved === i ? "#9060c0" : "var(--text-3)", padding: "1px 3px" }}
                   >{memSaved === i ? "✦" : "◆"}</button>
                   <button
                     onClick={() => send("Why? Briefly show me which sky factors shaped that answer — the Moon's sign, the tide, the planetary hour, my transits — and what each one contributed. Teach me the mechanism so I could read it myself next time.")}
                     title="Why? — see the sky reasoning behind this answer"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: "#c8b088", padding: "1px 3px", fontWeight: 700 }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10.5, color: "#c8b088", padding: "1px 3px", fontWeight: 700 }}
                   >?</button>
                 </div>
               )}
@@ -346,7 +346,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               {streaming ? "…" : "Send"}
             </button>
           </div>
-          <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 5 }}>Enter to send · Shift+Enter for new line</div>
+          <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 5 }}>Enter to send · Shift+Enter for new line</div>
         </div>
 
         </>}

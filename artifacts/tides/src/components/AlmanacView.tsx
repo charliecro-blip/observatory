@@ -169,7 +169,7 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
               {[14, 30, 60].map(d => (
                 <button key={d} onClick={() => setDays(d)} aria-pressed={days === d}
                   style={{
-                    fontSize: 9.5, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
+                    fontSize: 11, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
                     border: "1px solid var(--color-border)",
                     background: days === d ? "var(--color-card-2)" : "transparent",
                     color: days === d ? "var(--color-primary)" : "var(--text-3)",

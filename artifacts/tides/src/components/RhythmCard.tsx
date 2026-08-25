@@ -96,7 +96,7 @@ export default function RhythmCard({ now }: { now: any }) {
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px 4px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)" }}>Your rhythm today</span>
-        <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>your cycles, against the sky's</span>
+        <span style={{ fontSize: 11, color: "var(--text-3)" }}>your cycles, against the sky's</span>
       </div>
 
       {/* Lunar month ↔ menstrual cycle */}

@@ -56,7 +56,7 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>📖 Reference — what the sky's pieces mean</div>
-          <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>Start with the six-step path, or look anything up — no astrology background needed</div>
         </div>
         <span style={{ fontSize: 10, color: "var(--text-3)", transform: sectionOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}>›</span>
       </button>
@@ -91,9 +91,9 @@ export function ReferenceSection({ onStartStar, onVisitPlanet }: { onStartStar?:
               <span style={{ fontSize: 14, color: it.color, width: 18, textAlign: "center", flexShrink: 0 }}>{it.glyph}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-foreground)" }}>{it.name}</div>
-                <div style={{ fontSize: 9.5, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
               </div>
-              <span style={{ fontSize: 9, color: "var(--text-3)", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
+              <span style={{ fontSize: 10.5, color: "var(--text-3)", flexShrink: 0 }}>{open === it.key ? "−" : "+"}</span>
             </button>
             {open === it.key && (
               <div style={{ padding: "0 14px 10px 41px", fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.6, whiteSpace: "pre-line" }}>

@@ -101,7 +101,7 @@ function DayHit({
 function Reading({ text, tone }: { text: string; tone: "met" | "progress" | "quiet" }) {
   return (
     <span style={{
-      fontSize: 9,
+      fontSize: 10.5,
       color: tone === "met" ? "var(--color-quality-good)" : "var(--text-3)",
       fontWeight: tone === "met" ? 600 : 400,
       whiteSpace: "nowrap",

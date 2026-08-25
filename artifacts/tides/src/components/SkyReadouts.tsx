@@ -164,7 +164,7 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
   if (suggestions.length === 0) {
     return (
       <div style={{ margin: "12px 0" }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
           Resonant now
         </div>
         <div style={{ fontSize: 11.5, color: "var(--text-3)", lineHeight: 1.55 }}>
@@ -176,7 +176,7 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
 
   return (
     <div style={{ margin: "12px 0" }}>
-      <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
+      <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 8 }}>
         Resonant now <span style={{ letterSpacing: 0, textTransform: "none", color: "var(--text-3)" }}>· tap a card for another way in</span>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -193,9 +193,9 @@ export function ModulePulse({ now }: { now: any; onNavigate?: (v: string) => voi
                 {s.options[idx]}{s.suffix && <span style={{ fontWeight: 400, color: "#a05050" }}>{s.suffix}</span>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
-                <span style={{ fontSize: 9, color: s.color, fontWeight: 600 }}>{s.source}</span>
+                <span style={{ fontSize: 10.5, color: s.color, fontWeight: 600 }}>{s.source}</span>
                 {/* explicit invitation — the muted counter alone read as decoration */}
-                <span style={{ fontSize: 9, color: "var(--color-muted)", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
+                <span style={{ fontSize: 10.5, color: "var(--color-muted)", flexShrink: 0 }}>⟳ tap for more · {idx + 1}/{n}</span>
               </div>
             </button>
           );
@@ -243,7 +243,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
           <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-primary)" }}>
             {a.planet} in {a.sign} {geo.symbol} {b.planet} in {b.sign}
           </span>
-          {timing && <span style={{ fontSize: 9, color: "#b07030", background: "#fff8e8", border: "1px solid #e8d080", padding: "1px 6px", borderRadius: 5 }}>{timing}</span>}
+          {timing && <span style={{ fontSize: 10.5, color: "#b07030", background: "#fff8e8", border: "1px solid #e8d080", padding: "1px 6px", borderRadius: 5 }}>{timing}</span>}
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>{open ? "▲ less" : "▼ explore"}</span>
         </div>
         <div style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.55, marginTop: 5 }}>{essence}</div>
@@ -254,8 +254,8 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
           {/* The take — cycle through genuinely different framings */}
           <div style={{ marginTop: 10, background: "var(--color-card-2)", borderRadius: 9, padding: "10px 12px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-              <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
-              <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 9.5, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: accent }}>{takes[takeIdx].label}</span>
+              <button onClick={() => setTakeIdx(i => (i + 1) % takes.length)} style={{ fontSize: 11, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 another take <span aria-hidden="true">↻</span> <span style={{ color: "var(--text-3)" }}>{takeIdx + 1}/{takes.length}</span>
               </button>
             </div>
@@ -265,11 +265,11 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
           {/* Favors / watch */}
           <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#3a6020" }}>FAVORS </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#3a6020" }}>FAVORS </span>
               <span style={{ fontSize: 10.5, color: "var(--text-2)", lineHeight: 1.5 }}>{guidance.favors}</span>
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#a04030" }}>WATCH </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#a04030" }}>WATCH </span>
               <span style={{ fontSize: 10.5, color: "var(--text-2)", lineHeight: 1.5 }}>{guidance.watch}</span>
             </div>
           </div>

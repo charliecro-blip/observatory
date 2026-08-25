@@ -28,7 +28,7 @@ export function QualityStrip({ week, days, onPick }: { week: any; days: number; 
               onClick={onPick ? () => onPick(day.date) : undefined}
               style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2.5, minWidth:24, flexShrink:0,
                 background:"none", border:"none", padding:0, cursor: onPick ? "pointer" : "default" }}>
-              <div style={{ fontSize:9, color:isToday?"#b07030":"var(--text-3)", fontWeight:isToday?700:400 }}>
+              <div style={{ fontSize: 10.5, color:isToday?"#b07030":"var(--text-3)", fontWeight:isToday?700:400 }}>
                 {new Date(day.date+"T12:00:00").getDate()}
               </div>
               <div style={{ width:16, height:44, display:"flex", alignItems:"flex-end" }}>

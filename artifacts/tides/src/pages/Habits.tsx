@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Disclosure } from "@/components/primitives";
+import { Disclosure, Chip, ChipGroup } from "@/components/primitives";
 import { jsonArray, listState } from "@/lib/jsonArray";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -419,7 +419,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
         {/* This week per element */}
         {weekTotal > 0 && (
           <div style={{display:"flex",gap:6,alignItems:"center",fontSize:10.5,color:"var(--text-3)",padding:"2px 2px"}}>
-            <span style={{textTransform:"uppercase",letterSpacing:"0.5px",fontSize:9,color:"var(--text-3)"}}>This week</span>
+            <span style={{textTransform:"uppercase",letterSpacing:"0.5px",fontSize: 10.5,color:"var(--text-3)"}}>This week</span>
             {ELEMENTS.filter(el => weekByElement[el] > 0).map(el => (
               <span key={el} style={{color:elementColor(el),fontWeight:600}}>
                 {el} {weekByElement[el]}
@@ -447,7 +447,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           const STRIP_LABEL: Record<SolarAnchor, string> = { sunrise: "Sunrise", noon: "Noon", sunset: "Sunset", bed: "Before bed" };
           return (
             <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 8 }}>
                 The day's landmarks
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
@@ -470,7 +470,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                             width: 13, height: 13, borderRadius: h.flavor === "chore" ? 3 : "50%", flexShrink: 0,
                             border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
                             background: h.doneToday ? "#3f7a4a" : "transparent",
-                            color: "#ffffff", fontSize: 9, lineHeight: "13px", textAlign: "center",
+                            color: "#ffffff", fontSize: 10.5, lineHeight: "13px", textAlign: "center",
                           }}>{h.doneToday ? "✓" : ""}</span>
                           <span style={{
                             fontSize: 11.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -510,7 +510,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 is what keeps a 3×/week habit from being scored as a failed
                 daily (owner 2026-07-29). */}
             <div style={{marginBottom:10}}>
-              <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>How often does this want to happen?</div>
+              <div style={{fontSize: 10.5,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>How often does this want to happen?</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
                 {CADENCE_OPTIONS.map(c => {
                   const on = form.cadence === c.key;
@@ -521,7 +521,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                       background:on?"#1a2a3a10":"var(--color-card-2)",
                     }}>
                       <div style={{fontSize:11.5,fontWeight:on?600:500,color:on?"var(--color-primary)":"var(--color-foreground)"}}>{c.label}</div>
-                      <div style={{fontSize:9,color:"var(--text-3)",marginTop:1,lineHeight:1.35}}>{c.hint}</div>
+                      <div style={{fontSize: 10.5,color:"var(--text-3)",marginTop:1,lineHeight:1.35}}>{c.hint}</div>
                     </button>
                   );
                 })}
@@ -595,51 +595,33 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <b style={{fontWeight:600}}>Timing — all optional.</b> Skip it and the habit works exactly the same; fill any of it in and Compass can suggest when it fits.
               </div>
 
-              <div style={{marginBottom:8}}>
-                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best elements</div>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {ELEMENTS.map(el => (
-                    <button key={el} onClick={()=>toggleEl(el)} style={{
-                      fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
-                      borderColor:form.favoredElements.includes(el)?elementColor(el):"#d8d2ca",
-                      background:form.favoredElements.includes(el)?`${elementColor(el)}20`:"transparent",
-                      color:form.favoredElements.includes(el)?elementColor(el):"var(--color-muted)",
-                    }}>{el}</button>
-                  ))}
-                </div>
-              </div>
+              <ChipGroup label="Favored elements">
+                {ELEMENTS.map(el => (
+                  <Chip key={el} on={form.favoredElements.includes(el)}
+                    onClick={()=>toggleEl(el)} color={elementColor(el)}>{el}</Chip>
+                ))}
+              </ChipGroup>
 
-              <div style={{marginBottom:8}}>
-                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Best moon phase</div>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {PHASES.map(p => (
-                    <button key={p.key} onClick={()=>togglePhase(p.key)} style={{
-                      fontSize:10,padding:"3px 9px",borderRadius:10,border:"1px solid",cursor:"pointer",
-                      borderColor:form.favoredPhases.includes(p.key)?PLANET_COLORS.Moon:"#d8d2ca",
-                      background:form.favoredPhases.includes(p.key)?"#7080a020":"transparent",
-                      color:form.favoredPhases.includes(p.key)?"#50608a":"var(--color-muted)",
-                    }}>{p.label}</button>
-                  ))}
-                </div>
-              </div>
+              <ChipGroup label="Favored phases">
+                {PHASES.map(ph => (
+                  <Chip key={ph.key} on={form.favoredPhases.includes(ph.key)}
+                    onClick={()=>togglePhase(ph.key)} color={PLANET_COLORS.Moon}>{ph.label}</Chip>
+                ))}
+              </ChipGroup>
 
               {/* Planet linking — the merged practices intelligence: a habit can
                   declare the planet(s) it serves, so its own hour lifts it. */}
-              <div style={{marginBottom:10}}>
-                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Supported by planet</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                  {PLANET_CHOICES.map(p => {
-                    const on = form.favoredPlanets.includes(p);
-                    return (
-                      <button key={p} type="button" onClick={()=>togglePlanet(p)} style={{
-                        display:"flex",alignItems:"center",gap:4,padding:"4px 9px",borderRadius:14,cursor:"pointer",fontSize:11,
-                        border:on?"1.5px solid #7a6cae":"1px solid var(--color-border)",
-                        background:on?"#7a6cae18":"var(--color-card-2)",color:on?"#6a5c9e":"var(--color-muted)",fontWeight:on?600:400,
-                      }}><Glyph name={p} size={12} bg="var(--color-card-2)" tint={on} style={on?undefined:{color:"var(--text-3)"}} />{p}</button>
-                    );
-                  })}
-                </div>
-              </div>
+              <ChipGroup label="Planets it serves">
+                {PLANET_CHOICES.map(pl => (
+                  <Chip key={pl} on={form.favoredPlanets.includes(pl)}
+                    onClick={()=>togglePlanet(pl)} color="#7a6cae">
+                    <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+                      <Glyph name={pl} size={12} bg="transparent" tint={form.favoredPlanets.includes(pl)} />
+                      {pl}
+                    </span>
+                  </Chip>
+                ))}
+              </ChipGroup>
 
               {/* MULTIPLE KINDS, because a practice can be more than one thing —
                   a morning sit is recovery and study at once (owner asked twice:
@@ -655,32 +637,24 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   the habit and told it nothing. Each kind maps to an element via
                   timingTier.WINDOW_ELEMENT, scored as a weaker signal than an
                   element chosen outright — see lib/habitTiming.ts. */}
-              <div style={{marginBottom:8}}>
-                <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:"var(--text-3)",marginBottom:5}}>Kind of work</div>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {WINDOW_TYPES.map(t => {
-                    const chosen = form.bestWindowType ? form.bestWindowType.split(",").filter(Boolean) : [];
-                    const on = chosen.includes(t);
-                    return (
-                      <button key={t} onClick={() => setForm(f => {
+              <ChipGroup label="Kind of work">
+                {WINDOW_TYPES.map(t => {
+                  const chosen = form.bestWindowType ? form.bestWindowType.split(",").filter(Boolean) : [];
+                  return (
+                    <Chip key={t} on={chosen.includes(t)} color="#5a6a8a"
+                      onClick={() => setForm(f => {
                         const cur = f.bestWindowType ? f.bestWindowType.split(",").filter(Boolean) : [];
                         const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
                         return { ...f, bestWindowType: next.join(",") };
-                      })} style={{
-                        fontSize:10,padding:"3px 9px",borderRadius:10,cursor:"pointer",
-                        border: on ? "1px solid #5a6a8a" : "1px solid var(--color-border)",
-                        background: on ? "#5a6a8a14" : "transparent",
-                        color: on ? "#4a5a7a" : "var(--color-muted)", fontWeight: on ? 600 : 400,
-                      }}>{WINDOW_LABELS[t]}</button>
-                    );
-                  })}
-                </div>
-              </div>
+                      })}>{WINDOW_LABELS[t]}</Chip>
+                  );
+                })}
+              </ChipGroup>
               {(goalsList.length > 0 || projectsList.length > 0) && (
                 <div style={{display:"flex",gap:8,marginBottom:8}}>
                   {goalsList.length > 0 && (
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:9.5,color:"var(--text-3)",marginBottom:4}}>Counts toward {newGoalIds.length === 0 ? "no star yet" : newGoalIds.length === 1 ? "one star" : `${newGoalIds.length} stars`}</div>
+                      <div style={{fontSize: 11,color:"var(--text-3)",marginBottom:4}}>Counts toward {newGoalIds.length === 0 ? "no star yet" : newGoalIds.length === 1 ? "one star" : `${newGoalIds.length} stars`}</div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                         {goalsList.map(g => {
                           const on = newGoalIds.includes(g.id);
@@ -742,7 +716,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:500,color:h.doneToday?"var(--text-3)":"var(--color-foreground)",textDecoration:h.doneToday?"line-through":"none"}}>
                     {h.name}
-                    {h.flavor === "chore" && <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"var(--color-card-2)",border:"1px solid var(--color-border)",color:"var(--text-3)",fontWeight:600,marginLeft:6,verticalAlign:"middle",textDecoration:"none",display:"inline-block"}}>chore</span>}
+                    {h.flavor === "chore" && <span style={{fontSize: 10.5,padding:"1px 6px",borderRadius:4,background:"var(--color-card-2)",border:"1px solid var(--color-border)",color:"var(--text-3)",fontWeight:600,marginLeft:6,verticalAlign:"middle",textDecoration:"none",display:"inline-block"}}>chore</span>}
                   </div>
                   {/* Progress in the habit's OWN cadence — a 3×/week practice
                       reads "2 of 3 this week", not a broken daily streak. */}
@@ -758,7 +732,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                       : h.solarAnchor === "bed" ? bedTimeToday(testerProfile?.chronotype?.sleepTime, today)
                       : null;
                     return (
-                      <div style={{fontSize:9,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                      <div style={{fontSize: 10.5,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                         {anchor && (anchorAt || h.solarAnchor === "bed") && (
                           <span style={{color:"#a08850"}} title={`${anchor.label} today`}>
                             {anchor.glyph} {h.solarAnchor === "bed" && anchorAt ? "by " : ""}{anchorAt ? fmtClock(anchorAt) : anchor.label.toLowerCase()}
@@ -784,7 +758,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                           <button key={g.id} disabled={linkStars.isPending}
                             onClick={()=>linkStars.mutate({ id: h.id, goalIds: on ? linked.filter(x=>x!==g.id) : [...linked, g.id] })}
                             title={on ? `Unlink from ${g.title}` : `Also serves ${g.title}`}
-                            style={{fontSize:9,padding:"2px 7px",borderRadius:10,cursor:"pointer",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                            style={{fontSize: 10.5,padding:"2px 7px",borderRadius:10,cursor:"pointer",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                               border:on?"1.5px solid #c8a04a":"1px solid var(--color-border)",
                               background:on?"#c8a04a18":"var(--color-card-2)",
                               color:on?"#8a6a20":"var(--text-3)",fontWeight:on?600:400}}>
@@ -792,12 +766,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                           </button>
                         );
                       })}
-                      <button onClick={()=>setLinking(null)} style={{fontSize:9,padding:"2px 6px",background:"none",border:"none",cursor:"pointer",color:"var(--text-3)"}}>done</button>
+                      <button onClick={()=>setLinking(null)} style={{fontSize: 10.5,padding:"2px 6px",background:"none",border:"none",cursor:"pointer",color:"var(--text-3)"}}>done</button>
                     </span>
                   ) : (
                     <button onClick={()=>setLinking(h.id)}
                       title={linked.length ? `Serves ${linked.map(id=>goalsById[id]?.title ?? "a star").join(", ")} — click to change` : "Tie this habit to a Guiding Star"}
-                      style={{fontSize:9,padding:"2px 7px",borderRadius:4,flexShrink:0,cursor:"pointer",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                      style={{fontSize: 10.5,padding:"2px 7px",borderRadius:4,flexShrink:0,cursor:"pointer",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                         border:"1px solid #c8a04a45",background:linked.length?"#c8a04a12":"none",
                         color:linked.length?"#8a6a20":"var(--text-3)",fontWeight:600}}>
                       {linked.length
@@ -818,12 +792,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     {asArr(h.favoredPlanets).map(p => <Glyph key={p} name={p} size={12} bg="var(--color-card)" />)}
                   </span>
                 )}
-                <div style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
+                <div style={{fontSize: 10.5,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
                 {/* Schedule this habit — habits want recurring good-time blocks;
                     this finds the next one. Owner: 'habits need help figuring
                     out when to schedule.' */}
                 <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
-                  style={{fontSize:9,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+                  style={{fontSize: 10.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
                 <button onClick={()=>startEditing(h)} aria-label={`Edit ${h.name}`} title="Edit — including how often"
                   style={{fontSize:10,color: editingId===h.id ? "var(--color-brass)" : "var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 4px",fontWeight:editingId===h.id?600:400}}>Edit</button>
                 <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
@@ -850,7 +824,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
 
               {/* Timing note — the merged practices intelligence, in plain words */}
               {h.resonanceNote && h.timing !== "neutral" && (
-                <div style={{fontSize:9.5,color:tc,marginTop:6,paddingTop:6,borderTop:"1px solid var(--color-border)"}}>
+                <div style={{fontSize: 11,color:tc,marginTop:6,paddingTop:6,borderTop:"1px solid var(--color-border)"}}>
                   {h.timing === "resonant" ? "✦ " : h.timing === "soften" || h.timing === "protect" ? "◡ " : "· "}{h.resonanceNote}
                 </div>
               )}

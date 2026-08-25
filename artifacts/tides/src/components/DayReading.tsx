@@ -65,22 +65,22 @@ export default function DayReading({ now, level, testerId, accent }: {
             public numeric). The scalar stays an internal input; the
             surface says the band, which is all it can support. */}
         <div title="How charged this moment is — not how favorable. A charged hour can be a difficult one. Deliberately a band, not a percentage: the underlying number is mostly lunar illumination and cannot carry more precision than that."
-          style={{ fontSize: 9.5, color: elColor, display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
+          style={{ fontSize: 11, color: elColor, display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: elColor }} />
           {tide?.band === "high" ? "strongly charged" : tide?.band === "low" ? "quietly charged" : "moderately charged"}
         </div>
         <div title="Which way the day's activation is moving — rising, steady, or ebbing."
-          style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
+          style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaaaaa" }} />
           {tide?.trend ?? "steady"}
         </div>
         <div title="How much the day's separate testimonies point the same way. High agreement means a clear picture — not a guarantee about the outcome."
-          style={{ fontSize: 9.5, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
+          style={{ fontSize: 11, color: "var(--color-muted)", display: "flex", alignItems: "center", gap: 4, cursor: "help" }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#aaaaaa" }} />
           {tide?.confidence ?? "medium"} signal agreement
         </div>
         {now?.voc?.isVOC && (
-          <div style={{ fontSize: 9.5, color: "#b0a060", display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ fontSize: 11, color: "#b0a060", display: "flex", alignItems: "center", gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#b0a060" }} />
             Moon VOC
           </div>

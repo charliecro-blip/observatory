@@ -146,7 +146,7 @@ export default function DayCheckOff({ testerId, date, lat = 40.7, lon = -74.0 }:
                     width: 15, height: 15, borderRadius: chore ? 4 : "50%",
                     border: done ? "none" : "1.5px solid var(--color-border)",
                     background: done ? KEPT : "transparent",
-                    color: "#ffffff", fontSize: 9, lineHeight: 1,
+                    color: "#ffffff", fontSize: 10.5, lineHeight: 1,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>{done ? "✓" : ""}</span>
                 </button>

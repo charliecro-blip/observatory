@@ -237,7 +237,7 @@ function ThemeSection() {
             <span style={{ width: 22, height: 22, borderRadius: "50%", background: p.swatch, flexShrink: 0, border: "1px solid rgba(0,0,0,0.1)" }} />
             <span>
               <span style={{ fontSize: 12.5, fontWeight: palette === p.key ? 700 : 500, color: "var(--color-foreground)", display: "block" }}>{p.name}</span>
-              <span style={{ fontSize: 9.5, color: "var(--color-muted)" }}>{p.mode === "dark" ? "Dark" : "Light"}</span>
+              <span style={{ fontSize: 11, color: "var(--color-muted)" }}>{p.mode === "dark" ? "Dark" : "Light"}</span>
             </span>
           </button>
         ))}
@@ -314,7 +314,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
     <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>
         Email reports
-        {saved && <span style={{ fontSize: 9, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
+        {saved && <span style={{ fontSize: 10.5, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
       </div>
       <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 10 }}>
         A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
@@ -455,7 +455,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
             <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>No notifications will be sent during this window.</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>From</span>
+                <span style={{ fontSize: 10.5, color: "var(--text-3)", textTransform: "uppercase" }}>From</span>
                 <select value={n.quietStart} onChange={e => updateNotifications({ quietStart: Number(e.target.value) })} aria-label="Quiet hours start"
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
@@ -465,7 +465,7 @@ function NotificationSection({ lat, lon }: { lat: number; lon: number }) {
               </div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>to</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontSize: 9, color: "var(--text-3)", textTransform: "uppercase" }}>Until</span>
+                <span style={{ fontSize: 10.5, color: "var(--text-3)", textTransform: "uppercase" }}>Until</span>
                 <select value={n.quietEnd} onChange={e => updateNotifications({ quietEnd: Number(e.target.value) })} aria-label="Quiet hours end"
                   style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", fontSize: 11, background: "var(--color-card-2)" }}>
                   {Array.from({ length: 24 }, (_, i) => (
@@ -899,7 +899,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   const control = only && id ? React.cloneElement(only, { id }) : children;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label htmlFor={id} style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>{label}</label>
+      <label htmlFor={id} style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>{label}</label>
       {control}
     </div>
   );
@@ -985,7 +985,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
         <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: `${currentPhase.color}12`, border: `1px solid ${currentPhase.color}40` }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: currentPhase.color }}>{currentPhase.phase} phase · day {currentPhase.dayOfCycle}</div>
           <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 3 }}>{currentPhase.desc}</div>
-          {currentPhase.daysLeft > 0 && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>{currentPhase.daysLeft} day{currentPhase.daysLeft !== 1 ? "s" : ""} remaining in phase</div>}
+          {currentPhase.daysLeft > 0 && <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 3 }}>{currentPhase.daysLeft} day{currentPhase.daysLeft !== 1 ? "s" : ""} remaining in phase</div>}
         </div>
       )}
 
@@ -1010,7 +1010,7 @@ function CycleSection({ testerId }: { testerId: string | null }) {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {CYCLE_PHASES.map(p => (
-            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: "var(--color-muted)" }}>
+            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "var(--color-muted)" }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: p.color }} />{p.name}
             </div>
           ))}
@@ -1536,7 +1536,7 @@ function ExportSection({ testerId }: { testerId: string | null }) {
       </Row>
       {feedUrl && (
         <div style={{
-          fontSize: 9.5, fontFamily: "monospace", color: "var(--color-muted)", userSelect: "all",
+          fontSize: 11, fontFamily: "monospace", color: "var(--color-muted)", userSelect: "all",
           background: "var(--color-card-2)", border: "1px solid var(--color-border)",
           borderRadius: 6, padding: "6px 9px", margin: "2px 0 8px", overflowWrap: "anywhere",
         }}>{feedUrl}</div>
@@ -1807,7 +1807,7 @@ function DevicesSection({ testerId }: { testerId: string | null }) {
                 {ORIGIN_LABEL[sRow.origin] ?? sRow.origin}
                 {sRow.current && (
                   <span style={{
-                    marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: "0.5px",
+                    marginLeft: 8, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.5px",
                     textTransform: "uppercase", color: "#3f7a4a",
                     border: "1px solid #3f7a4a55", borderRadius: 999, padding: "1px 8px",
                   }}>this device</span>
@@ -2092,7 +2092,7 @@ export default function Settings({ testerId }: { testerId: string | null }) {
                 const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                 return (
                   <div key={date} style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10 }}>
-                    <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
                     <div style={{ fontSize: 12, color: "var(--text-1)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{text}</div>
                   </div>
                 );

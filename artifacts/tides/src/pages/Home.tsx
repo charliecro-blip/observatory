@@ -267,7 +267,7 @@ function momentBlock(r: { state: string; startAt: string; endAt: string; startCl
 function Badge({ text, color }: { text: string; color: string }) {
   return (
     <span style={{
-      fontSize: 9.5, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
+      fontSize: 11, fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase",
       padding: "3px 9px", borderRadius: 999, color, background: `${color}18`,
       border: `1px solid ${color}33`, whiteSpace: "nowrap",
     }}>{text}</span>
@@ -295,7 +295,7 @@ function SectionTitle({ children, note, action, fold, summary }: {
     <div style={{ padding: "11px 16px 6px", display: "flex", alignItems: "baseline", gap: 8 }}>
       {fold && <FoldToggle id={fold} label={typeof children === "string" ? children : "this section"} />}
       <div style={{
-        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
+        fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
         color: "var(--text-3)",
       }}>{children}</div>
       {folded ? <FoldedSummary text={summary} />
@@ -602,7 +602,7 @@ export default function Home({
       <>
         {!bare && (
           <div style={{
-            fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
+            fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)",
             padding: "8px 16px 2px", borderTop: "1px solid var(--color-border)",
           }}>{label} · {items.length}</div>
         )}
@@ -1013,7 +1013,7 @@ export default function Home({
           {/* Resolution chips live here now, with the work they act on. */}
           {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
             <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
                 how much room should these get?
               </div>
               {resolution.needsDuration.map((n) => (
@@ -1034,7 +1034,7 @@ export default function Home({
           )}
           {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
             <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
                 what kind of work are these?
               </div>
               {resolution.needsActivity.slice(0, 4).map((n) => (
@@ -1057,7 +1057,7 @@ export default function Home({
           {/* The shaped day, when asked for. */}
           {shapeOpen && shaped && (
             <div style={{ borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
                 {shaping ? "shaping…" : "today, shaped"}
               </div>
               {shaped.placed.map((p) => (
@@ -1078,7 +1078,7 @@ export default function Home({
                     {/* Under Route the weave keeps the usual slot and says what
                         it kept it over. Output, never a silent trade. */}
                     {(p as any).basis === "usual" && (
-                      <span style={{ fontSize: 9, color: "var(--text-3)" }}>
+                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
                         {" "}· your usual time{(p as any).keptOver ? `, kept over the ${clockOf((p as any).keptOver.startAt)} the sky preferred` : ""}
                       </span>
                     )}

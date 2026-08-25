@@ -47,7 +47,7 @@ function SectionIntro({ title, body, strict = false }: { title: string; body: st
       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)", display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
         {title}
         {strict && (
-          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: "#a05020", background: "#a0502012", border: "1px solid #a0502033", borderRadius: 5, padding: "1px 6px" }}>
+          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: "#a05020", background: "#a0502012", border: "1px solid #a0502033", borderRadius: 5, padding: "1px 6px" }}>
             stricter rules
           </span>
         )}
@@ -68,7 +68,7 @@ function RuleRow({ rule }: { rule: ElectionResult["rules"][number] }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-foreground)" }}>
           {rule.label}
-          <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, textTransform: "uppercase", fontSize: 9, letterSpacing: "0.4px" }}>
+          <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6, textTransform: "uppercase", fontSize: 10.5, letterSpacing: "0.4px" }}>
             {rule.severity}
           </span>
         </div>
@@ -129,7 +129,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
         background: "none", display: "flex", alignItems: "center", gap: 10,
       }}>
         <div style={{
-          fontSize: 9.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.3px",
+          fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, letterSpacing: "0.3px",
           color: VERDICT_COLORS[result.verdict], background: VERDICT_BG[result.verdict], flexShrink: 0,
         }}>{VERDICT_LABELS[result.verdict]}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -145,7 +145,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
           <div style={{ fontSize: 10.5, color: "var(--text-2)", marginTop: 1 }}>
             {(result as { moonLine?: string }).moonLine ?? ""}
           </div>
-          <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 1 }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
             {PLANET_ICONS[result.planetaryHour] ?? ""} {result.planetaryHour} hour{result.planetaryHourMatch ? " · suits this venture" : ""}
           </div>
         </div>

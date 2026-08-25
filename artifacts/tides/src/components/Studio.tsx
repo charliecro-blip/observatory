@@ -532,12 +532,12 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Subject</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Subject</div>
             <Seg value={subject} onPick={setSubject} options={[["day", "The day"], ["week", "The week"], ["lunation", "The lunation"], ["activity", "One activity"], ["rhythm", "My rhythm"]]} />
           </div>
           {subject === "activity" && (
             <div>
-              <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Which activity</div>
+              <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Which activity</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {(cardActs?.activities ?? []).slice(0, 14).map(a => (
                   <button key={a.key} onClick={() => setCardActivity(a.key)} style={{
@@ -551,18 +551,18 @@ export function Studio({ now, lat, lon, onClose }: { now: any; lat: number; lon:
             </div>
           )}
           <div>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Format</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Format</div>
             <Seg value={format} onPick={setFormat} options={[["story", "Story 9:16"], ["post", "Post 4:5"]]} />
           </div>
           <div>
-            <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Theme</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--color-muted)", marginBottom: 5 }}>Theme</div>
             <Seg value={theme} onPick={setTheme} options={[["tide", "Tide"], ["almanac", "Almanac"], ["observatory", "Observatory"], ["minimal", "Minimal"]]} />
           </div>
           <button onClick={doExport} disabled={busy} style={{
             marginTop: 6, fontSize: 12.5, padding: "9px 18px", borderRadius: 9, border: "none",
             background: "#1a2a3a", color: "var(--text-3)", cursor: busy ? "default" : "pointer", fontWeight: 600,
           }}>{busy ? "Rendering…" : `↓ Export PNG · ${W}×${H}`}</button>
-          <div style={{ fontSize: 9.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.5 }}>
             Exports at full Instagram resolution with the glyph faces embedded.
           </div>
         </div>

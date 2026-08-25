@@ -437,7 +437,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 function Sect({ label, children, accent, color, muted }: any) {
   return (
     <div>
-      <div style={{fontSize:9,textTransform:"uppercase",letterSpacing:"0.6px",color:accent??color??(muted?"var(--text-3)":"var(--text-3)"),fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+      <div style={{fontSize: 10.5,textTransform:"uppercase",letterSpacing:"0.6px",color:accent??color??(muted?"var(--text-3)":"var(--text-3)"),fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
         {label}<div style={{flex:1,height:1,background:"var(--color-card-2)"}}/>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:4}}>{children}</div>
@@ -501,7 +501,7 @@ function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule
               border: isDone ? "none" : `1.5px solid ${highlight ? "var(--color-quality-good)" : "var(--color-border)"}`,
               background: isDone ? "var(--color-quality-good)" : "transparent",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#ffffff", fontSize: 9, lineHeight: 1,
+              color: "#ffffff", fontSize: 10.5, lineHeight: 1,
             }}>{isDone ? "✓" : ""}</span>
           </button>
         }

@@ -165,7 +165,7 @@ export function HelpBadge({ term, style }: HelpBadgeProps) {
     >
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 14, height: 14, borderRadius: "50%", fontSize: 9, fontWeight: 600,
+        width: 14, height: 14, borderRadius: "50%", fontSize: 10.5, fontWeight: 600,
         background: "var(--color-border)", color: "var(--color-muted)", cursor: "help", marginLeft: 4,
         flexShrink: 0, ...style,
       }}>?</span>

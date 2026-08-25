@@ -234,7 +234,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600 }}>{planet} hour</div>
-                <div style={{ fontSize: 9, color: "var(--text-3)" }}>
+                <div style={{ fontSize: 10.5, color: "var(--text-3)" }}>
                   {planetaryHour?.began} – {planetaryHour?.ends}
                   {activeHourRemaining > 0 && <span style={{ color: "#c08030" }}> · {fmt(activeHourRemaining)} left</span>}
                 </div>
@@ -307,7 +307,7 @@ export function SessionTimer({ planetaryHour }: SessionTimerProps) {
                 </svg>
               </div>
               {firstQuietNote && (
-                <div style={{ fontSize: 9.5, color: "var(--text-3)", textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>
                   The sky steps back while a session runs. It returns when you stop.
                 </div>
               )}

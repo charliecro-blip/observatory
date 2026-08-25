@@ -89,7 +89,7 @@ export default function WovenReading({ reading, level, accent = "#5a6cae", saidA
       {/* What to watch — the discernment, one line. */}
       {!workingOnly && topWatch && (
         <div style={{ fontSize: 11.5, color: "var(--color-muted)", marginTop: 6, display: "flex", gap: 6, alignItems: "baseline" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: accent, letterSpacing: "0.8px", flexShrink: 0 }}>WATCH</span>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: accent, letterSpacing: "0.8px", flexShrink: 0 }}>WATCH</span>
           <span>{cap(topWatch.note)}</span>
         </div>
       )}

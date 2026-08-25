@@ -179,7 +179,7 @@ function readSaved(cycleKey: string): Saved | null {
 }
 
 const LABEL: React.CSSProperties = {
-  fontSize: 9.5, textTransform: "uppercase", letterSpacing: "0.7px",
+  fontSize: 11, textTransform: "uppercase", letterSpacing: "0.7px",
   color: "var(--text-3)", marginBottom: 6,
 };
 const INPUT: React.CSSProperties = {
@@ -522,7 +522,7 @@ export default function NewMoonCheckIn({ testerId, onNavigate, cycleStart, nextC
           borderLeft: `3px solid ${ACCENT}`, borderRadius: 12, padding: "12px 16px",
         }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
+            <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)" }}>
               {cycle.curated ? "This cycle · set at the Leo eclipse" : "This cycle · set at the new moon"}
             </span>
             <div style={{ display: "flex", gap: 10 }}>

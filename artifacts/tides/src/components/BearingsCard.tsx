@@ -159,7 +159,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
 
       {/* THIS YEAR */}
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 6 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THIS YEAR</span>
+        <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THIS YEAR</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           {artFor(fix.year.house)} {ord(fix.year.house)}-house year — <b>{fix.year.theme.split(" — ")[0]}</b>
           <span style={{ color: "var(--color-muted)" }}> · <span aria-hidden="true">{PLANET_GLYPH[fix.year.lord] ?? ""}</span> {fix.year.lord} holds the year</span>
@@ -196,7 +196,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
           the house transit — the meaning already user-facing in two places —
           and Saturn's lap is an arc, which is what it is. */}
       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: fix.chapter.renovations.length ? 6 : 0 }}>
-        <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THE ARC</span>
+        <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>THE ARC</span>
         <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.55 }}>
           {fix.chapter.saturnStage}
           {fix.chapter.nextWaypoint && (
@@ -209,7 +209,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
       {/* RENOVATIONS */}
       {fix.chapter.renovations.length > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>IN PROGRESS</span>
+          <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>IN PROGRESS</span>
           {/* Each transit opens its own meaning. These carried a `note` the
               engine had already written and showed it only as a hover title —
               invisible on a phone, and undiscoverable anywhere. "Each of
@@ -243,7 +243,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
              the switch lives in Settings and on Home. */}
       {expanded && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>RHYTHM</span>
+          <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>RHYTHM</span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <RhythmProposal testerId={testerId} current={baseRhythm} compact />
           </div>
@@ -257,7 +257,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
              creation form. The engine has computed it all along. */}
       {(currents?.transitsByHouse?.length ?? 0) > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CHAPTERS</span>
+          <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CHAPTERS</span>
           <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
             {(currents!.transitsByHouse as any[]).map((t: any, i: number) => {
               const key = `${t.planet}:${t.house}`;
@@ -323,7 +323,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
              forecast. */}
       {(currents?.majorTransits?.length ?? 0) > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CLOSE NOW</span>
+          <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>CLOSE NOW</span>
           <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
             {(currents!.majorTransits as any[])
               // IN PROGRESS above names the same renovations, from a second
@@ -352,7 +352,7 @@ export default function BearingsCard({ testerId, onOpenSettings, expanded = fals
              answered — never as an empty prompt. */}
       {(currents?.cautionWindows?.length ?? 0) > 0 && (
         <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--color-border)" }}>
-          <span style={{ fontSize: 9.5, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>WATCH</span>
+          <span style={{ fontSize: 11, letterSpacing: "0.8px", color: "var(--color-muted)", flexShrink: 0, width: 76 }}>WATCH</span>
           <div style={{ fontSize: 12, color: "var(--color-foreground)", lineHeight: 1.7, minWidth: 0 }}>
             {(currents!.cautionWindows as any[]).slice(0, 3).map((w: any, i: number) => (
               <div key={i}>

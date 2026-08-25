@@ -415,7 +415,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           <div style={{ display: "flex", gap: 3 }}>
             {(["day", "week", "month"] as const).map((t) => (
               <button key={t} onClick={() => setChartTimeframe(t)} style={{
-                fontSize: 9, padding: "2px 8px", borderRadius: 8, cursor: "pointer", textTransform: "capitalize",
+                fontSize: 10.5, padding: "2px 8px", borderRadius: 8, cursor: "pointer", textTransform: "capitalize",
                 border: timeframe === t ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
                 background: timeframe === t ? "var(--color-primary)" : "transparent",
                 color: timeframe === t ? "var(--color-card)" : "var(--text-3)",
@@ -426,12 +426,12 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {timeframe === "day" && (
-            <div style={{ fontSize: 9.5, color: style === "water" ? nowColor : mutedNowColor, fontWeight: 600 }}>
+            <div style={{ fontSize: 11, color: style === "water" ? nowColor : mutedNowColor, fontWeight: 600 }}>
               {CHARACTER_WORD[nowChar] ?? "—"} water <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {heightWord}</span>
             </div>
           )}
           {timeframe !== "day" && weekData?.weekElement && (
-            <div style={{ fontSize: 9.5, color: mutedNowColor, fontWeight: 600, textTransform: "capitalize" }}>
+            <div style={{ fontSize: 11, color: mutedNowColor, fontWeight: 600, textTransform: "capitalize" }}>
               {weekData.weekElement}-leaning
             </div>
           )}
@@ -449,7 +449,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           <div style={{ display: "flex", gap: 6, marginBottom: opts && style === "water" ? 6 : 0, flexWrap: "wrap" }}>
             {CHART_STYLES.map((s) => (
               <button key={s.key} onClick={() => setChartStyle(s.key)} title={s.hint} style={{
-                fontSize: 9.5, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
+                fontSize: 11, padding: "3px 10px", borderRadius: 10, cursor: "pointer",
                 border: style === s.key ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
                 background: style === s.key ? "#1a2a3a" : "var(--color-card-2)",
                 color: style === s.key ? "#ffffff" : "var(--color-foreground)",
@@ -461,7 +461,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {([["fill", "fill the day", "true height"], ["sky", "sky", "no sky"], ["motion", "motion", "still"]] as const).map(([k, onLabel, offLabel]) => (
                 <button key={k} onClick={() => setOpt(k, !opts[k])} style={{
-                  fontSize: 9, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
+                  fontSize: 10.5, padding: "2px 9px", borderRadius: 10, cursor: "pointer",
                   border: "1px solid var(--color-border)",
                   background: opts[k] ? "var(--color-card-2)" : "transparent",
                   color: opts[k] ? "var(--color-foreground)" : "var(--color-muted)",
@@ -479,7 +479,7 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
           display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
           cursor: "pointer", padding: 0, marginBottom: 6, fontSize: 10, color: "var(--text-3)",
         }}>
-          <span aria-hidden="true" style={{ fontSize: 9 }}>▸</span> Compare elements
+          <span aria-hidden="true" style={{ fontSize: 10.5 }}>▸</span> Compare elements
         </button>
       )}
 
@@ -499,10 +499,10 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
             );
           })}
           {LENS_HINTS[lens] && (
-            <span style={{ fontSize: 9.5, color: "var(--color-muted)", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
+            <span style={{ fontSize: 11, color: "var(--color-muted)", marginLeft: 4 }}>{LENS_HINTS[lens]}</span>
           )}
           <button onClick={() => { setShowLenses(false); setLens("overall"); }} title="Hide the element comparison"
-            style={{ fontSize: 9.5, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", marginLeft: "auto" }}>
+            style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", marginLeft: "auto" }}>
             <span aria-hidden="true">▾</span> hide
           </button>
         </div>

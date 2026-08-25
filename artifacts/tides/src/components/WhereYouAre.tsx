@@ -280,7 +280,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
             width: 14, height: 14, borderRadius: h.flavor === "chore" ? 4 : "50%",
             border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
             background: h.doneToday ? KEPT : "transparent",
-            color: "#ffffff", fontSize: 9, lineHeight: 1,
+            color: "#ffffff", fontSize: 10.5, lineHeight: 1,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>{h.doneToday ? "✓" : ""}</span></button>
         <span style={{
@@ -295,7 +295,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
           first thing to lose when it does — exactly the wrong priority for
           the one label explaining why a row appears twice on the page. */}
       {also && (
-        <div style={{ fontSize: 9.5, color: "var(--text-3)", paddingLeft: 23, marginTop: 1 }}>{also}</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)", paddingLeft: 23, marginTop: 1 }}>{also}</div>
       )}
     </div>
   );
@@ -308,7 +308,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: folded ? 0 : 10 }}>
         <FoldToggle id="whereYouAre" label="Where you are" />
         <span style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
+          fontSize: 11, fontWeight: 700, letterSpacing: "0.9px", textTransform: "uppercase",
           color: "var(--text-3)",
         }}>Where you are</span>
         {/* The count IS the summary — it is the single most-glanced number on
@@ -441,7 +441,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                     {(["both", "held", "moving"] as const).map((k, i, arr) => (
                       <button key={k} onClick={() => setLens(k)} aria-pressed={lens === k}
                         style={{
-                          fontSize: 9.5, padding: "2px 9px", cursor: "pointer",
+                          fontSize: 11, padding: "2px 9px", cursor: "pointer",
                           border: "1px solid var(--color-border)",
                           borderLeftWidth: i === 0 ? 1 : 0,
                           borderRadius: i === 0 ? "5px 0 0 5px" : i === arr.length - 1 ? "0 5px 5px 0" : 0,
@@ -458,7 +458,7 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                   <div key={b.key}>
                     {(bands.length > 1 || lens !== "both") && (
                       <div style={{
-                        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase",
+                        fontSize: 11, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase",
                         color: b.key === "moving" ? "var(--color-meridian)" : "var(--color-brass)",
                         marginBottom: 6, display: "flex", alignItems: "baseline", gap: 7,
                       }}>

@@ -108,7 +108,7 @@ export default function DayConditions({ now, cycle, habits, skyQuiet, showVoid =
         borderLeft: `3px solid ${benign ? "#3f6f8a" : "#a08040"}`,
         borderRadius: 0, padding: "11px 16px", flexShrink: 0,
       }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 3 }}>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 3 }}>
           Right now · the Moon is void
           {now.voc.nextIngress && <span style={{ textTransform: "none", letterSpacing: 0 }}> until {now.voc.nextIngress}</span>}
         </div>
@@ -152,7 +152,7 @@ export default function DayConditions({ now, cycle, habits, skyQuiet, showVoid =
           <div style={{ fontSize: 11, fontWeight: 600, color: phase.color }}>{phase.name} · day {dayOfCycle} of cycle</div>
           <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{phase.desc}</div>
         </div>
-        <div style={{ fontSize: 9, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
+        <div style={{ fontSize: 10.5, color: `${phase.color}80`, background: `${phase.color}15`, padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>cycle</div>
       </div>
     );
   }

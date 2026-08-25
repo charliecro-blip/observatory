@@ -86,9 +86,9 @@ export function StarRows({ testerId, lat, lon, onOpenStar }: {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>Your stars today</span>
+        <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)" }}>Your stars today</span>
         {(data?.streak ?? 0) > 0 && (
-          <span style={{ fontSize: 9, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
+          <span style={{ fontSize: 10.5, color: "#8a7a5e" }} title="Days you've closed the loop — one missed day lowers sail without sinking the run">
             ⚓ {data!.streak} day{data!.streak === 1 ? "" : "s"} at the helm
           </span>
         )}
@@ -165,7 +165,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
     <div style={{ marginBottom: 8 }}>
       {todayWins.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
+          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 4 }}>
             Today's wins · {todayWins.length}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -213,7 +213,7 @@ export function EveningHarvest({ testerId, lat, lon }: { testerId: string | null
           ☾ kept
         </button>
       </div>
-      <div style={{ fontSize: 9.5, color: "var(--text-3)", marginTop: 5 }}>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
         {data.streak > 0 ? `⚓ ${data.streak} day${data.streak === 1 ? "" : "s"} at the helm · ` : ""}{data.winsWeek} win{data.winsWeek === 1 ? "" : "s"} this week{(data.keptWeek ?? 0) > 0 ? ` · ${data.keptWeek} kept` : ""} · {data.winsCycle} this moon cycle
       </div>
     </div>
@@ -239,7 +239,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)" }}>The wake</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 9.5, color: "#8a7a5e" }}>
+          <span style={{ fontSize: 11, color: "#8a7a5e" }}>
             ⚓ {data.streak}d at the helm · {data.winsWeek} this week · {data.winsCycle} this cycle
           </span>
           <button
@@ -254,7 +254,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
                 window.open(URL.createObjectURL(await r.blob()), "_blank");
               } catch { /* retryable */ }
             }}
-            style={{ fontSize: 9.5, color: "#8a6a20", background: "none", cursor: "pointer", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
+            style={{ fontSize: 11, color: "#8a6a20", background: "none", cursor: "pointer", border: "1px solid #c8b06a55", borderRadius: 8, padding: "2px 8px" }}
             title="Your lunation in wins, as a card"><span aria-hidden="true">↗</span> cycle card</button>
         </div>
       </div>
@@ -264,13 +264,13 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
       {data.stars.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
           <button onClick={() => setFilter("all")} style={{
-            fontSize: 9.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
+            fontSize: 11, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
             border: filter === "all" ? "1px solid #1a2a3a" : "1px solid var(--color-border)",
             background: filter === "all" ? "#1a2a3a" : "transparent", color: filter === "all" ? "#ffffff" : "var(--color-muted)",
           }}>all</button>
           {data.stars.map(s => (
             <button key={s.id} onClick={() => setFilter(s.id)} style={{
-              fontSize: 9.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
+              fontSize: 11, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
               border: filter === s.id ? `1px solid ${elc(s.element)}` : "1px solid var(--color-border)",
               background: filter === s.id ? `${elc(s.element)}18` : "transparent",
               color: filter === s.id ? elc(s.element) : "var(--color-muted)", fontWeight: filter === s.id ? 600 : 400,
@@ -281,7 +281,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
         {dates.map(d => (
           <div key={d}>
-            <div style={{ fontSize: 9, color: "var(--color-muted)", marginBottom: 3 }}>
+            <div style={{ fontSize: 10.5, color: "var(--color-muted)", marginBottom: 3 }}>
               {new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               {d >= data.cycleStart ? "" : " · last cycle"}
             </div>
@@ -292,7 +292,7 @@ export function WakeList({ testerId, lat, lon }: { testerId: string | null; lat?
                 </span>
                 <span style={{ color: "var(--color-foreground)", flex: 1 }}>{w.text}</span>
                 {starTitle(w.goalId) && (
-                  <span style={{ fontSize: 9, color: elc(starEl(w.goalId)), flexShrink: 0 }}>✦ {starTitle(w.goalId)}</span>
+                  <span style={{ fontSize: 10.5, color: elc(starEl(w.goalId)), flexShrink: 0 }}>✦ {starTitle(w.goalId)}</span>
                 )}
               </div>
             ))}
@@ -369,7 +369,7 @@ export function ReviewCard({ testerId, lat, lon, onOpenLog, firstRun = false, su
       <div style={{ background: "linear-gradient(135deg, #8a6a2010, #8a6a2004)", border: "1px solid #c8b06a45", borderRadius: 14, padding: "13px 16px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--color-primary)" }}>⚓ The week in the wake</span>
-          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>
+          <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8a6a20" }}>
             {summoned && new Date().getDay() !== 0 ? "This week" : "Sunday review"}
           </span>
         </div>

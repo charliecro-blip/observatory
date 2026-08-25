@@ -57,7 +57,7 @@ export default function LunarCycle({ now }: { now: any }) {
                 width: 14, height: 14, marginLeft: -7, borderRadius: "50%",
                 background: "var(--color-primary)", boxShadow: "0 0 0 3px rgba(255,255,255,0.18)" }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9,
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5,
               color: "var(--text-3)", marginTop: 5, letterSpacing: "0.6px" }}>
               {STOPS.map((st, i) => <span key={i}>{st.label}</span>)}
             </div>

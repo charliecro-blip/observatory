@@ -201,7 +201,7 @@ export function Disclosure({ label, children, defaultOpen = false }: {
           fontSize: 11.5, color: "var(--color-primary)", fontWeight: 500,
         }}
       >
-        <span aria-hidden="true" style={{ fontSize: 9, display: "inline-block", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.12s" }}>▸</span>
+        <span aria-hidden="true" style={{ fontSize: 10.5, display: "inline-block", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.12s" }}>▸</span>
         {label}
       </button>
       {open && <div style={{ marginTop: 8 }}>{children}</div>}
@@ -262,5 +262,63 @@ export function PrimaryInvitation({ children, onClick, disabled }: {
         opacity: disabled ? 0.55 : 1,
       }}
     >{children}</button>
+  );
+}
+
+/* ── Chip / ChipGroup ────────────────────────────────────────────────────── */
+
+/**
+ * A one-tap option, on or off.
+ *
+ * The app had roughly fifty of these, each re-typed: a fontSize between 9 and
+ * 10.5, a padding between "1px 4px" and "3px 9px", a radius of 4, 6, 7, 10 or
+ * 999, and a colour scheme invented per group. The variation was not meaning —
+ * an element chip and a phase chip do the same job and looked different
+ * because they were written on different days.
+ *
+ * `color` stays a per-call decision, because THAT part does carry meaning: an
+ * element chip should wear its element. The geometry does not.
+ */
+export function Chip({ on, onClick, color, title, children }: {
+  on?: boolean;
+  onClick?: () => void;
+  /** The group's own hue when selected. Defaults to the page's foreground. */
+  color?: string;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  const hue = color ?? "var(--color-foreground)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={onClick ? !!on : undefined}
+      style={{
+        fontSize: 11, lineHeight: 1.3, padding: "4px 10px", borderRadius: 999,
+        border: `1px solid ${on ? hue : "var(--color-border)"}`,
+        background: on ? `color-mix(in srgb, ${hue} 12%, transparent)` : "transparent",
+        color: on ? hue : "var(--text-3)",
+        fontWeight: on ? 600 : 400,
+        cursor: onClick ? "pointer" : "default",
+      }}
+    >{children}</button>
+  );
+}
+
+/** A labelled row of chips. The label is the shared one, above the 9px floor. */
+export function ChipGroup({ label, note, children }: {
+  label: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 5 }}>
+        <span style={LABEL}>{label}</span>
+        {note && <span style={{ fontSize: 11, color: "var(--text-3)" }}>{note}</span>}
+      </div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{children}</div>
+    </div>
   );
 }

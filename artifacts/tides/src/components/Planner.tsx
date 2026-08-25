@@ -544,7 +544,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                     );
                   })}
                   {cardElements(c).length > 1 && (
-                    <span style={{ fontSize: 9.5, color: "var(--text-3)" }}>any of these suits it</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>any of these suits it</span>
                   )}
                 </div>}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -630,11 +630,11 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         ? "thinking it through…"
                         : <><span aria-hidden="true">✦</span> break into moments</>}
                     </button>
-                    <span style={{ fontSize: 9.5, color: "var(--text-3)", marginLeft: 8 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>
                       {Math.round(c.estimatedMinutes / 60 * 10) / 10}h — the sky may suit its parts differently
                     </span>
                     {breakDown.isError && breakDown.variables?.index === i && (
-                      <div style={{ fontSize: 9.5, color: "#a03030", marginTop: 3 }}>
+                      <div style={{ fontSize: 11, color: "#a03030", marginTop: 3 }}>
                         {(breakDown.error as Error)?.message ?? "Couldn't break that down — try again."}
                       </div>
                     )}
@@ -815,7 +815,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                         ? <span style={{ fontSize: 10, color: "#3a6020", fontWeight: 600, flexShrink: 0 }}><span aria-hidden="true">✓</span> kept</span>
                         : <button onClick={() => commitOne.mutate({ idx })} disabled={commitOne.isPending}
                             title="Put just this one on the calendar" style={{
-                              fontSize: 9.5, padding: "3px 9px", borderRadius: 7, cursor: "pointer", flexShrink: 0,
+                              fontSize: 11, padding: "3px 9px", borderRadius: 7, cursor: "pointer", flexShrink: 0,
                               border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", fontWeight: 600,
                             }}>{commitOne.isPending && commitOne.variables?.idx === idx ? "…" : "keep"}</button>
                     )}
