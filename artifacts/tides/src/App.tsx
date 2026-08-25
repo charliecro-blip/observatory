@@ -56,6 +56,7 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
   useEffect(() => { if (focusStarId != null) setTab("overview"); }, [focusStarId]);
   // Guiding Stars leads (the why), then the two daily-doing axes (tasks,
   // habits). Currents (long-cycle context) is now a header at the top.
+  const narrow = useIsMobile();
   const TABS: {id:WorkTab; label:string}[] = [
     {id:"overview",  label:"Guiding Stars"},
     {id:"tasks",     label:"Tasks"},
@@ -68,11 +69,24 @@ function WorkPage({ testerId, now, lat, lon, seedElement, onSeedConsumed, focusS
   ];
   return (
     <div style={{flex:1, display:"flex", flexDirection:"column", overflow:"hidden"}}>
-      {/* Sub-tab bar */}
-      <div style={{display:"flex", borderBottom:"1px solid var(--color-border)", background: "var(--color-rail)", flexShrink:0, padding:"0 20px"}}>
+      {/* SUB-TAB BAR — one row, always.
+          At 390px the four labels wrapped, so Stars opened with two rows of
+          navigation stacked above a page that already carries the bottom bar:
+          three bands of chrome before a word of content. The labels are not
+          shortened — "Guiding Stars" is the name of the thing, and one name per
+          concept is worth more than the pixels — so instead the row refuses to
+          wrap, tightens its padding on a phone, and scrolls if it must. */}
+      <div style={{
+        display:"flex", borderBottom:"1px solid var(--color-border)",
+        background: "var(--color-rail)", flexShrink:0,
+        padding: narrow ? "0 8px" : "0 20px",
+        flexWrap:"nowrap", overflowX:"auto", scrollbarWidth:"none",
+      }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            padding:"10px 18px", border:"none", background:"none", cursor:"pointer",
+            padding: narrow ? "10px 10px" : "10px 18px",
+            whiteSpace:"nowrap", flexShrink:0,
+            border:"none", background:"none", cursor:"pointer",
             fontSize:12, fontWeight: tab===t.id ? 600 : 400,
             color: tab===t.id ? "var(--color-foreground)" : "var(--color-muted)",
             borderBottom: tab===t.id ? "2px solid #1a2a3a" : "2px solid transparent",
