@@ -265,7 +265,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0}}>
         <div style={{fontSize:12,color:"var(--color-muted)",display:"flex",alignItems:"center",gap:8}}>
-          <span>Tasks · everything, by when</span>
+          <span>Everything, by when</span>
           {/* empty / unavailable / stale are three different things. Showing
               "nothing here" for a failed load is a lie, and this app's whole
               claim is that it's paying attention. */}

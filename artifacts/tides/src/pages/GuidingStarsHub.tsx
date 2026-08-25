@@ -525,10 +525,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        {/* Third time this shape has bitten on a phone: a text column beside a
+            control, where the control keeps its width and the words take what
+            is left. Stacking is the fix each time — the sentence is the thing
+            worth the full measure, and a button is happy anywhere. */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", gap: 10,
+          flexDirection: isNarrow ? "column" : "row",
+          alignItems: isNarrow ? "stretch" : "flex-start",
+        }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.4px" }}>Guiding Stars</div>
-            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Your long-term ideals — the few things everything else should serve</div>
+            {/* The page title is gone (2026-08-25). The tab you pressed to get
+                here already says "Guiding Stars", and repeating it cost two
+                wrapped lines and ~110px on a phone before any content — the
+                same one-name-per-concept problem as a duplicated label, only
+                vertical. What is kept is the half the tab does NOT say. */}
+            <div style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.5, maxWidth: "46ch" }}>Your long-term ideals — the few things everything else should serve</div>
           </div>
           <button onClick={() => setShowForm(v => !v)} disabled={atCap && !showForm} title={atCap ? `Only ${MAX_ACTIVE_STARS} active at a time — pause one first` : undefined} style={{
             fontSize: 11, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--color-border)",
