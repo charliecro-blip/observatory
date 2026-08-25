@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { starIdsOf } from "@/lib/starLinks";
 import WhereYouAre from "@/components/WhereYouAre";
 import { fetchJson } from "@/lib/fetchJson";
@@ -117,6 +118,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
     ? (currentsData?.cautionWindows ?? []).filter((t: any) => cautionPlanets.includes(t.cautionPlanet))
     : [];
 
+  const isNarrow = useIsMobile();
   const [showForm, setShowForm] = useState(false);
   const [expandedWeather, setExpandedWeather] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", horizon: "near", element: "", planet: "" });
@@ -903,8 +905,23 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               transition: "box-shadow 0.4s, border-color 0.4s",
             }}>
               <div style={{ padding: "18px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                  <div style={{ flex: 1 }}>
+                {/* wrap: on a phone the +log / pause / retire cluster was squeezing the
+                    name into a 110px column, which broke it mid-word. They drop
+                    below it instead — the name is the thing worth the full width. */}
+                <div style={{
+                  display: "flex", gap: 10,
+                  // On a phone the actions go UNDER the name rather than beside
+                  // it. flexWrap alone was not enough: the name's column can
+                  // shrink to nothing, so it wrapped to four characters and the
+                  // buttons sat on top of it instead of moving down.
+                  flexDirection: isNarrow ? "column" : "row",
+                  alignItems: isNarrow ? "stretch" : "flex-start",
+                }}>
+                  {/* minWidth:0 — a flex child will not shrink below its content
+                      without it, so at 390px the star's name held the column open
+                      and the row clipped instead of wrapping. The trap this repo
+                      already has a note about, met again by making a name bigger. */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--color-foreground)" }}>{g.title}</span>
                       {flagged && (
