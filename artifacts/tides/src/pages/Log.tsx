@@ -414,7 +414,7 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
           {/* DAYS or the DIARY. The diary is the intentional record — set
               on purpose, stamped with the sky, closed with how it went. */}
           <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "var(--color-card-2)", borderRadius: 8, padding: 3, width: "fit-content" }}>
-            {([["days", "The days"], ["diary", "The diary"]] as const).map(([m, label]) => (
+            {([["days", "The Days"], ["diary", "The Diary"]] as const).map(([m, label]) => (
               <button key={m} onClick={() => setLogMode(m)} style={{
                 fontSize: 11.5, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer",
                 background: logMode === m ? "var(--color-card)" : "transparent",

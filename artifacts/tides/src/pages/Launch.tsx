@@ -273,7 +273,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
               "Pick a day" over "Begin": it is the marketing hook ("Pick the
               day. Know why.") as a tab, and the least discoverable word of
               the three became the plainest. */}
-          {([["schedule", "Schedule"], ["begin", "Pick a day"], ["planets", "The planets"]] as const).map(([m, label]) => (
+          {([["schedule", "Schedule"], ["begin", "Pick a Day"], ["planets", "The Planets"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)} style={{
               padding: "6px 18px", borderRadius: 8, fontSize: 12.5, cursor: "pointer", border: "none",
               background: mode === m ? "var(--color-card)" : "transparent", color: mode === m ? "var(--color-primary)" : "var(--text-3)",

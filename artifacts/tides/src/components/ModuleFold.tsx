@@ -55,9 +55,26 @@ export function useFold() {
     // Computed from the CURRENT list, not this render's copy of it. Reading
     // the snapshot lost every fold but the last when several landed in one
     // tick — each toggle saw the same array and wrote over the others.
+    // Toggles the EFFECTIVE state, not list membership.
+    //
+    // These were the same thing until FOLDED_UNLESS_TOLD arrived, and the
+    // difference made the door unopenable: "readday" was folded by inheritance
+    // without being in the list, so the first click ADDED it (still folded),
+    // and the second removed it (inheritance folded it again). Two clicks, no
+    // change, no way in — reported from a real pass through the app.
+    //
+    // Opening also CONSUMES the inheritance. Once someone has said what they
+    // want for this door, the answer borrowed from the ids it replaced has
+    // been superseded and must not keep applying.
     toggle: (id: string) => updateDisplay(d => {
       const cur = d.collapsedModules ?? [];
-      return { collapsedModules: cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id] };
+      const heirs = FOLDED_UNLESS_TOLD[id] ?? [];
+      const effectivelyFolded = cur.includes(id) || (!cur.includes(id) && heirs.some(h => cur.includes(h)));
+      return {
+        collapsedModules: effectivelyFolded
+          ? cur.filter(x => x !== id && !heirs.includes(x))   // open it, for good
+          : [...cur, id],                                     // close it
+      };
     }),
   };
 }
