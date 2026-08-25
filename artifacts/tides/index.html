@@ -26,6 +26,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- A LINK THAT SURVIVES JAVASCRIPT BEING OFF.
+         The app renders its own privacy link on the signup screen, which is
+         where a person looks. This one is for the reader who never runs the
+         bundle: a verification reviewer with a crawler, or anyone whose
+         browser did not execute. compass.day served no privacy link at all in
+         its HTML until now, so a reviewer fetching the page saw an empty
+         <div id="root"> and nothing else.
+         `hidden` keeps it out of the visual layout; it stays in the markup and
+         in the accessibility tree, and screen-reader users get a real link on
+         the landing page rather than a decoration. -->
+    <noscript>
+      <p><a href="/privacy">Privacy Policy</a></p>
+    </noscript>
+    <a href="/privacy" hidden>Privacy Policy</a>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

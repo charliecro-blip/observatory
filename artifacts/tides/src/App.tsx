@@ -956,8 +956,16 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
           </div>
         )}
 
-        <div style={{ fontSize:10, color:"var(--text-3)", textAlign:"center", marginTop:16, lineHeight:1.5 }}>
+        <div style={{ fontSize:11, color:"var(--text-3)", textAlign:"center", marginTop:16, lineHeight:1.6 }}>
           No password needed — you'll get an account key to bring your data to any device.
+          {/* The privacy policy has to be reachable from the page a stranger
+              lands on, not only from Settings. Google's sensitive-scope review
+              asks for exactly this, and Compass asks for a calendar scope; but
+              it is also simply where a person deciding whether to hand over
+              their birth time and their calendar would look for it. */}
+          <div style={{ marginTop: 8 }}>
+            <a href="/privacy" style={{ color: "var(--color-primary)", textDecoration: "underline" }}>Privacy</a>
+          </div>
         </div>
       </div>
     </div>
