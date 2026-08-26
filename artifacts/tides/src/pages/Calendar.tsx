@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Disclosure, Chip } from "@/components/primitives";
 import { jsonArray } from "@/lib/jsonArray";
+import { dueOnDay, type DayListTask } from "@/lib/dayList";
 import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1200,9 +1201,12 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 // opt-in layers so the essentials read first (#13b, #20).
 interface AgendaMoment { min: number; time: string; glyph: string; label: string; sub?: string; color: string; faded?: boolean; onDelete?: () => void; }
 
-function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
+function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
-  gcalEvents: GCalEvent[]; lat: number; lon: number; showHours: boolean; showCrossings: boolean;
+  gcalEvents: GCalEvent[];
+  /** Undone tasks. Those due today lead the day; the rest are not this day's business. */
+  tasks?: DayListTask[];
+  lat: number; lon: number; showHours: boolean; showCrossings: boolean;
   /** Canonical hours for this date, from the server. `null` means genuinely
    *  unavailable (polar day or night), which is different from "none yet". */
   hours?: PlanetHour[] | null;
@@ -1273,6 +1277,10 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   }
 
   moments.sort((a, b) => a.min - b.min);
+
+  // Due today and not already holding a block — the things this day is FOR.
+  // Rules live in lib/dayList so they can be tested apart from the tree.
+  const dueHere = dueOnDay(tasks, dateStr);
   const isToday = dateStr === today;
   const nowMin = isToday ? minOf(new Date()) : -999;
 
@@ -1294,6 +1302,35 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
           </div>
           <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", flexShrink: 0 }}>+ block</button>
         </div>
+
+        {/* ══ WHAT THIS DAY IS FOR ═══════════════════════════════════════
+            Agenda listed every sky moment and every block and nothing the
+            person had written down, which is how a day view ends up reading
+            as an ephemeris — "not sure what this is for?" (owner,
+            2026-08-25). The day's own list leads now, and the sky follows,
+            same order the Log settled on: what you are doing first, what the
+            sky is doing under it.
+
+            Only what is DUE here and not already scheduled. An empty list is
+            a real answer and says so rather than reaching for filler. */}
+        {dueHere.length > 0 ? (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 6 }}>
+              To do today · {dueHere.length}
+            </div>
+            {dueHere.map(t => (
+              <div key={t.id} style={{ display: "flex", alignItems: "baseline", gap: 9, padding: "6px 0", borderTop: "1px solid var(--color-border)" }}>
+                <span aria-hidden="true" style={{ width: 13, height: 13, borderRadius: 4, border: "1.5px solid var(--color-border)", flexShrink: 0, display: "inline-block", marginTop: 2 }} />
+                <span style={{ fontSize: 13, color: "var(--color-foreground)", flex: 1, minWidth: 0 }}>{t.title}</span>
+                <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>no time yet</span>
+              </div>
+            ))}
+          </div>
+        ) : isToday ? (
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 18 }}>
+            Nothing is due today.
+          </div>
+        ) : null}
 
         {moments.length === 0 ? (
           <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "24px 4px", textAlign: "center" }}>
@@ -1343,7 +1380,11 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // Agenda granularity — the fine layers are opt-in so the day reads as key
   // moments first; toggle them on for the full clock (#13b/#20).
   const [agHours, setAgHours]           = useState(false);
-  const [agCrossings, setAgCrossings]   = useState(true);
+  // OFF BY DEFAULT (owner, 2026-08-25: "I don't think planetary crossings of
+  // personal angles is something to show here"). Four "Mars crosses your ASC"
+  // rows led the day's list ahead of anything the person had agreed to, which
+  // is how a day view reads as an ephemeris. Still one tap away under Sky.
+  const [agCrossings, setAgCrossings]   = useState(false);
   const [year, setYear]                 = useState(todayYear);
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -1394,6 +1435,18 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   const gcalStart = useMemo(() => new Date(today).toISOString(), [today]);
   const gcalEnd   = useMemo(() => new Date(Date.now() + 90*86400000).toISOString(), []);
   const { data: gcalData }   = useGCalEvents(testerId, gcalStart, gcalEnd, !!gcalStatus?.connected);
+
+  // THE DAY'S OWN LIST. Agenda had every sky moment and every block, and not
+  // one thing the person had written down — so it answered "what is the sky
+  // doing" when the question a day view is asked is "what am I doing".
+  const { data: dayTasks=[] } = useQuery<any[]>({
+    queryKey:["calendar-tasks",testerId],
+    queryFn: async()=>{
+      const r = await fetch("/api/tasks",{headers:testerId?{"x-tester-id":testerId}:{}});
+      return jsonArray(r);
+    },
+    enabled:!!testerId,
+  });
 
   const { data: allWindows=[] } = useQuery<PlanningWindow[]>({
     queryKey:["windows-all",testerId],
@@ -1666,6 +1719,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
         {/* Agenda — the day as a plain schedule of key sky moments (#13b/#20) */}
         {calView==="agenda" && (
           <AgendaView
+            tasks={dayTasks.filter((t:any)=>t.done!=="true")}
             hours={agendaHours?.hours?.[selectedDate] ?? []}
             dateStr={selectedDate} today={today}
             // The quiet lens hands the agenda a plain day: no sky moments, no
