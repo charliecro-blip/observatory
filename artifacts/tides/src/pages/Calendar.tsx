@@ -1322,8 +1322,11 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   );
 }
 
-export default function Calendar({ testerId, now, lat, lon }: {
+export default function Calendar({ testerId, now, lat, lon, locationKnown = true, onNavigate }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
+  locationKnown?: boolean;
+  /** Out of Calendar entirely — the Almanac points at Pick a Day for inceptions. */
+  onNavigate?: (view: string) => void;
 }) {
   const [showStudio, setShowStudio] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
@@ -1684,7 +1687,8 @@ export default function Calendar({ testerId, now, lat, lon }: {
             the detail panel answers about a selected day, which this view does
             not have. */}
         {calView==="almanac" && (
-          <AlmanacView testerId={testerId} lat={lat} lon={lon} />
+          <AlmanacView testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown}
+            onOpenElections={() => onNavigate?.("launch")} />
         )}
 
         {/* Week / Day view */}

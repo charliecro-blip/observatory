@@ -12,7 +12,6 @@ import { useTidesWeek } from "@/hooks/useTides";
 import Planner from "@/components/Planner";
 import AlreadyWoven from "@/components/AlreadyWoven";
 import Almanac from "@/components/Almanac";
-import ActivityWeek from "@/components/ActivityWeek";
 import { PLANET_GLYPH as PLANET_ICONS } from "@/lib/glyphs";
 import { ELEMENT_COLORS } from "@/lib/elements";
 
@@ -362,7 +361,12 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
             study look for the week ahead" at a glance, and sits ABOVE the two
             pickers because it is the browsing question: you look at the week,
             then you elect a moment inside it. */}
-        <ActivityWeek testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown} />
+        {/* THE WEEK FOR ONE ACTIVITY MOVED TO THE ALMANAC (2026-08-25).
+            It answers "when should I train this week" — an everyday-timing
+            question — and it was sitting in the room that elects beginnings,
+            where the doctrine is stricter and the vocabulary refuses. Two
+            different judgments should not share a page; Calendar → Almanac
+            owns the ordinary one now. */}
         <div style={{ height: 18 }} />
         {/* TWO DIFFERENT JOBS, not two methods for the same one.
 

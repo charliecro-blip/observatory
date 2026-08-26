@@ -1292,7 +1292,7 @@ function fmtHour12(hhmm: string): string {
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 function Shell() {
-  const { profile, isReady, showModal, createAndApply, lat, lon, sessionBlocked, openModal } = useTester();
+  const { profile, isReady, showModal, createAndApply, lat, lon, locationKnown, sessionBlocked, openModal } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("home");
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
@@ -1687,7 +1687,7 @@ function Shell() {
             sub-tab. Home's summaries name where they go, so the door has to
             actually land there. */}
         {view==="home"     && <Home     onStartSession={(title: string) => setSessionOn({ title })} testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
-        {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon}/>}
+        {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon} locationKnown={locationKnown} onNavigate={(v) => setView(v as View)}/>}
         {/* THE LOG IS ITS OWN DESTINATION (owner, 2026-08-20). It was a
             sub-tab of Calendar, which put the record of how things went
             behind a page about where things go — two different questions,

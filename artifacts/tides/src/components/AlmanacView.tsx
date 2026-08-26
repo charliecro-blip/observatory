@@ -26,6 +26,7 @@
  * shipped a 42-second election scan and a 90-second calendar request.
  */
 import { useState } from "react";
+import ActivityWeek from "@/components/ActivityWeek";
 import { useQuery } from "@tanstack/react-query";
 
 // All FOUR of them. The first draft of this file declared three, which
@@ -97,8 +98,11 @@ const ASPECT_WORD: Record<string, string> = {
   trine: "flows with", sextile: "supports",
 };
 
-export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
+export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, onOpenElections }: {
   testerId: string | null; lat?: number; lon?: number;
+  locationKnown?: boolean;
+  /** Into Pick a Day, where inception doctrine lives. */
+  onOpenElections?: () => void;
 }) {
   // No default lens. The sky's own calendar stands on its own and needs no
   // question asked; inventing one on arrival would be the app deciding what
@@ -137,88 +141,33 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0 }: {
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px 40px" }}>
 
-      {/* ── the question ─────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--color-brass)" }}>
-        What is it good for
-      </div>
-      <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 10, maxWidth: 560 }}>
-        Pick a question and the next {days} days are scored against it — including the days it argues against.
-      </div>
+      {/* ══ WHAT A RUN OF DAYS IS GOOD FOR ═══════════════════════════════
+          This asked an ELECTION question — launch a business, sign a
+          contract, marry — which is inception doctrine: the strict, refusing,
+          once-in-a-decision kind of timing. An almanac that only answers
+          those is an almanac nobody opens, because nobody founds a company
+          on a Tuesday afternoon (owner, 2026-08-25).
 
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
-        {LENSES.map(l => {
-          const on = lens === l.key;
-          return (
-            <button key={l.key} onClick={() => setLens(on ? null : l.key)} aria-pressed={on}
-              style={{
-                fontSize: 10.5, padding: "3px 10px", borderRadius: 999, cursor: "pointer",
-                border: `1px solid ${on ? "var(--color-foreground)" : "var(--color-border)"}`,
-                background: on ? "var(--color-foreground)" : "transparent",
-                color: on ? "var(--color-card)" : "var(--text-3)",
-                fontWeight: on ? 600 : 400,
-              }}>{l.label}</button>
-          );
-        })}
-      </div>
+          The ordinary question is "when should I train / write / have the
+          hard conversation", and it already had an answer: ActivityWeek,
+          built in August for exactly this and living in Pick a Day, where it
+          sat beside the inception tool it is not. It moves here.
 
-      {lens && (
-        <div style={{ marginBottom: 26 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}>{label}</span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {[14, 30, 60].map(d => (
-                <button key={d} onClick={() => setDays(d)} aria-pressed={days === d}
-                  style={{
-                    fontSize: 11, padding: "2px 8px", borderRadius: 5, cursor: "pointer",
-                    border: "1px solid var(--color-border)",
-                    background: days === d ? "var(--color-card-2)" : "transparent",
-                    color: days === d ? "var(--color-primary)" : "var(--text-3)",
-                    fontWeight: days === d ? 600 : 400,
-                  }}>{d}d</button>
-              ))}
-            </div>
-            {lensQ.data && (() => {
-              const c = lensQ.data.entries.reduce((a, e) => { a[e.verdict] = (a[e.verdict] ?? 0) + 1; return a; }, {} as Record<string, number>);
-              return (
-                <span style={{ fontSize: 10.5, color: "var(--text-3)", marginLeft: "auto" }}>
-                  {c.strong ?? 0} strong · {c.workable ?? 0} workable · {c.caution ?? 0} care needed · {c.avoid ?? 0} against
-                </span>
-              );
-            })()}
-          </div>
+          Elections stay in Pick a Day. Keeping the two doctrines in separate
+          rooms is the point — strict-inception vocabulary must not bleed into
+          everyday timing — so this room points at that one rather than
+          growing a second copy of it. */}
+      <ActivityWeek testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown} />
 
-          {lensQ.isPending && <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Scoring the days…</div>}
-          {lensQ.isError && (
-            <div style={{ fontSize: 11.5, color: "var(--color-muted)" }}>
-              Couldn't score those days just now — that's a connection problem, not a verdict.
-            </div>
-          )}
-
-          {lensQ.data?.entries.map(e => {
-            const v = verdictOf(e.verdict);
-            return (
-              <div key={e.date} style={{
-                display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0",
-                borderTop: "1px solid var(--color-border)",
-              }}>
-                <span style={{ width: 96, flexShrink: 0, fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>
-                  {dayLabel(e.date)}
-                </span>
-                <span aria-hidden style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: v.bg, opacity: e.verdict === "workable" || e.verdict === "caution" ? 0.55 : 0.9, flexShrink: 0 }} />
-                <span style={{ fontSize: 11.5, color: v.color, fontWeight: 600, width: 74, flexShrink: 0 }}>{v.word}</span>
-                {/* The reasons are the point. A verdict with no receipt is a
-                    horoscope, and this engine's whole claim is that it can
-                    show its working. */}
-                <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1, minWidth: 0 }}>
-                  {e.against.length ? e.against.join(" · ")
-                    : e.supports.length ? e.supports.join(" · ")
-                    : "nothing standing in the way"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <button onClick={() => onOpenElections?.()} style={{
+        alignSelf: "flex-start", display: "flex", alignItems: "baseline", gap: 7,
+        background: "none", border: "none", padding: "10px 2px 18px", cursor: onOpenElections ? "pointer" : "default",
+        fontSize: 12.5, color: "var(--color-primary)", fontWeight: 500,
+      }}>Electing a beginning <span aria-hidden="true">→</span>
+        <span style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 400 }}>
+          launching, signing, publishing — the stricter rules, in Pick a Day
+        </span>
+      </button>
 
       {/* ── the sky itself ───────────────────────────────────────────── */}
       <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--color-meridian)" }}>
