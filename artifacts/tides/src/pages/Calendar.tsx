@@ -1790,6 +1790,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             not have. */}
         {calView==="almanac" && (
           <AlmanacView testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown}
+            moonCycle={(now as any)?.moonCycle ?? null}
             onOpenElections={() => onNavigate?.("launch")} />
         )}
 

@@ -28,6 +28,8 @@
 import { useState } from "react";
 import ActivityWeek from "@/components/ActivityWeek";
 import { useQuery } from "@tanstack/react-query";
+import LunationArc from "@/components/LunationArc";
+import type { MoonCycle } from "@/lib/lunation";
 
 // All FOUR of them. The first draft of this file declared three, which
 // typechecked perfectly because the wrong union was declared locally rather
@@ -98,9 +100,11 @@ const ASPECT_WORD: Record<string, string> = {
   trine: "flows with", sextile: "supports",
 };
 
-export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, onOpenElections }: {
+export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, moonCycle, onOpenElections }: {
   testerId: string | null; lat?: number; lon?: number;
   locationKnown?: boolean;
+  /** From /tides/now, which the page already holds — the arc costs no request. */
+  moonCycle?: MoonCycle | null;
   /** Into Pick a Day, where inception doctrine lives. */
   onOpenElections?: () => void;
 }) {
@@ -176,6 +180,22 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
       <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 12, maxWidth: 560 }}>
         Fixed before you get here, and true for everyone. No verdict attached — what to do about these is your call.
       </div>
+
+      {/* ══ THE CYCLE THE REST OF THE LIST SITS INSIDE ═══════════════════
+          Fullness had one representation everywhere in the app: a 15px disc
+          and "95% lit". That says what tonight looks like and nothing about
+          where tonight sits in the month ("I wonder if we want another
+          vizualization for the lunar cycle fullness", owner 2026-08-25).
+
+          Here rather than the rail because the rail already needs 985px of a
+          709px column, and here rather than Home because the Almanac is the
+          sky's own calendar and a lunation is the first thing in it. Drawn
+          from moonCycle, so it adds no request. */}
+      {moonCycle && (
+        <div style={{ marginBottom: 20 }}>
+          <LunationArc cycle={moonCycle} />
+        </div>
+      )}
 
       {skyQ.isError && (
         <div style={{ fontSize: 11.5, color: "var(--color-muted)" }}>
