@@ -20,10 +20,20 @@
  * score printed next to a window invites arithmetic nobody can check — the
  * same reason the day's charge is a band rather than a percentage. Three
  * tiers, each with its own weight on the page.
+ *
+ * SEVEN ROWS, NOT SEVEN COLUMNS (2026-08-25). It drew each window as its start
+ * clock and dropped the end, so a five-hour Friday and a sixty-seven-minute
+ * one were the same small chip: "I think we might see time frames for these
+ * activities, not just single moments. it's a function that needs more space."
+ * The spans were always in the payload — a sixty-pixel column simply had
+ * nowhere to put them, and no room for a bar whose length meant anything.
+ * A row per day gives each one a real 24-hour track, so length is duration and
+ * position is time of day. Layout arithmetic lives in lib/activityWeek.
  */
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { layoutLanes, spanLabel, durationLabel } from "@/lib/activityWeek";
 
 interface Win {
   date: string; dow: string;
@@ -50,10 +60,39 @@ const FEATURED = [
   "hard-conversation", "negotiate", "publish", "deep-rest", "meditate",
 ];
 
+/** The drawn part of the clock. */
+const TRACK_START = 5 * 60, TRACK_END = 23 * 60;
+/** Day label column and the gap to the track. */
+const LABEL_W = 52, ROW_GAP = 8;
+
+/** A minute of the day as a percentage across the track, clamped to it. */
+function pctOf(min: number): number {
+  const p = ((min - TRACK_START) / (TRACK_END - TRACK_START)) * 100;
+  return Math.max(0, Math.min(100, p));
+}
+
 export default function ActivityWeek({ testerId, lat, lon, locationKnown = true }: {
   testerId: string | null; lat: number; lon: number; locationKnown?: boolean;
 }) {
   const [activity, setActivity] = useState("train-hard");
+  // The real drawn width of a day track. A bar decides whether its span will
+  // fit inside it, and the first version of that check assumed a 360px track
+  // — true on the desktop Almanac and false on a phone, where "7–11:44 AM"
+  // was printed into 57px and clipped. Measured rather than assumed.
+  const [trackW, setTrackW] = useState(0);
+  const roRef = useRef<ResizeObserver | null>(null);
+  // A callback ref, not useEffect on a plain ref. The grid renders only after
+  // the query resolves, so an effect with [] runs while the node is still null
+  // and the observer never attaches — trackW stays 0 and every bar decides its
+  // label does not fit. This attaches when the node actually appears.
+  const gridRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    roRef.current = null;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setTrackW(Math.max(0, e.contentRect.width - LABEL_W - ROW_GAP)));
+    ro.observe(el);
+    roRef.current = ro;
+  }, []);
   const [showAll, setShowAll] = useState(false);
   // The reason lived in a title attribute, which is nothing at all on a phone.
   const [why, setWhy] = useState<string | null>(null);
@@ -128,33 +167,93 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
 
       {!isPending && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 5 }}>
-            {days.map(d => (
-              <div key={d.key} style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 3, textAlign: "center" }}>
-                  {d.dow}
+          {/* The track runs 5 AM to 11 PM. The engine does not elect windows
+              in the small hours for anything in the featured set, and giving
+              the empty third of the clock a third of the width made every
+              real window a third narrower for nothing. Anything outside the
+              range is clamped to the edge rather than dropped. */}
+          <div ref={gridRef} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {days.map(d => {
+              const timed = d.wins.filter(w => !w.allDay);
+              const allDay = d.wins.filter(w => w.allDay);
+              const { placed, lanes } = layoutLanes(timed);
+              const laneH = 16, gapH = 2;
+              // All-day conditions get lanes of their own ABOVE the timed ones.
+              // Sharing lane 0 drew a full-width bar and then a timed bar on
+              // top of it, so Sunday's 4:08 PM window was painted over the
+              // whole-day affinity it sits inside and neither could be read.
+              const rows = allDay.length + lanes;
+              const trackH = rows * laneH + (rows - 1) * gapH;
+              return (
+                <div key={d.key} style={{ display: "flex", alignItems: "flex-start", gap: ROW_GAP }}>
+                  <div style={{ width: LABEL_W, flexShrink: 0, fontSize: 10.5, color: "var(--text-3)", paddingTop: 2, fontVariantNumeric: "tabular-nums" }}>
+                    {d.dow} {d.date.split(" ")[1]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, position: "relative", height: trackH,
+                    borderLeft: "1px solid var(--color-border)", borderRight: "1px solid var(--color-border)" }}>
+                    {/* Noon, so a bar's position reads as a time without a ruler under every row. */}
+                    <div style={{ position: "absolute", left: `${pctOf(12 * 60)}%`, top: 0, bottom: 0, width: 1, background: "var(--color-border)" }} />
+                    {/* An empty day is drawn, not omitted. "Nothing on Tuesday"
+                        is the answer someone came for as often as the windows are. */}
+                    {!d.wins.length && (
+                      <div style={{ position: "absolute", left: 0, right: 0, top: "50%", borderTop: "1px dashed var(--color-border)" }} />
+                    )}
+                    {allDay.map((w, i) => (
+                      <div key={`ad-${i}`} title={w.why ?? ""} onClick={() => setWhy(w.why ? `${d.dow}, all day — ${w.why}` : null)}
+                        style={{ position: "absolute", left: 0, right: 0, top: i * (laneH + gapH), height: laneH,
+                          background: (TIER[w.tier] ?? TIER.fair).fill, color: (TIER[w.tier] ?? TIER.fair).ink,
+                          border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
+                          borderRadius: 4, fontSize: 10, lineHeight: `${laneH - 2}px`, textAlign: "center",
+                          cursor: w.why ? "pointer" : "default" }}>all day</div>
+                    ))}
+                    {placed.map((p, i) => {
+                      const w = p.win, t = TIER[w.tier] ?? TIER.fair;
+                      const left = pctOf(p.startMin), right = pctOf(p.endMin);
+                      const widthPct = Math.max(right - left, 1.2);
+                      const full = spanLabel(w.startClock, w.endClock);
+                      // A ladder: the whole span where there is room, else the
+                      // start clock, else nothing and the bar speaks through
+                      // its length and position alone. Roughly 5.7px per
+                      // character at 10px, plus padding; the 10px floor is
+                      // app-wide, so this cannot be solved by shrinking type.
+                      //
+                      // trackW === 0 means NOT MEASURED YET, not zero width, so
+                      // it falls to the short form rather than to nothing. The
+                      // measurement is an upgrade, and a surface that renders
+                      // blank bars whenever a ResizeObserver has not delivered
+                      // is one bad frame away from looking broken.
+                      const room = (widthPct / 100) * trackW - 5;
+                      const label = trackW === 0 ? w.startClock
+                        : room > full.length * 5.7 ? full
+                        : room > w.startClock.length * 5.7 ? w.startClock : "";
+                      return (
+                        <div key={i} title={`${label} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`}
+                          onClick={() => setWhy(`${d.dow} ${label} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`)}
+                          style={{ position: "absolute", left: `${left}%`, width: `${widthPct}%`,
+                            top: (allDay.length + p.lane) * (laneH + gapH), height: laneH,
+                            background: t.fill, color: t.ink,
+                            border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
+                            borderRadius: 4, fontSize: 10, lineHeight: `${laneH - 2}px`,
+                            textAlign: "center", overflow: "hidden", whiteSpace: "nowrap",
+                            cursor: "pointer" }}>
+                          {label}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {d.wins.length === 0 ? (
-                    // An empty day is drawn, not omitted. "Nothing on Tuesday"
-                    // is the answer someone came for as often as the windows are.
-                    <div style={{ height: 26, borderRadius: 5, border: "1px dashed var(--color-border)" }} />
-                  ) : d.wins.slice(0, 3).map((w, i) => {
-                    const t = TIER[w.tier] ?? TIER.fair;
-                    return (
-                      <div key={i} title={w.why ?? ""} onClick={() => setWhy(w.why ? `${d.dow} ${w.startClock} — ${w.why}` : null)} style={{
-                        background: t.fill, color: t.ink, borderRadius: 5,
-                        padding: "4px 3px", fontSize: 10.5, lineHeight: 1.3, textAlign: "center",
-                        border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
-                        cursor: w.why ? "pointer" : "default",
-                      }}>
-                        {w.allDay ? "all day" : w.startClock}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+
+          {/* One ruler for the whole grid, aligned to the tracks above it. */}
+          <div style={{ display: "flex", gap: ROW_GAP, marginTop: 3 }}>
+            <div style={{ width: LABEL_W, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0, position: "relative", height: 11 }}>
+              {([[6 * 60, "6a"], [12 * 60, "noon"], [18 * 60, "6p"]] as [number, string][]).map(([m, t]) => (
+                <span key={t} style={{ position: "absolute", left: `${pctOf(m)}%`, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-3)" }}>{t}</span>
+              ))}
+            </div>
           </div>
 
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 9, lineHeight: 1.5 }}>
