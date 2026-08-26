@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Disclosure, Chip } from "@/components/primitives";
 import { jsonArray } from "@/lib/jsonArray";
 import { dueOnDay, type DayListTask } from "@/lib/dayList";
+import { blockForCrossing, planForCrossing, HALF_WINDOW_MIN, type CrossingBlock } from "@/lib/crossingPlans";
 import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -209,16 +210,20 @@ function vocRangesForDate(dateStr: string, spans: VocSpan[]): { startMin: number
 
 // ── EventModal ────────────────────────────────────────────────────────────────
 
-function EventModal({ dateStr, startHour, testerId, onClose }: {
+function EventModal({ dateStr, startHour, preset, testerId, onClose }: {
   dateStr: string; startHour?: number; testerId: string | null; onClose: () => void;
+  /** A block filled in for you — the crossing rows in Agenda pass one. Every
+   *  field stays editable: a suggestion the reader cannot overrule is an
+   *  instruction, and Compass does not give those. */
+  preset?: CrossingBlock;
 }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    title: "",
-    type: "deep_work",
-    startTime: minutesToTime((startHour ?? 9) * 60),
-    endTime: minutesToTime(((startHour ?? 9) + 1) * 60),
-    notes: "",
+    title: preset?.title ?? "",
+    type: preset?.type ?? "deep_work",
+    startTime: preset?.startTime ?? minutesToTime((startHour ?? 9) * 60),
+    endTime: preset?.endTime ?? minutesToTime(((startHour ?? 9) + 1) * 60),
+    notes: preset?.notes ?? "",
   });
   const { ref, props } = useDialog(onClose, "New event");
   const save = useMutation({
@@ -249,6 +254,11 @@ function EventModal({ dateStr, startHour, testerId, onClose }: {
         <div style={{ fontSize:14,fontWeight:600,color: "var(--color-primary)",marginBottom:14 }}>
           New event · {new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
         </div>
+        {preset && (
+          <div style={{ fontSize:11,color:"var(--text-3)",marginTop:-8,marginBottom:12,lineHeight:1.45 }}>
+            Filled in from the crossing. Change anything before you save.
+          </div>
+        )}
         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
           <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
             onKeyDown={e=>{if(e.key==="Enter"&&form.title.trim())save.mutate();if(e.key==="Escape")onClose();}}
@@ -1199,9 +1209,16 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 // sky moments (moon sign, aspects, VoC, planetary aspects, crossings) plus your
 // scheduled blocks — plain language, no grid. Planetary hours and crossings are
 // opt-in layers so the essentials read first (#13b, #20).
-interface AgendaMoment { min: number; time: string; glyph: string; label: string; sub?: string; color: string; faded?: boolean; onDelete?: () => void; }
+interface AgendaMoment {
+  min: number; time: string; glyph: string; label: string; sub?: string; color: string;
+  faded?: boolean; onDelete?: () => void;
+  /** Present when this moment can be turned into a block. */
+  onSchedule?: () => void;
+  /** The small thing that fits in it, shown before you commit. */
+  what?: string;
+}
 
-function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow }: {
+function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow, onScheduleBlock }: {
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[];
   /** Undone tasks. Those due today lead the day; the rest are not this day's business. */
@@ -1211,6 +1228,8 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
    *  unavailable (polar day or night), which is different from "none yet". */
   hours?: PlanetHour[] | null;
   onAddEvent: (hour?: number) => void; onDeleteWindow: (id: number) => void;
+  /** Open the block editor already filled in for a crossing. */
+  onScheduleBlock?: (b: CrossingBlock) => void;
 }) {
   const fmtTime = useTimeFormat();
   const realLoc = hasRealLocation(lat, lon);
@@ -1240,14 +1259,20 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
     if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "var(--text-2)" });
   }
 
-  // Angle crossings (advanced layer)
+  // Angle crossings (advanced layer). Each one that has a small-activity plan
+  // carries the plan and a way to save it — the window is ~26 minutes and used
+  // to be read-only, which made it a fact with nothing to do about it.
   if (showCrossings && realLoc) {
     for (const c of (dayData?.crossings ?? []) as any[]) {
       const d = c.at ? new Date(c.at) : null;
       const min = d ? minOf(d) : (typeof c.time === "string" ? timeToMinutes(c.time) : 0);
+      const plan  = planForCrossing(c.planet);
+      const block = c.at ? blockForCrossing(c.planet, c.angle, c.at) : null;
       moments.push({
         min, time: d ? fmtTime(d) : c.time, glyph: PLANET_ICONS[c.planet] ?? "✷",
         label: `${c.planet} crosses your ${c.angle}`, sub: c.type, color: PLANET_COLORS[c.planet] ?? "var(--color-muted)", faded: true,
+        what: plan?.what,
+        onSchedule: block && onScheduleBlock ? () => onScheduleBlock(block) : undefined,
       });
     }
   }
@@ -1281,6 +1306,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   // Due today and not already holding a block — the things this day is FOR.
   // Rules live in lib/dayList so they can be tested apart from the tree.
   const dueHere = dueOnDay(tasks, dateStr);
+  const anySchedulable = moments.some(m => m.onSchedule);
   const isToday = dateStr === today;
   const nowMin = isToday ? minOf(new Date()) : -999;
 
@@ -1332,6 +1358,16 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
           </div>
         ) : null}
 
+        {/* Said once, above the list, rather than repeated on every crossing
+            row. The owner asked the layer to encourage the small register:
+            "we might encourage scheduling small activities (breaks, pace
+            changes) for those." */}
+        {anySchedulable && (
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10, lineHeight: 1.5 }}>
+            A crossing runs about {HALF_WINDOW_MIN * 2} minutes, which is enough for a break, a walk, or a change of pace.
+          </div>
+        )}
+
         {moments.length === 0 ? (
           <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "24px 4px", textAlign: "center" }}>
             A quiet day — no standout sky moments. Turn on planetary hours for the full clock, or add a block.
@@ -1347,7 +1383,18 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
                     {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
+                    {/* What would fit in twenty-six minutes. Shown whether or
+                        not the window is still open — a past crossing keeps
+                        its meaning, it just cannot be booked any more. */}
+                    {m.what && <div style={{ fontSize: 10.5, color: m.color, marginTop: 2 }}>{m.what}</div>}
                   </div>
+                  {m.onSchedule && !past && (
+                    <button onClick={m.onSchedule}
+                      title={`Block the ${HALF_WINDOW_MIN * 2} minutes around this`}
+                      style={{ background: "none", border: `1px solid ${m.color}55`, color: m.color, cursor: "pointer", fontSize: 10, flexShrink: 0, borderRadius: 6, padding: "3px 8px", lineHeight: 1.3, whiteSpace: "nowrap" }}>
+                      + {HALF_WINDOW_MIN * 2} min
+                    </button>
+                  )}
                   {m.onDelete && <button onClick={m.onDelete} title="Remove block" aria-label="Remove block" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>✕</button>}
                 </div>
               );
@@ -1401,7 +1448,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // Nesting principle: an absolute beginner should meet the slow layer first.
   const [monthSimple, setMonthSimple] = useState(true);
   const [showDetail, setShowDetail]     = useState(!isMobile);
-  const [addModal, setAddModal]         = useState<{date:string;hour?:number}|null>(null);
+  const [addModal, setAddModal]         = useState<{date:string;hour?:number;preset?:CrossingBlock}|null>(null);
   const qc = useQueryClient();
 
   // A MONTH GRID IS 42 CELLS. Ask for that, not for a season.
@@ -1732,6 +1779,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             lat={lat} lon={lon}
             showHours={!pageQuiet && agHours} showCrossings={!pageQuiet && agCrossings}
             onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
+            onScheduleBlock={(preset)=>setAddModal({date:selectedDate,preset})}
             onDeleteWindow={id=>delWindow.mutate(id)}
           />
         )}
@@ -1772,7 +1820,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
       </div>
 
       {addModal && (
-        <EventModal dateStr={addModal.date} startHour={addModal.hour} testerId={testerId} onClose={()=>setAddModal(null)}/>
+        <EventModal dateStr={addModal.date} startHour={addModal.hour} preset={addModal.preset} testerId={testerId} onClose={()=>setAddModal(null)}/>
       )}
 
       {showStudio && now && <Studio now={now} lat={lat} lon={lon} onClose={() => setShowStudio(false)} />}

@@ -179,6 +179,46 @@
 
 body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); transition: background 0.2s, color 0.2s; }
 
+/* SCROLLBARS, QUIETED.
+   The app has 34 scroll containers and styled none of them, so on any machine
+   set to "always show scrollbars" every one of them carried a slab of OS grey
+   — most visibly down the left rail, which is its own scroll container and so
+   wore a permanent bar against the paper ("I really don't like this scroll bar
+   on the left", owner 2026-08-25).
+
+   At rest the thumb is transparent, so there is no chrome. Bring a pointer
+   into a scrollable region, or tab into it, and a faint capsule fades up. That
+   keeps the affordance where a reader is already looking without spending page
+   for it the rest of the time.
+
+   Applied to every element rather than an opt-in class: this is the app's
+   scrollbar, and a container that misses the class is exactly the one that
+   reintroduces the grey slab. Touch devices already overlay their own and are
+   unaffected. The transition lives on the thumb's color alone, so
+   prefers-reduced-motion has nothing to suppress. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover, *:focus-within {
+  scrollbar-color: var(--color-border) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+  /* Transparent border insets the visible capsule to ~4px without shrinking
+     the grab target, which stays the full 10px. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.18s ease;
+}
+:hover::-webkit-scrollbar-thumb,
+:focus-within::-webkit-scrollbar-thumb { background-color: var(--color-border); }
+:hover::-webkit-scrollbar-thumb:hover { background-color: var(--color-muted); }
+
 /* Keyboard focus, made visible.
    Thirty-nine controls carried an inline `outline: "none"` and nothing ever
    replaced it, so tabbing through the app moved an invisible cursor. Those
