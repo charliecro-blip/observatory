@@ -100,11 +100,13 @@ const ASPECT_WORD: Record<string, string> = {
   trine: "flows with", sextile: "supports",
 };
 
-export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, moonCycle, onOpenElections }: {
+export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, moonCycle, nodeIngress, onOpenElections }: {
   testerId: string | null; lat?: number; lon?: number;
   locationKnown?: boolean;
   /** From /tides/now, which the page already holds — the arc costs no request. */
   moonCycle?: MoonCycle | null;
+  /** The nodal axis changing sign. Null on almost every day, by nature. */
+  nodeIngress?: { from: string; to: string; daysAway: number } | null;
   /** Into Pick a Day, where inception doctrine lives. */
   onOpenElections?: () => void;
 }) {
@@ -194,6 +196,36 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
       {moonCycle && (
         <div style={{ marginBottom: 20 }}>
           <LunationArc cycle={moonCycle} />
+        </div>
+      )}
+
+      {/* ══ THE AXIS CHANGING SIGN ═══════════════════════════════════════
+          The nodes move about a sign every eighteen months, so this is among
+          the rarest things the app can report — and it was nowhere in it. The
+          axis crossed from Pisces/Virgo into Aquarius/Leo in August 2026 and
+          the app had the number the whole time, spending it only on eclipse
+          detection.
+
+          Read against the mean node, so a cusp is named once: the true node
+          wobbles back over a sign boundary for weeks, and reporting each pass
+          would cry rare four times in a season. */}
+      {nodeIngress && (
+        <div style={{
+          marginBottom: 20, padding: "11px 14px", borderRadius: 10,
+          border: "1px solid var(--color-border)", background: "var(--color-card)",
+        }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 3 }}>
+            The nodes change sign
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--color-foreground)", lineHeight: 1.5 }}>
+            The eclipse axis {nodeIngress.daysAway <= 0 ? "moved" : "moves"} from {nodeIngress.from} to {nodeIngress.to}
+            {nodeIngress.daysAway === 0 ? " today" :
+             nodeIngress.daysAway < 0 ? ` ${Math.abs(nodeIngress.daysAway)} day${Math.abs(nodeIngress.daysAway) === 1 ? "" : "s"} ago` :
+             ` in ${nodeIngress.daysAway} day${nodeIngress.daysAway === 1 ? "" : "s"}`}.
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3, lineHeight: 1.5 }}>
+            Eclipses fall near this axis, so it sets where the next eighteen months of them land.
+          </div>
         </div>
       )}
 

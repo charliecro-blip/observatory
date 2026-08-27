@@ -11,6 +11,9 @@ export interface Qualifier {
   key: string; bodies: string[]; salience: number; label: string;
   literal: string; plain: string; approach: string; example?: string;
   provenance: "tradition" | "compass";
+  /** ISO instant this is exact, where the server can say one. */
+  exactAt?: string;
+  applying?: boolean;
 }
 
 export interface Take {
@@ -22,6 +25,9 @@ export interface Take {
   approach: string;
   example?: string;
   provenance?: "tradition" | "compass";
+  /** ISO instant, formatted by the caller in the reader's own zone. */
+  exactAt?: string;
+  applying?: boolean;
   /** The qualifier key, for tests and for stable reroll order. */
   key: string;
 }
@@ -43,6 +49,8 @@ export function takesFor(
     approach: q.approach,
     example: q.example,
     provenance: q.provenance,
+    exactAt: q.exactAt,
+    applying: q.applying,
   }));
   takes.push({ key: "base", label: base.label, condition: "", approach: base.approach, example: base.example });
   return takes;

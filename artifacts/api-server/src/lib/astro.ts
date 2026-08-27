@@ -1145,7 +1145,7 @@ export interface MoonContact {
   hard: boolean;     // conjunction/square/opposition — the "flavor day" contacts
 }
 
-function jdToDate(jd: number): Date {
+export function jdToDate(jd: number): Date {
   return new Date((jd - 2440587.5) * 86400000);
 }
 

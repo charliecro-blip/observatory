@@ -20,6 +20,7 @@
  * stellium's pull). Copy here is draft until it has been through the skill.
  */
 import { lunarNodes, eclipseWindow } from "./astro.js";
+import { nodeTiming } from "./nodeEvents.js";
 import { motionOf } from "./motion.js";
 
 export interface Qualifier {
@@ -38,6 +39,18 @@ export interface Qualifier {
   approach: string;
   example?: string;
   provenance: "tradition" | "compass";
+  /**
+   * ISO instant this is exact, where that is a meaningful thing to say.
+   *
+   * An orb is not a time of day. The Moon-on-a-node qualifier carried "· 1.5°"
+   * and nothing else, so a reader told the mood leans forward could not tell
+   * whether that was this morning or already behind them (owner, 2026-08-27).
+   * Sent as an instant, never a formatted clock: this server runs in UTC in
+   * production and has told someone the wrong day that way before.
+   */
+  exactAt?: string;
+  /** True while the bodies are still closing. */
+  applying?: boolean;
 }
 
 interface Body { planet: string; longitude: number; sign: string; degree: number; retrograde: boolean }
@@ -95,11 +108,18 @@ export function computeQualifiers(jd: number, bodies: Body[], opts: { voc?: bool
       const orb = sep(lum.longitude, node.longitude);
       if (orb > 3) continue;
       const isSun = lum.planet === "Sun";
+      // Exactness only for the Moon. She crosses a node twice a month and the
+      // meeting is hours wide, so the time of day is the useful part; the Sun
+      // takes days over the same 3° and a clock reading would imply a
+      // precision the event does not have. The walk costs 289 ephemeris reads
+      // and is guarded by the orb above, so an ordinary request never pays it.
+      const timing = isSun ? null : nodeTiming(jd, which);
       out.push({
         key: `${lum.planet.toLowerCase()}-${which.toLowerCase()}-node`,
         bodies: [lum.planet],
         salience: isSun ? 80 : 60,
         label: `on the ${which} Node`,
+        ...(timing ?? {}),
         literal: `${lum.planet} on the ${which} Node · ${deg(orb)}`,
         plain: `the ${lum.planet} is sitting on the Moon's ${which} Node`,
         approach: which === "South"

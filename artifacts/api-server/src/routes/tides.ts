@@ -23,6 +23,7 @@ import { dayReading } from "../lib/synthesis.js";
 import { domicileLord } from "../lib/dignity.js";
 import { planetInSign } from "../lib/planetInSign.js";
 import { voidReading, VOID_SCOPE } from "../lib/voidOfCourse.js";
+import { nodeIngress } from "../lib/nodeEvents.js";
 import { newMoonDates, nextNewMoonDate } from "../lib/lunarCycle.js";
 import { buildAlmanac, almanacHorizon } from "../lib/almanac.js";
 import { scoreElection, getElectionCategory, ELECTION_CATEGORIES } from "../lib/inceptionElection.js";
@@ -425,6 +426,11 @@ router.get("/tides/now", async (req, res) => {
     // (AUDIT-EXPLAINERS-2026-08-21 §3). Cheap: nodes, one eclipse scan,
     // five motion reads.
     qualifiers: computeQualifiers(jd, planets, { voc, vocFeel: voc ? voidReading(moonSign)?.feel ?? null : null }),
+    // The nodal axis changing sign — roughly every eighteen months, and until
+    // now nowhere in the app at all. Null on the overwhelming majority of
+    // days, which is the point of reporting it. Measured at 0.04ms, so it is
+    // computed every time rather than guarded behind a guess about rarity.
+    nodeIngress: nodeIngress(jd),
     // `reading` is sign-specific: a void in Taurus and a void in Capricorn are
     // not the same afternoon, and Lilly exempts four signs outright — which
     // changes the counsel from "wait it out" to "use it". Only computed when

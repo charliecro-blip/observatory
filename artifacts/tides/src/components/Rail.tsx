@@ -872,6 +872,18 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
                 }}>{t.label}{t.provenance === "compass" && astroLevel === "full" ? " · our reading" : ""}</span>
                 {t.condition && <span style={{ color: "var(--color-foreground)" }}>{t.condition} — </span>}
                 {lineOf({ ...t, condition: "" })}
+                {/* WHEN, not just how close. The Moon-on-a-node take said
+                    "· 1.5°" and stopped, so a reader told the mood leans
+                    forward could not tell whether that was this morning or
+                    already behind them (owner, 2026-08-27). Formatted here
+                    rather than on the server, which runs in UTC in production
+                    and has named the wrong day that way before. */}
+                {t.exactAt && (
+                  <span style={{ color: "var(--text-3)" }}>
+                    {" "}{t.applying ? "Exact at" : "Was exact at"}{" "}
+                    {new Date(t.exactAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+                  </span>
+                )}
                 <button onClick={() => setMoonTakeIdx(i => i + 1)} title={`Another take on this Moon (${(moonTakeIdx % takes.length) + 1} of ${takes.length})`} aria-label="Another take on this Moon sign"
                   style={{ marginLeft: 5, fontSize: 10.5, color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>↻</button>
               </div>
