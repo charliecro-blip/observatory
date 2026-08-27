@@ -155,6 +155,21 @@ export function astroReveal(level: AstroDetail) {
 export interface TimingPrefs {
   watchPlanets: string[];    // highlight these in Rail ("Sun","Moon","Venus"…)
   defaultWindowType: string; // pre-select in quick-capture
+  /**
+   * WHAT YOU WANT HELP TIMING — activity keys from /elections/activities.
+   *
+   * Intake asked how you want to be met and what you are holding, and never
+   * what you actually want windows found for (owner, 2026-08-27: "alongside
+   * asking what people's style is like on the intake, we should also give
+   * suggestions/ask about what they need help scheduling"). So the Almanac's
+   * ten featured activities were a list we picked, out of fifty, and pleasure
+   * and play barely appeared in it.
+   *
+   * Empty means never asked or nothing chosen, and the curated default stands.
+   * An empty list is a real answer here: it must not be filled in on the
+   * person's behalf.
+   */
+  helpTiming: string[];
 }
 
 export interface TidesPreferences {
@@ -216,6 +231,7 @@ export const DEFAULT_PREFS: TidesPreferences = {
   timing: {
     watchPlanets: [],
     defaultWindowType: "",
+    helpTiming: [],
   },
   version: 1,
 };

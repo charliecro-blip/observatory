@@ -34,6 +34,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { layoutLanes, spanLabel, durationLabel } from "@/lib/activityWeek";
+import { usePreferences } from "@/contexts/preferences-context";
 
 interface Win {
   date: string; dow: string;
@@ -53,8 +54,16 @@ const TIER: Record<string, { label: string; fill: string; ink: string }> = {
   fair:  { label: "fair",   fill: "var(--color-card-2)", ink: "var(--color-muted)" },
 };
 
-/** The handful people actually ask about, in the order they ask. The full
- *  sixty stay behind "everything" — a wall of chips is not a menu. */
+/**
+ * The fallback shortlist, for someone who has not said what they want timed.
+ *
+ * It is ten of fifty, chosen by us, and it leans hard toward work: intake
+ * asked how you want to be met and what you are holding, never what you
+ * wanted windows found for, so this stood in for an answer nobody had been
+ * asked to give (owner, 2026-08-27). It is now only the default. Anything
+ * chosen at intake replaces it, and the full fifty stay behind "all" either
+ * way, because a wall of chips is not a menu.
+ */
 const FEATURED = [
   "train-hard", "deep-work", "deep-study", "first-date", "deepen-bond",
   "hard-conversation", "negotiate", "publish", "deep-rest", "meditate",
@@ -74,6 +83,7 @@ function pctOf(min: number): number {
 export default function ActivityWeek({ testerId, lat, lon, locationKnown = true }: {
   testerId: string | null; lat: number; lon: number; locationKnown?: boolean;
 }) {
+  const { prefs } = usePreferences();
   const [activity, setActivity] = useState("train-hard");
   // The real drawn width of a day track. A bar decides whether its span will
   // fit inside it, and the first version of that check assumed a 360px track
@@ -119,7 +129,12 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
 
   const all = acts?.activities ?? [];
   const label = all.find(a => a.key === activity)?.label ?? activity;
-  const shown = showAll ? all : all.filter(a => FEATURED.includes(a.key));
+  // What this person said they wanted help timing, when they said anything.
+  // An empty list means never asked or nothing chosen, and the curated
+  // default stands — it is never filled in on their behalf.
+  const chosen = prefs.timing.helpTiming ?? [];
+  const shortlist = chosen.length ? chosen : FEATURED;
+  const shown = showAll ? all : all.filter(a => shortlist.includes(a.key));
 
   // One column per day, so an empty day is VISIBLE as an empty day rather
   // than missing from a list.
