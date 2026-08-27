@@ -108,3 +108,23 @@ describe("nodeIngress", () => {
     expect(seen.size).toBeLessThanOrEqual(1);
   });
 });
+
+describe("the plain wording", () => {
+  const qs = computeQualifiers(JD, getPlanetPositions(JD));
+  const node = qs.find(q => q.key === "moon-north-node")!;
+
+  it("never says the Moon is on the Moon's node", () => {
+    // One shared template produced exactly that, and the rail showed it.
+    expect(node.plain).not.toMatch(/Moon is .*the Moon's/i);
+    expect(node.plain).not.toContain("Moon's North Node");
+  });
+
+  it("glosses the node rather than naming its owner", () => {
+    // `plain` is the slot that has to read without a glossary.
+    expect(node.plain).toContain("the point where eclipses fall");
+  });
+
+  it("keeps the technical name in the literal, where it belongs", () => {
+    expect(node.literal).toContain("North Node");
+  });
+});

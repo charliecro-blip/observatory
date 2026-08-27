@@ -121,7 +121,19 @@ export function computeQualifiers(jd: number, bodies: Body[], opts: { voc?: bool
         label: `on the ${which} Node`,
         ...(timing ?? {}),
         literal: `${lum.planet} on the ${which} Node · ${deg(orb)}`,
-        plain: `the ${lum.planet} is sitting on the Moon's ${which} Node`,
+        // "the Moon is sitting on the Moon's North Node" — which is what the
+        // one shared template produced, and what the rail actually showed once
+        // the Moon reached the node on 2026-08-28. The possessive is useful
+        // for the Sun and gibberish for the Moon, whose nodes these are.
+        //
+        // Both now gloss the node instead of naming its owner, because `plain`
+        // is the slot that has to pass the stranger test and "the Moon's North
+        // Node" needs a glossary as much as "North Node" does. The technical
+        // name stays in `literal`, which is where astrologer-grade wording
+        // belongs.
+        plain: isSun
+          ? `the Sun is sitting on the ${which} Node, the point where eclipses fall`
+          : `the Moon is crossing the ${which} Node, the point where eclipses fall`,
         approach: which === "South"
           ? (isSun
             ? "what comes easily today is the thing you have done before; the new act costs more than it looks"
