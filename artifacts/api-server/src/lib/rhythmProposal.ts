@@ -137,6 +137,22 @@ export interface Gear {
    *  Mercury direct). */
   until: string;
   /**
+   * One concrete thing to do with the condition, where a planning preset is
+   * not the whole answer.
+   *
+   * Mars on the Ascendant used to offer only "lead with One clear move",
+   * which is a to-do-list reply to something the body is doing (owner,
+   * 2026-08-27: "I think this suggestion for one clear move is insufficent -
+   * there might be a better way to encourage mars around the ascendant type
+   * energy"). Reordering a task list does not spend heat.
+   *
+   * Scale follows the transit's length, which is why this reads larger than
+   * lib/crossingPlans does for the same planet. A crossing is twenty-six
+   * minutes and gets a walk; a transit to the Ascendant runs for days and can
+   * hold a workout. Same planet, same meaning, two timescales.
+   */
+  suggest?: string;
+  /**
    * THE MECHANISM, on request (owner 2026-08-21: "options for more info").
    * What the transit is, the rule that fired and its orb, how the end date
    * was found, and the interpretation's provenance — Compass synthesis,
@@ -146,10 +162,18 @@ export interface Gear {
 }
 
 const HARD = new Set(["Conjunction", "Square", "Opposition"]);
-const GEAR_RULES: { transit: string; natal: Set<string>; orb: number; rhythm: Rhythm; reading: string; why: string }[] = [
-  { transit: "Mars", natal: new Set(["Mars", "Sun", "Ascendant"]), orb: 3, rhythm: "campaign",
-    reading: "your action gear is louder than usual; shorter pushes and tighter decisions tend to suit it",
-    why: "Mars transits to the Sun, Mars or Ascendant are read in the tradition as a rise in drive and friction; leading with one clear move gives the drive a target and keeps decisions short." },
+const GEAR_RULES: { transit: string; natal: Set<string>; orb: number; rhythm: Rhythm; reading: string; why: string; suggest?: string }[] = [
+  // The Ascendant is its own rule, and first. Lumped in with the Sun and Mars
+  // it inherited a reading about drive and decisions, when a Mars transit to
+  // the rising degree is read as heat in the body and sharpness in how you
+  // meet people. Those want different things done about them.
+  { transit: "Mars", natal: new Set(["Ascendant"]), orb: 3, rhythm: "campaign",
+    reading: "you run hotter than usual and other people feel the edge; hard exercise early and short pushes tend to suit it",
+    suggest: "Put the heat somewhere physical early: a hard workout, a long walk, or the job you keep flinching from.",
+    why: "Mars transits to the Ascendant are read in the tradition as heat in the body and sharpness in how you come across; spending the drive physically early tends to leave less of it for the day's friction." },
+  { transit: "Mars", natal: new Set(["Mars", "Sun"]), orb: 3, rhythm: "campaign",
+    reading: "your drive runs louder than usual; shorter pushes and tighter decisions tend to suit it",
+    why: "Mars transits to the Sun or to natal Mars are read in the tradition as a rise in drive and friction; leading with one clear move gives the drive a target and keeps decisions short." },
   { transit: "Saturn", natal: new Set(["Sun", "Moon", "Mercury", "Ascendant"]), orb: 3, rhythm: "route",
     reading: "a consolidating stretch; protecting the route tends to suit it",
     why: "Saturn transits to the Sun, Moon, Mercury or Ascendant are read as seasons of pruning and consolidation; protecting the routines you already keep tends to hold up better than re-planning under it." },
@@ -181,6 +205,7 @@ export function currentGear(natal: Chart, now = new Date()): Gear | null {
       literal: `${hit.transitPlanet} ${String(hit.aspect).toLowerCase()} your ${hit.natalPlanet} · ${Number(hit.orb).toFixed(1)}°`,
       reading: rule.reading,
       until: untilStr,
+      suggest: rule.suggest,
       detail: [
         `Transiting ${hit.transitPlanet} is ${Number(hit.orb).toFixed(1)}° from a ${String(hit.aspect).toLowerCase()} to your natal ${hit.natalPlanet}; a gear change is offered when a hard aspect from ${hit.transitPlanet} is within ${rule.orb}°.`,
         `The end date is where that orb opens past ${rule.orb}° again, checked a day at a time: about ${untilStr}. A retrograde can bring it back; if it does, the offer returns.`,

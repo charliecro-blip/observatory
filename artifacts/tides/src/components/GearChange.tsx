@@ -16,7 +16,12 @@ import { useQuery } from "@tanstack/react-query";
 import { RHYTHMS, type Rhythm } from "@/lib/preferences";
 import { logEvent } from "@/lib/analytics";
 
-interface Gear { rhythm: Rhythm; literal: string; reading: string; until: string; detail?: string[] }
+interface Gear {
+  rhythm: Rhythm; literal: string; reading: string; until: string; detail?: string[];
+  /** One concrete thing to do with the condition, where a preset is not the
+   *  whole answer. Only some rules carry one. */
+  suggest?: string;
+}
 
 const fmt = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const addDays = (n: number) => {
@@ -101,6 +106,12 @@ export default function GearChange({ testerId, current, base, onAccept }: {
             {adapted && <span style={{ color: "var(--text-3)" }}> (your version)</span>}
             {base !== current && <span style={{ color: "var(--text-3)" }}> You'd come back to your own rhythm after.</span>}
           </div>
+          {/* One concrete thing, where a preset switch is not the whole
+              answer. Mars on the Ascendant offered only "lead with One clear
+              move", which reorders a task list and does nothing with heat. */}
+          {gear.suggest && (
+            <div style={{ color: "var(--color-foreground)", marginTop: 3 }}>{gear.suggest}</div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button onClick={accept} style={{
