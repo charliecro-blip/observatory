@@ -9,7 +9,7 @@ import { PREMIUM_FEATURES, FREE_KEEPS } from "@/lib/premium";
 import { TEXT_SCALES, getTextScale, setTextScale } from "@/lib/textScale";
 import { useTheme, PALETTES } from "@/contexts/theme-context";
 import { usePreferences } from "@/contexts/preferences-context";
-import { RHYTHMS, TRIM_FOLDS, type NotificationPrefs, type DisplayPrefs } from "@/lib/preferences";
+import { RHYTHMS, TRIM_FOLDS, HELP_TIMING_OPTIONS, type NotificationPrefs, type DisplayPrefs } from "@/lib/preferences";
 import RhythmProposal from "@/components/RhythmProposal";
 import { RhythmRecordTable } from "@/components/RhythmRecord";
 import { CHRONOTYPE_OPTIONS, purgeLocalData } from "@/lib/tester-profile";
@@ -762,6 +762,41 @@ function TimingSection() {
               }}>{p}</button>
           );
         })}
+      </div>
+
+      {/* ══ WHAT YOU WANT HELP TIMING ══════════════════════════════════
+          Intake asks this, and until now only intake did — so the question
+          existed and nobody already using Compass could answer it. Same list
+          as the first-run step, imported rather than copied: two tables of
+          the same thing is how the app came to contradict itself about
+          planetary suggestions once already.
+
+          Empty is a real state, not an unset one, so the row says what
+          happens when you choose nothing rather than leaving it to be
+          guessed at. */}
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>What you want help timing:</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+        {HELP_TIMING_OPTIONS.map(o => {
+          const on = (t.helpTiming ?? []).includes(o.key);
+          return (
+            <button key={o.key} aria-pressed={on}
+              onClick={() => {
+                const cur = t.helpTiming ?? [];
+                updateTiming({ helpTiming: on ? cur.filter(k => k !== o.key) : [...cur, o.key] });
+              }}
+              style={{
+                fontSize: 11, padding: "4px 11px", borderRadius: 12, cursor: "pointer",
+                border: `1px solid ${on ? "var(--color-primary)" : "var(--color-border)"}`,
+                background: on ? "var(--color-primary)" : "var(--color-card-2)",
+                color: on ? "#fff" : "var(--text-3)", fontWeight: on ? 600 : 400,
+              }}>{o.label}</button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 16, lineHeight: 1.5 }}>
+        {(t.helpTiming ?? []).length
+          ? "These lead the Almanac's week view. All fifty stay behind \u201Call\u201D."
+          : "Nothing chosen, so the Almanac shows a general shortlist."}
       </div>
 
       <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 6 }}>Default window type for new tasks:</div>

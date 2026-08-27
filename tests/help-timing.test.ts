@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { DEFAULT_PREFS, mergePreferences } from "../artifacts/tides/src/lib/preferences";
+import { DEFAULT_PREFS, mergePreferences, HELP_TIMING_OPTIONS } from "../artifacts/tides/src/lib/preferences";
+import { ACTIVITIES } from "../artifacts/api-server/src/lib/activityCorrespondences";
 
 const APP = readFileSync("artifacts/tides/src/App.tsx", "utf8");
 const WEEK = readFileSync("artifacts/tides/src/components/ActivityWeek.tsx", "utf8");
+const SETTINGS = readFileSync("artifacts/tides/src/pages/Settings.tsx", "utf8");
 
 describe("helpTiming preference", () => {
   it("defaults to empty, which means never asked", () => {
@@ -32,18 +34,15 @@ describe("the intake step", () => {
 
   it("leads with rest and play rather than work", () => {
     // Put deep work first and everyone picks deep work.
-    const block = APP.slice(APP.indexOf('if (step === "timing")'));
-    const rest = block.indexOf('"deep-rest"');
-    const work = block.indexOf('"deep-work"');
-    expect(rest).toBeGreaterThan(-1);
-    expect(work).toBeGreaterThan(-1);
-    expect(rest).toBeLessThan(work);
+    const keys = HELP_TIMING_OPTIONS.map(o => o.key);
+    expect(keys.indexOf("deep-rest")).toBeLessThan(keys.indexOf("deep-work"));
+    expect(keys.indexOf("intimacy")).toBeLessThan(keys.indexOf("deep-work"));
   });
 
   it("offers pleasure and play, which the old shortlist barely did", () => {
-    const block = APP.slice(APP.indexOf('if (step === "timing")'), APP.indexOf('if (step === "hold")'));
+    const keys = HELP_TIMING_OPTIONS.map(o => o.key);
     for (const k of ["deep-rest", "intimacy", "cook", "garden", "host", "gentle-movement"]) {
-      expect(block, k).toContain(`"${k}"`);
+      expect(keys, k).toContain(k);
     }
   });
 
@@ -67,5 +66,35 @@ describe("the Almanac shortlist follows the answer", () => {
 
   it("keeps all fifty reachable either way", () => {
     expect(WEEK).toContain("showAll ? all :");
+  });
+});
+
+describe("one list, two surfaces", () => {
+  it("intake and Settings read the same table, never their own copy", () => {
+    // Two copies of a suggestion table is how the app came to contradict
+    // itself about planets once already.
+    expect(APP).toContain("HELP_TIMING_OPTIONS");
+    expect(SETTINGS).toContain("HELP_TIMING_OPTIONS");
+    // Neither may re-declare it.
+    expect(APP).not.toContain("const OPTIONS: { key: string; label: string }[] = [");
+    expect(SETTINGS).not.toContain('{ key: "deep-rest", label:');
+  });
+
+  it("lets an existing account answer a question only new accounts were asked", () => {
+    expect(SETTINGS).toContain("What you want help timing");
+    expect(SETTINGS).toContain("updateTiming({ helpTiming:");
+  });
+
+  it("says what an empty choice means rather than leaving it to be guessed", () => {
+    expect(SETTINGS).toContain("Nothing chosen, so the Almanac shows a general shortlist.");
+  });
+
+  it("every offered key is one the election engine actually knows", () => {
+    // A label pointing at a key the engine does not serve would be a chip
+    // that silently filters the whole week away.
+    const known = new Set(ACTIVITIES.map(a => a.key));
+    for (const o of HELP_TIMING_OPTIONS) {
+      expect(known.has(o.key), `${o.key} (${o.label}) is not an activity the engine knows`).toBe(true);
+    }
   });
 });

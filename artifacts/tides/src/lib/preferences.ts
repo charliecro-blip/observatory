@@ -172,6 +172,39 @@ export interface TimingPrefs {
   helpTiming: string[];
 }
 
+/**
+ * WHAT SOMEONE CAN ASK COMPASS TO FIND WINDOWS FOR.
+ *
+ * Sixteen of the fifty activities the election engine knows, phrased the way a
+ * person would say them rather than by their engine keys.
+ *
+ * ONE LIST, TWO SURFACES. Intake asks this and Settings lets you change the
+ * answer, and both read from here. Two copies of a table like this is how the
+ * app came to contradict itself about planetary suggestions once already.
+ *
+ * Rest and play lead, deliberately. Put focused work at the top and everyone
+ * picks focused work, and the half of life the old curated shortlist barely
+ * reached is the half worth offering first.
+ */
+export const HELP_TIMING_OPTIONS: { key: string; label: string }[] = [
+  { key: "deep-rest", label: "Rest" },
+  { key: "gentle-movement", label: "Gentle movement" },
+  { key: "intimacy", label: "Intimacy" },
+  { key: "first-date", label: "Dates" },
+  { key: "deepen-bond", label: "Time with people I love" },
+  { key: "host", label: "Having people over" },
+  { key: "cook", label: "Cooking" },
+  { key: "garden", label: "Gardening" },
+  { key: "train-hard", label: "Hard training" },
+  { key: "deep-work", label: "Focused work" },
+  { key: "deep-study", label: "Study" },
+  { key: "first-draft", label: "Writing" },
+  { key: "hard-conversation", label: "Hard conversations" },
+  { key: "negotiate", label: "Asking for more" },
+  { key: "admin-errands", label: "Errands and admin" },
+  { key: "meditate", label: "Practice" },
+];
+
 export interface TidesPreferences {
   notifications: NotificationPrefs;
   display: DisplayPrefs;

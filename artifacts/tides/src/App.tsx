@@ -6,7 +6,7 @@ import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider, usePreferences } from "@/contexts/preferences-context";
-import { RHYTHMS, TRIM_FOLDS, type Rhythm } from "@/lib/preferences";
+import { RHYTHMS, TRIM_FOLDS, HELP_TIMING_OPTIONS, type Rhythm } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { EntitlementsProvider } from "@/contexts/entitlements-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -1027,24 +1027,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
   // Skipping is a real answer and leaves the curated default in place. Nothing
   // is pre-selected: a checked box is an answer the person did not give.
   if (step === "timing") {
-    const OPTIONS: { key: string; label: string }[] = [
-      { key: "deep-rest", label: "Rest" },
-      { key: "gentle-movement", label: "Gentle movement" },
-      { key: "intimacy", label: "Intimacy" },
-      { key: "first-date", label: "Dates" },
-      { key: "deepen-bond", label: "Time with people I love" },
-      { key: "host", label: "Having people over" },
-      { key: "cook", label: "Cooking" },
-      { key: "garden", label: "Gardening" },
-      { key: "train-hard", label: "Hard training" },
-      { key: "deep-work", label: "Focused work" },
-      { key: "deep-study", label: "Study" },
-      { key: "first-draft", label: "Writing" },
-      { key: "hard-conversation", label: "Hard conversations" },
-      { key: "negotiate", label: "Asking for more" },
-      { key: "admin-errands", label: "Errands and admin" },
-      { key: "meditate", label: "Practice" },
-    ];
+    const OPTIONS = HELP_TIMING_OPTIONS;
     const toggle = (k: string) =>
       setWantTimed(v => v.includes(k) ? v.filter(x => x !== k) : [...v, k]);
     const save = () => {
