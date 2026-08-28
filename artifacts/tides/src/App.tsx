@@ -6,7 +6,7 @@ import { TesterProvider, useTester } from "@/contexts/tester-context";
 import { CHRONOTYPE_OPTIONS } from "@/lib/tester-profile";
 import type { ChronotypeProfile, Weekday, FreeWindow } from "@/lib/tester-profile";
 import { PreferencesProvider, usePreferences } from "@/contexts/preferences-context";
-import { RHYTHMS, TRIM_FOLDS, HELP_TIMING_OPTIONS, type Rhythm } from "@/lib/preferences";
+import { RHYTHMS, TRIM_FOLDS, type Rhythm } from "@/lib/preferences";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { EntitlementsProvider } from "@/contexts/entitlements-context";
 import { useIsMobile, getForceMobile, setForceMobile } from "@/hooks/useIsMobile";
@@ -638,7 +638,7 @@ function IntroSlides({ onDone }: { onDone: () => void }) {
  * chronotype belongs at the moment scheduling first needs to know when you are
  * awake. Neither is in the first run any more.
  */
-type OnboardStep = "name" | "meet" | "timing" | "hold" | "birth" | "chronotype" | "done";
+type OnboardStep = "name" | "meet" | "hold" | "birth" | "chronotype" | "done";
 
 function OnboardingModal({ onComplete, existingTesterId, startAt }: {
   /** `holding` is the three-things capture; empty when skipped. */
@@ -658,7 +658,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
   // onboarding" — it no longer does, so "The full chart" chosen here showed
   // as "medium" until the next reload (found 2026-08-21 while adding the
   // rhythm question, which failed the same way).
-  const { updateDisplay, updateTiming } = usePreferences();
+  const { updateDisplay } = usePreferences();
   const [step, setStep] = useState<OnboardStep>(startAt ?? "name");
   const [name, setName] = useState("");
   // How much astrology to show — the intake question (owner 2026-07-22).
@@ -676,10 +676,6 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
   // does not exist until the run finishes, and a half-created account holding
   // one task is a worse state than none.
   const [holding, setHolding] = useState<string[]>(["", "", ""]);
-  // What you want windows found for. Intake asked how you want to be met and
-  // what you are holding, and never this — so the Almanac's shortlist was ten
-  // of fifty that we picked (owner, 2026-08-27).
-  const [wantTimed, setWantTimed] = useState<string[]>([]);
   const [showRestore, setShowRestore] = useState(false);
   const [restoreCode, setRestoreCode] = useState("");
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -1000,7 +996,7 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => setStep("timing")}
+        <button type="button" onClick={() => setStep("hold")}
           style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
           Continue →
         </button>
@@ -1013,60 +1009,6 @@ function OnboardingModal({ onComplete, existingTesterId, startAt }: {
   // one describes a product; this is the one that makes the next screen about
   // the person. Three lines, none of them required — the skip is real, and
   // someone who takes it lands on a Home that says so rather than pretending.
-  // ══ WHAT YOU WANT HELP TIMING ═════════════════════════════════════════
-  // Intake learned your style and your obligations and stopped, so the app
-  // knew how to meet you and not what you wanted windows found for. The
-  // Almanac's shortlist stood in for that answer: ten activities out of fifty,
-  // chosen by us, leaning hard toward work (owner, 2026-08-27: "we should also
-  // give suggestions/ask about what they need help scheduling ... or
-  // scheduling pleasure/play, etc.").
-  //
-  // Rest and play lead the list on purpose. Put deep work first and everyone
-  // picks deep work.
-  //
-  // Skipping is a real answer and leaves the curated default in place. Nothing
-  // is pre-selected: a checked box is an answer the person did not give.
-  if (step === "timing") {
-    const OPTIONS = HELP_TIMING_OPTIONS;
-    const toggle = (k: string) =>
-      setWantTimed(v => v.includes(k) ? v.filter(x => x !== k) : [...v, k]);
-    const save = () => {
-      if (wantTimed.length) {
-        logEvent("onboard_help_timing", { count: wantTimed.length, keys: wantTimed.join(",") });
-        updateTiming({ helpTiming: wantTimed });
-      }
-      setStep("hold");
-    };
-    return (
-      <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
-        <div style={cardStyle}>
-          <div style={{ fontSize:18, fontWeight:700, color:"var(--color-primary)", marginBottom:6 }}>What would you like help timing?</div>
-          <div style={{ fontSize:12, color:"var(--color-muted)", lineHeight:1.65, marginBottom:18 }}>
-            Compass looks for the hours that suit a thing, not only the days. Pick whatever you would actually want it hunting for. You can change this later.
-          </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
-            {OPTIONS.map(o => {
-              const on = wantTimed.includes(o.key);
-              return (
-                <button key={o.key} type="button" onClick={() => toggle(o.key)} aria-pressed={on}
-                  style={{
-                    fontSize:12, padding:"6px 12px", borderRadius:14, cursor:"pointer",
-                    border:`1px solid ${on ? "var(--color-primary)" : "var(--color-border)"}`,
-                    background: on ? "var(--color-primary)" : "var(--color-card-2)",
-                    color: on ? "#ffffff" : "var(--text-2)",
-                  }}>{o.label}</button>
-              );
-            })}
-          </div>
-          <button type="button" onClick={save}
-            style={{ width:"100%", padding:"11px 0", borderRadius:10, background:"#1a2a3a", color:"#ffffff", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>
-            {wantTimed.length ? `Continue with ${wantTimed.length} \u2192` : "Skip for now \u2192"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (step === "hold") return (
     <div style={{ height:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"var(--color-background)", padding:"0 16px", overflowY:"auto" }}>
       <div style={cardStyle}>

@@ -163,9 +163,15 @@ export default function DayCheckOff({ testerId, date, lat = 40.7, lon = -74.0 }:
 
       {openTasks.length > 0 && (
         <>
-          <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Still open
-          </div>
+          {/* "Still open" is true of now, not of the day being read. Over a
+              past date it labelled today's list as that day's, which is the
+              same category error as counting them below. Today keeps the
+              heading, because there it is simply true. */}
+          {isToday && (
+            <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              Still open
+            </div>
+          )}
           {isToday ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {openTasks.slice(0, 8).map(t => (
@@ -193,9 +199,13 @@ export default function DayCheckOff({ testerId, date, lat = 40.7, lon = -74.0 }:
               ))}
             </div>
           ) : (
+            /* The refusal stays — a checkbox that quietly lies is worse than
+               a reason — but it no longer counts. The number was of what is
+               open RIGHT NOW, printed under a heading for some Tuesday in the
+               past, so a day you had cleared could report three to-dos
+               outstanding purely because three are outstanding today. */
             <div style={{ fontSize: 11.5, color: "var(--text-3)", lineHeight: 1.5 }}>
-              {openTasks.length === 1 ? "One to-do is" : `${openTasks.length} to-dos are`} still open, and
-              they can be ticked on the day you finish them — a to-do stores the moment it was done, so
+              To-dos are ticked on the day you finish them: a to-do stores the moment it was done, so
               closing one here would file today's time under this date. Practices above take the date
               you are looking at, so those you can still fill in.
             </div>

@@ -25,11 +25,19 @@ describe("helpTiming preference", () => {
   });
 });
 
-describe("the intake step", () => {
-  it("sits in the flow between how-you-want-to-be-met and what-you-are-holding", () => {
-    expect(APP).toContain('type OnboardStep = "name" | "meet" | "timing" | "hold"');
-    expect(APP).toContain('setStep("timing")');
-    expect(APP).toContain('setStep("hold")');
+describe("first run does not ask it", () => {
+  it("keeps onboarding to the steps it had before the question existed", () => {
+    // The rehearsal doc already flagged five screens before any value against
+    // a target of three; adding a sixth made a known problem worse. The
+    // question is worth asking and Settings is where it goes.
+    expect(APP).toContain('type OnboardStep = "name" | "meet" | "hold" | "birth" | "chronotype" | "done"');
+    expect(APP).not.toContain('setStep("timing")');
+    expect(APP).not.toContain("wantTimed");
+  });
+
+  it("leaves no dead scaffolding behind in App", () => {
+    expect(APP).not.toContain("HELP_TIMING_OPTIONS");
+    expect(APP).not.toContain("updateTiming");
   });
 
   it("leads with rest and play rather than work", () => {
@@ -46,14 +54,11 @@ describe("the intake step", () => {
     }
   });
 
-  it("only writes the preference when something was chosen", () => {
-    const block = APP.slice(APP.indexOf('const save = ()'), APP.indexOf('const save = ()') + 400);
-    expect(block).toContain("if (wantTimed.length)");
-    expect(block).toContain("updateTiming({ helpTiming: wantTimed })");
-  });
-
-  it("lets skipping be a real answer", () => {
-    expect(APP).toContain('"Skip for now');
+  it("still treats never-answered as a real state", () => {
+    // helpTiming stays [] until someone opens Settings and says otherwise,
+    // and the Almanac's curated shortlist covers that case.
+    expect(DEFAULT_PREFS.timing.helpTiming).toEqual([]);
+    expect(SETTINGS).toContain("Nothing chosen, so the Almanac shows a general shortlist.");
   });
 });
 
@@ -69,14 +74,12 @@ describe("the Almanac shortlist follows the answer", () => {
   });
 });
 
-describe("one list, two surfaces", () => {
-  it("intake and Settings read the same table, never their own copy", () => {
+describe("the list lives in one place", () => {
+  it("Settings reads the shared table, never its own copy", () => {
     // Two copies of a suggestion table is how the app came to contradict
     // itself about planets once already.
-    expect(APP).toContain("HELP_TIMING_OPTIONS");
     expect(SETTINGS).toContain("HELP_TIMING_OPTIONS");
-    // Neither may re-declare it.
-    expect(APP).not.toContain("const OPTIONS: { key: string; label: string }[] = [");
+    // And must not re-declare it.
     expect(SETTINGS).not.toContain('{ key: "deep-rest", label:');
   });
 
