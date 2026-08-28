@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Disclosure, Chip } from "@/components/primitives";
 import { jsonArray } from "@/lib/jsonArray";
-import { dueOnDay, type DayListTask } from "@/lib/dayList";
+import { dueOnDay, alsoOpen, type DayListTask } from "@/lib/dayList";
 import { blockForCrossing, planForCrossing, HALF_WINDOW_MIN, type CrossingBlock } from "@/lib/crossingPlans";
 import { localToday, localDateStr, localDayRange } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
@@ -1306,6 +1306,9 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   // Due today and not already holding a block — the things this day is FOR.
   // Rules live in lib/dayList so they can be tested apart from the tree.
   const dueHere = dueOnDay(tasks, dateStr);
+  // Everything else that is open, for today only, and named for what it is
+  // rather than folded into the day's own list.
+  const { overdue, undated } = alsoOpen(tasks, dateStr, today);
   const anySchedulable = moments.some(m => m.onSchedule);
   const isToday = dateStr === today;
   const nowMin = isToday ? minOf(new Date()) : -999;
@@ -1357,6 +1360,34 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
             Nothing is due today.
           </div>
         ) : null}
+
+        {/* Outstanding, and undated — separate from what today is FOR, because
+            "due today" and "still open" are different claims and a list that
+            blurs them is a backlog wearing a due date. */}
+        {[
+          { key: "overdue", label: "Still open", items: overdue },
+          { key: "undated", label: "No date yet", items: undated },
+        ].filter(g => g.items.length > 0).map(g => (
+          <div key={g.key} style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 6 }}>
+              {g.label} · {g.items.length}
+            </div>
+            {g.items.slice(0, 6).map(t => (
+              <div key={t.id} style={{ display: "flex", alignItems: "baseline", gap: 9, padding: "6px 0", borderTop: "1px solid var(--color-border)", opacity: 0.75 }}>
+                <span aria-hidden="true" style={{ width: 13, height: 13, borderRadius: 4, border: "1.5px solid var(--color-border)", flexShrink: 0, display: "inline-block", marginTop: 2 }} />
+                <span style={{ fontSize: 13, color: "var(--color-foreground)", flex: 1, minWidth: 0 }}>{t.title}</span>
+                <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>
+                  {g.key === "overdue" ? `due ${t.dueDate}` : "no date"}
+                </span>
+              </div>
+            ))}
+            {g.items.length > 6 && (
+              <div style={{ fontSize: 11, color: "var(--text-3)", paddingTop: 6 }}>
+                and {g.items.length - 6} more
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Said once, above the list, rather than repeated on every crossing
             row. The owner asked the layer to encourage the small register:
@@ -1650,28 +1681,41 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             calendar. They are the same switches, behind the word that says
             what they are all about. Default view: dates, real commitments,
             slow sky. Details on request. */}
-        <Disclosure label="Sky">
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {calView==="agenda" && !pageQuiet && (<>
-              <Chip on={agHours} onClick={()=>setAgHours(v=>!v)} color="#b07020"
-                title="Show every planetary hour">Planetary hours</Chip>
-              <Chip on={agCrossings} onClick={()=>setAgCrossings(v=>!v)} color="#b07020"
-                title="Show angle crossings">Crossings</Chip>
-            </>)}
-            {calView==="month" && (<>
-              {!pageQuiet && (
-                <Chip on={!monthSimple} onClick={()=>setMonthSimple(v=>!v)} color="#b07020"
-                  title={monthSimple?"Show aspect times and detail":"Show just the essentials"}>
-                  Aspect detail</Chip>
-              )}
-              {!pageQuiet && (
-                <Chip on={showSignNames} onClick={()=>setShowSignNames(v=>!v)} color="#b07020">
-                  Sign names</Chip>
-              )}
-              <Chip on={showDetail} onClick={()=>setShowDetail(v=>!v)}>Day detail</Chip>
-            </>)}
-          </div>
-        </Disclosure>
+        {/* Only rendered where it controls something. Its chips are Agenda
+            layers and Month layers, so on Week and Almanac it opened onto an
+            empty box — "this sky toggle isn't doing anything" (owner,
+            2026-08-28), which was exactly true of those two views. Derived
+            from the same conditions the chips use, so the door and its
+            contents cannot disagree. */}
+        {(() => {
+          const agendaChips = calView === "agenda" && !pageQuiet;
+          const monthChips  = calView === "month";
+          if (!agendaChips && !monthChips) return null;
+          return (
+            <Disclosure label="Sky">
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {agendaChips && (<>
+                  <Chip on={agHours} onClick={()=>setAgHours(v=>!v)} color="#b07020"
+                    title="Show every planetary hour">Planetary hours</Chip>
+                  <Chip on={agCrossings} onClick={()=>setAgCrossings(v=>!v)} color="#b07020"
+                    title="Show angle crossings">Crossings</Chip>
+                </>)}
+                {monthChips && (<>
+                  {!pageQuiet && (
+                    <Chip on={!monthSimple} onClick={()=>setMonthSimple(v=>!v)} color="#b07020"
+                      title={monthSimple?"Show aspect times and detail":"Show just the essentials"}>
+                      Aspect detail</Chip>
+                  )}
+                  {!pageQuiet && (
+                    <Chip on={showSignNames} onClick={()=>setShowSignNames(v=>!v)} color="#b07020">
+                      Sign names</Chip>
+                  )}
+                  <Chip on={showDetail} onClick={()=>setShowDetail(v=>!v)}>Day detail</Chip>
+                </>)}
+              </div>
+            </Disclosure>
+          );
+        })()}
 
         {/* THE STUDIO — shareable day/week/lunation cards, inherited from
             Today's hero as it retires (2026-08-19). Calendar is where the

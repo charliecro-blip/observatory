@@ -50,6 +50,8 @@ interface LensResponse { category: string; label: string; days: number; entries:
 
 interface SkyEntry {
   at: string; kind: string; title: string; note: string; glyph: string;
+  /** An aspect row's reading, kept apart from the aspect it reads. */
+  gloss?: string;
   eclipse?: "solar" | "lunar";
   // Aspects carry a window rather than an instant.
   startDate?: string; endDate?: string; active?: boolean;
@@ -255,7 +257,14 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
                   {dayLabel(e.at.slice(0, 10))}
                 </span>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, fontSize: 11, color: e.eclipse ? "var(--color-brass)" : "var(--color-meridian)" }}>{e.glyph}</span>
+                {/* The transit, then the reading of it. The row used to lead
+                    with "Mars grinds against Saturn" and never say the aspect,
+                    so the one checkable fact in it was missing (owner,
+                    2026-08-28). */}
                 <span style={{ fontSize: 12, color: "var(--color-foreground)", fontWeight: e.eclipse ? 600 : 400, flexShrink: 0 }}>{e.title}</span>
+                {e.gloss && (
+                  <span style={{ fontSize: 11, color: "var(--color-meridian)", flexShrink: 0 }}>{e.gloss}</span>
+                )}
                 <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {/* An aspect is a stretch, so it says its stretch. A fixed
                       event is an instant and says what it means instead. */}

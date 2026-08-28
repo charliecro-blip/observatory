@@ -24,6 +24,9 @@ export type AlmanacEntry = {
   at: string;                                   // ISO instant; client formats in its own zone
   kind: "lunation" | "quarter" | "station" | "ingress" | "aspect";
   title: string;
+  /** For an aspect row, the same fact in the app's own words. Absent on rows
+   *  whose title is already plain (a Full Moon needs no second phrasing). */
+  gloss?: string;
   note: string;
   glyph: string;
   eclipse?: "solar" | "lunar";
@@ -73,7 +76,18 @@ function aspectEntries(now: Date, tzOffsetMin: number, endJd: number, jdToIso: (
       at: `${sp.peakDate}T12:00:00.000Z`,
       kind: "aspect" as const,
       glyph: "✦",
-      title: `${sp.transitPlanet} ${ASPECT_WORD[sp.aspect] ?? "meets"} ${sp.targetPlanet}`,
+      // THE TRANSIT, THEN THE READING (owner, 2026-08-28: "i would rather
+      // these planetary aspect lists start with the literal transit, then give
+      // the interpretations").
+      //
+      // The title was the reading and only the reading — "Mars grinds against
+      // Saturn" — so the one fact in the row, the aspect itself, appeared
+      // nowhere. That inverts the house rule everywhere else in the app, where
+      // the fact leads and what to make of it follows, and it left a reader
+      // unable to check the claim against any other ephemeris.
+      title: `${sp.transitPlanet} ${sp.aspect} ${sp.targetPlanet}`,
+      /** The reading of that aspect, kept apart from the fact it reads. */
+      gloss: `${sp.transitPlanet} ${ASPECT_WORD[sp.aspect] ?? "meets"} ${sp.targetPlanet}`,
       // The theme is a conditions phrase, never a promise — its own comment
       // says so, and it is the only sentence these rows carry.
       note: sp.theme,

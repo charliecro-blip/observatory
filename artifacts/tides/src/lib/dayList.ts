@@ -33,3 +33,32 @@ export interface DayListTask {
 export function dueOnDay<T extends DayListTask>(tasks: T[], dateStr: string): T[] {
   return tasks.filter(t => t.dueDate === dateStr && !t.planningWindowId);
 }
+
+/**
+ * The rest of the list, for the day you are actually standing in.
+ *
+ * `dueOnDay` deliberately refuses to roll a task forward, which keeps a day
+ * from inventing work for itself. The cost is that a to-do with no date, or one
+ * whose date has gone by, appears on no day at all — so the Agenda showed one
+ * item and the other nine were nowhere (owner, 2026-08-28: "we might also add
+ * things beyond the day or unsorted to a day").
+ *
+ * Kept as a SEPARATE list rather than merged into the day's own. What is due
+ * today and what is merely outstanding are different claims, and a reader who
+ * cannot tell them apart has a backlog wearing a due date.
+ *
+ * Only ever for today. On a past or future date these would be facts about now
+ * filed under then, which is the error the Log's check-off already had to have
+ * removed from it.
+ */
+export function alsoOpen<T extends DayListTask>(tasks: T[], dateStr: string, today: string): {
+  overdue: T[];
+  undated: T[];
+} {
+  if (dateStr !== today) return { overdue: [], undated: [] };
+  const free = tasks.filter(t => !t.planningWindowId);
+  return {
+    overdue: free.filter(t => !!t.dueDate && t.dueDate < today),
+    undated: free.filter(t => !t.dueDate),
+  };
+}

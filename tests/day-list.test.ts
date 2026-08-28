@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dueOnDay, type DayListTask } from "../artifacts/tides/src/lib/dayList";
+import { dueOnDay, alsoOpen, type DayListTask } from "../artifacts/tides/src/lib/dayList";
 
 const t = (id: number, title: string, dueDate: string | null, planningWindowId: number | null = null): DayListTask =>
   ({ id, title, dueDate, planningWindowId });
@@ -56,5 +56,47 @@ describe("dueOnDay — the day's own list", () => {
     const tasks = [t(1, "Edge", "2026-08-25")];
     expect(dueOnDay(tasks, "2026-08-25")).toHaveLength(1);
     expect(dueOnDay(tasks, "2026-08-26")).toHaveLength(0);
+  });
+});
+
+describe("alsoOpen — the rest of the list", () => {
+  const T = (id: number, title: string, dueDate: string | null, planningWindowId: number | null = null) =>
+    ({ id, title, dueDate, planningWindowId });
+  const TODAY = "2026-08-28";
+
+  it("finds what is overdue and what was never dated", () => {
+    const { overdue, undated } = alsoOpen([
+      T(1, "Due today", TODAY),
+      T(2, "Was due Monday", "2026-08-24"),
+      T(3, "Someday", null),
+      T(4, "Next week", "2026-09-04"),
+    ], TODAY, TODAY);
+    expect(overdue.map(t => t.title)).toEqual(["Was due Monday"]);
+    expect(undated.map(t => t.title)).toEqual(["Someday"]);
+  });
+
+  it("never puts today's outstanding work under a past or future date", () => {
+    // The same category error the Log's check-off had: facts about now, filed
+    // under then.
+    const tasks = [T(1, "Was due Monday", "2026-08-24"), T(2, "Someday", null)];
+    expect(alsoOpen(tasks, "2026-08-20", TODAY)).toEqual({ overdue: [], undated: [] });
+    expect(alsoOpen(tasks, "2026-09-05", TODAY)).toEqual({ overdue: [], undated: [] });
+  });
+
+  it("leaves what is due today to dueOnDay, so nothing is counted twice", () => {
+    const tasks = [T(1, "Due today", TODAY)];
+    const { overdue, undated } = alsoOpen(tasks, TODAY, TODAY);
+    expect(overdue).toEqual([]);
+    expect(undated).toEqual([]);
+    expect(dueOnDay(tasks, TODAY)).toHaveLength(1);
+  });
+
+  it("skips anything that already holds a block, like dueOnDay does", () => {
+    const { overdue, undated } = alsoOpen([
+      T(1, "Overdue but scheduled", "2026-08-24", 7),
+      T(2, "Undated but scheduled", null, 8),
+    ], TODAY, TODAY);
+    expect(overdue).toEqual([]);
+    expect(undated).toEqual([]);
   });
 });
