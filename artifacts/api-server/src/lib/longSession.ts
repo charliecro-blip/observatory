@@ -192,7 +192,13 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       // a void opening inside the block can make the verdict stricter, never
       // looser. Everything else — stations, retrograde caps, Mercury policy,
       // Moon sign as a prior — arrives already judged.
-      const assessment = evaluateActivityInterval({ activityKey, startAt, endAt })!;
+      // Location passed only when it is real. The angles are cut from the
+      // local horizon, so a guessed meridian would give every crossing the
+      // wrong minute, and the minute is the whole claim.
+      const assessment = evaluateActivityInterval({
+        activityKey, startAt, endAt,
+        ...(locationKnown ? { lat, lon } : {}),
+      })!;
       const backgroundFit = assessment.backgroundFit;
       const reasons: string[] = assessment.suitabilityReasons.map(r =>
         `${r.kind.replace(/-/g, " ")}${(r as { planet?: string }).planet ? ` (${(r as { planet?: string }).planet})` : ""}`);
@@ -263,7 +269,10 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
     // below the one that just got fixed, and the shortfall is exactly where
     // someone is most likely to act on a block anyway.
     const shortAssessment = longest
-      ? evaluateActivityInterval({ activityKey, startAt: longest.startAt, endAt: longest.endAt })
+      ? evaluateActivityInterval({
+          activityKey, startAt: longest.startAt, endAt: longest.endAt,
+          ...(locationKnown ? { lat, lon } : {}),
+        })
       : null;
     return {
       requestedMinutes: minutes,

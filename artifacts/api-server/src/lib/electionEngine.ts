@@ -340,6 +340,31 @@ function moonPerfectionsForDay(dayStartMs: number): ReturnType<typeof scanMoonPe
   return scan;
 }
 
+/**
+ * Angle crossings for one civil day at one place, memoised.
+ *
+ * Measured 2026-08-28: the 24-hour scan costs 5.2ms. `evaluateActivityInterval`
+ * is called once per candidate slot by the weavers and once per option by the
+ * session finder, so an uncached scan over fifty intervals is 262ms of one
+ * request spent recomputing the same day — the exact shape of the loop that
+ * put a 14-day station sweep inside a per-call path and cost this repo a
+ * 90-second calendar request. Cached, a week is 37ms.
+ *
+ * Keyed by day AND place: the angles are cut from the local horizon, so the
+ * same day at a different latitude is a different answer. Capped like
+ * moonPerfCache so a long-running process cannot grow it without bound.
+ */
+const crossingCache = new Map<string, ReturnType<typeof getNextAngularCrossings>>();
+function crossingsForDay(dayStartMs: number, lat: number, lon: number) {
+  const key = `${dayStartMs}:${lat.toFixed(2)}:${lon.toFixed(2)}`;
+  const hit = crossingCache.get(key);
+  if (hit) return hit;
+  const scan = getNextAngularCrossings(julianDay(new Date(dayStartMs)), lat, lon, 3, 24);
+  if (crossingCache.size > 32) crossingCache.clear();
+  crossingCache.set(key, scan);
+  return scan;
+}
+
 export function supportLevelFrom(families: SourceFamily[]): SupportLevel {
   const establishing = families.filter(f => roleOf(f) === "establishing");
   const reinforcing = families.filter(f => roleOf(f) === "reinforcing");
@@ -456,6 +481,17 @@ export function evaluateActivityInterval(opts: {
   activityKey: string;
   startAt: Date;
   endAt: Date;
+  /**
+   * Where the reader is. Optional, and the assessment is honest without it:
+   * omit them and the `angle-crossing` family simply never fires, exactly as
+   * it does when `locationKnown` is false in the window engine.
+   *
+   * The angles are cut from the local horizon, so a guessed meridian gives
+   * every crossing the wrong minute — and the whole claim of a crossing IS
+   * the minute. Callers that only have a timezone guess must not pass it.
+   */
+  lat?: number;
+  lon?: number;
 }): ActivityAssessment | null {
   const act = ACTIVITIES.find(a => a.key === opts.activityKey);
   if (!act) return null;
@@ -541,6 +577,17 @@ export function evaluateActivityInterval(opts: {
       .some(ev => sigSet.has(ev.planet)
         && ev.timeMs >= startAt.getTime() && ev.timeMs <= endAt.getTime());
     if (perfects) families.push("lunar-contact");
+  }
+  // A significator on the local horizon or meridian inside this interval.
+  // Reinforcing, on the same measured grounds as in the window engine: 309 of
+  // them a week at one place is not scarce enough to establish convergence.
+  if (sigSet.size && opts.lat != null && opts.lon != null) {
+    const dayStart = new Date(startAt); dayStart.setHours(0, 0, 0, 0);
+    const onAngle = crossingsForDay(dayStart.getTime(), opts.lat, opts.lon)
+      .some(x => sigSet.has(x.planet)
+        && Date.parse(x.crossingTime) >= startAt.getTime()
+        && Date.parse(x.crossingTime) <= endAt.getTime());
+    if (onAngle) families.push("angle-crossing");
   }
 
   return {

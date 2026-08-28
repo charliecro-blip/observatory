@@ -95,9 +95,26 @@ function PlanetReading({ planet, planets }: { planet: string; planets?: any[] })
       )}
       {r.does}
       {/* The downside is shown, not hidden behind a tap: a placement with only
-          an upside is a horoscope. Dimmer, because it is the second thing to
-          read, not the first. */}
-      <span style={{ color: "var(--color-muted)" }}> · {r.misses}</span>
+          an upside is a horoscope.
+          
+          It is LABELLED rather than separated by a dot. Eighteen of the
+          eighty-four `does` strings already contain a semicolon, so the line
+          read "precise; sorts the real from the noise · corrects what did not
+          need correcting" — three clauses at one level, with punctuation doing
+          two different jobs and nothing saying which one is the failure mode.
+          "corrects what did not need correcting" parsed as a third thing
+          Mercury is good at (owner, 2026-08-28: "I still don't like this
+          mercury language"). Dimmer was carrying the whole distinction and at
+          10.5px it could not.
+          
+          "watch for" is already the app's word for this — the Moon's shadow
+          take and the sign readout both use it — so this is the vocabulary
+          joining up rather than a new one. */}
+      <span style={{ color: "var(--color-muted)" }}>
+        {" · "}
+        <span style={{ textTransform: "uppercase", letterSpacing: "0.5px", fontSize: 10, fontWeight: 700, color: "var(--text-3)" }}>watch for </span>
+        {r.misses}
+      </span>
     </div>
   );
 }
