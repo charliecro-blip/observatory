@@ -1309,6 +1309,12 @@ export function getNextAngularCrossings(
             const peak = refineCrossingPeak(
               jdToMs(jd + existing.minStep * STEP_JD), STEP_MIN * 60000,
               sepProbe(snap.planet, name), existing.minStep === 0);
+            // Deliberately NOT filtered on being in the past. A crossing that
+            // has just perfected is reported with a negative minutesFromNow,
+            // because that is the truth and it is what "exact 6m ago" is built
+            // on; `searchBack` exists so the refiner can find that moment
+            // behind the window start. Pinned in regressions.test.ts, which
+            // caught me removing it.
             crossings.push({
               planet:         snap.planet,
               angle:          name,
@@ -1332,6 +1338,19 @@ export function getNextAngularCrossings(
     const peak = refineCrossingPeak(
       jdToMs(jd + state.minStep * STEP_JD), STEP_MIN * 60000,
       sepProbe(planetName, angleName), state.minStep === 0);
+    // MIRRORED AT THE FAR END, which is where they actually were.
+    //
+    // A span still open when the lookahead stops is a body still APPROACHING:
+    // its smallest separation so far is the final sample, and the real meeting
+    // is in the next window. Measured 2026-08-28 at orb 40, all four of the
+    // day's bogus crossings were these — Sun-IC and Mercury-IC at 12 degrees,
+    // Moon-MC at 26, Mars-ASC at 28, every one stamped 07:04:00 four minutes
+    // PAST the window's end, each duplicating a genuine crossing of the same
+    // body and angle that reached orb 0 earlier the same day.
+    //
+    // So the minimum has to be interior at both ends: past the sample the span
+    // opened on, and before the last sample the scan took.
+    if (state.minStep >= STEPS || state.minStep <= state.startStep || peak.atMs < jdToMs(jd)) continue;
     crossings.push({
       planet:         planetName,
       angle:          angleName,

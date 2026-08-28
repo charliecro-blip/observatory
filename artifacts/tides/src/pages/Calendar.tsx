@@ -1212,6 +1212,12 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
 interface AgendaMoment {
   min: number; time: string; glyph: string; label: string; sub?: string; color: string;
   faded?: boolean; onDelete?: () => void;
+  /**
+   * What KIND of row this is, so the sky layer can be drawn as one system
+   * rather than two runs of identical faded lines. "hour" rules across the
+   * day; "crossing" sits inside the hour above it.
+   */
+  kind?: "hour" | "crossing";
   /** Present when this moment can be turned into a block. */
   onSchedule?: () => void;
   /** The small thing that fits in it, shown before you commit. */
@@ -1271,6 +1277,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
       moments.push({
         min, time: d ? fmtTime(d) : c.time, glyph: PLANET_ICONS[c.planet] ?? "✷",
         label: `${c.planet} crosses your ${c.angle}`, sub: c.type, color: PLANET_COLORS[c.planet] ?? "var(--color-muted)", faded: true,
+        kind: "crossing",
         what: plan?.what,
         onSchedule: block && onScheduleBlock ? () => onScheduleBlock(block) : undefined,
       });
@@ -1286,6 +1293,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
       moments.push({
         min: minOf(ph.startTime), time: fmtTime(ph.startTime), glyph: PLANET_ICONS[ph.ruler] ?? "·",
         label: `${ph.ruler} hour`, color: PLANET_COLORS[ph.ruler] ?? "var(--color-muted)", faded: true,
+        kind: "hour",
       });
     }
   }
@@ -1407,8 +1415,36 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
           <div style={{ display: "flex", flexDirection: "column" }}>
             {moments.map((m, i) => {
               const past = isToday && m.min >= 0 && m.min < nowMin;
+              // A crossing is indented UNDER its hour, so it may only be
+              // indented once an hour rule has actually appeared above it. The
+              // day's first hour starts after midnight, so the crossings before
+              // it were being nested under nothing.
+              const hasHourAbove = moments.slice(0, i).some(x => x.kind === "hour");
+
+              // ══ THE SKY'S OWN CLOCK ══════════════════════════════════════
+              // An hour is a RULE across the day, not another row in the list.
+              // Two chips producing two runs of identical faded lines was the
+              // thing that read badly (owner, 2026-08-28); the hour containing
+              // the crossing is the true relation, so it is the drawn one.
+              if (m.kind === "hour") {
+                return (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "10px 6px 3px", opacity: past ? 0.4 : 0.85,
+                  }}>
+                    <div style={{ width: 62, flexShrink: 0, fontSize: 10, color: "var(--text-3)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
+                    <span aria-hidden="true" style={{ fontSize: 11, color: m.color, flexShrink: 0 }}>{m.glyph}</span>
+                    <span style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: m.color, flexShrink: 0 }}>{m.label}</span>
+                    <span style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
+                  </div>
+                );
+              }
+
+              // A crossing belongs to the hour above it, so it is indented
+              // under it rather than sitting level with the day's own events.
+              const nested = m.kind === "crossing" && hasHourAbove;
               return (
-                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", borderTop: i === 0 ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", paddingLeft: nested ? 24 : 6, borderTop: i === 0 || nested ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
                   <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "var(--text-3)", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
                   <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1457,12 +1493,22 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   const [calView, setCalView]           = useState<CalView>(isMobile ? "agenda" : "month");
   // Agenda granularity — the fine layers are opt-in so the day reads as key
   // moments first; toggle them on for the full clock (#13b/#20).
-  const [agHours, setAgHours]           = useState(false);
+  /**
+   * ONE SKY LAYER, ONE SWITCH (owner, 2026-08-28: "one layer, one control").
+   *
+   * Planetary hours and angle crossings were two chips producing two
+   * indistinguishable runs of faded rows, so turning both on gave a list where
+   * the day's actual shape drowned in sky. They are one thing — the hour is the
+   * container and the crossing is a moment inside it — and they are drawn that
+   * way now: the hour as a rule across the day, the crossing indented beneath
+   * the hour it falls in.
+   */
+  const [agSky, setAgSky]               = useState(false);
   // OFF BY DEFAULT (owner, 2026-08-25: "I don't think planetary crossings of
   // personal angles is something to show here"). Four "Mars crosses your ASC"
   // rows led the day's list ahead of anything the person had agreed to, which
   // is how a day view reads as an ephemeris. Still one tap away under Sky.
-  const [agCrossings, setAgCrossings]   = useState(false);
+
   const [year, setYear]                 = useState(todayYear);
   const [month, setMonth]               = useState(todayMonth);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -1695,10 +1741,8 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             <Disclosure label="Sky">
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {agendaChips && (<>
-                  <Chip on={agHours} onClick={()=>setAgHours(v=>!v)} color="#b07020"
-                    title="Show every planetary hour">Planetary hours</Chip>
-                  <Chip on={agCrossings} onClick={()=>setAgCrossings(v=>!v)} color="#b07020"
-                    title="Show angle crossings">Crossings</Chip>
+                  <Chip on={agSky} onClick={()=>setAgSky(v=>!v)} color="#b07020"
+                    title="Show the planetary hours, and the crossings inside them">The sky's own clock</Chip>
                 </>)}
                 {monthChips && (<>
                   {!pageQuiet && (
@@ -1821,7 +1865,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             windows={windowsMap.get(selectedDate) ?? []}
             gcalEvents={gcalMap.get(selectedDate) ?? []}
             lat={lat} lon={lon}
-            showHours={!pageQuiet && agHours} showCrossings={!pageQuiet && agCrossings}
+            showHours={!pageQuiet && agSky} showCrossings={!pageQuiet && agSky}
             onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
             onScheduleBlock={(preset)=>setAddModal({date:selectedDate,preset})}
             onDeleteWindow={id=>delWindow.mutate(id)}
