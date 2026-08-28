@@ -25,7 +25,7 @@ import { motionOf, TRADITIONAL_PLANETS } from "./motion.js";
 import {
   julianDay, moonLongitude, sunLongitude, getPlanetaryHour, getPlanetPositions,
   getMajorAspects, isRetrograde, SIGNS, moonFinalAspectInSign, eclipseWindow,
-  getSunriseSunset, scanMoonPerfections,
+  getSunriseSunset, scanMoonPerfections, getNextAngularCrossings,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
 import { civilDayOffsetIn } from "./localClock.js";
@@ -214,7 +214,8 @@ export type SourceFamily =
   | "standing-sky"     // non-lunar aspect between significators
   | "natal-house"      // transiting body in a governing natal house
   | "natal-contact"    // transit to its own natal place
-  | "planetary-motion"; // speed/direction matching the activity's tempo
+  | "planetary-motion"  // speed/direction matching the activity's tempo
+  | "angle-crossing";   // a significator on the local horizon or meridian
 
 const FAMILY_OF: Record<string, SourceFamily> = {
   hour: "planetary-time",
@@ -225,6 +226,7 @@ const FAMILY_OF: Record<string, SourceFamily> = {
   "natal-house": "natal-house",
   "natal-contact": "natal-contact",
   motion: "planetary-motion",
+  crossing: "angle-crossing",
 };
 const familiesOf = (srcs: string[]): SourceFamily[] =>
   [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
@@ -255,6 +257,24 @@ const PERSONAL_FAMILIES = new Set<SourceFamily>(["natal-house", "natal-contact"]
  * techniques — but the hour cannot be the second voice. Their overlap becomes
  * a modifier (`stackedHourMoon`) that sharpens and ranks a window rather than
  * promoting it.
+ */
+/**
+ * `angle-crossing` is REINFORCING, not establishing, and the number is why.
+ *
+ * It has the shape of an establishing family — a significator crossing the
+ * local horizon is an event with a time, accurate to the minute, and it is the
+ * shortest-lived fact the app computes. But the doctrine's test is
+ * discrimination, not shape, and measured at one location over one week
+ * (2026-08-28) there are 309 crossings: 79 ASC, 77 DSC, 76 IC, 77 MC, spread
+ * evenly across all eleven bodies. Filtered to a single activity's own
+ * significators that is still 56 a week, against a baseline of 6.2 windows per
+ * activity-week.
+ *
+ * A planet crosses each angle once a day for exactly the same reason a
+ * planetary hour comes round once a day, and the governing sentence for hours
+ * applies unchanged: independent enough to appear in the evidence, not
+ * discriminating enough to establish convergence without additional testimony.
+ * Letting it establish would have made GREAT ordinary.
  */
 const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
   "lunar-contact",    // the Moon applying to a significator — an event, with a time
@@ -665,6 +685,23 @@ export function computeElections(opts: {
     // eclipse or a Mercury station saw it on day 0 only, so e.g. a month scan
     // crossing a total solar eclipse mid-month stamped GREAT windows straight
     // through it (audit F5). Evaluate them per-day, at this day's own jdNoon.
+    /**
+     * This day's crossings of the local angles by this activity's own
+     * significators.
+     *
+     * Gated on `locationKnown` for the same reason hours are: the angles are
+     * cut from the local horizon, so on a guessed meridian every crossing time
+     * is wrong. A wrong minute is worse here than anywhere else in the engine,
+     * because the whole claim of a crossing is that it is accurate to one.
+     *
+     * Scanned from the day's own start over its full length rather than from
+     * "now", so a week scan does not report the same 24 hours seven times.
+     */
+    const dayCrossings = locationKnown
+      ? getNextAngularCrossings(julianDay(new Date(dayStartMs)), lat, lon, 3, 24)
+          .filter(x => sigPlanets.includes(x.planet))
+      : [];
+
     const dayMercRx = isRetrograde("Mercury", jdNoon);
     const dayEcl = eclipseWindow(jdNoon);
     // NARROWED, on doctrinal advice. The old rule capped the top tier whenever
@@ -963,7 +1000,38 @@ export function computeElections(opts: {
       // At least one establishing testimony must sit at the centre. Two of them
       // converge on their own; one plus two reinforcing conditions also does.
       // A pile of reinforcing conditions never does, however tall.
-      const allFamilies = familiesOf([...c.sources, ...daySources]);
+      /**
+       * A significator on an angle DURING this window, which raises it.
+       *
+       * Not a window of its own here: 56 of these a week for a typical
+       * activity, against a baseline of 6.2 windows per activity-week, would
+       * have made "window" mean nothing (measured 2026-08-28). It rides on
+       * windows it genuinely overlaps, adding its family and its evidence, so
+       * a training hour that happens to contain Mars on the horizon outranks
+       * one that does not. They appear on their own in `crossings` on the
+       * result, where they are marks rather than elections.
+       */
+      const onAngle = dayCrossings.filter(x => {
+        const t = Date.parse(x.crossingTime);
+        return t >= c.startMs && t <= c.endMs;
+      });
+      // Named literally, the way every other line of evidence is: the fact
+      // first, so a reader can weigh it rather than take the tier on trust.
+      const angleWhy = onAngle.map(x => ({
+        family: "angle-crossing",
+        text: `${x.planet} crosses the ${x.angle} at ${clockOf(Date.parse(x.crossingTime), tzOffsetMin)}, inside this window`,
+      }));
+      const winSources = [...c.sources, ...daySources, ...(onAngle.length ? ["crossing"] : [])];
+      /**
+       * This is where a crossing raises the tier, and the only place it can.
+       *
+       * supportLevelFrom calls a window convergent on two establishing
+       * testimonies, or one establishing plus two reinforcing. `angle-crossing`
+       * is reinforcing, so it can tip a window that already has an establishing
+       * testimony and one other condition — and can never carry one on its own,
+       * however many crossings a week contains.
+       */
+      const allFamilies = familiesOf(winSources);
       // The shared rule — same function `evaluateActivityInterval` calls, so
       // the two can no longer drift apart on what "convergent" means.
       const supportLevel: SupportLevel = supportLevelFrom(allFamilies);
@@ -1058,7 +1126,7 @@ export function computeElections(opts: {
       // whether any particular window carried personal testimony, so a wholly
       // global window sat inside a response labelled personalized. Four
       // different claims were collapsed into one boolean; these separate them.
-      const families = familiesOf([...c.sources, ...daySources]);
+      const families = familiesOf(winSources);
       const personalFamilies = families.filter(f => PERSONAL_FAMILIES.has(f));
       // Would this window still be GREAT without its personal testimony? Only
       // meaningful when it IS great — otherwise there is no tier to have
@@ -1081,9 +1149,9 @@ export function computeElections(opts: {
         // showing "the Moon is applying to Mercury… / Saturn's hour contains
         // the window… / your 10th house is reinforced…" is three facts a reader
         // can weigh, where the joined string is one blur they can only accept.
-        why: [...c.why, ...dayWhy].map(e => e.text).join(" · "),
-        evidence: [...c.why, ...dayWhy],
-        sources: [...new Set([...c.sources, ...daySources])],
+        why: [...c.why, ...dayWhy, ...angleWhy].map(e => e.text).join(" · "),
+        evidence: [...c.why, ...dayWhy, ...angleWhy],
+        sources: [...new Set(winSources)],
         families,
         personal: personalFamilies.length > 0,
         personalDecidedTier,
