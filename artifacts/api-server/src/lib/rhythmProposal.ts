@@ -169,7 +169,12 @@ const GEAR_RULES: { transit: string; natal: Set<string>; orb: number; rhythm: Rh
   // meet people. Those want different things done about them.
   { transit: "Mars", natal: new Set(["Ascendant"]), orb: 3, rhythm: "campaign",
     reading: "you run hotter than usual and other people feel the edge; hard exercise early and short pushes tend to suit it",
-    suggest: "Put the heat somewhere physical early: a hard workout, a long walk, or the job you keep flinching from.",
+    // Two uses for the same heat, and the second is the one the card is
+    // actually offering (owner, 2026-08-28: "I might also emphasize the mars
+    // transit as an opportunity to provide energy to shift gears"). A gear
+    // change asks you to work differently for a fortnight, which is a cost;
+    // Mars is the stretch that has the drive to pay it.
+    suggest: "Put the heat somewhere physical early: a hard workout, a long walk, or the job you keep flinching from. The same drive tends to carry a change of gear you have been putting off.",
     why: "Mars transits to the Ascendant are read in the tradition as heat in the body and sharpness in how you come across; spending the drive physically early tends to leave less of it for the day's friction." },
   { transit: "Mars", natal: new Set(["Mars", "Sun"]), orb: 3, rhythm: "campaign",
     reading: "your drive runs louder than usual; shorter pushes and tighter decisions tend to suit it",

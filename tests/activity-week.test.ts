@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { parseClock, minutesOf, layoutLanes, spanLabel, durationLabel } from "../artifacts/tides/src/lib/activityWeek";
 
 describe("parseClock", () => {
@@ -123,5 +124,45 @@ describe("durationLabel", () => {
 
   it("is empty rather than wrong when the clock cannot be read", () => {
     expect(durationLabel({ startClock: "nope", endClock: "1 PM" })).toBe("");
+  });
+});
+
+describe("the window and its core are drawn differently", () => {
+  const SRC = readFileSync("artifacts/tides/src/components/ActivityWeek.tsx", "utf8");
+
+  it("reads stackedHourMoon, which marks the hour inside the swell", () => {
+    // A Friday reads 11:30–4:30 from a Moon swell with 3:04–4:09 inside it.
+    // Drawn identically, the picture said "two windows".
+    expect(SRC).toContain("const core = !!w.stackedHourMoon");
+  });
+
+  it("draws the core deeper than the window, not the window lighter", () => {
+    // The other way round was tried and looked at: most activities have no
+    // stacked hour most days, so outlining the plain window turned an ordinary
+    // week into a grid of faint ghosts.
+    expect(SRC).toContain("background: core ? t.core : t.fill");
+    expect(SRC).not.toContain('background: core ? t.fill : "transparent"');
+  });
+
+  it("gives every tier a core as well as a fill", () => {
+    for (const tier of ["great", "good", "fair"]) {
+      const line = SRC.split("\n").find(l => l.trim().startsWith(`${tier}:`))!;
+      expect(line, tier).toContain("core:");
+      expect(line, tier).toContain("fill:");
+      expect(line, tier).toContain("coreInk:");
+    }
+  });
+
+  it("marks chart-derived windows with the same violet as the badge", () => {
+    expect(SRC).toContain('const MINE = "#6f6a90"');
+    expect(SRC).toContain("borderLeft: mine ? `3px solid ${MINE}`");
+    // The badge above the grid already uses it, so the two agree.
+    expect(SRC).toContain("#6f6a90");
+  });
+
+  it("explains the violet only when a violet edge is on screen", () => {
+    // An outline containing a fill speaks for itself; an edge colour cannot.
+    expect(SRC).toContain("(data?.windows ?? []).some(w => w.personal)");
+    expect(SRC).toContain("A violet edge marks the ones read against your own chart.");
   });
 });

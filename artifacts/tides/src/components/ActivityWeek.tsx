@@ -38,6 +38,11 @@ import { usePreferences } from "@/contexts/preferences-context";
 
 interface Win {
   date: string; dow: string;
+  /** The planetary hour landing INSIDE a Moon swell — the concentrated core
+   *  of the wider window it sits in, and the stronger of the two. */
+  stackedHourMoon?: boolean;
+  /** Read against this person's own chart rather than the universal sky. */
+  personal?: boolean;
   startAt: string; endAt: string;
   startClock: string; endClock: string;
   /** A whole-day condition (the Moon's sign favors this), not a timed window.
@@ -48,11 +53,31 @@ interface Win {
   tier: string; score: number; why?: string;
 }
 
-const TIER: Record<string, { label: string; fill: string; ink: string }> = {
-  great: { label: "strong", fill: "#4a8060", ink: "#ffffff" },
-  good:  { label: "good",   fill: "#4a806033", ink: "var(--color-foreground)" },
-  fair:  { label: "fair",   fill: "var(--color-card-2)", ink: "var(--color-muted)" },
+/**
+ * Each tier now has a LINE as well as a fill, because a window and the
+ * concentrated hour inside it are drawn differently rather than identically.
+ *
+ * A Friday reads 11:30–4:30 from a Moon swell, with 3:04–4:09 sitting inside
+ * it where the planetary hour lands. Both were the same flat green chip, so
+ * the picture said "two windows" when the truth is "one window with a hot
+ * centre" (owner, 2026-08-28: "maybe a bit more elegance in the presentation
+ * sequentially might be good? creative ways we could use color to
+ * emphasize?").
+ *
+ * The core is drawn DEEPER than the window around it, rather than the window
+ * being drawn lighter. Tried the other way first and looked at it: most
+ * activities have no stacked hour on most days, so making the plain window an
+ * outline turned an ordinary week into a grid of faint ghosts. The common case
+ * has to stay solid; emphasis belongs on the rarer thing.
+ */
+const TIER: Record<string, { label: string; fill: string; ink: string; core: string; coreInk: string }> = {
+  great: { label: "strong", fill: "#4a8060",   ink: "#ffffff",                 core: "#33553f",   coreInk: "#ffffff" },
+  good:  { label: "good",   fill: "#4a806033", ink: "var(--color-foreground)", core: "#4a8060cc", coreInk: "#ffffff" },
+  fair:  { label: "fair",   fill: "var(--color-card-2)", ink: "var(--color-muted)", core: "var(--color-border)", coreInk: "var(--color-foreground)" },
 };
+
+/** The "your chart" accent, the same violet the personalized badge uses. */
+const MINE = "#6f6a90";
 
 /**
  * The fallback shortlist, for someone who has not said what they want timed.
@@ -223,6 +248,14 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                     ))}
                     {placed.map((p, i) => {
                       const w = p.win, t = TIER[w.tier] ?? TIER.fair;
+                      // The hour inside the swell is the core; the swell is the
+                      // window around it. Outline for the window, fill for the
+                      // core, so the nesting is visible rather than described.
+                      const core = !!w.stackedHourMoon;
+                      // Read against this person's own chart. The violet is the
+                      // one the "your chart" badge above already uses, so the
+                      // badge and the bars are saying the same thing.
+                      const mine = !!w.personal;
                       const left = pctOf(p.startMin), right = pctOf(p.endMin);
                       const widthPct = Math.max(right - left, 1.2);
                       const full = spanLabel(w.startClock, w.endClock);
@@ -246,10 +279,15 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                           onClick={() => setWhy(`${d.dow} ${label} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`)}
                           style={{ position: "absolute", left: `${left}%`, width: `${widthPct}%`,
                             top: (allDay.length + p.lane) * (laneH + gapH), height: laneH,
-                            background: t.fill, color: t.ink,
-                            border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
+                            background: core ? t.core : t.fill,
+                            color: core ? t.coreInk : t.ink,
+                            border: w.tier === "great" || core ? "none" : "1px solid var(--color-border)",
+                            // The one place a fourth colour is spent, and only
+                            // on the edge nearest the reader's own chart.
+                            borderLeft: mine ? `3px solid ${MINE}` : undefined,
                             borderRadius: 4, fontSize: 10, lineHeight: `${laneH - 2}px`,
                             textAlign: "center", overflow: "hidden", whiteSpace: "nowrap",
+                            fontWeight: core ? 600 : 400,
                             cursor: "pointer" }}>
                           {label}
                         </div>
@@ -279,6 +317,12 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                 : `${total} window${total === 1 ? "" : "s"} this week. Pick one to see what's behind it.`}
             {!why && data?.chartAvailable === false && (
               <span> Add your birth chart to have these read against your own houses.</span>
+            )}
+            {/* Said once, and only when there is a violet edge on screen to
+                explain. The outline-and-core pairing is left to speak for
+                itself; an edge colour cannot. */}
+            {!why && (data?.windows ?? []).some(w => w.personal) && (
+              <span> A violet edge marks the ones read against your own chart.</span>
             )}
             {!why && (data?.withheld?.hourOnly ?? 0) > 0 && (
               <span> {data!.withheld!.hourOnly} matching planetary hours aren't listed on their own.</span>
