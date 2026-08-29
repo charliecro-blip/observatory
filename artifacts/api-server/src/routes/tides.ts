@@ -9,7 +9,7 @@ import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects, getAspectOrbs, getLocalAngles, getAngularPlanets,
-  getLastMoonAspect, getNextAngularCrossings, getSunriseSunset,
+  getLastMoonAspect, getNextAngularCrossings, isSignificantCrossing, getSunriseSunset,
   SIGNS, sunLongitude, moonLongitude, isRetrograde, eclipseWindow,
 } from "../lib/astro.js";
 import { db } from "@workspace/db";
@@ -405,14 +405,9 @@ router.get("/tides/now", async (req, res) => {
     // about 13 minutes either side of exact. The client decides what counts
     // as live; anything past two hours could not possibly.
     crossings: getNextAngularCrossings(jd, lat, lon, 3, 2)
-      .filter(c => {
-        // The same significance filter the week uses, so the two surfaces
-        // cannot disagree about which crossings are worth a banner.
-        if (c.planet === "Moon") return true;
-        if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
-        if (c.planet === "Sun" && c.angle === "MC") return true;
-        return false;
-      })
+      // One shared rule, so this surface and the week cannot disagree about
+      // which crossings are worth showing. It used to be written out twice.
+      .filter(isSignificantCrossing)
       .map(c => ({
         planet: c.planet, angle: c.angle,
         at: c.crossingTime,          // ISO; the client reads it in its own zone
@@ -615,12 +610,7 @@ router.get("/tides/week", (req, res) => {
     // Angular crossings for this day — significant planets at ASC/MC only
     const dayStartJd = julianDay(new Date(dayMs));
     const rawCrossings = getNextAngularCrossings(dayStartJd, lat, lon, 40, 24)
-      .filter(c => {
-        if (c.planet === "Moon") return true;
-        if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
-        if (c.planet === "Sun" && c.angle === "MC") return true;
-        return false;
-      });
+      .filter(isSignificantCrossing);
     const crossings = rawCrossings.map((c) => {
       const ct = new Date(c.crossingTime);
       // time is a UTC fallback; client re-derives it from `at` in its own timezone.
@@ -1062,13 +1052,11 @@ router.get("/tides/events", (req, res) => {
   // the cheap half. Leaving the wrong suspect named here on purpose: the
   // measurement that cleared it is the reason to measure rather than re-guess.
   const startJd = julianDay(now);
+  // The THIRD copy of this rule, found only because a test counted the uses of
+  // the shared one. Two copies is how surfaces start disagreeing; three is how
+  // you stop noticing that they have.
   const significantCrossings = getNextAngularCrossings(startJd, lat, lon, 80, numDays * 24)
-    .filter(c => {
-      if (c.planet === "Moon") return true;
-      if ((c.benefic || c.malefic) && (c.angle === "ASC" || c.angle === "MC")) return true;
-      if (c.planet === "Sun" && c.angle === "MC") return true;
-      return false;
-    });
+    .filter(isSignificantCrossing);
   const crossings = significantCrossings;
   for (const c of crossings) {
     const crossTime = new Date(c.crossingTime);

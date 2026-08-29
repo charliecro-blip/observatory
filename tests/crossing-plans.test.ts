@@ -2,16 +2,25 @@ import { describe, it, expect } from "vitest";
 import { planForCrossing, blockForCrossing, HALF_WINDOW_MIN } from "../artifacts/tides/src/lib/crossingPlans";
 
 describe("planForCrossing", () => {
-  it("covers the seven visible planets and nothing else", () => {
-    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"]) {
+  it("covers every body the crossing scan can report", () => {
+    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn",
+                     "Uranus","Neptune","Pluto","Chiron"]) {
       expect(planForCrossing(p), p).not.toBeNull();
     }
   });
 
-  it("returns null for an outer planet rather than inventing a small activity", () => {
-    // A 26-minute Pluto block is not a thing anyone can act on, and a generic
-    // fallback would put words in the sky's mouth.
-    for (const p of ["Uranus","Neptune","Pluto","Chiron",""]) {
+  it("covers the four beyond Saturn, which it used to refuse", () => {
+    // The refusal borrowed planetInSign's reasoning, where it is sound: a SIGN
+    // placement lasting fourteen years describes a generation, not a Tuesday.
+    // A crossing is the opposite — one local minute, about twenty-six wide —
+    // so Pluto on the Ascendant is exactly as momentary as Mars on it.
+    for (const p of ["Uranus","Neptune","Pluto","Chiron"]) {
+      expect(planForCrossing(p), p).not.toBeNull();
+    }
+  });
+
+  it("still returns null for a body it has nothing to say about", () => {
+    for (const p of ["", "Ceres", "Nessus"]) {
       expect(planForCrossing(p), p).toBeNull();
     }
   });
@@ -21,20 +30,23 @@ describe("planForCrossing", () => {
     // AngleCrossing's larger table ("a hard workout", "the big ask, teaching").
     // Nothing here should promise something that needs an afternoon.
     const big = /workout|teaching|campaign|launch|presentation|retreat/i;
-    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"]) {
+    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn",
+                     "Uranus","Neptune","Pluto","Chiron"]) {
       expect(planForCrossing(p)!.what, p).not.toMatch(big);
     }
   });
 
   it("gives every plan a title short enough to read in a day column", () => {
-    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"]) {
+    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn",
+                     "Uranus","Neptune","Pluto","Chiron"]) {
       expect(planForCrossing(p)!.title.length, p).toBeLessThanOrEqual(20);
     }
   });
 
   it("only uses window types Calendar actually offers", () => {
     const TYPES = ["deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"];
-    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"]) {
+    for (const p of ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn",
+                     "Uranus","Neptune","Pluto","Chiron"]) {
       expect(TYPES, p).toContain(planForCrossing(p)!.type);
     }
   });
@@ -72,8 +84,14 @@ describe("blockForCrossing", () => {
     expect(b.notes).not.toMatch(/will |should |guarantee|best time|perfect/i);
   });
 
-  it("returns null for a planet with no plan", () => {
-    expect(blockForCrossing("Neptune", "Ascendant", at)).toBeNull();
+  it("returns null for a body it has no plan for", () => {
+    expect(blockForCrossing("Ceres", "Ascendant", at)).toBeNull();
+  });
+
+  it("now builds a block for an outer planet too", () => {
+    const b = blockForCrossing("Pluto", "Ascendant", at)!;
+    expect(b.title).toBe(planForCrossing("Pluto")!.title);
+    expect(b.notes).toContain("Pluto crosses your Ascendant");
   });
 
   it("returns null for an unparseable instant instead of guessing a time", () => {

@@ -43,18 +43,36 @@ const PLANS: Record<string, CrossingPlan> = {
   Jupiter: { title: "Ask",              type: "social",       what: "the request you have been rehearsing" },
   Saturn:  { title: "Maintenance",      type: "admin",        what: "the form, the filing, the job with no shine on it" },
   Sun:     { title: "Be seen",          type: "social",       what: "send the update, or say the thing in the room" },
+  // The four beyond Saturn, added 2026-08-28 at the owner's ask. See the note
+  // on planForCrossing below for why the earlier refusal was wrong.
+  Uranus:  { title: "Change one thing",  type: "creative",     what: "a different route, a different order, or working somewhere else" },
+  Neptune: { title: "Let it blur",       type: "recovery",     what: "music, a walk with nothing in your ears, anything that needs no precision" },
+  Pluto:   { title: "Look at it",        type: "retreat",      what: "the one thing you keep circling and not naming" },
+  Chiron:  { title: "Tend it",           type: "recovery",     what: "the old injury, or the person carrying one" },
 };
 
 /** Half the window, rounded to whole minutes. ≈13. */
 export const HALF_WINDOW_MIN = Math.round(WINDOW_MIN);
 
 /**
- * The plan for a crossing, or null when the planet has no entry.
+ * The plan for a crossing, or null when the body has no entry.
  *
- * Null rather than a generic fallback: an outer planet has no small-activity
- * register that a twenty-six minute block would satisfy, and inventing one
- * would put words in the sky's mouth. A crossing with no plan still shows as
- * a moment — it simply is not offered as something to schedule.
+ * THE EARLIER REFUSAL HERE WAS WRONG, and it is worth saying why rather than
+ * quietly deleting it. It read: "an outer planet has no small-activity register
+ * that a twenty-six minute block would satisfy." That borrowed the reasoning
+ * planetInSign uses to refuse outer-planet SIGN readings, where it is sound —
+ * Neptune sits in a sign for fourteen years, so "Neptune in Pisces" describes
+ * everyone born across a decade and a half and nothing about your Tuesday.
+ *
+ * A crossing is the opposite kind of fact. It is your local horizon, at one
+ * minute, lasting about twenty-six. Pluto reaching your Ascendant is exactly as
+ * momentary and exactly as local as Mars reaching it, and "the one thing you
+ * keep circling and not naming" is a perfectly good twenty-six minutes. The
+ * generational objection never applied here; I carried it across because the
+ * two cases looked alike.
+ *
+ * Null is still returned for anything with no entry, and a crossing without a
+ * plan still shows as a moment. It simply is not offered as something to book.
  */
 export function planForCrossing(planet: string): CrossingPlan | null {
   return PLANS[planet] ?? null;

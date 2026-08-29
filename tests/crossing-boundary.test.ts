@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getNextAngularCrossings, julianDay } from "../artifacts/api-server/src/lib/astro";
+import { getNextAngularCrossings, julianDay, isSignificantCrossing } from "../artifacts/api-server/src/lib/astro";
+import { readFileSync } from "node:fs";
 
 const LA = { lat: 34.05, lon: -118.24 };
 const AT = new Date("2026-08-28T07:00:00Z");   // local midnight in Los Angeles
@@ -50,6 +51,36 @@ describe("a reported crossing has actually crossed", () => {
       if (times.length < 2) continue;
       const gapH = (Math.max(...times) - Math.min(...times)) / 3600000;
       expect(gapH, `${k} pair should be a sidereal day apart, not minutes`).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe("which crossings reach a page", () => {
+  it("is one rule, not two copies of one", () => {
+    // It was written out twice — once for /tides/now, once for the week —
+    // under a comment promising the two surfaces could not disagree.
+    const routes = readFileSync("artifacts/api-server/src/routes/tides.ts", "utf8");
+    expect(routes).toContain("isSignificantCrossing");
+    expect(routes.split("isSignificantCrossing").length - 1).toBeGreaterThanOrEqual(3);
+    // And the old inline copy is gone from both.
+    expect(routes).not.toContain('if ((c.benefic || c.malefic) && (c.angle === "ASC"');
+  });
+
+  it("admits every body on the two angles that carry the weight", () => {
+    // The old rule let through the Moon, the benefics and malefics at ASC/MC,
+    // and the Sun at MC — so Mercury never appeared despite having a
+    // signification, and the four beyond Saturn were computed ~28 times a week
+    // each and dropped in silence.
+    for (const planet of ["Mercury", "Uranus", "Neptune", "Pluto", "Chiron"]) {
+      expect(isSignificantCrossing({ planet, angle: "ASC" }), planet).toBe(true);
+      expect(isSignificantCrossing({ planet, angle: "MC" }), planet).toBe(true);
+      expect(isSignificantCrossing({ planet, angle: "IC" }), planet).toBe(false);
+    }
+  });
+
+  it("keeps all four angles for the Moon alone", () => {
+    for (const angle of ["ASC", "MC", "DSC", "IC"]) {
+      expect(isSignificantCrossing({ planet: "Moon", angle }), angle).toBe(true);
     }
   });
 });

@@ -1491,6 +1491,31 @@ const BENEFICS = new Set(["Venus", "Jupiter"]);
 const MALEFICS = new Set(["Mars", "Saturn"]);
 
 /**
+ * WHICH CROSSINGS ARE WORTH PUTTING ON A PAGE.
+ *
+ * One function, because this rule was written out twice — once for /tides/now
+ * and once for the week — under a comment promising the two surfaces could not
+ * disagree. Two copies of a rule is how they start.
+ *
+ * The old rule admitted the Moon, the two benefics and the two malefics at the
+ * ASC or MC, and the Sun at the MC. So Mercury never appeared despite carrying
+ * a signification and a suggested activity, and Uranus, Neptune, Pluto and
+ * Chiron were computed roughly 28 times a week each and dropped in silence
+ * (owner, 2026-08-28, asking whether they were tracked at all: they were, and
+ * nothing ever showed them).
+ *
+ * The rule now: any body on the ASC or the MC, and the Moon anywhere. The two
+ * angles carry the weight in the tradition — the rising degree and the
+ * culminating one — and the horizon-and-meridian pair is what makes an angle
+ * crossing a local event rather than an abstract one. The Moon keeps all four
+ * because she is the fastest body and her IC and DSC passes are still hers.
+ */
+export function isSignificantCrossing(c: { planet: string; angle: string }): boolean {
+  if (c.planet === "Moon") return true;
+  return c.angle === "ASC" || c.angle === "MC";
+}
+
+/**
  * Returns planets within orb of the four chart angles for the given location.
  * Angular planets intensify their themes for the current moment and place.
  * Benefics angular = supportive; malefics angular = friction or challenge.

@@ -33,6 +33,18 @@ const SIGNIFICATION: Record<string, string> = {
   Jupiter: "expansion · abundance · generosity · vision",
   Sun: "visibility · leadership · vitality · clarity",
   Mercury: "communication · ideas · movement · craft",
+  // The four beyond Saturn. Their SIGN placements are refused elsewhere in the
+  // app, and rightly — "Neptune in Pisces" is a fact about everyone born across
+  // fourteen years. A crossing is the opposite kind of fact: it is your horizon,
+  // at one minute, and it lasts about twenty-six. The generational objection
+  // does not reach it, which is why these are written and those are not.
+  //
+  // Modern attributions, and said so: no traditional source assigns these
+  // bodies anything, because it did not know them.
+  Uranus: "disruption · sudden turns · invention · restlessness",
+  Neptune: "dissolving · imagination · blur · tiredness",
+  Pluto: "intensity · pressure · what is buried · endings",
+  Chiron: "the sore place · repair · teaching from it",
 };
 
 /** What the ~20 minutes is actually good for. Conditions, never a promise. */
@@ -44,6 +56,10 @@ const ACTIVITY: Record<string, string> = {
   Jupiter: "the big ask, teaching, or reaching wider",
   Saturn: "focused, structural work — the unglamorous right thing",
   Moon: "rest, home, food, tending someone",
+  Uranus: "trying it a different way, or changing a plan on purpose",
+  Neptune: "music, rest, or anything that does not need precision",
+  Pluto: "the thing you keep circling and not naming",
+  Chiron: "tending an old injury, or helping someone with theirs",
 };
 
 export interface Crossing {
