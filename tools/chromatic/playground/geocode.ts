@@ -46,17 +46,71 @@ function zoneOffsetMs(timezone: string, instantMs: number): number {
 }
 
 /**
- * UTC offset, in hours, for a wall-clock birth moment in an IANA zone.
- * Fractional zones (India 5.5, Nepal 5.75) come out exact; DST resolves to
- * whatever rule the zone ran on that date.
+ * What a wall-clock time actually was in a zone. Most times are exact; the
+ * two DST edge cases are named instead of silently guessed (2026-09-01
+ * audit), because a one-hour slip moves houses and angles:
+ * - nonexistent: clocks jumped forward over this time (spring gap)
+ * - ambiguous: clocks fell back and this time occurred twice
  */
-export function utcOffsetHours(timezone: string, dateStr: string, timeStr: string): number {
+export type WallTimeResolution =
+  | { kind: "exact"; offsetHours: number }
+  | { kind: "ambiguous"; candidates: [number, number] } // first occurrence first
+  | { kind: "nonexistent"; beforeOffsetHours: number; afterOffsetHours: number };
+
+export function resolveWallTime(timezone: string, dateStr: string, timeStr: string): WallTimeResolution {
   const [y, m, d] = dateStr.split("-").map(Number);
   const [hh, mm] = timeStr.split(":").map(Number);
   const wall = Date.UTC(y, m - 1, d, hh, mm);
-  let instant = wall;
-  for (let i = 0; i < 3; i++) instant = wall - zoneOffsetMs(timezone, instant);
-  return zoneOffsetMs(timezone, instant) / 3_600_000;
+  // Candidate offsets are sampled far enough on each side of the wall moment
+  // (±26h clears the largest real offsets) to see both regimes of any nearby
+  // transition; an offset is valid only if it round-trips the wall clock.
+  const probes = new Set<number>();
+  for (const dh of [-26, -2, 0, 2, 26]) probes.add(zoneOffsetMs(timezone, wall + dh * 3_600_000));
+  const valid = [...probes]
+    .filter((o) => zoneOffsetMs(timezone, wall - o) === o)
+    .sort((a, b) => b - a); // larger offset = earlier instant, so first occurrence first
+  if (valid.length === 1) {
+    return { kind: "exact", offsetHours: valid[0] / 3_600_000 };
+  }
+  if (valid.length >= 2) {
+    return { kind: "ambiguous", candidates: [valid[0] / 3_600_000, valid[1] / 3_600_000] };
+  }
+  return {
+    kind: "nonexistent",
+    beforeOffsetHours: zoneOffsetMs(timezone, wall - 26 * 3_600_000) / 3_600_000,
+    afterOffsetHours: zoneOffsetMs(timezone, wall + 26 * 3_600_000) / 3_600_000,
+  };
+}
+
+/**
+ * UTC offset, in hours, for a wall-clock birth moment in an IANA zone.
+ * Fractional zones (India 5.5, Nepal 5.75) come out exact; DST resolves to
+ * whatever rule the zone ran on that date. On the two transition edge cases
+ * this picks a documented side — first occurrence when ambiguous, the
+ * post-change offset when nonexistent; use resolveWallTime (or dstNote) to
+ * surface those to the user instead of trusting this blindly.
+ */
+export function utcOffsetHours(timezone: string, dateStr: string, timeStr: string): number {
+  const resolved = resolveWallTime(timezone, dateStr, timeStr);
+  switch (resolved.kind) {
+    case "exact": return resolved.offsetHours;
+    case "ambiguous": return resolved.candidates[0];
+    case "nonexistent": return resolved.afterOffsetHours;
+  }
+}
+
+const fmtOffset = (o: number) => `UTC${o >= 0 ? "+" : ""}${o}`;
+
+/** A user-facing caution when the birth time sits on a DST transition, else null. */
+export function dstNote(timezone: string, dateStr: string, timeStr: string): string | null {
+  const resolved = resolveWallTime(timezone, dateStr, timeStr);
+  if (resolved.kind === "nonexistent") {
+    return `Clocks in ${timezone} jumped forward over this time on that date, so it never occurred on a clock. The chart uses the post-change offset (${fmtOffset(resolved.afterOffsetHours)}); worth checking the recorded time.`;
+  }
+  if (resolved.kind === "ambiguous") {
+    return `Clocks in ${timezone} fell back that day, so this time occurred twice. The chart uses the first occurrence (${fmtOffset(resolved.candidates[0])}); the second was ${fmtOffset(resolved.candidates[1])}.`;
+  }
+  return null;
 }
 
 /**
@@ -96,8 +150,14 @@ export function attachPlaceSearch(
       pick(found[0]);
       if (found.length > 1) {
         // Offer the alternatives after adopting the best match; picking from
-        // the list re-fills everything.
-        results.innerHTML = found.map((r, i) => `<option value="${i}">${r.label}</option>`).join("");
+        // the list re-fills everything. Labels come from an external API, so
+        // they go in as text nodes, never as markup.
+        results.replaceChildren(...found.map((r, i) => {
+          const option = document.createElement("option");
+          option.value = String(i);
+          option.textContent = r.label;
+          return option;
+        }));
         results.selectedIndex = 0;
         results.hidden = false;
       }
@@ -127,15 +187,18 @@ export function attachPlaceSearch(
 
 /**
  * Resolve the offset for a form: the picked place's zone wins; otherwise the
- * manual offset field. Writes the resolved value back for visibility.
+ * manual offset field. Writes the resolved value back for visibility, and
+ * carries the DST caution when the birth time sits on a transition.
  */
-export function resolveOffset(prefix: string, dateStr: string, timeStr: string): number {
+export function resolveOffset(
+  prefix: string, dateStr: string, timeStr: string,
+): { offsetHours: number; dstNote: string | null } {
   const input = document.getElementById(`${prefix}-place`) as HTMLInputElement;
   const offsetEl = document.getElementById(`${prefix}-offset`) as HTMLInputElement;
   if (input?.dataset.tz) {
     const offset = utcOffsetHours(input.dataset.tz, dateStr, timeStr);
     offsetEl.value = String(offset);
-    return offset;
+    return { offsetHours: offset, dstNote: dstNote(input.dataset.tz, dateStr, timeStr) };
   }
-  return parseFloat(offsetEl.value);
+  return { offsetHours: parseFloat(offsetEl.value), dstNote: null };
 }

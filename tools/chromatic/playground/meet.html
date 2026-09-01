@@ -43,6 +43,7 @@
   button.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line); font-weight: 450; }
   button.ghost:hover { color: var(--text); border-color: var(--dim); }
   .error { color: #d98f8f; margin-top: 12px; font-size: 14px; }
+  .dst-note { color: #d9c18f; margin-top: 12px; font-size: 14px; max-width: 640px; }
   #results { display: none; }
   section { margin-top: 52px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim); font-weight: 550; margin-bottom: 16px; }
@@ -132,6 +133,7 @@
         <button type="submit">Draw the meeting</button>
       </div>
       <div class="error" id="error" hidden></div>
+      <div class="dst-note" id="dst-note" hidden></div>
     </form>
 
     <div id="results">

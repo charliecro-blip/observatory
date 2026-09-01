@@ -11,23 +11,25 @@ import {
 } from "../engine/social";
 import { attachPlaceSearch, resolveOffset } from "./geocode";
 import type { BirthInput } from "./natal-adapter";
+import { esc } from "./esc";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 let current: { syn: SynastryModel; prose: string; meta: CardMeta } | null = null;
 
-function readBirth(prefix: "a" | "b"): BirthInput {
+function readBirth(prefix: "a" | "b"): { birth: BirthInput; dstNote: string | null } {
   const date = $<HTMLInputElement>(`${prefix}-date`).value;
   const time = $<HTMLInputElement>(`${prefix}-time`).value;
+  const { offsetHours, dstNote } = resolveOffset(prefix, date, time);
   return {
-    date, time,
-    lat: parseFloat($<HTMLInputElement>(`${prefix}-lat`).value),
-    lon: parseFloat($<HTMLInputElement>(`${prefix}-lon`).value),
-    utcOffset: resolveOffset(prefix, date, time),
+    birth: {
+      date, time,
+      lat: parseFloat($<HTMLInputElement>(`${prefix}-lat`).value),
+      lon: parseFloat($<HTMLInputElement>(`${prefix}-lon`).value),
+      utcOffset: offsetHours,
+    },
+    dstNote,
   };
 }
 
@@ -39,15 +41,22 @@ async function compute(): Promise<void> {
   errorEl.hidden = true;
   try {
     const { computeChart } = await import("./natal-adapter");
-    const birthA = readBirth("a");
-    const birthB = readBirth("b");
-    const syn = buildSynastryModel(computeChart(birthA), computeChart(birthB));
+    const a = readBirth("a");
+    const b = readBirth("b");
+    const syn = buildSynastryModel(computeChart(a.birth), computeChart(b.birth));
     const nameA = nameOf("a", "Person A");
     const nameB = nameOf("b", "Person B");
     const prose = renderSynastryInterpretation(syn, nameA, nameB);
     current = { syn, prose, meta: cardMeta(syn, nameA, nameB) };
     show(current.syn, prose, nameA, nameB);
-    writeHash(birthA, birthB);
+    const notes = [
+      a.dstNote ? `${nameA}: ${a.dstNote}` : null,
+      b.dstNote ? `${nameB}: ${b.dstNote}` : null,
+    ].filter(Boolean) as string[];
+    const noteEl = $("dst-note");
+    noteEl.textContent = notes.join(" ");
+    noteEl.hidden = notes.length === 0;
+    writeHash(a.birth, b.birth);
   } catch {
     errorEl.textContent = "One of the charts didn't compute. Check both dates, times, and places.";
     errorEl.hidden = false;
@@ -93,10 +102,14 @@ function show(syn: SynastryModel, prose: string, nameA: string, nameB: string): 
   $("strip").innerHTML = syn.model.palette.map((c) =>
     `<i style="background:${c.hex}" title="${esc(c.role)} ${c.hex}"></i>`).join("");
 
+  // Names are user input (typed or arriving via the share hash) — they never
+  // reach innerHTML unescaped.
+  const firstA = esc(nameA.split(" ")[0]);
+  const firstB = esc(nameB.split(" ")[0]);
   $("crossings").innerHTML = syn.crossAspects.slice(0, 6).map((x, i) => `
     <div class="inf${i === 0 ? " lead" : ""}">
       <span class="g">${PLANET_GLYPHS[x.aPlanet]} ${ASPECT_GLYPHS[x.aspect]} ${PLANET_GLYPHS[x.bPlanet]}</span>
-      <span><b>${nameA.split(" ")[0]}'s ${x.aPlanet} ${x.aspect} ${nameB.split(" ")[0]}'s ${x.bPlanet}</b>
+      <span><b>${firstA}'s ${x.aPlanet} ${x.aspect} ${firstB}'s ${x.bPlanet}</b>
       <small>orb ${x.orb.toFixed(1)}°${i === 0 ? " · the defining meeting" : ""}</small></span>
     </div>`).join("") ||
     `<p class="sub">No major aspect crosses between these charts.</p>`;

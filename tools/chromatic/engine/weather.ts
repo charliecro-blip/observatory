@@ -18,7 +18,7 @@ import { combineInfluences } from "./combine";
 import { PLANET_PROFILES } from "./config/planets";
 import { ASPECT_PROFILES, TRANSIT_MAX_ORBS } from "./config/aspects";
 import { DEFAULT_WEIGHTS, type EmphasisWeights } from "./config/weights";
-import { generatePalette, labelFor, resolvePigment } from "./palette";
+import { easeAspectPull, generatePalette, labelFor, resolvePigment } from "./palette";
 import { deriveComposition } from "./composition";
 import { clampToGamut, hueDelta, mixHue, normHue, oklchToHex, oklchToRgb } from "./color";
 import { hashString, makeRng } from "./seed";
@@ -207,7 +207,7 @@ function weatherColor(t: TransitAspect, palette: PaletteColor[], rng: () => numb
   const spec = ASPECT_PROFILES[t.aspect];
   const side = hueDelta(dom.oklch.h, pigment.h) >= 0 ? 1 : -1;
   const target = normHue(dom.oklch.h + side * spec.targetSeparation);
-  const pull = 0.55 + 0.45 * t.strength;
+  const pull = easeAspectPull(t.strength);
   const color = clampToGamut({
     l: pigment.l,
     c: Math.min(0.22, pigment.c * (1 + 0.3 * t.strength)),

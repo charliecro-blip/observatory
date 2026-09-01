@@ -70,6 +70,22 @@ function weightedPick(candidates: HueCandidate[], rng: Rng): HueCandidate {
 }
 
 /**
+ * How hard an aspect's hue relationship pulls, as a function of strength.
+ *
+ * The invariant (2026-09-01 audit): strength 0 imposes NO relationship — the
+ * pigments stay native, which is what the no-aspect fallback in chart.ts
+ * depends on — and strength 1 imposes the full one. The ease-out curve
+ * between the endpoints is the aesthetic knob: it keeps a moderately loose
+ * trine reading analogous instead of letting the relationship collapse
+ * linearly. (An earlier version floored the pull at 0.55, which contradicted
+ * the fade-with-orb model everywhere else.)
+ */
+export function easeAspectPull(strength: number): number {
+  const s = Math.min(1, Math.max(0, strength));
+  return 1 - (1 - s) * (1 - s);
+}
+
+/**
  * Apply the aspect's hue strategy: keep the heavier placement's hue as anchor
  * and pull the other toward the aspect's target separation, proportional to
  * aspect strength. Returns adjusted pigments plus the fused hue when relevant.
@@ -85,10 +101,7 @@ function relateHues(
   const mover = anchorFirst ? b : a;
   const fused = mixHue(a.h, b.h, wB / (wA + wB));
 
-  // The relationship stays legible even when the orb is wide: a loose trine
-  // still reads analogous, it just stops being exact. Strength sharpens the
-  // pull rather than gating it.
-  const pull = 0.55 + 0.45 * strength;
+  const pull = easeAspectPull(strength);
   let moved = { ...mover };
   if (spec.hueStrategy === "fuse") {
     moved.h = mixHue(mover.h, fused, pull);
@@ -102,8 +115,9 @@ function relateHues(
   moved.h = mixHue(mover.h, target, pull);
   if (spec.hueStrategy === "uncanny") {
     // Deliberate mismatch: push the mover's lightness away from the anchor's.
-    moved.l = clamp01(moved.l + (moved.l >= anchor.l ? 0.16 : -0.16));
-    moved.c = Math.max(0.03, moved.c * 0.8);
+    // Scaled by the same pull, so a zero-strength quincunx mismatches nothing.
+    moved.l = clamp01(moved.l + (moved.l >= anchor.l ? 0.16 : -0.16) * pull);
+    moved.c = Math.max(0.03, moved.c * (1 - 0.2 * pull));
   }
   if (spec.hueStrategy === "complement" || spec.hueStrategy === "clash") {
     // Mutual intensification: both poles gain chroma as the aspect tightens.

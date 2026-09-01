@@ -14,12 +14,10 @@ import {
 import { PLANET_PROFILES } from "../engine/config/planets";
 import { attachPlaceSearch, resolveOffset } from "./geocode";
 import type { BirthInput } from "./natal-adapter";
+import { esc } from "./esc";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 let current: { natal: NatalInput; chart: ChromaticChart; prose: string; meta: CardMeta } | null = null;
 let currentWeather: ColorWeather | null = null;
@@ -29,16 +27,20 @@ const localToday = () => new Date().toLocaleDateString("sv");
 
 // ── Compute ──────────────────────────────────────────────────────────────────
 
-function readBirth(): BirthInput {
+function readBirth(): { birth: BirthInput; dstNote: string | null } {
   const date = $<HTMLInputElement>("f-date").value;
   const time = $<HTMLInputElement>("f-time").value;
+  // A picked birthplace resolves the offset from its timezone at the birth
+  // moment (DST and fractional zones included); manual entry is the fallback.
+  const { offsetHours, dstNote } = resolveOffset("f", date, time);
   return {
-    date, time,
-    lat: parseFloat($<HTMLInputElement>("f-lat").value),
-    lon: parseFloat($<HTMLInputElement>("f-lon").value),
-    // A picked birthplace resolves the offset from its timezone at the birth
-    // moment (DST and fractional zones included); manual entry is the fallback.
-    utcOffset: resolveOffset("f", date, time),
+    birth: {
+      date, time,
+      lat: parseFloat($<HTMLInputElement>("f-lat").value),
+      lon: parseFloat($<HTMLInputElement>("f-lon").value),
+      utcOffset: offsetHours,
+    },
+    dstNote,
   };
 }
 
@@ -47,12 +49,15 @@ async function compute(): Promise<void> {
   errorEl.hidden = true;
   try {
     const { computeChart } = await import("./natal-adapter");
-    const birth = readBirth();
+    const { birth, dstNote } = readBirth();
     const natal = computeChart(birth);
     const chart = buildChartModel(natal);
     const prose = renderChartInterpretation(chart);
     current = { natal, chart, prose, meta: cardMeta(chart) };
     show(current.chart, current.prose, current.meta);
+    const noteEl = $("dst-note");
+    noteEl.textContent = dstNote ?? "";
+    noteEl.hidden = !dstNote;
     writeHash(birth);
     $<HTMLInputElement>("wx-date").value = localToday();
     await runWeather();

@@ -8,6 +8,7 @@ import { buildPairModel } from "../engine/pair";
 import { buildPlacementModel } from "../engine/placement";
 import { generatePairContent, generatePlacementContent, type ContentBundle } from "../engine/content";
 import { renderSocialCard } from "../engine/social";
+import { esc } from "./esc";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -18,9 +19,6 @@ const state = {
   aspect: "square" as AspectName, orb: 1.2,
 };
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 function fillSelect(id: string, options: readonly string[], value: string): void {
   $<HTMLSelectElement>(id).innerHTML = options.map((o) =>

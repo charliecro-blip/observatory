@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["engine/**/*.ts", "playground/**/*.ts", "test/**/*.ts"],
-  "exclude": ["playground/vite.config.ts", "test/render-gallery.ts"]
+  "exclude": ["playground/vite.config.ts", "test/render-gallery.ts", "test/escaping.test.ts"]
 }

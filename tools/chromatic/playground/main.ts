@@ -16,8 +16,9 @@ import { buildChartModel, elementBalance, type ChromaticChart, type NatalInput }
 import { buildPlacementModel, renderPlacementInterpretation } from "../engine/placement";
 import { renderArtwork } from "../engine/render";
 import { renderChartInterpretation, renderInterpretation } from "../engine/explain";
-import { attachPlaceSearch, utcOffsetHours } from "./geocode";
+import { attachPlaceSearch, dstNote, utcOffsetHours } from "./geocode";
 import type { BirthInput } from "./natal-adapter";
+import { esc } from "./esc";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -100,9 +101,6 @@ const GALLERY: Array<{ title: string; s: PairScenario }> = [
 
 const app = document.getElementById("app")!;
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 function selectHtml(id: string, options: readonly string[], value: string): string {
   return `<select id="${id}">${options.map((o) =>
@@ -408,6 +406,7 @@ function render(): void {
 }
 
 async function computeChartNow(): Promise<void> {
+  const priorMessage = state.placeMessage;
   try {
     // A picked birthplace resolves the offset from its timezone at the birth
     // moment; the manual offset field is the fallback.
@@ -415,6 +414,8 @@ async function computeChartNow(): Promise<void> {
       state.birth.utcOffset = utcOffsetHours(state.birthPlace.tz, state.birth.date, state.birth.time);
       const offsetInput = document.getElementById("c-offset") as HTMLInputElement | null;
       if (offsetInput) offsetInput.value = String(state.birth.utcOffset);
+      // Surface a DST-transition birth time instead of silently picking a side.
+      state.placeMessage = dstNote(state.birthPlace.tz, state.birth.date, state.birth.time);
     }
     // Lazy import: the ephemeris only loads when the chart view asks for it,
     // so a resolution problem can't take down the pair editor or gallery.
@@ -425,7 +426,10 @@ async function computeChartNow(): Promise<void> {
     state.natal = null;
     state.chartError = err instanceof Error ? err.message : String(err);
   }
-  renderMain();
+  // The DST note lives in the controls column, so a change there needs the
+  // full render; otherwise only the output panel updates.
+  if (state.placeMessage !== priorMessage) render();
+  else renderMain();
 }
 
 function bindControls(): void {
