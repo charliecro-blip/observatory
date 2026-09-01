@@ -36,7 +36,12 @@ interface Card {
   goalId?: number | null;
 }
 interface Alternative { startAt: string; endAt: string; date: string; tier: string; tierNote: string; planetaryHour: string; }
-interface PlannedItem extends Card { date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean; tier?: string; tierNote?: string; alternatives?: Alternative[]; }
+interface PlannedItem extends Card {
+  date: string; startAt: string; endAt: string; planetaryHour: string; matchedLane: boolean;
+  tier?: string; tierNote?: string; alternatives?: Alternative[];
+  /** Present only on a batch: the short tasks gathered into this one block. */
+  members?: { title: string; estimatedMinutes: number; dueDate: string | null }[];
+}
 interface UnplacedItem { title: string; element: string; reason: string; }
 interface WeaveResult { horizon: string; planned: PlannedItem[]; unplaced: UnplacedItem[]; }
 
@@ -309,6 +314,8 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
     mutationFn: async ({ idx }: { idx: number }) => {
       const item = result?.planned[idx];
       if (!item) throw new Error("nothing to keep");
+      // `item` carries its own `members` when it is a batch, so committing one
+      // card writes its whole contents rather than a task named after the box.
       const r = await fetch("/api/plan/commit", { method: "POST", headers: authHeaders, body: JSON.stringify({ items: [item] }) });
       if (!r.ok) throw new Error("couldn't schedule that one");
       return r.json();
@@ -784,6 +791,18 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                   <div key={idx} style={{ display: "flex", gap: 10, padding: "9px 12px", marginBottom: 6, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-card)", borderLeft: `3px solid ${col}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)" }}>{item.title}</div>
+                      {/* A batch has to say what is in it, or "3 small things"
+                          is a block nobody can act on. Listed rather than
+                          counted: the titles ARE the work. */}
+                      {item.members?.length ? (
+                        <ul style={{ margin: "4px 0 0", padding: "0 0 0 14px", listStyle: "disc" }}>
+                          {item.members.map((m, i) => (
+                            <li key={i} style={{ fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.5 }}>
+                              {m.title} <span style={{ color: "var(--text-3)" }}>· {m.estimatedMinutes}m</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                       <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                         {fmtTime(item.startAt)}–{fmtTime(item.endAt)} · {item.estimatedMinutes}m
                         {!skyQuiet && <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>}

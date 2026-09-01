@@ -58,7 +58,7 @@ export interface Association {
    * "shape" is the task's own length and energy; "none" is the honest end of
    * the road, where element is null and the reader is asked rather than told.
    */
-  source: "keywords" | "ai" | "correspondence" | "shape" | "none";
+  source: "keywords" | "ai" | "correspondence" | "shape" | "none" | "batch";
   // When the activity-correspondence table recognizes the text, its richer
   // signature rides along — the election engine's natal layer needs these.
   activityKey?: string;
@@ -169,22 +169,39 @@ import type { GlossNeed } from "./glossCondition.js";
  * has to stay silent or the default would be laundered into a finding. It is
  * also simply true: an ordinary-length task is not strongly anything.
  *
- * ENERGY OUTRANKS DURATION when it is stated, because "high" is something a
- * person said about the work while the estimate is often a machine's guess.
- * "medium" is treated as no opinion, not as a middle.
+ * WHICH VOICE LEADS, and why it is not simply "energy, because a person said
+ * it". Tried that first and looked at the output: "book the dentist" at five
+ * minutes and low energy came back WATER, because low read as the Moon. A
+ * five-minute errand is not restful or lunar — "low" there means "this costs me
+ * nothing", not "this is nourishing" — and the result split three obvious
+ * errands across two lanes so they would not group.
+ *
+ * So:
+ *   · HIGH energy leads outright. It is decisive at any length, and a long hard
+ *     push is Mars with Saturn behind it, which is how the endurance activity
+ *     is already weighted.
+ *   · Otherwise DURATION leads where it speaks, because at the ends it is the
+ *     more discriminating fact.
+ *   · LOW energy speaks only when duration is silent. On a short task it is
+ *     noise; in the middle band it is the only thing left.
+ *   · "medium" is no opinion, never a middle.
  */
 function fromShape(shape?: TaskShape): Association {
   const nominated: string[] = [];
   const why: string[] = [];
 
   if (shape?.energy === "high") { nominated.push("Mars"); why.push("high energy reads as Mars"); }
-  else if (shape?.energy === "low") { nominated.push("Moon"); why.push("low energy reads as the Moon"); }
 
   const m = typeof shape?.minutes === "number" && Number.isFinite(shape.minutes) ? shape.minutes : null;
   if (m !== null) {
     if (m <= 15) { nominated.push("Mercury"); why.push(`${m} minutes is quick, which is Mercury's end of the order`); }
     else if (m >= 120) { nominated.push("Saturn"); why.push(`${m} minutes is long, which is Saturn's`); }
     else if (m >= 90) { nominated.push("Jupiter"); why.push(`${m} minutes is a stretch, which is Jupiter's`); }
+  }
+
+  // Only once duration has had its say and said nothing.
+  if (shape?.energy === "low" && !nominated.length) {
+    nominated.push("Moon"); why.push("low energy, and nothing in the length");
   }
 
   if (!nominated.length) {

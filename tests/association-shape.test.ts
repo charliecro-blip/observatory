@@ -42,17 +42,27 @@ describe("a task's own shape, when its words say nothing", () => {
     expect(associateDeterministic(MUTE, { minutes: 100, energy: "medium" }).planets).toContain("Jupiter");
   });
 
-  it("reads high energy as Mars and low as the Moon", () => {
+  it("reads high energy as Mars, at any length", () => {
     expect(associateDeterministic(MUTE, { energy: "high" }).planets[0]).toBe("Mars");
-    expect(associateDeterministic(MUTE, { energy: "low" }).planets[0]).toBe("Moon");
+    const long = associateDeterministic(MUTE, { minutes: 180, energy: "high" });
+    expect(long.planets[0]).toBe("Mars");
+    expect(long.planets).toContain("Saturn");   // the length is still heard
   });
 
-  it("lets stated energy lead a machine-guessed duration", () => {
-    // "high" is something a person said about the work; the estimate is often
-    // a default. Both are kept, energy first.
-    const a = associateDeterministic(MUTE, { minutes: 180, energy: "high" });
-    expect(a.planets[0]).toBe("Mars");
-    expect(a.planets).toContain("Saturn");
+  it("lets a short task stay Mercurial even when the energy is low", () => {
+    // This is the case that caught the first version out. "book the dentist"
+    // at five minutes and low energy came back WATER, because low read as the
+    // Moon — and a five-minute errand is not restful. It split three obvious
+    // errands across two lanes so they would not batch.
+    const a = associateDeterministic(MUTE, { minutes: 5, energy: "low" });
+    expect(a.planets[0]).toBe("Mercury");
+    expect(a.element).toBe("air");
+  });
+
+  it("hears low energy only when the length says nothing", () => {
+    const a = associateDeterministic(MUTE, { minutes: 45, energy: "low" });
+    expect(a.planets[0]).toBe("Moon");
+    expect(a.element).toBe("water");
   });
 
   it("treats medium energy as no opinion, not as a middle", () => {
@@ -61,9 +71,9 @@ describe("a task's own shape, when its words say nothing", () => {
   });
 
   it("takes its element from the planet it named", () => {
-    const a = associateDeterministic(MUTE, { energy: "high" });
-    expect(a.element).toBe("fire");           // Mars
-    expect(associateDeterministic(MUTE, { energy: "low" }).element).toBe("water"); // Moon
+    expect(associateDeterministic(MUTE, { energy: "high" }).element).toBe("fire");   // Mars
+    expect(associateDeterministic(MUTE, { minutes: 10 }).element).toBe("air");       // Mercury
+    expect(associateDeterministic(MUTE, { minutes: 180 }).element).toBe("earth");    // Saturn
   });
 
   it("says which signal spoke, and that it was the shape", () => {

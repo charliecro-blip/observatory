@@ -19,6 +19,7 @@ import { db, tasks, planningWindows } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { associateDeterministic, WINDOW_TYPES, type Association } from "../lib/associate.js";
+import { batchShortTasks } from "../lib/batchTasks.js";
 import { wakingSegments } from "../lib/waking.js";
 import { endOfLocalDay, isValidTimeZone } from "../lib/localday.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
@@ -347,8 +348,46 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     assoc: t.assoc ?? associateDeterministic(t.title, { minutes: t.estimatedMinutes, energy: t.energy }),
     classificationSource: t.classificationSource ?? "deterministic",
   }));
+  /**
+   * SMALL THINGS ARE GATHERED BEFORE ANYTHING IS PLACED.
+   *
+   * The weaver puts one task in one window, which sets a floor on what is worth
+   * writing down: a five-minute errand costs a whole block, so it never gets
+   * typed and stays in your head (owner, 2026-08-31: "we also might encourage
+   * grouping similar tasks - that way people can also input in like, 5 minute
+   * tasks").
+   *
+   * Done HERE, before ordering and placement, so a batch is an ordinary item to
+   * everything downstream — it competes for slots, respects deadlines and gets
+   * a verdict exactly like a single task. The alternative, merging after
+   * placement, would have meant N windows reserved and N-1 given back.
+   *
+   * A batch inherits the lane its members share and Mercury's own signature: a
+   * run of small movements is what Mercury is, which is also why the shape
+   * reader calls anything under a quarter hour Mercurial.
+   */
+  const grouped = batchShortTasks(enriched);
+  const withBatches = [
+    ...grouped.loose,
+    ...grouped.batches.map(b => ({
+      ...b.members[0],
+      title: b.title,
+      estimatedMinutes: b.estimatedMinutes,
+      dueDate: b.dueDate,
+      // What is actually in it, so the card can list them and the commit can
+      // link every one of them to the single window it writes.
+      members: b.members.map(m => ({ title: m.title, estimatedMinutes: m.estimatedMinutes, dueDate: m.dueDate ?? null })),
+      assoc: {
+        ...b.members[0].assoc,
+        planets: ["Mercury"],
+        rationale: `${b.members.length} short things gathered into one block. A run of small movements is Mercury's own shape.`,
+        source: "batch" as const,
+      },
+    })),
+  ];
+
   const ENERGY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  enriched.sort((a, b) => {
+  withBatches.sort((a, b) => {
     const ad = a.dueDate ? Date.parse(a.dueDate) : Infinity;
     const bd = b.dueDate ? Date.parse(b.dueDate) : Infinity;
     if (ad !== bd) return ad - bd;
@@ -365,7 +404,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   const planned: any[] = [];
   const unplaced: any[] = [];
 
-  for (const t of enriched) {
+  for (const t of withBatches) {
     const durMs = t.estimatedMinutes * 60000;
     // END OF THE DUE DAY, where the user lives. `Date.parse("2026-08-04")` is
     // UTC midnight, so adding a day put the deadline at UTC midnight too —
@@ -468,6 +507,12 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         // Moon opens and closes inside a day.
         rationale: glossHolds(t.assoc.rationaleNeeds, new Date(start))
           ? t.assoc.rationale : undefined,
+        // What a batch actually contains. Absent on ordinary items, so a card
+        // can tell the two apart without a second flag.
+        ...(() => {
+          const m = (t as unknown as { members?: unknown[] }).members;
+          return Array.isArray(m) && m.length ? { members: m } : {};
+        })(),
         date,
         startAt: new Date(start).toISOString(),
         endAt: new Date(start + durMs).toISOString(),
@@ -652,12 +697,27 @@ router.post("/plan/commit", requireTesterId, async (req, res) => {
         notes: "Planned by the weaver",
         ...(goalId ? { goalId } : {}),
       }).returning();
-      const [task] = await tx.insert(tasks).values({
-        testerId, title: it.title.trim(), dueDate, bestWindowType: windowType,
-        planningWindowId: win.id,
-        ...(goalId ? { goalId } : {}),
-      }).returning();
-      out.push({ taskId: task.id, windowId: win.id });
+      /**
+       * A BATCH WRITES ITS MEMBERS, not a task called "5 small things".
+       *
+       * The window is one block and the tasks are the things you actually have
+       * to do, so every member points at the same planningWindowId — which the
+       * schema already allows, since the link lives on the task. Committing the
+       * container instead would have thrown away the five titles the person
+       * typed and left them with one meaningless to-do.
+       */
+      const members: any[] = Array.isArray(it.members) && it.members.length ? it.members : [it];
+      for (const m of members) {
+        const title = String(m?.title ?? "").trim();
+        if (!title) continue;
+        const memberDue = /^\d{4}-\d{2}-\d{2}$/.test(m?.dueDate ?? "") ? m.dueDate : dueDate;
+        const [task] = await tx.insert(tasks).values({
+          testerId, title, dueDate: memberDue, bestWindowType: windowType,
+          planningWindowId: win.id,
+          ...(goalId ? { goalId } : {}),
+        }).returning();
+        out.push({ taskId: task.id, windowId: win.id });
+      }
     }
     return out;
   });
