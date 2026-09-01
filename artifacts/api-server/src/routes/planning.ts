@@ -452,6 +452,41 @@ router.post("/planning/windows", requireTesterId, async (req, res) => {
   if (!title?.trim() || !startTime || !endTime) {
     res.status(400).json({ error: "title, startTime, and endTime are required" }); return;
   }
+  /**
+   * A TASK HAS ONE TIME, so scheduling it twice moves it rather than cloning it.
+   *
+   * `tasks.planningWindowId` is a single column, so a second window for the
+   * same task silently orphaned the first: the link moved, the old window
+   * stayed on the calendar, and the task went on looking unscheduled. Clicking
+   * Save time again — which the interface invited, because it still showed the
+   * prompt — made a third. The owner saw "make dr's appt (20 min)" three times
+   * at 3:00 PM under Already woven in (2026-08-31).
+   *
+   * Ownership is checked in the same statement, so a taskId belonging to
+   * somebody else matches nothing and moves nothing.
+   */
+  if (Number.isInteger(taskId) && taskId > 0 && !adHoc) {
+    const owned = (await db.select().from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.testerId, testerId))).limit(1))[0];
+    if (owned?.planningWindowId) {
+      const [moved] = await db.update(planningWindows)
+        .set({
+          title: title.trim(),
+          windowType: windowType ?? "deep_work",
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          notes: notes ?? null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(planningWindows.id, owned.planningWindowId), eq(planningWindows.testerId, testerId)))
+        .returning();
+      // The link can outlive the window it points at (a deleted window leaves a
+      // dangling id), so fall through to a fresh insert when nothing moved
+      // rather than answering with an empty body.
+      if (moved) { res.status(200).json(moved); return; }
+    }
+  }
+
   const [inserted] = await db.insert(planningWindows).values({
     testerId, title: title.trim(),
     windowType: windowType ?? "deep_work",
