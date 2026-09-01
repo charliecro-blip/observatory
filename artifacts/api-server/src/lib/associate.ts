@@ -28,6 +28,8 @@ export interface Association {
    */
   elements?: Array<"fire" | "earth" | "air" | "water">;
   planets: string[];       // strongest first, up to 2
+  /** The sky condition `rationale` presupposes, when it presupposes one. */
+  rationaleNeeds?: GlossNeed;
   windowType: WindowType;
   rationale: string;       // one plain sentence, no jargon required to read
   source: "keywords" | "ai" | "correspondence";
@@ -112,6 +114,7 @@ function tokenize(text: string): string[] {
 }
 
 import { matchActivity } from "./activityCorrespondences.js";
+import type { GlossNeed } from "./glossCondition.js";
 
 /** Deterministic keyword association — the free, offline, always-available path.
  * First pass is the activity-correspondence table (the canonical activity →
@@ -123,7 +126,13 @@ export function associateDeterministic(text: string): Association {
     const planets = Object.entries(a.planets).sort((x, z) => z[1] - x[1]).map(([p]) => p).slice(0, 2);
     return {
       element: a.element, planets, windowType: a.windowType as WindowType,
-      rationale: a.gloss, source: "correspondence",
+      rationale: a.gloss,
+      // Carried, not evaluated: this function is pure text in, association
+      // out, with no date and no sky. The caller that knows WHEN the block
+      // lands is the only one that can decide whether a gloss written in the
+      // definite is true, and plan.ts does exactly that.
+      rationaleNeeds: a.glossNeeds,
+      source: "correspondence",
       activityKey: a.key, houses: a.houses,
     };
   }

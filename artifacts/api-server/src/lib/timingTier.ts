@@ -157,7 +157,13 @@ export function tierForMoment(opts: {
   let note: string;
   if (inOwnPeak || ownHour) {
     tier = "great";
-    note = ownHour && !inOwnPeak ? `a great time — ${ruler}'s own hour` : TIER_NOTE.great;
+    // "the Mercury hour", not "Mercury's own hour". The possessive read as a
+    // claim about the block rather than a statement of which hour it sits in,
+    // and it collided with a second block landing inside the same 65-minute
+    // hour: two back-to-back cards each announcing an hour as its own (owner,
+    // 2026-08-31: "I don't think we should say 'the sun's own hour' or any own
+    // hour - just the hour").
+    note = ownHour && !inOwnPeak ? `a great time — the ${ruler} hour` : TIER_NOTE.great;
   } else if (relative >= AGAINST_BELOW) {
     tier = "workable";
     note = TIER_NOTE.workable;

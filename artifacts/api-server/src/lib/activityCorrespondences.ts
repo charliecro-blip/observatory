@@ -35,6 +35,8 @@ export const ACTIVITY_CATEGORIES: { key: ActivityCategory; label: string; gloss:
   { key: "launch", label: "Launches & stakes", gloss: "the high-scrutiny elections" },
 ];
 
+import type { GlossNeed } from "./glossCondition.js";
+
 export interface ActivityCorrespondence {
   key: string;
   label: string;
@@ -51,6 +53,16 @@ export interface ActivityCorrespondence {
   mercuryRx: "hard" | "soft" | "favor" | null;
   windowType: string;               // app WINDOW_TYPES mapping (scheduling)
   gloss: string;
+  /**
+   * The sky condition this gloss speaks in the definite about, when it does.
+   *
+   * Most glosses are advice or rules and hold on any day. A handful are written
+   * as though the condition were present — "the void is for this", "SUITS the
+   * retrograde" — and those become false the moment they are shown as a
+   * scheduled block's reason on a day without it. Naming the condition lets a
+   * caller that knows the block's instant decide. See lib/glossCondition.
+   */
+  glossNeeds?: GlossNeed;
 }
 
 const A = (a: ActivityCorrespondence) => a;
@@ -348,7 +360,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     element: "water", planets: { Neptune: 1.0, Moon: 0.8, Saturn: 0.5 }, hourRulers: ["Moon", "Saturn"],
     aspects: "soft", signs: { Cancer: "home water", Pisces: "open sea", Taurus: "slow earth" },
     houses: [4, 12], phase: "waning", voc: "favor", mercuryRx: null, windowType: "recovery",
-    gloss: "Slack water is real rest — the void is for this." }),
+    gloss: "Slack water is real rest — the void is for this.", glossNeeds: "void-moon" }),
   A({ key: "haircut", label: "Haircut / grooming", category: "body",
     keywords: ["haircut", "hair", "barber", "salon", "groom", "beard"],
     element: "earth", planets: { Venus: 1.0 }, hourRulers: ["Venus"],
@@ -380,13 +392,13 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     element: "air", planets: { Mercury: 1.0, Moon: 0.6 }, hourRulers: ["Mercury", "Moon"],
     aspects: "soft", signs: { Gemini: "the messenger", Pisces: "the image-well", Sagittarius: "the thesis" },
     houses: [3], phase: "waxing", voc: "neutral", mercuryRx: "favor", windowType: "creative",
-    gloss: "Drafting classically SUITS the retrograde — only the release doesn't." }),
+    gloss: "Drafting classically SUITS the retrograde — only the release doesn't.", glossNeeds: "mercury-retrograde" }),
   A({ key: "edit-revise", label: "Edit & revise", category: "mind",
     keywords: ["edit", "revise", "proofread", "rewrite", "polish the draft"],
     element: "earth", planets: { Mercury: 1.0, Saturn: 0.9 }, hourRulers: ["Mercury", "Saturn"],
     aspects: "soft", signs: { Virgo: "the craftsman's eye", Capricorn: "prune" },
     houses: [3, 6], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "study",
-    gloss: "The waning moon cuts; Virgo's water shows every pebble." }),
+    gloss: "The waning moon cuts; Virgo's water shows every pebble.", glossNeeds: "waning-moon" }),
   A({ key: "learn-skill", label: "Learn a new skill", category: "mind",
     keywords: ["practice", "tutorial", "language", "instrument", "new skill"],
     element: "air", planets: { Mercury: 1.0, Jupiter: 0.7 }, hourRulers: ["Mercury", "Jupiter"],
@@ -583,7 +595,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     element: "water", planets: { Neptune: 1.0, Moon: 0.7 }, hourRulers: ["Moon", "Saturn"],
     aspects: "soft", signs: { Pisces: "the open sea", Cancer: "the inner shore", Aquarius: "the witness" },
     houses: [12, 9], phase: null, voc: "favor", mercuryRx: null, windowType: "retreat",
-    gloss: "The void's slack water is the tradition's gift to this." }),
+    gloss: "The void's slack water is the tradition's gift to this.", glossNeeds: "void-moon" }),
   A({ key: "journal", label: "Journal from feeling", category: "spirit",
     keywords: ["journal", "diary", "morning pages", "process", "write feelings"],
     element: "water", planets: { Moon: 1.0, Mercury: 0.7 }, hourRulers: ["Moon", "Mercury"],

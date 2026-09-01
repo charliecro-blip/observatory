@@ -23,6 +23,7 @@ import { wakingSegments } from "../lib/waking.js";
 import { endOfLocalDay, isValidTimeZone } from "../lib/localday.js";
 import { computeDayArc, findPeakWindows } from "../lib/dayarc.js";
 import { getPlanetaryHour } from "../lib/astro.js";
+import { glossHolds } from "../lib/glossCondition.js";
 import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { evaluateActivityInterval } from "../lib/electionEngine.js";
@@ -438,7 +439,19 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
         ...(t.assoc.elements?.length ? { elements: t.assoc.elements } : {}),
         windowType: t.assoc.windowType,
         planets: t.assoc.planets,
-        rationale: t.assoc.rationale,
+        // THE GLOSS ONLY WHEN IT IS TRUE OF THIS BLOCK.
+        //
+        // A handful of glosses are written in the definite — "SUITS the
+        // retrograde", "the void is for this" — and this is the line the
+        // Planner renders as the block's explanation. Shown on a day without
+        // the condition, the app asserts a sky that is not there: on
+        // 2026-08-31, Mercury direct, a woven task read "Drafting classically
+        // SUITS the retrograde".
+        //
+        // Checked at the block's own instant, not the day's, because a void
+        // Moon opens and closes inside a day.
+        rationale: glossHolds(t.assoc.rationaleNeeds, new Date(start))
+          ? t.assoc.rationale : undefined,
         date,
         startAt: new Date(start).toISOString(),
         endAt: new Date(start + durMs).toISOString(),
@@ -466,7 +479,9 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
           if (!hourTargets.has(getPlanetaryHour(new Date(start), lat, lon).ruler)) continue;
           if (reserved.some((r) => overlaps(start, start + durMs, r.s, r.e))) continue;
           const ruler = getPlanetaryHour(new Date(start), lat, lon).ruler;
-          push(start, grid.date, true, "great", `a great time — ${ruler}'s own hour`);
+          // Same wording as timingTier, deliberately: two places building the
+          // same sentence is how they start disagreeing.
+          push(start, grid.date, true, "great", `a great time — the ${ruler} hour`);
           placed = true;
           break outer0;
         }
@@ -516,7 +531,11 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     if (!placed) {
       unplaced.push({
         title: t.title, estimatedMinutes: t.estimatedMinutes, energy: t.energy, dueDate: t.dueDate,
-        element: t.assoc.element, windowType: t.assoc.windowType, planets: t.assoc.planets, rationale: t.assoc.rationale,
+        element: t.assoc.element, windowType: t.assoc.windowType, planets: t.assoc.planets,
+        // No block, so no block instant — gated on now instead, because this
+        // is shown inside a weave the reader is looking at right now, and a
+        // gloss in the definite reads as current wherever it appears.
+        rationale: glossHolds(t.assoc.rationaleNeeds, new Date()) ? t.assoc.rationale : undefined,
         reason: t.dueDate
           ? "every waking slot before the deadline is already booked — free something up or push the date"
           : "the whole range is booked solid — clear a block and weave again",
