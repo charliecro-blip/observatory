@@ -230,8 +230,26 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
       if (data?.connected === false) return { ok: true, busy: [] };
       return {
         ok: true,
-        busy: (data.events ?? []).filter((e: any) => !e.allDay && e.start && e.end)
-          .map((e: any) => ({ startAt: e.start, endAt: e.end })),
+        busy: (data.events ?? [])
+          // ALL-DAY EVENTS COUNT, when the calendar says they occupy time.
+          //
+          // They were excluded outright, so blocking a day off in Google —
+          // which is an all-day event — did nothing, and the weaver filled it
+          // (owner, 2026-08-31: "it's weaving things in for tomorrow,
+          // wednesday, even tho i have the day blocked off on my google
+          // calendar"). Google's own transparency flag separates an
+          // out-of-office day from a friend's birthday, which is a judgment
+          // the title could not be trusted to make.
+          .filter((e: any) => e.start && e.end && e.busy !== false)
+          .map((e: any) => {
+            if (!e.allDay) return { startAt: e.start, endAt: e.end };
+            // A date-only bound is a LOCAL day, and Google's end date is
+            // exclusive. Parsing "2026-09-02" directly gives UTC midnight,
+            // which in Los Angeles is the afternoon of the 1st — the block
+            // would land seven hours early and clear before the day ended.
+            const local = (d: string) => new Date(`${d}T00:00:00`).toISOString();
+            return { startAt: local(String(e.start).slice(0, 10)), endAt: local(String(e.end).slice(0, 10)) };
+          }),
       };
     } catch { return { ok: false, busy: [] }; }
   }

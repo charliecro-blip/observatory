@@ -232,6 +232,20 @@ router.get("/integrations/google-cal/events", async (req, res) => {
     start: (item.start?.dateTime ?? item.start?.date) as string,
     end:   (item.end?.dateTime   ?? item.end?.date)   as string,
     allDay: !item.start?.dateTime,
+    /**
+     * Whether Google itself considers this event to occupy time.
+     *
+     * `transparency: "transparent"` is Google's "show me as free" — birthdays,
+     * holidays, anything informational. Absent means opaque, which is busy, and
+     * that is the default for a normal event.
+     *
+     * Surfaced because the weaver had no way to tell an out-of-office day from
+     * a friend's birthday, so it excluded ALL all-day events from busy time and
+     * scheduled work straight through a day the owner had blocked off
+     * (2026-08-31). Guessing from the title would be a worse answer than asking
+     * the calendar, and the calendar was already being asked.
+     */
+    busy: item.transparency !== "transparent",
     color: item.colorId ? GCAL_COLORS[item.colorId] : null,
     htmlLink: item.htmlLink as string,
     location: item.location as string | undefined,
