@@ -60,6 +60,15 @@
       "port": 3001
     },
     {
+      "name": "chromatic",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/charlescross/Desktop/observatory-main/artifacts/tides && npx vite ../../tools/chromatic/playground --port 8317 --strictPort"
+      ],
+      "port": 8317
+    },
+    {
       "name": "tides-b",
       "runtimeExecutable": "sh",
       "runtimeArgs": [

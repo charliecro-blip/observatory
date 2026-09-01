@@ -1,0 +1,112 @@
+// Whole-chart phase tests, on a hand-built fixture so no ephemeris (and no
+// live sky) is ever involved. Longitudes are chosen to pin known aspects.
+
+import { describe, expect, it } from "vitest";
+import { buildChartModel, findNatalAspects, weighPlacements, type NatalInput } from "../engine/chart";
+import { renderChartInterpretation } from "../engine/explain";
+import { renderArtwork } from "../engine/render";
+
+// Scorpio rising (so Pluto is chart ruler under modern rulership). Venus at
+// 15° Taurus opposes Uranus at 16° Scorpio (orb 1°); Sun 10° Leo squares
+// nothing tightly; Mars 12° Capricorn trines Venus loosely (63° → sextile
+// band, orb 3°); Saturn 14° Leo squares Venus (89° separation → orb 1°).
+const FIXTURE: NatalInput = {
+  ascendant: { sign: "Scorpio", longitude: 220 },
+  midheaven: { sign: "Leo", longitude: 130 },
+  planets: [
+    { planet: "Sun", sign: "Leo", longitude: 130, houseNumber: 10 },
+    { planet: "Moon", sign: "Pisces", longitude: 345, houseNumber: 5 },
+    { planet: "Mercury", sign: "Virgo", longitude: 155, houseNumber: 11 },
+    { planet: "Venus", sign: "Taurus", longitude: 45, houseNumber: 7 },
+    { planet: "Mars", sign: "Capricorn", longitude: 282, houseNumber: 3 },
+    { planet: "Jupiter", sign: "Sagittarius", longitude: 255, houseNumber: 2 },
+    { planet: "Saturn", sign: "Leo", longitude: 134, houseNumber: 10 },
+    { planet: "Uranus", sign: "Scorpio", longitude: 226, houseNumber: 1 },
+    { planet: "Neptune", sign: "Sagittarius", longitude: 263, houseNumber: 2 },
+    { planet: "Pluto", sign: "Libra", longitude: 195, houseNumber: 12 },
+  ],
+};
+
+describe("whole-chart phase", () => {
+  it("finds the pinned aspects with correct orbs", () => {
+    const aspects = findNatalAspects(FIXTURE.planets);
+    const find = (a: string, b: string) =>
+      aspects.find((x) => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+    const venusUranus = find("Venus", "Uranus");
+    expect(venusUranus?.aspect).toBe("opposition");
+    expect(venusUranus?.orb).toBeCloseTo(1, 5);
+    const venusSaturn = find("Venus", "Saturn");
+    expect(venusSaturn?.aspect).toBe("square");
+    expect(venusSaturn?.orb).toBeCloseTo(1, 5);
+    const sunSaturn = find("Sun", "Saturn");
+    expect(sunSaturn?.aspect).toBe("conjunction");
+  });
+
+  it("weighs angularity, rulership, luminaries, and aspect count", () => {
+    const placements = weighPlacements(FIXTURE, findNatalAspects(FIXTURE.planets));
+    const get = (p: string) => placements.find((x) => x.planet === p)!;
+    // Sun: luminary base 1.3 + angular (10th) 0.4 + aspects.
+    expect(get("Sun").weight).toBeGreaterThan(1.7);
+    expect(get("Sun").reasons).toContain("angular (house 10)");
+    // Pluto: chart ruler of Scorpio rising.
+    expect(get("Pluto").reasons.some((r) => r.startsWith("chart ruler"))).toBe(true);
+    // Uranus in the 1st is angular.
+    expect(get("Uranus").reasons).toContain("angular (house 1)");
+    // Sorted heaviest first, effective weights sharpen the top.
+    expect(placements[0].weight).toBeGreaterThanOrEqual(placements[9].weight);
+    expect(placements[0].effective / placements[0].weight)
+      .toBeGreaterThan(placements[9].effective / placements[9].weight);
+  });
+
+  it("builds a deterministic chart model with a defining aspect", () => {
+    const one = buildChartModel(FIXTURE);
+    const two = buildChartModel(FIXTURE);
+    expect(one.defining).not.toBeNull();
+    expect(two.model.palette.map((c) => c.hex)).toEqual(one.model.palette.map((c) => c.hex));
+    expect(renderArtwork(two.model)).toEqual(renderArtwork(one.model));
+    // The defining aspect drives geometry.
+    const spec = one.defining!;
+    expect(one.aspects[0]).toBe(spec);
+    expect(one.model.palette.length).toBeGreaterThanOrEqual(5);
+    for (const v of Object.values(one.model.profile)) {
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("keeps the whole-chart profile off the rails", () => {
+    // Ten placements once railed nearly every axis at 1.0 through the tanh
+    // squash; chartProfileMass normalization keeps a chart on the same scale
+    // as a pair. A couple of extreme axes are fine — a wall of them is not.
+    const { model } = buildChartModel(FIXTURE);
+    const extreme = Object.values(model.profile).filter((v) => v > 0.95 || v < 0.05);
+    expect(extreme.length).toBeLessThanOrEqual(3);
+  });
+
+  it("writes a chart interpretation naming the top factor and the defining aspect", () => {
+    const chart = buildChartModel(FIXTURE);
+    const prose = renderChartInterpretation(chart);
+    expect(prose).toContain(chart.placements[0].planet);
+    expect(prose).toContain(chart.defining!.aspect);
+    const words = prose.split(/\s+/).length;
+    expect(words).toBeGreaterThan(60);
+    expect(words).toBeLessThan(300);
+  });
+
+  it("handles a chart with no aspects in orb", () => {
+    // Four planets at longitudes searched offline so every pair separation
+    // misses every aspect band. (Ten mutually unaspected planets don't pack
+    // into the wheel; a real chart always has aspects, which is why the
+    // no-aspect path is a fallback and not a common case.)
+    const LON = [214.9, 107.7, 242.0, 313.2];
+    const sparse: NatalInput = {
+      ...FIXTURE,
+      planets: FIXTURE.planets.slice(0, 4).map((p, i) => ({ ...p, longitude: LON[i] })),
+    };
+    expect(findNatalAspects(sparse.planets)).toHaveLength(0);
+    const chart = buildChartModel(sparse);
+    expect(chart.defining).toBeNull();
+    expect(chart.model.composition.dominantGeometry).toBe("distributed");
+    expect(chart.model.palette.length).toBeGreaterThanOrEqual(5);
+  });
+});

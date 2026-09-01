@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chromatic — when your colors meet</title>
+<style>
+  :root {
+    --bg: #0e0e11; --panel: #16161b; --line: #26262e;
+    --text: #eae8e2; --dim: #97958c; --accent: #c9b458;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
+  .wordmark { font-size: 13px; letter-spacing: 0.35em; color: var(--dim); }
+  h1 { font-size: clamp(26px, 5vw, 38px); line-height: 1.2; margin: 18px 0 12px; font-weight: 650; }
+  .sub { color: var(--dim); max-width: 600px; }
+  form { margin-top: 32px; }
+  .people { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 700px) { .people { grid-template-columns: 1fr 1fr; } }
+  fieldset { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--panel); }
+  legend { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); padding: 0 8px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid .wide { grid-column: 1 / -1; }
+  label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 4px; }
+  input { font: inherit; color: var(--text); background: #1e1e25; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  input:focus { outline: none; border-color: var(--accent); }
+  .place-row { display: flex; gap: 8px; }
+  .place-row input { flex: 1; }
+  .place-row button { flex-shrink: 0; padding: 8px 14px; }
+  select {
+    font: inherit; color: var(--text); background: #1e1e25;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; margin-top: 8px;
+  }
+  details { border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
+  details summary { cursor: pointer; font-size: 12px; color: var(--dim); }
+  .actions { display: flex; gap: 12px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  button { font: inherit; cursor: pointer; border-radius: 9px; padding: 10px 18px; background: var(--accent); color: #17130a; border: none; font-weight: 650; }
+  button.ghost { background: transparent; color: var(--dim); border: 1px solid var(--line); font-weight: 450; }
+  button.ghost:hover { color: var(--text); border-color: var(--dim); }
+  .error { color: #d98f8f; margin-top: 12px; font-size: 14px; }
+  #results { display: none; }
+  section { margin-top: 52px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim); font-weight: 550; margin-bottom: 16px; }
+  .triptych { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: center; }
+  @media (min-width: 700px) { .triptych { grid-template-columns: 1fr 1.7fr 1fr; } }
+  .panel { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+  .panel svg { display: block; width: 100%; height: auto; }
+  .panel-label { text-align: center; font-size: 12px; color: var(--dim); margin-top: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+  @keyframes enter-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+  @keyframes enter-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+  @keyframes enter-up { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+  .from-left { animation: enter-left 0.7s ease-out both; }
+  .from-right { animation: enter-right 0.7s ease-out both; }
+  .from-below { animation: enter-up 0.9s 0.35s ease-out both; }
+  .defining { text-align: center; margin-top: 20px; }
+  .defining .glyphs { font-size: 26px; color: var(--accent); }
+  .defining .name { font-size: 15px; letter-spacing: 0.22em; margin-top: 6px; }
+  .defining .line { color: var(--dim); font-size: 14px; margin-top: 4px; }
+  .influences { display: flex; flex-direction: column; gap: 10px; }
+  .inf { display: flex; gap: 14px; align-items: baseline; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .inf.lead { border-color: var(--accent); }
+  .inf .g { font-size: 20px; color: var(--accent); flex-shrink: 0; width: 66px; }
+  .inf b { font-size: 14px; display: block; }
+  .inf small { color: var(--dim); }
+  .strip { display: flex; height: 18px; border-radius: 6px; overflow: hidden; margin-top: 14px; }
+  .strip i { flex: 1; }
+  .prose p { margin-bottom: 12px; max-width: 680px; }
+  .share { display: flex; gap: 10px; flex-wrap: wrap; }
+  .footer { margin-top: 64px; font-size: 13px; color: var(--dim); }
+  .footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="wordmark">CHROMATIC</div>
+    <h1>What happens when your colors meet?</h1>
+    <p class="sub">Two charts each draw their own field; the aspects that cross between them decide whether the shared field fuses, circulates, intensifies, or holds its boundaries.</p>
+
+    <form id="meet-form">
+      <div class="people">
+        <fieldset>
+          <legend>Person A</legend>
+          <div class="grid">
+            <div class="wide"><label for="a-name">Name (optional)</label><input id="a-name" type="text" autocomplete="off"></div>
+            <div><label for="a-date">Birth date</label><input id="a-date" type="date" value="1990-05-04" required></div>
+            <div><label for="a-time">Birth time</label><input id="a-time" type="time" value="10:30" required></div>
+            <div class="wide"><label for="a-place">Birthplace</label>
+              <div class="place-row">
+                <input id="a-place" type="text" placeholder="City, country" autocomplete="off">
+                <button type="button" class="ghost" id="a-find">Find</button>
+              </div>
+              <select id="a-place-results" hidden></select>
+            </div>
+            <details class="wide"><summary>Coordinates and UTC offset (manual fallback)</summary>
+              <div class="grid" style="margin-top:10px">
+                <div><label for="a-lat">Latitude</label><input id="a-lat" type="number" step="any" value="40.71"></div>
+                <div><label for="a-lon">Longitude</label><input id="a-lon" type="number" step="any" value="-74.01"></div>
+                <div><label for="a-offset">UTC offset</label><input id="a-offset" type="number" step="any" value="-4"></div>
+              </div>
+            </details>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Person B</legend>
+          <div class="grid">
+            <div class="wide"><label for="b-name">Name (optional)</label><input id="b-name" type="text" autocomplete="off"></div>
+            <div><label for="b-date">Birth date</label><input id="b-date" type="date" value="1969-02-07" required></div>
+            <div><label for="b-time">Birth time</label><input id="b-time" type="time" value="18:45" required></div>
+            <div class="wide"><label for="b-place">Birthplace</label>
+              <div class="place-row">
+                <input id="b-place" type="text" placeholder="City, country" autocomplete="off">
+                <button type="button" class="ghost" id="b-find">Find</button>
+              </div>
+              <select id="b-place-results" hidden></select>
+            </div>
+            <details class="wide"><summary>Coordinates and UTC offset (manual fallback)</summary>
+              <div class="grid" style="margin-top:10px">
+                <div><label for="b-lat">Latitude</label><input id="b-lat" type="number" step="any" value="19.08"></div>
+                <div><label for="b-lon">Longitude</label><input id="b-lon" type="number" step="any" value="72.88"></div>
+                <div><label for="b-offset">UTC offset</label><input id="b-offset" type="number" step="any" value="5.5"></div>
+              </div>
+            </details>
+          </div>
+        </fieldset>
+      </div>
+      <div class="actions">
+        <button type="submit">Draw the meeting</button>
+      </div>
+      <div class="error" id="error" hidden></div>
+    </form>
+
+    <div id="results">
+      <section>
+        <div class="triptych">
+          <div>
+            <div class="panel from-left" id="field-a"></div>
+            <div class="panel-label" id="label-a"></div>
+          </div>
+          <div>
+            <div class="panel from-below" id="field-shared"></div>
+            <div class="panel-label">The shared field</div>
+          </div>
+          <div>
+            <div class="panel from-right" id="field-b"></div>
+            <div class="panel-label" id="label-b"></div>
+          </div>
+        </div>
+        <div class="defining" id="defining"></div>
+        <div class="strip" id="strip"></div>
+      </section>
+      <section><h2>Where the charts cross</h2><div class="influences" id="crossings"></div></section>
+      <section><h2>How the meeting reads</h2><div class="prose" id="prose"></div></section>
+      <section><h2>Share</h2><div class="share">
+        <button type="button" class="ghost" id="dl-square">Square PNG</button>
+        <button type="button" class="ghost" id="dl-portrait">Portrait PNG</button>
+        <button type="button" class="ghost" id="dl-story">Story PNG</button>
+        <button type="button" class="ghost" id="copy-prose">Copy interpretation</button>
+        <button type="button" class="ghost" id="copy-link">Copy share link</button>
+      </div></section>
+    </div>
+
+    <div class="footer">Deterministic by design: the same two charts always draw the same meeting. <a href="/color.html">One chart on its own</a> · <a href="/">Dev playground</a></div>
+  </div>
+  <script type="module" src="./meet.ts"></script>
+</body>
+</html>

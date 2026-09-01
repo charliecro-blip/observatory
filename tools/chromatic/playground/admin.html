@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chromatic — content generator</title>
+<style>
+  :root {
+    --bg: #101013; --panel: #17171c; --panel-2: #1e1e25; --line: #2a2a33;
+    --text: #e6e4de; --dim: #8f8d86; --accent: #c9b458;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .layout { display: flex; min-height: 100vh; }
+  .controls {
+    width: 280px; flex-shrink: 0; padding: 20px; border-right: 1px solid var(--line);
+    background: var(--panel); display: flex; flex-direction: column; gap: 12px;
+  }
+  .controls h1 { font-size: 15px; font-weight: 600; }
+  .controls h1 span { color: var(--dim); font-weight: 400; }
+  .group { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+  select { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%; }
+  label { font-size: 12px; color: var(--dim); display: flex; justify-content: space-between; }
+  label output { color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .hint { color: var(--dim); font-size: 12px; }
+  .main { flex: 1; padding: 24px 28px; max-width: 1100px; }
+  .cols { display: grid; grid-template-columns: 340px 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .card-preview { border-radius: 10px; overflow: hidden; border: 1px solid var(--line); position: sticky; top: 24px; }
+  .card-preview svg { display: block; width: 100%; height: auto; }
+  .block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .block-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .block h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); font-weight: 550; }
+  .block button { font: inherit; font-size: 12px; cursor: pointer; background: transparent; color: var(--dim); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; }
+  .block button:hover { color: var(--text); border-color: var(--dim); }
+  .block p { max-width: 640px; }
+  .beats { display: flex; flex-direction: column; gap: 6px; }
+  .beat { display: grid; grid-template-columns: 64px 1fr; gap: 12px; }
+  .beat .at { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 2px; }
+  .slides { display: flex; flex-direction: column; gap: 8px; }
+  .slide { display: grid; grid-template-columns: 24px 1fr; gap: 10px; }
+  .slide .n { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .slide b { display: block; font-size: 13px; }
+  .slide small { color: var(--dim); }
+  .caption-text { white-space: pre-wrap; color: var(--text); max-width: 640px; }
+</style>
+</head>
+<body>
+  <div class="layout">
+    <div class="controls">
+      <h1>Chromatic <span>· content generator</span></h1>
+      <div class="group">
+        <div class="group-title">Factor</div>
+        <select id="mode">
+          <option value="pair">Aspect pair</option>
+          <option value="placement">Single placement</option>
+        </select>
+        <select id="aPlanet"></select>
+        <select id="aSign"></select>
+        <div id="pair-only" style="display:flex;flex-direction:column;gap:8px">
+          <select id="aspect"></select>
+          <select id="bPlanet"></select>
+          <select id="bSign"></select>
+          <label>orb <output id="orbOut"></output></label>
+          <input type="range" id="orb" min="0" max="8" step="0.1" value="1.2">
+        </div>
+      </div>
+      <p class="hint">Copy is assembled from the engine's own config phrases and the generated palette, so it always matches the artwork. Run a voice pass before publishing.</p>
+      <p class="hint"><a href="/" style="color:var(--dim)">Dev playground</a> · <a href="/color.html" style="color:var(--dim)">Results page</a></p>
+    </div>
+    <div class="main">
+      <div class="cols">
+        <div class="card-preview" id="card"></div>
+        <div id="blocks"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./admin.ts"></script>
+</body>
+</html>

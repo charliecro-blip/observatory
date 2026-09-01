@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Dev server for the chromatic playground.
+#
+#   ./tools/chromatic/serve            # http://127.0.0.1:8317
+#
+# Borrows the vite binary from artifacts/tides (this tool deliberately has no
+# node_modules of its own); vite transpiles the playground's TS on the fly, so
+# a refresh always sees the latest engine code. The `chromatic` launch config
+# runs the same command.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PORT="${PORT:-8317}"
+
+exec "$ROOT/artifacts/tides/node_modules/.bin/vite" \
+  "$ROOT/tools/chromatic/playground" \
+  --port "$PORT" --strictPort

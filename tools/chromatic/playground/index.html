@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chromatic playground</title>
+<style>
+  :root {
+    --bg: #101013;
+    --panel: #17171c;
+    --panel-2: #1e1e25;
+    --line: #2a2a33;
+    --text: #e6e4de;
+    --dim: #8f8d86;
+    --accent: #c9b458;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #app { display: flex; min-height: 100vh; }
+  .controls {
+    width: 300px; flex-shrink: 0; padding: 20px; border-right: 1px solid var(--line);
+    background: var(--panel); display: flex; flex-direction: column; gap: 14px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .controls h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+  .controls h1 span { color: var(--dim); font-weight: 400; }
+  .group { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .group > .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+  label { font-size: 12px; color: var(--dim); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  label output { color: var(--text); font-variant-numeric: tabular-nums; }
+  select, button {
+    font: inherit; color: var(--text); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%;
+  }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--dim); }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  .main { flex: 1; padding: 24px 28px; max-width: 1100px; }
+  .main h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin: 26px 0 10px; }
+  .main h2:first-child { margin-top: 0; }
+  .artwork { max-width: 560px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .artwork svg { display: block; width: 100%; height: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { width: 158px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .chip .swatch { height: 64px; }
+  .chip .meta { padding: 8px 10px; }
+  .chip .meta b { font-size: 13px; display: block; }
+  .chip .meta code { font-size: 11px; color: var(--dim); }
+  .chip .meta .role { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+  .chip .meta .desc { font-size: 11px; color: var(--dim); margin-top: 4px; }
+  .bars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; max-width: 720px; }
+  .bar { display: grid; grid-template-columns: 88px 1fr 34px; align-items: center; gap: 10px; font-size: 12px; }
+  .bar .track { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .bar output { color: var(--dim); font-variant-numeric: tabular-nums; text-align: right; }
+  .prose { max-width: 620px; color: var(--text); }
+  .prose p { margin-bottom: 10px; }
+  .influences { max-width: 620px; display: flex; flex-direction: column; gap: 8px; }
+  .influences .inf { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .influences .inf b { font-size: 13px; }
+  .influences .inf small { color: var(--dim); display: block; }
+  .keywords { color: var(--dim); font-size: 13px; max-width: 620px; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .card svg { display: block; width: 100%; height: auto; }
+  .card .title { padding: 8px 12px 2px; font-size: 13px; font-weight: 600; }
+  .card .strip { display: flex; height: 22px; margin: 8px 12px 12px; border-radius: 5px; overflow: hidden; }
+  .card .strip i { flex: 1; }
+  .hint { color: var(--dim); font-size: 12px; }
+  .comp-readout { color: var(--dim); font-size: 12px; max-width: 620px; }
+  .controls input[type=date], .controls input[type=time], .controls input[type=number], .controls input[type=text] {
+    font: inherit; color: var(--text); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%;
+  }
+  .controls .place-row { display: flex; gap: 6px; }
+  .controls .place-row input { flex: 1; }
+  .controls .place-row button { width: auto; flex-shrink: 0; }
+  .controls details { border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .controls details summary { cursor: pointer; font-size: 11px; color: var(--dim); }
+  table.data { border-collapse: collapse; font-size: 12px; max-width: 720px; width: 100%; }
+  table.data th { text-align: left; color: var(--dim); font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+  table.data th, table.data td { padding: 5px 12px 5px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  table.data td.dim { color: var(--dim); }
+  table.data tr.defining td { color: var(--accent); }
+  table.data tr.row-click { cursor: pointer; }
+  table.data tr.row-click:hover td { background: rgba(201, 180, 88, 0.06); }
+  .inspect-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; max-width: 900px; }
+  @media (max-width: 800px) { .inspect-grid { grid-template-columns: 1fr; } }
+  .inspect-art { border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .inspect-art svg { display: block; width: 100%; height: auto; }
+  .strip { display: flex; height: 18px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+  .strip i { flex: 1; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
