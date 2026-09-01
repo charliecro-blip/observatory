@@ -15,8 +15,28 @@ export type WindowType =
   | "deep_work" | "creative" | "planning" | "admin" | "social"
   | "relationship" | "recovery" | "study" | "launch" | "retreat";
 
+/** What a task's own shape can say when its words say nothing. */
+export interface TaskShape {
+  /** The estimate in minutes, when there is a real one. */
+  minutes?: number | null;
+  energy?: "low" | "medium" | "high" | null;
+}
+
 export interface Association {
-  element: "fire" | "earth" | "air" | "water";
+  /**
+   * NULL WHEN NOTHING POINTS ANYWHERE, which is a real answer.
+   *
+   * This used to fall back to "earth" and say so apologetically. The owner
+   * caught it twice — once as a whole list coming back identical, and again on
+   * 2026-08-31: "i think the default should be not earth, but nothing". An
+   * invented element is not a small lie either: the weaver ranks slots by
+   * elemental lane, so a fabricated earth actively steers placement.
+   *
+   * The weaver already does the right thing with null by construction —
+   * `lanes.has(slot.element)` is false for every slot, so the lane term drops
+   * out of the sort and placement runs on suitability and open time alone.
+   */
+  element: "fire" | "earth" | "air" | "water" | null;
   /**
    * Every elemental lane this work legitimately belongs in, primary first.
    *
@@ -26,13 +46,19 @@ export interface Association {
    * of the hours that actually suit it. Absent or empty means `[element]`,
    * so every existing caller keeps its exact behaviour.
    */
-  elements?: Array<"fire" | "earth" | "air" | "water">;
+  elements?: Array<NonNullable<Association["element"]>>;
   planets: string[];       // strongest first, up to 2
   /** The sky condition `rationale` presupposes, when it presupposes one. */
   rationaleNeeds?: GlossNeed;
   windowType: WindowType;
   rationale: string;       // one plain sentence, no jargon required to read
-  source: "keywords" | "ai" | "correspondence";
+  /**
+   * Which signal actually spoke, so a surface can say so.
+   *
+   * "shape" is the task's own length and energy; "none" is the honest end of
+   * the road, where element is null and the reader is asked rather than told.
+   */
+  source: "keywords" | "ai" | "correspondence" | "shape" | "none";
   // When the activity-correspondence table recognizes the text, its richer
   // signature rides along — the election engine's natal layer needs these.
   activityKey?: string;
@@ -40,7 +66,9 @@ export interface Association {
 }
 
 interface PlanetProfile {
-  element: Association["element"];
+  /** Never null — a planet always has an element. Only an ASSOCIATION can
+   *  lack one, when nothing about the task pointed anywhere. */
+  element: NonNullable<Association["element"]>;
   windowType: WindowType;
   short: string;           // plain gloss used in the rationale
   keywords: string[];
@@ -105,7 +133,7 @@ const PLANETS: Record<string, PlanetProfile> = {
   },
 };
 
-const ELEMENT_DEFAULT_WINDOW: Record<Association["element"], WindowType> = {
+const ELEMENT_DEFAULT_WINDOW: Record<NonNullable<Association["element"]>, WindowType> = {
   fire: "deep_work", earth: "deep_work", air: "planning", water: "recovery",
 };
 
@@ -119,7 +147,67 @@ import type { GlossNeed } from "./glossCondition.js";
 /** Deterministic keyword association — the free, offline, always-available path.
  * First pass is the activity-correspondence table (the canonical activity →
  * astrology list); the older planet-keyword scoring is the fallback beneath it. */
-export function associateDeterministic(text: string): Association {
+/**
+ * WHAT A TASK'S OWN SHAPE SAYS, when its words say nothing.
+ *
+ * Every task already carries an estimate and an energy, and neither had ever
+ * been consulted — the association was pure text, so a list of five-minute
+ * errands and a four-hour push were read identically (owner, 2026-08-31:
+ * "length and energy level could also be good for that").
+ *
+ * THE SPEED ORDER IS INHERITED. Saturn, Jupiter, Mars, Sun, Venus, Mercury,
+ * Moon is the Chaldean order — the classical spheres ranked by orbital period,
+ * slowest to fastest — and it is already in this codebase driving the planetary
+ * hours. So "a short thing is lunar, a long one saturnian" reads the same order
+ * the app's hours are cut from rather than inventing a new correspondence.
+ *
+ * MAPPING MINUTES ONTO IT IS OURS, and is marked as synthesis wherever it is
+ * shown. No source says a twelve-minute task is Mercurial.
+ *
+ * DURATION ONLY SPEAKS AT THE ENDS. A missing estimate becomes 45 minutes, and
+ * 45 is indistinguishable from a real three-quarter-hour — so the middle band
+ * has to stay silent or the default would be laundered into a finding. It is
+ * also simply true: an ordinary-length task is not strongly anything.
+ *
+ * ENERGY OUTRANKS DURATION when it is stated, because "high" is something a
+ * person said about the work while the estimate is often a machine's guess.
+ * "medium" is treated as no opinion, not as a middle.
+ */
+function fromShape(shape?: TaskShape): Association {
+  const nominated: string[] = [];
+  const why: string[] = [];
+
+  if (shape?.energy === "high") { nominated.push("Mars"); why.push("high energy reads as Mars"); }
+  else if (shape?.energy === "low") { nominated.push("Moon"); why.push("low energy reads as the Moon"); }
+
+  const m = typeof shape?.minutes === "number" && Number.isFinite(shape.minutes) ? shape.minutes : null;
+  if (m !== null) {
+    if (m <= 15) { nominated.push("Mercury"); why.push(`${m} minutes is quick, which is Mercury's end of the order`); }
+    else if (m >= 120) { nominated.push("Saturn"); why.push(`${m} minutes is long, which is Saturn's`); }
+    else if (m >= 90) { nominated.push("Jupiter"); why.push(`${m} minutes is a stretch, which is Jupiter's`); }
+  }
+
+  if (!nominated.length) {
+    // The honest end of the road. No element, so the weaver expresses no
+    // elemental preference and places on open time alone.
+    return {
+      element: null, planets: [], windowType: "deep_work", source: "none",
+      rationale: "Nothing in the words, the length or the energy points anywhere in particular. Pick an element if you want one.",
+    };
+  }
+
+  const primary = nominated[0];
+  const profile = PLANETS[primary];
+  return {
+    element: profile.element,
+    planets: [...new Set(nominated)].slice(0, 2),
+    windowType: profile.windowType as WindowType,
+    source: "shape",
+    rationale: `Nothing in the words, so this is read from its shape: ${why.join(", and ")}.`,
+  };
+}
+
+export function associateDeterministic(text: string, shape?: TaskShape): Association {
   const hit = matchActivity(text);
   if (hit) {
     const a = hit.activity;
@@ -156,16 +244,7 @@ export function associateDeterministic(text: string): Association {
 
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
 
-  if (ranked.length === 0) {
-    // Nothing matched — say so honestly. The UI offers element overrides, so
-    // a shrug here is an invitation to correct, not a verdict. (This default
-    // used to silently paint every unrecognized task "earth" — the owner
-    // noticed a whole list coming back identical.)
-    return {
-      element: "earth", planets: [], windowType: "deep_work", source: "keywords",
-      rationale: "No clear signature from the words alone — defaulting to a steady earth block. Tap an element to correct it.",
-    };
-  }
+  if (ranked.length === 0) return fromShape(shape);
 
   const topPlanet = ranked[0][0];
   const secondPlanet = ranked.length > 1 && ranked[1][1] >= ranked[0][1] - 1 ? ranked[1][0] : null;

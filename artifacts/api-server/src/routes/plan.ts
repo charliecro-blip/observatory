@@ -221,7 +221,7 @@ router.post("/plan/parse", requireTesterId, async (req, res) => {
   const todayISO = new Date(Date.now() - tz * 60000).toISOString().slice(0, 10);
   const items = await parseList(String(req.body.rawList ?? ""), todayISO);
   const tasks = items.map((t) => {
-    const a = associateDeterministic(t.title);
+    const a = associateDeterministic(t.title, { minutes: t.estimatedMinutes, energy: t.energy });
     return { ...t, element: a.element, windowType: a.windowType, planets: a.planets, rationale: a.rationale };
   });
   res.json({ tasks });
@@ -259,13 +259,18 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
       // Trust the reviewed card, but validate it — this is still request input.
       // An unrecognised element or window type falls back to the deterministic
       // read rather than being passed through into scheduling.
-      const derived = associateDeterministic(title);
+      // The task's own shape, so a title that says nothing can still be read
+      // from its length and its stated energy rather than defaulted.
+      const derived = associateDeterministic(title, {
+        minutes: clampMinutes(t.estimatedMinutes),
+        energy: typeof t.energy === "string" ? t.energy as "low" | "medium" | "high" : null,
+      });
       const EL = ["fire", "earth", "air", "water"] as const;
-      const element = EL.includes(t.element) ? t.element as Association["element"] : null;
+      const element = EL.includes(t.element) ? t.element as NonNullable<Association["element"]> : null;
       // A task may name several lanes. Validated the same way as the single
       // one — anything unrecognised is dropped rather than passed through.
       const elements = Array.isArray(t.elements)
-        ? [...new Set((t.elements as unknown[]).filter((e): e is Association["element"] =>
+        ? [...new Set((t.elements as unknown[]).filter((e): e is NonNullable<Association["element"]> =>
             typeof e === "string" && (EL as readonly string[]).includes(e)))]
         : [];
       const windowType = WINDOW_TYPES.includes(t.windowType) ? t.windowType : null;
@@ -339,7 +344,7 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
   // items that never went through a review pass.
   const enriched = items.map((t) => ({
     ...t,
-    assoc: t.assoc ?? associateDeterministic(t.title),
+    assoc: t.assoc ?? associateDeterministic(t.title, { minutes: t.estimatedMinutes, energy: t.energy }),
     classificationSource: t.classificationSource ?? "deterministic",
   }));
   const ENERGY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
@@ -408,8 +413,19 @@ router.post("/plan/weave", requireTesterId, async (req, res) => {
     // The lanes this task accepts. A multi-element task matches in ANY of
     // them — that is the whole point of naming more than one — so the rank
     // is set membership rather than equality with the primary.
-    const lanes = new Set<string>(t.assoc.elements?.length ? t.assoc.elements : [t.assoc.element]);
-    const laneRank = (s: Slot) => (lanes.has(s.element) ? 0 : 1);
+    //
+    // A task with NO element contributes no lanes at all, and that is the
+    // point: `laneRank` then returns 1 for every slot, the term drops out of
+    // the sort, and placement runs on suitability and open time alone. Which
+    // is what "nothing about this points anywhere" should mean. Filtering the
+    // nulls out rather than putting one in the set matters — Set([null]) would
+    // also never match, but by accident rather than on purpose, and the next
+    // reader would not know which.
+    const lanes = new Set<string>(
+      (t.assoc.elements?.length ? t.assoc.elements : [t.assoc.element])
+        .filter((e): e is NonNullable<Association["element"]> => !!e),
+    );
+    const laneRank = (s: Slot) => (lanes.size === 0 ? 1 : lanes.has(s.element) ? 0 : 1);
     // Not computed at all in plain mode — each verdict is a full election
     // evaluation per slot, and a sweep nobody reads is the 90-second-calendar
     // defect shape (getMajorAspects-in-a-loop).

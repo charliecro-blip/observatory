@@ -27,7 +27,13 @@ describe("the reviewed card is authoritative", () => {
   });
 
   it("uses the supplied classification and falls back only when absent", () => {
-    expect(src).toMatch(/assoc: t\.assoc \?\? associateDeterministic\(t\.title\)/);
+    // The claim is the `??` — the reviewed card wins, and the fallback runs
+    // only when there is nothing to honour. Matched loosely on the arguments,
+    // because pinning the exact call expression made this fail the moment the
+    // fallback learned to read a task's length and energy as well as its
+    // title, which is a change to what the fallback KNOWS and not to whether
+    // it defers.
+    expect(src).toMatch(/assoc: t\.assoc \?\? associateDeterministic\(/);
   });
 
   it("carries the edited fields through ingestion", () => {

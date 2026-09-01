@@ -12,7 +12,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 const ELEMENT_COLOR: Record<string, string> = { fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water };
 
 interface BestWindow { date: string; startClock: string; endClock: string; startAt: string; endAt: string; peakE: number; label: string; }
-interface Association { element: string; planets: string[]; windowType: string; rationale: string; source: string; }
+interface Association { element: string | null; planets: string[]; windowType: string; rationale: string; source: string; }
 
 function fmtDay(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -68,14 +68,30 @@ export function ScheduleSuggest({
     enabled: unlocked, // the reading is part of the premium timing intelligence
   });
 
-  const element = assoc?.element ?? "earth";
+  /**
+   * ASKED, NOT DEFAULTED.
+   *
+   * This was `assoc?.element ?? "earth"`, so even once the server stopped
+   * inventing an element the sheet would have gone on inventing one — and then
+   * fetched a whole week of earth peaks to answer a question nobody had
+   * settled. The owner's line was "i would actually rather be asked" (2026-08-31),
+   * alongside "tap an element to correct it" pointing at nothing tappable.
+   *
+   * Null now stays null until the reader picks, and the picker below is the
+   * thing that was being described but never rendered.
+   */
+  const [pickedElement, setPickedElement] = useState<string | null>(null);
+  const element = pickedElement ?? assoc?.element ?? null;
   const { data: bestData } = useQuery<{ windows: BestWindow[] }>({
     queryKey: ["best-times-suggest", element, lat, lon],
     queryFn: async () => {
       const r = await fetch(`/api/tides/elemental-peaks?lens=${element}&lat=${lat}&lon=${lon}&days=7&tz=${new Date().getTimezoneOffset()}`);
       return r.json();
     },
-    enabled: !!assoc,
+    // Nothing to ask the sky for until there is a lens to ask through. Was
+    // `!!assoc` alone, which fired a week-long peaks fetch for whatever
+    // element had been defaulted in.
+    enabled: !!assoc && !!element,
   });
 
   // Waking-hours filter + a clear order. A sky-perfect 3am slot is a taunt,
@@ -132,7 +148,7 @@ export function ScheduleSuggest({
     schedule(start.toISOString(), end.toISOString());
   }
 
-  const ec = ELEMENT_COLOR[element] ?? "#8a8278";
+  const ec = (element ? ELEMENT_COLOR[element] : null) ?? "#8a8278";
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,12,0.4)", zIndex: "var(--z-dialog)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => onClose(false)}>
@@ -155,11 +171,33 @@ export function ScheduleSuggest({
         {unlocked && assoc && (
           <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.55, marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: ec, flexShrink: 0, marginTop: 4 }} />
-            <span>{assoc.rationale} <span style={{ color: "var(--text-3)" }}>Best in {element} windows this week:</span></span>
+            <span>
+              {assoc.rationale}
+              {element && <span style={{ color: "var(--text-3)" }}> Best in {element} windows this week:</span>}
+            </span>
           </div>
         )}
 
-        {unlocked && !bestData && <div style={{ fontSize: 12, color: "var(--text-3)", padding: "12px 0" }}>Reading the week…</div>}
+        {/* THE QUESTION, actually asked. Four lanes, no preselection — a
+            highlighted option is an answer the reader did not give. */}
+        {unlocked && !element && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 7 }}>What kind of work is this?</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {([
+                ["fire", "Drive"], ["earth", "Steady"], ["air", "Thinking"], ["water", "Feeling"],
+              ] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setPickedElement(key)} style={{
+                  fontSize: 11.5, padding: "6px 13px", borderRadius: 12, cursor: "pointer",
+                  border: `1px solid ${ELEMENT_COLOR[key] ?? "var(--color-border)"}55`,
+                  background: "var(--color-card-2)", color: "var(--text-2)",
+                }}>{label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {unlocked && element && !bestData && <div style={{ fontSize: 12, color: "var(--text-3)", padding: "12px 0" }}>Reading the week…</div>}
         {err && <div style={{ fontSize: 11, color: "#c05030", padding: "6px 0" }}>Couldn't schedule that — try again.</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
