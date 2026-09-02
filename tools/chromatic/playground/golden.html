@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chromatic — golden gallery</title>
+<style>
+  :root {
+    --bg: #101013; --panel: #17171c; --line: #2a2a33;
+    --text: #e6e4de; --dim: #8f8d86; --accent: #c9b458;
+    --ok: #7fae7a; --warn: #d99a4e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .page { max-width: 1060px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 16px; font-weight: 600; }
+  h1 span { color: var(--dim); font-weight: 400; }
+  .intro { color: var(--dim); max-width: 720px; margin: 10px 0 6px; }
+  .summary { margin: 12px 0 24px; font-size: 14px; }
+  .summary b.ok { color: var(--ok); }
+  .summary b.warn { color: var(--warn); }
+  .case { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+  .case.differs { border-color: var(--warn); }
+  .case-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .case-head b { font-size: 14px; }
+  .badge { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .badge.ok { color: var(--ok); }
+  .badge.warn { color: var(--warn); }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .panes { grid-template-columns: 1fr; } }
+  .pane { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  .pane svg { display: block; width: 100%; height: auto; }
+  .pane-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin: 6px 0 4px; }
+  .diffs { margin-top: 12px; font-size: 13px; color: var(--dim); }
+  .diffs code { color: var(--text); }
+  .hint { color: var(--dim); font-size: 12px; margin-top: 20px; }
+  .hint code { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Golden gallery <span>· approved baseline vs current render</span></h1>
+    <p class="intro">The canonical ten, drawn by the current engine beside their approved baselines. A change here should be a decision: review it, then run the update script and commit the new baselines.</p>
+    <div class="summary" id="summary"></div>
+    <div id="cases"></div>
+    <p class="hint">Accept intentional changes with <code>./tools/chromatic/golden/update</code>, then review the git diff and commit. <a href="/" style="color:var(--dim)">Dev playground</a></p>
+  </div>
+  <script type="module" src="./golden-page.ts"></script>
+</body>
+</html>

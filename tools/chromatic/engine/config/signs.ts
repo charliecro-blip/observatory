@@ -14,13 +14,20 @@ export const SIGN_ELEMENT: Record<Sign, Element> = {
   Cancer: "water", Scorpio: "water", Pisces: "water",
 };
 
-// Modern rulerships — the chart-emphasis ASC-ruler bonus uses these. The
-// synthesis engine elsewhere in the repo is explicitly modern/tropical, so
-// this table matches rather than the traditional one materia uses for sect.
+// Rulership tables — the chart-emphasis ASC-ruler bonus picks one via
+// weights.rulershipMode. Modern is the default because the synthesis engine
+// elsewhere in this repo is explicitly modern/tropical; traditional is the
+// table materia uses for sect. Neither is baked into the ontology.
 export const SIGN_RULER_MODERN: Record<Sign, Planet> = {
   Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon",
   Leo: "Sun", Virgo: "Mercury", Libra: "Venus", Scorpio: "Pluto",
   Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Uranus", Pisces: "Neptune",
+};
+
+export const SIGN_RULER_TRADITIONAL: Record<Sign, Planet> = {
+  Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon",
+  Leo: "Sun", Virgo: "Mercury", Libra: "Venus", Scorpio: "Mars",
+  Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter",
 };
 
 export const SIGN_MODALITY: Record<Sign, Modality> = {

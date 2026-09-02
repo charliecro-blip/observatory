@@ -16,7 +16,7 @@ import {
 import { combineInfluences } from "./combine";
 import { PLANET_PROFILES } from "./config/planets";
 import { ASPECT_PROFILES } from "./config/aspects";
-import { SIGN_ELEMENT, SIGN_RULER_MODERN, signDeltas } from "./config/signs";
+import { SIGN_ELEMENT, SIGN_RULER_MODERN, SIGN_RULER_TRADITIONAL, signDeltas } from "./config/signs";
 import { DEFAULT_WEIGHTS, type EmphasisWeights } from "./config/weights";
 import { generatePalette } from "./palette";
 import { deriveComposition } from "./composition";
@@ -40,9 +40,10 @@ export interface WeightedPlacement {
   planet: Planet;
   sign: Sign;
   houseNumber: number;
-  weight: number;    // raw emphasis weight
-  effective: number; // after sharpening — what actually feeds the profile
-  reasons: string[]; // "luminary", "angular (10th)", "chart ruler", "3 aspects"
+  weight: number;       // raw emphasis weight
+  effective: number;    // after sharpening — what actually feeds the profile
+  connectivity: number; // summed strength of the aspects this planet is in
+  reasons: string[];    // "luminary", "angular (1.2° from MC)", "chart ruler", "3 aspects"
 }
 
 export interface NatalAspect {
@@ -89,36 +90,87 @@ export function findNatalAspects(planets: NatalPlanetInput[]): Array<Omit<NatalA
   return out;
 }
 
+/** Piecewise-linear interpolation over [x, y] stops; zero past the last stop. */
+function interpolateCurve(curve: Array<[number, number]>, x: number): number {
+  if (curve.length === 0) return 0;
+  if (x <= curve[0][0]) return curve[0][1];
+  for (let i = 1; i < curve.length; i++) {
+    const [x0, y0] = curve[i - 1];
+    const [x1, y1] = curve[i];
+    if (x <= x1) return y0 + ((x - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return 0;
+}
+
+/** Degree distance to the nearest angle, and which angle it is. */
+function nearestAngle(
+  longitude: number, natal: NatalInput,
+): { name: "ASC" | "MC" | "DSC" | "IC"; distance: number } {
+  const angles = [
+    { name: "ASC" as const, lon: natal.ascendant.longitude },
+    { name: "MC" as const, lon: natal.midheaven.longitude },
+    { name: "DSC" as const, lon: (natal.ascendant.longitude + 180) % 360 },
+    { name: "IC" as const, lon: (natal.midheaven.longitude + 180) % 360 },
+  ];
+  let best = { name: "ASC" as "ASC" | "MC" | "DSC" | "IC", distance: Infinity };
+  for (const a of angles) {
+    const d = separation(longitude, a.lon);
+    if (d < best.distance) best = { name: a.name, distance: d };
+  }
+  return best;
+}
+
+function chartRuler(natal: NatalInput, weights: EmphasisWeights): Planet | null {
+  switch (weights.rulershipMode) {
+    case "modern": return SIGN_RULER_MODERN[natal.ascendant.sign];
+    case "traditional": return SIGN_RULER_TRADITIONAL[natal.ascendant.sign];
+    case "none": return null;
+  }
+}
+
 export function weighPlacements(
   natal: NatalInput,
   aspects: Array<Omit<NatalAspect, "score">>,
   weights: EmphasisWeights = DEFAULT_WEIGHTS,
 ): WeightedPlacement[] {
-  const ascRuler = SIGN_RULER_MODERN[natal.ascendant.sign];
+  const ascRuler = chartRuler(natal, weights);
   const aspectCounts = new Map<Planet, number>();
+  const connectivities = new Map<Planet, number>();
   for (const a of aspects) {
     aspectCounts.set(a.a, (aspectCounts.get(a.a) ?? 0) + 1);
     aspectCounts.set(a.b, (aspectCounts.get(a.b) ?? 0) + 1);
+    connectivities.set(a.a, (connectivities.get(a.a) ?? 0) + a.strength);
+    connectivities.set(a.b, (connectivities.get(a.b) ?? 0) + a.strength);
   }
 
   const placements = natal.planets.map((p) => {
     const reasons: string[] = [];
     let w = weights.base[p.planet];
     if (p.planet === "Sun" || p.planet === "Moon") reasons.push("luminary");
-    if (weights.angularHouses.includes(p.houseNumber)) {
-      w += weights.angularBonus;
-      reasons.push(`angular (house ${p.houseNumber})`);
+    const angle = nearestAngle(p.longitude, natal);
+    const proximity = interpolateCurve(weights.angularProximityCurve, angle.distance);
+    // Below a few percent the bonus is noise and the label would be absurd
+    // ("angular, 20.0° from IC") — treat the tail as not angular at all.
+    if (proximity > 0.02) {
+      w += weights.angularBonus * proximity;
+      reasons.push(`angular (${angle.distance.toFixed(1)}° from ${angle.name})`);
     }
     if (p.planet === ascRuler) {
       w += weights.ascRulerBonus;
       reasons.push(`chart ruler (${natal.ascendant.sign} rising)`);
     }
     const count = aspectCounts.get(p.planet) ?? 0;
+    const connectivity = connectivities.get(p.planet) ?? 0;
+    if (connectivity > 0) {
+      w += Math.min(weights.aspectConnectivityBonusMax, connectivity * weights.aspectConnectivityBonus);
+    }
     if (count > 0) {
-      w += Math.min(weights.aspectCountBonusMax, count * weights.aspectCountBonus);
       reasons.push(`${count} aspect${count === 1 ? "" : "s"}`);
     }
-    return { planet: p.planet, sign: p.sign, houseNumber: p.houseNumber, weight: w, effective: 0, reasons };
+    return {
+      planet: p.planet, sign: p.sign, houseNumber: p.houseNumber,
+      weight: w, effective: 0, connectivity, reasons,
+    };
   });
 
   const max = Math.max(...placements.map((p) => p.weight));

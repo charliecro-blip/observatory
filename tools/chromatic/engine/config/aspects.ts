@@ -66,6 +66,12 @@ export const ASPECT_PROFILES: Record<AspectName, AspectVisualProfile> = {
     maxOrb: 7,
     deltas: { harmony: 0.6, diffusion: 0.2, variation: 0.1, dynamism: 0.1, contrast: -0.3 },
     hueStrategy: "analogous",
+    // 32°, deliberately NOT the astronomical 120: hue relationships are
+    // phenomenological, not numerically literal. A trine FEELS analogous, and
+    // analogous hues sit ~30° apart on the wheel; hues 120° apart read as a
+    // triad, which is a different (and harsher) relationship. Do not
+    // "correct" this to match the aspect angle — the mapping aspect angle =
+    // color-wheel angle is not a principle of this engine.
     targetSeparation: 32,
     geometry: "triadic",
     relationship: "The hues sit close on the wheel and circulate, one field flowing into the next with almost no resistance.",

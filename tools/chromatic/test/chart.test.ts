@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { buildChartModel, findNatalAspects, weighPlacements, type NatalInput } from "../engine/chart";
+import { DEFAULT_WEIGHTS } from "../engine/config/weights";
 import { renderChartInterpretation } from "../engine/explain";
 import { renderArtwork } from "../engine/render";
 
@@ -42,20 +43,75 @@ describe("whole-chart phase", () => {
     expect(sunSaturn?.aspect).toBe("conjunction");
   });
 
-  it("weighs angularity, rulership, luminaries, and aspect count", () => {
+  it("weighs angularity, rulership, luminaries, and connectivity", () => {
     const placements = weighPlacements(FIXTURE, findNatalAspects(FIXTURE.planets));
     const get = (p: string) => placements.find((x) => x.planet === p)!;
-    // Sun: luminary base 1.3 + angular (10th) 0.4 + aspects.
+    // Sun: luminary base 1.3 + exactly on the MC (130 = 130) + aspects.
     expect(get("Sun").weight).toBeGreaterThan(1.7);
-    expect(get("Sun").reasons).toContain("angular (house 10)");
-    // Pluto: chart ruler of Scorpio rising.
+    expect(get("Sun").reasons).toContain("angular (0.0° from MC)");
+    // Pluto: chart ruler of Scorpio rising (modern default).
     expect(get("Pluto").reasons.some((r) => r.startsWith("chart ruler"))).toBe(true);
-    // Uranus in the 1st is angular.
-    expect(get("Uranus").reasons).toContain("angular (house 1)");
+    // Uranus sits 6° from the ASC — angular by proximity, not house.
+    expect(get("Uranus").reasons).toContain("angular (6.0° from ASC)");
     // Sorted heaviest first, effective weights sharpen the top.
     expect(placements[0].weight).toBeGreaterThanOrEqual(placements[9].weight);
     expect(placements[0].effective / placements[0].weight)
       .toBeGreaterThan(placements[9].effective / placements[9].weight);
+  });
+
+  it("scores angularity continuously along the proximity curve", () => {
+    // Jupiter exactly on the MC, Saturn 12° off it, Mars 25° off — same
+    // chart, no aspects among them, so the only differences are angular.
+    const natal: NatalInput = {
+      ascendant: { sign: "Scorpio", longitude: 220 },
+      midheaven: { sign: "Leo", longitude: 130 },
+      planets: [
+        { planet: "Jupiter", sign: "Leo", longitude: 130, houseNumber: 10 },
+        { planet: "Saturn", sign: "Leo", longitude: 142, houseNumber: 10 },
+        { planet: "Mars", sign: "Virgo", longitude: 155, houseNumber: 11 },
+      ],
+    };
+    const placements = weighPlacements(natal, findNatalAspects(natal.planets));
+    const get = (p: string) => placements.find((x) => x.planet === p)!;
+    expect(get("Jupiter").weight).toBeCloseTo(1.0 + 0.4, 10);          // full bonus on the angle
+    expect(get("Saturn").weight).toBeCloseTo(1.0 + 0.4 * 0.43, 10);    // curve at 12°
+    expect(get("Mars").weight).toBeCloseTo(1.15, 10);                  // past the curve: nothing
+    expect(get("Mars").reasons.some((r) => r.startsWith("angular"))).toBe(false);
+  });
+
+  it("weights connectivity by aspect strength, not count", () => {
+    const base = {
+      ascendant: { sign: "Scorpio" as const, longitude: 220 },
+      midheaven: { sign: "Leo" as const, longitude: 130 },
+    };
+    const at = (venusLon: number, marsLon: number): NatalInput => ({
+      ...base,
+      planets: [
+        { planet: "Venus", sign: "Aries", longitude: venusLon, houseNumber: 5 },
+        { planet: "Mars", sign: "Taurus", longitude: marsLon, houseNumber: 6 },
+      ],
+    });
+    // One sextile each — exact in the first chart, barely in orb in the second.
+    const tight = weighPlacements(at(0, 60), findNatalAspects(at(0, 60).planets));
+    const loose = weighPlacements(at(0, 64), findNatalAspects(at(0, 64).planets));
+    const venus = (ps: typeof tight) => ps.find((p) => p.planet === "Venus")!;
+    expect(venus(tight).connectivity).toBeCloseTo(1, 10);
+    expect(venus(loose).connectivity).toBeCloseTo(0.2, 10);
+    expect(venus(tight).weight).toBeGreaterThan(venus(loose).weight);
+    // Both still report the same human-readable count.
+    expect(venus(tight).reasons).toContain("1 aspect");
+    expect(venus(loose).reasons).toContain("1 aspect");
+  });
+
+  it("lets rulership mode pick the chart ruler, or nobody", () => {
+    const aspects = findNatalAspects(FIXTURE.planets);
+    const rulerOf = (mode: "modern" | "traditional" | "none") =>
+      weighPlacements(FIXTURE, aspects, { ...DEFAULT_WEIGHTS, rulershipMode: mode })
+        .filter((p) => p.reasons.some((r) => r.startsWith("chart ruler")))
+        .map((p) => p.planet);
+    expect(rulerOf("modern")).toEqual(["Pluto"]);      // Scorpio rising, modern
+    expect(rulerOf("traditional")).toEqual(["Mars"]);  // Scorpio rising, traditional
+    expect(rulerOf("none")).toEqual([]);
   });
 
   it("builds a deterministic chart model with a defining aspect", () => {

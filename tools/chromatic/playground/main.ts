@@ -11,6 +11,7 @@ import {
 } from "../engine/types";
 import { ASPECT_PROFILES } from "../engine/config/aspects";
 import { DEFAULT_WEIGHTS } from "../engine/config/weights";
+import { CANONICAL_PAIRS } from "../engine/canon";
 import { buildPairModel } from "../engine/pair";
 import { buildChartModel, elementBalance, type ChromaticChart, type NatalInput } from "../engine/chart";
 import { buildPlacementModel, renderPlacementInterpretation } from "../engine/placement";
@@ -75,27 +76,9 @@ function scenario(): PairScenario {
   };
 }
 
-// The ten comparison pairs from the design doc's success test, each in signs
-// that can actually form the aspect.
-const GALLERY: Array<{ title: string; s: PairScenario }> = [
-  ["Venus conjunct Jupiter", "Venus", "Pisces", "Jupiter", "Pisces", "conjunction", 1.2],
-  ["Venus square Saturn", "Venus", "Libra", "Saturn", "Capricorn", "square", 2.0],
-  ["Venus opposite Uranus", "Venus", "Taurus", "Uranus", "Scorpio", "opposition", 1.5],
-  ["Mars conjunct Saturn", "Mars", "Capricorn", "Saturn", "Capricorn", "conjunction", 0.8],
-  ["Mars trine Neptune", "Mars", "Scorpio", "Neptune", "Pisces", "trine", 2.0],
-  ["Moon opposite Pluto", "Moon", "Cancer", "Pluto", "Capricorn", "opposition", 1.0],
-  ["Sun trine Jupiter", "Sun", "Leo", "Jupiter", "Sagittarius", "trine", 3.0],
-  ["Mercury conjunct Uranus", "Mercury", "Aquarius", "Uranus", "Aquarius", "conjunction", 1.0],
-  ["Saturn conjunct Neptune", "Saturn", "Pisces", "Neptune", "Pisces", "conjunction", 1.5],
-  ["Jupiter square Pluto", "Jupiter", "Aries", "Pluto", "Capricorn", "square", 2.0],
-].map(([title, ap, as_, bp, bs, aspect, orb]) => ({
-  title: title as string,
-  s: {
-    a: { planet: ap as Planet, sign: as_ as Sign, weight: DEFAULT_WEIGHTS.base[ap as Planet] },
-    b: { planet: bp as Planet, sign: bs as Sign, weight: DEFAULT_WEIGHTS.base[bp as Planet] },
-    aspect: aspect as AspectName, orb: orb as number, variationSeed: 0,
-  },
-}));
+// The ten comparison pairs from the design doc's success test.
+const GALLERY: Array<{ title: string; s: PairScenario }> =
+  CANONICAL_PAIRS.map((c) => ({ title: c.title, s: c.scenario }));
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 
@@ -186,7 +169,7 @@ function controlsHtml(): string {
     <div class="group">${navHtml()}</div>
     ${body}
     <p class="hint">Same inputs always render the same image. The variation button reseeds the drawing while keeping the model.</p>
-    <p class="hint"><a href="/color.html" style="color:var(--dim)">Results page</a> · <a href="/admin.html" style="color:var(--dim)">Content generator</a></p>
+    <p class="hint"><a href="/color.html" style="color:var(--dim)">Results page</a> · <a href="/admin.html" style="color:var(--dim)">Content generator</a> · <a href="/golden.html" style="color:var(--dim)">Golden gallery</a></p>
   </div>`;
 }
 
@@ -287,7 +270,7 @@ function chartHtml(): string {
     <tr class="row-click" data-inspect-placement="${p.planet}">
       <td>${p.planet}</td><td>${p.sign}</td><td>${p.houseNumber}</td>
       <td>${p.weight.toFixed(2)}</td><td>${p.effective.toFixed(2)}</td>
-      <td class="dim">${esc(p.reasons.join(", ") || "—")}</td>
+      <td class="dim">${esc(p.reasons.join(", ") || "—")}${p.connectivity > 0 ? ` · connectivity ${p.connectivity.toFixed(1)}` : ""}</td>
     </tr>`).join("");
   const aspectRows = chart.aspects.slice(0, 10).map((a, i) => `
     <tr class="row-click${i === 0 ? " defining" : ""}" data-inspect-aspect="${i}">

@@ -4,15 +4,30 @@
 
 import type { Planet } from "../types";
 
+export type RulershipMode = "modern" | "traditional" | "none";
+
 export interface EmphasisWeights {
   base: Record<Planet, number>;
+  /** Which rulership table names the chart ruler; "none" skips the bonus. */
+  rulershipMode: RulershipMode;
   ascRulerBonus: number;
   angularBonus: number;
-  /** Houses whose occupants count as angular. */
-  angularHouses: number[];
-  /** Per qualifying natal aspect a planet participates in, and the cap. */
-  aspectCountBonus: number;
-  aspectCountBonusMax: number;
+  /**
+   * Angularity is continuous (2026-09-01 audit): degree distance to the
+   * nearest angle (ASC/MC/DSC/IC) → a factor, linearly interpolated between
+   * these [degrees, factor] stops and zero past the last one. A planet 2°
+   * into the 9th house is angular in every way that matters visually; house
+   * membership is not consulted.
+   */
+  angularProximityCurve: Array<[number, number]>;
+  /**
+   * Connectivity is strength-weighted (2026-09-01 audit): the bonus scales
+   * with the SUM OF ASPECT STRENGTHS a planet participates in, so three
+   * nearly exact aspects outrank three barely-in-orb ones. Per unit of
+   * summed strength, and the cap.
+   */
+  aspectConnectivityBonus: number;
+  aspectConnectivityBonusMax: number;
   /**
    * How hard chart emphasis concentrates on the top-weighted planets when a
    * whole chart feeds the profile. 1 = raw weights; higher values let the
@@ -63,11 +78,12 @@ export const DEFAULT_WEIGHTS: EmphasisWeights = {
     Neptune: 0.8,
     Pluto: 0.8,
   },
+  rulershipMode: "modern",
   ascRulerBonus: 0.4,
   angularBonus: 0.4,
-  angularHouses: [1, 4, 7, 10],
-  aspectCountBonus: 0.05,
-  aspectCountBonusMax: 0.2,
+  angularProximityCurve: [[0, 1], [5, 0.85], [10, 0.55], [15, 0.25], [20, 0]],
+  aspectConnectivityBonus: 0.1,
+  aspectConnectivityBonusMax: 0.2,
   emphasisSharpness: 1.5,
   chartProfileMass: 2.6,
   chartAspectCount: 5,

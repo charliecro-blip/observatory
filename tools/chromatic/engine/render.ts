@@ -37,12 +37,18 @@ function linear(ctx: Ctx, c1: string, c2: string, angleDeg: number, mid = 0.5, s
   const rad = (angleDeg * Math.PI) / 180;
   const x = Math.cos(rad) / 2, y = Math.sin(rad) / 2;
   const lo = Math.max(0, mid - spread) * 100, hi = Math.min(1, mid + spread) * 100;
+  // Bounded precision throughout: values downstream of transcendentals
+  // (tanh, cos) differ by an ulp between JS engines, and the golden workflow
+  // compares SVG strings across environments. Four decimals is far below
+  // anything visible and far above float noise.
   ctx.defs.push(el("linearGradient", {
-    id, x1: 0.5 - x, y1: 0.5 - y, x2: 0.5 + x, y2: 0.5 + y,
+    id,
+    x1: (0.5 - x).toFixed(5), y1: (0.5 - y).toFixed(5),
+    x2: (0.5 + x).toFixed(5), y2: (0.5 + y).toFixed(5),
   },
     el("stop", { offset: "0%", "stop-color": c1 }) +
-    el("stop", { offset: `${lo}%`, "stop-color": c1 }) +
-    el("stop", { offset: `${hi}%`, "stop-color": c2 }) +
+    el("stop", { offset: `${lo.toFixed(4)}%`, "stop-color": c1 }) +
+    el("stop", { offset: `${hi.toFixed(4)}%`, "stop-color": c2 }) +
     el("stop", { offset: "100%", "stop-color": c2 })));
   return `url(#${id})`;
 }

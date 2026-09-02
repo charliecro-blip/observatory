@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Regenerate the golden baselines for the canonical ten. Do this only when a
+# visual change is intentional: review /golden.html and the git diff before
+# committing the result. Same bundling trick as materia (the esbuild binary
+# comes from the root pnpm store).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+OUT="${TMPDIR:-/tmp}/chromatic-golden-$$.mjs"
+trap 'rm -f "$OUT"' EXIT
+
+EB="$(ls -d "$ROOT"/node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild 2>/dev/null | sort -V | tail -1)"
+if [ -z "$EB" ]; then
+  echo "esbuild not found under node_modules/.pnpm — run pnpm install first." >&2
+  exit 1
+fi
+
+"$EB" "$ROOT/tools/chromatic/test/update-golden.ts" \
+  --bundle --platform=node --format=esm --log-level=warning \
+  --outfile="$OUT"
+
+node "$OUT" "$ROOT/tools/chromatic/golden/baselines.json"

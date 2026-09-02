@@ -6,33 +6,14 @@
 // Deterministic by construction — no live sky, no clock, no timezone.
 
 import { describe, expect, it } from "vitest";
-import type { AspectName, PairScenario, Planet, Sign } from "../engine/types";
-import { DEFAULT_WEIGHTS } from "../engine/config/weights";
+import type { PairScenario } from "../engine/types";
+import { CANONICAL_PAIRS } from "../engine/canon";
 import { buildPairModel } from "../engine/pair";
 import { renderArtwork } from "../engine/render";
 import { renderInterpretation } from "../engine/explain";
 import { hueDelta } from "../engine/color";
 
-function pair(ap: Planet, as_: Sign, bp: Planet, bs: Sign, aspect: AspectName, orb: number): PairScenario {
-  return {
-    a: { planet: ap, sign: as_, weight: DEFAULT_WEIGHTS.base[ap] },
-    b: { planet: bp, sign: bs, weight: DEFAULT_WEIGHTS.base[bp] },
-    aspect, orb, variationSeed: 0,
-  };
-}
-
-const TEN: Array<[string, PairScenario]> = [
-  ["Venus conjunct Jupiter", pair("Venus", "Pisces", "Jupiter", "Pisces", "conjunction", 1.2)],
-  ["Venus square Saturn", pair("Venus", "Libra", "Saturn", "Capricorn", "square", 2.0)],
-  ["Venus opposite Uranus", pair("Venus", "Taurus", "Uranus", "Scorpio", "opposition", 1.5)],
-  ["Mars conjunct Saturn", pair("Mars", "Capricorn", "Saturn", "Capricorn", "conjunction", 0.8)],
-  ["Mars trine Neptune", pair("Mars", "Scorpio", "Neptune", "Pisces", "trine", 2.0)],
-  ["Moon opposite Pluto", pair("Moon", "Cancer", "Pluto", "Capricorn", "opposition", 1.0)],
-  ["Sun trine Jupiter", pair("Sun", "Leo", "Jupiter", "Sagittarius", "trine", 3.0)],
-  ["Mercury conjunct Uranus", pair("Mercury", "Aquarius", "Uranus", "Aquarius", "conjunction", 1.0)],
-  ["Saturn conjunct Neptune", pair("Saturn", "Pisces", "Neptune", "Pisces", "conjunction", 1.5)],
-  ["Jupiter square Pluto", pair("Jupiter", "Aries", "Pluto", "Capricorn", "square", 2.0)],
-];
+const TEN: Array<[string, PairScenario]> = CANONICAL_PAIRS.map((c) => [c.title, c.scenario]);
 
 describe("chromatic engine", () => {
   it("is deterministic: same scenario, same palette and artwork", () => {

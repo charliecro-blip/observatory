@@ -73,6 +73,21 @@ More playground views:
   the two aliases that make that resolve (`.js` → `.ts` specifiers, and
   `astronomy-engine` out of the root pnpm store).
 
+## Golden gallery
+
+The canonical ten are pinned as full baselines — profile, palette,
+composition, SVG — in `golden/baselines.json`. `test/golden.test.ts` fails
+on any drift, and `/golden.html` shows approved baseline beside current
+render with the concrete diffs named. Accepting a visual change is a
+deliberate act:
+
+    ./tools/chromatic/golden/update    # then review /golden.html + git diff, commit
+
+This is aesthetic calibration infrastructure, not a deploy gate (the whole
+tools suite is opt-in). The renderer emits bounded-precision numbers so SVG
+comparisons hold across JS engines — tanh and cos differ by an ulp between
+node and the browser.
+
 ## Tests
 
     npx vitest run --config vitest.tools.config.ts tools/chromatic
@@ -114,9 +129,12 @@ hard and soft aspects.
                         planets/signs/aspect/variation — orb and weights
                         modulate continuously, never re-roll the layout)
       placement.ts      a single placement drawn alone; modality → geometry
+      canon.ts          the canonical ten, defined once for every consumer
       chart.ts          NatalInput → ChromaticChart: aspect finding, emphasis
-                        weighting (angularity, chart ruler, luminaries, aspect
-                        count), defining-relationship selection
+                        weighting (continuous angularity via degree distance
+                        to ASC/MC/DSC/IC, chart ruler by rulershipMode
+                        modern/traditional/none, luminaries, strength-weighted
+                        aspect connectivity), defining-relationship selection
     playground/         vanilla-TS dev UI (no framework) + natal adapter
     test/               engine + chart smoke tests
 
