@@ -720,7 +720,7 @@ function DisplaySection() {
         <Toggle on={d.todayShowJournal} onChange={v => updateDisplay({ todayShowJournal: v })} />
       </Row>
       <Divider />
-      <Row label="Angle crossings" sub="Timed markers when planets cross the local angles (moved here from the Today page).">
+      <Row label="Angle crossings" sub="Timed markers when planets cross the local angles.">
         <Toggle on={d.todayShowCrossings} onChange={v => updateDisplay({ todayShowCrossings: v })} />
       </Row>
     </SectionCard>

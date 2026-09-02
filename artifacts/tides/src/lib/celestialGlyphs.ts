@@ -124,7 +124,22 @@ export function glyphStyle(
   glow = false,
 ): React.CSSProperties {
   const color = GLYPH_ELEMENT_COLORS[theme][element];
-  const thin = thinFor(name);
+  /**
+   * OPTICAL THINNING IS A LARGE-GLYPH CORRECTION.
+   *
+   * The stroke is painted in the SURFACE colour to shave weight off a symbol
+   * that reads too heavy. At display sizes that is a refinement; at 12px the
+   * amounts here come out at two or three tenths of a pixel of background
+   * laid over a stroke that is only a pixel or so to begin with, so it stops
+   * refining the shape and starts eating it. The rail's aspect rows draw at
+   * 12px, and that is where "planetary aspect glyphs are too light to be
+   * legible" was looking (owner, 2026-08-31).
+   *
+   * Below the floor the glyph is simply left alone. The table above is
+   * unchanged — it is correctly tuned for the sizes it was tuned at.
+   */
+  const THIN_FLOOR_PX = 15;
+  const thin = fontSizePx >= THIN_FLOOR_PX ? thinFor(name) : 0;
   const strokePx = thin > 0 ? (thin * fontSizePx).toFixed(2) : "0";
   const nudge = nudgeFor(name);
   return {

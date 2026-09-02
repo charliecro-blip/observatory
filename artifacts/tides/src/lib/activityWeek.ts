@@ -17,6 +17,8 @@
  * the week.
  */
 
+import { packLanes } from "./lanes";
+
 export interface Span { startClock: string; endClock: string; allDay?: boolean }
 
 /**
@@ -78,14 +80,11 @@ export function layoutLanes<T extends Span>(wins: T[]): { placed: Placed<T>[]; l
     .filter((x): x is { win: T; startMin: number; endMin: number } => x !== null)
     .sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
 
-  const laneEnds: number[] = [];
-  const placed: Placed<T>[] = sized.map(s => {
-    let lane = laneEnds.findIndex(end => end <= s.startMin);
-    if (lane === -1) { lane = laneEnds.length; laneEnds.push(s.endMin); }
-    else laneEnds[lane] = s.endMin;
-    return { ...s, lane };
-  });
-  return { placed, lanes: Math.max(1, laneEnds.length) };
+  // The packing itself lives in lib/lanes, shared with the plan's week picture.
+  // Two copies of "what counts as overlapping" is how two surfaces start
+  // disagreeing about the same Tuesday.
+  const { packed, lanes } = packLanes(sized.map(s => ({ startMin: s.startMin, endMin: s.endMin, of: s.win })));
+  return { placed: packed.map(p => ({ win: p.of, startMin: p.startMin, endMin: p.endMin, lane: p.lane })), lanes };
 }
 
 /**

@@ -1004,9 +1004,12 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
               <div style={{ marginTop:6, display:"flex", flexDirection:"column", gap:3 }}>
                 {top.map((a, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10.5 }}>
-                    <span style={{ color:planetColor(a.planet1), fontWeight:600 }}><PG p={a.planet1} label={a.planet1} /></span>
+                    {/* 13px rather than the PG default 12: above the thinning
+                        floor, so these are drawn at full weight instead of
+                        having a sub-pixel of rail painted back over them. */}
+                    <span style={{ color:planetColor(a.planet1), fontWeight:600 }}><PG p={a.planet1} size={13} label={a.planet1} /></span>
                     <span role="img" aria-label={a.aspect} style={{ color:"var(--text-2)", fontWeight:700 }}>{aspSym[a.aspect] ?? a.aspect}</span>
-                    <span style={{ color:planetColor(a.planet2), fontWeight:600 }}><PG p={a.planet2} label={a.planet2} /></span>
+                    <span style={{ color:planetColor(a.planet2), fontWeight:600 }}><PG p={a.planet2} size={13} label={a.planet2} /></span>
                     <span style={{ color:"var(--text-3)", fontSize: 10.5, marginLeft:2, fontVariantNumeric:"tabular-nums" }}>{a.orb.toFixed(1)}°</span>
                   </div>
                 ))}

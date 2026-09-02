@@ -309,11 +309,18 @@ export default function Log({ testerId, onVisitPlanet, lat = 40.7, lon = -74.0 }
               <>No {PLANET_LITERACY[flavor]?.adjective ?? flavor} days in this window — try a longer lookback.</>
             ) : (
               <>
-                Nothing in the logbook yet.
+                {/* It pointed at a page that no longer exists. Today was folded
+                    into Home in August, so the one instruction this empty state
+                    gave sent the reader to a tab that is not in the nav — which
+                    is the difference between weak copy and copy that cannot be
+                    followed (owner, 2026-08-31: "not sure this language is good.
+                    helpful.").
+                    Also shorter: it described three mechanisms and gave one
+                    action, buried. The action leads now. */}
+                Nothing here yet.
                 <br />
-                Rate your day or jot a line in the journal on <b>Today</b> — it lands
-                here automatically, stamped with that day's sky. Completed sessions
-                show up here too.
+                Rate a day on <b>Home</b> and it lands here with the sky it happened
+                under, along with any session you finish.
               </>
             )}
           </div>

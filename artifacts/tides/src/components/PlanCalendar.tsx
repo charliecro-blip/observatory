@@ -13,6 +13,7 @@
 // the list, where the alternatives and their reasons live.
 
 import { ELEMENT_COLORS } from "@/lib/elements";
+import { packLanes } from "@/lib/lanes";
 
 const ELEMENT_COLOR: Record<string, string> = {
   fire: "#c04830", earth: ELEMENT_COLORS.earth, air: ELEMENT_COLORS.air, water: ELEMENT_COLORS.water,
@@ -81,36 +82,54 @@ export default function PlanCalendar({ items, dropped }: {
                   position: "absolute", left: 0, right: 0, top: `${((13 - DAY_START) / SPAN) * 100}%`,
                   height: 1, background: "var(--color-border)", opacity: 0.7,
                 }} />
-                {dayItems.map((it, i) => {
-                  const rawStart = hourOf(it.startAt);
-                  const rawEnd = hourOf(it.endAt);
-                  const start = Math.max(DAY_START, Math.min(DAY_END - 0.25, rawStart));
-                  const end = Math.max(start + 0.25, Math.min(DAY_END, rawEnd));
-                  const top = ((start - DAY_START) / SPAN) * 100;
-                  const height = ((end - start) / SPAN) * 100;
-                  const col = ELEMENT_COLOR[it.element] ?? "#8a8278";
-                  return (
-                    <div key={i}
-                      title={`${it.title} · ${new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
-                      style={{
-                        position: "absolute", left: 3, right: 3,
-                        top: `${top}%`, height: `${Math.max(height, 4)}%`,
-                        background: `${col}26`, borderLeft: `2px solid ${col}`, borderRadius: 4,
-                        padding: "1px 4px", overflow: "hidden",
-                      }}>
-                      {/* The visible label is truncated to a few characters at
-                          this width, and the start time was readable only by
-                          hovering for the `title` — nothing a phone or a
-                          keyboard can do. Both are spelled out here instead. */}
-                      <span className="sr-only">
-                        {it.title} at {new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                      </span>
-                      <div aria-hidden="true" style={{ fontSize: 10.5, color: "var(--color-foreground)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {it.title}
+                {(() => {
+                  /**
+                   * SIDE BY SIDE, NOT ON TOP OF EACH OTHER.
+                   *
+                   * Every block was `left: 3, right: 3` — the full column,
+                   * positioned only by its start time — so two things at once
+                   * were drawn over one another and the picture under-reported
+                   * the day. Titles clipped mid-word across each other, which
+                   * is what "the immediate visualization handed back is awful"
+                   * was looking at (owner, 2026-08-31).
+                   */
+                  const clamped = dayItems.map(it => {
+                    const start = Math.max(DAY_START, Math.min(DAY_END - 0.25, hourOf(it.startAt)));
+                    const end = Math.max(start + 0.25, Math.min(DAY_END, hourOf(it.endAt)));
+                    return { startMin: start * 60, endMin: end * 60, of: it };
+                  });
+                  const { packed, lanes } = packLanes(clamped);
+                  return packed.map((p, i) => {
+                    const it = p.of;
+                    const top = ((p.startMin / 60 - DAY_START) / SPAN) * 100;
+                    const height = (((p.endMin - p.startMin) / 60) / SPAN) * 100;
+                    const col = ELEMENT_COLOR[it.element] ?? "#8a8278";
+                    const w = 100 / lanes;
+                    return (
+                      <div key={i}
+                        title={`${it.title} · ${new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                        style={{
+                          position: "absolute",
+                          left: `calc(${p.lane * w}% + 3px)`,
+                          width: `calc(${w}% - 6px)`,
+                          top: `${top}%`, height: `${Math.max(height, 4)}%`,
+                          background: `${col}26`, borderLeft: `2px solid ${col}`, borderRadius: 4,
+                          overflow: "hidden",
+                        }}>
+                        {/* NO VISIBLE TITLE. This column is 74px wide and shows
+                            a whole day; a title never fitted, and forcing one in
+                            is what produced the clipped overlapping text. The
+                            module's own header says it is "a picture of the
+                            shape" — colour and crowding are the shape, and the
+                            list below is where the words are. The name and time
+                            stay for screen readers and on hover. */}
+                        <span className="sr-only">
+                          {it.title} at {new Date(it.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        </span>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
               {/* The day's load, stated — the picture shows crowding, this
                   says how much. */}
