@@ -26,6 +26,7 @@ import { computeNatalChart } from "../lib/natal.js";
 import { vocSpansBetween } from "../lib/dayarc.js";
 import { julianDay, eclipseWindow } from "../lib/astro.js";
 import { requireFeature } from "../middlewares/entitlement.js";
+import { dayMet as habitDayMet } from "../lib/habitCadence.js";
 
 const router: IRouter = Router();
 
@@ -145,14 +146,24 @@ router.get("/elections/lines-up", async (req, res) => {
       const todayStr = new Date(Date.now() - tzOffsetMin * 60000).toISOString().slice(0, 10);
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
       const logs = await db.select().from(habitLogs).where(eq(habitLogs.testerId, testerId));
-      const doneToday = new Set(logs.filter(l => l.date === todayStr).map(l => l.habitId));
+      // COUNTS, not presence — a `several` habit's first tick today must not
+      // read as "kept" the way one tick reads for every other cadence. A
+      // Map here rather than a Set, so isDoneToday can ask "how many" and not
+      // just "at all". The rule itself is shared with habits.ts — see
+      // lib/habitCadence's dayMet.
+      const todayCounts = new Map<number, number>();
+      for (const l of logs.filter(l => l.date === todayStr)) {
+        todayCounts.set(l.habitId, (todayCounts.get(l.habitId) ?? 0) + 1);
+      }
+      const isDoneToday = (h: typeof habitRows[number]) =>
+        habitDayMet(h.cadence as any, todayCounts.get(h.id) ?? 0, h.targetPerDay);
       const thisWeek = new Map<number, number>();
       for (const l of logs) {
         if (l.date >= weekAgo) thisWeek.set(l.habitId, (thisWeek.get(l.habitId) ?? 0) + 1);
       }
       for (const h of habitRows) {
         if (h.status !== "active") continue;
-        if (doneToday.has(h.id)) continue;              // already kept today
+        if (isDoneToday(h)) continue;                    // already kept today
         if (h.cadence === "occasional") continue;       // tracked, never chased
         if (h.cadence === "weekly") {
           // A weekly habit that has already met its target this week is not
@@ -161,6 +172,10 @@ router.get("/elections/lines-up", async (req, res) => {
           const target = h.targetPerWeek ?? 3;
           if ((thisWeek.get(h.id) ?? 0) >= target) continue;
         }
+        // A `several` habit stays offered until TODAY'S target is met —
+        // isDoneToday already handled that above — but once met it should not
+        // also be chased against a weekly sum the way a weekly habit is; there
+        // is no separate weekly gate for it here by design.
         held.push({
           id: `habit-${h.id}`, title: h.name, kind: "habit",
           // No stored activityKey on habits — the title is matched the same

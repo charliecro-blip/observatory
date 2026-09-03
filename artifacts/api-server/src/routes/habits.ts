@@ -10,6 +10,10 @@ import {
 // at module load, so scoring kept in this file could not be tested without
 // provisioning Postgres — and so was not tested at all.
 import { csv, phaseQuadrant, scoreHabitTiming } from "../lib/habitTiming.js";
+import {
+  CADENCES, type Cadence, normalizeCadence, targetPerDayFor, windowTargetFor, dayMet,
+  normalizeSolarAnchors,
+} from "../lib/habitCadence.js";
 
 const router = Router();
 
@@ -25,18 +29,6 @@ function tid(req: any, res: any): string | null {
 // not calendar-week, on purpose: a Monday reset creates a cliff (miss Sunday
 // and the week is "lost"), which is exactly the pressure this model exists to
 // remove. `occasional` returns 0 — tracked, never scored.
-const CADENCES = ["daily", "most_days", "weekly", "occasional"] as const;
-type Cadence = (typeof CADENCES)[number];
-const normalizeCadence = (v: unknown): Cadence =>
-  CADENCES.includes(v as Cadence) ? (v as Cadence) : "daily";
-
-function windowTargetFor(cadence: Cadence, targetPerWeek: number | null): number {
-  if (cadence === "daily") return 7;
-  if (cadence === "most_days") return 5;
-  if (cadence === "weekly") return Math.min(7, Math.max(1, targetPerWeek ?? 3));
-  return 0; // occasional
-}
-
 // A star list from whatever the client sent: an array of ids, a CSV string, a
 // single id, or nothing. Deduped, positive integers only.
 const normalizeStarIds = (v: unknown): number[] => {
@@ -45,12 +37,10 @@ const normalizeStarIds = (v: unknown): number[] => {
 };
 
 // "bed" is the person's own time, not the sky's — the server validates it but
-// never computes its instant (solarTimes has no entry for it, so solarAnchorAt
-// stays null and the client renders the time from the chronotype it already
-// holds). Inventing a bedtime server-side would be a fabricated fallback.
-const SOLAR_ANCHORS = ["sunrise", "noon", "sunset", "bed"] as const;
-const normalizeSolarAnchor = (v: unknown): string | null =>
-  SOLAR_ANCHORS.includes(v as any) ? (v as string) : null;
+// never computes its instant (solarAnchorTimes below skips it entirely, and the
+// client renders the time from the chronotype it already holds). Inventing a
+// bedtime server-side would be a fabricated fallback.
+// SOLAR_ANCHORS / normalizeSolarAnchors now live in lib/habitCadence.ts
 
 // GET /habits — list active habits with recent streak (last 14 days) + how
 // each one sits against today's sky (the merged practices timing).
@@ -102,17 +92,30 @@ router.get("/habits", async (req, res) => {
   const cutoffStr = dayStrAt(-14);
   const logs = await db.select().from(habitLogs).where(and(eq(habitLogs.testerId, testerId), gte(habitLogs.date, cutoffStr)));
 
-  const logsByHabit = logs.reduce((acc, l) => {
-    (acc[l.habitId] ??= new Set()).add(l.date);
+  // COUNTS, not presence — a `several` habit's second and third tick on one
+  // day used to collapse into the same Set entry as the first, so its own
+  // progress was invisible: the API had nothing to distinguish "did it once"
+  // from "did it three times" (owner 2026-08-31: "wanting to add a habit to
+  // do several times a day, but not seeing options for that").
+  const countsByHabit = logs.reduce((acc, l) => {
+    const byDate = (acc[l.habitId] ??= {});
+    byDate[l.date] = (byDate[l.date] ?? 0) + 1;
     return acc;
-  }, {} as Record<number, Set<string>>);
+  }, {} as Record<number, Record<string, number>>);
 
   // Build last-14-day streak array and current streak count
   const enriched = rows.map(h => {
-    const doneSet = logsByHabit[h.id] ?? new Set();
+    const cadence = normalizeCadence((h as any).cadence);
+    const countsByDate = countsByHabit[h.id] ?? {};
+    const perDayTarget = targetPerDayFor((h as any).targetPerDay ?? null);
+    // For `several`, "done" on a given day means the day's OWN target was
+    // met, not merely that a log exists — one tick out of three is progress,
+    // not completion, and treating it as done would let a single tap satisfy
+    // a habit that asks for three. The shared rule lives in lib/habitCadence.
+    const metOn = (ds: string) => dayMet(cadence, countsByDate[ds] ?? 0, (h as any).targetPerDay ?? null);
     const days = Array.from({ length: 14 }, (_, i) => {
       const ds = dayStrAt(-(13 - i));
-      return { date: ds, done: doneSet.has(ds), isToday: ds === todayStr };
+      return { date: ds, done: metOn(ds), count: countsByDate[ds] ?? 0, isToday: ds === todayStr };
     });
     // Current streak: count consecutive done days backwards from yesterday
     let streak = 0;
@@ -122,11 +125,16 @@ router.get("/habits", async (req, res) => {
     // Cadence progress over the rolling 7 days ending today (inclusive), which
     // is what a non-daily habit should actually be judged against. `days` is
     // ordered oldest→newest, so the last 7 entries are that window.
-    const cadence = normalizeCadence((h as any).cadence);
-    const windowTarget = windowTargetFor(cadence, (h as any).targetPerWeek ?? null);
-    const windowDone = days.slice(-7).filter(d => d.done).length;
+    const windowTarget = windowTargetFor(cadence, (h as any).targetPerWeek ?? null, (h as any).targetPerDay ?? null);
+    // A `several` habit is judged on the WEEK'S total ticks against
+    // perDayTarget×7, not on how many days it happened to touch — three ticks
+    // on one day and none the next six is still three of a possible
+    // twenty-one, which is exactly what a sum (not a day count) reports.
+    const windowDone = cadence === "several"
+      ? days.slice(-7).reduce((n, d) => n + d.count, 0)
+      : days.slice(-7).filter(d => d.done).length;
     const timing = scoreHabitTiming(h as any, sky);
-    const solarAnchor = normalizeSolarAnchor((h as any).solarAnchor);
+    const solarAnchors = csv((h as any).solarAnchor);
     return {
       ...h,
       // Normalize the comma-strings to arrays for the client (the merged
@@ -134,12 +142,23 @@ router.get("/habits", async (req, res) => {
       favoredElements: csv(h.favoredElements),
       favoredPlanets: csv((h as any).favoredPlanets),
       favoredPhases: csv(h.favoredPhases),
-      days, streak, doneToday: doneSet.has(todayStr),
+      days, streak,
+      doneToday: metOn(todayStr),
+      // Present for every cadence so the client need not special-case
+      // `several` to find out how many times today has been logged.
+      countToday: countsByDate[todayStr] ?? 0,
+      targetPerDay: cadence === "several" ? perDayTarget : null,
       cadence, windowTarget, windowDone,
       // `occasional` has no target, so it can never be "behind".
       cadenceMet: windowTarget === 0 || windowDone >= windowTarget,
-      solarAnchor,
-      solarAnchorAt: solarAnchor ? solarTimes[solarAnchor] ?? null : null,
+      solarAnchors,
+      // Every anchor's instant, not just one — a habit hung on both sunrise
+      // and sunset needs both times, and "bed" has none here on purpose (see
+      // SOLAR_ANCHORS above: it is the chronotype's own hour, the client's to
+      // compute, not a fabricated server guess at someone's bedtime).
+      solarAnchorTimes: Object.fromEntries(
+        solarAnchors.filter(a => a !== "bed").map(a => [a, solarTimes[a] ?? null]),
+      ) as Record<string, string | null>,
       resonance: timing.match, resonanceNote: timing.note,
     };
   });
@@ -209,7 +228,7 @@ router.post("/habits/seed-starters", async (req, res) => {
 
 router.post("/habits", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
-  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, goalIds, projectId, milestoneId, cadence, targetPerWeek, solarAnchor, flavor } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, favoredPlanets, bestWindowType, minimumViable, goalId, goalIds, projectId, milestoneId, cadence, targetPerWeek, targetPerDay, solarAnchor, flavor } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   // Client may send arrays (the merged model) or comma-strings — store as CSV.
   const asCsv = (v: unknown): string | null =>
@@ -229,10 +248,11 @@ router.post("/habits", async (req, res) => {
     // Only a `weekly` habit carries an explicit target; the others are implied
     // by the cadence itself, so storing a number would just go stale.
     targetPerWeek: cad === "weekly" ? Math.min(7, Math.max(1, parseInt(String(targetPerWeek ?? 3), 10) || 3)) : null,
+    targetPerDay: cad === "several" ? targetPerDayFor(parseInt(String(targetPerDay ?? 2), 10)) : null,
     // Any cadence can anchor to the day (owner 2026-08-16: "doing habits at
     // sunrise, noon, sunset, or before bed") — a 3×/week run at sunrise is
     // as real an anchor as a daily one. The old daily-only rule is gone.
-    solarAnchor: normalizeSolarAnchor(solarAnchor),
+    solarAnchor: normalizeSolarAnchors(solarAnchor),
     // "chore" is the only flavor; anything else is a practice (null).
     flavor: flavor === "chore" ? "chore" : null,
   }).returning();
@@ -243,7 +263,7 @@ router.post("/habits", async (req, res) => {
 router.patch("/habits/:id", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const id = parseInt(req.params.id);
-  const { name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, goalIds, projectId, cadence, targetPerWeek, solarAnchor } = req.body;
+  const { name, description, emoji, favoredElements, favoredPhases, bestWindowType, minimumViable, status, goalId, goalIds, projectId, cadence, targetPerWeek, targetPerDay, solarAnchor } = req.body;
   // Drizzle skips `undefined` in .set(), so absent fields stay untouched — only
   // send the cadence pair when the caller actually supplied a cadence.
   const cadencePatch = cadence === undefined ? {} : (() => {
@@ -251,11 +271,12 @@ router.patch("/habits/:id", async (req, res) => {
     return {
       cadence: cad,
       targetPerWeek: cad === "weekly" ? Math.min(7, Math.max(1, parseInt(String(targetPerWeek ?? 3), 10) || 3)) : null,
+      targetPerDay: cad === "several" ? targetPerDayFor(parseInt(String(targetPerDay ?? 2), 10)) : null,
     };
   })();
   // The anchor patches independently of cadence now — any cadence may anchor
   // to the day, and re-anchoring must not require resending the cadence.
-  const anchorPatch = solarAnchor === undefined ? {} : { solarAnchor: normalizeSolarAnchor(solarAnchor) };
+  const anchorPatch = solarAnchor === undefined ? {} : { solarAnchor: normalizeSolarAnchors(solarAnchor) };
   // Star links patch as ONE list. Either spelling (goalIds list, legacy
   // goalId single, or explicit null to unlink) writes both columns, so the
   // single-column readers and the list can never disagree.
@@ -280,17 +301,52 @@ router.post("/habits/:id/log", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const habitId = parseInt(req.params.id);
   const date = req.body.date ?? new Date().toISOString().slice(0, 10);
-  // Upsert: delete existing then insert
+
+  // MOST HABITS ARE KEPT OR NOT, once, per day — the delete-then-insert
+  // upsert makes a second POST idempotent rather than a second log. A
+  // `several` habit is a different claim: "kept" is a count against a daily
+  // target, and doing it three times is a fact worth three rows, not one.
+  //
+  // The habit's own row decides which behaviour applies, so this is one
+  // endpoint rather than two — the client does not need to know a habit's
+  // cadence to log it correctly.
+  const [h] = await db.select({ cadence: habits.cadence }).from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.testerId, testerId))).limit(1);
+
+  if (h?.cadence === "several") {
+    const [row] = await db.insert(habitLogs).values({ testerId, habitId, date }).returning();
+    res.status(201).json(row);
+    return;
+  }
   await db.delete(habitLogs).where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.testerId, testerId), eq(habitLogs.date, date)));
   const [row] = await db.insert(habitLogs).values({ testerId, habitId, date }).returning();
   res.status(201).json(row);
 });
 
-// DELETE /habits/:id/log — unmark done for a date
+// DELETE /habits/:id/log — unmark done for a date.
+//
+// For a `several` habit this removes ONE tick — the most recent one, so
+// tapping "one fewer today" undoes the last tap rather than wiping the whole
+// day's count, which is what a shared delete-all would have done to a habit
+// this endpoint was never written to expect. Every other cadence keeps its
+// original meaning: there is at most one row to delete, so "one fewer" and
+// "unmark the day" are the same action.
 router.delete("/habits/:id/log", async (req, res) => {
   const testerId = tid(req, res); if (!testerId) return;
   const habitId = parseInt(req.params.id);
   const date = (req.query.date as string) ?? new Date().toISOString().slice(0, 10);
+
+  const [h] = await db.select({ cadence: habits.cadence }).from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.testerId, testerId))).limit(1);
+
+  if (h?.cadence === "several") {
+    const [latest] = await db.select({ id: habitLogs.id }).from(habitLogs)
+      .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.testerId, testerId), eq(habitLogs.date, date)))
+      .orderBy(desc(habitLogs.completedAt)).limit(1);
+    if (latest) await db.delete(habitLogs).where(eq(habitLogs.id, latest.id));
+    res.json({ ok: true });
+    return;
+  }
   await db.delete(habitLogs).where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.testerId, testerId), eq(habitLogs.date, date)));
   res.json({ ok: true });
 });

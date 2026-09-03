@@ -11,6 +11,7 @@ import Glyph from "@/components/Glyph";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { starIdsOf } from "@/lib/starLinks";
+import EmojiPicker from "@/components/EmojiPicker";
 
 const PLANET_CHOICES = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"];
 
@@ -44,7 +45,11 @@ interface Habit {
   // Cadence: the rhythm this habit actually wants, and how it's doing against
   // THAT rather than against a universal every-day standard.
   cadence?: Cadence; windowDone?: number; windowTarget?: number; cadenceMet?: boolean;
-  solarAnchor?: "sunrise"|"noon"|"sunset"|"bed"|null; solarAnchorAt?: string|null;
+  /** Now a list — "check the garden" can hang on sunrise AND sunset (owner
+   *  2026-08-31: "should also be able to select multiple of the sun times").
+   *  A single string from an old draft still works; see startEditing. */
+  solarAnchors?: SolarAnchor[]; solarAnchorTimes?: Record<string,string|null>|null;
+  countToday?: number; targetPerDay?: number|null;
   // "chore" = recurring upkeep, not an identity practice — no streak framing.
   flavor?: string | null;
   // Every star this habit serves, CSV ("3,7"). goalId mirrors the first.
@@ -54,11 +59,16 @@ interface Habit {
 /** The star ids a habit serves, whichever column carries them. */
 const habitStarIds = starIdsOf;
 
-type Cadence = "daily"|"most_days"|"weekly"|"occasional";
+type Cadence = "daily"|"most_days"|"weekly"|"several"|"occasional";
 const CADENCE_OPTIONS: { key: Cadence; label: string; hint: string }[] = [
   { key: "daily",      label: "Every day",   hint: "a true daily — the streak counts" },
   { key: "most_days",  label: "Most days",   hint: "about 5 of 7, missing one is fine" },
   { key: "weekly",     label: "A few times", hint: "you pick how many per week" },
+  // "wanting to add a habit to do several times a day, but not seeing options
+  // for that in here" (owner 2026-08-31). A daily target lower than five
+  // minutes was the case the app had no room for: "drink water" or "stand up"
+  // wants counting within a day, not across a week.
+  { key: "several",    label: "Several times a day", hint: "you pick how many a day" },
   { key: "occasional", label: "When it fits", hint: "tracked, never scored" },
 ];
 type SolarAnchor = "sunrise"|"noon"|"sunset"|"bed";
@@ -117,7 +127,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
   // indication anything had been lost (owner, 2026-08-13). The draft now
   // survives on disk until it is submitted or explicitly discarded.
   const HABIT_DRAFT_KEY = `compass-habit-draft-${testerId ?? "anon"}`;
-  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, solarAnchor:"" as ""|SolarAnchor, chore:false };
+  const BLANK_FORM = { name:"", emoji:"", favoredElements:[] as string[], favoredPhases:[] as string[], favoredPlanets:[] as string[], bestWindowType:"", minimumViable:"", cadence:"daily" as Cadence, targetPerWeek:3, targetPerDay:2, solarAnchors:[] as SolarAnchor[], chore:false };
   const readHabitDraft = () => {
     try {
       const raw = localStorage.getItem(HABIT_DRAFT_KEY);
@@ -143,6 +153,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
    * can never drift apart in what they can express.
    */
   const [editingId, setEditingId] = useState<number|null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // Written on every keystroke rather than on unmount: a tab change can
   // unmount without a cleanup pass running in time, and the whole point is
   // to survive leaving unexpectedly.
@@ -229,7 +240,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           projectId: newProjectId || undefined,
           cadence: form.cadence,
           targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
-          solarAnchor: form.solarAnchor || undefined,
+          targetPerDay: form.cadence === "several" ? form.targetPerDay : undefined,
+          solarAnchor: form.solarAnchors.length ? form.solarAnchors : undefined,
           flavor: form.chore ? "chore" : undefined,
         }),
       });
@@ -238,7 +250,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]}); setShowAdd(false);
       setSuggestFor({ title: form.name.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
-      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,solarAnchor:"",chore:false});
+      setForm({name:"",emoji:"",favoredElements:[],favoredPhases:[],favoredPlanets:[],bestWindowType:"",minimumViable:"",cadence:"daily",targetPerWeek:3,targetPerDay:2,solarAnchors:[],chore:false});
       setNewGoalIds([]); setNewProjectId("");
       // Saved for real — the draft has nothing left to protect.
       try { localStorage.removeItem(HABIT_DRAFT_KEY); } catch { /* private mode */ }
@@ -267,14 +279,15 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
           targetPerWeek: form.cadence === "weekly" ? form.targetPerWeek : undefined,
           // "" means no anchor. Sent as null so clearing one actually clears
           // it rather than being skipped as undefined.
-          solarAnchor: form.solarAnchor || null,
+          targetPerDay: form.cadence === "several" ? form.targetPerDay : null,
+          solarAnchor: form.solarAnchors.length ? form.solarAnchors : null,
         }),
       });
       if (!r.ok) throw new Error(`save habit failed (${r.status})`);
     },
     onSuccess: () => {
       qc.invalidateQueries({queryKey:["habits"]});
-      setShowAdd(false); setEditingId(null); setForm(BLANK_FORM);
+      setShowAdd(false); setEditingId(null); setForm(BLANK_FORM); setShowEmojiPicker(false);
     },
   });
 
@@ -288,7 +301,8 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
       bestWindowType: h.bestWindowType ?? "", minimumViable: h.minimumViable ?? "",
       cadence: (h.cadence ?? "daily") as Cadence,
       targetPerWeek: h.windowTarget ?? 3,
-      solarAnchor: (h.solarAnchor ?? "") as ""|SolarAnchor,
+      targetPerDay: h.targetPerDay ?? 2,
+      solarAnchors: h.solarAnchors ?? [],
       chore: h.flavor === "chore",
     });
     setShowAdd(true);
@@ -296,7 +310,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
 
   /** Leave the form without saving, whichever mode it is in. */
   const cancelForm = () => {
-    setShowAdd(false); setEditingId(null); setForm(BLANK_FORM);
+    setShowAdd(false); setEditingId(null); setForm(BLANK_FORM); setShowEmojiPicker(false);
     setNewGoalIds([]); setNewProjectId("");
   };
 
@@ -436,7 +450,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             Renders only when something is anchored: an empty scaffold is
             furniture. */}
         {(() => {
-          const anchored = habits.filter(h => h.solarAnchor);
+          const anchored = habits.filter(h => h.solarAnchors?.length);
           if (anchored.length === 0) return null;
           const dl = (now as any)?.daylight;
           const sunrise = dl?.sunrise ? new Date(dl.sunrise) : null;
@@ -452,7 +466,7 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
                 {SOLAR_ANCHOR_OPTIONS.map(opt => {
-                  const hs = anchored.filter(h => h.solarAnchor === opt.key);
+                  const hs = anchored.filter(h => h.solarAnchors?.includes(opt.key));
                   if (hs.length === 0) return null;
                   const t = fmtClock(timeOf[opt.key]);
                   return (
@@ -493,12 +507,30 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             {/* The emoji box read as decoration nobody could change — it sat
                 unlabelled beside the name, so a sprout appeared on the habit
                 and looked like something the app had assigned (owner,
-                2026-08-13). It is yours; the label and title say so. */}
+                2026-08-13). It is yours; the label and title say so.
+                A two-character text field was still not a picker, though — "am
+                i supposed to be able to change the emoji here on this habit? I
+                need an emoji dashboard" (owner, 2026-08-31). The button opens
+                one; typing directly into the field still works for anyone who
+                already knows the glyph they want. */}
             <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+              {/* One field, still directly typeable — the fix from 2026-08-13
+                  is not undone. The button beside it is the new door: the
+                  dashboard, for anyone who would rather browse than know a
+                  glyph by heart. */}
               <input value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} placeholder="🌿" maxLength={2}
-                title="Pick any emoji for this habit — tap and type or paste one"
+                title="Type or paste an emoji directly"
                 aria-label="Habit icon"
                 style={{width:44,padding:"7px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:18,textAlign:"center",background: "var(--color-card-2)",cursor:"text"}}/>
+              <button type="button" onClick={()=>setShowEmojiPicker(true)}
+                title="Browse icons"
+                aria-label="Browse icons for this habit"
+                style={{padding:"7px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:11,background: "var(--color-card-2)",color:"var(--text-2)",cursor:"pointer"}}>
+                Browse
+              </button>
+              {showEmojiPicker && (
+                <EmojiPicker value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e}))} onClose={()=>setShowEmojiPicker(false)} />
+              )}
               <input autoFocus value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
                 onKeyDown={e=>{ if (e.key!=="Enter"||!form.name.trim()) return; editingId === null ? addHabit.mutate() : editHabit.mutate(editingId); }}
                 placeholder="Habit name…"
@@ -549,6 +581,19 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   ))}
                 </div>
               )}
+              {form.cadence === "several" && (
+                <div style={{display:"flex",alignItems:"center",gap:6,marginTop:7}}>
+                  <span style={{fontSize:10.5,color:"var(--color-muted)"}}>How many times a day?</span>
+                  {[2,3,4,5,6].map(n => (
+                    <button key={n} type="button" onClick={()=>setForm(f=>({...f,targetPerDay:n}))} style={{
+                      width:26,height:26,borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:600,
+                      border:form.targetPerDay===n?"1.5px solid #1a2a3a":"1px solid var(--color-border)",
+                      background:form.targetPerDay===n?"#1a2a3a10":"var(--color-card-2)",
+                      color:form.targetPerDay===n?"var(--color-primary)":"var(--color-muted)",
+                    }}>{n}</button>
+                  ))}
+                </div>
+              )}
               {/* Any cadence can hang on the day's landmarks (owner
                   2026-08-16) — a 3×/week run at sunrise is as anchored as a
                   daily one. "Before bed" is the chronotype's time, not the
@@ -557,9 +602,14 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 <div style={{fontSize:10.5,color:"var(--color-muted)",marginBottom:4}}>Hang it on the day? <span style={{color:"var(--text-3)"}}>(optional)</span></div>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                   {SOLAR_ANCHOR_OPTIONS.map(s => {
-                    const on = form.solarAnchor === s.key;
+                    // A checklist, not a radio — any number of landmarks.
+                    const on = form.solarAnchors.includes(s.key);
+                    const toggle = () => setForm(f => ({
+                      ...f,
+                      solarAnchors: on ? f.solarAnchors.filter(a => a !== s.key) : [...f.solarAnchors, s.key],
+                    }));
                     return (
-                      <button key={s.key} type="button" onClick={()=>setForm(f=>({...f,solarAnchor: on ? "" : s.key}))} style={{
+                      <button key={s.key} type="button" onClick={toggle} aria-pressed={on} style={{
                         display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:14,cursor:"pointer",fontSize:10.5,
                         border:on?"1.5px solid #c08020":"1px solid var(--color-border)",
                         background:on?"#c0802015":"var(--color-card-2)",
@@ -706,11 +756,20 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
             <div key={h.id} style={{background: "var(--color-card)",border:`1px solid ${h.timing==="resonant"?"#c0d8b0":"#e8e4de"}`,borderRadius:10,padding:"12px 14px"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                 {/* Check button */}
-                <button onClick={()=>toggleLog.mutate({id:h.id,done:h.doneToday})} style={{
-                  width:26,height:26,borderRadius:7,border:`2px solid ${h.doneToday?"#80b870":"#c0bab0"}`,
-                  background:h.doneToday?"#80b870":"transparent",flexShrink:0,cursor:"pointer",
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"#ffffff",
-                }}>{h.doneToday?"✓":""}</button>
+                {/* For `several`, the mutation the tap fires is unchanged —
+                    `done: h.doneToday` still means "at target, so pull one
+                    back"; below target it adds one. Only the FACE of the
+                    button changes: a running count instead of a bare
+                    checkbox, so tapping reads as counting rather than as
+                    toggling something that is either done or not. */}
+                <button onClick={()=>toggleLog.mutate({id:h.id,done:h.doneToday})}
+                  title={h.cadence==="several" ? `${h.countToday ?? 0} of ${h.targetPerDay ?? 1} today — tap to add one` : undefined}
+                  style={{
+                  width:26,height:26,borderRadius:7,border:`2px solid ${h.doneToday?"#80b870":(h.cadence==="several"&&(h.countToday??0)>0)?"#a8c898":"#c0bab0"}`,
+                  background:h.doneToday?"#80b870":(h.cadence==="several"&&(h.countToday??0)>0)?"#80b87022":"transparent",flexShrink:0,cursor:"pointer",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:h.cadence==="several"&&!h.doneToday?11:13,
+                  color:h.doneToday?"#ffffff":"#4a7a3a",fontWeight:700,
+                }}>{h.doneToday?"✓":h.cadence==="several"&&(h.countToday??0)>0?h.countToday:""}</button>
 
                 {h.emoji && <span style={{fontSize:18,lineHeight:1}}>{h.emoji}</span>}
                 <div style={{flex:1}}>
@@ -725,19 +784,27 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     // is said once. Only the anchor — a different fact, about
                     // when in the day rather than how the week is going —
                     // stays on this line.
-                    const anchor = h.solarAnchor ? SOLAR_ANCHOR_OPTIONS.find(s => s.key === h.solarAnchor) : null;
-                    // Bed has no server instant — its time is the chronotype's
-                    // own, computed here. Sky anchors keep the server's.
-                    const anchorAt = h.solarAnchorAt ? new Date(h.solarAnchorAt)
-                      : h.solarAnchor === "bed" ? bedTimeToday(testerProfile?.chronotype?.sleepTime, today)
-                      : null;
+                    // Every anchor gets its own chip, so a habit hung on both
+                    // sunrise and sunset says both rather than picking one.
+                    const anchors = (h.solarAnchors ?? [])
+                      .map(key => SOLAR_ANCHOR_OPTIONS.find(s => s.key === key))
+                      .filter((a): a is typeof SOLAR_ANCHOR_OPTIONS[number] => !!a);
                     return (
                       <div style={{fontSize: 10.5,marginTop:1,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                        {anchor && (anchorAt || h.solarAnchor === "bed") && (
-                          <span style={{color:"#a08850"}} title={`${anchor.label} today`}>
-                            {anchor.glyph} {h.solarAnchor === "bed" && anchorAt ? "by " : ""}{anchorAt ? fmtClock(anchorAt) : anchor.label.toLowerCase()}
-                          </span>
-                        )}
+                        {anchors.map(anchor => {
+                          // Bed has no server instant — its time is the
+                          // chronotype's own, computed here. Sky anchors keep
+                          // the server's, one per anchor.
+                          const at = anchor.key === "bed"
+                            ? bedTimeToday(testerProfile?.chronotype?.sleepTime, today)
+                            : h.solarAnchorTimes?.[anchor.key] ? new Date(h.solarAnchorTimes[anchor.key]!) : null;
+                          if (!at && anchor.key !== "bed") return null;
+                          return (
+                            <span key={anchor.key} style={{color:"#a08850"}} title={`${anchor.label} today`}>
+                              {anchor.glyph} {anchor.key === "bed" && at ? "by " : ""}{at ? fmtClock(at) : anchor.label.toLowerCase()}
+                            </span>
+                          );
+                        })}
                       </div>
                     );
                   })()}
@@ -810,10 +877,12 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                   be recorded, which is what keeps this a record of doing
                   rather than of remembering to tap. */}
               <HabitProgress
-                cadence={(h.cadence ?? "daily") as "daily"|"most_days"|"weekly"|"occasional"}
+                cadence={(h.cadence ?? "daily") as "daily"|"most_days"|"weekly"|"several"|"occasional"}
                 days={h.days}
                 windowDone={h.windowDone ?? 0}
                 windowTarget={h.windowTarget ?? 0}
+                countToday={h.countToday ?? 0}
+                targetPerDay={h.targetPerDay}
                 streak={h.streak}
                 doneToday={h.doneToday}
                 chore={h.flavor === "chore"}

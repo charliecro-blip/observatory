@@ -12,6 +12,11 @@
  *               with gaps in it. It never resets to zero, because the rule
  *               (BACKLOG §4, "reveal patterns, don't score obedience") says
  *               a rhythm has a beat you can miss and return to.
+ *   several     a DAILY QUOTA — N discs filling within TODAY, not the week.
+ *               Borrows weekly's shape (a target nobody schedules against
+ *               specific days) but the window is one day and resets with
+ *               it, because "drink water 4 times" is a rhythm inside a day,
+ *               not across one.
  *   most_days   a THRESHOLD — ~5 of 7, forgiving on purpose. The waterline
  *               IS the point, so it's the thing drawn; kept days rise to it.
  *   weekly      a QUOTA — choosing "3× a week" is choosing not to care which
@@ -28,7 +33,7 @@
  * under one theme renders one theme's ink on the other theme's paper.
  */
 
-export type HabitCadence = "daily" | "most_days" | "weekly" | "occasional";
+export type HabitCadence = "daily" | "most_days" | "weekly" | "several" | "occasional";
 
 export interface HabitProgressDay {
   date: string;
@@ -42,8 +47,13 @@ interface Props {
   days: HabitProgressDay[];
   /** Kept within the rolling 7 days ending today. */
   windowDone: number;
-  /** 7 for daily, 5 for most_days, 1–7 for weekly, 0 for occasional. */
+  /** 7 for daily, 5 for most_days, 1–7 for weekly, targetPerDay×7 for
+   *  several, 0 for occasional. */
   windowTarget: number;
+  /** `several` only: how many of today's target have been logged. */
+  countToday?: number;
+  /** `several` only: how many a day this habit asks for. */
+  targetPerDay?: number | null;
   /** Consecutive days back from YESTERDAY — the server excludes today. */
   streak: number;
   doneToday: boolean;
@@ -214,6 +224,54 @@ function MostDays({ days, windowDone, windowTarget, name, onToggleDay, busy, don
  * left, not debt owed. That is the whole difference between this and a
  * guilt ledger, and it lives entirely in the empty state.
  */
+/**
+ * The daily twin of WeeklyQuota. Same drawing — N discs, filling — over a
+ * different window: TODAY's count against today's target, not the rolling
+ * week. Kept as its own function rather than a parameter on WeeklyQuota
+ * because the two answer different questions ("how many today" vs "how many
+ * this week") and a shared component that silently meant either would be
+ * exactly the kind of ambiguity the four-drawings doc above exists to avoid.
+ */
+function DailyQuota({ countToday, targetPerDay, windowDone, windowTarget }: Props) {
+  const target = Math.max(1, targetPerDay ?? 1);
+  const done = countToday ?? 0;
+  const filled = Math.min(done, target);
+  const met = done >= target;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 5, alignItems: "center" }}
+        title={`${done} of ${target} today.`}>
+        {Array.from({ length: target }, (_, i) => {
+          const on = i < filled;
+          const last = i === target - 1;
+          return (
+            <span key={i} style={{ position: "relative", display: "block", lineHeight: 0 }}>
+              <span style={{
+                display: "block", width: 12, height: 12, borderRadius: "50%",
+                background: on ? "var(--color-quality-good)" : "transparent",
+                border: on ? "none" : "1.5px dashed var(--text-3)",
+                opacity: on ? 0.95 : 0.6,
+              }} />
+              {met && last && (
+                <span aria-hidden style={{
+                  position: "absolute", inset: -3, borderRadius: "50%",
+                  border: "1px solid var(--color-brass)", opacity: 0.55,
+                }} />
+              )}
+            </span>
+          );
+        })}
+      </div>
+      <Reading text={`${done} of ${target} today`} tone={met ? "met" : "progress"} />
+      {/* The week, said once and quietly underneath — several habits still
+          have a week, it is just not what the discs above are counting. */}
+      {typeof windowTarget === "number" && windowTarget > 0 && (
+        <span style={{ fontSize: 10, color: "var(--text-3)" }}>· {windowDone} of {windowTarget} this week</span>
+      )}
+    </div>
+  );
+}
+
 function WeeklyQuota({ windowDone, windowTarget, doneToday }: Props) {
   const target = Math.max(1, windowTarget);
   const filled = Math.min(windowDone, target);
@@ -315,6 +373,7 @@ export default function HabitProgress(props: Props) {
   if (props.chore) return <DailyRun {...props} />;
   switch (props.cadence) {
     case "weekly":     return <WeeklyQuota {...props} />;
+    case "several":    return <DailyQuota {...props} />;
     case "most_days":  return <MostDays {...props} />;
     case "occasional": return <OccasionalMarks {...props} />;
     default:           return <DailyRun {...props} />;

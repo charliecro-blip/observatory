@@ -20,6 +20,7 @@ import { db } from "@workspace/db";
 import { sprints, wins, goals, habits, habitLogs } from "@workspace/db/schema";
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { transitSpans } from "../lib/transitSpans.js";
+import { windowTargetFor } from "../lib/habitCadence.js";
 
 const router: IRouter = Router();
 
@@ -80,9 +81,11 @@ router.get("/transits/spans", async (req, res) => {
     const sprintedRecently = new Set(recentSprints.map(r => r.habitId).filter(Boolean));
     const keptThisWeek = new Map<number, number>();
     for (const l of logRows) keptThisWeek.set(l.habitId, (keptThisWeek.get(l.habitId) ?? 0) + 1);
+    // The shared rule, not a fourth local copy of it — sprints.ts's own copy
+    // originally fell through to the `occasional` branch (0) for `several`,
+    // which made a several habit never sprint-worthy until it was caught.
     const weeklyTarget = (h: typeof habitRows[number]) =>
-      h.cadence === "daily" ? 7 : h.cadence === "most_days" ? 5
-      : h.cadence === "weekly" ? (h.targetPerWeek ?? 3) : 0;
+      windowTargetFor(h.cadence as any, h.targetPerWeek, h.targetPerDay);
     // A stable day number, so the rotation changes daily but not per request.
     const dayIdx = Math.floor((Date.now() - tzOffsetMin * 60000) / 86400000);
 

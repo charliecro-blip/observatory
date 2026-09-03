@@ -200,9 +200,17 @@ export const habits = pgTable("habits", {
   //   daily      — every day; the streak game applies
   //   most_days  — ~5 of 7, forgiving by design
   //   weekly     — targetPerWeek times in a rolling week
+  //   several    — targetPerDay times EVERY day (owner 2026-08-31: "wanting
+  //                to add a habit to do several times a day"). Its own value
+  //                rather than a flag on "daily": daily's kept/not-kept
+  //                question and several's how-many-of-N question are scored
+  //                differently everywhere they are scored, and a boolean
+  //                would have meant branching on (cadence, flag) in every
+  //                one of those places instead of just on cadence.
   //   occasional — tracked, never scored (no target, no guilt)
   cadence: text("cadence").notNull().default("daily"),
   targetPerWeek: integer("target_per_week"), // only meaningful for cadence=weekly
+  targetPerDay: integer("target_per_day"), // only meaningful for cadence=several
   // Dailies can hang off a solar event rather than a clock time — the body's
   // own schedule. sunrise | noon | sunset (null = no anchor).
   solarAnchor: text("solar_anchor"),
