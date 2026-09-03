@@ -50,6 +50,10 @@ export interface Association {
   planets: string[];       // strongest first, up to 2
   /** The sky condition `rationale` presupposes, when it presupposes one. */
   rationaleNeeds?: GlossNeed;
+  /** The matched activity's own name, e.g. "Deep rest / nap" — present only
+   *  for a correspondence match, and what a caller falls back to naming when
+   *  `rationaleNeeds` is gated out. */
+  label?: string;
   windowType: WindowType;
   rationale: string;       // one plain sentence, no jargon required to read
   /**
@@ -237,6 +241,7 @@ export function associateDeterministic(text: string, shape?: TaskShape): Associa
       // lands is the only one that can decide whether a gloss written in the
       // definite is true, and plan.ts does exactly that.
       rationaleNeeds: a.glossNeeds,
+      label: a.label,
       source: "correspondence",
       activityKey: a.key, houses: a.houses,
     };

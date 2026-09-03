@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { glossHolds } from "../artifacts/api-server/src/lib/glossCondition";
 import { ACTIVITIES } from "../artifacts/api-server/src/lib/activityCorrespondences";
 import { associateDeterministic } from "../artifacts/api-server/src/lib/associate";
@@ -72,5 +73,22 @@ describe("which glosses are gated", () => {
     expect(a.activityKey).toBe("first-draft");
     expect(a.rationaleNeeds).toBe("mercury-retrograde");
     expect(a.rationale).toMatch(/retrograde/);
+  });
+});
+
+describe("the /associate route gates its own rationale", () => {
+  // Guards the second call site of the same bug: plan.ts was fixed to gate a
+  // scheduled block's rationale, but ScheduleSuggest and GuidingStarsHub read
+  // /api/associate directly and render .rationale unconditionally — the route
+  // itself had never been gated, so the retrograde line was still live from
+  // here on a day Mercury is direct.
+  const SRC = readFileSync("artifacts/api-server/src/routes/associate.ts", "utf8");
+
+  it("checks glossHolds before trusting rawBase.rationale", () => {
+    expect(SRC).toContain("glossHolds(rawBase.rationaleNeeds, new Date())");
+  });
+
+  it("names the activity rather than trailing off when the gloss is dropped", () => {
+    expect(SRC).toContain("Reading it as ${rawBase.label.toLowerCase()}");
   });
 });

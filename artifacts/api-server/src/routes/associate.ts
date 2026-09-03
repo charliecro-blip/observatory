@@ -9,6 +9,7 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { associateDeterministic, PLANET_NAMES, WINDOW_TYPES, type Association } from "../lib/associate.js";
 import { isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
+import { glossHolds } from "../lib/glossCondition.js";
 
 const router: IRouter = Router();
 
@@ -17,7 +18,32 @@ router.post("/associate", async (req, res) => {
   const useAi = req.body?.ai === true;
   if (!text) { res.status(400).json({ error: "text required" }); return; }
 
-  const base = associateDeterministic(text);
+  const rawBase = associateDeterministic(text);
+  /**
+   * THE SAME GATE plan.ts USES, applied HERE too.
+   *
+   * plan.ts stopped a scheduled block from quoting a gloss written in the
+   * definite on a day the condition it presupposes is absent — "Drafting
+   * classically SUITS the retrograde" shown while Mercury is direct. This
+   * route feeds that same gloss straight into ScheduleSuggest and
+   * GuidingStarsHub, which render `.rationale` unconditionally, so the
+   * bug was still live from here even after the weave path was fixed: two
+   * callers of ONE endpoint, and the endpoint itself was the one place that
+   * had never been gated.
+   *
+   * Checked against NOW rather than a scheduled instant — nothing has been
+   * placed on a calendar yet at this point, this is the reading shown before
+   * a time is chosen.
+   */
+  const base = {
+    ...rawBase,
+    // Named by what it IS rather than left to trail off — the activity's own
+    // label is free here since only a correspondence match ever carries
+    // rationaleNeeds, and a correspondence match always carries a label too.
+    rationale: glossHolds(rawBase.rationaleNeeds, new Date())
+      ? rawBase.rationale
+      : rawBase.label ? `Reading it as ${rawBase.label.toLowerCase()}.` : rawBase.rationale,
+  };
   if (!useAi) { res.json(base); return; }
   // No key configured → the deterministic reading, which is what the catch
   // below would return anyway. Skipping the doomed round trip is the whole

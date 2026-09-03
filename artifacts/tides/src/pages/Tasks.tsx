@@ -71,7 +71,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
   // After a task is created, offer to find it a good time (→ Ahead calendar).
-  const [suggestFor, setSuggestFor] = useState<{ title: string; goalId?: number; projectId?: number } | null>(null);
+  const [suggestFor, setSuggestFor] = useState<{ title: string; taskId?: number; goalId?: number; projectId?: number } | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newWindow, setNewWindow] = useState("");
   const [newPlanWindow, setNewPlanWindow] = useState<number|"">("");
@@ -195,13 +195,18 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
         }),
       });
       if (!r.ok) throw new Error(`create task failed (${r.status})`);
+      // Carried so the suggest sheet can pass taskId — without it, scheduling
+      // from the sheet had no task to link the window to and a second POST to
+      // /planning/windows would have cloned rather than linked (the same
+      // orphan-window shape fixed for Save time elsewhere).
+      return (await r.json()) as { id: number };
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       qc.invalidateQueries({queryKey:["tasks"]});
       // Offer scheduling for the just-created task before clearing the form —
       // unless the user already picked a specific planning-window block.
       if (!newPlanWindow) {
-        setSuggestFor({ title: newTitle.trim(), goalId: newGoalId || undefined, projectId: newProjectId || undefined });
+        setSuggestFor({ title: newTitle.trim(), taskId: created?.id, goalId: newGoalId || undefined, projectId: newProjectId || undefined });
       }
       setNewTitle(""); setNewWindow(""); setNewPlanWindow(""); setNewGoalId(""); setNewProjectId("");
       setNewEstMinutes(""); setNewEnergy("");
@@ -403,7 +408,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 touch={touchData?.touches?.[String(t.id)]}
                 onToggle={() => completeTask(t.id, t.title, t.done==="true")}
                 onDelete={() => remove.mutate(t.id)}
-                onSchedule={() => setSuggestFor({ title: t.title, goalId: t.goalId, projectId: t.projectId })}
+                onSchedule={() => setSuggestFor({ title: t.title, taskId: t.id, goalId: t.goalId, projectId: t.projectId })}
                 highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
               />
             ))}
@@ -426,6 +431,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
       {suggestFor && (
         <ScheduleSuggest
           title={suggestFor.title} testerId={testerId} lat={lat} lon={lon}
+          taskId={suggestFor.taskId}
           goalId={suggestFor.goalId} projectId={suggestFor.projectId} kind="task"
           onClose={() => setSuggestFor(null)}
         />
