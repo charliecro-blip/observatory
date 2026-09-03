@@ -70,6 +70,25 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const qc = useQueryClient();
   const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
+  /**
+   * DUMP MULTIPLE AT ONCE (owner, 2026-08-31: "on the tasks page, i should
+   * be able to dump multiple tasks at once").
+   *
+   * Reuses /api/plan/parse rather than a second parser — Planner's weave
+   * flow already turns a free-text dump into structured tasks (one AI call
+   * for the whole list, falling back to a plain line-split when the model is
+   * unreachable), and a second implementation here is exactly how two
+   * "parse a to-do dump" features would drift into disagreeing about what a
+   * line means.
+   *
+   * PREVIEWED, NOT ADDED BLIND. A parse can misread a line — the model is
+   * asked for its best guess at minutes and energy, not told them — so each
+   * parsed task is shown and can be dropped before anything is written.
+   */
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  interface BulkItem { title: string; estimatedMinutes: number; energy: string; dueDate: string | null; include: boolean; }
+  const [bulkPreview, setBulkPreview] = useState<BulkItem[] | null>(null);
   // After a task is created, offer to find it a good time (→ Ahead calendar).
   const [suggestFor, setSuggestFor] = useState<{ title: string; taskId?: number; goalId?: number; projectId?: number } | null>(null);
   const [newTitle, setNewTitle] = useState("");
@@ -215,6 +234,56 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     },
   });
 
+  const parseBulk = useMutation({
+    mutationFn: async (): Promise<BulkItem[]> => {
+      const r = await fetch("/api/plan/parse", {
+        method: "POST", headers: authH(testerId),
+        body: JSON.stringify({
+          rawList: bulkText,
+          tz: new Date().getTimezoneOffset(),
+          tzName: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      });
+      if (!r.ok) throw new Error(`parse failed (${r.status})`);
+      const { tasks: parsed } = await r.json();
+      return (Array.isArray(parsed) ? parsed : []).map((t: any) => ({
+        title: String(t.title ?? "").trim(),
+        estimatedMinutes: Number.isFinite(t.estimatedMinutes) ? t.estimatedMinutes : 45,
+        energy: typeof t.energy === "string" ? t.energy : "medium",
+        dueDate: typeof t.dueDate === "string" ? t.dueDate : null,
+        include: true,
+      })).filter((t: BulkItem) => t.title);
+    },
+    onSuccess: (items) => setBulkPreview(items),
+  });
+
+  const addBulk = useMutation({
+    mutationFn: async () => {
+      const items = (bulkPreview ?? []).filter(t => t.include);
+      // Sequential, not Promise.all: this is the same POST /api/tasks the
+      // single-add flow uses, one request per task with no batch endpoint —
+      // parallel dozens of writes for one dump is the kind of burst that
+      // turns a convenience feature into load on the same path a normal add
+      // never has to share.
+      for (const t of items) {
+        await fetch("/api/tasks", {
+          method: "POST", headers: authH(testerId),
+          body: JSON.stringify({
+            title: t.title,
+            dueDate: t.dueDate || undefined,
+            estMinutes: t.estimatedMinutes,
+            energy: t.energy,
+          }),
+        });
+      }
+      return items.length;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      setBulkText(""); setBulkPreview(null); setBulkMode(false); setShowAdd(false);
+    },
+  });
+
   const toggle = useMutation({
     mutationFn: async ({id,done}:{id:number;done:boolean}) => {
       await fetch(`/api/tasks/${id}`, { method:"PATCH", headers: authH(testerId), body: JSON.stringify({done:String(done)}) });
@@ -281,7 +350,13 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             return null;
           })()}
         </div>
-        <button onClick={() => { if (!showAdd) setNewDueDate(today); setShowAdd(v => !v); }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
+        <button onClick={() => {
+          if (!showAdd) setNewDueDate(today);
+          // Closing the form loses the mode too, so reopening it always
+          // starts on the single-task input rather than a stray dump.
+          if (showAdd) { setBulkMode(false); setBulkText(""); setBulkPreview(null); }
+          setShowAdd(v => !v);
+        }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
           + New task
         </button>
       </div>
@@ -314,11 +389,23 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 ))} is active today — one of your advisories.
               </div>
             )}
-            <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && newTitle.trim() && addTask.mutate()}
-              placeholder="Task title…"
-              style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,marginBottom:8,background: "var(--color-card-2)"}}
-            />
+            {!bulkMode && (
+              <>
+                <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                  onKeyDown={e => e.key==="Enter" && newTitle.trim() && addTask.mutate()}
+                  placeholder="Task title…"
+                  style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:13,marginBottom:6,background: "var(--color-card-2)"}}
+                />
+                {/* "on the tasks page, i should be able to dump multiple
+                    tasks at once" (owner, 2026-08-31). Reuses the same
+                    parser Planner's weave flow already runs a free-text dump
+                    through — one line each, minutes and energy read as best
+                    guesses rather than typed. */}
+                <button onClick={() => setBulkMode(true)} style={{fontSize:10.5,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:8,textDecoration:"underline"}}>
+                  Add several at once →
+                </button>
+              </>
+            )}
             {/* EVERYTHING BUT THE TITLE IS OPTIONAL, AND NOW FOLDED.
                 This form opened with a date, a best-window select, a length,
                 an energy band, a star, a project and a window link — seven
@@ -326,6 +413,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 the one-line capture on Home is where tasks actually get made.
                 The fields are unchanged and one tap away. What changed is
                 that the form asks your question before it asks the schema. */}
+            {!bulkMode && (
             <Disclosure label="Details…">
               <div style={{display:"flex",gap:8,marginBottom:6}}>
                 <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
@@ -387,13 +475,74 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 </div>
               )}
             </Disclosure>
-            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
-              {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
-              <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
-                style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"var(--color-border)",color:newTitle.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
-                {addTask.isPending ? "Adding…" : "Add task"}
-              </button>
-            </div>
+            )}
+            {!bulkMode && (
+              <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
+                {addTask.isError && <span style={{fontSize:10.5,color:"#a03030"}}>Couldn't add it — try again.</span>}
+                <button onClick={() => newTitle.trim() && addTask.mutate()} disabled={!newTitle.trim()||addTask.isPending}
+                  style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:newTitle.trim()?"#1a2a3a":"var(--color-border)",color:newTitle.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
+                  {addTask.isPending ? "Adding…" : "Add task"}
+                </button>
+              </div>
+            )}
+
+            {/* THE DUMP. A textarea until parsed; a checked, editable-by-
+                removal preview after — nothing is written until "Add N
+                tasks" is pressed, so a bad parse costs a re-read, not a
+                cleanup. */}
+            {bulkMode && !bulkPreview && (
+              <div>
+                <textarea autoFocus value={bulkText} onChange={e => setBulkText(e.target.value)}
+                  placeholder={"One task per line —\ncall the dentist\nsend the invoice by friday, 15 min\nreturn the library books"}
+                  rows={6}
+                  style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12.5,fontFamily:"inherit",background: "var(--color-card-2)",resize:"vertical",boxSizing:"border-box"}}
+                />
+                {parseBulk.isError && <div style={{fontSize:10.5,color:"#a03030",marginTop:6}}>Couldn't read that — try again.</div>}
+                <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginTop:8}}>
+                  <button onClick={() => { setBulkMode(false); setBulkText(""); }} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer"}}>
+                    Or add one at a time
+                  </button>
+                  <button onClick={() => bulkText.trim() && parseBulk.mutate()} disabled={!bulkText.trim()||parseBulk.isPending}
+                    style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:bulkText.trim()?"#1a2a3a":"var(--color-border)",color:bulkText.trim()?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
+                    {parseBulk.isPending ? "Reading…" : "Read the list"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {bulkMode && bulkPreview && (
+              <div>
+                <div style={{fontSize:10.5,color:"var(--text-3)",marginBottom:8}}>
+                  {bulkPreview.length} task{bulkPreview.length===1?"":"s"} found — uncheck any that aren't right, or go back and rewrite the list.
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:10,maxHeight:280,overflowY:"auto"}}>
+                  {bulkPreview.map((t,i) => (
+                    <label key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 6px",borderRadius:6,cursor:"pointer",opacity:t.include?1:0.45}}>
+                      <input type="checkbox" checked={t.include} onChange={e => {
+                        const v = e.target.checked;
+                        setBulkPreview(p => p ? p.map((x,j)=> j===i ? {...x, include:v} : x) : p);
+                      }} style={{marginTop:3,width:13,height:13,accentColor:"#1a2a3a",cursor:"pointer",flexShrink:0}} />
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12.5,color:"var(--color-foreground)"}}>{t.title}</div>
+                        <div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>
+                          {t.estimatedMinutes}m · {t.energy} energy{t.dueDate ? ` · due ${t.dueDate}` : ""}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {addBulk.isError && <div style={{fontSize:10.5,color:"#a03030",marginBottom:6}}>Some of those didn't save — check the list.</div>}
+                <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
+                  <button onClick={() => setBulkPreview(null)} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer"}}>
+                    ← Rewrite the list
+                  </button>
+                  <button onClick={() => addBulk.mutate()} disabled={!bulkPreview.some(t=>t.include)||addBulk.isPending}
+                    style={{padding:"6px 14px",borderRadius:7,border:"none",fontSize:11,background:bulkPreview.some(t=>t.include)?"#1a2a3a":"var(--color-border)",color:bulkPreview.some(t=>t.include)?"#ffffff":"var(--text-3)",cursor:"pointer"}}>
+                    {addBulk.isPending ? "Adding…" : `Add ${bulkPreview.filter(t=>t.include).length} task${bulkPreview.filter(t=>t.include).length===1?"":"s"}`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
