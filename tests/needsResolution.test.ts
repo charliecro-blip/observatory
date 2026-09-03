@@ -21,9 +21,20 @@ describe("what blocks placement", () => {
 
   // A question with no answers is worse than no question.
   it("asks about the activity only where there is a real choice", () => {
-    const r = needsResolution([{ id: "1", title: "Renew the domain" }]);
-    expect(r.needsActivity).toEqual([]);
-    const r2 = needsResolution([{ id: "2", title: "Call the accountant back" }]);
+    // A title with truly nothing to go on gets no candidates and no question.
+    const blank = needsResolution([{ id: "1", title: "xyzzy plugh qwerty" }]);
+    expect(blank.needsActivity).toEqual([]);
+
+    // "Renew the domain" used to be this module's own example of the same
+    // thing — until admin-errands learned "renew" (2026-09-03). It is real
+    // shorthand for real admin work, not the unclassifiable case anymore, and
+    // now offering it as a candidate (not a confident pick — see the sibling
+    // duration test, which still finds no "particular kind") is the fix.
+    const r = needsResolution([{ id: "2", title: "Renew the domain" }]);
+    expect(r.needsActivity).toHaveLength(1);
+    expect(r.needsActivity[0].options.map(o => o.key)).toContain("admin-errands");
+
+    const r2 = needsResolution([{ id: "3", title: "Call the accountant back" }]);
     for (const n of r2.needsActivity) expect(n.options.length).toBeGreaterThan(0);
   });
 

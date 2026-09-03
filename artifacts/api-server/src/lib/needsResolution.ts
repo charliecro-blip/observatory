@@ -104,6 +104,13 @@ export function needsResolution(items: ResolvableItem[]): Resolution {
     // question behind classification meant those items could never become
     // placeable, and the person was shown a question with no answers.
     //
+    // "Renew the domain" stopped being one of the four once admin-errands
+    // learned "renew" as a keyword (2026-09-03, the shorthand-coverage pass)
+    // — it now offers admin-errands as a low-confidence candidate rather than
+    // nothing, which is the fix working rather than a regression of this one.
+    // The general shape survives regardless: SOME real task, on SOME day, will
+    // always be a title these tables have never seen.
+    //
     // They do not need an activity to be placed. Without one they simply get no
     // astrological preference — a practical first-fit slot, which is an honest
     // answer for "renew the domain" and far better than a permanent refusal.

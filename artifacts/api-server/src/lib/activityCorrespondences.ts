@@ -450,7 +450,21 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     houses: [6], phase: "waning", voc: "neutral", mercuryRx: "favor", windowType: "admin",
     gloss: "Rx loves re- words: repair, revisit, restore." }),
   A({ key: "admin-errands", label: "Admin & errands", category: "craft",
-    keywords: ["errands", "admin", "paperwork", "forms", "appointments", "calls"],
+    // Widened 2026-09-03 (owner: "make dr's appt" returned no signature at
+    // all — "i think the language, even tho it's shorthand here, should be
+    // able to be deciphered by the app!"). Single-word entries match as whole
+    // TOKENS (see associate.ts), so "dr" cannot false-positive inside "drive"
+    // or "draft" — the tokenizer already splits "dr's" into "dr" and "s".
+    // Real shorthand a person actually types, not a list built from the
+    // dictionary: appt/apt, book, confirm, renew, RSVP, the DMV-adjacent
+    // world, bills and prescriptions.
+    keywords: ["errands", "errand", "admin", "paperwork", "forms", "form",
+      "appointments", "appointment", "appt", "apt",
+      "doctor", "dr", "dentist", "dmv",
+      "book", "reschedule", "confirm", "renew", "rsvp",
+      "license", "registration", "insurance",
+      "bill", "bills", "pay", "prescription", "refill", "pharmacy",
+      "calls", "call"],
     element: "air", planets: { Mercury: 1.0 }, hourRulers: ["Mercury"],
     aspects: "soft", signs: { Gemini: "many small currents", Virgo: "the list" },
     houses: [3, 6], phase: null, voc: "avoid", mercuryRx: "soft", windowType: "admin",
@@ -737,10 +751,20 @@ export function matchActivity(text: string): { activity: ActivityCorrespondence;
   for (const a of ACTIVITIES) {
     let score = 0;
     for (const k of a.keywords) {
-      if (t.includes(k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
+      // WORD-BOUNDARY, not substring — the same `hasWord` rankActivities
+      // already uses, and the reason this matters is not hypothetical: with
+      // raw `.includes()`, the keyword "forms" (already on admin-errands)
+      // matches inside "informs", "performs", "platforms", "transforms" —
+      // any task mentioning any of those was silently pulled toward admin
+      // work. Widening admin-errands' keywords to cover real shorthand
+      // ("dr", "book", "bill") would have made the substring hole worse
+      // rather than better — "dr" alone matches "address", "hydrate",
+      // "bedroom" — so the matcher is the thing that had to change, not just
+      // the keyword list riding on top of it.
+      if (hasWord(t, k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
     }
     for (const w of a.label.toLowerCase().split(/[^a-z]+/)) {
-      if (w.length >= 4 && t.includes(w)) score += 0.5;
+      if (w.length >= 4 && hasWord(t, w)) score += 0.5;
     }
     if (score > 0 && (!best || score > best.score)) best = { activity: a, score };
   }
