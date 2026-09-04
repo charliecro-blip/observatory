@@ -482,6 +482,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const [quickTitle, setQuickTitle] = useState("");
   // After a linked task/habit is created, offer to find it a good time.
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId: number; kind: "task" | "habit" } | null>(null);
+  // Which star's element is currently open for editing. A diagnosed element
+  // can be wrong (an AI read from the title/description at creation time),
+  // and there was no way back in short of deleting and recreating the star.
+  const [editingElement, setEditingElement] = useState<number | null>(null);
   const createLinked = useMutation({
     mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
       const r = kind === "task"
@@ -946,7 +950,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
                         return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 10.5, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;
                       })()}
-                      {info && <span style={{ fontSize: 10.5, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
+                      {info && (
+                        <button onClick={() => setEditingElement(editingElement === g.id ? null : g.id)}
+                          title="Not the right element? Click to change it"
+                          style={{ fontSize: 10.5, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8, border: "none", cursor: "pointer" }}>{info.name}</button>
+                      )}
                     </div>
                     {/* HOLDING or MOVING, as a word, under the name.
                         The distinction lives in `endsOn` — null is something
@@ -1011,14 +1019,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         </label>
                       )}
                     </div>
-                    {!g.element && (
-                      <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                    {(!g.element || editingElement === g.id) && (
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
                         {Object.entries(ELEMENT_INFO).map(([key, ei]) => (
-                          <button key={key} onClick={() => setElement.mutate({ id: g.id, element: key })} style={{
+                          <button key={key} onClick={() => { setElement.mutate({ id: g.id, element: key }); setEditingElement(null); }} style={{
                             fontSize: 10.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
-                            border: "1px solid #e0dad0", background: "var(--color-card-2)", color: "var(--text-3)",
+                            border: key === g.element ? `1px solid ${ei.color}` : "1px solid #e0dad0",
+                            background: key === g.element ? `${ei.color}14` : "var(--color-card-2)",
+                            color: key === g.element ? ei.color : "var(--text-3)",
                           }}>{ei.label}</button>
                         ))}
+                        {editingElement === g.id && (
+                          <button onClick={() => setEditingElement(null)} style={{
+                            fontSize: 10.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+                            border: "none", background: "none", color: "var(--text-3)",
+                          }}>never mind</button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -259,7 +259,10 @@ export const DEFAULT_PREFS: TidesPreferences = {
     // else starts open; a module nobody has met yet should not be hidden.
     collapsedModules: ["reading", "tide"],
     rhythm: "tide",
-    showLog: true,
+    // Off (owner 2026-09-03): still fully built, still user-toggleable in
+    // Settings — "nothing is deleted" per showLog's own doc comment above —
+    // just not the default while it's set aside to explore other options.
+    showLog: false,
   },
   timing: {
     watchPlanets: [],

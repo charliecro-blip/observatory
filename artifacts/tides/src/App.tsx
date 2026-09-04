@@ -1303,7 +1303,7 @@ function Shell() {
   // old essential-density "⋯" reveal (which held Log and Planets) is gone.
   // The Log is optional (owner 2026-08-21): off hides the tab, and a view
   // left pointing at it goes home rather than at a tab that is not there.
-  const showLog = usePreferences().prefs.display.showLog ?? true;
+  const showLog = usePreferences().prefs.display.showLog ?? false;
   const navTabs = showLog ? TOP_TABS : TOP_TABS.filter(t => t.id !== "log");
   useEffect(() => { if (!showLog && view === "log") setView("home"); }, [showLog, view]);
   // Usage analytics: which surface is being used (owner 2026-07-20).
@@ -1683,10 +1683,10 @@ function Shell() {
         )}
 
         {/* Main content */}
-        {/* "habits" is not a view — it is the Stars tab opened on its habits
-            sub-tab. Home's summaries name where they go, so the door has to
-            actually land there. */}
-        {view==="home"     && <Home     onStartSession={(title: string) => setSessionOn({ title })} testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits") { setWorkSeedTab("habits"); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
+        {/* "habits"/"tasks" are not views — they are the Stars tab opened on
+            the matching sub-tab. Home's summaries name where they go, so the
+            door has to actually land there. */}
+        {view==="home"     && <Home     onStartSession={(title: string) => setSessionOn({ title })} testerId={testerId} lat={lat} lon={lon} firstRun={firstRun} onOpenStar={openStar} onNavigate={(v)=>{ if (v === "habits" || v === "tasks") { setWorkSeedTab(v); setView("work"); } else if (v === "almanac") { setOpenAlmanac(true); setView("launch"); } else { setOpenAlmanac(false); setView(v as View); } }} onAskAboutElection={askAboutElection} onQuickCapture={()=>setCapture(true)}/>}
         {view==="calendar" && <Calendar testerId={testerId} now={now} lat={lat} lon={lon} locationKnown={locationKnown} onNavigate={(v) => setView(v as View)}/>}
         {/* THE LOG IS ITS OWN DESTINATION (owner, 2026-08-20). It was a
             sub-tab of Calendar, which put the record of how things went
