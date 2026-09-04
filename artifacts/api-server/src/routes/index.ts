@@ -44,7 +44,10 @@ import engineRouter from "./engine";
 import positionFixRouter from "./positionFix";
 import customActivitiesRouter from "./customActivities";
 
+import timingRouter from "./timing";
+
 const router: IRouter = Router();
+router.use(timingRouter);
 
 router.use(healthRouter);
 router.use(logsRouter);

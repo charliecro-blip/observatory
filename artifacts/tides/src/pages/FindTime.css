@@ -1,0 +1,314 @@
+.timing-shell {
+  min-height: 100dvh;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: inherit;
+}
+.timing-header {
+  max-width: 1160px;
+  margin: auto;
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+.timing-brand {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.timing-account {
+  position: relative;
+}
+.timing-account summary {
+  cursor: pointer;
+}
+.timing-account button {
+  position: absolute;
+  right: 0;
+  top: 32px;
+  z-index: 2;
+  background: var(--color-card);
+}
+.timing-main {
+  max-width: 1060px;
+  margin: auto;
+  padding: 52px 32px 90px;
+}
+.timing-intro {
+  max-width: 680px;
+}
+.timing-kicker {
+  color: var(--color-muted);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.timing-intro h1 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.15;
+  margin: 14px 0;
+}
+.timing-intro > p:last-child {
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 26px;
+}
+.timing-shell button {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: var(--color-card);
+  color: var(--color-foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+}
+.timing-shell button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.timing-shell button:focus-visible,
+.timing-shell input:focus-visible,
+.timing-shell textarea:focus-visible,
+.timing-shell select:focus-visible,
+.timing-shell summary:focus-visible {
+  outline: 2px solid #ab8847;
+  outline-offset: 3px;
+}
+.timing-question {
+  max-width: 720px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.timing-question label {
+  width: 100%;
+  font-size: 13px;
+}
+.timing-shell input,
+.timing-shell select,
+.timing-shell textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font: inherit;
+  padding: 12px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.timing-question textarea {
+  width: 100%;
+  font-size: 18px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.timing-question > button,
+.timing-interpretation > button,
+.timing-shell .timing-choose {
+  background: #223c3c;
+  color: #fff;
+  border-color: #223c3c;
+}
+.timing-examples {
+  max-width: 750px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.timing-examples button {
+  font-size: 12px;
+  background: transparent;
+}
+.timing-interpretation {
+  padding: 24px;
+  margin: 28px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-card);
+}
+.timing-main h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 18px;
+}
+.timing-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 2fr) minmax(
+      0,
+      1fr
+    );
+  gap: 12px;
+}
+.timing-fields label {
+  min-width: 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.timing-fields input,
+.timing-fields select {
+  width: 100%;
+  font-size: 14px;
+}
+.timing-note,
+.timing-availability {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+.timing-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: 18px 0;
+}
+.timing-interpretation > button {
+  margin-top: 14px;
+}
+.timing-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+}
+.timing-results-header button[aria-pressed="true"] {
+  background: var(--color-border);
+}
+.timing-candidates {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+.timing-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.timing-week {
+  display: flex;
+  overflow-x: auto;
+  align-items: flex-start;
+  padding-bottom: 14px;
+}
+.timing-day {
+  flex: 0 0 300px;
+}
+.timing-day > h3 {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.timing-day .timing-card {
+  margin-bottom: 12px;
+}
+.timing-card {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-card);
+  font-size: 14px;
+  line-height: 1.6;
+  min-width: 0;
+}
+.timing-card h3 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 500;
+}
+.timing-end {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 5px;
+}
+.timing-card summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.timing-card pre {
+  font-size: 11px;
+  overflow: auto;
+  max-height: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.timing-card ul {
+  padding-left: 18px;
+}
+.timing-card .timing-choose {
+  margin-top: 18px;
+}
+.timing-qualification {
+  border-left: 2px solid #ab8847;
+  padding-left: 12px;
+}
+.timing-qualification strong {
+  font-size: 13px;
+}
+.timing-error {
+  padding: 16px;
+  border: 1px solid #ae6666;
+  border-radius: 8px;
+}
+.timing-confirmation {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #73968c;
+  border-radius: 12px;
+}
+.timing-confirmation p {
+  line-height: 1.6;
+}
+@media (max-width: 700px) {
+  .timing-main {
+    padding: 32px 18px 70px;
+  }
+  .timing-header {
+    padding: 20px 18px;
+  }
+  .timing-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .timing-fields label:first-child {
+    grid-column: 1/-1;
+  }
+  .timing-list {
+    grid-template-columns: 1fr;
+  }
+  .timing-interpretation,
+  .timing-card {
+    padding: 18px;
+  }
+  .timing-week .timing-day {
+    flex-basis: 82vw;
+  }
+  .timing-shell input,
+  .timing-shell select {
+    font-size: 16px;
+  }
+}
+
+.timing-comparison-inputs {
+  border: 1px solid var(--border, #d5d0c5);
+  padding: 1rem;
+  min-width: 0;
+  margin: 1rem 0;
+}
+.timing-comparison-inputs > div {
+  margin: 1rem 0;
+}
+.timing-comparison-inputs label {
+  display: grid;
+  gap: 0.5rem;
+}
+.timing-comparison-inputs input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}

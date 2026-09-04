@@ -35,6 +35,7 @@ import { parseWhen, formatDueChip } from "@/lib/parseWhen";
 import { localDateStr } from "@/lib/dates";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import Home from "@/pages/Home";
+import FindTime from "@/pages/FindTime";
 import { useDialog } from "@/hooks/useDialog";
 
 type WorkTab = "overview" | "tasks" | "habits" | "bearings";
@@ -1292,6 +1293,27 @@ function fmtHour12(hhmm: string): string {
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 function Shell() {
+  const { profile, isReady, showModal } = useTester();
+  const [workspace, setWorkspace] = useState(() => localStorage.getItem("compass_workspace_default") === "true");
+  const { data: timing, isLoading: timingLoading } = useQuery<{ enabled: boolean }>({
+    queryKey: ["timing-config", profile?.testerId],
+    queryFn: async () => {
+      const r = await fetch("/api/timing/config", { headers: { "x-tester-id": profile!.testerId } });
+      if (!r.ok) return { enabled: false };
+      return r.json();
+    },
+    enabled: !!profile?.testerId && isReady && !showModal,
+  });
+  const setDefault = (value: boolean) => { setWorkspace(value); localStorage.setItem("compass_workspace_default", String(value)); };
+  if (profile && isReady && !showModal && timingLoading) return <p role="status" style={{ padding: 32 }}>Opening Compass…</p>;
+  if (timing?.enabled && profile && isReady && !showModal) {
+    if (!workspace) return <FindTime onWorkspace={() => setDefault(true)} />;
+    return <><div style={{ padding: "8px 16px", background: "var(--color-card)" }}><button onClick={() => setDefault(false)}>Find a time</button></div><WorkspaceShell /></>;
+  }
+  return <WorkspaceShell />;
+}
+
+function WorkspaceShell() {
   const { profile, isReady, showModal, createAndApply, lat, lon, locationKnown, sessionBlocked, openModal } = useTester();
   const testerId = profile?.testerId ?? null;
   const [view, setView] = useState<View>("home");

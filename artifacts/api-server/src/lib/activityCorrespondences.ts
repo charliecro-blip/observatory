@@ -1,3 +1,5 @@
+import { ROMANTIC_TIME, relationshipActivityKey } from "./romanticTime.js";
+
 /**
  * Activity correspondences — the canonical activity → astrology table
  * (owner 2026-07-20). One extensive list, three consumers:
@@ -124,6 +126,7 @@ const MODE_BY_KEY: Record<string, ActivityMode> = {
   "negotiate": "execution",
   "hard-conversation": "execution",
   "deepen-bond": "execution",
+  "romantic-time": "execution",
   // Going out to meet people is repeatable and low-stakes — you can do it
   // again next week, so no inception cap belongs on it.
   "meet-someone-new": "execution",
@@ -495,6 +498,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     aspects: "soft", signs: { Libra: "partnered air", Leo: "warm stage-light", Taurus: "the senses", Pisces: "the glow" },
     houses: [5, 7], phase: "waxing", voc: "avoid", mercuryRx: null, windowType: "relationship",
     gloss: "Moon applying to Venus, evening tide — the oldest election there is." }),
+  ROMANTIC_TIME,
   A({ key: "deepen-bond", label: "Deepen a bond", category: "love",
     keywords: ["quality time", "anniversary", "partner", "connect deeply", "us time", "dinner with", "drinks with", "lunch with", "coffee with", "evening with", "walk with"],
     element: "water", planets: { Venus: 1.0, Moon: 0.8 }, hourRulers: ["Venus", "Moon"],
@@ -710,6 +714,8 @@ function hasWord(haystack: string, word: string): boolean {
 }
 
 export function rankActivities(text: string, limit = 3): { activity: ActivityCorrespondence; score: number }[] {
+  const relationship = relationshipActivityKey(text);
+  if (relationship) return [{ activity: activityByKey(relationship)!, score: 3 }].slice(0, limit);
   const t = ` ${text.toLowerCase()} `;
   const scored: { activity: ActivityCorrespondence; score: number }[] = [];
   for (const a of ACTIVITIES) {
@@ -746,6 +752,8 @@ export function rankActivities(text: string, limit = 3): { activity: ActivityCor
 }
 
 export function matchActivity(text: string): { activity: ActivityCorrespondence; score: number } | null {
+  const relationship = relationshipActivityKey(text);
+  if (relationship) return { activity: activityByKey(relationship)!, score: 3 };
   const t = ` ${text.toLowerCase()} `;
   let best: { activity: ActivityCorrespondence; score: number } | null = null;
   for (const a of ACTIVITIES) {

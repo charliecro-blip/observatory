@@ -847,3 +847,45 @@ No streak or challenge framing (no "day 3 of 7 — don't break it"), nothing
 competitive, nothing that reads as an ultimatum from the sky, and no cell that
 only makes sense for someone who already knows astrology — these lines are
 shown at the medium lens and must pass the stranger test.
+
+## Phase A timing prototype · 2026-09-04
+
+Feature-flagged local prototype; the existing Workspace copy remains in place. New interface copy was checked with the repository's no-ai-slop skill.
+
+| Surface | Copy |
+| --- | --- |
+| Heading | What would you like to do? |
+| Description | Find astrological openings for something you have in mind. |
+| Input | Your request |
+| Placeholder / example | Three hours of deep work this weekend |
+| Additional examples | Write tomorrow · A first date Saturday |
+| Interpretation actions | Review request · Find times |
+| Editable fields | Activity · From · Until · Duration in minutes |
+| Results | Possible times · List · Week · Why this? |
+| Choice | Choose this time · Chosen · Saved to Compass |
+| Confirmation | Your chosen time is in Workspace Calendar. |
+| Export | Download calendar event |
+| Export status | The calendar file was offered for download. Import it into your calendar to add the event. |
+| Calendar check | Check against my calendar |
+| Availability | Calendar not checked · No conflicts found in Google Calendar · Busy then |
+| Calendar failure | Calendar unavailable; free time could not be checked |
+| No result | No full opening was returned for this request. Try another range or review the duration. |
+| Unsupported interpretation | Compass does not have a clear timing match for this request. You can choose an activity below if one fits. |
+| Optional context | Include my birth chart if available |
+| Session omission | Your birth chart was not used for this duration search. |
+
+Variable qualification, failure, coverage, and evidence copy lives in `src/pages/FindTime.tsx`; session result explanations live in `../api-server/src/lib/timingPresentation.ts`. The owner-approved romantic-time correspondence is kept separately in `../api-server/src/lib/romanticTime.ts`. The canonical evidence remains underneath Why this?, and its technical fields are available in the nested Full evidence disclosure.
+
+Owner approval on 2026-09-04 activated romantic-time in the canonical catalogue. Explicit date-night wording resolves to Time with your partner; explicit first dates keep their existing rules. The pending-review message was removed.
+
+## Supplied-time comparison (Phase A.5)
+
+Entry: “Compare times I already have in mind.” Two to six start times share one activity and elapsed duration, within the displayed From/Until range.
+
+“Times stay in the order you enter them; Compass does not select a winner. Duration is elapsed time, including any daylight-saving clock change.”
+
+Results: “Your times compared.” “Compare the readings and qualifications below. Similar readings may give you no astrological preference between these times.”
+
+Evidence: “This reading assesses the supplied interval. It does not establish a favorable opening or rank it against the other times.”
+
+Chart qualification: “Your birth chart was not used for this comparison.” The existing qualification, calendar, choose, and export copy is reused.

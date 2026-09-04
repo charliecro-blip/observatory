@@ -34,7 +34,7 @@
 import { dayTimeline, containers, type TimelineEvent, type Commitment } from "./dayTimeline.js";
 import { dayBoundsIn, dayBoundsInZone } from "./localClock.js";
 import { activityByKey, modeOf } from "./activityCorrespondences.js";
-import { evaluateActivityInterval, skyEventRole } from "./electionEngine.js";
+import { evaluateActivityInterval, skyEventRole, type ActivityAssessment } from "./electionEngine.js";
 import { SIGNS, moonLongitude, julianDay, getPlanetaryHour, getSunriseSunset } from "./astro.js";
 
 /** Classical antipathy: fire opposes water, air opposes earth. */
@@ -57,6 +57,8 @@ export interface SessionArcChapter {
 }
 
 export interface SessionCandidate {
+  /** Canonical evidence for these exact bounds; not anchor evidence. */
+  assessment: ActivityAssessment;
   startAt: Date;
   endAt: Date;
   durationMinutes: number;
@@ -126,6 +128,9 @@ function arcOf(
 }
 
 export interface FindLongSessionsOpts {
+  /** Optional exact search bounds, applied before candidate selection. */
+  startAt?: Date;
+  endAt?: Date;
   activityKey: string;
   minutes: number;
   date: Date;
@@ -149,7 +154,12 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
 
   const events = dayTimeline({ ...opts, commitments, locationKnown });
   const [dayStart, dayEnd] = timeZone ? dayBoundsInZone(date, timeZone) : dayBoundsIn(date, tzOffsetMin);
-  const cs = containers(events, dayStart, dayEnd);
+  const cs = containers(events, dayStart, dayEnd).map(c => {
+    const startAt = new Date(Math.max(+c.startAt, +(opts.startAt ?? dayStart)));
+    const endAt = new Date(Math.min(+c.endAt, +(opts.endAt ?? dayEnd)));
+    return { ...c, startAt, endAt, minutes: (+endAt - +startAt) / 60000,
+      inside: c.inside.filter(e => e.at >= startAt && e.at <= endAt) };
+  }).filter(c => c.minutes > 0);
 
   // Background: the Moon's sign holds for ~2.5 days, so it cannot discriminate
   // between blocks WITHIN a day. It is a prior on the day, not a filter — a
@@ -245,7 +255,7 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       const anchorEvent = anchors.find(e => preferred.has(String(e.detail?.planet ?? ""))) ?? anchors[0];
 
       candidates.push({
-        startAt, endAt, durationMinutes: minutes,
+        assessment, startAt, endAt, durationMinutes: minutes,
         uninterrupted: true,                 // it came from inside one container
         backgroundFit, suitability, suitabilityReasons: reasons,
         anchor: anchorEvent ? {
@@ -280,7 +290,7 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       shortfall: {
         longestMinutes: longestAvailable,
         candidate: longest && shortAssessment ? {
-          startAt: longest.startAt, endAt: longest.endAt, durationMinutes: longest.minutes,
+          assessment: shortAssessment, startAt: longest.startAt, endAt: longest.endAt, durationMinutes: longest.minutes,
           uninterrupted: true,
           backgroundFit: shortAssessment.backgroundFit,
           suitability: shortAssessment.suitability,

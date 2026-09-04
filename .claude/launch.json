@@ -4,23 +4,13 @@
     {
       "name": "tides",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "@workspace/tides",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--filter", "@workspace/tides", "run", "dev"],
       "port": 5174
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "@workspace/api-server",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
       "port": 3000
     },
     {
@@ -55,7 +45,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "PORT=3001 COMPASS_TOFU_DEADLINE=2099-01-01T00:00:00Z DATABASE_URL=postgres://localhost:5432/compass_scratch pnpm --filter @workspace/api-server run dev"
+        "PORT=3001 TIMING_SEARCH_ENABLED=true TIMING_SEARCH_TESTER_IDS=* COMPASS_TOFU_DEADLINE=2099-01-01T00:00:00Z DATABASE_URL=postgres://localhost:5432/compass_scratch pnpm --filter @workspace/api-server run dev"
       ],
       "port": 3001
     },

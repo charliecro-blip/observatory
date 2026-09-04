@@ -568,15 +568,16 @@ export function evaluateActivityInterval(opts: {
   // exactly the fabrication the house rules forbid. A caller holding a chart
   // still gets those from computeElections.
   const families: SourceFamily[] = [];
-  const hourRuler = act.hourRulers?.length
-    ? getPlanetaryHour(new Date((startAt.getTime() + endAt.getTime()) / 2)).ruler
+  const hourRuler = act.hourRulers?.length && opts.lat != null && opts.lon != null
+    ? getPlanetaryHour(new Date((startAt.getTime() + endAt.getTime()) / 2), opts.lat, opts.lon).ruler
     : null;
   if (hourRuler && act.hourRulers.includes(hourRuler)) families.push("planetary-time");
   if (act.signs?.[moonSign]) families.push("lunar-condition");
   const sigSet = new Set(sigPlanets);
   if (sigSet.size) {
-    const dayStart = new Date(startAt); dayStart.setHours(0, 0, 0, 0);
-    const perfects = moonPerfectionsForDay(dayStart.getTime())
+    const dayStart = new Date(startAt); dayStart.setUTCHours(0, 0, 0, 0);
+    const perfects = Array.from({ length: Math.ceil((+endAt - +dayStart) / 86400000) }, (_, i) =>
+      moonPerfectionsForDay(+dayStart + i * 86400000)).flat()
       .some(ev => sigSet.has(ev.planet)
         && ev.timeMs >= startAt.getTime() && ev.timeMs <= endAt.getTime());
     if (perfects) families.push("lunar-contact");
@@ -585,8 +586,9 @@ export function evaluateActivityInterval(opts: {
   // Reinforcing, on the same measured grounds as in the window engine: 309 of
   // them a week at one place is not scarce enough to establish convergence.
   if (sigSet.size && opts.lat != null && opts.lon != null) {
-    const dayStart = new Date(startAt); dayStart.setHours(0, 0, 0, 0);
-    const onAngle = crossingsForDay(dayStart.getTime(), opts.lat, opts.lon)
+    const dayStart = new Date(startAt); dayStart.setUTCHours(0, 0, 0, 0);
+    const onAngle = Array.from({ length: Math.ceil((+endAt - +dayStart) / 86400000) }, (_, i) =>
+      crossingsForDay(+dayStart + i * 86400000, opts.lat!, opts.lon!)).flat()
       .some(x => sigSet.has(x.planet)
         && Date.parse(x.crossingTime) >= startAt.getTime()
         && Date.parse(x.crossingTime) <= endAt.getTime());

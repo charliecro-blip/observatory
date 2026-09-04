@@ -98,9 +98,11 @@ export const planningWindows = pgTable("planning_windows", {
   completedAt: timestamp("completed_at", { withTimezone: true }), // null = scheduled, not yet done
   adHoc: boolean("ad_hoc").notNull().default(false), // logged outside the schedule
   notes: text("notes"),
+  choiceKey: text("choice_key"),
+  timingProvenance: jsonb("timing_provenance"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex("planning_windows_choice_key_idx").on(t.testerId, t.choiceKey)]);
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),

@@ -63,7 +63,7 @@ const EXPLICIT_EXECUTION = new Set([
   "train-hard", "endurance", "intimacy", "deep-study", "first-draft", "learn-skill",
   "strategize", "teach-present", "deep-work", "negotiate", "hard-conversation",
   "deepen-bond", "host", "network", "call-family", "cook", "beautify", "garden",
-  "divination",
+  "divination", "romantic-time",
   // Added with the dating activities (2026-08-13). Both are repeatable and
   // carry no binding start: going out to meet people can be done again next
   // week, and the where-is-this-going talk names a thing that already exists
