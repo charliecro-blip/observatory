@@ -9,6 +9,8 @@ export function interpretTimingActivity(text: string) {
   };
   if (/\b(psychedelic|psilocybin|ayahuasca|lsd|mushroom trip)\b/i.test(text))
     return { state: "unsupported", options: [] };
+  if (/\b(work[ -]?out|gym|training session)\b/i.test(text))
+    return { state: "resolved", options: [option("train-hard")!] };
   const relationship = relationshipActivityKey(text);
   if (relationship)
     return { state: "resolved", options: [option(relationship)!] };

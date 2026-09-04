@@ -889,3 +889,9 @@ Results: “Your times compared.” “Compare the readings and qualifications b
 Evidence: “This reading assesses the supplied interval. It does not establish a favorable opening or rank it against the other times.”
 
 Chart qualification: “Your birth chart was not used for this comparison.” The existing qualification, calendar, choose, and export copy is reused.
+
+## Query interpretation
+
+A clear request runs immediately after one action. The interpreted activity appears as a plain confirmation rather than a catalogue control. An ambiguous request shows only its likely choices as buttons.
+
+Unknown activity: “Compass does not recognize this activity yet. Try describing it another way.”

@@ -312,3 +312,18 @@
   min-width: 0;
   box-sizing: border-box;
 }
+.timing-activity-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.75rem 0 1rem;
+}
+.timing-activity-confirmed {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.75rem 0 1rem;
+}
+.timing-activity-confirmed span {
+  color: var(--muted, #777267);
+  font-size: 0.85rem;
+}

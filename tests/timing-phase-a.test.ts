@@ -39,6 +39,12 @@ describe("Phase A interpretation", () => {
       interpretTimingActivity("Three hours of deep work this weekend"),
     ).toMatchObject({ state: "resolved", options: [{ key: "deep-work" }] });
   });
+  it("understands a general workout request without exposing the activity catalogue", () => {
+    expect(interpretTimingActivity("A time to workout this weekend")).toEqual({
+      state: "resolved",
+      options: [{ key: "train-hard", label: "Hard training" }],
+    });
+  });
   it("keeps Sunday inside this weekend rather than jumping ahead", () => {
     const r = interpretTimingRange(
       "Three hours this weekend",

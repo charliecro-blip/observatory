@@ -90,6 +90,9 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   const [suppliedStarts, setSuppliedStarts] = useState(["", ""]);
   const [useNatal, setUseNatal] = useState(false);
   const [interpretation, setInterpretation] = useState("");
+  const [activityOptions, setActivityOptions] = useState<
+    { key: string; label: string }[]
+  >([]);
   const [response, setResponse] = useState<TimingResponse | null>(null);
   const [query, setQuery] = useState<Query | null>(null);
   const [view, setView] = useState<"list" | "week">("list");
@@ -138,16 +141,20 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
     setExported(false);
     try {
       const result = await post("interpret", { text: value });
-      setDraft(interpretTimingRange(value, new Date()));
+      const nextDraft = interpretTimingRange(value, new Date());
+      const nextActivity =
+        result.state === "resolved" ? result.options[0].key : "";
+      setDraft(nextDraft);
       setCompare(false);
       setSuppliedStarts(["", ""]);
-      setActivity(result.state === "resolved" ? result.options[0].key : "");
+      setActivity(nextActivity);
+      setActivityOptions(result.options);
       setInterpretation(
         result.state === "resolved"
           ? ""
           : result.state === "ambiguous"
             ? "Which activity did you mean? Choose one below."
-            : "Compass does not have a clear timing match for this request. You can choose an activity below if one fits.",
+            : "Compass does not recognize this activity yet. Try describing it another way.",
       );
       queryId.current = crypto.randomUUID();
       if (result.state === "unsupported")
@@ -155,14 +162,21 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
           queryId: queryId.current,
           category: result.state,
         });
+      if (result.state === "resolved")
+        await search(false, nextDraft, nextActivity, false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
-  async function search(checkCalendar = false) {
-    if (!draft || !activity) return;
+  async function search(
+    checkCalendar = false,
+    searchDraft = draft,
+    searchActivity = activity,
+    searchCompare = compare,
+  ) {
+    if (!searchDraft || !searchActivity) return;
     setBusy(true);
     setError("");
     setChosen(null);
@@ -172,18 +186,18 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
         checkCalendar && query
           ? { ...query, checkCalendar: true }
           : {
-              activity,
-              start: new Date(draft.start).toISOString(),
-              end: new Date(draft.end).toISOString(),
+              activity: searchActivity,
+              start: new Date(searchDraft.start).toISOString(),
+              end: new Date(searchDraft.end).toISOString(),
               timeZone,
-              ...(draft.duration
-                ? { durationMinutes: Number(draft.duration) }
+              ...(searchDraft.duration
+                ? { durationMinutes: Number(searchDraft.duration) }
                 : {}),
-              ...(compare
+              ...(searchCompare
                 ? {
                     candidateIntervals: suppliedStarts.map((start) => ({
                       start: new Date(start).toISOString(),
-                      end: comparisonEnd(start, draft.duration)!,
+                      end: comparisonEnd(start, searchDraft.duration)!,
                     })),
                   }
                 : {}),
@@ -522,25 +536,39 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
               />
               Compare times I already have in mind
             </label>
+            {!activity && activityOptions.length > 0 && (
+              <div
+                className="timing-activity-choices"
+                role="group"
+                aria-label="Activity choices"
+              >
+                {activityOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => {
+                      setActivity(option.key);
+                      setInterpretation("");
+                      setResponse(null);
+                      void search(false, draft, option.key, false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {activity && (
+              <p className="timing-activity-confirmed">
+                <span>Activity</span>
+                <strong>
+                  {activityOptions.find((o) => o.key === activity)?.label ??
+                    catalogue?.activities.find((o) => o.key === activity)
+                      ?.label}
+                </strong>
+              </p>
+            )}
             <div className="timing-fields">
-              <label>
-                Activity
-                <select
-                  required
-                  value={activity}
-                  onChange={(e) => {
-                    setActivity(e.target.value);
-                    setResponse(null);
-                  }}
-                >
-                  <option value="">Choose an activity</option>
-                  {catalogue?.activities.map((a) => (
-                    <option key={a.key} value={a.key}>
-                      {a.key === "first-date" ? "A first date" : a.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label>
                 From
                 <input
@@ -600,9 +628,7 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
                         onChange={(e) => {
                           const value = e.target.value;
                           setSuppliedStarts((current) =>
-                            current.map((v, n) =>
-                              n === i ? value : v,
-                            ),
+                            current.map((v, n) => (n === i ? value : v)),
                           );
                           setResponse(null);
                         }}
