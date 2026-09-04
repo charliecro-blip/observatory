@@ -21,8 +21,9 @@ const n360 = (d: number) => ((d % 360) + 360) % 360;
 const fold = (a: number, b: number) => { const d = Math.abs(n360(a - b)); return d > 180 ? 360 - d : d; };
 
 // The profected house as a navigation theme — where the year runs, said the
-// way a navigator would, not a textbook.
-const HOUSE_THEME: Record<number, string> = {
+// way a navigator would, not a textbook. Exported: almanac.ts reuses this
+// exact table for "which house" context, rather than growing a second one.
+export const HOUSE_THEME: Record<number, string> = {
   1: "the self — body, direction, how you begin",
   2: "livelihood — money, worth, what you keep",
   3: "the daily word — skills, siblings, short roads",

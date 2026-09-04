@@ -1,7 +1,9 @@
 import {
   julianDay, SIGNS, sunLongitude, moonLongitude, isRetrograde, eclipseWindow,
+  getPlanetPositions, getNextAngularCrossings, isSignificantCrossing,
 } from "./astro.js";
 import { transitSpans, SCAN_AHEAD } from "./transitSpans.js";
+import { HOUSE_THEME } from "./positionFix.js";
 
 // ── The almanac: the sky's own calendar, independent of anyone's task list ───
 //
@@ -22,7 +24,7 @@ import { transitSpans, SCAN_AHEAD } from "./transitSpans.js";
 
 export type AlmanacEntry = {
   at: string;                                   // ISO instant; client formats in its own zone
-  kind: "lunation" | "quarter" | "station" | "ingress" | "aspect";
+  kind: "lunation" | "quarter" | "station" | "ingress" | "aspect" | "crossing";
   title: string;
   /** For an aspect row, the same fact in the app's own words. Absent on rows
    *  whose title is already plain (a Full Moon needs no second phrasing). */
@@ -35,6 +37,16 @@ export type AlmanacEntry = {
   endDate?: string;
   /** Aspects only: today sits inside the window. */
   active?: boolean;
+  /**
+   * WHICH HOUSE, when a natal chart is on file — the answer to "where is it"
+   * (owner 2026-09-03: "it just says new moon — but where is it?"). Whole-sign:
+   * purely the transiting sign against the Ascendant's, no cusp math needed.
+   * Absent whenever no chart was given to buildAlmanac, same as every other
+   * personal field in this app — an impersonal fact stays impersonal rather
+   * than guessing a house nobody confirmed.
+   */
+  house?: number;
+  houseTheme?: string;
 };
 
 /**
@@ -97,8 +109,11 @@ function aspectEntries(now: Date, tzOffsetMin: number, endJd: number, jdToIso: (
     }));
 }
 
+// "opposition" used to gloss to "opposes" — the same word with a different
+// ending, so the row said the same thing twice (owner, 2026-09-03: "wtf?").
+// Every other entry here actually translates the term; this one now does too.
 const ASPECT_WORD: Record<string, string> = {
-  conjunction: "meets", opposition: "opposes", square: "grinds against",
+  conjunction: "meets", opposition: "pulls against", square: "grinds against",
   trine: "flows with", sextile: "supports",
 };
 
@@ -108,12 +123,45 @@ export function almanacHorizon(now: Date, days: number): AlmanacHorizon {
   return { days, aspectsThrough: through.toISOString().slice(0, 10) };
 }
 
-export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacEntry[] {
+/**
+ * Angle crossings run per-day at a 24h lookahead, orb 40, then filtered to
+ * planet-ASC/MC + Moon — the EXACT call `/tides/week` already makes across
+ * up to 42 days without incident (routes/tides.ts:612). Reused rather than
+ * `getNextAngularCrossings`'s fine-grained 4-minute default lookahead, which
+ * is built for a same-day scan and would be the same "scan in a loop" defect
+ * this repo has already paid for three times (see lib/astro.ts header).
+ */
+const CROSSING_HORIZON_DAYS = 14;
+
+export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0, personal?: {
+  /** Whole-sign house context — the answer to "where is it" — needs only the
+   *  Ascendant's sign, not the whole chart. */
+  ascendantSign?: string;
+  /** Present only when the caller has a real location (never the app's
+   *  timezone-guess default), since a crossing is cut from local sunrise and
+   *  local angles — a guessed meridian would draw crossings that are wrong. */
+  lat?: number; lon?: number;
+  /** Off by default: crossings run daily, so folding them in unconditionally
+   *  would multiply this list by roughly one row a day (owner 2026-09-03:
+   *  wants them available, not wants them always on). */
+  includeCrossings?: boolean;
+}): AlmanacEntry[] {
   const startJd = julianDay(now);
   const endJd = startJd + days;
 
   const entries: AlmanacEntry[] = [];
   const jdToIso = (jd: number) => new Date((jd - 2440587.5) * 86400000).toISOString();
+
+  // Whole-sign: the house a transiting sign falls in is pure sign arithmetic
+  // against the Ascendant's sign — no cusp degrees needed. Same convention
+  // /elections/times already personalizes with (routes/elections.ts).
+  const houseOf = (sign: string): Partial<Pick<AlmanacEntry, "house" | "houseTheme">> => {
+    if (!personal?.ascendantSign) return {};
+    const ascIdx = SIGNS.indexOf(personal.ascendantSign), signIdx = SIGNS.indexOf(sign);
+    if (ascIdx < 0 || signIdx < 0) return {};
+    const house = ((signIdx - ascIdx + 12) % 12) + 1;
+    return { house, houseTheme: HOUSE_THEME[house] };
+  };
 
   // Bisect a sign-changing predicate to ~1 minute.
   const refine = (lo: number, hi: number, crossed: (jd: number) => boolean): number => {
@@ -151,6 +199,10 @@ export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacE
         const at = refine(jd - STEP, jd, (m) =>
           g.deg === 0 ? elong(m) < prev : elong(m) >= g.deg);
         const ecl = g.kind === "lunation" ? eclipseWindow(at) : { active: false as const };
+        // The Moon's own sign at the gate — "where" a lunation or quarter
+        // falls for this person, the same question a New Moon in the abstract
+        // can't answer on its own.
+        const moonSign = SIGNS[Math.floor((((moonLongitude(at) % 360) + 360) % 360) / 30)];
         entries.push({
           at: jdToIso(at), kind: g.kind, glyph: g.glyph,
           title: ecl.active
@@ -162,6 +214,7 @@ export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacE
             ? `An eclipse falls on this ${ecl.kind === "solar" ? "new moon" : "full moon"}, which Compass weights as the month's turning point.`
             : g.note,
           ...(ecl.active && ecl.kind ? { eclipse: ecl.kind } : {}),
+          ...houseOf(moonSign),
         });
       }
       prev = cur;
@@ -199,10 +252,12 @@ export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacE
         if (cur === prevRetro) continue;
         const at = refine(jd - 1, jd, (m) => isRetrograde(planet, m) === cur);
         const note = cur ? notes.retro : notes.direct;
+        const planetSign = getPlanetPositions(at).find(p => p.planet === planet)?.sign;
         entries.push({
           at: jdToIso(at), kind: "station", glyph: notes.glyph,
           title: `${planet} turns ${cur ? "retrograde" : "direct"}`,
           note,
+          ...(planetSign ? houseOf(planetSign) : {}),
         });
         prevRetro = cur;
       }
@@ -230,12 +285,44 @@ export function buildAlmanac(now: Date, days: number, tzOffsetMin = 0): AlmanacE
         note: CARDINAL[sign]
           ? `The season turns here, and Compass shifts the background character of every reading with it.`
           : `The month's background character shifts toward ${sign}.`,
+        ...houseOf(sign),
       });
       prev = cur;
     }
   }
 
   entries.push(...aspectEntries(now, tzOffsetMin, endJd, jdToIso));
+
+  // ── Angle crossings (opt-in) — "I still want to be able to see planetary
+  // crossings on the almanac" (owner 2026-09-03). Location-dependent, so only
+  // computed when a real lat/lon was given, and capped well short of the
+  // 90-day fixed-event horizon: at roughly one a day, folding them in over
+  // the full horizon would make crossings most of the list.
+  if (personal?.lat != null && personal?.lon != null && personal.includeCrossings) {
+    const crossingDays = Math.min(days, CROSSING_HORIZON_DAYS);
+    for (let d = 0; d < crossingDays; d++) {
+      const dayJd = Math.floor(startJd) + d;
+      const hits = getNextAngularCrossings(dayJd, personal.lat, personal.lon, 40, 24).filter(isSignificantCrossing);
+      for (const c of hits) {
+        const at = new Date(c.crossingTime);
+        if (at.getTime() < now.getTime()) continue; // this day's scan can reach back before `now`
+        entries.push({
+          at: c.crossingTime, kind: "crossing", glyph: "◈",
+          title: `${c.planet} crosses your ${c.angle}`,
+          // NOT c.durationMinutes — that is how long the planet sits inside
+          // the wide 40° orb this scan uses to FIND the crossing (the same
+          // orb /tides/week uses), which runs hours and would say "a brief
+          // window, about 300 minutes" — the actual meaningful window is the
+          // ~26-minute one around exact contact, the figure quoted everywhere
+          // else a crossing is described (AgendaView, the removed Calendar
+          // panel, lib/crossingPlans.ts's HALF_WINDOW_MIN). Two different
+          // numbers for "how long is a crossing" would be the void-Moon
+          // copy mistake again.
+          note: `A brief window, about 26 minutes, when ${c.planet}'s themes peak.`,
+        });
+      }
+    }
+  }
 
   entries.sort((a, b) => a.at.localeCompare(b.at));
   return entries;

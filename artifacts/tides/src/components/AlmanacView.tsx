@@ -2,18 +2,22 @@
  * THE ALMANAC — two calendars, and only one of them has an opinion.
  *
  * THE SKY ITSELF answers "what happens regardless of me": eclipses, stations,
- * ingresses, the aspect spans. Dates fixed before anyone arrives. It is
- * reference, it is impersonal, and that is exactly why it can be trusted — it
- * reads no chart and makes no suggestion.
+ * ingresses, the aspect spans. Dates fixed before anyone arrives — reference,
+ * not a verdict.
  *
  * A LENS answers the question people actually arrive with: when is a good day
  * for THIS. That half is the product. It is the only calendar that can refuse,
  * because refusal needs an external standard a fit-optimiser structurally
  * lacks (BACKLOG §8).
  *
- * The two are drawn apart and never share a vocabulary. A fixed date has no
- * verdict and a verdict has no fixed date; merging them would imply the sky
- * approves of your Tuesday, which is the one thing this page must not say.
+ * THE BOUNDARY THAT STILL HOLDS: a fixed date has no verdict and a verdict has
+ * no fixed date. What changed 2026-09-03 (owner: "it just says new moon — but
+ * where is it?") is that a row can now say WHERE without saying WHETHER —
+ * which house it falls in, when a chart is on file, is a location, not a
+ * grade. Clicking a row reveals that plus, on a new moon only, a plain door
+ * into starting something (Guiding Stars) — a place to go, not a score for
+ * going there. Nothing here is a suitability verdict; that stays the lens's
+ * job alone.
  *
  * WHY IT LIVES IN CALENDAR. The Almanac had its own tab once and it was
  * retired — about 450 lines deleted as unreachable — because reference with no
@@ -55,6 +59,8 @@ interface SkyEntry {
   eclipse?: "solar" | "lunar";
   // Aspects carry a window rather than an instant.
   startDate?: string; endDate?: string; active?: boolean;
+  /** Whole-sign house context, present only with a timed chart on file. */
+  house?: number; houseTheme?: string;
 }
 interface Horizon { days: number; aspectsThrough: string }
 
@@ -96,13 +102,23 @@ const dayLabel = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 const monthOf = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+/** 1st, 2nd, 3rd, 4th… — for "your 7th house", not "your 7 house". */
+const ordinal = (n: number) => {
+  const s = n % 100;
+  if (s >= 11 && s <= 13) return "th";
+  return ["th", "st", "nd", "rd"][n % 10] ?? "th";
+};
 
+// Kept in sync with the same table in api-server/src/lib/almanac.ts.
+// "opposition" used to gloss to "opposes" — the same word with a different
+// ending, so the row said the same thing twice (owner, 2026-09-03: "wtf?").
+// Every other entry here actually translates the term; this one now does too.
 const ASPECT_WORD: Record<string, string> = {
-  conjunction: "meets", opposition: "opposes", square: "grinds against",
+  conjunction: "meets", opposition: "pulls against", square: "grinds against",
   trine: "flows with", sextile: "supports",
 };
 
-export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, moonCycle, nodeIngress, onOpenElections }: {
+export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locationKnown = true, moonCycle, nodeIngress, onOpenElections, onNavigate }: {
   testerId: string | null; lat?: number; lon?: number;
   locationKnown?: boolean;
   /** From /tides/now, which the page already holds — the arc costs no request. */
@@ -111,12 +127,23 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
   nodeIngress?: { from: string; to: string; daysAway: number } | null;
   /** Into Pick a Day, where inception doctrine lives. */
   onOpenElections?: () => void;
+  /** A new-moon row's "start something" door, into Guiding Stars. */
+  onNavigate?: (view: string) => void;
 }) {
   // No default lens. The sky's own calendar stands on its own and needs no
   // question asked; inventing one on arrival would be the app deciding what
   // you came for.
   const [lens, setLens] = useState<string | null>(null);
   const [days, setDays] = useState(30);
+  // A row opens on click rather than always showing its house context inline
+  // — most rows have none (no chart, or a kind house math doesn't reach yet),
+  // and a line that's blank nine times in ten reads as a bug, not a feature.
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // Off by default: crossings run roughly one a day, and folding them into a
+  // ninety-day list unconditionally would make them most of it (owner
+  // 2026-09-03: "I still want to be able to see planetary crossings on the
+  // almanac" — available on request, not always on).
+  const [showCrossings, setShowCrossings] = useState(false);
 
   const lensQ = useQuery<LensResponse>({
     queryKey: ["almanac-lens", lens, days, lat, lon],
@@ -135,9 +162,14 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
   // at the source now, so this is the sky's calendar rather than two thirds of
   // it plus an assembly step.
   const skyQ = useQuery<{ entries: SkyEntry[]; horizon: Horizon }>({
-    queryKey: ["almanac-sky", 90],
+    // Location only rides along when it is REAL (never the app's timezone-
+    // guess default) — crossings are cut from the local horizon, and a
+    // guessed meridian would draw ones that are simply wrong.
+    queryKey: ["almanac-sky", 90, testerId, locationKnown ? lat.toFixed(2) : null, locationKnown ? lon.toFixed(2) : null, showCrossings],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/almanac?days=90&tz=${new Date().getTimezoneOffset()}`);
+      const loc = locationKnown ? `&lat=${lat}&lon=${lon}&crossings=${showCrossings}` : "";
+      const r = await fetch(`/api/tides/almanac?days=90&tz=${new Date().getTimezoneOffset()}${loc}`,
+        { headers: testerId ? { "x-tester-id": testerId } : {} });
       if (!r.ok) throw new Error("almanac unavailable");
       return r.json();
     },
@@ -178,11 +210,21 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
       </button>
 
       {/* ── the sky itself ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--color-meridian)" }}>
-        The sky itself
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--color-meridian)" }}>
+          The sky itself
+        </div>
+        <label title={locationKnown ? "Add the day's angle crossings — roughly one a day, for the next two weeks" : "Needs your location"}
+          style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: locationKnown ? "var(--text-3)" : "var(--text-3)", opacity: locationKnown ? 1 : 0.5, cursor: locationKnown ? "pointer" : "default", marginLeft: "auto" }}>
+          <input type="checkbox" checked={showCrossings} disabled={!locationKnown}
+            onChange={e => setShowCrossings(e.target.checked)}
+            style={{ margin: 0, cursor: locationKnown ? "pointer" : "default" }} />
+          angle crossings
+        </label>
       </div>
       <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 12, maxWidth: 560 }}>
         Fixed before you get here, and true for everyone. No verdict attached — what to do about these is your call.
+        {" "}Tap one to see where it lands for you{skyQ.data?.entries.some(e => e.house != null) ? "" : ", once your chart's on file"}.
       </div>
 
       {/* ══ THE CYCLE THE REST OF THE LIST SITS INSIDE ═══════════════════
@@ -247,12 +289,19 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
           const newMonth = m !== month;
           month = m;
           const isAspect = e.kind === "aspect";
+          const isCrossing = e.kind === "crossing";
+          const key = `${e.at}-${i}`;
+          const isNewMoon = e.kind === "lunation" && e.title.includes("New Moon") && !e.eclipse;
+          const isOpen = expanded === key;
+          const hasMore = e.house != null || isNewMoon;
           return (
-            <div key={`${e.at}-${i}`}>
+            <div key={key}>
               {newMonth && (
                 <div style={{ fontSize: 10, color: "var(--text-3)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: i ? 14 : 0, marginBottom: 4 }}>{m}</div>
               )}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "5px 0", borderTop: "1px solid var(--color-border)" }}>
+              <div onClick={() => hasMore && setExpanded(isOpen ? null : key)}
+                style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "5px 0", borderTop: "1px solid var(--color-border)",
+                  opacity: isCrossing ? 0.72 : 1, cursor: hasMore ? "pointer" : "default" }}>
                 <span style={{ width: 96, flexShrink: 0, fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>
                   {dayLabel(e.at.slice(0, 10))}
                 </span>
@@ -272,7 +321,23 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
                     ? (e.active ? `in force now, through ${dayLabel(e.endDate)}` : `${dayLabel(e.startDate)} to ${dayLabel(e.endDate)}`)
                     : e.note}
                 </span>
+                {hasMore && <span aria-hidden="true" style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>}
               </div>
+              {isOpen && (
+                <div style={{ padding: "2px 0 10px 120px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {e.house != null && (
+                    <div style={{ fontSize: 11.5, color: "var(--color-foreground)" }}>
+                      Falls in your {e.house}{ordinal(e.house)} house — {e.houseTheme}.
+                    </div>
+                  )}
+                  {isNewMoon && (
+                    <button onClick={ev => { ev.stopPropagation(); onNavigate?.("work"); }} style={{
+                      alignSelf: "flex-start", fontSize: 11.5, fontWeight: 500, background: "none", border: "none",
+                      padding: 0, cursor: onNavigate ? "pointer" : "default", color: "var(--color-primary)",
+                    }}>Start something here <span aria-hidden="true">→</span></button>
+                  )}
+                </div>
+              )}
             </div>
           );
         });

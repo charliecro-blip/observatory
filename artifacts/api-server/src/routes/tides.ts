@@ -1345,13 +1345,39 @@ router.get("/tides/almanac/lens", (req, res) => {
   });
 });
 
-router.get("/tides/almanac", (req, res) => {
+router.get("/tides/almanac", async (req, res) => {
   const days = Math.min(Math.max(parseInt((req.query.days as string) ?? "45"), 1), 120);
   // The aspect spans are dated in the VIEWER's civil days, so the offset has to
   // reach the scan. Absent, it falls back to UTC — which is what every caller
   // did before the spans lived here, and is wrong by less than a day.
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
   const now = new Date();
+
+  // Optionally personal now (owner 2026-09-03: "it just says new moon — but
+  // where is it?"). Still no auth REQUIRED — an absent or chartless tester
+  // gets exactly the impersonal list this route has always returned; a chart
+  // on file just adds house context on top, the same opt-in shape /elections
+  // uses. Location is separate from the chart: crossings need real
+  // coordinates (never the app's timezone-guess default) regardless of
+  // whether a chart exists, since ASC/MC are cut from the local horizon.
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+  let ascendantSign: string | undefined;
+  if (testerId) {
+    try {
+      const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
+      // Without a known birth TIME the Ascendant is fabricated from a
+      // substituted noon — the same guard every other house-reading caller
+      // in this file uses (see the transit-forecast branch above).
+      if (stored && stored.timeKnown !== false) {
+        ascendantSign = computeNatalChart(stored.birthDate, stored.birthTime, stored.birthLat, stored.birthLon, stored.utcOffset).ascendant.sign;
+      }
+    } catch { /* chartless is fine — the list just stays impersonal */ }
+  }
+  const hasCoords = req.query.lat != null && req.query.lon != null;
+  const lat = hasCoords ? parseFloat(req.query.lat as string) : undefined;
+  const lon = hasCoords ? parseFloat(req.query.lon as string) : undefined;
+  const includeCrossings = req.query.crossings === "true";
+
   res.json({
     asOf: now.toISOString(),
     days,
@@ -1359,7 +1385,7 @@ router.get("/tides/almanac", (req, res) => {
     // the scan's own horizon. A caller that draws the tail without saying so
     // shows an empty sky it has not actually looked at.
     horizon: almanacHorizon(now, days),
-    entries: buildAlmanac(now, days, tzOffsetMin),
+    entries: buildAlmanac(now, days, tzOffsetMin, { ascendantSign, lat, lon, includeCrossings }),
   });
 });
 
