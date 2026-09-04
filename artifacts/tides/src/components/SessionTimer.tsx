@@ -248,7 +248,7 @@ export function SessionTimer({ planetaryHour, openOn, onOpened }: SessionTimerPr
           {/* Planetary hour context */}
           {planet && !timerQuiet && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--color-border)" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: `${pColor}20`, color: pColor, flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: `${pColor}20`, color: pColor, flexShrink: 0, fontFamily: "var(--font-symbol)" }}>
                 {PLANET_ICONS[planet] ?? "○"}
               </div>
               <div>

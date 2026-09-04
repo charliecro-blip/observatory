@@ -237,7 +237,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
           {/* The pair drawn in symbols, then written out in words on the next
               line. Decorative, so it is hidden rather than announced as three
               raw codepoints ahead of the sentence saying the same thing. */}
-          <span aria-hidden="true" style={{ fontSize: 15, letterSpacing: 1 }}>
+          <span aria-hidden="true" style={{ fontSize: 15, letterSpacing: 1, fontFamily: "var(--font-symbol)" }}>
             {BIGSKY_PLANET_GLYPH[a.planet]}<span style={{ color: accent, fontWeight: 700 }}>{geo.symbol}</span>{BIGSKY_PLANET_GLYPH[b.planet]}
           </span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-primary)" }}>
@@ -280,7 +280,7 @@ function BigSkyCard({ asp, signOf }: { asp: any; signOf: (p: string) => string }
               const pc = PLANET_CORE[p.planet];
               return (
                 <div key={p.planet} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5 }}>
-                  <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}><span aria-hidden="true">{BIGSKY_PLANET_GLYPH[p.planet]}</span> {p.planet} in {p.sign}</span>
+                  <span style={{ color: "var(--color-foreground)", fontWeight: 600 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{BIGSKY_PLANET_GLYPH[p.planet]}</span> {p.planet} in {p.sign}</span>
                   {pc ? ` — ${pc.is}.` : ""}
                   <span style={{ color: "var(--text-3)" }}> In {p.sign}: {SIGN_INFLECTION[p.sign] ?? ""}.</span>
                 </div>

@@ -50,7 +50,7 @@ export default function RhythmProposal({ testerId, current, onUse, compact = fal
           <div key={f.key}>
             <span style={{ color: "var(--text-3)", fontSize: 10, letterSpacing: 0.6, textTransform: "uppercase", marginRight: 6 }}>{f.label}</span>
             <b style={{ color: "var(--color-foreground)" }}>{TRIM_NAME[f.trim]}</b>
-            <span style={{ color: "var(--color-muted)" }}> · <span role="img" aria-label={f.planet}>{PLANET_GLYPH[f.planet] ?? ""}</span> {f.literal} — {f.reading}</span>
+            <span style={{ color: "var(--color-muted)" }}> · <span role="img" aria-label={f.planet} style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[f.planet] ?? ""}</span> {f.literal} — {f.reading}</span>
           </div>
         ))}
       </div>

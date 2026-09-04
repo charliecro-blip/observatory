@@ -357,7 +357,7 @@ function PlanetsView({ natal, currents, onReflect, testerId, lat, lon, initialPl
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.7px", color: activations.length ? "#a8862e" : "var(--text-3)", marginBottom: 8 }}>Being activated now</div>
         {activations.length ? activations.map((t: any, i: number) => (
           <div key={i} style={{ marginBottom: i < activations.length - 1 ? 8 : 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}>{GLYPH[t.transitPlanet]} transiting {t.transitPlanet} {String(t.aspect).toLowerCase()} your {core.name}<span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>{t.exact ? "exact now" : `${t.orb}° orb`}</span></div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)" }}><span style={{ fontFamily: "var(--font-symbol)" }}>{GLYPH[t.transitPlanet]}</span> transiting {t.transitPlanet} {String(t.aspect).toLowerCase()} your {core.name}<span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>{t.exact ? "exact now" : `${t.orb}° orb`}</span></div>
             {t.likelyDomains?.length > 0 && <div style={{ fontSize: 12, color: "#8a7a50", lineHeight: 1.6, marginTop: 2 }}>Often felt around {t.likelyDomains.slice(0, 3).join(", ")}.</div>}
           </div>
         )) : <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Quiet right now — no slow planet is touching your {core.name}. It's running at its natural baseline.</div>}
@@ -406,7 +406,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
           <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Add your birth time in Settings — houses need an exact time to place your planets.</div>
         ) : natalHere.length ? (
           natalHere.map((p: any, i: number) => (
-            <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}>{GLYPH[p.planet]} {p.planet} in {p.sign} <span style={{ color: "var(--text-3)", fontSize: 12 }}>— this drive lives in this arena of your life.</span></div>
+            <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}><span style={{ fontFamily: "var(--font-symbol)" }}>{GLYPH[p.planet]}</span> {p.planet} in {p.sign} <span style={{ color: "var(--text-3)", fontSize: 12 }}>— this drive lives in this arena of your life.</span></div>
           ))
         ) : <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>No natal planets sit here — this house is furnished by its ruler and whatever's transiting through.</div>}
       </SectionCard>
@@ -417,7 +417,7 @@ function HousesView({ natal, currents, onReflect }: { natal: any; currents: any;
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-foreground)", marginBottom: transitsHere.length ? 8 : 0 }}>★ This is your profected year — the whole year points here{currents?.profection?.timeLord ? `, ruled by ${currents.profection.timeLord}` : ""}.</div>
         )}
         {transitsHere.map((t: any, i: number) => (
-          <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}>{GLYPH[t.planet]} {t.planet} moving through{t.retrograde ? " (retrograde)" : ""} — a slow chapter here{t.leavesHouse ? ` until ${new Date(t.leavesHouse).toLocaleDateString("en-US", { month: "short", year: "numeric" })}` : ""}.</div>
+          <div key={i} style={{ fontSize: 13, color: "var(--color-foreground)", padding: "2px 0" }}><span style={{ fontFamily: "var(--font-symbol)" }}>{GLYPH[t.planet]}</span> {t.planet} moving through{t.retrograde ? " (retrograde)" : ""} — a slow chapter here{t.leavesHouse ? ` until ${new Date(t.leavesHouse).toLocaleDateString("en-US", { month: "short", year: "numeric" })}` : ""}.</div>
         ))}
         {!isProfected && transitsHere.length === 0 && <div style={{ fontSize: 12.5, color: "var(--text-3)" }}>Quiet right now — no slow planet is moving through this house.</div>}
       </div>

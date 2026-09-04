@@ -630,7 +630,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     display:"flex",alignItems:"center",justifyContent:"center",
                   }}>{dayNum}</div>
                   {isDay && !skyQuiet && dayRuler && (
-                    <div style={{ fontSize: 10.5,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> {dayRuler}</div>
+                    <div style={{ fontSize: 10.5,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}><span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler]}</span> {dayRuler}</div>
                   )}
                 </div>
 
@@ -645,7 +645,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     {signKey && <span style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
                     {/* week: show current planetary hour planet */}
                     {!isDay && isToday && nowHour && (
-                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize: 10.5,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`}>{PLANET_ICONS[nowHour.ruler]}</span></span>
+                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize: 10.5,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[nowHour.ruler]}</span></span>
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
@@ -665,7 +665,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         return (
                           <span key={ai} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`}
                             style={{ fontSize: 10.5,color:col,fontWeight:ev.type==="aspect"?700:500,whiteSpace:"nowrap" }}>
-                            {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}
+                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}
                           </span>
                         );
                       });
@@ -691,7 +691,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                           opacity:ph.isDayHour||(isNow)?1:0.5,
                           fontWeight:isNow?700:400,
                         }}>
-                          <span style={{ fontSize: 10.5,color:col }}><span role="img" aria-label={ph.ruler}>{PLANET_ICONS[ph.ruler]}</span></span>
+                          <span style={{ fontSize: 10.5,color:col }}><span role="img" aria-label={ph.ruler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ph.ruler]}</span></span>
                           <span style={{ fontSize: 10.5,color:col }}>{fmtTime(ph.startTime)}</span>
                         </div>
                       );
@@ -726,7 +726,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         }}>
                           {(botPx-topPx)>=15 && (
                             <div style={{ padding:"1px 4px",fontSize: 10.5,color:col,fontWeight:600,lineHeight:1.3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis" }}>
-                              <span aria-hidden="true">{PLANET_ICONS[ph.ruler]}</span> {ph.ruler}
+                              <span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ph.ruler]}</span> {ph.ruler}
                             </div>
                           )}
                         </div>
@@ -803,7 +803,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         background:`linear-gradient(to bottom,transparent 0%,${pCol}35 40%,${pCol}55 50%,${pCol}35 60%,transparent 100%)`,
                       }}>
                         <div style={{ position:"absolute",bottom:1,right:3,fontSize: 10.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>
-                          <span aria-hidden="true">{PLANET_ICONS[c.planet]??c.planet[0]}</span> {c.angle}
+                          <span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[c.planet]??c.planet[0]}</span> {c.angle}
                         </div>
                       </div>
                     );
@@ -825,7 +825,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         <div style={{ flex:1,borderTop:`1px dashed ${col}59` }}/>
                         {parts && (
                           <div style={{ fontSize: 10.5,color:col,fontWeight:700,background:"rgba(255,255,255,0.82)",padding:"0 3px",borderRadius:3,whiteSpace:"nowrap" }}>
-                            {parts.left}{parts.sym}{parts.right} {fmtTime(d)}
+                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span> {fmtTime(d)}
                           </div>
                         )}
                       </div>
@@ -961,7 +961,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             <span title={`${dayRuler}'s day`} style={{
               fontSize: 10.5, color:rulerCol, background:`${rulerCol}18`, borderRadius:8,
               padding:"1px 5px", fontWeight:600, lineHeight:1.4,
-            }}><span role="img" aria-label={dayRuler}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span></span>
+            }}><span role="img" aria-label={dayRuler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span></span>
           )}
           {phase && <span style={{ fontSize:12 }}>{MOON_EMOJI[phase]??""}</span>}
         </div>
@@ -998,7 +998,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             const isPP = ev.type === "aspect";
             return (
               <div key={i} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{ fontSize: 10.5,color:col,fontWeight:isPP?700:500,lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
+                <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
               </div>
             );
           })}
@@ -1079,7 +1079,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
       <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData&&!panelQuiet?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
         <div style={{ fontSize: 10.5,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
-        {!panelQuiet && dayRuler && <div style={{ fontSize: 11,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
+        {!panelQuiet && dayRuler && <div style={{ fontSize: 11,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
         <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
@@ -1147,7 +1147,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
                       <span role="img" aria-label="Moon" style={{ color:PLANET_COLORS.Moon }}>☽</span>
                       <span role="img" aria-label={a.aspect} style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
-                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)" }}>{PLANET_ICONS[other]??""}</span>
+                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)", fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[other]??""}</span>
                       <span style={{ flex:1,color:"var(--text-2)" }}>{other}</span>
                       <span style={{ fontSize: 10.5,color:a.applying?col:"var(--text-3)" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
                     </div>
@@ -1433,7 +1433,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
                     padding: "10px 6px 3px", opacity: past ? 0.4 : 0.85,
                   }}>
                     <div style={{ width: 62, flexShrink: 0, fontSize: 10, color: "var(--text-3)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
-                    <span aria-hidden="true" style={{ fontSize: 11, color: m.color, flexShrink: 0 }}>{m.glyph}</span>
+                    <span aria-hidden="true" style={{ fontSize: 11, color: m.color, flexShrink: 0, fontFamily:"var(--font-symbol)" }}>{m.glyph}</span>
                     <span style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: m.color, flexShrink: 0 }}>{m.label}</span>
                     <span style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
                   </div>
@@ -1446,7 +1446,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
               return (
                 <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", paddingLeft: nested ? 24 : 6, borderTop: i === 0 || nested ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
                   <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "var(--text-3)", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
-                  <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
+                  <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color, fontFamily:"var(--font-symbol)" }}>{m.glyph}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
                     {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
@@ -1815,7 +1815,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
                   const ruler = WEEKDAY_RULERS[i];
                   return (
                     <div key={d} title={pageQuiet ? undefined : `${ruler}'s day`} style={{ textAlign:"center",fontSize: 10.5,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler}>{PLANET_ICONS[ruler]}</span></span>}
+                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ruler]}</span></span>}
                     </div>
                   );
                 })}

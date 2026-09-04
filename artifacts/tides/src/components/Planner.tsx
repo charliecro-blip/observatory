@@ -539,7 +539,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                   <input value={c.title} onChange={(e) => editCard(i, { title: e.target.value })}
                     style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", border: "none", background: "none" }} />
                   {!skyQuiet && c.planets?.length > 0 && (
-                    <span role="img" aria-label={c.planets.join(", ")} style={{ fontSize: 10, color: "var(--text-3)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
+                    <span role="img" aria-label={c.planets.join(", ")} style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "var(--font-symbol)" }} title={c.rationale}>{c.planets.map((p) => PLANET_GLYPH[p] ?? "").join(" ")}</span>
                   )}
                   <button onClick={() => removeCard(i)} title="Remove" style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>✕</button>
                 </div>
@@ -806,7 +806,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
                       <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
                         {fmtTime(item.startAt)}–{fmtTime(item.endAt)} · {item.estimatedMinutes}m
                         {!skyQuiet && <span style={{ color: col, marginLeft: 6 }}>● {item.element}</span>}
-                        {!skyQuiet && <span style={{ color: "var(--text-3)", marginLeft: 6 }}><span aria-hidden="true">{PLANET_GLYPH[item.planetaryHour] ?? ""}</span> {item.planetaryHour} hour</span>}
+                        {!skyQuiet && <span style={{ color: "var(--text-3)", marginLeft: 6 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[item.planetaryHour] ?? ""}</span> {item.planetaryHour} hour</span>}
                       </div>
                       {/* Timing tier — the grading language for the slot itself */}
                       {item.tierNote && (

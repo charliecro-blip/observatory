@@ -571,7 +571,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               {activeCautionMatches.map((t: any, i: number) => (
                 <span key={i}>
                   {i > 0 && " · "}
-                  <span aria-hidden="true">{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
+                  <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
                 </span>
               ))}
               {" — the theme you flagged is live for a little while. Move big commitments gently, then it passes."}
@@ -732,7 +732,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               Adjust timing signature
               {!showTimingOverrides && effPlanet && (
                 <span style={{ color: "var(--color-muted)" }}>
-                  · now <span aria-hidden="true">{PLANET_GLYPH[effPlanet] ?? ""}</span> {effPlanet}{effElement ? `, ${effElement}` : ""}
+                  · now <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[effPlanet] ?? ""}</span> {effPlanet}{effElement ? `, ${effElement}` : ""}
                 </span>
               )}
             </button>
@@ -751,7 +751,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       border: on ? `1px solid ${col}` : "1px solid #e0dad0",
                       background: on ? `${col}18` : "var(--color-card-2)",
                       color: on ? col : "var(--text-3)", fontWeight: on ? 600 : 400,
-                    }}><span aria-hidden="true">{PLANET_GLYPH[p] ?? ""}</span> {p}{suggested ? " ·" : ""}</button>
+                    }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[p] ?? ""}</span> {p}{suggested ? " ·" : ""}</button>
                   );
                 })}
               </div>
@@ -813,7 +813,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>
-                        <span aria-hidden="true">{a.planet ? PLANET_GLYPH[a.planet] ?? "" : ""}</span> {a.label}
+                        <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{a.planet ? PLANET_GLYPH[a.planet] ?? "" : ""}</span> {a.label}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
@@ -1305,7 +1305,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
               {prof && (
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", marginBottom: 5 }}>
-                  <span aria-hidden="true">{PLANET_GLYPH[prof.timeLord] ?? "◔"}</span> Your {ordinal(prof.house)}-house year
+                  <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[prof.timeLord] ?? "◔"}</span> Your {ordinal(prof.house)}-house year
                   <span style={{ fontWeight: 400, color: "var(--text-3)" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
                 </div>
               )}
@@ -1315,7 +1315,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 return (
                   <div key={i}>
                     <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
-                      <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.transitPlanet]}</span></span>
+                      <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.transitPlanet]}</span></span>
                       <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
                       <span aria-hidden="true" style={{ fontSize: 10.5, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
                     </button>
@@ -1325,7 +1325,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               })}
               {keepers.map((t: any, i: number) => (
                 <div key={`k${i}`} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", padding: "1px 0" }}>
-                  <span style={{ color: "#5a6b8c", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.planet]}</span></span>
+                  <span style={{ color: "#5a6b8c", flexShrink: 0 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.planet]}</span></span>
                   <span>{t.planet} through your {ordinal(t.house)} · {HOUSE_MEANINGS[t.house]?.title ?? ""} — {t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}</span>
                 </div>
               ))}
