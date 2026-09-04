@@ -548,7 +548,10 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // section into a one-line glyph an experienced user reads at a glance; while
   // compact, an individual section can still be expanded (added to `expanded`).
   // isOpen(id) = full form; else the glyph row.
-  const [compact, setCompact] = useState<boolean>(() => localStorage.getItem("obs_rail_compact") === "1");
+  // Starts compact (owner 2026-09-03: the rail should read closed, not open,
+  // on arrival) — still remembers an explicit choice via the same key, so
+  // "0" (a user who opened it out) stays open across visits.
+  const [compact, setCompact] = useState<boolean>(() => localStorage.getItem("obs_rail_compact") !== "0");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());   // compact mode: sections opened back out
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set()); // full mode: sections individually minimized
   // Each section is independently collapsible in BOTH modes (accordion): in
@@ -585,8 +588,8 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       <Collapse id={id} label={label} />
     </div>
   );
-  const [wavesOpen, setWavesOpen] = useState(true);
-  const [transitsOpen, setTransitsOpen] = useState(true);
+  const [wavesOpen, setWavesOpen] = useState(false);
+  const [transitsOpen, setTransitsOpen] = useState(false);
   const [transitsExpanded, setTransitsExpanded] = useState(false);
   const [expandedPersonal, setExpandedPersonal] = useState<string | null>(null);
   const { data: northStars } = useNorthStars(testerId);

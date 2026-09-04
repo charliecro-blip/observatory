@@ -119,6 +119,73 @@ describe("almanac", () => {
 });
 
 /**
+ * PERSONALIZATION (2026-09-03: "it just says new moon — but where is it?").
+ * Opt-in only — every test above calls buildAlmanac with no fourth argument,
+ * and stays green, which is the backward-compatibility guarantee these pin
+ * from the other side: nothing personal leaks in when nobody asked for it.
+ */
+describe("the almanac, personalized", () => {
+  it("attaches no house without an ascendant sign — the impersonal default", () => {
+    const entries = buildAlmanac(AT, 45);
+    expect(entries.some(e => e.house != null)).toBe(false);
+  });
+
+  it("attaches a valid whole-sign house to entries that carry a sign, once given one", () => {
+    const entries = buildAlmanac(AT, 45, 0, { ascendantSign: "Aries" });
+    const withHouse = entries.filter(e => ["ingress", "station", "lunation", "quarter"].includes(e.kind) && e.house != null);
+    expect(withHouse.length).toBeGreaterThan(0);
+    for (const e of withHouse) {
+      expect(e.house).toBeGreaterThanOrEqual(1);
+      expect(e.house).toBeLessThanOrEqual(12);
+      expect(e.houseTheme, `${e.title} got a house number with no theme to go with it`).toBeTruthy();
+    }
+  });
+
+  it("the Ascendant's own sign is always house 1 — the whole-sign anchor", () => {
+    // A Sun ingress into the rising sign itself is the one entry this test can
+    // force deterministically: pin the anchor there and check the arithmetic
+    // rather than trusting it by inspection. A year-long window guarantees a
+    // Sun-enters-Capricorn ingress actually falls inside it, whatever AT is.
+    const entries = buildAlmanac(AT, 370, 0, { ascendantSign: "Capricorn" });
+    const ownSign = entries.find(e => e.kind === "ingress" && e.title.includes("Capricorn"));
+    expect(ownSign, "no Sun-enters-Capricorn ingress found in a full year").toBeTruthy();
+    expect(ownSign!.house).toBe(1);
+  });
+
+  it("never returns a crossing without both real coordinates and the opt-in flag", () => {
+    const noFlag = buildAlmanac(AT, 14, 0, { lat: 30.27, lon: -97.74 });
+    expect(noFlag.some(e => e.kind === "crossing")).toBe(false);
+    const noCoords = buildAlmanac(AT, 14, 0, { includeCrossings: true });
+    expect(noCoords.some(e => e.kind === "crossing")).toBe(false);
+  });
+
+  it("returns crossings, inside the window, once both are given", () => {
+    const entries = buildAlmanac(AT, 14, 0, { lat: 30.27, lon: -97.74, includeCrossings: true });
+    const crossings = entries.filter(e => e.kind === "crossing");
+    expect(crossings.length).toBeGreaterThan(0);
+    const start = AT.getTime(), end = start + 14 * 86400000;
+    for (const c of crossings) {
+      const t = Date.parse(c.at);
+      expect(t).toBeGreaterThanOrEqual(start);
+      expect(t).toBeLessThanOrEqual(end);
+      expect(c.title).toMatch(/crosses your/);
+    }
+  });
+
+  it("caps crossings well short of a 90-day fixed-event horizon, and stays fast", () => {
+    // The same "scan in a loop" shape that has cost this repo three
+    // performance defects (see lib/astro.ts) — a per-day crossings call run
+    // out to the full fixed-event horizon instead of a short cap.
+    const t0 = Date.now();
+    const entries = buildAlmanac(AT, 90, 0, { lat: 30.27, lon: -97.74, includeCrossings: true });
+    expect(Date.now() - t0).toBeLessThan(5000);
+    const crossings = entries.filter(e => e.kind === "crossing");
+    const last = crossings.length ? Math.max(...crossings.map(e => Date.parse(e.at))) : AT.getTime();
+    expect(last).toBeLessThanOrEqual(AT.getTime() + 15 * 86400000);
+  });
+});
+
+/**
  * THE LENS — the almanac's second axis, and the only half that has an opinion.
  *
  * /tides/almanac says what the sky does; /tides/almanac/lens says what a run of

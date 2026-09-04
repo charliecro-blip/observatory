@@ -297,19 +297,26 @@ function EventModal({ dateStr, startHour, preset, testerId, onClose }: {
 
 // ── EventBlock ────────────────────────────────────────────────────────────────
 
-function EventBlock({ win, topPct, heightPct, onDelete }: {
+function EventBlock({ win, topPct, heightPct, onDelete, draggable, onDragStart, onDragEnd }: {
   win: PlanningWindow; topPct: number; heightPct: number; onDelete: () => void;
+  /** Drag it to another day/hour — its own duration travels with it, and
+   *  nothing else on the calendar moves (owner 2026-09-03). */
+  draggable?: boolean; onDragStart?: () => void; onDragEnd?: () => void;
 }) {
   const fmtTime = useTimeFormat();
   const col = WINDOW_COLORS[win.type as string] ?? "#888888";
   const start = new Date(win.startTime), end = new Date(win.endTime);
   const shortTime = `${fmtTime(start)} – ${fmtTime(end)}`;
   return (
-    <div style={{
+    <div draggable={draggable}
+      onDragStart={e=>{ if(!draggable) return; e.dataTransfer.effectAllowed="move"; onDragStart?.(); }}
+      onDragEnd={onDragEnd}
+      title={draggable ? `${win.title} — drag to move` : win.title}
+      style={{
       position:"absolute",left:2,right:2,
       top:`${topPct*100}%`,height:`${Math.max(heightPct*100,2.5)}%`,
       background:`${col}dd`,borderRadius:5,padding:"3px 6px",overflow:"hidden",
-      borderLeft:`3px solid ${col}`,cursor:"pointer",zIndex:10,
+      borderLeft:`3px solid ${col}`,cursor:draggable?"grab":"pointer",zIndex:10,
       boxShadow:"0 1px 4px rgba(0,0,0,0.12)",
     }}>
       <div style={{ fontSize: 11,fontWeight:600,color:"#ffffff",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
@@ -330,7 +337,7 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
   const end   = new Date(ev.end);
   const shortTime = ev.allDay ? "all day" : `${fmtTime(start)} – ${fmtTime(end)}`;
   return (
-    <div style={{
+    <div title={`${ev.title} — from your Google Calendar`} style={{
       position:"absolute", left:"50%", right:2,
       top:`${topPct*100}%`, height:`${Math.max(heightPct*100, 2)}%`,
       background:`${col}bb`, borderRadius:4, padding:"2px 5px", overflow:"hidden",
@@ -341,7 +348,6 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
         {ev.title}
       </div>
       {heightPct > 0.03 && <div style={{ fontSize: 10.5, color:"rgba(255,255,255,0.8)", marginTop:1 }}>{shortTime}</div>}
-      <div style={{ position:"absolute", top:1, right:2, fontSize: 10.5, color:"rgba(255,255,255,0.7)", fontWeight:700 }}>G</div>
     </div>
   );
 }
@@ -497,7 +503,7 @@ function usePlanetaryHours(dates: string[], lat: number, lon: number) {
   });
 }
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay, onMoveWindow }: {
   dates: string[];
   dataMap: Map<string, WeekDay>;
   windowsMap: Map<string, PlanningWindow[]>;
@@ -509,12 +515,16 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
   today: string;
   lat: number; lon: number;
   isDay: boolean;
-  /** Tapping a day's header in the week narrows to that day — the way
-   *  into the hour ladder now that it is not a tab. Absent in day view,
-   *  where there is nothing to narrow to. */
+  /** Tapping a day's header in the week narrows to that day — a shortcut
+   *  into Day beyond just picking its tab. Absent in day view, where
+   *  there is nothing to narrow to. */
   onZoomDay?: (date: string) => void;
   onAddEvent: (date: string, hour: number) => void;
   onDeleteWindow: (id: number) => void;
+  /** Drag a scheduled block to a new day/hour — its own duration is kept,
+   *  never rippled onto anything else (owner 2026-09-03: "drag and drop
+   *  events on weekly views"). */
+  onMoveWindow: (id: number, newStart: Date, newEnd: Date) => void;
 }) {
   const fmtTime = useTimeFormat();
   // The astro-quiet lens strips the grid to plain scheduling: no astro strip,
@@ -525,6 +535,12 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
   const skyQuiet = calLevel === "minimal";
   const HOUR_START = 5, HOUR_END = 23, HOURS = HOUR_END - HOUR_START;
   const ROW_H = isDay ? 60 : 48;
+  // The one thing being dragged, if anything — its duration rides along so a
+  // 90-minute block stays 90 minutes wherever it lands, and its ORIGINAL
+  // minute-within-the-hour too, so a 2:15 block dropped on the 3pm cell
+  // becomes 3:15, not a snap to the hour it never asked to keep.
+  const [dragging, setDragging] = useState<{ id: number; durationMs: number; minuteOffset: number } | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const LABEL_W = isDay ? 52 : 44;
   // Day: wide labeled planetary hour band left of grid; week: full-width subtle tint
   const PLANET_BAR_W = isDay && !skyQuiet ? 68 : 0;
@@ -630,7 +646,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     display:"flex",alignItems:"center",justifyContent:"center",
                   }}>{dayNum}</div>
                   {isDay && !skyQuiet && dayRuler && (
-                    <div style={{ fontSize: 10.5,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> {dayRuler}</div>
+                    <div style={{ fontSize: 10.5,color:PLANET_COLORS[dayRuler]??"var(--text-3)" }}><span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler]}</span> {dayRuler}</div>
                   )}
                 </div>
 
@@ -645,7 +661,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     {signKey && <span style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
                     {/* week: show current planetary hour planet */}
                     {!isDay && isToday && nowHour && (
-                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize: 10.5,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`}>{PLANET_ICONS[nowHour.ruler]}</span></span>
+                      <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize: 10.5,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[nowHour.ruler]}</span></span>
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
@@ -665,7 +681,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         return (
                           <span key={ai} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`}
                             style={{ fontSize: 10.5,color:col,fontWeight:ev.type==="aspect"?700:500,whiteSpace:"nowrap" }}>
-                            {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}
+                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}
                           </span>
                         );
                       });
@@ -691,7 +707,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                           opacity:ph.isDayHour||(isNow)?1:0.5,
                           fontWeight:isNow?700:400,
                         }}>
-                          <span style={{ fontSize: 10.5,color:col }}><span role="img" aria-label={ph.ruler}>{PLANET_ICONS[ph.ruler]}</span></span>
+                          <span style={{ fontSize: 10.5,color:col }}><span role="img" aria-label={ph.ruler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ph.ruler]}</span></span>
                           <span style={{ fontSize: 10.5,color:col }}>{fmtTime(ph.startTime)}</span>
                         </div>
                       );
@@ -726,7 +742,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         }}>
                           {(botPx-topPx)>=15 && (
                             <div style={{ padding:"1px 4px",fontSize: 10.5,color:col,fontWeight:600,lineHeight:1.3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis" }}>
-                              <span aria-hidden="true">{PLANET_ICONS[ph.ruler]}</span> {ph.ruler}
+                              <span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ph.ruler]}</span> {ph.ruler}
                             </div>
                           )}
                         </div>
@@ -745,21 +761,40 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     }
                   })}
 
-                  {/* Hour grid lines + click zones */}
-                  {Array.from({length:HOURS},(_,i)=>(
+                  {/* Hour grid lines + click zones — also the drop targets
+                      for a dragged block, hour-granularity like "add event"
+                      already is, so the two interactions land on the same
+                      grid rather than one snapping finer than the other. */}
+                  {Array.from({length:HOURS},(_,i)=>{
+                    const cellKey = `${dateStr}-${i}`;
+                    const isDropTarget = dragging && dragOverCell === cellKey;
+                    return (
                     <div key={i} onClick={()=>!isPast&&onAddEvent(dateStr,HOUR_START+i)}
                       title={isPast ? undefined : `Add an event at ${fmtHour(HOUR_START+i)}`}
                       style={{
                         position:"absolute",left:PLANET_BAR_W,right:0,top:i*ROW_H,height:ROW_H,
                         borderBottom:"1px solid var(--color-border)",cursor:isPast?"default":"pointer",zIndex:2,
+                        background: isDropTarget ? "rgba(90,150,120,0.18)" : undefined,
+                        boxShadow: isDropTarget ? "inset 0 0 0 1.5px rgba(90,150,120,0.6)" : undefined,
                       }}
                       onMouseEnter={e=>{ if(isPast) return; const el=e.currentTarget as HTMLElement; el.style.background="rgba(90,120,160,0.10)"; el.style.boxShadow="inset 0 0 0 1.5px rgba(90,120,160,0.45)"; const h=el.querySelector('[data-add]') as HTMLElement|null; if(h) h.style.opacity="1"; }}
-                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.background=""; el.style.boxShadow=""; const h=el.querySelector('[data-add]') as HTMLElement|null; if(h) h.style.opacity="0"; }}
+                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; if(!isDropTarget){el.style.background="";el.style.boxShadow="";} const h=el.querySelector('[data-add]') as HTMLElement|null; if(h) h.style.opacity="0"; }}
+                      onDragOver={e=>{ if(!dragging||isPast) return; e.preventDefault(); if(dragOverCell!==cellKey) setDragOverCell(cellKey); }}
+                      onDragLeave={()=>{ if(dragOverCell===cellKey) setDragOverCell(null); }}
+                      onDrop={e=>{
+                        e.preventDefault();
+                        if(!dragging||isPast) return;
+                        const newStart = new Date(`${dateStr}T00:00:00`);
+                        newStart.setHours(HOUR_START+i, dragging.minuteOffset, 0, 0);
+                        const newEnd = new Date(newStart.getTime() + dragging.durationMs);
+                        onMoveWindow(dragging.id, newStart, newEnd);
+                        setDragging(null); setDragOverCell(null);
+                      }}
                     >
                       <div style={{ position:"absolute",left:0,right:0,top:"50%",borderTop:"1px dashed #f0ede8" }}/>
                       {!isPast && <span data-add style={{ position:"absolute",left:4,top:2,fontSize: 10.5,fontWeight:700,color:"#5a78a0",opacity:0,transition:"opacity 0.1s",pointerEvents:"none" }}>＋ add</span>}
                     </div>
-                  ))}
+                  );})}
 
                   {/* THE VOID, BLOCKED OFF. A flat translucent grey over the
                       hours the Moon is void (owner 2026-08-21: "blocked off in
@@ -803,7 +838,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         background:`linear-gradient(to bottom,transparent 0%,${pCol}35 40%,${pCol}55 50%,${pCol}35 60%,transparent 100%)`,
                       }}>
                         <div style={{ position:"absolute",bottom:1,right:3,fontSize: 10.5,color:pCol,fontWeight:600,background:"rgba(255,255,255,0.75)",padding:"0 2px",borderRadius:2 }}>
-                          <span aria-hidden="true">{PLANET_ICONS[c.planet]??c.planet[0]}</span> {c.angle}
+                          <span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[c.planet]??c.planet[0]}</span> {c.angle}
                         </div>
                       </div>
                     );
@@ -825,7 +860,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                         <div style={{ flex:1,borderTop:`1px dashed ${col}59` }}/>
                         {parts && (
                           <div style={{ fontSize: 10.5,color:col,fontWeight:700,background:"rgba(255,255,255,0.82)",padding:"0 3px",borderRadius:3,whiteSpace:"nowrap" }}>
-                            {parts.left}{parts.sym}{parts.right} {fmtTime(d)}
+                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span> {fmtTime(d)}
                           </div>
                         )}
                       </div>
@@ -849,7 +884,11 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     const eMin = wE.getHours()*60+wE.getMinutes();
                     const topPct = Math.max(0,(sMin/60-HOUR_START)/HOURS);
                     const hPct   = Math.max(0,(eMin-sMin)/60/HOURS);
-                    return <EventBlock key={w.id} win={w} topPct={topPct} heightPct={hPct} onDelete={()=>onDeleteWindow(w.id)}/>;
+                    return <EventBlock key={w.id} win={w} topPct={topPct} heightPct={hPct} onDelete={()=>onDeleteWindow(w.id)}
+                      draggable={!isPast}
+                      onDragStart={()=>setDragging({ id:w.id, durationMs:wE.getTime()-wS.getTime(), minuteOffset:wS.getMinutes() })}
+                      onDragEnd={()=>{ setDragging(null); setDragOverCell(null); }}
+                    />;
                   })}
 
                   {/* Now line */}
@@ -961,7 +1000,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             <span title={`${dayRuler}'s day`} style={{
               fontSize: 10.5, color:rulerCol, background:`${rulerCol}18`, borderRadius:8,
               padding:"1px 5px", fontWeight:600, lineHeight:1.4,
-            }}><span role="img" aria-label={dayRuler}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span></span>
+            }}><span role="img" aria-label={dayRuler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler] ?? dayRuler[0]}</span></span>
           )}
           {phase && <span style={{ fontSize:12 }}>{MOON_EMOJI[phase]??""}</span>}
         </div>
@@ -998,7 +1037,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             const isPP = ev.type === "aspect";
             return (
               <div key={i} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{ fontSize: 10.5,color:col,fontWeight:isPP?700:500,lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                {parts.left}{parts.sym}{parts.right}{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
+                <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
               </div>
             );
           })}
@@ -1018,8 +1057,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
         {gcalEvents.slice(0,2).map(ev=>{
           const col = ev.color ?? "#4285f4";
           return (
-            <div key={ev.id} style={{ fontSize: 10.5,borderLeft:`2px solid ${col}`,paddingLeft:3,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:2,alignItems:"center" }}>
-              <span style={{ color:col,fontWeight:700,fontSize: 10.5 }}>G</span>
+            <div key={ev.id} title={`${ev.title} — from your Google Calendar`} style={{ fontSize: 10.5,borderLeft:`2px solid ${col}`,paddingLeft:3,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"12px",display:"flex",gap:2,alignItems:"center" }}>
               {ev.allDay ? "" : <span style={{ color:"var(--text-3)" }}>{fmtTime(new Date(ev.start))}</span>}
               <span style={{ overflow:"hidden",textOverflow:"ellipsis" }}>{ev.title}</span>
             </div>
@@ -1056,7 +1094,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
   const dateObj = new Date(dateStr+"T12:00:00");
   const dayLabel = dateObj.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const elem = dayData?.element??"", phase = dayData?.moonPhase??"", qs = dayData?.qualityScore??0;
-  const voc = dayData?.voidPeriods??false, crossings = (dayData?.crossings??[]) as any[];
+  const voc = dayData?.voidPeriods??false;
   const moonSign = dayData?.moonSign??"", signKey = parseSign(moonSign);
   const dayRuler = dayData?.dayRuler??"";
 
@@ -1079,7 +1117,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
       <div style={{ padding:"12px 14px 10px",flexShrink:0,borderBottom:"1px solid var(--color-border)",background:elem&&dayData&&!panelQuiet?ELEMENT_TINT[elem]??"var(--color-card-2)":"var(--color-card-2)" }}>
         <div style={{ fontSize: 10.5,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
-        {!panelQuiet && dayRuler && <div style={{ fontSize: 11,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true">{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
+        {!panelQuiet && dayRuler && <div style={{ fontSize: 11,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
         <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
@@ -1147,7 +1185,7 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
                     <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
                       <span role="img" aria-label="Moon" style={{ color:PLANET_COLORS.Moon }}>☽</span>
                       <span role="img" aria-label={a.aspect} style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
-                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)" }}>{PLANET_ICONS[other]??""}</span>
+                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)", fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[other]??""}</span>
                       <span style={{ flex:1,color:"var(--text-2)" }}>{other}</span>
                       <span style={{ fontSize: 10.5,color:a.applying?col:"var(--text-3)" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
                     </div>
@@ -1156,27 +1194,6 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
               </div>
             );
           })()}
-          {!panelQuiet && crossings.length>0 && (
-            <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 11,fontWeight:600,color:"var(--text-1)",marginBottom:2 }}>Angle crossings</div>
-              <div style={{ fontSize: 10.5,color:"var(--text-3)",lineHeight:1.45,marginBottom:6 }}>
-                Moments a planet crosses one of your local chart angles (rising point, midheaven) — a brief window, ~20 minutes, when that planet's themes peak.
-              </div>
-              {crossings.map((c:any,i:number)=>{
-                const col = PLANET_COLORS[c.planet]??"#888888";
-                const ANGLE_WORD: Record<string,string> = { ASC:"rises", MC:"culminates", DSC:"sets", IC:"grounds" };
-                return (
-                  <div key={i} style={{ display:"flex",alignItems:"center",gap:6,paddingBottom:5,marginBottom:i<crossings.length-1?5:0,borderBottom:i<crossings.length-1?"1px solid var(--color-border)":"none" }}>
-                    <div style={{ width:20,height:20,borderRadius:"50%",background:`${col}20`,color:col,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><span role="img" aria-label={c.planet}>{PLANET_ICONS[c.planet]??c.planet[0]}</span></div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:10,fontWeight:500,color:"var(--text-1)" }}>{c.planet} {ANGLE_WORD[c.angle] ?? `crosses ${c.angle}`}</div>
-                      <div style={{ fontSize: 10.5,color:"var(--text-3)" }}>{c.time}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
           {(wins as PlanningWindow[]).length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:11,fontWeight:600,color:"var(--color-primary)",marginBottom:6 }}>Your schedule</div>
@@ -1222,6 +1239,99 @@ interface AgendaMoment {
   onSchedule?: () => void;
   /** The small thing that fits in it, shown before you commit. */
   what?: string;
+}
+
+// ── DayListPanel ──────────────────────────────────────────────────────────────
+// The Day view's own list — what the hour-grid never showed, because a grid
+// draws what's already scheduled, not what's still just written down (owner
+// 2026-09-03: "a single day, in focus, with my to-do lists and habits...
+// on one page"). Sits beside TimeGrid the way DayDetailPanel sits beside the
+// month grid, but answers "what am I doing" rather than "what is the sky
+// doing" — that's AgendaView's question, this is the Day tab's.
+function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, onToggleHabit, onAddEvent }: {
+  dateStr: string; today: string; tasks: DayListTask[]; habits: any[]; isMobile: boolean;
+  onToggleTask: (id: number, done: boolean) => void;
+  onToggleHabit: (id: number, done: boolean) => void;
+  onAddEvent: () => void;
+}) {
+  const isToday = dateStr === today;
+  const dayLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const dueHere = dueOnDay(tasks, dateStr);
+  const { overdue, undated } = alsoOpen(tasks, dateStr, today);
+
+  const TaskRow = ({ t, sub, dim }: { t: DayListTask; sub: string; dim?: boolean }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderTop: "1px solid var(--color-border)", opacity: dim ? 0.75 : 1 }}>
+      <button onClick={() => onToggleTask(t.id, t.done !== "true")} aria-label={`Mark "${t.title}" done`}
+        style={{ width: 22, height: 22, margin: -4, flexShrink: 0, padding: 0, border: "none", background: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <span aria-hidden="true" style={{ width: 13, height: 13, borderRadius: 4, border: "1.5px solid var(--color-border)", display: "inline-block" }} />
+      </button>
+      <span style={{ fontSize: 13, color: "var(--color-foreground)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+      <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>{sub}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ width: isMobile ? "100%" : 280, minWidth: isMobile ? undefined : 280, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: isMobile ? "none" : "1px solid var(--color-border)", borderTop: isMobile ? "1px solid var(--color-border)" : "none", overflowY: "auto" }}>
+      <div style={{ padding: "12px 14px 10px", flexShrink: 0, borderBottom: "1px solid var(--color-border)", background: "var(--color-card-2)" }}>
+        <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 2 }}>{isToday ? "Today" : "Selected"}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25, marginBottom: 3 }}>{dayLabel}</div>
+        <button onClick={onAddEvent} style={{ width: "100%", padding: "6px 0", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>+ Add event</button>
+      </div>
+      <div style={{ flex: 1, padding: "9px 12px", overflowY: "auto" }}>
+        {dueHere.length > 0 ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2 }}>
+              {isToday ? "To do today" : "Due"} · {dueHere.length}
+            </div>
+            {dueHere.map(t => <TaskRow key={t.id} t={t} sub="no time yet" />)}
+          </div>
+        ) : isToday ? (
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>Nothing is due today.</div>
+        ) : null}
+
+        {[
+          { key: "overdue", label: "Still open", items: overdue },
+          { key: "undated", label: "No date yet", items: undated },
+        ].filter(g => g.items.length > 0).map(g => (
+          <div key={g.key} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2 }}>
+              {g.label} · {g.items.length}
+            </div>
+            {g.items.slice(0, 8).map(t => <TaskRow key={t.id} t={t} sub={g.key === "overdue" ? `due ${t.dueDate}` : "no date"} dim />)}
+            {g.items.length > 8 && (
+              <div style={{ fontSize: 11, color: "var(--text-3)", paddingTop: 4 }}>and {g.items.length - 8} more</div>
+            )}
+          </div>
+        ))}
+
+        <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2, marginTop: 4 }}>
+          Habits {habits.length > 0 && `· ${habits.length}`}
+        </div>
+        {habits.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--text-3)" }}>No habits set up yet.</div>
+        ) : habits.map((h: any) => (
+          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderTop: "1px solid var(--color-border)" }}>
+            <button onClick={() => onToggleHabit(h.id, !!h.doneToday)} aria-pressed={!!h.doneToday}
+              aria-label={`${h.doneToday ? "Unmark" : "Mark"} ${h.name} for this day`}
+              style={{ width: 22, height: 22, margin: -4, flexShrink: 0, padding: 0, border: "none", background: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <span aria-hidden="true" style={{
+                width: 13, height: 13, borderRadius: h.flavor === "chore" ? 4 : "50%",
+                border: h.doneToday ? "none" : "1.5px solid var(--color-border)",
+                background: h.doneToday ? "#3f7a4a" : "transparent",
+                color: "#ffffff", fontSize: 10.5, lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>{h.doneToday ? "✓" : ""}</span>
+            </button>
+            <span style={{
+              fontSize: 13, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              color: h.doneToday ? "var(--text-3)" : "var(--color-foreground)",
+              textDecoration: h.doneToday ? "line-through" : "none",
+            }}>{h.emoji ? `${h.emoji} ` : ""}{h.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow, onScheduleBlock }: {
@@ -1433,7 +1543,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
                     padding: "10px 6px 3px", opacity: past ? 0.4 : 0.85,
                   }}>
                     <div style={{ width: 62, flexShrink: 0, fontSize: 10, color: "var(--text-3)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
-                    <span aria-hidden="true" style={{ fontSize: 11, color: m.color, flexShrink: 0 }}>{m.glyph}</span>
+                    <span aria-hidden="true" style={{ fontSize: 11, color: m.color, flexShrink: 0, fontFamily:"var(--font-symbol)" }}>{m.glyph}</span>
                     <span style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: m.color, flexShrink: 0 }}>{m.label}</span>
                     <span style={{ flex: 1, height: 1, background: "var(--color-border)" }} />
                   </div>
@@ -1446,7 +1556,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
               return (
                 <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "8px 6px", paddingLeft: nested ? 24 : 6, borderTop: i === 0 || nested ? "none" : "1px solid var(--color-border)", opacity: past ? 0.45 : (m.faded ? 0.7 : 1) }}>
                   <div style={{ width: 62, flexShrink: 0, fontSize: 11, color: "var(--text-3)", textAlign: "right", paddingTop: 1, fontVariantNumeric: "tabular-nums" }}>{m.time}</div>
-                  <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color }}>{m.glyph}</div>
+                  <div aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center", fontSize: 13, color: m.color, fontFamily:"var(--font-symbol)" }}>{m.glyph}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: m.faded ? 400 : 600, color: m.faded ? "var(--color-muted)" : "var(--color-foreground)" }}>{m.label}</div>
                     {m.sub && <div style={{ fontSize: 10, color: "var(--color-muted)", marginTop: 1 }}>{m.sub}</div>}
@@ -1586,6 +1696,51 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
     onSuccess:()=>invalidateWindows(qc),
   });
 
+  // Dragging a block only ever moves that ONE block. /planning/windows PATCH
+  // already accepts a bare startTime/endTime; nothing here touches the
+  // cascade endpoint that ripples a shift onto what follows — a plain drag
+  // is not "everything after this moved too", and should not silently ask
+  // that question (owner 2026-09-03: "drag and drop events on weekly views").
+  const moveWindow = useMutation({
+    mutationFn: async({id,newStart,newEnd}:{id:number;newStart:Date;newEnd:Date})=>{
+      await fetch(`/api/planning/windows/${id}`, {
+        method:"PATCH",
+        headers:{ "Content-Type":"application/json", ...(testerId?{"x-tester-id":testerId}:{}) },
+        body: JSON.stringify({ startTime: newStart.toISOString(), endTime: newEnd.toISOString() }),
+      });
+    },
+    onSuccess:()=>invalidateWindows(qc),
+  });
+
+  // The day view's own list (owner 2026-09-03: "a single day, in focus, with
+  // my to-do lists and habits etc on one page"). `today` here is deliberately
+  // the VIEWED day, not the live day — the habits route already anchors its
+  // whole streak/doneness read to whatever date it's given (habits.ts), so
+  // looking at a past or future day shows habits as they stood/will stand
+  // that day, not today's state relabeled.
+  const { data: dayHabits=[] } = useQuery<any[]>({
+    queryKey:["calendar-habits",testerId,selectedDate,lat,lon],
+    queryFn: async()=>{
+      const r = await fetch(`/api/habits?today=${selectedDate}&lat=${lat}&lon=${lon}`,{headers:testerId?{"x-tester-id":testerId}:{}});
+      return jsonArray(r);
+    },
+    enabled:!!testerId && calView==="day",
+  });
+  const toggleHabitDay = useMutation({
+    mutationFn: async({id,done}:{id:number;done:boolean})=>{
+      const headers: Record<string,string> = { "Content-Type":"application/json", ...(testerId?{"x-tester-id":testerId}:{}) };
+      if (done) await fetch(`/api/habits/${id}/log?date=${selectedDate}`,{method:"DELETE",headers});
+      else await fetch(`/api/habits/${id}/log`,{method:"POST",headers,body:JSON.stringify({date:selectedDate})});
+    },
+    onSuccess:()=>qc.invalidateQueries({queryKey:["calendar-habits"]}),
+  });
+  const toggleTaskDone = useMutation({
+    mutationFn: async({id,done}:{id:number;done:boolean})=>{
+      await fetch(`/api/tasks/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json",...(testerId?{"x-tester-id":testerId}:{})},body:JSON.stringify({done:String(done)})});
+    },
+    onSuccess:()=>qc.invalidateQueries({queryKey:["calendar-tasks"]}),
+  });
+
   const dataMap = useMemo(()=>{
     const m = new Map<string,WeekDay>();
     for (const d of weekData?.days??[]) m.set(d.date,d);
@@ -1701,13 +1856,15 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
         <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
 
         <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
-          {/* FOUR VIEWS, NOT FIVE. "Day" is not deleted — it is the only place
-              that draws the full planetary-hour ladder, with its legend and the
-              night hours the week deliberately suppresses, so it carries a job
-              nothing else does. What it did not earn was a permanent tab beside
-              Agenda: it is the zoom you reach FROM a week, by tapping the day
-              you want, which is also how you would look for it. */}
-          {(["agenda","week","month","almanac"] as CalView[]).map(v=>(
+          {/* FIVE VIEWS NOW (owner, 2026-09-03: "a day view... to look at a
+              single day, in focus, with my to-do lists and habits etc on one
+              page"). Day used to be reached only by zooming from a week —
+              it draws the full planetary-hour ladder, with its legend and the
+              night hours the week deliberately suppresses, so it always
+              carried a job nothing else did; it just did not have a door of
+              its own. Now it also carries the day's own list (tasks +
+              habits), so it earns the tab the zoom-only version didn't. */}
+          {(["agenda","day","week","month","almanac"] as CalView[]).map(v=>(
             // The title carries the shortcut — an undiscoverable shortcut is a
             // shortcut nobody uses.
             <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
@@ -1815,7 +1972,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
                   const ruler = WEEKDAY_RULERS[i];
                   return (
                     <div key={d} title={pageQuiet ? undefined : `${ruler}'s day`} style={{ textAlign:"center",fontSize: 10.5,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler}>{PLANET_ICONS[ruler]}</span></span>}
+                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ruler]}</span></span>}
                     </div>
                   );
                 })}
@@ -1880,32 +2037,37 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
           <AlmanacView testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown}
             moonCycle={(now as any)?.moonCycle ?? null}
             nodeIngress={(now as any)?.nodeIngress ?? null}
-            onOpenElections={() => onNavigate?.("launch")} />
+            onOpenElections={() => onNavigate?.("launch")}
+            onNavigate={onNavigate} />
         )}
 
-        {/* Week / Day view */}
-        {/* THE WAY BACK. Day is now entered from the week rather than from a
-            tab, so without this it is a room with the door removed — reachable,
-            and then not leavable except by picking another view entirely. */}
-        {calView==="day" && (
-          <button onClick={() => setCalView("week")} style={{
-            alignSelf: "flex-start", margin: "0 0 6px 2px", display: "flex", alignItems: "center", gap: 6,
-            background: "none", border: "none", padding: "4px 2px", cursor: "pointer",
-            fontSize: 12, color: "var(--color-primary)", fontWeight: 500,
-          }}><span aria-hidden="true">←</span> Back to the week</button>
-        )}
-
+        {/* Week / Day view. Day is a tab of its own now (the switcher above
+            already gets you between the two), so the special-cased "back to
+            the week" door that stood in for that is gone — it would just be
+            a second button doing what the tab strip already does. */}
         {(calView==="week"||calView==="day") && (
-          <TimeGrid
-            dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
-            vocSpans={pageQuiet ? [] : vocSpans}
-            gcalMap={gcalMap} cautionMap={cautionMap}
-            testerId={testerId} today={today} lat={lat} lon={lon}
-            isDay={calView==="day"}
-            onZoomDay={calView==="week" ? (d) => { setSelectedDate(d); setCalView("day"); } : undefined}
-            onAddEvent={(date,hour)=>setAddModal({date,hour})}
-            onDeleteWindow={id=>delWindow.mutate(id)}
-          />
+          <>
+            <TimeGrid
+              dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
+              vocSpans={pageQuiet ? [] : vocSpans}
+              gcalMap={gcalMap} cautionMap={cautionMap}
+              testerId={testerId} today={today} lat={lat} lon={lon}
+              isDay={calView==="day"}
+              onZoomDay={calView==="week" ? (d) => { setSelectedDate(d); setCalView("day"); } : undefined}
+              onAddEvent={(date,hour)=>setAddModal({date,hour})}
+              onDeleteWindow={id=>delWindow.mutate(id)}
+              onMoveWindow={(id,newStart,newEnd)=>moveWindow.mutate({id,newStart,newEnd})}
+            />
+            {calView==="day" && (
+              <DayListPanel
+                dateStr={selectedDate} today={today}
+                tasks={dayTasks.filter((t:any)=>t.done!=="true")} habits={dayHabits} isMobile={isMobile}
+                onToggleTask={(id,done)=>toggleTaskDone.mutate({id,done})}
+                onToggleHabit={(id,done)=>toggleHabitDay.mutate({id,done})}
+                onAddEvent={()=>setAddModal({date:selectedDate})}
+              />
+            )}
+          </>
         )}
       </div>
 

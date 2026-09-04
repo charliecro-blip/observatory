@@ -492,8 +492,11 @@ export function evaluateActivityInterval(opts: {
    */
   lat?: number;
   lon?: number;
+  /** A tester's own custom activities (customActivities.ts), searched
+   *  alongside the built-in table — see computeElections below for why. */
+  extraActivities?: ActivityCorrespondence[];
 }): ActivityAssessment | null {
-  const act = ACTIVITIES.find(a => a.key === opts.activityKey);
+  const act = [...ACTIVITIES, ...(opts.extraActivities ?? [])].find(a => a.key === opts.activityKey);
   if (!act) return null;
 
   const { startAt, endAt } = opts;
@@ -642,8 +645,17 @@ export function computeElections(opts: {
    * the scan land on the correct CIVIL date rather than "24 hours later".
    */
   timeZone?: string;
+  /**
+   * A tester's own custom activities (owner 2026-09-03: "put in their own
+   * activity... and have that be something we sortage into different
+   * astrological energies"). Searched alongside the built-in table, never
+   * merged into it — ACTIVITIES stays the one shared, canonical list every
+   * tester reads; this is the one caller-supplied extension of it, scoped to
+   * whichever request asked for it.
+   */
+  extraActivities?: ActivityCorrespondence[];
 }): ElectionResult | null {
-  const act = ACTIVITIES.find(a => a.key === opts.activityKey);
+  const act = [...ACTIVITIES, ...(opts.extraActivities ?? [])].find(a => a.key === opts.activityKey);
   if (!act) return null;
   const { lat, lon, tzOffsetMin } = opts;
   const days = opts.span === "day" ? 1 : opts.span === "week" ? 7 : 30;

@@ -10,6 +10,7 @@ import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq, and, gte } from "drizzle-orm";
 import { ACTIVITIES, ACTIVITY_CATEGORIES, matchActivity, activityByKey, rankActivities } from "../lib/activityCorrespondences.js";
+import { customActivitiesFor } from "./customActivities.js";
 import { computeElections } from "../lib/electionEngine.js";
 import { findRareWindows, rareToday } from "../lib/rareWindows.js";
 import { linesUp, type HeldItem, needsWeaving, pickBestWindow } from "../lib/linesUp.js";
@@ -30,14 +31,22 @@ import { dayMet as habitDayMet } from "../lib/habitCadence.js";
 
 const router: IRouter = Router();
 
-router.get("/elections/activities", (_req, res) => {
+router.get("/elections/activities", async (req, res) => {
+  const testerId = req.headers["x-tester-id"] as string | undefined;
+  // A tester's own custom activities ride alongside the built-in fifty in
+  // the SAME picker — sortage into astrological energies was the whole
+  // point of letting someone add one (owner 2026-09-03). No testerId means
+  // exactly the impersonal list this route has always returned.
+  const custom = testerId ? await customActivitiesFor(testerId) : [];
+  const all = [...ACTIVITIES, ...custom];
   res.json({
     categories: ACTIVITY_CATEGORIES,
-    activities: ACTIVITIES.map(a => ({
+    activities: all.map(a => ({
       key: a.key, label: a.label, category: a.category, element: a.element,
       planets: a.planets, hourRulers: a.hourRulers, signs: Object.keys(a.signs),
       houses: a.houses, phase: a.phase, voc: a.voc, mercuryRx: a.mercuryRx,
       windowType: a.windowType, gloss: a.gloss,
+      custom: custom.some(c => c.key === a.key),
     })),
   });
 });
@@ -542,7 +551,12 @@ router.get("/elections/times", async (req, res) => {
     } catch { /* chartless is fine — GOOD tier only */ }
   }
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown });
+  // A custom activity's key (e.g. "custom-14") is invisible to the built-in
+  // ACTIVITIES table, so its own rule set has to ride along here too — the
+  // same reason /elections/activities merges them into one picker.
+  const extraActivities = testerId ? await customActivitiesFor(testerId) : [];
+
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, extraActivities });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });

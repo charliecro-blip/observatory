@@ -145,7 +145,7 @@ function ElectionWindowCard({ result, defaultOpen, testerId, categoryLabel }: { 
             {(result as { moonLine?: string }).moonLine ?? ""}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
-            {PLANET_ICONS[result.planetaryHour] ?? ""} {result.planetaryHour} hour{result.planetaryHourMatch ? " · suits this venture" : ""}
+            <span style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_ICONS[result.planetaryHour] ?? ""}</span> {result.planetaryHour} hour{result.planetaryHourMatch ? " · suits this venture" : ""}
           </div>
         </div>
         <div style={{ fontSize: 11, color: "var(--text-3)" }}>{open ? "▲" : "▼"}</div>
@@ -213,7 +213,7 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
                 {new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </span>
               <span style={{ width: 54, flexShrink: 0, color: "var(--color-muted)", fontVariantNumeric: "tabular-nums" }}>{r.time}</span>
-              <span style={{ flexShrink: 0 }}>{PLANET_ICONS[r.planet] ?? ""}</span>
+              <span style={{ flexShrink: 0, fontFamily: "var(--font-symbol)" }}>{PLANET_ICONS[r.planet] ?? ""}</span>
               <span style={{ color: "var(--color-foreground)" }}>{r.planet} crosses your {r.angle}</span>
             </div>
           ))}

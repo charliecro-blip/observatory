@@ -29,10 +29,10 @@ import { RHYTHMS, type Rhythm } from "@/lib/preferences";
  * chart's Sun element, when there is a chart. Not a theme; a sentence.
  */
 const PAYOFF: Record<string, string> = {
-  fire: "By your chart, momentum is what rewards you.",
-  earth: "By your chart, seeing it add up is what rewards you.",
-  air: "By your chart, variety is what rewards you.",
-  water: "By your chart, the pull being there is what rewards you.",
+  fire: "By your chart, momentum is what keeps you going.",
+  earth: "By your chart, watching it add up is what keeps you going.",
+  air: "By your chart, variety is what keeps you going.",
+  water: "By your chart, staying connected to it is what keeps you going.",
 };
 
 interface TaskLite { id: number; title: string; dueDate?: string | null }

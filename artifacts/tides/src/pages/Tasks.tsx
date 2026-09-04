@@ -385,7 +385,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             {newDueDate === today && activeCautionMatches.length > 0 && (
               <div style={{fontSize:10.5,color:"#a04040",background:"#a0404008",border:"1px solid #a0404030",borderRadius:7,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>
                 Heads up — {activeCautionMatches.map((t:any,i:number) => (
-                  <span key={i}>{i>0 && ", "}<span aria-hidden="true">{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
+                  <span key={i}>{i>0 && ", "}<span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})</span>
                 ))} is active today — one of your advisories.
               </div>
             )}

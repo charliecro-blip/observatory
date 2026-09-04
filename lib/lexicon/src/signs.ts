@@ -59,7 +59,7 @@ export const SIGNS: Record<string, SignEntry> = {
   },
   Gemini: {
     key: "Gemini", element: "air", modality: "mutable", glyph: "♊︎",
-    approach: "two threads at once suit it, as long as each gets returned to",
+    approach: "run two things at once, and circle back to each before either goes cold",
     image: "The messenger's crossroads — everything wants to be said twice.",
     inflection: "quick, curious, and double-tracked — moving through words and options",
     favors: ["write & edit", "calls, errands, emails", "learn something quick", "pair work & good banter", "gather information widely", "short trips"],

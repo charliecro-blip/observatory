@@ -61,7 +61,7 @@ export function CautionQuestionnaireModal({ sensitivity, onClose }: {
         border: isPicked ? "1.5px solid #1a2a3a" : "1px solid var(--color-border)",
         background: isPicked ? "#1a2a3a10" : "var(--color-card-2)",
       }}>
-        <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}><span aria-hidden="true">{PLANET_GLYPH[p]}</span></span>
+        <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[p]}</span></span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: isPicked ? "var(--color-foreground)" : "var(--color-foreground)" }}>
             {p} <span style={{ fontWeight: 400, color: "var(--text-3)" }}>· {arch.label}</span>

@@ -174,6 +174,10 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
   // is already the door to the star; a second control going the same place
   // would make the count decorative twice over.
   const [openStars, setOpenStars] = useState<Set<number>>(new Set());
+  // The untied-task count opens in place, the same way a star's hidden rows
+  // do above — naming a number and giving no way to see what it is read as
+  // a tease rather than a fact.
+  const [showUntiedTasks, setShowUntiedTasks] = useState(false);
   // Both by default — seeing them together is the whole point of one card.
   const [lens, setLens] = useState<"both" | "held" | "moving">("both");
   const toggleStar = (id: number) => setOpenStars(prev => {
@@ -512,11 +516,28 @@ export default function WhereYouAre({ testerId, lat, lon, onNavigate, onOpenStar
                     and {untiedHabits.length - perStar} more habits
                   </div>
                 )}
-                {/* Counted, not listed — "Your work" below lists every task by
-                    date, and that is the better axis for a list you work from. */}
+                {/* Counted by default — "Your work" below lists every task by
+                    date, the better axis for working through them — but the
+                    count itself opens on click, so "2 tasks" isn't a number
+                    with no way to see what it refers to. */}
                 {untiedTasks.length > 0 && (
-                  <div style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                    {untiedTasks.length} {untiedTasks.length === 1 ? "task" : "tasks"}
+                  <div>
+                    <button onClick={() => setShowUntiedTasks(v => !v)} style={{
+                      fontSize: 10.5, color: "var(--text-3)", background: "none", border: "none",
+                      padding: 0, cursor: "pointer", textDecoration: "underline", textDecorationColor: "var(--color-border)",
+                    }}>
+                      {untiedTasks.length} {untiedTasks.length === 1 ? "task" : "tasks"}
+                    </button>
+                    {showUntiedTasks && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+                        {untiedTasks.map(t => (
+                          <button key={t.id} onClick={() => onNavigate("tasks")} style={{
+                            fontSize: 11, color: "var(--text-2)", background: "none", border: "none",
+                            padding: 0, textAlign: "left", cursor: "pointer",
+                          }}>{t.title}</button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

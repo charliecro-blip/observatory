@@ -482,6 +482,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   const [quickTitle, setQuickTitle] = useState("");
   // After a linked task/habit is created, offer to find it a good time.
   const [suggestFor, setSuggestFor] = useState<{ title: string; goalId: number; kind: "task" | "habit" } | null>(null);
+  // Which star's element is currently open for editing. A diagnosed element
+  // can be wrong (an AI read from the title/description at creation time),
+  // and there was no way back in short of deleting and recreating the star.
+  const [editingElement, setEditingElement] = useState<number | null>(null);
   const createLinked = useMutation({
     mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
       const r = kind === "task"
@@ -571,7 +575,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               {activeCautionMatches.map((t: any, i: number) => (
                 <span key={i}>
                   {i > 0 && " · "}
-                  <span aria-hidden="true">{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
+                  <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.triggerPlanet]}</span> {t.triggerPlanet} {String(t.aspect).toLowerCase()} your {t.cautionPlanet} ({CAUTION_PLANET_ARCHETYPE[t.cautionPlanet as keyof typeof CAUTION_PLANET_ARCHETYPE]?.label.toLowerCase()})
                 </span>
               ))}
               {" — the theme you flagged is live for a little while. Move big commitments gently, then it passes."}
@@ -732,7 +736,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               Adjust timing signature
               {!showTimingOverrides && effPlanet && (
                 <span style={{ color: "var(--color-muted)" }}>
-                  · now <span aria-hidden="true">{PLANET_GLYPH[effPlanet] ?? ""}</span> {effPlanet}{effElement ? `, ${effElement}` : ""}
+                  · now <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[effPlanet] ?? ""}</span> {effPlanet}{effElement ? `, ${effElement}` : ""}
                 </span>
               )}
             </button>
@@ -751,7 +755,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       border: on ? `1px solid ${col}` : "1px solid #e0dad0",
                       background: on ? `${col}18` : "var(--color-card-2)",
                       color: on ? col : "var(--text-3)", fontWeight: on ? 600 : 400,
-                    }}><span aria-hidden="true">{PLANET_GLYPH[p] ?? ""}</span> {p}{suggested ? " ·" : ""}</button>
+                    }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[p] ?? ""}</span> {p}{suggested ? " ·" : ""}</button>
                   );
                 })}
               </div>
@@ -813,7 +817,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: ec, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--color-primary)" }}>
-                        <span aria-hidden="true">{a.planet ? PLANET_GLYPH[a.planet] ?? "" : ""}</span> {a.label}
+                        <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{a.planet ? PLANET_GLYPH[a.planet] ?? "" : ""}</span> {a.label}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {sub}{a.until ? ` · until ${fmtMonth(a.until)}` : ""}
@@ -946,7 +950,11 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         const pc = PLANET_PICK_COLOR[(g as any).planet] ?? "#8a8278";
                         return <span title={`Ruled by ${(g as any).planet} — drives this star's best times`} style={{ fontSize: 10.5, color: pc, background: `${pc}14`, padding: "1px 7px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 3 }}><Glyph name={(g as any).planet} size={11} tint={false} bg={`${pc}14`} /> {(g as any).planet}</span>;
                       })()}
-                      {info && <span style={{ fontSize: 10.5, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8 }}>{info.name}</span>}
+                      {info && (
+                        <button onClick={() => setEditingElement(editingElement === g.id ? null : g.id)}
+                          title="Not the right element? Click to change it"
+                          style={{ fontSize: 10.5, color: info.color, background: `${info.color}14`, padding: "1px 7px", borderRadius: 8, border: "none", cursor: "pointer" }}>{info.name}</button>
+                      )}
                     </div>
                     {/* HOLDING or MOVING, as a word, under the name.
                         The distinction lives in `endsOn` — null is something
@@ -1011,14 +1019,22 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         </label>
                       )}
                     </div>
-                    {!g.element && (
-                      <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                    {(!g.element || editingElement === g.id) && (
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
                         {Object.entries(ELEMENT_INFO).map(([key, ei]) => (
-                          <button key={key} onClick={() => setElement.mutate({ id: g.id, element: key })} style={{
+                          <button key={key} onClick={() => { setElement.mutate({ id: g.id, element: key }); setEditingElement(null); }} style={{
                             fontSize: 10.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
-                            border: "1px solid #e0dad0", background: "var(--color-card-2)", color: "var(--text-3)",
+                            border: key === g.element ? `1px solid ${ei.color}` : "1px solid #e0dad0",
+                            background: key === g.element ? `${ei.color}14` : "var(--color-card-2)",
+                            color: key === g.element ? ei.color : "var(--text-3)",
                           }}>{ei.label}</button>
                         ))}
+                        {editingElement === g.id && (
+                          <button onClick={() => setEditingElement(null)} style={{
+                            fontSize: 10.5, padding: "2px 8px", borderRadius: 10, cursor: "pointer",
+                            border: "none", background: "none", color: "var(--text-3)",
+                          }}>never mind</button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1305,7 +1321,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--color-muted)", marginBottom: 7 }}>Your long weather · the seasons your stars can ride</div>
               {prof && (
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", marginBottom: 5 }}>
-                  <span aria-hidden="true">{PLANET_GLYPH[prof.timeLord] ?? "◔"}</span> Your {ordinal(prof.house)}-house year
+                  <span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[prof.timeLord] ?? "◔"}</span> Your {ordinal(prof.house)}-house year
                   <span style={{ fontWeight: 400, color: "var(--text-3)" }}> · {HOUSE_MEANINGS[prof.house]?.title ?? ""} · ruled by {prof.timeLord}</span>
                 </div>
               )}
@@ -1315,7 +1331,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 return (
                   <div key={i}>
                     <button onClick={() => setExpandedWeather(v => v === key ? null : key)} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "1px 0" }}>
-                      <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.transitPlanet]}</span></span>
+                      <span style={{ color: "#a04040", flexShrink: 0 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.transitPlanet]}</span></span>
                       <span style={{ flex: 1 }}>{t.transitPlanet} {String(t.aspect).toLowerCase()} your natal {t.natalPlanet} — {t.exact ? "exact now" : `${t.orb}° orb`}{t.likelyDomains?.length ? ` · ${t.likelyDomains.slice(0, 2).join(", ")}` : ""}</span>
                       <span aria-hidden="true" style={{ fontSize: 10.5, color: "var(--text-3)", transform: isExp ? "rotate(180deg)" : "none", display: "inline-block" }}>▾</span>
                     </button>
@@ -1325,7 +1341,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               })}
               {keepers.map((t: any, i: number) => (
                 <div key={`k${i}`} style={{ fontSize: 10.5, color: "var(--color-muted)", lineHeight: 1.5, display: "flex", gap: 6, alignItems: "baseline", padding: "1px 0" }}>
-                  <span style={{ color: "#5a6b8c", flexShrink: 0 }}><span aria-hidden="true">{PLANET_GLYPH[t.planet]}</span></span>
+                  <span style={{ color: "#5a6b8c", flexShrink: 0 }}><span aria-hidden="true" style={{ fontFamily: "var(--font-symbol)" }}>{PLANET_GLYPH[t.planet]}</span></span>
                   <span>{t.planet} through your {ordinal(t.house)} · {HOUSE_MEANINGS[t.house]?.title ?? ""} — {t.planet === "Jupiter" ? "where growth wants to happen" : "where structure is being earned"}</span>
                 </div>
               ))}
