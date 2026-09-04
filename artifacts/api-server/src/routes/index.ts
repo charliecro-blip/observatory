@@ -42,6 +42,7 @@ import feedbackRouter from "./feedback";
 import donePatternRouter from "./donePattern";
 import engineRouter from "./engine";
 import positionFixRouter from "./positionFix";
+import customActivitiesRouter from "./customActivities";
 
 const router: IRouter = Router();
 
@@ -83,6 +84,7 @@ router.use(studioRouter);
 router.use(momentumRouter);
 router.use(sprintsRouter);
 router.use(electionsRouter);
+router.use(customActivitiesRouter);
 router.use(eventsRouter);
 router.use(feedbackRouter);
 router.use(donePatternRouter);

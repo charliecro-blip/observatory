@@ -32,9 +32,10 @@
  */
 
 import React, { useState, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { layoutLanes, spanLabel, durationLabel } from "@/lib/activityWeek";
 import { usePreferences } from "@/contexts/preferences-context";
+import { invalidateWindows } from "@/lib/invalidateWindows";
 
 interface Win {
   date: string; dow: string;
@@ -129,15 +130,84 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
     roRef.current = ro;
   }, []);
   const [showAll, setShowAll] = useState(false);
+  // A custom activity's own creation panel (owner 2026-09-03: "an option for
+  // people to add their own... and have that be something we sortage into
+  // different astrological energies and create rule sets for"). Lives right
+  // in the picker rather than a separate settings page, since making one and
+  // immediately seeing its week is the point.
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newWhy, setNewWhy] = useState("");
+  const [addError, setAddError] = useState<{ message: string; existingKey?: string } | null>(null);
   // The reason lived in a title attribute, which is nothing at all on a phone.
-  const [why, setWhy] = useState<string | null>(null);
+  // Holds the WINDOW now, not just its formatted text, so the reveal can also
+  // offer to schedule it — a moment worth reading was a moment with nothing
+  // to do about it (owner, 2026-09-03: "an opportunity to click on it and
+  // schedule that into my calendar").
+  const [selected, setSelected] = useState<{ w: Win; dow: string; label: string } | null>(null);
+  const [scheduled, setScheduled] = useState(false);
   const tz = new Date().getTimezoneOffset();
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const qc = useQueryClient();
 
-  const { data: acts } = useQuery<{ activities: { key: string; label: string }[] }>({
-    queryKey: ["election-activities"],
-    queryFn: async () => (await fetch("/api/elections/activities")).json(),
-    staleTime: Infinity,
+  const schedule = useMutation({
+    mutationFn: async () => {
+      if (!selected || !testerId) return;
+      const r = await fetch("/api/planning/windows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+        body: JSON.stringify({
+          title: label, windowType: "deep_work",
+          startTime: selected.w.startAt, endTime: selected.w.endAt,
+        }),
+      });
+      if (!r.ok) throw new Error(`schedule failed (${r.status})`);
+    },
+    onSuccess: () => { invalidateWindows(qc); qc.invalidateQueries({ queryKey: ["tides-week"] }); setScheduled(true); },
+  });
+
+  // testerId rides in both the key and the header now — this used to be one
+  // global, tester-independent cache entry, which was correct while the list
+  // was purely the built-in fifty and became wrong the moment it could also
+  // carry a tester's own custom activities.
+  const { data: acts } = useQuery<{ activities: { key: string; label: string; custom?: boolean }[] }>({
+    queryKey: ["election-activities", testerId],
+    queryFn: async () => (await fetch("/api/elections/activities", { headers: testerId ? { "x-tester-id": testerId } : {} })).json(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const createCustom = useMutation({
+    mutationFn: async () => {
+      if (!testerId) throw new Error("no tester");
+      const r = await fetch("/api/activities/custom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+        body: JSON.stringify({ title: newTitle.trim(), description: newWhy.trim() || undefined }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw body;
+      return body as { key: string; label: string };
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["election-activities"] });
+      setActivity(created.key);
+      setNewTitle(""); setNewWhy(""); setShowAdd(false); setAddError(null);
+      setSelected(null); setScheduled(false);
+    },
+    onError: (err: any) => {
+      setAddError({ message: err?.message ?? "Couldn't read that as an activity — try rephrasing it.", existingKey: err?.key });
+    },
+  });
+
+  const deleteCustom = useMutation({
+    mutationFn: async (key: string) => {
+      if (!testerId) return;
+      await fetch(`/api/activities/custom/by-key/${encodeURIComponent(key)}`, { method: "DELETE", headers: { "x-tester-id": testerId } });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["election-activities"] });
+      setActivity("train-hard"); setSelected(null); setScheduled(false);
+    },
   });
 
   const { data, isPending } = useQuery<{ windows: Win[]; personalized?: boolean; chartAvailable?: boolean; withheld?: { hourOnly: number } }>({
@@ -159,7 +229,12 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
   // default stands — it is never filled in on their behalf.
   const chosen = prefs.timing.helpTiming ?? [];
   const shortlist = chosen.length ? chosen : FEATURED;
-  const shown = showAll ? all : all.filter(a => shortlist.includes(a.key));
+  const customOnes = all.filter(a => a.custom);
+  // A tester's own activities stay visible in the short list too — they are
+  // not part of the curated fifty, and the whole point of making one is
+  // seeing it without first finding "all 51".
+  const shown = (showAll ? all : all.filter(a => shortlist.includes(a.key)))
+    .concat(showAll ? [] : customOnes.filter(a => !shortlist.includes(a.key)));
 
   // One column per day, so an empty day is VISIBLE as an empty day rather
   // than missing from a list.
@@ -185,23 +260,66 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
             your chart
           </span>
         )}
+        {all.find(a => a.key === activity)?.custom && (
+          <button onClick={() => deleteCustom.mutate(activity)} disabled={deleteCustom.isPending} style={{
+            marginLeft: "auto", fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
+          }}>{deleteCustom.isPending ? "removing…" : "remove this activity"}</button>
+        )}
       </div>
 
-      {/* The picker. Ten by default; the other fifty behind a door. */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 11 }}>
+      {/* The picker. Ten by default; the other fifty behind a door. Your own
+          activities carry a small dot — the same rule set as the built-in
+          fifty, still worth telling apart at a glance since nobody else's
+          list has this one on it. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: showAdd ? 8 : 11, alignItems: "center" }}>
         {shown.map(a => (
-          <button key={a.key} onClick={() => { setWhy(null); setActivity(a.key); }} style={{
-            fontSize: 10.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
-            border: `1px solid ${a.key === activity ? "var(--color-primary)" : "var(--color-border)"}`,
+          <button key={a.key} onClick={() => { setSelected(null); setScheduled(false); setActivity(a.key); }} title={a.custom ? "Your own activity" : undefined} style={{
+            fontSize: 10.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
+            border: `1px solid ${a.key === activity ? "var(--color-primary)" : a.custom ? "#6f6a9055" : "var(--color-border)"}`,
             background: a.key === activity ? "var(--color-primary)" : "var(--color-background)",
             color: a.key === activity ? "#ffffff" : "var(--text-2)",
-          }}>{a.label}</button>
+          }}>
+            {a.custom && <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: a.key === activity ? "#ffffff" : "#6f6a90", flexShrink: 0 }} />}
+            {a.label}
+          </button>
         ))}
         <button onClick={() => setShowAll(v => !v)} style={{
           fontSize: 10.5, padding: "3px 8px", background: "none", border: "none",
           cursor: "pointer", color: "var(--color-primary)",
         }}>{showAll ? "fewer" : `all ${all.length}`}</button>
+        {testerId && (
+          <button onClick={() => { setShowAdd(v => !v); setAddError(null); }} style={{
+            fontSize: 10.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
+            border: "1px dashed var(--color-border)", background: "none", color: "var(--text-3)",
+          }}>{showAdd ? "cancel" : "+ add yours"}</button>
+        )}
       </div>
+
+      {showAdd && (
+        <div style={{ marginBottom: 11, padding: "9px 11px", borderRadius: 9, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
+          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="What do you want windows for? e.g. Practice guitar"
+            style={{ width: "100%", fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 6, boxSizing: "border-box" }} />
+          <input value={newWhy} onChange={e => setNewWhy(e.target.value)} placeholder="Why it matters (optional — sharpens the reading)"
+            style={{ width: "100%", fontSize: 11.5, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 8, boxSizing: "border-box" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={() => createCustom.mutate()} disabled={!newTitle.trim() || createCustom.isPending} style={{
+              fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 6, cursor: newTitle.trim() ? "pointer" : "default",
+              border: "none", background: "var(--color-primary)", color: "#ffffff", opacity: newTitle.trim() ? 1 : 0.5,
+            }}>{createCustom.isPending ? "Reading it…" : "Create"}</button>
+            <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Read the same way a Guiding Star is — element, ruling planet, houses.</span>
+          </div>
+          {addError && (
+            <div style={{ fontSize: 11, color: "#a05020", marginTop: 6 }}>
+              {addError.message}
+              {addError.existingKey && (
+                <button onClick={() => { setActivity(addError.existingKey!); setShowAdd(false); setAddError(null); setNewTitle(""); setNewWhy(""); }} style={{
+                  marginLeft: 6, fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: 600,
+                }}>Use it →</button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {isPending && <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Reading the week…</div>}
 
@@ -239,7 +357,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                       <div style={{ position: "absolute", left: 0, right: 0, top: "50%", borderTop: "1px dashed var(--color-border)" }} />
                     )}
                     {allDay.map((w, i) => (
-                      <div key={`ad-${i}`} title={w.why ?? ""} onClick={() => setWhy(w.why ? `${d.dow}, all day — ${w.why}` : null)}
+                      <div key={`ad-${i}`} title={w.why ?? ""} onClick={() => { setSelected({ w, dow: d.dow, label: "all day" }); setScheduled(false); }}
                         style={{ position: "absolute", left: 0, right: 0, top: i * (laneH + gapH), height: laneH,
                           background: (TIER[w.tier] ?? TIER.fair).fill, color: (TIER[w.tier] ?? TIER.fair).ink,
                           border: w.tier === "great" ? "none" : "1px solid var(--color-border)",
@@ -271,12 +389,12 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                       // blank bars whenever a ResizeObserver has not delivered
                       // is one bad frame away from looking broken.
                       const room = (widthPct / 100) * trackW - 5;
-                      const label = trackW === 0 ? w.startClock
+                      const barLabel = trackW === 0 ? w.startClock
                         : room > full.length * 5.7 ? full
                         : room > w.startClock.length * 5.7 ? w.startClock : "";
                       return (
-                        <div key={i} title={`${label} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`}
-                          onClick={() => setWhy(`${d.dow} ${label} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`)}
+                        <div key={i} title={`${barLabel} · ${durationLabel(w)}${w.why ? ` — ${w.why}` : ""}`}
+                          onClick={() => { setSelected({ w, dow: d.dow, label: full }); setScheduled(false); }}
                           style={{ position: "absolute", left: `${left}%`, width: `${widthPct}%`,
                             top: (allDay.length + p.lane) * (laneH + gapH), height: laneH,
                             background: core ? t.core : t.fill,
@@ -289,7 +407,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                             textAlign: "center", overflow: "hidden", whiteSpace: "nowrap",
                             fontWeight: core ? 600 : 400,
                             cursor: "pointer" }}>
-                          {label}
+                          {barLabel}
                         </div>
                       );
                     })}
@@ -309,25 +427,46 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
             </div>
           </div>
 
-          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 9, lineHeight: 1.5 }}>
-            {why
-              ? why
-              : total === 0
+          {selected ? (
+            <div style={{ marginTop: 9, padding: "8px 10px", borderRadius: 8, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 11, color: "var(--text-2)", lineHeight: 1.5 }}>
+                {selected.dow}{selected.w.allDay ? ", all day" : ` ${selected.label}`} · {durationLabel(selected.w)}
+                {selected.w.why ? ` — ${selected.w.why}` : ""}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                {scheduled ? (
+                  <span style={{ fontSize: 11, color: "#3f7a4a", fontWeight: 600 }}>Scheduled ✓</span>
+                ) : (
+                  <button onClick={() => schedule.mutate()} disabled={!testerId || schedule.isPending} style={{
+                    fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, cursor: testerId ? "pointer" : "default",
+                    border: "none", background: "var(--color-primary)", color: "#ffffff",
+                  }}>{schedule.isPending ? "Scheduling…" : "Schedule this →"}</button>
+                )}
+                <button onClick={() => { setSelected(null); setScheduled(false); }} style={{
+                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
+                }}>close</button>
+              </div>
+              {schedule.isError && <div style={{ fontSize: 10.5, color: "#a05020", marginTop: 4 }}>Couldn't schedule that — try again.</div>}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 9, lineHeight: 1.5 }}>
+              {total === 0
                 ? `Nothing this week stands out for ${label.toLowerCase()}.`
-                : `${total} window${total === 1 ? "" : "s"} this week. Pick one to see what's behind it.`}
-            {!why && data?.chartAvailable === false && (
-              <span> Add your birth chart to have these read against your own houses.</span>
-            )}
-            {/* Said once, and only when there is a violet edge on screen to
-                explain. The outline-and-core pairing is left to speak for
-                itself; an edge colour cannot. */}
-            {!why && (data?.windows ?? []).some(w => w.personal) && (
-              <span> A violet edge marks the ones read against your own chart.</span>
-            )}
-            {!why && (data?.withheld?.hourOnly ?? 0) > 0 && (
-              <span> {data!.withheld!.hourOnly} matching planetary hours aren't listed on their own.</span>
-            )}
-          </div>
+                : `${total} window${total === 1 ? "" : "s"} this week. Pick one to see what's behind it, and schedule it if it fits.`}
+              {data?.chartAvailable === false && (
+                <span> Add your birth chart to have these read against your own houses.</span>
+              )}
+              {/* Said once, and only when there is a violet edge on screen to
+                  explain. The outline-and-core pairing is left to speak for
+                  itself; an edge colour cannot. */}
+              {(data?.windows ?? []).some(w => w.personal) && (
+                <span> A violet edge marks the ones read against your own chart.</span>
+              )}
+              {(data?.withheld?.hourOnly ?? 0) > 0 && (
+                <span> {data!.withheld!.hourOnly} matching planetary hours aren't listed on their own.</span>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
