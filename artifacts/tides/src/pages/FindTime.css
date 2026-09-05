@@ -1,195 +1,271 @@
 .timing-shell {
   min-height: 100dvh;
-  background: var(--color-background);
+  background:
+    linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--color-meridian) 4%, transparent) 1px,
+        transparent 1px
+      )
+      0 0 / 72px 72px,
+    linear-gradient(
+        color-mix(in srgb, var(--color-meridian) 3%, transparent) 1px,
+        transparent 1px
+      )
+      0 0 / 72px 72px,
+    var(--color-background);
   color: var(--color-foreground);
-  font-family: inherit;
+  font-family: var(--font-sans);
 }
 .timing-header {
-  max-width: 1160px;
-  margin: auto;
-  padding: 24px 32px;
+  height: 58px;
+  padding: 0 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-rail) 92%, transparent);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 4;
 }
 .timing-brand {
+  font-family: var(--font-display);
   font-size: 21px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.025em;
+}
+.timing-brand::before {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-right: 9px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  vertical-align: -1px;
+  background: linear-gradient(
+    90deg,
+    transparent 46%,
+    currentColor 46% 54%,
+    transparent 54%
+  );
 }
 .timing-account {
   position: relative;
+  font-size: 12px;
+  color: var(--text-2);
 }
 .timing-account summary {
   cursor: pointer;
+  list-style: none;
+  padding: 8px 0;
+}
+.timing-account summary::-webkit-details-marker {
+  display: none;
 }
 .timing-account button {
   position: absolute;
   right: 0;
-  top: 32px;
-  z-index: 2;
-  background: var(--color-card);
+  top: 34px;
+  z-index: 5;
+  white-space: nowrap;
+  box-shadow: 0 10px 35px #0002;
 }
 .timing-main {
-  max-width: 1060px;
-  margin: auto;
-  padding: 52px 32px 90px;
+  width: min(900px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 54px 0 96px;
 }
 .timing-intro {
-  max-width: 680px;
+  max-width: 740px;
 }
-.timing-kicker {
-  color: var(--color-muted);
-  font-size: 12px;
-  letter-spacing: 0.12em;
+.timing-kicker,
+.timing-query-receipt span,
+.timing-activity-confirmed span {
+  color: var(--color-brass);
+  font: 500 10px/1.2 var(--font-sans);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .timing-intro h1 {
-  font-family: Georgia, serif;
-  font-weight: 400;
-  font-size: clamp(32px, 5vw, 48px);
-  line-height: 1.15;
-  margin: 14px 0;
+  font: 400 clamp(34px, 6vw, 60px)/1.02 var(--font-display);
+  letter-spacing: -0.035em;
+  margin: 12px 0 14px;
 }
 .timing-intro > p:last-child {
-  color: var(--color-muted);
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 26px;
+  max-width: 510px;
+  color: var(--text-2);
+  font: 400 16px/1.55 var(--font-serif);
+  margin: 0 0 26px;
 }
 .timing-shell button {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 16px;
+  border-radius: 5px;
+  padding: 9px 14px;
   background: var(--color-card);
   color: var(--color-foreground);
   cursor: pointer;
-  font: inherit;
-  font-size: 14px;
+  font: 500 12px/1.2 var(--font-sans);
 }
 .timing-shell button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 .timing-shell button:focus-visible,
 .timing-shell input:focus-visible,
 .timing-shell textarea:focus-visible,
-.timing-shell select:focus-visible,
 .timing-shell summary:focus-visible {
-  outline: 2px solid #ab8847;
+  outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
 .timing-question {
-  max-width: 720px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.timing-question label {
-  width: 100%;
-  font-size: 13px;
-}
-.timing-shell input,
-.timing-shell select,
-.timing-shell textarea {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  max-width: 760px;
+  padding: 7px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-card);
+  box-shadow: 0 18px 50px #2530400c;
+}
+.timing-question label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.timing-shell input,
+.timing-shell textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-card-2);
   color: var(--color-foreground);
   font: inherit;
-  padding: 12px;
+  padding: 10px 11px;
   min-width: 0;
   box-sizing: border-box;
 }
 .timing-question textarea {
+  border: 0;
+  background: transparent;
   width: 100%;
-  font-size: 18px;
-  resize: vertical;
-  line-height: 1.5;
+  resize: none;
+  font: 400 17px/1.4 var(--font-serif);
+  padding: 9px 10px;
 }
 .timing-question > button,
 .timing-interpretation > button,
 .timing-shell .timing-choose {
-  background: #223c3c;
+  background: var(--color-meridian);
   color: #fff;
-  border-color: #223c3c;
+  border-color: var(--color-meridian);
 }
 .timing-examples {
-  max-width: 750px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 18px;
+  margin: 14px 0 0;
+}
+.timing-examples::before {
+  content: "Try";
+  color: var(--text-3);
+  font: 500 10px/30px var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .timing-examples button {
-  font-size: 12px;
+  color: var(--text-2);
   background: transparent;
+  border-color: transparent;
+  padding: 7px 9px;
 }
-.timing-interpretation {
-  padding: 24px;
-  margin: 28px 0;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+.timing-examples button:hover {
+  border-color: var(--color-border);
   background: var(--color-card);
 }
-.timing-main h2 {
-  font-size: 20px;
-  font-weight: 500;
-  margin: 0 0 18px;
-}
-.timing-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 2fr) minmax(
-      0,
-      1fr
-    );
-  gap: 12px;
-}
-.timing-fields label {
-  min-width: 0;
-  font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.timing-fields input,
-.timing-fields select {
-  width: 100%;
-  font-size: 14px;
-}
-.timing-note,
-.timing-availability {
-  font-size: 12px;
-  color: var(--color-muted);
-  line-height: 1.6;
-}
-.timing-checkbox {
+.timing-query-receipt {
+  max-width: 760px;
+  margin: 20px 0 26px;
+  padding: 13px 15px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  margin: 18px 0;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
-.timing-interpretation > button {
-  margin-top: 14px;
+.timing-query-receipt div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.timing-query-receipt strong {
+  font: 400 16px/1.4 var(--font-serif);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timing-query-receipt button {
+  background: transparent;
+  border: 0;
+  color: var(--color-meridian);
+}
+.timing-results {
+  margin-top: 12px;
 }
 .timing-results-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 18px;
+  align-items: end;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--color-border);
+}
+.timing-results-header h2 {
+  margin: 0;
+  font: 500 11px/1.2 var(--font-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-brass);
+}
+.timing-results-header > p {
+  margin: 0;
+  grid-row: 2;
+  color: var(--text-2);
+  font: 400 14px/1.5 var(--font-serif);
+}
+.timing-results-header > div {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  padding: 2px;
+}
+.timing-results-header > div button {
+  border: 0;
+  background: transparent;
+  padding: 6px 9px;
+  color: var(--text-3);
 }
 .timing-results-header button[aria-pressed="true"] {
-  background: var(--color-border);
+  background: var(--color-card);
+  color: var(--color-foreground);
+}
+.timing-results > button {
+  margin-top: 14px;
+  background: transparent;
+  color: var(--color-meridian);
 }
 .timing-candidates {
-  margin-top: 20px;
+  margin-top: 15px;
   display: grid;
-  gap: 16px;
+  gap: 9px;
 }
 .timing-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 .timing-week {
   display: flex;
@@ -201,40 +277,105 @@
   flex: 0 0 300px;
 }
 .timing-day > h3 {
-  font-size: 14px;
-  color: var(--color-muted);
+  font: 500 11px/1.2 var(--font-mono);
+  color: var(--text-3);
 }
 .timing-day .timing-card {
-  margin-bottom: 12px;
+  margin: 0 9px 9px 0;
 }
 .timing-card {
-  padding: 24px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-card);
-  font-size: 14px;
-  line-height: 1.6;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(190px, 0.8fr) minmax(260px, 1.4fr) auto;
+  gap: 18px;
+  align-items: center;
   min-width: 0;
+  padding: 17px 18px 17px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(
+    in srgb,
+    var(--color-card) 94%,
+    var(--color-meridian) 6%
+  );
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
 }
-.timing-card h3 {
-  font-size: 18px;
-  line-height: 1.3;
-  margin: 0;
+.timing-signal {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(var(--color-brass), var(--color-meridian));
+}
+.timing-card--lead {
+  border-color: color-mix(
+    in srgb,
+    var(--color-meridian) 42%,
+    var(--color-border)
+  );
+  background: var(--color-card);
+}
+.timing-time {
+  display: grid;
+  gap: 4px;
+}
+.timing-time > span {
+  color: var(--text-2);
+  font: 500 11px/1.2 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.timing-time > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.timing-time strong {
+  font-size: 22px;
   font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.timing-time b {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 400;
+}
+.timing-time i {
+  color: var(--color-brass);
+  font-style: normal;
+}
+.timing-card > p:not(.timing-availability) {
+  margin: 0;
+  font-family: var(--font-serif);
+  color: var(--text-1);
 }
 .timing-end {
-  font-size: 12px;
-  color: var(--color-muted);
-  margin-top: 5px;
+  display: none;
+}
+.timing-availability {
+  margin: 3px 0;
+  color: var(--text-3);
+  font: 500 10px/1.3 var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.timing-card details {
+  grid-column: 2;
+  color: var(--text-2);
 }
 .timing-card summary {
   cursor: pointer;
-  padding: 8px 0;
+  color: var(--color-meridian);
+  padding: 4px 0;
+  font-size: 12px;
 }
 .timing-card pre {
-  font-size: 11px;
+  font-size: 10px;
   overflow: auto;
-  max-height: 320px;
+  max-height: 280px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -242,88 +383,172 @@
   padding-left: 18px;
 }
 .timing-card .timing-choose {
-  margin-top: 18px;
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  margin: 0;
+  white-space: nowrap;
 }
 .timing-qualification {
-  border-left: 2px solid #ab8847;
+  grid-column: 2;
+  border-left: 2px solid var(--color-brass);
   padding-left: 12px;
 }
 .timing-qualification strong {
-  font-size: 13px;
+  font-size: 12px;
 }
-.timing-error {
-  padding: 16px;
-  border: 1px solid #ae6666;
-  border-radius: 8px;
+.timing-adjust {
+  margin-top: 20px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
-.timing-confirmation {
-  margin-top: 24px;
-  padding: 24px;
-  border: 1px solid #73968c;
-  border-radius: 12px;
+.timing-adjust > summary {
+  cursor: pointer;
+  padding: 13px 2px;
+  color: var(--text-2);
+  font-size: 12px;
+  list-style-position: inside;
 }
-.timing-confirmation p {
-  line-height: 1.6;
+.timing-interpretation {
+  padding: 5px 2px 20px;
 }
-@media (max-width: 700px) {
-  .timing-main {
-    padding: 32px 18px 70px;
-  }
-  .timing-header {
-    padding: 20px 18px;
-  }
-  .timing-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .timing-fields label:first-child {
-    grid-column: 1/-1;
-  }
-  .timing-list {
-    grid-template-columns: 1fr;
-  }
-  .timing-interpretation,
-  .timing-card {
-    padding: 18px;
-  }
-  .timing-week .timing-day {
-    flex-basis: 82vw;
-  }
-  .timing-shell input,
-  .timing-shell select {
-    font-size: 16px;
-  }
+.timing-interpretation > h2 {
+  display: none;
 }
-
-.timing-comparison-inputs {
-  border: 1px solid var(--border, #d5d0c5);
-  padding: 1rem;
-  min-width: 0;
-  margin: 1rem 0;
-}
-.timing-comparison-inputs > div {
-  margin: 1rem 0;
-}
-.timing-comparison-inputs label {
+.timing-fields {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
-.timing-comparison-inputs input {
-  width: 100%;
+.timing-fields label,
+.timing-comparison-inputs label {
   min-width: 0;
-  box-sizing: border-box;
+  font-size: 10px;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.timing-fields input {
+  width: 100%;
+  font: 400 12px/1.2 var(--font-mono);
+}
+.timing-note {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.timing-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin: 13px 0;
+}
+.timing-checkbox input {
+  accent-color: var(--color-meridian);
+}
+.timing-interpretation > button {
+  margin-top: 9px;
 }
 .timing-activity-choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin: 0.75rem 0 1rem;
+  gap: 7px;
+  margin: 8px 0 15px;
 }
 .timing-activity-confirmed {
   display: grid;
-  gap: 0.3rem;
-  margin: 0.75rem 0 1rem;
+  gap: 3px;
+  margin: 7px 0 13px;
 }
-.timing-activity-confirmed span {
-  color: var(--muted, #777267);
-  font-size: 0.85rem;
+.timing-activity-confirmed strong {
+  font: 500 14px/1.3 var(--font-serif);
+}
+.timing-comparison-inputs {
+  border: 1px solid var(--color-border);
+  padding: 14px;
+  min-width: 0;
+  margin: 14px 0;
+}
+.timing-comparison-inputs > div {
+  margin: 12px 0;
+}
+.timing-comparison-inputs input {
+  width: 100%;
+}
+.timing-error {
+  padding: 14px;
+  border: 1px solid var(--color-quality-challenge);
+  border-radius: 6px;
+}
+.timing-confirmation {
+  margin: 14px 0;
+  padding: 17px;
+  border: 1px solid var(--color-quality-good);
+  border-radius: 7px;
+  background: var(--color-card);
+}
+.timing-confirmation h2 {
+  font: 500 11px/1.2 var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@media (max-width: 720px) {
+  .timing-header {
+    height: 52px;
+    padding: 0 16px;
+  }
+  .timing-main {
+    width: min(100% - 28px, 900px);
+    padding: 34px 0 70px;
+  }
+  .timing-intro h1 {
+    font-size: 38px;
+  }
+  .timing-question {
+    grid-template-columns: 1fr;
+  }
+  .timing-question > button {
+    width: 100%;
+  }
+  .timing-examples {
+    display: grid;
+  }
+  .timing-examples::before {
+    line-height: 1;
+  }
+  .timing-query-receipt {
+    padding-inline: 2px;
+  }
+  .timing-results-header {
+    grid-template-columns: 1fr;
+  }
+  .timing-results-header > div {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: start;
+    margin-top: 8px;
+  }
+  .timing-card {
+    grid-template-columns: 1fr;
+    gap: 11px;
+    padding: 17px 17px 17px 21px;
+  }
+  .timing-card details,
+  .timing-card .timing-choose,
+  .timing-qualification {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .timing-card .timing-choose {
+    justify-self: start;
+  }
+  .timing-fields {
+    grid-template-columns: 1fr;
+  }
+  .timing-shell input {
+    font-size: 16px;
+  }
 }

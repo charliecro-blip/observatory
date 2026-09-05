@@ -859,9 +859,9 @@ Feature-flagged local prototype; the existing Workspace copy remains in place. N
 | Input | Your request |
 | Placeholder / example | Three hours of deep work this weekend |
 | Additional examples | Write tomorrow · A first date Saturday |
-| Interpretation actions | Review request · Find times |
+| Interpretation actions | Find a time · Find times |
 | Editable fields | Activity · From · Until · Duration in minutes |
-| Results | Possible times · List · Week · Why this? |
+| Results | Your openings · Your request · Change · Possible times · Choose any interval that fits. The reading stays inside the time shown. · List · Week · Why this? · Adjust search |
 | Choice | Choose this time · Chosen · Saved to Compass |
 | Confirmation | Your chosen time is in Workspace Calendar. |
 | Export | Download calendar event |

@@ -294,6 +294,19 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
       hour: "numeric",
       minute: "2-digit",
     });
+  const formatDay = (s: string) =>
+    new Date(s).toLocaleDateString("en-US", {
+      timeZone,
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    });
+  const formatClock = (s: string) =>
+    new Date(s).toLocaleTimeString("en-US", {
+      timeZone,
+      hour: "numeric",
+      minute: "2-digit",
+    });
   const dayKey = (c: Candidate) =>
     new Date(c.start).toLocaleDateString("en-CA", { timeZone });
   const groups = Object.groupBy(response?.candidates ?? [], dayKey);
@@ -305,9 +318,22 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
       c.availability.status !== "conflict" &&
       !(query?.checkCalendar && c.availability.status !== "clear");
     return (
-      <article className="timing-card" key={c.id}>
-        <h3>{format(c.start)}</h3>
-        <p className="timing-end">Until {format(c.end)}</p>
+      <article
+        className={`timing-card ${response?.candidates[0]?.id === c.id ? "timing-card--lead" : ""}`}
+        key={c.id}
+      >
+        <div className="timing-signal" aria-hidden="true" />
+        <div
+          className="timing-time"
+          aria-label={`${format(c.start)} until ${format(c.end)}`}
+        >
+          <span>{formatDay(c.start)}</span>
+          <div>
+            <strong>{formatClock(c.start)}</strong>
+            <i>—</i>
+            <b>{formatClock(c.end)}</b>
+          </div>
+        </div>
         {c.broad && (
           <p>
             Broad conditions for this period. Add a duration to find a specific
@@ -466,269 +492,76 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
       <main className="timing-main">
         <div className="timing-intro">
           <p className="timing-kicker">Find a time</p>
-          <h1>What would you like to do?</h1>
-          <p>Find astrological openings for something you have in mind.</p>
+          <h1>{draft ? "Your openings" : "What would you like to do?"}</h1>
+          {!draft && (
+            <p>Find astrological openings for something you have in mind.</p>
+          )}
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void interpret();
-          }}
-          className="timing-question"
-        >
-          <label htmlFor="timing-intent">Your request</label>
-          <textarea
-            id="timing-intent"
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setDraft(null);
-              setResponse(null);
-            }}
-            maxLength={500}
-            placeholder="Three hours of deep work this weekend"
-            rows={2}
-            required
-          />
-          <button disabled={busy || !text.trim()} type="submit">
-            Review request
-          </button>
-        </form>
         {!draft && (
-          <div className="timing-examples">
-            {[
-              "Three hours of deep work this weekend",
-              "Write tomorrow",
-              "A first date Saturday",
-            ].map((example) => (
-              <button
-                disabled={busy}
-                key={example}
-                onClick={() => {
-                  setText(example);
-                  void interpret(example);
-                }}
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-        )}
-        {draft && (
-          <form
-            className="timing-interpretation"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void search();
-            }}
-          >
-            <h2>Your search</h2>
-            {interpretation && <p role="status">{interpretation}</p>}
-            <label className="timing-checkbox">
-              <input
-                type="checkbox"
-                checked={compare}
+          <>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void interpret();
+              }}
+              className="timing-question"
+            >
+              <label htmlFor="timing-intent">Your request</label>
+              <textarea
+                id="timing-intent"
+                value={text}
                 onChange={(e) => {
-                  setCompare(e.target.checked);
+                  setText(e.target.value);
+                  setDraft(null);
                   setResponse(null);
-                  setChosen(null);
                 }}
+                maxLength={500}
+                placeholder="Three hours of deep work this weekend"
+                rows={1}
+                required
               />
-              Compare times I already have in mind
-            </label>
-            {!activity && activityOptions.length > 0 && (
-              <div
-                className="timing-activity-choices"
-                role="group"
-                aria-label="Activity choices"
-              >
-                {activityOptions.map((option) => (
+              <button disabled={busy || !text.trim()} type="submit">
+                Find a time
+              </button>
+            </form>
+            {!draft && (
+              <div className="timing-examples">
+                {[
+                  "Three hours of deep work this weekend",
+                  "Write tomorrow",
+                  "A first date Saturday",
+                ].map((example) => (
                   <button
-                    key={option.key}
-                    type="button"
+                    disabled={busy}
+                    key={example}
                     onClick={() => {
-                      setActivity(option.key);
-                      setInterpretation("");
-                      setResponse(null);
-                      void search(false, draft, option.key, false);
+                      setText(example);
+                      void interpret(example);
                     }}
                   >
-                    {option.label}
+                    {example}
                   </button>
                 ))}
               </div>
             )}
-            {activity && (
-              <p className="timing-activity-confirmed">
-                <span>Activity</span>
-                <strong>
-                  {activityOptions.find((o) => o.key === activity)?.label ??
-                    catalogue?.activities.find((o) => o.key === activity)
-                      ?.label}
-                </strong>
-              </p>
-            )}
-            <div className="timing-fields">
-              <label>
-                From
-                <input
-                  required
-                  type="datetime-local"
-                  value={draft.start}
-                  onChange={(e) => {
-                    setDraft({ ...draft, start: e.target.value });
-                    setResponse(null);
-                  }}
-                />
-              </label>
-              <label>
-                Until
-                <input
-                  required
-                  type="datetime-local"
-                  value={draft.end}
-                  onChange={(e) => {
-                    setDraft({ ...draft, end: e.target.value });
-                    setResponse(null);
-                  }}
-                />
-              </label>
-              <label>
-                Duration in minutes
-                <input
-                  type="number"
-                  min="1"
-                  max="1440"
-                  step="1"
-                  required={compare}
-                  placeholder="Any opening"
-                  value={draft.duration}
-                  onChange={(e) => {
-                    setDraft({ ...draft, duration: e.target.value });
-                    setResponse(null);
-                  }}
-                />
-              </label>
+          </>
+        )}
+        {draft && (
+          <section className="timing-query-receipt">
+            <div>
+              <span>Your request</span>
+              <strong>{text}</strong>
             </div>
-            {compare && (
-              <fieldset className="timing-comparison-inputs">
-                <legend>Times to compare</legend>
-                <p>
-                  Use the same activity and duration for every time. Each
-                  interval must fit between From and Until.
-                </p>
-                {suppliedStarts.map((start, i) => (
-                  <div key={i}>
-                    <label>
-                      Start time {i + 1}
-                      <input
-                        required
-                        type="datetime-local"
-                        value={start}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setSuppliedStarts((current) =>
-                            current.map((v, n) => (n === i ? value : v)),
-                          );
-                          setResponse(null);
-                        }}
-                      />
-                    </label>
-                    {comparisonEnd(start, draft.duration) && (
-                      <p>
-                        Until {format(comparisonEnd(start, draft.duration)!)}
-                      </p>
-                    )}
-                    {suppliedStarts.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSuppliedStarts((current) =>
-                            current.filter((_, n) => n !== i),
-                          );
-                          setResponse(null);
-                        }}
-                      >
-                        Remove time {i + 1}
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {suppliedStarts.length < 6 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuppliedStarts((current) => [...current, ""]);
-                      setResponse(null);
-                    }}
-                  >
-                    Add another time
-                  </button>
-                )}
-                <p>
-                  Times stay in the order you enter them; Compass does not
-                  select a winner. Duration is elapsed time, including any
-                  daylight-saving clock change.
-                </p>
-              </fieldset>
-            )}
-            <p className="timing-note">
-              Times in {timeZone}. Search up to seven calendar days.
-              {draft.duration && !compare && " Sessions use 7 AM–11 PM."}
-            </p>
-            {draft.needsRangeReview && (
-              <p>
-                Please check the dates above; this request needs a more specific
-                range.
-              </p>
-            )}
-            <label className="timing-checkbox">
-              <input
-                type="checkbox"
-                checked={useNatal}
-                onChange={(e) => {
-                  setUseNatal(e.target.checked);
-                  setResponse(null);
-                }}
-              />
-              Include my birth chart if available
-            </label>
-            {!locationKnown && (
-              <p className="timing-note">
-                No location is set, so these results use the sky conditions that
-                do not depend on your location.
-              </p>
-            )}
-            {catalogueError && (
-              <p role="alert">
-                The activity list could not load. Refresh the page to try again.
-              </p>
-            )}
-            <button disabled={busy || !activity}>
-              {compare ? "Compare times" : "Find times"}
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(null);
+                setResponse(null);
+                setChosen(null);
+              }}
+            >
+              Change
             </button>
-          </form>
-        )}
-        {busy && <p role="status">Reading your request…</p>}
-        {error && (
-          <p className="timing-error" role="alert">
-            {error}
-          </p>
-        )}
-        {chosen && (
-          <section className="timing-confirmation" role="status">
-            <h2>Saved to Compass</h2>
-            <p>
-              {chosen.title} · {format(chosen.candidate.start)}
-            </p>
-            <p>Your chosen time is in Workspace Calendar.</p>
-            <button onClick={exportChoice}>Download calendar event</button>
-            {exported && (
-              <p>
-                The calendar file was offered for download. Import it into your
-                calendar to add the event.
-              </p>
-            )}
           </section>
         )}
         {response && "days" in response.result && (
@@ -739,6 +572,12 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
                   ? "Your times compared"
                   : "Possible times"}
               </h2>
+              {!query?.candidateIntervals && (
+                <p>
+                  Choose any interval that fits. The reading stays inside the
+                  time shown.
+                </p>
+              )}
               <div role="group" aria-label="Results view">
                 <button
                   aria-pressed={view === "list"}
@@ -794,6 +633,231 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
                     </section>
                   ))}
             </div>
+          </section>
+        )}
+        {draft && (
+          <details
+            className="timing-adjust"
+            key={response && activity ? "settled" : "setup"}
+            open={!response || !activity}
+          >
+            <summary>Adjust search</summary>
+            <form
+              className="timing-interpretation"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void search();
+              }}
+            >
+              <h2>Your search</h2>
+              {interpretation && <p role="status">{interpretation}</p>}
+              <label className="timing-checkbox">
+                <input
+                  type="checkbox"
+                  checked={compare}
+                  onChange={(e) => {
+                    setCompare(e.target.checked);
+                    setResponse(null);
+                    setChosen(null);
+                  }}
+                />
+                Compare times I already have in mind
+              </label>
+              {!activity && activityOptions.length > 0 && (
+                <div
+                  className="timing-activity-choices"
+                  role="group"
+                  aria-label="Activity choices"
+                >
+                  {activityOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => {
+                        setActivity(option.key);
+                        setInterpretation("");
+                        setResponse(null);
+                        void search(false, draft, option.key, false);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {activity && (
+                <p className="timing-activity-confirmed">
+                  <span>Activity</span>
+                  <strong>
+                    {activityOptions.find((o) => o.key === activity)?.label ??
+                      catalogue?.activities.find((o) => o.key === activity)
+                        ?.label}
+                  </strong>
+                </p>
+              )}
+              <div className="timing-fields">
+                <label>
+                  From
+                  <input
+                    required
+                    type="datetime-local"
+                    value={draft.start}
+                    onChange={(e) => {
+                      setDraft({ ...draft, start: e.target.value });
+                      setResponse(null);
+                    }}
+                  />
+                </label>
+                <label>
+                  Until
+                  <input
+                    required
+                    type="datetime-local"
+                    value={draft.end}
+                    onChange={(e) => {
+                      setDraft({ ...draft, end: e.target.value });
+                      setResponse(null);
+                    }}
+                  />
+                </label>
+                <label>
+                  Duration in minutes
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    step="1"
+                    required={compare}
+                    placeholder="Any opening"
+                    value={draft.duration}
+                    onChange={(e) => {
+                      setDraft({ ...draft, duration: e.target.value });
+                      setResponse(null);
+                    }}
+                  />
+                </label>
+              </div>
+              {compare && (
+                <fieldset className="timing-comparison-inputs">
+                  <legend>Times to compare</legend>
+                  <p>
+                    Use the same activity and duration for every time. Each
+                    interval must fit between From and Until.
+                  </p>
+                  {suppliedStarts.map((start, i) => (
+                    <div key={i}>
+                      <label>
+                        Start time {i + 1}
+                        <input
+                          required
+                          type="datetime-local"
+                          value={start}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setSuppliedStarts((current) =>
+                              current.map((v, n) => (n === i ? value : v)),
+                            );
+                            setResponse(null);
+                          }}
+                        />
+                      </label>
+                      {comparisonEnd(start, draft.duration) && (
+                        <p>
+                          Until {format(comparisonEnd(start, draft.duration)!)}
+                        </p>
+                      )}
+                      {suppliedStarts.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSuppliedStarts((current) =>
+                              current.filter((_, n) => n !== i),
+                            );
+                            setResponse(null);
+                          }}
+                        >
+                          Remove time {i + 1}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {suppliedStarts.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuppliedStarts((current) => [...current, ""]);
+                        setResponse(null);
+                      }}
+                    >
+                      Add another time
+                    </button>
+                  )}
+                  <p>
+                    Times stay in the order you enter them; Compass does not
+                    select a winner. Duration is elapsed time, including any
+                    daylight-saving clock change.
+                  </p>
+                </fieldset>
+              )}
+              <p className="timing-note">
+                Times in {timeZone}. Search up to seven calendar days.
+                {draft.duration && !compare && " Sessions use 7 AM–11 PM."}
+              </p>
+              {draft.needsRangeReview && (
+                <p>
+                  Please check the dates above; this request needs a more
+                  specific range.
+                </p>
+              )}
+              <label className="timing-checkbox">
+                <input
+                  type="checkbox"
+                  checked={useNatal}
+                  onChange={(e) => {
+                    setUseNatal(e.target.checked);
+                    setResponse(null);
+                  }}
+                />
+                Include my birth chart if available
+              </label>
+              {!locationKnown && (
+                <p className="timing-note">
+                  No location is set, so these results use the sky conditions
+                  that do not depend on your location.
+                </p>
+              )}
+              {catalogueError && (
+                <p role="alert">
+                  The activity list could not load. Refresh the page to try
+                  again.
+                </p>
+              )}
+              <button disabled={busy || !activity}>
+                {compare ? "Compare times" : "Find times"}
+              </button>
+            </form>
+          </details>
+        )}
+        {busy && <p role="status">Reading your request…</p>}
+        {error && (
+          <p className="timing-error" role="alert">
+            {error}
+          </p>
+        )}
+        {chosen && (
+          <section className="timing-confirmation" role="status">
+            <h2>Saved to Compass</h2>
+            <p>
+              {chosen.title} · {format(chosen.candidate.start)}
+            </p>
+            <p>Your chosen time is in Workspace Calendar.</p>
+            <button onClick={exportChoice}>Download calendar event</button>
+            {exported && (
+              <p>
+                The calendar file was offered for download. Import it into your
+                calendar to add the event.
+              </p>
+            )}
           </section>
         )}
       </main>
