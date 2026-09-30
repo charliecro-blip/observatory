@@ -571,7 +571,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     voc: "neutral",
     mercuryRx: "favor",
     windowType: "study",
-    gloss: "Mercury's matter under Saturn's roof; Rx favors review over new.",
+    gloss: "Mercury's matter at Saturn's pace, for learning that has to stick.",
   }),
   A({
     key: "first-draft",
@@ -872,7 +872,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     voc: "neutral",
     mercuryRx: "favor",
     windowType: "admin",
-    gloss: "Rx loves re- words: repair, revisit, restore.",
+    gloss: "Mending what already exists rather than making something new.",
   }),
   A({
     key: "admin-errands",
@@ -983,7 +983,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     voc: "avoid",
     mercuryRx: "favor",
     windowType: "relationship",
-    gloss: "Rx suits clearing OLD air; avoid Moon–Mars hard hours for it.",
+    gloss: "Suits clearing old air; avoid the hours when the Moon and Mars clash.",
   }),
   A({
     key: "apply-job",
@@ -1093,7 +1093,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     mercuryRx: "favor",
     windowType: "relationship",
     gloss:
-      "Rx and the waning moon both favor going back over old ground gently.",
+      "A waning moon favors going back over old ground gently.",
   }),
   // Putting yourself in the market is a LAUNCH wearing Venus's clothes — the
   // profile is a thing you publish and then live with, so it wants a waxing
@@ -1131,7 +1131,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     mercuryRx: "hard",
     windowType: "launch",
     gloss:
-      "A profile is published, not spoken — Venus for the appeal, Mercury for the words, and not under Rx.",
+      "A profile is published, not spoken — Venus for the appeal, Mercury for the words, and not while Mercury is retrograde.",
   }),
   A({
     key: "ask-someone-out",
@@ -1437,7 +1437,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     voc: "neutral",
     mercuryRx: "favor",
     windowType: "admin",
-    gloss: "Review money under Rx happily; just don't commit it.",
+    gloss: "Going over the numbers rather than committing new money.",
   }),
   A({
     key: "big-purchase",
@@ -1671,7 +1671,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     voc: "avoid",
     mercuryRx: "hard",
     windowType: "launch",
-    gloss: "The release is what Rx disrupts — draft under it, ship after it.",
+    gloss: "Timing matters most for the moment the work goes public.",
   }),
   A({
     key: "launch-venture",

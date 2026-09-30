@@ -66,6 +66,21 @@ describe("which glosses are gated", () => {
     expect((garden as any).glossNeeds).toBeUndefined();
   });
 
+  it("mentions retrograde only when gated on it, or as a 'not while' rule", () => {
+    // 2026-09-30: six ungated glosses still spoke about Rx ("Rx favors review
+    // over new" on Deep study), so a woven block's reason talked retrograde on
+    // a day Mercury was direct — the 08-31 complaint by a different door. The
+    // engine already says the Rx thing itself, per activity, only when true
+    // (electionEngine cautions), so a fixed gloss has no reason to.
+    const offenders = ACTIVITIES.filter(a => {
+      if (/\bRx\b/.test(a.gloss)) return true;               // shorthand fails the stranger test anywhere
+      if (!/retrograde/i.test(a.gloss)) return false;
+      if ((a as any).glossNeeds === "mercury-retrograde") return false;
+      return !/not while Mercury is retrograde/.test(a.gloss);
+    }).map(a => `${a.key}: ${a.gloss}`);
+    expect(offenders).toEqual([]);
+  });
+
   it("carries the condition out of the association for the caller to check", () => {
     // associateDeterministic is pure text in, association out — no date, no
     // sky — so it may only pass the condition along, never evaluate it.
