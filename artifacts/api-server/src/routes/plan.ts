@@ -29,6 +29,7 @@ import { type Tier, TIER_NOTE } from "../lib/timingTier.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { evaluateActivityInterval } from "../lib/electionEngine.js";
 import { rankActivities } from "../lib/activityCorrespondences.js";
+import { minutesInLine } from "../lib/lineDuration.js";
 
 const router: IRouter = Router();
 
@@ -88,7 +89,7 @@ async function parseList(rawList: string, todayISO: string): Promise<ParsedTask[
   if (lines.length === 0) return [];
 
   const fallback = (): ParsedTask[] =>
-    lines.map((title) => ({ title, estimatedMinutes: DEFAULT_MINUTES, energy: "medium" as Energy, dueDate: null }));
+    lines.map((title) => ({ title, estimatedMinutes: minutesInLine(title) ?? DEFAULT_MINUTES, energy: "medium" as Energy, dueDate: null }));
 
   try {
     const completion = await openai.chat.completions.create({
