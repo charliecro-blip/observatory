@@ -614,6 +614,8 @@ export default function FindTime({
   return (
     <div className="timing-shell">
       <header className="timing-header">
+        {/* The panel opens on the left, so its switch sits on the left too. */}
+        <div className="timing-header-start">
         <Action
           className="timing-brand"
           onClick={() => {
@@ -627,6 +629,15 @@ export default function FindTime({
         >
           Compass
         </Action>
+          <Action
+            className="timing-rail-toggle"
+            aria-pressed={railOpen}
+            aria-controls="timing-rail"
+            onClick={toggleRail}
+          >
+            Sky panel
+          </Action>
+        </div>
         <nav className="timing-nav" aria-label="Compass">
           <Action
             aria-current={
@@ -671,14 +682,6 @@ export default function FindTime({
             Workspace
           </Action>
         </nav>
-        <Action
-          className="timing-rail-toggle"
-          aria-pressed={railOpen}
-          aria-controls="timing-rail"
-          onClick={toggleRail}
-        >
-          Sky panel
-        </Action>
         <details className="timing-account" onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();

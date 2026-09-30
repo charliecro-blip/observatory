@@ -834,3 +834,4 @@
 /* The rail sizes itself for the workspace's column (inline width and border);
    here the container owns both, so the rail fills it. */
 .timing-rail > aside { width: 100% !important; min-width: 0 !important; border-right: none !important; }
+.timing-header-start { display: flex; align-items: center; gap: 14px; }
