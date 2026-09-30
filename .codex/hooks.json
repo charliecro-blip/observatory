@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/charlescross/Desktop/observatory-main/.codex/hooks/guard-production-db.sh'",
+            "timeout": 10,
+            "statusMessage": "Checking which database that would talk to"
+          }
+        ]
+      }
+    ]
+  }
+}
