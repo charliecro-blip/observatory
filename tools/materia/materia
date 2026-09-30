@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Bundle and run the report generator.
+#
+#   ./tools/materia/materia birth.json > report.md
+#   ./tools/materia/materia birth.json --house-system=regiomontanus --out=report.md
+#
+# Bundling rather than tsx because the generator reaches into the api-server's
+# ephemeris and dignity modules, which import each other with .js specifiers
+# that only a bundler resolves back to .ts.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+OUT="${TMPDIR:-/tmp}/materia-$$.mjs"
+trap 'rm -f "$OUT"' EXIT
+
+EB="$(ls -d "$ROOT"/node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild 2>/dev/null | sort -V | tail -1)"
+if [ -z "$EB" ]; then
+  echo "esbuild not found under node_modules/.pnpm — run pnpm install first." >&2
+  exit 1
+fi
+
+"$EB" "$ROOT/tools/materia/report.ts" \
+  --bundle --platform=node --format=esm --log-level=warning \
+  --outfile="$OUT"
+
+node "$OUT" "$@"
