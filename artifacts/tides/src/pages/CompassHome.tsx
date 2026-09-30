@@ -9,7 +9,7 @@ import { useTidesNow } from "@/hooks/useTides";
 import { useState } from "react";
 import { usePerfections } from "@/components/ExactAspects";
 import { useTimeFormat } from "@/contexts/preferences-context";
-import type { TidesNow } from "@/lib/types";
+import { moonLine } from "@/lib/moonLine";
 
 type Plan = {
   id: number;
@@ -107,29 +107,6 @@ function TodaysPractices({ testerId, lat, lon }: { testerId: string; lat: number
       {toggle.isError && <p role="alert">That didn’t save. Tap it again to retry.</p>}
     </section>
   );
-}
-
-/**
- * The Moon, in one sentence: sign, phase, and the next aspect she perfects.
- *
- * Replaces a paragraph that read "high activity, with an emphasis on movement
- * and physical activity": the tide character, true but general, standing
- * where the owner's own rule puts the Moon (2026-08-22: lunar placement and
- * aspects lead; density audit H2).
- */
-function moonSentence(now: TidesNow, next: { aspect: string; body2: string; at: string } | null | undefined, fmtTime: (d: Date) => string): string {
-  const sign = now.moonSign.split(" ")[0];
-  const name = (now.moonPhase ?? "").toLowerCase();
-  const phase = name.includes("waxing") ? "waxing" : name.includes("waning") ? "waning"
-    : name.includes("full") ? "full" : name.includes("new") ? "new" : "";
-  const pct = Math.round((now.moonIllumination ?? 0) * (now.moonIllumination <= 1 ? 100 : 1));
-  const base = `The Moon is in ${sign}${phase ? `, ${phase} and ${pct}% lit` : ""}`;
-  if (now.voc?.isVOC && now.voc.nextIngress) {
-    return `${base}, and void of course until it changes sign at ${now.voc.nextIngress.replace(/(^|\s)0(\d)/, "$1$2")}.`;
-  }
-  if (next === undefined) return `${base}.`;
-  if (next === null) return `${base}, with no more exact aspects today.`;
-  return `${base}, and makes an exact ${next.aspect} to ${next.body2} at ${fmtTime(new Date(next.at))}.`;
 }
 
 type Task = { id: number; title: string; done: string | null; dueDate: string | null };
@@ -270,7 +247,12 @@ export default function CompassHome({
         )}
         {now && (
           <p className="compass-moon-line">
-            {moonSentence(now, nextLunar, fmtTime)}{" "}
+            {moonLine({
+              sign: now.moonSign, phaseName: now.moonPhase, illumination: now.moonIllumination,
+              voidUntil: now.voc?.isVOC ? now.voc.nextIngress ?? null : null,
+              aspect: nextLunar === undefined ? undefined : nextLunar && { aspect: nextLunar.aspect, body2: nextLunar.body2, at: new Date(nextLunar.at) },
+              scope: "today", fmtTime,
+            })}{" "}
             <Action variant="text" onClick={onNow}>Current reading</Action>
           </p>
         )}

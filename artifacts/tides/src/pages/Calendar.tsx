@@ -22,6 +22,7 @@ import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { useDialog } from "@/hooks/useDialog";
 import AlmanacView from "@/components/AlmanacView";
+import { moonLine } from "@/lib/moonLine";
 import { usePerfections, ExactList, aspectColor, perfectionGlyphs, perfectionWords } from "@/components/ExactAspects";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -1394,9 +1395,12 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, tasksFailed = f
   );
 }
 
-function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, missing = [], tasksFailed = false, showSky = true, onRetry, onAddEvent, onDeleteWindow, onScheduleBlock }: {
+function AgendaView({ dateStr, today, dayData, nowIllumination, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, missing = [], tasksFailed = false, showSky = true, onRetry, onAddEvent, onDeleteWindow, onScheduleBlock }: {
   /** False at the quiet lens, where the agenda carries no sky moments. */
   showSky?: boolean;
+  /** The Moon's illumination now, used for today so the line agrees with
+   *  Home's (the day's own value is taken at noon). */
+  nowIllumination?: number;
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[];
   /** Undone tasks. Those due today lead the day; the rest are not this day's business. */
@@ -1423,7 +1427,8 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   const signKey = parseSign(moonSign);
 
   const moments: AgendaMoment[] = [];
-  const { data: perfections = [] } = usePerfections(dateStr, showSky);
+  const { data: perfectionsData, isSuccess: perfectionsLoaded } = usePerfections(dateStr, showSky);
+  const perfections = perfectionsData ?? [];
 
   // The day's aspects at the minute they perfect, from the same search as the
   // Day view. The hourly feed this used to read printed them ~45 minutes late
@@ -1508,17 +1513,21 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
         {/* The day's character */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: `${accent}0e`, border: `1px solid ${accent}33`, marginBottom: 16 }}>
           <div aria-hidden="true" style={{ fontSize: 22, color: accent }}>{signKey ? SIGN_SYMBOL[signKey] : "☽︎"}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-primary)" }}>
-              {dayData?.tide?.character ? `${dayData.tide.character.charAt(0).toUpperCase()}${dayData.tide.character.slice(1)} Tide` : "The day"}
-              {dayData?.tide?.levelLabel ? <span style={{ color: accent, fontWeight: 500 }}> · {dayData.tide.levelLabel}</span> : null}
-            </div>
-            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1 }}>
-              {dayData?.moonIngress
-                ? `Moon in ${dayData.moonIngress.from}, then ${dayData.moonIngress.to} from ${fmtTime(atMinute(dayData.moonIngress.at))}`
-                : moonSign ? `Moon in ${moonSign.split(" ")[0]}` : ""}{dayData?.moonPhase ? ` · ${dayData.moonPhase}` : ""}
-              {dayData?.dayRuler ? ` · ${dayData.dayRuler}'s day` : ""}
-            </div>
+          {/* The same Moon line Home opens with (owner 2026-09-30), for this
+              day: the next exact aspect when it is today, the first otherwise.
+              It replaced "Building Tide · High", instrument vocabulary on a
+              plain surface. */}
+          <div style={{ flex: 1, minWidth: 0, fontSize: 14.5, lineHeight: 1.5, color: "var(--color-foreground)", fontFamily: "var(--font-serif)" }}>
+            {dayData ? moonLine({
+              sign: dayData.moonSign,
+              ingress: dayData.moonIngress ? { from: dayData.moonIngress.from, to: dayData.moonIngress.to, at: atMinute(dayData.moonIngress.at) } : null,
+              phaseName: dayData.moonPhase, illumination: isToday && nowIllumination != null ? nowIllumination : dayData.moonFraction,
+              aspect: !showSky ? undefined : (() => {
+                const p = isToday ? perfections.find(x => x.lunar && Date.parse(x.at) > Date.now()) : perfections.find(x => x.lunar);
+                return p ? { aspect: p.aspect, body2: p.body2, at: new Date(p.at) } : (perfectionsLoaded ? null : undefined);
+              })(),
+              scope: isToday ? "today" : "day", fmtTime,
+            }) : "The day"}
           </div>
           <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", flexShrink: 0 }}>+ block</button>
         </div>
@@ -2093,6 +2102,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             ]}
             tasksFailed={tasksFailed}
             showSky={!pageQuiet}
+            nowIllumination={now?.moonIllumination}
             onRetry={()=>{
               if (tasksFailed) retryTasks();
               if (windowsFailed) retryWindows();
