@@ -66,7 +66,13 @@ interface Draft {
   result: WeaveResult | null; dropped: number[]; savedAt: string;
 }
 
-export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }: { testerId: string | null; lat: number; lon: number; seedList?: string | null; onSeedConsumed?: () => void }) {
+/**
+ * `embedded`: Planner sitting inside another page (Home) rather than being the
+ * page. Drops its own heading and pitch, since the host names the section, and
+ * keeps the list box open: on Home the box IS the invitation, so collapsing it
+ * behind "you're holding N things" would hide the one thing the section offers.
+ */
+export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed, embedded = false }: { testerId: string | null; lat: number; lon: number; seedList?: string | null; onSeedConsumed?: () => void; embedded?: boolean }) {
   const qc = useQueryClient();
   // The astro-quiet lens: the weave runs sky-free (deadline, energy, open
   // time), and the page's copy describes scheduling — no tide vocabulary,
@@ -435,11 +441,11 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
 
   return (
     <div style={{ marginBottom: 30 }}>
-      <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Plan</div>
+      {!embedded && <div style={{ marginBottom: 4, fontSize: 20, fontWeight: 700, color: "var(--color-primary)", letterSpacing: "-0.3px" }}>Plan</div>}
       {/* The full pitch is for someone who has never handed Compass a list.
           Repeating it to somebody on their fortieth visit explains a tab they
           already use, and it pushed their own work further down the page. */}
-      <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
+      {!embedded && <div style={{ fontSize: 12.5, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 16 }}>
         {skyQuiet
           ? (openTaskCount > 0
             ? "Compass fits what you're holding into the open stretches of your week, by deadline and energy. Nothing is scheduled until you say so."
@@ -447,7 +453,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           : (openTaskCount > 0
             ? "Compass weaves what you're holding into the stretches of your week that suit each kind of work. Nothing is scheduled until you say so."
             : "Dump everything on your plate. The Planner reads each task's nature, then weaves it into the open stretches of your week where the sky best supports that kind of work — deep work in focused windows, outreach in social ones — around your waking hours and your calendar. Nothing is scheduled until you say so.")}
-      </div>
+      </div>}
 
       {/* Horizon */}
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
@@ -475,7 +481,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
           The box is not removed, because "a little" prompting is the ask and
           because a second thought needs somewhere to go. It is one click away
           instead of occupying the top of the page. */}
-      {!cards && !intakeOpen && openTaskCount > 0 && (
+      {!cards && !intakeOpen && !embedded && openTaskCount > 0 && (
         <div style={{
           display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap",
           padding: "11px 13px", borderRadius: 10,
@@ -491,7 +497,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
         </div>
       )}
 
-      {!cards && (intakeOpen || openTaskCount === 0) && (
+      {!cards && (intakeOpen || embedded || openTaskCount === 0) && (
         <>
           <textarea
             value={rawList} onChange={(e) => setRawList(e.target.value)}
@@ -505,7 +511,7 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
               cursor: rawList.trim() ? "pointer" : "default", background: rawList.trim() ? "#1a2a3a" : "var(--color-border)", color: rawList.trim() ? "#ffffff" : "var(--text-3)",
             }}>{parse.isPending ? "Reading your list…" : <>Read my list <span aria-hidden="true">→</span></>}</button>
             {/* A way back out, but only when there is something to go back to. */}
-            {intakeOpen && openTaskCount > 0 && (
+            {intakeOpen && !embedded && openTaskCount > 0 && (
               <button onClick={() => { setIntakeOpen(false); setRawList(""); }} style={{
                 fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer",
               }}>never mind</button>
@@ -877,7 +883,10 @@ export default function Planner({ testerId, lat, lon, seedList, onSeedConsumed }
             {keptCount > 0 && !committed && (
               <button onClick={() => commit.mutate()} disabled={commit.isPending} style={{ padding: "9px 20px", borderRadius: 9, border: "none", fontSize: 12.5, fontWeight: 600, background: "#3a6020", color: "#ffffff", cursor: "pointer" }}>{commit.isPending ? "Scheduling…" : `Schedule all ${keptCount} →`}</button>
             )}
-            {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}><span aria-hidden="true">✓</span> Woven into your calendar (Ahead) and added to Tasks.</span>}
+            {committed && <span style={{ fontSize: 12, color: "#3a6020", fontWeight: 600 }}><span aria-hidden="true">✓</span> Added to your calendar and to Tasks.</span>}
+            {committed && embedded && (
+              <button onClick={reset} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", cursor: "pointer" }}>Plan something else</button>
+            )}
             <button onClick={() => setResult(null)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}><span aria-hidden="true">←</span> back to edit</button>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import Action from "@/components/Action";
 import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/fetchJson";
+import { localToday } from "@/lib/dates";
+import Planner from "@/components/Planner";
 import { useTester } from "@/contexts/tester-context";
 import { useTidesNow } from "@/hooks/useTides";
 import LunationArc from "@/components/LunationArc";
@@ -13,6 +16,96 @@ type Plan = {
   endTime: string;
   adHoc: boolean;
 };
+
+type Practice = {
+  id: number;
+  name: string;
+  emoji: string | null;
+  cadence: string;
+  doneToday: boolean;
+  countToday: number;
+  targetPerDay: number | null;
+};
+
+/**
+ * Today's practices, one tap each.
+ *
+ * Measured on the owner's own account (Aug 2026): the habits that lasted were
+ * practices (mantras 22 days, qigong 12), and ticking them was the most
+ * repeated thing they did in the app. The new Home dropped them entirely, so
+ * the one daily act had moved two screens away. Renders nothing for someone
+ * with no habits: a newcomer should not meet an empty productivity module.
+ */
+function TodaysPractices({ testerId, lat, lon }: { testerId: string; lat: number; lon: number }) {
+  const qc = useQueryClient();
+  const today = localToday();
+  const headers = { "x-tester-id": testerId };
+  const practices = useQuery<Practice[]>({
+    queryKey: ["habits", testerId, today, lat, lon, "home"],
+    queryFn: () => fetchJson<Practice[]>(`/api/habits?today=${today}&lat=${lat}&lon=${lon}`, { headers }),
+  });
+  const toggle = useMutation({
+    mutationFn: async (p: Practice) => {
+      // A `several` practice counts up until its target is met; a tap on a
+      // met one takes the latest tick back, same as the Habits page.
+      const r = p.doneToday
+        ? await fetch(`/api/habits/${p.id}/log?date=${today}`, { method: "DELETE", headers })
+        : await fetch(`/api/habits/${p.id}/log`, {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ date: today }),
+          });
+      if (!r.ok) throw new Error("not saved");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["calendar-habits"] });
+    },
+  });
+  if (practices.isLoading) return null;
+  if (practices.isError) {
+    return (
+      <section className="compass-practices" aria-labelledby="compass-practices-title">
+        <h2 id="compass-practices-title">Today’s practices</h2>
+        <p role="alert">
+          Your practices couldn’t load.{" "}
+          <Action onClick={() => practices.refetch()}>Try again</Action>
+        </p>
+      </section>
+    );
+  }
+  const list = practices.data ?? [];
+  if (list.length === 0) return null;
+  // Still to do first, so the row reads as what is left rather than a ledger.
+  const ordered = [...list].sort((a, b) => Number(a.doneToday) - Number(b.doneToday));
+  return (
+    <section className="compass-practices" aria-labelledby="compass-practices-title">
+      <h2 id="compass-practices-title">Today’s practices</h2>
+      <ul>
+        {ordered.map((p) => {
+          const pending = toggle.isPending && toggle.variables?.id === p.id;
+          const several = p.cadence === "several" && p.targetPerDay;
+          return (
+            <li key={p.id}>
+              <button
+                type="button"
+                aria-pressed={p.doneToday}
+                disabled={pending}
+                onClick={() => toggle.mutate(p)}
+                aria-label={`${p.doneToday ? "Unmark" : "Mark"} ${p.name} for today`}
+              >
+                <span className="compass-practice-mark" aria-hidden="true">{p.doneToday ? "✓" : ""}</span>
+                <span className="compass-practice-name">{p.emoji ? `${p.emoji} ` : ""}{p.name}</span>
+                {several && <span className="compass-practice-count">{p.countToday} of {p.targetPerDay}</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {toggle.isError && <p role="alert">That didn’t save. Tap it again to retry.</p>}
+    </section>
+  );
+}
 
 /** A small orientation surface, using the existing reading and calendar records. */
 export default function CompassHome({
@@ -86,12 +179,23 @@ export default function CompassHome({
           </>
         )}
       </section>
+      {testerId && <TodaysPractices testerId={testerId} lat={lat} lon={lon} />}
       <section
         className="compass-home-search"
         aria-labelledby="compass-request-title"
       >
         <h2 id="compass-request-title">What are you making time for?</h2>
         {children}
+      </section>
+      {/* Several things at once. The week that worked (owner, Aug 14) was a
+          list of seven, placed by the weaver in one go and six of them done;
+          the request box above answers one activity at a time. Same Planner
+          as the Plan tab, so a draft started in either place is the same
+          draft. */}
+      <section className="compass-plan-several" aria-labelledby="compass-plan-title">
+        <h2 id="compass-plan-title">Plan a few things</h2>
+        <p>Write one thing per line and Compass will suggest a time for each, without saving anything until you keep it.</p>
+        <Planner testerId={testerId} lat={lat} lon={lon} embedded />
       </section>
       <section
         className="compass-upcoming"

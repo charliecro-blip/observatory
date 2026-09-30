@@ -790,3 +790,24 @@
   .compass-action { min-height: 44px; }
   .compass-calendar-toolbar .compass-action { min-height: 40px; }
 }
+
+/* Today's practices and the several-at-once planner on Home. */
+.compass-practices { padding: 22px 0 6px; border-bottom: 1px solid var(--color-border); }
+.compass-practices h2 { margin-bottom: 12px; }
+.compass-practices ul { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.compass-practices li button {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 8px 14px;
+  border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-card);
+  color: var(--text-1); font-size: 14px; cursor: pointer;
+}
+.compass-practices li button[aria-pressed="true"] { color: var(--text-3); background: var(--color-card-2); }
+.compass-practices li button[aria-pressed="true"] .compass-practice-name { text-decoration: line-through; }
+.compass-practices li button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.compass-practice-mark {
+  width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--color-border);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0;
+}
+.compass-practices li button[aria-pressed="true"] .compass-practice-mark { border: none; background: #3f7a4a; color: #ffffff; }
+.compass-practice-count { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.compass-plan-several { border-top: 1px solid var(--color-border); padding: 28px 0 8px; }
+.compass-plan-several > p { margin: -8px 0 16px; }
