@@ -81,6 +81,7 @@
      competes with element meaning. Use for primary actions, the mark on hero
      surfaces, the · ASK sub-brand tag. */
   --color-meridian: #3b3f8f;        /* accent on light paper */
+  --color-on-action: #ffffff;
   --color-meridian-core: #565cd0;   /* brand core */
   /* Brass — decorative rules/eyebrows/watermark only, NEVER body text; kept
      warmer/darker than Air (#CBA13C) so it never poses as the air element. */
@@ -129,6 +130,7 @@
   --text-3: #9aa3b4;
   /* Meridian glows on the dark ink; brass lifts a touch for contrast. */
   --color-meridian: #7a80e6;
+  --color-on-action: #101322;
   --color-meridian-core: #7a80e6;
 
   /* A kept day, frozen at its light value, so dark drew a paper green on
@@ -260,3 +262,5 @@ body { background: var(--color-background); color: var(--color-foreground); font
     scroll-behavior: auto !important;
   }
 }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }

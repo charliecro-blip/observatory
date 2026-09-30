@@ -17,10 +17,11 @@ const W = 300, H = 66, PAD_T = 7, PAD_B = 15;
 /** Enough samples that the curve reads as smooth at any rendered width. */
 const SAMPLES = 121;
 
-export default function LunationArc({ cycle, maxWidth = 420 }: {
+export default function LunationArc({ cycle, maxWidth = 420, compact = false }: {
   cycle: MoonCycle | undefined | null;
   /** The arc scales uniformly, so this caps the height too (at 420 it is ~92px). */
   maxWidth?: number;
+  compact?: boolean;
 }) {
   const r = readLunation(cycle);
 
@@ -42,6 +43,17 @@ export default function LunationArc({ cycle, maxWidth = 420 }: {
 
   const cx = geom.x(r.position), cy = geom.y(r.lit);
   const label = lunationLine(r);
+
+  if (compact) return (
+    <span className="compass-moon-context">
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="#202632" />
+        <path d={`M12 2 A10 10 0 0 ${r.waxing ? 1 : 0} 12 22 A${Math.max(0.001, Math.abs(1 - 2 * r.lit) * 10)} 10 0 0 ${r.lit > 0.5 ? (r.waxing ? 1 : 0) : (r.waxing ? 0 : 1)} 12 2`} fill="#F4F2EC" />
+        <circle cx="12" cy="12" r="10" fill="none" stroke="var(--text-2)" />
+      </svg>
+      <span>{Math.round(r.lit * 100)}% illuminated · {r.waxing ? "Waxing" : "Waning"}</span>
+    </span>
+  );
 
   return (
     <div style={{ maxWidth }}>

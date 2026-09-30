@@ -1,3 +1,4 @@
+import Action from "./Action";
 /**
  * THE WEEK, FOR ONE THING.
  *
@@ -261,9 +262,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
           </span>
         )}
         {all.find(a => a.key === activity)?.custom && (
-          <button onClick={() => deleteCustom.mutate(activity)} disabled={deleteCustom.isPending} style={{
-            marginLeft: "auto", fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
-          }}>{deleteCustom.isPending ? "removing…" : "remove this activity"}</button>
+          <Action size="compact" onClick={() => deleteCustom.mutate(activity)} disabled={deleteCustom.isPending}>{deleteCustom.isPending ? "removing…" : "remove this activity"}</Action>
         )}
       </div>
 
@@ -273,48 +272,32 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
           list has this one on it. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: showAdd ? 8 : 11, alignItems: "center" }}>
         {shown.map(a => (
-          <button key={a.key} onClick={() => { setSelected(null); setScheduled(false); setActivity(a.key); }} title={a.custom ? "Your own activity" : undefined} style={{
-            fontSize: 10.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
-            border: `1px solid ${a.key === activity ? "var(--color-primary)" : a.custom ? "#6f6a9055" : "var(--color-border)"}`,
-            background: a.key === activity ? "var(--color-primary)" : "var(--color-background)",
-            color: a.key === activity ? "#ffffff" : "var(--text-2)",
-          }}>
-            {a.custom && <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: a.key === activity ? "#ffffff" : "#6f6a90", flexShrink: 0 }} />}
+          <Action size="compact" aria-pressed={a.key === activity} key={a.key} onClick={() => { setSelected(null); setScheduled(false); setActivity(a.key); }} title={a.custom ? "Your own activity" : undefined}>
+            {a.custom && <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--color-meridian)", flexShrink: 0 }} />}
             {a.label}
-          </button>
+          </Action>
         ))}
-        <button onClick={() => setShowAll(v => !v)} style={{
-          fontSize: 10.5, padding: "3px 8px", background: "none", border: "none",
-          cursor: "pointer", color: "var(--color-primary)",
-        }}>{showAll ? "fewer" : `all ${all.length}`}</button>
+        <Action size="compact" onClick={() => setShowAll(v => !v)} aria-expanded={showAll}>{showAll ? "fewer" : `all ${all.length}`}</Action>
         {testerId && (
-          <button onClick={() => { setShowAdd(v => !v); setAddError(null); }} style={{
-            fontSize: 10.5, padding: "3px 10px", borderRadius: 12, cursor: "pointer",
-            border: "1px dashed var(--color-border)", background: "none", color: "var(--text-3)",
-          }}>{showAdd ? "cancel" : "+ add yours"}</button>
+          <Action size="compact" onClick={() => { setShowAdd(v => !v); setAddError(null); }} aria-expanded={showAdd}>{showAdd ? "cancel" : "+ add yours"}</Action>
         )}
       </div>
 
       {showAdd && (
         <div style={{ marginBottom: 11, padding: "9px 11px", borderRadius: 9, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
-          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="What do you want windows for? e.g. Practice guitar"
-            style={{ width: "100%", fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 6, boxSizing: "border-box" }} />
-          <input value={newWhy} onChange={e => setNewWhy(e.target.value)} placeholder="Why it matters (optional — sharpens the reading)"
-            style={{ width: "100%", fontSize: 11.5, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 8, boxSizing: "border-box" }} />
+          <input aria-label="Activity" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="What do you want windows for? e.g. Practice guitar"
+            style={{ width: "100%", fontSize: 16, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 6, boxSizing: "border-box" }} />
+          <input aria-label="Why it matters" value={newWhy} onChange={e => setNewWhy(e.target.value)} placeholder="Why it matters (optional — sharpens the reading)"
+            style={{ width: "100%", fontSize: 16, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 8, boxSizing: "border-box" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => createCustom.mutate()} disabled={!newTitle.trim() || createCustom.isPending} style={{
-              fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 6, cursor: newTitle.trim() ? "pointer" : "default",
-              border: "none", background: "var(--color-primary)", color: "#ffffff", opacity: newTitle.trim() ? 1 : 0.5,
-            }}>{createCustom.isPending ? "Reading it…" : "Create"}</button>
+            <Action size="compact" variant="primary" onClick={() => createCustom.mutate()} disabled={!newTitle.trim() || createCustom.isPending}>{createCustom.isPending ? "Reading it…" : "Create"}</Action>
             <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Read the same way a Guiding Star is — element, ruling planet, houses.</span>
           </div>
           {addError && (
             <div style={{ fontSize: 11, color: "#a05020", marginTop: 6 }}>
               {addError.message}
               {addError.existingKey && (
-                <button onClick={() => { setActivity(addError.existingKey!); setShowAdd(false); setAddError(null); setNewTitle(""); setNewWhy(""); }} style={{
-                  marginLeft: 6, fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: 600,
-                }}>Use it →</button>
+                <Action size="compact" onClick={() => { setActivity(addError.existingKey!); setShowAdd(false); setAddError(null); setNewTitle(""); setNewWhy(""); }}>Use it →</Action>
               )}
             </div>
           )}
@@ -437,14 +420,9 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
                 {scheduled ? (
                   <span style={{ fontSize: 11, color: "#3f7a4a", fontWeight: 600 }}>Scheduled ✓</span>
                 ) : (
-                  <button onClick={() => schedule.mutate()} disabled={!testerId || schedule.isPending} style={{
-                    fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, cursor: testerId ? "pointer" : "default",
-                    border: "none", background: "var(--color-primary)", color: "#ffffff",
-                  }}>{schedule.isPending ? "Scheduling…" : "Schedule this →"}</button>
+                  <Action size="compact" variant="primary" onClick={() => schedule.mutate()} disabled={!testerId || schedule.isPending}>{schedule.isPending ? "Scheduling…" : "Schedule this →"}</Action>
                 )}
-                <button onClick={() => { setSelected(null); setScheduled(false); }} style={{
-                  fontSize: 11, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-3)",
-                }}>close</button>
+                <Action size="compact" onClick={() => { setSelected(null); setScheduled(false); }}>close</Action>
               </div>
               {schedule.isError && <div style={{ fontSize: 10.5, color: "#a05020", marginTop: 4 }}>Couldn't schedule that — try again.</div>}
             </div>

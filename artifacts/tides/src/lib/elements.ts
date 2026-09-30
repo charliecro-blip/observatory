@@ -317,3 +317,27 @@ export function plainGuidance(raw: string): string {
     .replace(/[^.]*\bMoon(?:'s)? void[^.]*\.\s*/g, "")
     .trim();
 }
+
+/** Plain presentation of the same character/pace conditions, without instrument metaphors. */
+export function plainTideReading(character: TideCharacter, level: string, voc = false, quiet = false): string {
+  const focus: Record<TideCharacter, string> = {
+    surge: "movement and physical activity",
+    building: "practical work and organization",
+    clear: "thinking, reading, and conversation",
+    deep: "rest, reflection, and creative work",
+  };
+  const gentle: Record<TideCharacter, string> = {
+    surge: "gentle movement and recovery",
+    building: "maintenance and finishing existing work",
+    clear: "reading and reviewing ideas",
+    deep: "rest and reflection",
+  };
+  const reading = quiet
+    ? "The current reading shows no strong emphasis on a particular activity."
+    : level === "low" || level === "ebb"
+      ? `The current reading favors a slower pace, with an emphasis on ${gentle[character]}.`
+      : level === "high" || level === "rising"
+        ? `The current reading shows ${level === "high" ? "high" : "increasing"} activity, with an emphasis on ${focus[character]}.`
+        : `The current reading is steady, with an emphasis on ${focus[character]}.`;
+  return reading + (voc ? " The Moon is between its last major aspect in this sign and its next sign, which qualifies the timing for new beginnings." : "");
+}

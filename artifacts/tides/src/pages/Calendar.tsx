@@ -1,3 +1,6 @@
+import Action from "@/components/Action";
+import { previewHours } from "@/lib/calendarPreview";
+export type CalendarOpening = { id: string; start: string; end: string; label: string };
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Disclosure, Chip } from "@/components/primitives";
 import { jsonArray } from "@/lib/jsonArray";
@@ -225,9 +228,11 @@ function EventModal({ dateStr, startHour, preset, testerId, onClose }: {
     endTime: preset?.endTime ?? minutesToTime(((startHour ?? 9) + 1) * 60),
     notes: preset?.notes ?? "",
   });
+  const validTimes = !!form.startTime && !!form.endTime && form.endTime > form.startTime;
   const { ref, props } = useDialog(onClose, "New event");
   const save = useMutation({
     mutationFn: async () => {
+      if (!validTimes) throw new Error("End time must be after start time.");
       const start = new Date(`${dateStr}T${form.startTime}:00`);
       const end   = new Date(`${dateStr}T${form.endTime}:00`);
       const r = await fetch("/api/planning/windows", {
@@ -246,11 +251,11 @@ function EventModal({ dateStr, startHour, preset, testerId, onClose }: {
     onSuccess: () => { invalidateWindows(qc); onClose(); },
   });
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex: "var(--z-sheet)",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:100,padding:"100px 16px 16px" }}
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex: "var(--z-sheet)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"max(16px, env(safe-area-inset-top)) 16px 16px",overflowY:"auto" }}
       onClick={e => e.target===e.currentTarget && onClose()}>
       {/* Was a fixed 380px, no maxWidth — Cancel/Save clipped off-screen on
           phones, and this is the only way to add an event (audit P0 #7). */}
-      <div ref={ref} {...props} style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:380,maxWidth:"100%",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
+      <div ref={ref} {...props} style={{ background: "var(--color-card)",borderRadius:14,padding:"22px 24px",width:440,maxWidth:"100%",marginBlock:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",border:"1px solid var(--color-border)" }}>
         <div style={{ fontSize:14,fontWeight:600,color: "var(--color-primary)",marginBottom:14 }}>
           New event · {new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
         </div>
@@ -260,35 +265,39 @@ function EventModal({ dateStr, startHour, preset, testerId, onClose }: {
           </div>
         )}
         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-          <input autoFocus value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
-            onKeyDown={e=>{if(e.key==="Enter"&&form.title.trim())save.mutate();if(e.key==="Escape")onClose();}}
+          <label htmlFor="calendar-event-title" style={{fontSize:13,color:"var(--text-2)"}}>Event title</label>
+          <input id="calendar-event-title" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+            onKeyDown={e=>{if(e.key==="Enter"&&form.title.trim()&&validTimes&&!save.isPending)save.mutate();if(e.key==="Escape")onClose();}}
             placeholder={WINDOW_LABELS[form.type]}
-            style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:13,background: "var(--color-card-2)" }}/>
-          <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
-            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",color:"var(--text-1)" }}>
+            style={{ padding:"9px 12px",borderRadius:8,border:"1px solid var(--color-border)",fontSize:16,background: "var(--color-card-2)" }}/>
+          <label htmlFor="calendar-event-type" style={{fontSize:13,color:"var(--text-2)"}}>Event type</label>
+          <select id="calendar-event-type" value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:16,background: "var(--color-card-2)",color:"var(--text-1)" }}>
             {WINDOW_TYPES.map(t=><option key={t} value={t}>{WINDOW_LABELS[t]}</option>)}
           </select>
           <div style={{ display:"flex",gap:8 }}>
-            <label style={{ flex:1,fontSize:11,color:"var(--color-muted)" }}>Start
+            <label style={{ flex:1,fontSize:13,color:"var(--text-2)" }}>Start
               <input type="time" value={form.startTime} onChange={e=>setForm(f=>({...f,startTime:e.target.value}))}
-                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
+                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:16,background: "var(--color-card-2)" }}/>
             </label>
-            <label style={{ flex:1,fontSize:11,color:"var(--color-muted)" }}>End
-              <input type="time" value={form.endTime} onChange={e=>setForm(f=>({...f,endTime:e.target.value}))}
-                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)" }}/>
+            <label style={{ flex:1,fontSize:13,color:"var(--text-2)" }}>End
+              <input type="time" aria-invalid={!validTimes} aria-describedby={!validTimes ? "calendar-time-error" : undefined} value={form.endTime} onChange={e=>setForm(f=>({...f,endTime:e.target.value}))}
+                style={{ display:"block",marginTop:3,width:"100%",padding:"7px 9px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:16,background: "var(--color-card-2)" }}/>
             </label>
           </div>
-          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
+          <label htmlFor="calendar-event-notes" style={{fontSize:13,color:"var(--text-2)"}}>Notes (optional)</label>
+          <textarea id="calendar-event-notes" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
             placeholder="Notes (optional)" rows={2}
-            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:12,background: "var(--color-card-2)",resize:"vertical" }}/>
+            style={{ padding:"8px 10px",borderRadius:7,border:"1px solid var(--color-border)",fontSize:16,background: "var(--color-card-2)",resize:"vertical" }}/>
         </div>
-        {save.isError && <div style={{ marginTop:10,fontSize:11.5,color:"#a03030" }}>Couldn't save — the event wasn't added. Check your connection and try again.</div>}
+        {!validTimes && <p id="calendar-time-error" role="alert" style={{fontSize:14,color:"var(--text-1)"}}>Choose an end time after the start time.</p>}
+        {save.isError && <div role="alert" style={{ marginTop:10,fontSize:14,color:"var(--text-1)" }}>The event could not be saved. Check your connection and try again.</div>}
         <div style={{ display:"flex",gap:8,marginTop:14 }}>
-          <button onClick={onClose} style={{ flex:1,padding:"9px 0",borderRadius:8,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",fontSize:12,cursor:"pointer" }}>Cancel</button>
-          <button onClick={()=>save.mutate()} disabled={save.isPending}
-            style={{ flex:2,padding:"9px 0",borderRadius:8,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:12,fontWeight:600,cursor:"pointer" }}>
+          <Action onClick={onClose}>Cancel</Action>
+          <Action variant="primary" onClick={()=>save.mutate()} disabled={save.isPending || !validTimes}
+           >
             {save.isPending?"Saving…":"Save"}
-          </button>
+          </Action>
         </div>
       </div>
     </div>
@@ -355,7 +364,7 @@ function GCalBlock({ ev, topPct, heightPct }: { ev: GCalEvent; topPct: number; h
 // ── Google Calendar connect button / status ───────────────────────────────────
 
 function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<typeof useQueryClient> }) {
-  const { data: status } = useGCalStatus(testerId);
+  const { data: status, isLoading: statusLoading, isError: statusError, refetch: retryStatus } = useGCalStatus(testerId);
   const popupRef = useRef<Window | null>(null);
 
   useEffect(() => {
@@ -392,6 +401,9 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     popupRef.current = window.open(url, "gcal-connect", "width=500,height=600,left=200,top=100");
   }
 
+  if (statusLoading) return <span role="status" style={{fontSize:13,color:"var(--text-2)"}}>Checking calendar connection…</span>;
+  if (statusError) return <Action size="compact" onClick={() => retryStatus()}>Retry calendar connection check</Action>;
+
   if (status?.configured === false) {
     // Unconfigured = the Google OAuth credentials aren't set on the server
     // (owner Railway task per GCAL-SETUP.md). Say so plainly so it doesn't
@@ -404,7 +416,7 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     // returns once the feed has its own revocable token. See BACKLOG §2.)
     return (
       <div title="Google Calendar sync isn't set up on the server yet — coming soon." style={{
-        fontSize: 10.5, padding:"3px 9px", borderRadius:6, border:"1px dashed var(--color-border)",
+        fontSize: 13, padding:"6px 0", borderRadius:6, border:"1px dashed var(--color-border)",
         background:"var(--color-card-2)", color:"var(--color-muted)", cursor:"default",
         display:"flex", alignItems:"center", gap:4,
       }}>
@@ -419,13 +431,9 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     // calendar quietly shows nothing. This is the chip that turns a mystery
     // into one tap — it sits where the empty calendar is, not in Settings.
     return (
-      <button onClick={connect} title="Google signed us out — click to reconnect" style={{
-        fontSize: 10.5, padding:"3px 9px", borderRadius:6, border:"1px solid #e0c0a0",
-        background:"#a0602018", color:"#a06020", cursor:"pointer",
-        display:"flex", alignItems:"center", gap:4,
-      }}>
+      <Action size="compact" onClick={connect} title="Google signed us out — click to reconnect">
         <span aria-hidden="true" style={{ fontSize:10 }}>⚠</span> Google signed us out · Reconnect
-      </button>
+      </Action>
     );
   }
 
@@ -433,29 +441,22 @@ function GCalButton({ testerId, qc }: { testerId: string | null; qc: ReturnType<
     return (
       <div style={{ display:"flex", alignItems:"center", gap:4 }}>
         <div style={{
-          fontSize: 10.5, padding:"3px 9px", borderRadius:6, border:"1px solid #b0d0b0",
+          fontSize: 13, padding:"6px 0", borderRadius:6, border:"1px solid #b0d0b0",
           background:"#3a602018", color:"#408040",
           display:"flex", alignItems:"center", gap:4,
         }}>
           <span style={{ fontSize:10 }}>📅</span>
           <span>{status.email ?? "Google Cal"}</span>
         </div>
-        <button onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" aria-label="Disconnect Google Calendar" style={{
-          fontSize: 10.5, padding:"2px 6px", borderRadius:5, border:"1px solid #e0ccc0",
-          background:"#8a3a2012", color:"#c06040", cursor:"pointer",
-        }}>✕</button>
+        <Action size="compact" onClick={() => disconnect.mutate()} title="Disconnect Google Calendar" aria-label="Disconnect Google Calendar">✕</Action>
       </div>
     );
   }
 
   return (
-    <button onClick={connect} style={{
-      fontSize: 10.5, padding:"3px 9px", borderRadius:6, border:"1px solid var(--color-border)",
-      background: "var(--color-card)", color:"var(--text-2)", cursor:"pointer",
-      display:"flex", alignItems:"center", gap:4,
-    }}>
+    <Action size="compact" onClick={connect}>
       <span style={{ fontSize:10 }}>📅</span> Connect Google Cal
-    </button>
+    </Action>
   );
 }
 
@@ -503,7 +504,9 @@ function usePlanetaryHours(dates: string[], lat: number, lon: number) {
   });
 }
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay, onMoveWindow }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay, onMoveWindow, openings = [], onInspectOpening }: {
+  openings?: CalendarOpening[];
+  onInspectOpening?: (id: string) => void;
   dates: string[];
   dataMap: Map<string, WeekDay>;
   windowsMap: Map<string, PlanningWindow[]>;
@@ -891,6 +894,17 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     />;
                   })}
 
+                  {openings.map(opening => {
+                    const span = previewHours(opening.start, opening.end, dateStr);
+                    if (!span) return null;
+                    return <button key={opening.id} className="calendar-opening-preview"
+                      aria-label={`Inspect opening: ${opening.label}`}
+                      title={opening.label}
+                      onClick={() => onInspectOpening?.(opening.id)}
+                      style={{position:"absolute", right:2, width:"38%", top:(span.start-HOUR_START)*ROW_H, height:Math.max(24,(span.end-span.start)*ROW_H), zIndex:12}}>
+                      Opening
+                    </button>;
+                  })}
                   {/* Now line */}
                   {isToday && nowH>=HOUR_START && nowH<=HOUR_END && (
                     <div style={{
@@ -1583,24 +1597,30 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   );
 }
 
-export default function Calendar({ testerId, now, lat, lon, locationKnown = true, onNavigate }: {
+export default function Calendar({ testerId, now, lat, lon, locationKnown = true, onNavigate, initialView, initialDate, shellNavigation = false, onFindTime, openings, onInspectOpening }: {
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
   locationKnown?: boolean;
+  openings?: CalendarOpening[];
+  onInspectOpening?: (id: string) => void;
+  initialView?: CalView;
+  shellNavigation?: boolean;
+  initialDate?: string;
+  onFindTime?: (date: string) => void;
   /** Out of Calendar entirely — the Almanac points at Pick a Day for inceptions. */
   onNavigate?: (view: string) => void;
 }) {
   const [showStudio, setShowStudio] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const today = localToday();
-  const todayYear  = parseInt(today.slice(0,4));
-  const todayMonth = parseInt(today.slice(5,7))-1;
+  const todayYear  = parseInt((initialDate ?? today).slice(0,4));
+  const todayMonth = parseInt((initialDate ?? today).slice(5,7))-1;
 
   // Phones default to the day view — a 7-column month grid at 390px is
   // unreadable slivers, and the side detail panel would crush it further.
   const isMobile = useIsMobile();
   // Phones open on the Agenda — a plain-language schedule of the day's key sky
   // moments, the "weave your day" surface (#13b). Desktop keeps the month grid.
-  const [calView, setCalView]           = useState<CalView>(isMobile ? "agenda" : "month");
+  const [calView, setCalView]           = useState<CalView>(initialView ?? (isMobile ? "agenda" : "month"));
   // Agenda granularity — the fine layers are opt-in so the day reads as key
   // moments first; toggle them on for the full clock (#13b/#20).
   /**
@@ -1621,7 +1641,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
 
   const [year, setYear]                 = useState(todayYear);
   const [month, setMonth]               = useState(todayMonth);
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(initialDate ?? today);
   const [showSignNames, setShowSignNames] = useState(true);
   // The astro-quiet lens: the water strip, the sky legend, the weekday planet
   // glyphs and the astro toggles fold away; events and schedule stay.
@@ -1803,8 +1823,10 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // is in a field or a modifier is held, or we'd eat characters mid-typing.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (shellNavigation && calView === "almanac") return;
       const t = e.target as HTMLElement | null;
+      if (t?.closest('[role="dialog"], details[open]')) return;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       const k = e.key.toLowerCase();
       const view = ({ d: "day", w: "week", m: "month", a: "agenda" } as Record<string, CalView>)[k];
@@ -1847,15 +1869,15 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   return (
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
       {/* Topbar */}
-      <div style={{ padding:"7px 14px",borderBottom:"1px solid var(--color-border)",background: "var(--color-rail)",flexShrink:0,display:"flex",alignItems:"center",gap:7,flexWrap:"wrap" }}>
+      <div className="compass-calendar-toolbar">
         {calView!=="almanac" && (<>
-        <button onClick={prevPeriod} title="Previous — press ←" aria-label={`Previous ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>‹</button>
-        <div style={{ fontSize:13,fontWeight:600,color: "var(--color-primary)",minWidth:150 }}>{periodLabel()}</div>
-        <button onClick={nextPeriod} title="Next — press →" aria-label={`Next ${calView}`} style={{ fontSize:15,padding:"1px 9px",borderRadius:5,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer",lineHeight:1.5 }}>›</button>
+        <Action onClick={prevPeriod} title="Previous — press ←" aria-label={`Previous ${calView}`}>‹</Action>
+        <div>{periodLabel()}</div>
+        <Action onClick={nextPeriod} title="Next — press →" aria-label={`Next ${calView}`}>›</Action>
         </>)}
-        <button onClick={goToday} title="Today — press T" style={{ fontSize:10,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background: "var(--color-card)",color:"var(--text-2)",cursor:"pointer" }}>Today</button>
+        {calView !== "almanac" && <Action onClick={goToday} title="Today — press T">Today</Action>}
 
-        <div style={{ display:"flex",background:"var(--color-card-2)",border:"1px solid var(--color-border)",borderRadius:7,padding:3,gap:1 }}>
+        {!(shellNavigation && calView === "almanac") && <div className="compass-segments">
           {/* FIVE VIEWS NOW (owner, 2026-09-03: "a day view... to look at a
               single day, in focus, with my to-do lists and habits etc on one
               page"). Day used to be reached only by zooming from a week —
@@ -1864,18 +1886,15 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
               carried a job nothing else did; it just did not have a door of
               its own. Now it also carries the day's own list (tasks +
               habits), so it earns the tab the zoom-only version didn't. */}
-          {(["agenda","day","week","month","almanac"] as CalView[]).map(v=>(
+          {(shellNavigation ? ["agenda","day","week","month"] as CalView[] : ["agenda","day","week","month","almanac"] as CalView[]).map(v=>(
             // The title carries the shortcut — an undiscoverable shortcut is a
             // shortcut nobody uses.
-            <button key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`} style={{
-              fontSize:10,padding:"3px 11px",borderRadius:5,border:"none",cursor:"pointer",
-              background:calView===v?"var(--color-card)":"transparent",color:calView===v?"var(--color-primary)":"var(--text-3)",
-              fontWeight:calView===v?600:400,textTransform:"capitalize",
-            }}>{v}</button>
+            <Action aria-pressed={calView === v} key={v} onClick={()=>setCalView(v)} title={`${v[0].toUpperCase()}${v.slice(1)} — press ${v[0].toUpperCase()}`}>{v}</Action>
           ))}
-        </div>
+        </div>}
 
-        <button onClick={()=>setAddModal({date:selectedDate})} style={{ fontSize:10,padding:"3px 11px",borderRadius:6,border:"none",background:"#1a2a3a",color:"#ffffff",cursor:"pointer",fontWeight:600 }}>+ Event</button>
+        {calView !== "almanac" && onFindTime && <Action onClick={() => onFindTime(selectedDate)}>Find a time on this day</Action>}
+        {calView !== "almanac" && <Action variant="primary" onClick={()=>setAddModal({date:selectedDate})}>Add event</Action>}
 
         {/* ONE SKY DOOR, NOT FOUR LOOSE SWITCHES.
             Planetary hours, crossings, simple-vs-detailed and sign names sat
@@ -1895,7 +1914,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
           const monthChips  = calView === "month";
           if (!agendaChips && !monthChips) return null;
           return (
-            <Disclosure label="Sky">
+            <Disclosure label="Sky" toolbar>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {agendaChips && (<>
                   <Chip on={agSky} onClick={()=>setAgSky(v=>!v)} color="#b07020"
@@ -1927,10 +1946,10 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             event is the unprompted-suggestion shape this app just spent a
             day removing. */}
         {!pageQuiet && (gcalData?.events?.length ?? 0) > 0 && (
-          <button onClick={()=>setShowAudit(true)} style={{ fontSize: 10.5,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}>◷ Read the week</button>
+          <Action variant="text" onClick={()=>setShowAudit(true)}>◷ Read the week</Action>
         )}
         {!pageQuiet && now && (
-          <button onClick={()=>setShowStudio(true)} style={{ fontSize: 10.5,padding:"3px 9px",borderRadius:6,border:"1px solid var(--color-border)",background:"transparent",color:"var(--color-muted)",cursor:"pointer" }}><span aria-hidden="true">↗</span> Share</button>
+          <Action variant="text" onClick={()=>setShowStudio(true)}><span aria-hidden="true">↗</span> Share</Action>
         )}
         <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
@@ -2048,6 +2067,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
         {(calView==="week"||calView==="day") && (
           <>
             <TimeGrid
+              openings={openings} onInspectOpening={onInspectOpening}
               dates={weekDates} dataMap={dataMap} windowsMap={windowsMap} eventsMap={eventsMap}
               vocSpans={pageQuiet ? [] : vocSpans}
               gcalMap={gcalMap} cautionMap={cautionMap}

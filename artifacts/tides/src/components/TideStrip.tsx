@@ -27,11 +27,12 @@
 
 import {
   ELEMENT_COLORS, ELEMENT_SURFACE, CHARACTER_ELEMENT, CHARACTER_LABEL,
-  tideGuidance, QUIET_DAY_GUIDANCE, plainGuidance, type TideCharacter,
+  tideGuidance, QUIET_DAY_GUIDANCE, plainTideReading, type TideCharacter,
 } from "@/lib/elements";
 
-export default function TideStrip({ now, minimal, onOpen }: {
+export default function TideStrip({ now, minimal, onOpen, hideHeading = false }: {
   now: any;
+  hideHeading?: boolean;
   /** The quiet lens, or a quiet session — no sky vocabulary either way. */
   minimal: boolean;
   onOpen?: () => void;
@@ -52,7 +53,7 @@ export default function TideStrip({ now, minimal, onOpen }: {
   const raw = isQuiet
     ? QUIET_DAY_GUIDANCE[character]
     : tideGuidance(character, now.tide.level, !!now?.voc?.isVOC);
-  const guidance = minimal ? plainGuidance(raw) : raw;
+  const guidance = minimal ? plainTideReading(character, now.tide.level, !!now?.voc?.isVOC, isQuiet) : raw;
   // The moment's rarest qualifier, under the day's line — an eclipse
   // corridor, a luminary on a node, a station — so Home says the thing that
   // makes today unlike other days of its kind (AUDIT-EXPLAINERS §4). Only
@@ -68,15 +69,17 @@ export default function TideStrip({ now, minimal, onOpen }: {
     ? new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
     : `${now.tide.headline ?? CHARACTER_LABEL[character]}${now.tide.levelLabel ? ` · ${now.tide.levelLabel.toLowerCase()}` : ""}`;
 
+  if (minimal && hideHeading) return <p className="compass-current-reading">{guidance}</p>;
+
   const body = (
     <div style={{
       display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap",
       padding: "9px 14px", borderLeft: `3px solid ${rule}`,
     }}>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", flexShrink: 0 }}>
+      {!hideHeading && <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-foreground)", flexShrink: 0 }}>
         {heading}
-      </span>
-      <span style={{ flex: 1, minWidth: 180, fontSize: 12, lineHeight: 1.45, color: "var(--color-muted)" }}>
+      </span>}
+      <span style={{ flex: 1, minWidth: 180, fontSize: 14, lineHeight: 1.6, color: "var(--text-1)" }}>
         {guidance}
       </span>
       {rare && (

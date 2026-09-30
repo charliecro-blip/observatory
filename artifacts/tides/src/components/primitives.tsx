@@ -23,6 +23,7 @@
  * than designed ahead of it.
  */
 import React from "react";
+import Action from "./Action";
 
 /* ── tokens ──────────────────────────────────────────────────────────────── */
 
@@ -183,19 +184,21 @@ export function Row({ mark, title, meta, trailing, muted, onClick }: {
  * The app had several: a chevron that rotated, a "▸ more" link, a chip that
  * expanded, a section that folded. They all meant the same thing.
  */
-export function Disclosure({ label, children, defaultOpen = false }: {
+export function Disclosure({ label, children, defaultOpen = false, toolbar = false }: {
   label: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  toolbar?: boolean;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const Control = toolbar ? Action : "button";
   return (
-    <div style={{ marginTop: 8 }}>
-      <button
+    <div style={{ marginTop: toolbar ? 0 : 8 }}>
+      <Control
         type="button"
         onClick={() => setOpen(v => !v)}
         aria-expanded={open}
-        style={{
+        style={toolbar ? undefined : {
           display: "inline-flex", alignItems: "center", gap: 6,
           background: "none", border: "none", padding: "3px 0", cursor: "pointer",
           fontSize: 11.5, color: "var(--color-primary)", fontWeight: 500,
@@ -203,7 +206,7 @@ export function Disclosure({ label, children, defaultOpen = false }: {
       >
         <span aria-hidden="true" style={{ fontSize: 10.5, display: "inline-block", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.12s" }}>▸</span>
         {label}
-      </button>
+      </Control>
       {open && <div style={{ marginTop: 8 }}>{children}</div>}
     </div>
   );
