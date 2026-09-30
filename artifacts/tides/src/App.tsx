@@ -1304,19 +1304,21 @@ function Shell() {
     },
     enabled: !!profile?.testerId && isReady && !showModal,
   });
-  const setDefault = (value: boolean) => { setWorkspace(value); localStorage.setItem("compass_workspace_default", String(value)); };
+  const [workspaceEntry, setWorkspaceEntry] = useState<View>("home");
+  const [workspaceStar, setWorkspaceStar] = useState<number | null>(null);
+  const setDefault = (value: boolean) => { setWorkspace(value); };
   if (profile && isReady && !showModal && timingLoading) return <p role="status" style={{ padding: 32 }}>Opening Compass…</p>;
   if (timing?.enabled && profile && isReady && !showModal) {
-    if (!workspace) return <FindTime onWorkspace={() => setDefault(true)} />;
-    return <><div style={{ padding: "8px 16px", background: "var(--color-card)" }}><button onClick={() => setDefault(false)}>Find a time</button></div><WorkspaceShell /></>;
+    if (!workspace) return <FindTime onWorkspace={(view = "home", starId) => { setWorkspaceStar(starId ?? null); setWorkspaceEntry(view); setDefault(true); }} />;
+    return <><div style={{ padding: "8px 16px", background: "var(--color-card)" }}><button onClick={() => setDefault(false)}>Find a time</button></div><WorkspaceShell initialView={workspaceEntry} initialStarId={workspaceStar} /></>;
   }
   return <WorkspaceShell />;
 }
 
-function WorkspaceShell() {
+function WorkspaceShell({ initialView = "home", initialStarId = null }: { initialView?: View; initialStarId?: number | null }) {
   const { profile, isReady, showModal, createAndApply, lat, lon, locationKnown, sessionBlocked, openModal } = useTester();
   const testerId = profile?.testerId ?? null;
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>(initialView);
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
   // Same idea one level down: which sub-tab of Stars to open on arrival.
@@ -1396,7 +1398,7 @@ function WorkspaceShell() {
   // game plan in Aims, scrolled into view and briefly highlighted. It rode on
   // Today until 2026-08-19 and went unpassed when the card moved to Home — the
   // row still rendered and tapping it did nothing, which no type could catch.
-  const [focusStarId, setFocusStarId] = useState<number | null>(null);
+  const [focusStarId, setFocusStarId] = useState<number | null>(initialStarId);
   const openStar = (goalId: number) => { setFocusStarId(goalId); setView("work"); };
   // Quick-capture "dump & schedule" (#15): hand the raw list to the Plan tab's
   // Planner, which parses and weaves it into good windows.

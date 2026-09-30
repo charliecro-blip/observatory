@@ -1,10 +1,23 @@
-import React, { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import Action from "@/components/Action";
+import React, { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTester } from "@/contexts/tester-context";
-import { interpretTimingRange, timingIcal } from "@/lib/timingQuery";
+import { timingIcal, inputTime } from "@/lib/timingQuery";
+import type { interpretTimingRequest } from "../../../api-server/src/lib/timingRequest";
 import { logEvent } from "@/lib/analytics";
 import type { TimingResponse } from "../../../api-server/src/lib/timingPresentation";
 import "./FindTime.css";
+import TimingLibrary from "./TimingLibrary";
+import TimingSources from "./TimingSources";
+import Home from "./Home";
+import CompassHome from "./CompassHome";
+import { addDaysLocal } from "@/lib/dates";
+import { invalidateWindows } from "@/lib/invalidateWindows";
+import Calendar, { type CalendarOpening } from "./Calendar";
+import { useTidesNow } from "@/hooks/useTides";
+import { SessionTimer } from "@/components/SessionTimer";
+import { asksForNowOverview } from "@/lib/timingDestination";
+import { useTheme } from "@/contexts/theme-context";
 
 type Query = {
   activity: string;
@@ -77,19 +90,49 @@ function qualifications(c: Candidate): string[] {
     }
   });
 }
-export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
+export default function FindTime({
+  onWorkspace,
+}: {
+  onWorkspace: (
+    view?: "home" | "work" | "launch" | "settings",
+    starId?: number,
+  ) => void;
+}) {
   const { profile, lat, lon, locationKnown } = useTester();
   const testerId = profile!.testerId;
+  const qc = useQueryClient();
+  const { theme, toggleTheme } = useTheme();
+  const [destination, setDestination] = useState<
+    "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about"
+  >("search");
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [text, setText] = useState("");
+  const [calendarScope, setCalendarScope] = useState<string | null>(null);
+  function searchCalendarDay(date: string) {
+    setChosen(null);
+    setExported(false);
+    setError("");
+    setQuery(null);
+    setCalendarScope(date);
+    setText("");
+    setDraft(null);
+    setResponse(null);
+    setDestination("search");
+  }
   const [activity, setActivity] = useState("");
-  const [draft, setDraft] = useState<ReturnType<
-    typeof interpretTimingRange
-  > | null>(null);
+  const [draft, setDraft] = useState<
+    ReturnType<typeof interpretTimingRequest>["draft"] | null
+  >(null);
+  const hasDraft = draft !== null;
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [destination, hasDraft]);
   const [compare, setCompare] = useState(false);
   const [suppliedStarts, setSuppliedStarts] = useState(["", ""]);
   const [useNatal, setUseNatal] = useState(false);
   const [interpretation, setInterpretation] = useState("");
+  const [assumptions, setAssumptions] = useState<string[]>([]);
+  const [unresolved, setUnresolved] = useState<string[]>([]);
   const [activityOptions, setActivityOptions] = useState<
     { key: string; label: string }[]
   >([]);
@@ -106,13 +149,36 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   const [exported, setExported] = useState(false);
   const keys = useRef(new Map<string, string>());
   const queryId = useRef(crypto.randomUUID());
+  const rangeStart = useRef<HTMLInputElement>(null);
+  function startFreshSearch() {
+    setText("");
+    setDraft(null);
+    setResponse(null);
+    setQuery(null);
+    setChosen(null);
+    setExported(false);
+    setError("");
+    setCalendarScope(null);
+    setDestination("search");
+  }
+
   async function post(path: string, body: unknown) {
-    const r = await fetch(`/api/timing/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-tester-id": testerId },
-      body: JSON.stringify(body),
-    });
-    const data = await r.json();
+    let r: Response;
+    try {
+      r = await fetch(`/api/timing/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tester-id": testerId },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error("Compass could not connect. Check your connection and try again.");
+    }
+    let data;
+    try {
+      data = await r.json();
+    } catch {
+      throw new Error("Compass could not load a response. Please try again.");
+    }
     if (!r.ok || data.error)
       throw new Error(
         ERRORS[data.error] ??
@@ -134,14 +200,34 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   });
   async function interpret(value = text) {
     if (!value.trim()) return;
+    if (asksForNowOverview(value)) {
+      setError("");
+      setDestination("now");
+      return;
+    }
     setBusy(true);
     setError("");
     setResponse(null);
     setChosen(null);
     setExported(false);
     try {
-      const result = await post("interpret", { text: value });
-      const nextDraft = interpretTimingRange(value, new Date());
+      const result = await post("interpret", { text: value, timeZone });
+      const nextDraft = calendarScope
+        ? {
+            ...result.draft,
+            start: `${calendarScope}T00:00`,
+            end: `${addDaysLocal(calendarScope, 1)}T00:00`,
+            needsRangeReview: true,
+          }
+        : result.draft;
+      setAssumptions(
+        calendarScope
+          ? [
+              "Using the day selected in Calendar; review the range before searching.",
+            ]
+          : (result.assumptions ?? []),
+      );
+      setUnresolved(result.unresolved ?? []);
       const nextActivity =
         result.state === "resolved" ? result.options[0].key : "";
       setDraft(nextDraft);
@@ -150,11 +236,12 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
       setActivity(nextActivity);
       setActivityOptions(result.options);
       setInterpretation(
-        result.state === "resolved"
-          ? ""
-          : result.state === "ambiguous"
-            ? "Which activity did you mean? Choose one below."
-            : "Compass does not recognize this activity yet. Try describing it another way.",
+        result.clarification ??
+          (result.state === "resolved"
+            ? ""
+            : result.state === "ambiguous"
+              ? "Which activity did you mean? Choose one below."
+              : "Compass does not have a timing match for this activity yet. You can change your request above."),
       );
       queryId.current = crypto.randomUUID();
       if (result.state === "unsupported")
@@ -162,7 +249,7 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
           queryId: queryId.current,
           category: result.state,
         });
-      if (result.state === "resolved")
+      if (result.state === "resolved" && !nextDraft.needsRangeReview)
         await search(false, nextDraft, nextActivity, false);
     } catch (e) {
       setError((e as Error).message);
@@ -231,6 +318,24 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   }
   async function choose(c: Candidate) {
     if (!query) return;
+    if (!query.durationMinutes && draft) {
+      setDraft({
+        ...draft,
+        start: inputTime(new Date(c.start)),
+        end: inputTime(new Date(c.end)),
+        duration: "60",
+        needsRangeReview: false,
+      });
+      setResponse(null);
+      setUnresolved([]);
+      setAssumptions([
+        "The search is now limited to the opening you selected.",
+      ]);
+      setInterpretation(
+        "How much time would you like? One hour is filled in as a starting point; review the duration before searching.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     const title =
@@ -247,6 +352,7 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
         title,
       });
       setChosen({ id: saved.window.id, candidate: c, title });
+      invalidateWindows(qc);
       logEvent("timing_window_chosen", {
         queryId: queryId.current,
         activity: query.activity,
@@ -312,15 +418,17 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   const groups = Object.groupBy(response?.candidates ?? [], dayKey);
   function card(c: Candidate) {
     const canChoose =
-      !c.broad &&
+      (!c.broad || !query?.durationMinutes) &&
       !c.shortfall &&
       c.suitability !== "defer" &&
       c.availability.status !== "conflict" &&
       !(query?.checkCalendar && c.availability.status !== "clear");
     return (
       <article
-        className={`timing-card ${response?.candidates[0]?.id === c.id ? "timing-card--lead" : ""}`}
+        className="timing-card"
         key={c.id}
+        id={`opening-${c.id}`}
+        tabIndex={-1}
       >
         <div className="timing-signal" aria-hidden="true" />
         <div
@@ -469,13 +577,17 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
           </details>
         </details>
         {canChoose && (
-          <button
+          <Action
             className="timing-choose"
             disabled={busy || chosen?.candidate.id === c.id}
             onClick={() => choose(c)}
           >
-            {chosen?.candidate.id === c.id ? "Chosen" : "Choose this time"}
-          </button>
+            {chosen?.candidate.id === c.id
+              ? "Chosen"
+              : query?.durationMinutes
+                ? "Choose this time"
+                : "Find a session here"}
+          </Action>
         )}
       </article>
     );
@@ -483,384 +595,756 @@ export default function FindTime({ onWorkspace }: { onWorkspace: () => void }) {
   return (
     <div className="timing-shell">
       <header className="timing-header">
-        <span className="timing-brand">Compass</span>
-        <details className="timing-account">
+        <Action
+          className="timing-brand"
+          onClick={() => {
+            setChosen(null);
+            setError("");
+            setCalendarScope(null);
+            setDraft(null);
+            setResponse(null);
+            setDestination("search");
+          }}
+        >
+          Compass
+        </Action>
+        <nav className="timing-nav" aria-label="Compass">
+          <Action
+            aria-current={
+              (destination === "search" && !draft) || destination === "now"
+                ? "page"
+                : undefined
+            }
+            onClick={() => {
+              setCalendarScope(null);
+              setChosen(null);
+              setError("");
+              setCalendarScope(null);
+              setDraft(null);
+              setResponse(null);
+              setDestination("search");
+            }}
+          >
+            Home
+          </Action>
+          <Action
+            aria-current={
+              destination === "calendar" ||
+              destination === "saved" ||
+              (destination === "search" && !!draft)
+                ? "page"
+                : undefined
+            }
+            onClick={() => setDestination("calendar")}
+          >
+            Calendar
+          </Action>
+          <Action
+            aria-current={destination === "almanac" ? "page" : undefined}
+            onClick={() => setDestination("almanac")}
+          >
+            Almanac
+          </Action>
+          <Action
+            aria-current={destination === "workspace" ? "page" : undefined}
+            onClick={() => setDestination("workspace")}
+          >
+            Workspace
+          </Action>
+        </nav>
+        <details className="timing-account" onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.open = false;
+            e.currentTarget.querySelector("summary")?.focus();
+          }
+        }}>
           <summary>{profile?.displayName || "Account"}</summary>
-          <button onClick={onWorkspace}>Workspace</button>
+          <div className="timing-account-menu">
+            <Action onClick={toggleTheme}>
+              {theme === "dark" ? "Light appearance" : "Dark appearance"}
+            </Action>
+            <Action onClick={() => setDestination("about")}>
+              About Compass
+            </Action>
+            <Action onClick={() => onWorkspace("settings")}>
+              Account and settings
+            </Action>
+          </div>
         </details>
       </header>
-      <main className="timing-main">
-        <div className="timing-intro">
-          <p className="timing-kicker">Find a time</p>
-          <h1>{draft ? "Your openings" : "What would you like to do?"}</h1>
-          {!draft && (
-            <p>Find astrological openings for something you have in mind.</p>
-          )}
-        </div>
-        {!draft && (
-          <>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void interpret();
-              }}
-              className="timing-question"
-            >
-              <label htmlFor="timing-intent">Your request</label>
-              <textarea
-                id="timing-intent"
-                value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  setDraft(null);
-                  setResponse(null);
-                }}
-                maxLength={500}
-                placeholder="Three hours of deep work this weekend"
-                rows={1}
-                required
-              />
-              <button disabled={busy || !text.trim()} type="submit">
-                Find a time
-              </button>
-            </form>
-            {!draft && (
-              <div className="timing-examples">
-                {[
-                  "Three hours of deep work this weekend",
-                  "Write tomorrow",
-                  "A first date Saturday",
-                ].map((example) => (
-                  <button
-                    disabled={busy}
-                    key={example}
-                    onClick={() => {
-                      setText(example);
-                      void interpret(example);
-                    }}
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-        {draft && (
-          <section className="timing-query-receipt">
-            <div>
-              <span>Your request</span>
-              <strong>{text}</strong>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(null);
-                setResponse(null);
-                setChosen(null);
-              }}
-            >
-              Change
-            </button>
-          </section>
-        )}
-        {response && "days" in response.result && (
-          <section className="timing-results" aria-label="Search results">
-            <div className="timing-results-header">
-              <h2>
-                {query?.candidateIntervals
-                  ? "Your times compared"
-                  : "Possible times"}
-              </h2>
-              {!query?.candidateIntervals && (
+      {destination === "search" ? (
+        <main
+          className={
+            draft
+              ? "timing-main timing-calendar-search"
+              : "timing-main compass-home"
+          }
+        >
+          {draft && (
+            <div className="timing-intro">
+              <p className="timing-kicker">Find a time</p>
+              <a className="compass-calendar-jump" href="#search-calendar">
+                View calendar
+              </a>
+              <h1>
+                {draft
+                  ? response?.candidates.length
+                    ? "Your openings"
+                    : "Your search"
+                  : "What would you like to do?"}
+              </h1>
+              {!draft && (
                 <p>
-                  Choose any interval that fits. The reading stays inside the
-                  time shown.
+                  Find a time for the things you want to do, with astrology you
+                  can inspect and a choice you can keep.
                 </p>
               )}
-              <div role="group" aria-label="Results view">
-                <button
-                  aria-pressed={view === "list"}
-                  onClick={() => setView("list")}
-                >
-                  List
-                </button>
-                <button
-                  aria-pressed={view === "week"}
-                  onClick={() => setView("week")}
-                >
-                  Week
-                </button>
-              </div>
             </div>
-            {response.result.status !== "complete" && (
-              <p role="alert">
-                {response.result.coverage.failed.length} part(s) of this range
-                could not be read. The results below cover only the completed
-                parts.
-              </p>
-            )}
-            {response.result.context.natal ===
-              "omitted_comparison_unsupported" && (
-              <p>Your birth chart was not used for this comparison.</p>
-            )}
-            {query?.candidateIntervals && (
-              <p>
-                Compare the readings and qualifications below. Similar readings
-                may give you no astrological preference between these times.
-              </p>
-            )}
-            {response.result.context.natal ===
-              "omitted_session_unsupported" && (
-              <p>Your birth chart was not used for this duration search.</p>
-            )}
-            {response.result.outcome === "empty" && (
-              <p>
-                No full opening was returned for this request. Try another range
-                or review the duration.
-              </p>
-            )}
-            <button disabled={busy} onClick={() => search(true)}>
-              Check against my calendar
-            </button>
-            <div className={`timing-candidates timing-${view}`}>
-              {view === "list"
-                ? response.candidates.map(card)
-                : Object.entries(groups).map(([day, candidates]) => (
-                    <section key={day} className="timing-day">
-                      <h3>{day}</h3>
-                      {candidates?.map(card)}
-                    </section>
-                  ))}
-            </div>
-          </section>
-        )}
-        {draft && (
-          <details
-            className="timing-adjust"
-            key={response && activity ? "settled" : "setup"}
-            open={!response || !activity}
-          >
-            <summary>Adjust search</summary>
-            <form
-              className="timing-interpretation"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void search();
-              }}
+          )}
+          {busy && <p role="status">Working on your request…</p>}
+          {error && (
+            <p id="timing-request-error" className="timing-error" role="alert">
+              {error}
+            </p>
+          )}
+          {!draft && (
+            <CompassHome
+              onCalendar={() => setDestination("calendar")}
+              onNow={() => setDestination("now")}
             >
-              <h2>Your search</h2>
-              {interpretation && <p role="status">{interpretation}</p>}
-              <label className="timing-checkbox">
-                <input
-                  type="checkbox"
-                  checked={compare}
+              {calendarScope && (
+                <p role="status">
+                  Selected in Calendar: {calendarScope}.{" "}
+                  <Action onClick={() => setCalendarScope(null)}>
+                    Clear date
+                  </Action>
+                </p>
+              )}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void interpret();
+                }}
+                className="timing-question"
+              >
+                <label htmlFor="timing-intent">Your request</label>
+                <textarea
+                  id="timing-intent"
+                  aria-describedby={error ? "timing-request-error" : undefined}
+                  value={text}
                   onChange={(e) => {
-                    setCompare(e.target.checked);
+                    setText(e.target.value);
+                    setDraft(null);
                     setResponse(null);
-                    setChosen(null);
                   }}
+                  maxLength={500}
+                  placeholder="Write tomorrow"
+                  rows={1}
+                  required
                 />
-                Compare times I already have in mind
-              </label>
-              {!activity && activityOptions.length > 0 && (
-                <div
-                  className="timing-activity-choices"
-                  role="group"
-                  aria-label="Activity choices"
-                >
-                  {activityOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
+                <Action disabled={busy || !text.trim()} type="submit">
+                  Find a time
+                </Action>
+              </form>
+              {!draft && (
+                <div className="timing-examples">
+                  {[
+                    "Three hours of deep work this weekend",
+                    "Write tomorrow",
+                    "A first date Saturday",
+                  ].map((example) => (
+                    <Action
+                      disabled={busy}
+                      key={example}
                       onClick={() => {
-                        setActivity(option.key);
-                        setInterpretation("");
-                        setResponse(null);
-                        void search(false, draft, option.key, false);
+                        setText(example);
+                        void interpret(example);
                       }}
                     >
-                      {option.label}
-                    </button>
+                      {example}
+                    </Action>
                   ))}
                 </div>
               )}
-              {activity && (
-                <p className="timing-activity-confirmed">
-                  <span>Activity</span>
-                  <strong>
-                    {activityOptions.find((o) => o.key === activity)?.label ??
-                      catalogue?.activities.find((o) => o.key === activity)
-                        ?.label}
-                  </strong>
-                </p>
-              )}
-              <div className="timing-fields">
-                <label>
-                  From
-                  <input
-                    required
-                    type="datetime-local"
-                    value={draft.start}
-                    onChange={(e) => {
-                      setDraft({ ...draft, start: e.target.value });
-                      setResponse(null);
-                    }}
-                  />
-                </label>
-                <label>
-                  Until
-                  <input
-                    required
-                    type="datetime-local"
-                    value={draft.end}
-                    onChange={(e) => {
-                      setDraft({ ...draft, end: e.target.value });
-                      setResponse(null);
-                    }}
-                  />
-                </label>
-                <label>
-                  Duration in minutes
-                  <input
-                    type="number"
-                    min="1"
-                    max="1440"
-                    step="1"
-                    required={compare}
-                    placeholder="Any opening"
-                    value={draft.duration}
-                    onChange={(e) => {
-                      setDraft({ ...draft, duration: e.target.value });
-                      setResponse(null);
-                    }}
-                  />
-                </label>
-              </div>
-              {compare && (
-                <fieldset className="timing-comparison-inputs">
-                  <legend>Times to compare</legend>
-                  <p>
-                    Use the same activity and duration for every time. Each
-                    interval must fit between From and Until.
+            </CompassHome>
+          )}
+          {draft && (
+            <div className="compass-calendar-context" id="search-calendar">
+              <RestoredTimeView
+                view="calendar"
+                key={draft.start.slice(0, 10)}
+                initialDate={draft.start.slice(0, 10)}
+                openings={response?.candidates
+                  .filter((c) => c.id !== chosen?.candidate.id)
+                  .map((c) => ({
+                    id: c.id,
+                    start: c.start,
+                    end: c.end,
+                    label: `${format(c.start)} to ${format(c.end)}`,
+                  }))}
+                onInspectOpening={(id) => {
+                  const el = document.getElementById(`opening-${id}`);
+                  el?.focus();
+                  el?.scrollIntoView({ block: "center" });
+                }}
+                onFindTime={searchCalendarDay}
+                onNavigate={() => onWorkspace("launch")}
+              />
+            </div>
+          )}
+          <div className={draft ? "compass-search-results" : undefined}>
+            {draft && (
+              <section className="timing-query-receipt">
+                <div>
+                  <span>Your request</span>
+                  <strong>{text}</strong>
+                  {assumptions.map((line) => (
+                    <small key={line}>{line}</small>
+                  ))}
+                  {activity && (
+                    <small>
+                      {catalogue?.activities.find((a) => a.key === activity)
+                        ?.label ?? activity}{" "}
+                      ·{" "}
+                      {draft.duration
+                        ? `${draft.duration} minutes`
+                        : "Any opening"}
+                    </small>
+                  )}
+                  <small>
+                    {format(draft.start)} to {format(draft.end)} · {timeZone}
+                  </small>
+                  {!locationKnown && (
+                    <small>
+                      Using sky conditions that do not require your location.
+                    </small>
+                  )}
+                </div>
+                <Action
+                  type="button"
+                  onClick={() => {
+                    setDraft(null);
+                    setResponse(null);
+                    setChosen(null);
+                  }}
+                >
+                  Change
+                </Action>
+              </section>
+            )}
+            {response && "days" in response.result && (
+              <section className="timing-results" aria-label="Search results">
+                <div className="timing-results-header">
+                  <h2>
+                    {query?.candidateIntervals
+                      ? "Your times compared"
+                      : "Possible times"}
+                  </h2>
+                  {!query?.candidateIntervals && (
+                    <p>
+                      Choose any interval that fits. The reading stays inside
+                      the time shown.
+                    </p>
+                  )}
+                  <div role="group" aria-label="Results view">
+                    <Action
+                      aria-pressed={view === "list"}
+                      onClick={() => setView("list")}
+                    >
+                      List
+                    </Action>
+                    <Action
+                      aria-pressed={view === "week"}
+                      onClick={() => setView("week")}
+                    >
+                      Week
+                    </Action>
+                  </div>
+                </div>
+                {response.result.status !== "complete" && (
+                  <p role="alert">
+                    {response.result.coverage.failed.length} part(s) of this
+                    range could not be read. The results below cover only the
+                    completed parts.
                   </p>
-                  {suppliedStarts.map((start, i) => (
-                    <div key={i}>
-                      <label>
-                        Start time {i + 1}
-                        <input
-                          required
-                          type="datetime-local"
-                          value={start}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setSuppliedStarts((current) =>
-                              current.map((v, n) => (n === i ? value : v)),
-                            );
-                            setResponse(null);
-                          }}
-                        />
-                      </label>
-                      {comparisonEnd(start, draft.duration) && (
-                        <p>
-                          Until {format(comparisonEnd(start, draft.duration)!)}
-                        </p>
-                      )}
-                      {suppliedStarts.length > 2 && (
-                        <button
+                )}
+                {response.result.context.natal ===
+                  "omitted_comparison_unsupported" && (
+                  <p>Your birth chart was not used for this comparison.</p>
+                )}
+                {query?.candidateIntervals && (
+                  <p>
+                    Compare the readings and qualifications below. Similar
+                    readings may give you no astrological preference between
+                    these times.
+                  </p>
+                )}
+                {response.result.context.natal ===
+                  "omitted_session_unsupported" && (
+                  <p>Your birth chart was not used for this duration search.</p>
+                )}
+                {response.result.outcome === "empty" && (
+                  <p>
+                    No full opening was returned for this request. Try another
+                    range or review the duration.
+                  </p>
+                )}
+                <Action disabled={busy} onClick={() => search(true)}>
+                  Check against my calendar
+                </Action>
+                <div className={`timing-candidates timing-${view}`}>
+                  {view === "list"
+                    ? response.candidates.map(card)
+                    : Object.entries(groups).map(([day, candidates]) => (
+                        <section key={day} className="timing-day">
+                          <h3>{day}</h3>
+                          {candidates?.map(card)}
+                        </section>
+                      ))}
+                </div>
+              </section>
+            )}
+            {draft && (
+              <details
+                className="timing-adjust"
+                key={response && activity ? "settled" : "setup"}
+                open={!response || !activity}
+              >
+                <summary>Adjust search</summary>
+                <form
+                  className="timing-interpretation"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void search();
+                  }}
+                >
+                  <h2>Your search</h2>
+                  {interpretation && <p role="status">{interpretation}</p>}
+                  {unresolved.length > 0 && (
+                    <ul id="timing-constraints" role="status">
+                      {unresolved.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <label className="timing-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={compare}
+                      onChange={(e) => {
+                        setCompare(e.target.checked);
+                        setResponse(null);
+                        setChosen(null);
+                      }}
+                    />
+                    Compare times I already have in mind
+                  </label>
+                  {!activity && activityOptions.length > 0 && (
+                    <div
+                      className="timing-activity-choices"
+                      role="group"
+                      aria-label="Activity choices"
+                    >
+                      {activityOptions.map((option) => (
+                        <Action
+                          key={option.key}
                           type="button"
                           onClick={() => {
-                            setSuppliedStarts((current) =>
-                              current.filter((_, n) => n !== i),
-                            );
+                            setActivity(option.key);
+                            setInterpretation("");
+                            setResponse(null);
+                            if (!draft.needsRangeReview)
+                              void search(false, draft, option.key, false);
+                            else rangeStart.current?.focus();
+                          }}
+                        >
+                          {option.label}
+                        </Action>
+                      ))}
+                    </div>
+                  )}
+                  {activity && (
+                    <p className="timing-activity-confirmed">
+                      <span>Activity</span>
+                      <strong>
+                        {activityOptions.find((o) => o.key === activity)
+                          ?.label ??
+                          catalogue?.activities.find((o) => o.key === activity)
+                            ?.label}
+                      </strong>
+                    </p>
+                  )}
+                  <div className="timing-fields">
+                    <label>
+                      From
+                      <input
+                        required
+                        type="datetime-local"
+                        ref={rangeStart}
+                        aria-describedby={
+                          unresolved.length ? "timing-constraints" : undefined
+                        }
+                        value={draft.start}
+                        onChange={(e) => {
+                          setDraft({ ...draft, start: e.target.value });
+                          setResponse(null);
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Until
+                      <input
+                        required
+                        type="datetime-local"
+                        value={draft.end}
+                        onChange={(e) => {
+                          setDraft({ ...draft, end: e.target.value });
+                          setResponse(null);
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Duration in minutes
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        step="1"
+                        required={compare}
+                        placeholder="Any opening"
+                        value={draft.duration}
+                        onChange={(e) => {
+                          setDraft({ ...draft, duration: e.target.value });
+                          setResponse(null);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {compare && (
+                    <fieldset className="timing-comparison-inputs">
+                      <legend>Times to compare</legend>
+                      <p>
+                        Use the same activity and duration for every time. Each
+                        interval must fit between From and Until.
+                      </p>
+                      {suppliedStarts.map((start, i) => (
+                        <div key={i}>
+                          <label>
+                            Start time {i + 1}
+                            <input
+                              required
+                              type="datetime-local"
+                              value={start}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setSuppliedStarts((current) =>
+                                  current.map((v, n) => (n === i ? value : v)),
+                                );
+                                setResponse(null);
+                              }}
+                            />
+                          </label>
+                          {comparisonEnd(start, draft.duration) && (
+                            <p>
+                              Until{" "}
+                              {format(comparisonEnd(start, draft.duration)!)}
+                            </p>
+                          )}
+                          {suppliedStarts.length > 2 && (
+                            <Action
+                              type="button"
+                              onClick={() => {
+                                setSuppliedStarts((current) =>
+                                  current.filter((_, n) => n !== i),
+                                );
+                                setResponse(null);
+                              }}
+                            >
+                              Remove time {i + 1}
+                            </Action>
+                          )}
+                        </div>
+                      ))}
+                      {suppliedStarts.length < 6 && (
+                        <Action
+                          type="button"
+                          onClick={() => {
+                            setSuppliedStarts((current) => [...current, ""]);
                             setResponse(null);
                           }}
                         >
-                          Remove time {i + 1}
-                        </button>
+                          Add another time
+                        </Action>
                       )}
-                    </div>
-                  ))}
-                  {suppliedStarts.length < 6 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSuppliedStarts((current) => [...current, ""]);
+                      <p>
+                        Times stay in the order you enter them; Compass does not
+                        select a winner. Duration is elapsed time, including any
+                        daylight-saving clock change.
+                      </p>
+                    </fieldset>
+                  )}
+                  <p className="timing-note">
+                    Times in {timeZone}. Search up to seven calendar days.
+                    {!compare && " Searches currently check 7 AM–11 PM."}
+                  </p>
+                  {draft.needsRangeReview && (
+                    <p>
+                      Please check the dates above; this request needs a more
+                      specific range.
+                    </p>
+                  )}
+                  <label className="timing-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={useNatal}
+                      onChange={(e) => {
+                        setUseNatal(e.target.checked);
                         setResponse(null);
                       }}
-                    >
-                      Add another time
-                    </button>
+                    />
+                    Include my birth chart if available
+                  </label>
+                  {!locationKnown && (
+                    <p className="timing-note">
+                      No location is set, so these results use the sky
+                      conditions that do not depend on your location.
+                    </p>
                   )}
-                  <p>
-                    Times stay in the order you enter them; Compass does not
-                    select a winner. Duration is elapsed time, including any
-                    daylight-saving clock change.
-                  </p>
-                </fieldset>
-              )}
-              <p className="timing-note">
-                Times in {timeZone}. Search up to seven calendar days.
-                {draft.duration && !compare && " Sessions use 7 AM–11 PM."}
-              </p>
-              {draft.needsRangeReview && (
-                <p>
-                  Please check the dates above; this request needs a more
-                  specific range.
-                </p>
-              )}
-              <label className="timing-checkbox">
-                <input
-                  type="checkbox"
-                  checked={useNatal}
-                  onChange={(e) => {
-                    setUseNatal(e.target.checked);
-                    setResponse(null);
-                  }}
-                />
-                Include my birth chart if available
-              </label>
-              {!locationKnown && (
-                <p className="timing-note">
-                  No location is set, so these results use the sky conditions
-                  that do not depend on your location.
-                </p>
-              )}
-              {catalogueError && (
-                <p role="alert">
-                  The activity list could not load. Refresh the page to try
-                  again.
-                </p>
-              )}
-              <button disabled={busy || !activity}>
-                {compare ? "Compare times" : "Find times"}
-              </button>
-            </form>
-          </details>
-        )}
-        {busy && <p role="status">Reading your request…</p>}
-        {error && (
-          <p className="timing-error" role="alert">
-            {error}
-          </p>
-        )}
-        {chosen && (
-          <section className="timing-confirmation" role="status">
-            <h2>Saved to Compass</h2>
-            <p>
-              {chosen.title} · {format(chosen.candidate.start)}
-            </p>
-            <p>Your chosen time is in Workspace Calendar.</p>
-            <button onClick={exportChoice}>Download calendar event</button>
-            {exported && (
-              <p>
-                The calendar file was offered for download. Import it into your
-                calendar to add the event.
-              </p>
+                  {catalogueError && (
+                    <p role="alert">
+                      The activity list could not load. Refresh the page to try
+                      again.
+                    </p>
+                  )}
+                  <Action disabled={busy || !activity}>
+                    {compare ? "Compare times" : "Find times"}
+                  </Action>
+                </form>
+              </details>
             )}
-          </section>
-        )}
-      </main>
+            {chosen && (
+              <section className="timing-confirmation" role="status">
+                <h2>Saved to Compass</h2>
+                <p>
+                  {chosen.title} · {format(chosen.candidate.start)} to {format(chosen.candidate.end)}
+                </p>
+                <p>Your chosen time is saved in your Compass calendar.</p>
+                <Action onClick={() => {
+                  setDestination("calendar");
+                  setChosen(null);
+                }}>Open calendar</Action>
+                <Action onClick={exportChoice}>Download calendar event</Action>
+                <Action variant="text" onClick={() => setDestination("saved")}>
+                  View saved times
+                </Action>
+                {exported && (
+                  <p>
+                    The calendar file was offered for download. Import it into
+                    your calendar to add the event.
+                  </p>
+                )}
+              </section>
+            )}
+          </div>
+        </main>
+      ) : destination === "now" ||
+        destination === "calendar" ||
+        destination === "almanac" ? (
+        <>
+          <div className="compass-calendar-actions">
+            <h1>{destination === "almanac" ? "Almanac" : destination === "calendar" ? "Calendar" : "Current reading"}</h1>
+            {destination !== "now" && (
+              <Action variant="text" onClick={() => setDestination("saved")}>
+                Saved choices
+              </Action>
+            )}
+          </div>
+          <RestoredTimeView
+            key={destination}
+            view={destination}
+            onFindTime={searchCalendarDay}
+            onNavigate={(view, starId) => {
+              if (view === "calendar" || view === "almanac")
+                setDestination(view);
+              else
+                onWorkspace(
+                  view === "launch" || view === "planets" ? "launch" : "work",
+                  starId,
+                );
+            }}
+          />
+        </>
+      ) : destination === "saved" ? (
+        <TimingLibrary
+          testerId={testerId}
+          timeZone={timeZone}
+          onSearch={startFreshSearch}
+        />
+      ) : destination === "workspace" ? (
+        <main className="timing-main timing-secondary">
+          <p className="timing-kicker">Optional workspace</p>
+          <h1>Room for the rest of your life.</h1>
+          <p>
+            Your tasks, habits, projects, and records still live here. Use them
+            when you want more context around a timing decision.
+          </p>
+          <div className="timing-feature-grid">
+            <article>
+              <h2>Calendar and plans</h2>
+              <p>
+                See chosen times alongside the work you have already scheduled.
+              </p>
+            </article>
+            <article>
+              <h2>Tasks and habits</h2>
+              <p>
+                Keep track of practical work and recurring practices at your own
+                pace.
+              </p>
+            </article>
+            <article>
+              <h2>Stars and projects</h2>
+              <p>
+                Connect everyday steps to the longer commitments they serve.
+              </p>
+            </article>
+            <article>
+              <h2>Sky and reflection</h2>
+              <p>
+                Explore the daily reading, your birth chart, and your own record
+                of how things felt.
+              </p>
+            </article>
+          </div>
+          <Action onClick={() => onWorkspace()}>Open workspace</Action>
+          <TimingSources
+            testerId={testerId}
+            onSelect={(value) => {
+              setText(value);
+              setDraft(null);
+              setResponse(null);
+              setChosen(null);
+              setDestination("search");
+            }}
+          />
+        </main>
+      ) : (
+        <main className="timing-main timing-secondary">
+          <p className="timing-kicker">About Compass</p>
+          <h1>A time for what matters to you.</h1>
+          <p>
+            Bring something you want to do and the time you have available.
+            Compass looks for astrological openings, explains the conditions,
+            and lets you choose what fits your life.
+          </p>
+          <div className="timing-feature-grid">
+            <article>
+              <h2>Start with one intention</h2>
+              <p>
+                Try “three hours of deep work this weekend” or “a first date
+                Saturday.” You can adjust the activity, dates, and duration
+                after searching.
+              </p>
+            </article>
+            <article>
+              <h2>Read the reasons</h2>
+              <p>
+                Each opening comes with its evidence and any qualifications.
+                Timing describes conditions; the decision remains yours.
+              </p>
+            </article>
+            <article>
+              <h2>Keep your choice</h2>
+              <p>
+                Save a time in Compass and download an event for your calendar.
+                Check calendar availability when you need it.
+              </p>
+            </article>
+            <article>
+              <h2>Add context as you go</h2>
+              <p>
+                You can search without a birth chart. Location, personal
+                context, and the optional workspace provide more detail when you
+                want it.
+              </p>
+            </article>
+          </div>
+          <Action onClick={() => setDestination("search")}>Find a time</Action>
+        </main>
+      )}
+    </div>
+  );
+}
+
+/** The existing instruments retain their queries, controls, and visual language. */
+function RestoredTimeView({
+  view,
+  onNavigate,
+  initialDate,
+  onFindTime,
+  openings,
+  onInspectOpening,
+}: {
+  openings?: CalendarOpening[];
+  onInspectOpening?: (id: string) => void;
+  initialDate?: string;
+  onFindTime?: (date: string) => void;
+  view: "now" | "calendar" | "almanac";
+  onNavigate: (view: string, starId?: number) => void;
+}) {
+  const { profile, lat, lon, locationKnown } = useTester();
+  const testerId = profile?.testerId ?? null;
+  const { data: now, isError, refetch } = useTidesNow(testerId, lat, lon);
+  const [session, setSession] = useState<{ title: string } | null>(null);
+  return (
+    <div className="timing-restored">
+      {isError && (
+        <p role="alert">
+          The current sky could not load.{" "}
+          <Action onClick={() => refetch()}>Try again</Action>
+        </p>
+      )}
+      {view === "now" ? (
+        <>
+          <div className="timing-restored-heading">
+            <h1>Now</h1>
+            {now && (
+              <SessionTimer
+                planetaryHour={now.planetaryHour}
+                openOn={session}
+                onOpened={() => setSession(null)}
+              />
+            )}
+          </div>
+          <Home
+            testerId={testerId}
+            lat={lat}
+            lon={lon}
+            onNavigate={onNavigate}
+            onStartSession={(title) => setSession({ title })}
+            onOpenStar={(starId) => onNavigate("work", starId)}
+          />
+        </>
+      ) : (
+        <Calendar
+          testerId={testerId}
+          now={now}
+          lat={lat}
+          lon={lon}
+          locationKnown={locationKnown}
+          initialView={
+            view === "almanac" ? "almanac" : initialDate ? "week" : undefined
+          }
+          shellNavigation
+          initialDate={initialDate}
+          onFindTime={onFindTime}
+          openings={openings}
+          onInspectOpening={onInspectOpening}
+          onNavigate={onNavigate}
+        />
+      )}
     </div>
   );
 }
