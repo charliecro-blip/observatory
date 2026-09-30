@@ -263,7 +263,10 @@ export default function CompassHome({
               aspect: nextLunar === undefined ? undefined : nextLunar && { aspect: nextLunar.aspect, body2: nextLunar.body2, at: new Date(nextLunar.at) },
               scope: "today", fmtTime,
             })}{" "}
-            <Action variant="text" onClick={onNow}>Current reading</Action>
+            {/* The door to the "what should I do right now" answer (One move / a
+                few ways in / what to protect). It read "Current reading", which
+                hid what it opens (owner asked where it went, 2026-09-30). */}
+            <Action variant="text" onClick={onNow}>What to do now</Action>
           </p>
         )}
       </section>

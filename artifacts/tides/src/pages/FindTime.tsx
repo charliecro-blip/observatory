@@ -1273,7 +1273,7 @@ export default function FindTime({
         destination === "almanac" ? (
         <>
           <div className="compass-calendar-actions">
-            <h1>{destination === "almanac" ? "Almanac" : destination === "calendar" ? "Calendar" : "Current reading"}</h1>
+            <h1>{destination === "almanac" ? "Almanac" : destination === "calendar" ? "Calendar" : "What to do now"}</h1>
             {/* Calendar offers this from its More menu (density pass, C1). */}
             {destination === "almanac" && (
               <Action variant="text" onClick={() => setDestination("saved")}>
@@ -1430,7 +1430,9 @@ function RestoredTimeView({
       {view === "now" ? (
         <>
           <div className="timing-restored-heading">
-            <h1>Now</h1>
+            {/* The shell's heading names this page; a second "Now" under it
+                repeated it. The row stays for the session timer. */}
+            <span />
             {now && (
               <SessionTimer
                 planetaryHour={now.planetaryHour}
