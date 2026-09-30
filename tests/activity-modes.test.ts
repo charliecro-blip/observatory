@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { ACTIVITIES, modeOf, type ActivityMode } from "../artifacts/api-server/src/lib/activityCorrespondences";
-import { TRADITIONAL_PLANETS, MODERN_PLANETS } from "../artifacts/api-server/src/lib/motion";
+import {
+  ACTIVITIES,
+  modeOf,
+  type ActivityMode,
+} from "../artifacts/api-server/src/lib/activityCorrespondences";
+import {
+  TRADITIONAL_PLANETS,
+  MODERN_PLANETS,
+} from "../artifacts/api-server/src/lib/motion";
 import { computeElections } from "../artifacts/api-server/src/lib/electionEngine";
 
 /**
@@ -24,14 +31,24 @@ describe("every activity has a mode chosen for it", () => {
       const src = String(modeOf(a.key));
       return src === "execution" && !EXPLICIT_EXECUTION.has(a.key);
     });
-    expect(missing.map((a) => a.key), "activities with no explicit mode").toEqual([]);
+    expect(
+      missing.map((a) => a.key),
+      "activities with no explicit mode",
+    ).toEqual([]);
   });
 
   it("puts the binding beginnings in inception", () => {
-    for (const k of ["launch-venture", "sign-contract", "begin-partnership", "publish", "move-home",
+    for (const k of [
+      "launch-venture",
+      "sign-contract",
+      "begin-partnership",
+      "publish",
+      "move-home",
       // A published profile and a sent ask both happen once and carry their
       // moment with them — the same shape the rule was written for.
-      "dating-profile", "ask-someone-out"]) {
+      "dating-profile",
+      "ask-someone-out",
+    ]) {
       expect(modeOf(k), k).toBe("inception");
     }
   });
@@ -60,16 +77,34 @@ describe("every activity has a mode chosen for it", () => {
 // Keys deliberately assigned "execution" — so the exhaustiveness check above
 // can tell a real assignment from an unassigned fallthrough.
 const EXPLICIT_EXECUTION = new Set([
-  "train-hard", "endurance", "intimacy", "deep-study", "first-draft", "learn-skill",
-  "strategize", "teach-present", "deep-work", "negotiate", "hard-conversation",
-  "deepen-bond", "host", "network", "call-family", "cook", "beautify", "garden",
-  "divination", "romantic-time",
+  "train-hard",
+  "endurance",
+  "intimacy",
+  "deep-study",
+  "first-draft",
+  "learn-skill",
+  "strategize",
+  "teach-present",
+  "deep-work",
+  "creative-practice",
+  "negotiate",
+  "hard-conversation",
+  "deepen-bond",
+  "host",
+  "network",
+  "call-family",
+  "cook",
+  "beautify",
+  "garden",
+  "divination",
+  "romantic-time",
   // Added with the dating activities (2026-08-13). Both are repeatable and
   // carry no binding start: going out to meet people can be done again next
   // week, and the where-is-this-going talk names a thing that already exists
   // rather than beginning one. (dating-profile and ask-someone-out ARE
   // beginnings and are asserted as inception below.)
-  "meet-someone-new", "define-relationship",
+  "meet-someone-new",
+  "define-relationship",
 ]);
 
 describe("the cap no longer reaches where the doctrine never went", () => {
@@ -89,12 +124,29 @@ describe("the cap no longer reaches where the doctrine never went", () => {
     // runs on every deploy via `pnpm test` — the full sweep belongs in tools/
     // where a slow diagnostic cannot hold up a build. These six each carry a
     // significator that is retrograde in October 2026.
-    const SAMPLE = ["endurance", "deep-work", "edit-revise", "deep-clean", "deep-rest", "cook"];
+    const SAMPLE = [
+      "endurance",
+      "deep-work",
+      "edit-revise",
+      "deep-clean",
+      "deep-rest",
+      "cook",
+    ];
     let greatOnNonInception = 0;
     for (const key of SAMPLE) {
-      expect(modeOf(key), `${key} should not be an inception`).not.toBe("inception");
-      const r = computeElections({ activityKey: key, span: "week", ...PLACE, startAt: AT } as any);
-      if (r) greatOnNonInception += r.windows.filter((w) => w.tier === "great").length;
+      expect(modeOf(key), `${key} should not be an inception`).not.toBe(
+        "inception",
+      );
+      const r = computeElections({
+        activityKey: key,
+        span: "week",
+        ...PLACE,
+        startAt: AT,
+      } as any);
+      if (r)
+        greatOnNonInception += r.windows.filter(
+          (w) => w.tier === "great",
+        ).length;
     }
     // The point is only that the gate is no longer categorical. Before the
     // narrowing this was reachable but heavily suppressed by outer-planet

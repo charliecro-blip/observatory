@@ -11,6 +11,7 @@ import { fetchGcalBusy } from "./googleCal.js";
 import { searchTiming, type TimingSearchRequest } from "../lib/timingSearch.js";
 import { presentTiming } from "../lib/timingPresentation.js";
 import { interpretTimingActivity } from "../lib/timingInterpretation.js";
+import { interpretTimingRequest } from "../lib/timingRequest.js";
 import { activityByKey } from "../lib/activityCorrespondences.js";
 import { timingEnabledFor } from "../lib/timingAccess.js";
 
@@ -30,7 +31,23 @@ router.post("/timing/interpret", (req, res) => {
     res.status(400).json({ error: "invalid_request" });
     return;
   }
-  res.json(interpretTimingActivity(req.body.text));
+  if (req.body.timeZone === undefined) {
+    res.json(interpretTimingActivity(req.body.text));
+    return;
+  }
+  if (typeof req.body.timeZone !== "string") {
+    res.status(400).json({ error: "invalid_timezone" });
+    return;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: req.body.timeZone });
+  } catch {
+    res.status(400).json({ error: "invalid_timezone" });
+    return;
+  }
+  res.json(
+    interpretTimingRequest(req.body.text, req.body.timeZone, new Date()),
+  );
 });
 
 /** Accept only public request fields; never trust caller-provided evidence or charts. */

@@ -82,10 +82,13 @@ export function accurateLongitude(name: string, jd: number): number {
   return memo(key, () => norm360(Ecliptic(GeoVector(body, jdToDate(seconds / 86400), true)).elon));
 }
 
-/** Retrograde = geocentric longitude decreasing over a day. Sun/Moon never. */
+/** Current geocentric motion, estimated symmetrically around the requested instant. */
 export function accurateRetrograde(name: string, jd: number): boolean {
   if (name === "Sun" || name === "Moon" || !BODY[name]) return false;
-  const a = accurateLongitude(name, jd);
-  const b = accurateLongitude(name, jd + 1);
+  // A forward day measures tomorrow's motion near a station and changes
+  // status about twelve hours early. A centered hour avoids that bias.
+  const halfHour = 1 / 48;
+  const a = accurateLongitude(name, jd - halfHour);
+  const b = accurateLongitude(name, jd + halfHour);
   return norm360(b - a) > 180;
 }

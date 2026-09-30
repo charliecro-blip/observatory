@@ -45,6 +45,29 @@ describe("Phase A interpretation", () => {
       options: [{ key: "train-hard", label: "Hard training" }],
     });
   });
+  it("understands ordinary creative-work requests without requiring catalogue language", () => {
+    for (const text of [
+      "An opportune moment for painting",
+      "When should I draw this weekend?",
+      "I want to work on a collage tomorrow",
+      "Find me time to write a song",
+    ]) {
+      expect(interpretTimingActivity(text), text).toMatchObject({
+        state: "resolved",
+        options: [{ key: "creative-practice" }],
+      });
+    }
+  });
+  it("does not confuse words that merely contain an activity keyword", () => {
+    expect(
+      interpretTimingActivity("transform the onboarding flow"),
+    ).not.toMatchObject({
+      options: [{ key: "admin-errands" }],
+    });
+    expect(interpretTimingActivity("restart the service")).not.toMatchObject({
+      options: [{ key: "first-date" }],
+    });
+  });
   it("keeps Sunday inside this weekend rather than jumping ahead", () => {
     const r = interpretTimingRange(
       "Three hours this weekend",
