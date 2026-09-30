@@ -835,3 +835,48 @@
    here the container owns both, so the rail fills it. */
 .timing-rail > aside { width: 100% !important; min-width: 0 !important; border-right: none !important; }
 .timing-header-start { display: flex; align-items: center; gap: 14px; }
+
+/* Calendar's More menu: a popover like the account menu, so opening it does
+   not push the toolbar around. */
+.calendar-more { position: relative; }
+.calendar-more > summary {
+  list-style: none; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center;
+  padding: 7px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-card);
+  font: 500 14px/1 var(--font-sans); color: var(--text-1);
+}
+.calendar-more > summary::-webkit-details-marker { display: none; }
+.calendar-more[open] > summary { background: var(--color-card-2); }
+.calendar-more-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 240px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px;
+  background: var(--color-card); border: 1px solid var(--color-border); border-radius: 10px;
+  box-shadow: 0 10px 35px #0002;
+}
+@media (max-width: 600px) { .calendar-more-menu { right: auto; left: 0; } }
+
+/* Home after the density pass (2026-09-30). */
+.compass-moon-line { font: 400 17px/1.55 var(--font-serif); color: var(--text-1); margin: 0 0 4px; }
+.compass-moon-line .compass-action { font: 500 14px/1 var(--font-sans); padding: 0; min-height: 0; vertical-align: baseline; }
+.compass-due { padding: 22px 0 6px; border-top: 1px solid var(--color-border); }
+.compass-due h2 { margin-bottom: 10px; }
+.compass-due ul { list-style: none; padding: 0; margin: 0 0 14px; }
+.compass-due li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 15px; color: var(--text-1); }
+.compass-due li button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: -6px; border: none; background: none; cursor: pointer; }
+.compass-plan-several { padding-bottom: 28px; }
+.compass-plan-several h2 { margin-bottom: 6px; }
+.compass-plan-toggle { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.compass-plan-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+
+/* Header on phones: the panel switch and the account become icons, so the
+   top row holds the name and two small targets (H10). */
+.timing-rail-icon, .timing-account-initial { display: none; }
+@media (max-width: 720px) {
+  .timing-rail-label, .timing-account-name { display: none; }
+  .timing-rail-icon { display: inline; font-size: 18px; line-height: 1; }
+  .timing-rail-toggle { min-width: 40px; min-height: 40px; padding: 6px; justify-content: center; }
+  .timing-account-initial {
+    display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-card); font: 600 13px/1 var(--font-sans);
+  }
+  .timing-header-start { gap: 8px; }
+}

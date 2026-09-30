@@ -16,15 +16,27 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { CAUTION_PLANET_ARCHETYPE } from "@/lib/tester-profile";
 import type { TidesNow, WeekDay, PlanningWindow, SkyEvent } from "@/lib/types";
 import { PLANET_GLYPH as PLANET_ICONS, SIGN_GLYPH as SIGN_SYMBOL } from "@/lib/glyphs";
-import { QualityStrip } from "@/components/QualityStrip";
 import { Studio } from "@/components/Studio";
 import CalendarAudit from "@/components/CalendarAudit";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS } from "@/lib/elements";
 import { useDialog } from "@/hooks/useDialog";
 import AlmanacView from "@/components/AlmanacView";
+import { usePerfections, ExactList, aspectColor, perfectionGlyphs, perfectionWords } from "@/components/ExactAspects";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
+/** An instant rounded to the nearest minute, so a sign change at 12:25:57
+ *  reads 12:26 everywhere, matching the void's end on the same row set. */
+function atMinute(iso: string): Date {
+  return new Date(Math.round(Date.parse(iso) / 60000) * 60000);
+}
+
+/** "Sep 28" for a YYYY-MM-DD, read as a local date (B6: "due 2026-09-28"). */
+function shortDate(d: string | null | undefined): string {
+  if (!d) return "";
+  return new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function hasRealLocation(lat: number, lon: number): boolean {
   return !(Math.abs(lat - DEFAULT_LAT) < 0.01 && Math.abs(lon - DEFAULT_LON) < 0.01);
 }
@@ -504,7 +516,11 @@ function usePlanetaryHours(dates: string[], lat: number, lon: number) {
   });
 }
 
-function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, onAddEvent, onDeleteWindow, onZoomDay, onMoveWindow, openings = [], onInspectOpening }: {
+function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, cautionMap, testerId, today, lat, lon, isDay, showCrossings = false, onAddEvent, onDeleteWindow, onZoomDay, onMoveWindow, openings = [], onInspectOpening }: {
+  /** Angle crossings (ASC/MC/DSC/IC for every planet, every day). Off unless
+   *  asked for: drawn by default they overlapped into an unreadable stack in
+   *  the week (density audit 2026-09-30, C7). */
+  showCrossings?: boolean;
   openings?: CalendarOpening[];
   onInspectOpening?: (id: string) => void;
   dates: string[];
@@ -570,6 +586,9 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
   }, [pinnedCross]);
 
   const { data: hoursData } = usePlanetaryHours(dates, lat, lon);
+  // The Day view marks aspects from the precise day search; the week keeps the
+  // 90-day feed, which is refined with the same search, so the two agree.
+  const { data: dayPerfections = [] } = usePerfections(dates[0] ?? today, isDay && !skyQuiet);
 
   const planetaryHoursMap = useMemo(() => {
     const m = new Map<string, PlanetHour[]>();
@@ -609,7 +628,7 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
           const ec = ELEMENT_ACCENT[dayData?.element ?? ""] ?? "#888888";
           const et = ELEMENT_TINT[dayData?.element ?? ""] ?? "var(--color-card)";
           const wins = windowsMap.get(dateStr) ?? [];
-          const crossings = realLocation ? ((dayData?.crossings ?? []) as any[]) : [];
+          const crossings = realLocation && showCrossings ? ((dayData?.crossings ?? []) as any[]) : [];
           const isPast = dateStr < today;
           const d = new Date(dateStr+"T12:00:00");
           const dayLabel = d.toLocaleDateString("en-US",{weekday:"short"});
@@ -661,33 +680,49 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                 }}>
                   <div style={{ display:"flex",alignItems:"center",gap:4 }}>
                     {phase && <span style={{ fontSize: 10.5 }}>{MOON_EMOJI[phase]??""}</span>}
-                    {signKey && <span style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500 }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {isDay ? moonSign.split(" ")[0] : (moonSign.split(" ")[0]??"")} </span>}
+                    {signKey && (() => {
+                      // An ingress day names both signs (B1); the week column
+                      // has room for the glyphs, the day for the words.
+                      const ing = dayData?.moonIngress;
+                      const fk = ing ? parseSign(ing.from) : null, tk = ing ? parseSign(ing.to) : null;
+                      return (
+                        <span title={ing ? `${ing.from} until ${fmtTime(atMinute(ing.at))}, then ${ing.to}` : undefined}
+                          style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--color-muted)",fontWeight:500,whiteSpace:"nowrap" }}>
+                          {ing && fk && tk
+                            ? <><span aria-hidden="true">{SIGN_SYMBOL[fk]}→{SIGN_SYMBOL[tk]}</span>{isDay ? ` ${ing.from} → ${ing.to} at ${fmtTime(atMinute(ing.at))}` : ` ${ing.to}`}</>
+                            : <><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {moonSign.split(" ")[0]}</>}
+                        </span>
+                      );
+                    })()}
                     {/* week: show current planetary hour planet */}
                     {!isDay && isToday && nowHour && (
                       <span title={`${nowHour.ruler} hour`} style={{ marginLeft:"auto",fontSize: 10.5,color:PLANET_COLORS[nowHour.ruler]??"var(--color-muted)" }}><span role="img" aria-label={`${nowHour.ruler} hour`} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[nowHour.ruler]}</span></span>
                     )}
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:4,overflow:"hidden" }}>
-                    {voc && <span title="Void-of-course Moon — a liminal 'slack water' stretch: beginnings tend to drift, so finish and rest instead. Not a warning, just a different kind of time." style={{ fontSize: 10.5,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"var(--text-2)",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
+                    {voc && <span title="Void-of-course Moon: beginnings tend to drift, so the stretch suits finishing and rest." style={{ fontSize: 10.5,padding:"0 4px",borderRadius:3,background:"#6f6a9022",color:"var(--text-2)",border:"1px solid #d2cee2",lineHeight:"14px",whiteSpace:"nowrap" }}>◒ VOC</span>}
                     {(cautionMap.get(dateStr)?.length ?? 0) > 0 && (
                       <span title={`Advisory: ${cautionMap.get(dateStr)!.map(h => `${h.triggerPlanet} ${h.aspect.toLowerCase()} your ${h.cautionPlanet}`).join(" · ")} — one of your sensitivity planets is active.`}
                         style={{ fontSize: 10.5,lineHeight:1,cursor:"help" }}>⚠️</span>
                     )}
                     {/* The day's aspects — lunar and planet-planet, with exact times */}
                     {(() => {
+                      // One aspect and a count. Two or three chips at 10px in a
+                      // 110px column truncated into "☽✶♂ 15:53 ☽✶♀17" (C7);
+                      // the markers in the column carry the rest, at their times.
                       const dayAspects = (eventsMap.get(dateStr) ?? []).filter(ev => ev.type === "moon_aspect" || ev.type === "aspect");
                       if (dayAspects.length === 0) return null;
-                      return dayAspects.slice(0, isDay ? 3 : 2).map((ev, ai) => {
-                        const parts = aspectLineParts(ev);
-                        if (!parts) return null;
-                        const col = ev.quality === "caution" ? "#a05020" : ev.quality === "favorable" ? "#3a6020" : "#60708a";
-                        return (
-                          <span key={ai} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`}
-                            style={{ fontSize: 10.5,color:col,fontWeight:ev.type==="aspect"?700:500,whiteSpace:"nowrap" }}>
-                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}
-                          </span>
-                        );
-                      });
+                      const ev = dayAspects[0];
+                      const parts = aspectLineParts(ev);
+                      if (!parts) return null;
+                      const col = ev.quality === "caution" ? "#a05020" : ev.quality === "favorable" ? "#3a6020" : "#60708a";
+                      return (
+                        <span title={dayAspects.map(e => `${e.title}${e.at ? " " + fmtTime(new Date(e.at)) : ""}`).join(" · ")}
+                          style={{ fontSize: 10.5,color:col,fontWeight:ev.type==="aspect"?700:500,whiteSpace:"nowrap" }}>
+                          <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.at ? ` ${fmtTime(new Date(ev.at))}` : ""}
+                          {dayAspects.length > 1 && <span style={{ color:"var(--text-3)",fontWeight:500 }}> +{dayAspects.length - 1}</span>}
+                        </span>
+                      );
                     })()}
                   </div>
                 </div>}
@@ -750,18 +785,11 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                           )}
                         </div>
                       );
-                    } else {
-                      // Week: full-width background tint, very subtle (bands blend
-                      // into a gradient of the day rather than reading as blocks)
-                      return (
-                        <div key={phi} style={{
-                          position:"absolute",top:topPx,height:Math.max(1,botPx-topPx),
-                          left:0,right:0,
-                          background:`${col}${ph.isDayHour?"16":"0d"}`,
-                          borderTop:`1px solid ${col}20`,zIndex:1,pointerEvents:"none",
-                        }}/>
-                      );
                     }
+                    // The week drew a tinted band behind every hour, which made
+                    // seven columns of colour noise (C8). The hours stay in the
+                    // Day view's labeled bar and in the Sky panel.
+                    return null;
                   })}
 
                   {/* Hour grid lines + click zones — also the drop targets
@@ -847,25 +875,36 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                     );
                   })}
 
-                  {/* Lunar (and planet-planet) aspects — timed markers on the day itself */}
-                  {!skyQuiet && (eventsMap.get(dateStr) ?? []).filter(ev => (ev.type==="moon_aspect"||ev.type==="aspect") && ev.at).map((ev,ei) => {
-                    const d = new Date(ev.at!);
+                  {/* Aspects at the moment they perfect. The Day view reads the
+                      precise day search, outer planets included, and says
+                      "exact" so a marker is not mistaken for a window; the
+                      week reads the refined 90-day feed. */}
+                  {!skyQuiet && (isDay
+                    ? dayPerfections.map(p => ({ at: p.at, glyphs: perfectionGlyphs(p), col: aspectColor(p.aspect), title: perfectionWords(p), strong: !p.lunar }))
+                    : (eventsMap.get(dateStr) ?? []).filter(ev => (ev.type==="moon_aspect"||ev.type==="aspect") && ev.at).map(ev => {
+                        const parts = aspectLineParts(ev);
+                        return {
+                          at: ev.at!, glyphs: parts ? `${parts.left}${parts.sym}${parts.right}` : ev.title,
+                          col: ev.quality==="caution" ? "#a05020" : ev.quality==="favorable" ? "#3a6020" : "#60708a",
+                          title: ev.title, strong: ev.type === "aspect",
+                        };
+                      })
+                  ).map((m,ei) => {
+                    const d = new Date(m.at);
                     const mins = d.getHours()*60 + d.getMinutes();
                     const topPx = ((mins/60-HOUR_START)/HOURS)*HOURS*ROW_H;
                     if (topPx<0||topPx>HOURS*ROW_H) return null;
-                    const parts = aspectLineParts(ev);
-                    const col = ev.quality==="caution" ? "#a05020" : ev.quality==="favorable" ? "#3a6020" : "#60708a";
                     return (
-                      <div key={`asp${ei}`} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{
-                        position:"absolute",left:PLANET_BAR_W,right:0,top:topPx-8,height:16,zIndex:5,
+                      <div key={`asp${ei}`} title={`${m.title}, exact at ${fmtTime(d)}`} style={{
+                        // Above scheduled blocks: an aspect perfecting during a
+                        // block is exactly the fact worth seeing over it.
+                        position:"absolute",left:PLANET_BAR_W,right:0,top:topPx-8,height:16,zIndex:11,
                         pointerEvents:"none",display:"flex",alignItems:"center",gap:3,
                       }}>
-                        <div style={{ flex:1,borderTop:`1px dashed ${col}59` }}/>
-                        {parts && (
-                          <div style={{ fontSize: 10.5,color:col,fontWeight:700,background:"rgba(255,255,255,0.82)",padding:"0 3px",borderRadius:3,whiteSpace:"nowrap" }}>
-                            <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span> {fmtTime(d)}
-                          </div>
-                        )}
+                        <div style={{ flex:1,borderTop:`${m.strong?1.5:1}px ${isDay?"solid":"dashed"} ${m.col}${isDay?"80":"59"}` }}/>
+                        <div style={{ fontSize: isDay ? 11.5 : 10.5,color:m.col,fontWeight:700,background:"var(--color-card)",padding:"0 4px",borderRadius:3,whiteSpace:"nowrap" }}>
+                          <span style={{ fontFamily:"var(--font-symbol)" }}>{m.glyphs}</span> {isDay ? `${m.title} · exact ${fmtTime(d)}` : fmtTime(d)}
+                        </div>
                       </div>
                     );
                   })}
@@ -1051,7 +1090,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
             const isPP = ev.type === "aspect";
             return (
               <div key={i} title={`${ev.title}${ev.subtitle ? " — " + ev.subtitle : ""}`} style={{ fontSize: 10.5,color:col,fontWeight:isPP?700:500,lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-                <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.time ? ` ${ev.time}` : ""}{isPP ? " exact" : ""}
+                <span style={{ fontFamily:"var(--font-symbol)" }}>{parts.left}{parts.sym}{parts.right}</span>{ev.at ? ` ${fmtTime(new Date(ev.at))}` : ""}{isPP ? " exact" : ""}
               </div>
             );
           })}
@@ -1062,7 +1101,7 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
       {/* Ingress — sign change marker (detail only) */}
       {!simple && !cellQuiet && ingressEvents.slice(0,1).map((ev,i) => (
         <div key={i} title={ev.title} style={{ fontSize: 10.5,color:ELEMENT_COLORS.earth,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
-          → {ev.title.replace("Moon enters ", "")}{ev.time ? ` ${ev.time}` : ""}
+          → {ev.title.replace("Moon enters ", "")}{ev.at ? ` ${fmtTime(new Date(ev.at))}` : ""}
         </div>
       ))}
 
@@ -1095,8 +1134,23 @@ function MonthCell({ dateStr, dayData, isToday, isSelected, isPast, showSignName
 
 // ── DayDetailPanel ────────────────────────────────────────────────────────────
 
-function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onAddEvent }: {
-  dateStr: string; dayData?: WeekDay; testerId: string | null; now?: TidesNow; cautionHits?: CautionDayHit[]; onAddEvent: () => void;
+/** "♉ Taurus", or on an ingress day "♉ Taurus → ♊ Gemini at 12:26 PM" (B1). */
+function moonSignLine(day: WeekDay | undefined, fmtTime: (d: Date) => string): string {
+  if (!day) return "";
+  const ing = day.moonIngress;
+  if (ing) {
+    const a = parseSign(ing.from), b = parseSign(ing.to);
+    return `${a ? SIGN_SYMBOL[a] + " " : ""}${ing.from} → ${b ? SIGN_SYMBOL[b] + " " : ""}${ing.to} at ${fmtTime(atMinute(ing.at))}`;
+  }
+  const k = parseSign(day.moonSign);
+  return `${k ? SIGN_SYMBOL[k] + " " : ""}${day.moonSign}`;
+}
+
+function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], skyLoading = false, skyFailed = false, onRetrySky }: {
+  dateStr: string; dayData?: WeekDay; testerId: string | null; now?: TidesNow; cautionHits?: CautionDayHit[];
+  /** The sky for the grid loads for several seconds; while it does, or if it
+   *  fails, say that rather than "No timing data" (B4). */
+  skyLoading?: boolean; skyFailed?: boolean; onRetrySky?: () => void;
 }) {
   const fmtTime = useTimeFormat();
   const qc = useQueryClient();
@@ -1132,21 +1186,28 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
         <div style={{ fontSize: 10.5,color:"var(--text-3)",marginBottom:2 }}>{isToday?"Today":"Selected"}</div>
         <div style={{ fontSize:13,fontWeight:700,color: "var(--color-primary)",lineHeight:1.25,marginBottom:3 }}>{dayLabel}</div>
         {!panelQuiet && dayRuler && <div style={{ fontSize: 11,color:PLANET_COLORS[dayRuler]??"var(--color-muted)",marginBottom:6 }}><span aria-hidden="true" style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[dayRuler]}</span> Day of {dayRuler}</div>}
-        <button onClick={onAddEvent} style={{ width:"100%",padding:"6px 0",borderRadius:7,border:"none",background:"#1a2a3a",color:"#ffffff",fontSize:11,fontWeight:600,cursor:"pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex:1,padding:"9px 12px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto" }}>
-        {!dayData && !panelQuiet && <div style={{ fontSize:11,color:"var(--text-3)",textAlign:"center",padding:"24px 0" }}>No timing data.</div>}
+        {/* The day's exact aspects lead (owner 2026-08-22: lunar placement and
+            aspects before anything else), from the same search as Day view. */}
+        {!panelQuiet && <ExactList dateStr={dateStr} compact />}
+        {!dayData && !panelQuiet && skyLoading && <div role="status" style={{ fontSize:11,color:"var(--text-3)",padding:"12px 0" }}>Reading the sky for this day…</div>}
+        {!dayData && !panelQuiet && !skyLoading && skyFailed && (
+          <div role="alert" style={{ fontSize:11.5,color:"var(--text-2)",padding:"12px 0" }}>
+            The sky for this day didn’t load.{" "}
+            {onRetrySky && <button onClick={onRetrySky} style={{ fontSize:11.5,background:"none",border:"none",padding:0,color:"var(--color-primary)",cursor:"pointer" }}>Try again</button>}
+          </div>
+        )}
         {dayData && (<>
           {!panelQuiet && <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
             <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4 }}>
               <span aria-hidden="true" style={{ fontSize:18 }}>{MOON_EMOJI[phase]??"●"}</span>
               <div>
                 <div style={{ fontSize:10.5,fontWeight:600,color: "var(--color-primary)" }}>{phase}</div>
-                {signKey && <div style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--text-3)" }}><span aria-hidden="true">{SIGN_SYMBOL[signKey]}</span> {moonSign}</div>}
+                {signKey && <div style={{ fontSize: 10.5,color:ELEMENT_LABEL[elem]??"var(--text-3)" }}>{moonSignLine(dayData, fmtTime)}</div>}
               </div>
             </div>
-            <div style={{ fontSize: 11,color:"var(--text-2)",lineHeight:1.6 }}>{MOON_MEANING[phase]??""}</div>
-            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#6f6a9022",border:"1px solid #d2cee2",fontSize: 10.5,color:"var(--text-2)" }}>◒ Void of course — a slack-water stretch. Good for finishing and rest; not for new starts.</div>}
+            {voc && <div style={{ marginTop:6,padding:"4px 7px",borderRadius:5,background:"#6f6a9022",border:"1px solid #d2cee2",fontSize: 10.5,color:"var(--text-2)" }}>◒ Void of course: beginnings tend to drift, so the stretch suits finishing and rest.</div>}
             {/* Caution — the specific transit that flagged this day, explained.
                 This is the "illuminate a specific day" the caution mark points to. */}
             {cautionHits.length > 0 && (
@@ -1165,49 +1226,10 @@ function DayDetailPanel({ dateStr, dayData, testerId, now, cautionHits = [], onA
               </div>
             )}
           </div>}
-          {!panelQuiet && <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 10.5,textTransform:"uppercase",letterSpacing:"0.5px",color:"var(--text-3)",marginBottom:5 }}>Conditions</div>
-            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
-              <div style={{ flex:1,height:4,borderRadius:2,background:"var(--color-card-2)" }}>
-                <div style={{ height:"100%",borderRadius:2,width:`${(qs/7)*100}%`,background:qColor(qs) }}/>
-              </div>
-            </div>
-            {/* element = the day's character; quality = how coherent conditions are */}
-            <div style={{ fontSize:10.5,fontWeight:600,color:ELEMENT_LABEL[elem]??"var(--color-muted)",textTransform:"capitalize",marginBottom:2 }}>
-              {elem} day · {dayData.quality?.replace(/_/g," ")}
-            </div>
-            <div style={{ fontSize: 11,color:"var(--color-muted)",lineHeight:1.5 }}>
-              {ELEMENT_NOTE[elem] ?? ""} {QUALITY_NOTE[dayData.quality ?? ""] ? `Overall: ${QUALITY_NOTE[dayData.quality ?? ""]}.` : ""}
-            </div>
-          </div>}
-          {/* The day's Moon aspects — the fast, personal weather. Sorted so the
-              one that perfects soonest reads first (same order as the rail). */}
-          {(() => {
-            if (panelQuiet) return null;
-            const ma = ((dayData as any)?.moonAspects ?? []) as any[];
-            if (!ma.length) return null;
-            const ASP_SYM: Record<string,string> = { conjunction:"☌︎", opposition:"☍︎", square:"□", trine:"△", sextile:"⚹" };
-            const ASP_COL: Record<string,string> = { conjunction:"#c8992e", opposition:"#c05050", square:"#c05050", trine:"#4a9060", sextile:"#4a7ab0" };
-            const sorted = [...ma].sort((a,b)=> (a.applying?0:1)-(b.applying?0:1) || (a.orb??9)-(b.orb??9)).slice(0,5);
-            return (
-              <div style={{ background:"var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
-                <div style={{ fontSize: 11,fontWeight:600,color:"var(--text-1)",marginBottom:5 }}>Moon aspects</div>
-                {sorted.map((a:any,i:number)=>{
-                  const other = a.planet ?? (a.planet1==="Moon" ? a.planet2 : a.planet1);
-                  const col = ASP_COL[a.aspect] ?? "#888888";
-                  return (
-                    <div key={i} style={{ display:"flex",alignItems:"center",gap:6,fontSize:10,paddingBottom:4,marginBottom:i<sorted.length-1?4:0,borderBottom:i<sorted.length-1?"1px solid var(--color-border)":"none" }}>
-                      <span role="img" aria-label="Moon" style={{ color:PLANET_COLORS.Moon }}>☽</span>
-                      <span role="img" aria-label={a.aspect} style={{ color:col,fontWeight:700 }}>{ASP_SYM[a.aspect] ?? "·"}</span>
-                      <span aria-hidden="true" style={{ color:PLANET_COLORS[other]??"var(--text-2)", fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[other]??""}</span>
-                      <span style={{ flex:1,color:"var(--text-2)" }}>{other}</span>
-                      <span style={{ fontSize: 10.5,color:a.applying?col:"var(--text-3)" }}>{a.applying?`${a.orb?.toFixed(1)}° applying`:`${a.orb?.toFixed(1)}° past`}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
+          {/* The Conditions card ("Spirit Day · Workable", "Overall: fine for
+              most things") and the noon Moon-aspect orbs were cut in the
+              density pass (C5): the first said little, and the second is now
+              said precisely by the exact-times list at the top. */}
           {(wins as PlanningWindow[]).length>0 && (
             <div style={{ background: "var(--color-card)",borderRadius:9,padding:"10px 11px",border:"1px solid var(--color-border)" }}>
               <div style={{ fontSize:11,fontWeight:600,color:"var(--color-primary)",marginBottom:6 }}>Your schedule</div>
@@ -1310,9 +1332,9 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, tasksFailed = f
       <div style={{ padding: "12px 14px 10px", flexShrink: 0, borderBottom: "1px solid var(--color-border)", background: "var(--color-card-2)" }}>
         <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 2 }}>{isToday ? "Today" : "Selected"}</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25, marginBottom: 3 }}>{dayLabel}</div>
-        <button onClick={onAddEvent} style={{ width: "100%", padding: "6px 0", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex: 1, padding: "9px 12px", overflowY: "auto" }}>
+        <div style={{ marginBottom: 16 }}><ExactList dateStr={dateStr} compact /></div>
         <UnavailableNotice
           missing={[...(tasksFailed ? ["your tasks"] : []), ...(habitsFailed ? ["your habits"] : [])]}
           onRetry={() => onRetry?.()} />
@@ -1335,7 +1357,7 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, tasksFailed = f
             <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2 }}>
               {g.label} · {g.items.length}
             </div>
-            {g.items.slice(0, 8).map(t => <TaskRow key={t.id} t={t} sub={g.key === "overdue" ? `due ${t.dueDate}` : "no date"} dim />)}
+            {g.items.slice(0, 8).map(t => <TaskRow key={t.id} t={t} sub={g.key === "overdue" ? `due ${shortDate(t.dueDate)}` : "no date"} dim />)}
             {g.items.length > 8 && (
               <div style={{ fontSize: 11, color: "var(--text-3)", paddingTop: 4 }}>and {g.items.length - 8} more</div>
             )}
@@ -1372,7 +1394,9 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, tasksFailed = f
   );
 }
 
-function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, missing = [], tasksFailed = false, onRetry, onAddEvent, onDeleteWindow, onScheduleBlock }: {
+function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, missing = [], tasksFailed = false, showSky = true, onRetry, onAddEvent, onDeleteWindow, onScheduleBlock }: {
+  /** False at the quiet lens, where the agenda carries no sky moments. */
+  showSky?: boolean;
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[];
   /** Undone tasks. Those due today lead the day; the rest are not this day's business. */
@@ -1399,23 +1423,27 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   const signKey = parseSign(moonSign);
 
   const moments: AgendaMoment[] = [];
+  const { data: perfections = [] } = usePerfections(dateStr, showSky);
 
-  // Moon aspects + planetary aspects (the day's weather fronts) — timed ones
-  for (const ev of events) {
-    if ((ev.type === "moon_aspect" || ev.type === "aspect") && ev.at) {
-      const d = new Date(ev.at);
-      moments.push({
-        min: minOf(d), time: fmtTime(d), glyph: ev.icon || (ev.type === "aspect" ? "✦" : "☽︎"),
-        label: ev.title, sub: ev.subtitle, color: ev.type === "aspect" ? "var(--text-2)" : "#60708a",
-      });
-    }
+  // The day's aspects at the minute they perfect, from the same search as the
+  // Day view. The hourly feed this used to read printed them ~45 minutes late
+  // and twice (B2).
+  for (const p of perfections) {
+    const d = new Date(p.at);
+    moments.push({
+      min: minOf(d), time: fmtTime(d), glyph: perfectionGlyphs(p),
+      label: perfectionWords(p), sub: "exact", color: aspectColor(p.aspect),
+    });
   }
 
   // Void-of-course Moon — a rest window, shown as start/end bookends
   for (const voc of vocRanges) {
-    if (voc.startMin > 0) moments.push({ min: voc.startMin, time: minutesToTime(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
-    else moments.push({ min: 0, time: minutesToTime(0), glyph: "◒", label: "Void Moon, still running", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
-    if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: minutesToTime(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: "the Moon enters a new sign", color: "var(--text-2)" });
+    // Same clock as every other row; minutesToTime printed "12:26" beside
+    // "3:53pm" (B3).
+    const clock = (m: number) => fmtTime(new Date(new Date(dateStr + "T00:00:00").getTime() + m * 60000));
+    if (voc.startMin > 0) moments.push({ min: voc.startMin, time: clock(voc.startMin), glyph: "◒", label: "Void Moon begins", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
+    else moments.push({ min: 0, time: clock(0), glyph: "◒", label: "Void Moon, still running", sub: "a stretch for finishing and rest; beginnings tend to drift", color: "var(--text-2)" });
+    if (voc.endMin < 24 * 60) moments.push({ min: voc.endMin, time: clock(voc.endMin), glyph: "◓", label: "Void Moon ends", sub: dayData?.moonIngress ? `the Moon enters ${dayData.moonIngress.to}` : "the Moon enters a new sign", color: "var(--text-2)" });
   }
 
   // Angle crossings (advanced layer). Each one that has a small-activity plan
@@ -1486,7 +1514,9 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
               {dayData?.tide?.levelLabel ? <span style={{ color: accent, fontWeight: 500 }}> · {dayData.tide.levelLabel}</span> : null}
             </div>
             <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 1 }}>
-              {moonSign ? `Moon in ${moonSign.split(" ")[0]}` : ""}{dayData?.moonPhase ? ` · ${dayData.moonPhase}` : ""}
+              {dayData?.moonIngress
+                ? `Moon in ${dayData.moonIngress.from}, then ${dayData.moonIngress.to} from ${fmtTime(atMinute(dayData.moonIngress.at))}`
+                : moonSign ? `Moon in ${moonSign.split(" ")[0]}` : ""}{dayData?.moonPhase ? ` · ${dayData.moonPhase}` : ""}
               {dayData?.dayRuler ? ` · ${dayData.dayRuler}'s day` : ""}
             </div>
           </div>
@@ -1539,7 +1569,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
                 <span aria-hidden="true" style={{ width: 13, height: 13, borderRadius: 4, border: "1.5px solid var(--color-border)", flexShrink: 0, display: "inline-block", marginTop: 2 }} />
                 <span style={{ fontSize: 13, color: "var(--color-foreground)", flex: 1, minWidth: 0 }}>{t.title}</span>
                 <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>
-                  {g.key === "overdue" ? `due ${t.dueDate}` : "no date"}
+                  {g.key === "overdue" ? `due ${shortDate(t.dueDate)}` : "no date"}
                 </span>
               </div>
             ))}
@@ -1627,7 +1657,9 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   );
 }
 
-export default function Calendar({ testerId, now, lat, lon, locationKnown = true, onNavigate, initialView, initialDate, shellNavigation = false, onFindTime, openings, onInspectOpening }: {
+export default function Calendar({ testerId, now, lat, lon, locationKnown = true, onNavigate, initialView, initialDate, shellNavigation = false, onFindTime, onSavedChoices, openings, onInspectOpening }: {
+  /** The shell's saved-times page, offered from the More menu. */
+  onSavedChoices?: () => void;
   testerId: string | null; now: TidesNow | undefined; lat: number; lon: number;
   locationKnown?: boolean;
   openings?: CalendarOpening[];
@@ -1650,7 +1682,10 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   const isMobile = useIsMobile();
   // Phones open on the Agenda — a plain-language schedule of the day's key sky
   // moments, the "weave your day" surface (#13b). Desktop keeps the month grid.
-  const [calView, setCalView]           = useState<CalView>(initialView ?? (isMobile ? "agenda" : "month"));
+  // Week on desktop (owner 2026-09-30, C9). Phones keep Agenda: a week at
+  // 375px shows two and a half columns and scrolls sideways.
+  const [calView, setCalView]           = useState<CalView>(initialView ?? (isMobile ? "agenda" : "week"));
+  const [gridCrossings, setGridCrossings] = useState(false);
   // Agenda granularity — the fine layers are opt-in so the day reads as key
   // moments first; toggle them on for the full clock (#13b/#20).
   /**
@@ -1702,7 +1737,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // the part of the month a person is usually looking at. Measured ~4s cold
   // against ~3s for the old 30-day window — a fair price for cells that are
   // no longer blank, and a third of what the first attempt cost.
-  const { data: weekData, isError: weekFailed, refetch: retryWeek } = useTidesWeek(42, lat, lon, 14);
+  const { data: weekData, isError: weekFailed, isLoading: weekLoading, refetch: retryWeek } = useTidesWeek(42, lat, lon, 14);
   const { data: eventsData, isError: eventsFailed, refetch: retryEvents } = useSkyEvents(90, lat, lon);
 
   // Caution days — ⚠ marks from the user's self-reported sensitivity (Currents
@@ -1879,7 +1914,8 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
       const f = new Date(dates[0]+"T12:00:00"), l = new Date(dates[6]+"T12:00:00");
       return `${f.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${l.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`;
     }
-    return new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+    // Short form, so the toolbar keeps to one row in Day and Agenda too (C1).
+    return new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
   }
 
   function vocFracForDate(dateStr: string): {top:number;height:number}|null {
@@ -1923,65 +1959,49 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
           ))}
         </div>}
 
-        {calView !== "almanac" && onFindTime && <Action onClick={() => onFindTime(selectedDate)}>Find a time on this day</Action>}
         {calView !== "almanac" && <Action variant="primary" onClick={()=>setAddModal({date:selectedDate})}>Add event</Action>}
 
-        {/* ONE SKY DOOR, NOT FOUR LOOSE SWITCHES.
-            Planetary hours, crossings, simple-vs-detailed and sign names sat
-            in the header as permanent chips at 9px, so a calendar announced
-            itself as an astrological instrument before it looked like a
-            calendar. They are the same switches, behind the word that says
-            what they are all about. Default view: dates, real commitments,
-            slow sky. Details on request. */}
-        {/* Only rendered where it controls something. Its chips are Agenda
-            layers and Month layers, so on Week and Almanac it opened onto an
-            empty box — "this sky toggle isn't doing anything" (owner,
-            2026-08-28), which was exactly true of those two views. Derived
-            from the same conditions the chips use, so the door and its
-            contents cannot disagree. */}
-        {(() => {
-          const agendaChips = calView === "agenda" && !pageQuiet;
-          const monthChips  = calView === "month";
-          if (!agendaChips && !monthChips) return null;
-          return (
-            <Disclosure label="Sky" toolbar>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {agendaChips && (<>
-                  <Chip on={agSky} onClick={()=>setAgSky(v=>!v)} color="#b07020"
-                    title="Show the planetary hours, and the crossings inside them">The sky's own clock</Chip>
-                </>)}
-                {monthChips && (<>
-                  {!pageQuiet && (
-                    <Chip on={!monthSimple} onClick={()=>setMonthSimple(v=>!v)} color="#b07020"
-                      title={monthSimple?"Show aspect times and detail":"Show just the essentials"}>
-                      Aspect detail</Chip>
-                  )}
-                  {!pageQuiet && (
-                    <Chip on={showSignNames} onClick={()=>setShowSignNames(v=>!v)} color="#b07020">
-                      Sign names</Chip>
-                  )}
-                  <Chip on={showDetail} onClick={()=>setShowDetail(v=>!v)}>Day detail</Chip>
-                </>)}
-              </div>
-            </Disclosure>
-          );
-        })()}
-
-        {/* THE STUDIO — shareable day/week/lunation cards, inherited from
-            Today's hero as it retires (2026-08-19). Calendar is where the
-            day, the week and the lunation all already live, which is exactly
-            the three things it publishes. */}
-        {/* READ THE WEEK — the audit is a thing you ASK for. It sits in the
-            toolbar rather than marking up the grid, because a mark on every
-            event is the unprompted-suggestion shape this app just spent a
-            day removing. */}
-        {!pageQuiet && (gcalData?.events?.length ?? 0) > 0 && (
-          <Action variant="text" onClick={()=>setShowAudit(true)}>◷ Read the week</Action>
+        {/* ONE ROW, AND A MORE MENU (density audit 2026-09-30, C1). The
+            toolbar ran thirteen controls over two rows before the first date,
+            and on a phone the whole first screen was controls. The everyday
+            four stay out; everything else, including the sky layers that
+            belong to the current view, is one tap away here. */}
+        {calView !== "almanac" && (
+          <details className="calendar-more" onKeyDown={(e) => {
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); }
+          }}>
+            <summary>More</summary>
+            <div className="calendar-more-menu" onClick={(e) => {
+              // Actions close the menu; the layer switches stay open so several
+              // can be flipped in one visit.
+              if ((e.target as HTMLElement).closest("[data-closes]")) (e.currentTarget.parentElement as HTMLDetailsElement).open = false;
+            }}>
+              {onFindTime && <Action data-closes onClick={() => onFindTime(selectedDate)}>Find a time on this day</Action>}
+              {!pageQuiet && (calView === "week" || calView === "day") && (
+                <Chip on={gridCrossings} onClick={()=>setGridCrossings(v=>!v)} color="#b07020"
+                  title="When each planet rises, culminates and sets where you are">Angle crossings</Chip>
+              )}
+              {!pageQuiet && calView === "agenda" && (
+                <Chip on={agSky} onClick={()=>setAgSky(v=>!v)} color="#b07020"
+                  title="Show the planetary hours, and the crossings inside them">The sky's own clock</Chip>
+              )}
+              {calView === "month" && (<>
+                {!pageQuiet && <Chip on={!monthSimple} onClick={()=>setMonthSimple(v=>!v)} color="#b07020"
+                  title={monthSimple?"Show aspect times and detail":"Show just the essentials"}>Aspect detail</Chip>}
+                {!pageQuiet && <Chip on={showSignNames} onClick={()=>setShowSignNames(v=>!v)} color="#b07020">Sign names</Chip>}
+                <Chip on={showDetail} onClick={()=>setShowDetail(v=>!v)}>Day detail</Chip>
+              </>)}
+              {!pageQuiet && (gcalData?.events?.length ?? 0) > 0 && (
+                <Action data-closes variant="text" onClick={()=>setShowAudit(true)}>◷ Read the week</Action>
+              )}
+              {!pageQuiet && now && (
+                <Action data-closes variant="text" onClick={()=>setShowStudio(true)}><span aria-hidden="true">↗</span> Share</Action>
+              )}
+              {onSavedChoices && <Action data-closes variant="text" onClick={onSavedChoices}>Saved choices</Action>}
+              <GCalButton testerId={testerId} qc={qc}/>
+            </div>
+          </details>
         )}
-        {!pageQuiet && now && (
-          <Action variant="text" onClick={()=>setShowStudio(true)}><span aria-hidden="true">↗</span> Share</Action>
-        )}
-        <div style={{ marginLeft:"auto" }}><GCalButton testerId={testerId} qc={qc}/></div>
       </div>
 
 
@@ -1996,10 +2016,9 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
 
       {/* The water ahead — the 30-day wave chart, inherited from the retired
           Almanac tab. Tap a bar to jump the calendar to that day. */}
-      {!pageQuiet && <QualityStrip week={weekData} days={30} onPick={(d)=>{
-        setSelectedDate(d);
-        if (calView==="month") { setYear(parseInt(d.slice(0,4))); setMonth(parseInt(d.slice(5,7))-1); }
-      }}/>}
+      {/* "The water ahead" 30-day bar strip sat here on every view. It left
+          Calendar in the density pass (C2): tide vocabulary, colours with no
+          key, and the same fact the grid's day tint already shows. */}
 
       {/* On phones the detail panel stacks below the grid instead of crushing it */}
       <div style={{ flex:1,display:"flex",overflow:isMobile?"auto":"hidden",flexDirection:isMobile?"column":"row" }}>
@@ -2007,21 +2026,14 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
         {calView==="month" && (
           <>
             <div style={{ flex:1,display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 10px 10px",minWidth:0 }}>
-              {/* Legend — every mark on the grid, named. Nothing to name at
-                  the quiet lens; the marks it explains are folded away. */}
-              {!pageQuiet && <div style={{ display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",paddingTop:8,fontSize: 10.5,color:"var(--color-muted)",flexShrink:0 }}>
-                <span>tint = the day's element (Moon's sign)</span>
-                {!monthSimple && <span style={{ color:"#60708a" }}>☽□♀ = Moon aspect, with time</span>}
-                {!monthSimple && <span style={{ color:"#60708a",fontWeight:700 }}>☉□♄ = planets exact that day</span>}
-                <span><span style={{ background:"#6f6a9022",color:"var(--text-2)",padding:"0 3px",borderRadius:2,fontWeight:600 }}>◒ VOC</span> = void Moon (rest, don't launch)</span>
-                {(testerProfile?.cautionPlanets?.length ?? 0) > 0 && <span><span aria-hidden="true">⚠️</span> = a caution day for you — tap the day to see what & why</span>}
-              </div>}
+              {/* The legend line left in the density pass (C3); the marks it
+                  named carry their own titles. */}
               <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4,paddingTop:6,flexShrink:0 }}>
                 {DOW_SHORT.map((d,i)=>{
                   const ruler = WEEKDAY_RULERS[i];
                   return (
                     <div key={d} title={pageQuiet ? undefined : `${ruler}'s day`} style={{ textAlign:"center",fontSize: 10.5,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px",padding:"3px 0" }}>
-                      {d} {!pageQuiet && <span style={{ color:PLANET_COLORS[ruler]??"var(--text-3)",opacity:0.7 }}><span role="img" aria-label={ruler} style={{ fontFamily:"var(--font-symbol)" }}>{PLANET_ICONS[ruler]}</span></span>}
+                      {d}
                     </div>
                   );
                 })}
@@ -2051,7 +2063,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
                 dateStr={selectedDate} dayData={dataMap.get(selectedDate)}
                 testerId={testerId} now={now}
                 cautionHits={cautionMap.get(selectedDate) ?? []}
-                onAddEvent={()=>setAddModal({date:selectedDate})}
+                skyLoading={weekLoading} skyFailed={weekFailed} onRetrySky={() => retryWeek()}
               />
             )}
           </>
@@ -2080,6 +2092,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
               ...(!pageQuiet && weekFailed ? ["the day’s reading"] : []),
             ]}
             tasksFailed={tasksFailed}
+            showSky={!pageQuiet}
             onRetry={()=>{
               if (tasksFailed) retryTasks();
               if (windowsFailed) retryWindows();
@@ -2118,6 +2131,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
               gcalMap={gcalMap} cautionMap={cautionMap}
               testerId={testerId} today={today} lat={lat} lon={lon}
               isDay={calView==="day"}
+              showCrossings={gridCrossings}
               onZoomDay={calView==="week" ? (d) => { setSelectedDate(d); setCalView("day"); } : undefined}
               onAddEvent={(date,hour)=>setAddModal({date,hour})}
               onDeleteWindow={id=>delWindow.mutate(id)}

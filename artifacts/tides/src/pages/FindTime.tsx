@@ -219,6 +219,8 @@ export default function FindTime({
   });
   async function interpret(value = text) {
     if (!value.trim()) return;
+    // Home's example requests are for a first visit (density pass, H6).
+    try { localStorage.setItem("compass-has-searched", "true"); } catch { /* private mode */ }
     if (asksForNowOverview(value)) {
       setError("");
       setDestination("now");
@@ -634,8 +636,10 @@ export default function FindTime({
             aria-pressed={railOpen}
             aria-controls="timing-rail"
             onClick={toggleRail}
+            aria-label="Sky panel"
           >
-            Sky panel
+            <span className="timing-rail-icon" aria-hidden="true">◐</span>
+            <span className="timing-rail-label">Sky panel</span>
           </Action>
         </div>
         <nav className="timing-nav" aria-label="Compass">
@@ -690,7 +694,10 @@ export default function FindTime({
             e.currentTarget.querySelector("summary")?.focus();
           }
         }}>
-          <summary>{profile?.displayName || "Account"}</summary>
+          <summary aria-label={profile?.displayName || "Account"}>
+            <span className="timing-account-initial" aria-hidden="true">{(profile?.displayName || "A").slice(0, 1).toUpperCase()}</span>
+            <span className="timing-account-name">{profile?.displayName || "Account"}</span>
+          </summary>
           <div className="timing-account-menu">
             <Action onClick={toggleTheme}>
               {theme === "dark" ? "Light appearance" : "Dark appearance"}
@@ -761,6 +768,26 @@ export default function FindTime({
             <CompassHome
               onCalendar={() => setDestination("calendar")}
               onNow={() => setDestination("now")}
+              examples={
+                <div className="timing-examples">
+                  {[
+                    "Three hours of deep work this weekend",
+                    "Write tomorrow",
+                    "A first date Saturday",
+                  ].map((example) => (
+                    <Action
+                      disabled={busy}
+                      key={example}
+                      onClick={() => {
+                        setText(example);
+                        void interpret(example);
+                      }}
+                    >
+                      {example}
+                    </Action>
+                  ))}
+                </div>
+              }
             >
               {calendarScope && (
                 <p role="status">
@@ -796,26 +823,6 @@ export default function FindTime({
                   Find a time
                 </Action>
               </form>
-              {!draft && (
-                <div className="timing-examples">
-                  {[
-                    "Three hours of deep work this weekend",
-                    "Write tomorrow",
-                    "A first date Saturday",
-                  ].map((example) => (
-                    <Action
-                      disabled={busy}
-                      key={example}
-                      onClick={() => {
-                        setText(example);
-                        void interpret(example);
-                      }}
-                    >
-                      {example}
-                    </Action>
-                  ))}
-                </div>
-              )}
             </CompassHome>
           )}
           {draft && (
@@ -1203,7 +1210,8 @@ export default function FindTime({
         <>
           <div className="compass-calendar-actions">
             <h1>{destination === "almanac" ? "Almanac" : destination === "calendar" ? "Calendar" : "Current reading"}</h1>
-            {destination !== "now" && (
+            {/* Calendar offers this from its More menu (density pass, C1). */}
+            {destination === "almanac" && (
               <Action variant="text" onClick={() => setDestination("saved")}>
                 Saved choices
               </Action>
@@ -1213,6 +1221,7 @@ export default function FindTime({
             key={destination}
             view={destination}
             onFindTime={searchCalendarDay}
+            onSavedChoices={() => setDestination("saved")}
             onNavigate={(view, starId) => {
               if (view === "calendar" || view === "almanac")
                 setDestination(view);
@@ -1331,6 +1340,7 @@ export default function FindTime({
 /** The existing instruments retain their queries, controls, and visual language. */
 function RestoredTimeView({
   view,
+  onSavedChoices,
   onNavigate,
   initialDate,
   onFindTime,
@@ -1342,6 +1352,7 @@ function RestoredTimeView({
   initialDate?: string;
   onFindTime?: (date: string) => void;
   view: "now" | "calendar" | "almanac";
+  onSavedChoices?: () => void;
   onNavigate: (view: string, starId?: number) => void;
 }) {
   const { profile, lat, lon, locationKnown } = useTester();
@@ -1390,6 +1401,7 @@ function RestoredTimeView({
           shellNavigation
           initialDate={initialDate}
           onFindTime={onFindTime}
+          onSavedChoices={onSavedChoices}
           openings={openings}
           onInspectOpening={onInspectOpening}
           onNavigate={onNavigate}

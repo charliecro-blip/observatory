@@ -6,8 +6,10 @@ import { localToday } from "@/lib/dates";
 import Planner from "@/components/Planner";
 import { useTester } from "@/contexts/tester-context";
 import { useTidesNow } from "@/hooks/useTides";
-import LunationArc from "@/components/LunationArc";
-import TideStrip from "@/components/TideStrip";
+import { useState } from "react";
+import { usePerfections } from "@/components/ExactAspects";
+import { useTimeFormat } from "@/contexts/preferences-context";
+import type { TidesNow } from "@/lib/types";
 
 type Plan = {
   id: number;
@@ -107,13 +109,98 @@ function TodaysPractices({ testerId, lat, lon }: { testerId: string; lat: number
   );
 }
 
+/**
+ * The Moon, in one sentence: sign, phase, and the next aspect she perfects.
+ *
+ * Replaces a paragraph that read "high activity, with an emphasis on movement
+ * and physical activity": the tide character, true but general, standing
+ * where the owner's own rule puts the Moon (2026-08-22: lunar placement and
+ * aspects lead; density audit H2).
+ */
+function moonSentence(now: TidesNow, next: { aspect: string; body2: string; at: string } | null | undefined, fmtTime: (d: Date) => string): string {
+  const sign = now.moonSign.split(" ")[0];
+  const name = (now.moonPhase ?? "").toLowerCase();
+  const phase = name.includes("waxing") ? "waxing" : name.includes("waning") ? "waning"
+    : name.includes("full") ? "full" : name.includes("new") ? "new" : "";
+  const pct = Math.round((now.moonIllumination ?? 0) * (now.moonIllumination <= 1 ? 100 : 1));
+  const base = `The Moon is in ${sign}${phase ? `, ${phase} and ${pct}% lit` : ""}`;
+  if (now.voc?.isVOC && now.voc.nextIngress) {
+    return `${base}, and void of course until it changes sign at ${now.voc.nextIngress.replace(/(^|\s)0(\d)/, "$1$2")}.`;
+  }
+  if (next === undefined) return `${base}.`;
+  if (next === null) return `${base}, with no more exact aspects today.`;
+  return `${base}, and makes an exact ${next.aspect} to ${next.body2} at ${fmtTime(new Date(next.at))}.`;
+}
+
+type Task = { id: number; title: string; done: string | null; dueDate: string | null };
+
+/**
+ * What is due today, one tap to mark done. The owner chose to add this to Home
+ * (density audit H9): a task due today appeared nowhere on it. Renders nothing
+ * when nothing is due, and says so when tasks fail to load.
+ */
+function DueToday({ testerId }: { testerId: string }) {
+  const qc = useQueryClient();
+  const today = localToday();
+  const headers = { "x-tester-id": testerId };
+  const tasks = useQuery<Task[]>({
+    queryKey: ["tasks", "all"],
+    queryFn: () => fetchJson<Task[]>("/api/tasks", { headers }),
+  });
+  const done = useMutation({
+    mutationFn: async (t: Task) => {
+      const r = await fetch(`/api/tasks/${t.id}`, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ done: "true" }),
+      });
+      if (!r.ok) throw new Error("not saved");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["calendar-tasks"] });
+    },
+  });
+  if (tasks.isLoading) return null;
+  if (tasks.isError) {
+    return (
+      <section className="compass-due" aria-labelledby="compass-due-title">
+        <h2 id="compass-due-title">Due today</h2>
+        <p role="alert">Your tasks couldn’t load. <Action onClick={() => tasks.refetch()}>Try again</Action></p>
+      </section>
+    );
+  }
+  const due = (tasks.data ?? []).filter((t) => t.done !== "true" && t.dueDate?.slice(0, 10) === today);
+  if (due.length === 0) return null;
+  return (
+    <section className="compass-due" aria-labelledby="compass-due-title">
+      <h2 id="compass-due-title">Due today</h2>
+      <ul>
+        {due.map((t) => (
+          <li key={t.id}>
+            <button type="button" disabled={done.isPending && done.variables?.id === t.id}
+              onClick={() => done.mutate(t)} aria-label={`Mark ${t.title} done`}>
+              <span className="compass-practice-mark" aria-hidden="true" />
+            </button>
+            <span>{t.title}</span>
+          </li>
+        ))}
+      </ul>
+      {done.isError && <p role="alert">That didn’t save. Tap it again to retry.</p>}
+    </section>
+  );
+}
+
 /** A small orientation surface, using the existing reading and calendar records. */
 export default function CompassHome({
   children,
   onCalendar,
   onNow,
+  examples,
 }: {
   children: ReactNode;
+  /** First-visit example requests; hidden once someone has searched or chosen a time (H6). */
+  examples?: ReactNode;
   onCalendar: () => void;
   onNow: () => void;
 }) {
@@ -138,6 +225,19 @@ export default function CompassHome({
     enabled: !!testerId,
   });
   const chosen = (plans.data ?? []).filter((p) => !p.adHoc);
+  const fmtTime = useTimeFormat();
+  const today = localToday();
+  const { data: perfections } = usePerfections(today);
+  const nextLunar = perfections === undefined ? undefined
+    : perfections.find((p) => p.lunar && Date.parse(p.at) > Date.now()) ?? null;
+  let searchedBefore = false;
+  try { searchedBefore = localStorage.getItem("compass-has-searched") === "true"; } catch { /* private mode */ }
+  const showExamples = !searchedBefore && !plans.isLoading && chosen.length === 0;
+  // Folded unless a list is already in progress there (H7): the planner keeps
+  // its draft in storage, and a folded draft would look lost.
+  const [planOpen, setPlanOpen] = useState(() => {
+    try { return !!localStorage.getItem(`compass-planner-draft-${testerId ?? "anon"}`); } catch { return false; }
+  });
   const upcoming = chosen
     .filter((p) => Date.parse(p.endTime) > Date.now())
     .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
@@ -147,7 +247,6 @@ export default function CompassHome({
       <section className="compass-orientation" aria-label="Today">
         <div className="compass-home-heading">
           <div>
-            <p className="timing-kicker">Your day</p>
             <h1>
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
@@ -170,13 +269,10 @@ export default function CompassHome({
           </p>
         )}
         {now && (
-          <>
-            <TideStrip now={now} minimal={true} hideHeading />
-            <div className="compass-reading-footer">
-              <LunationArc cycle={now.moonCycle} compact />
-              <Action variant="text" onClick={onNow}>Current reading</Action>
-            </div>
-          </>
+          <p className="compass-moon-line">
+            {moonSentence(now, nextLunar, fmtTime)}{" "}
+            <Action variant="text" onClick={onNow}>Current reading</Action>
+          </p>
         )}
       </section>
       {testerId && <TodaysPractices testerId={testerId} lat={lat} lon={lon} />}
@@ -186,17 +282,9 @@ export default function CompassHome({
       >
         <h2 id="compass-request-title">What are you making time for?</h2>
         {children}
+        {showExamples && examples}
       </section>
-      {/* Several things at once. The week that worked (owner, Aug 14) was a
-          list of seven, placed by the weaver in one go and six of them done;
-          the request box above answers one activity at a time. Same Planner
-          as the Plan tab, so a draft started in either place is the same
-          draft. */}
-      <section className="compass-plan-several" aria-labelledby="compass-plan-title">
-        <h2 id="compass-plan-title">Plan a few things</h2>
-        <p>Write one thing per line and Compass will suggest a time for each, without saving anything until you keep it.</p>
-        <Planner testerId={testerId} lat={lat} lon={lon} embedded />
-      </section>
+      {testerId && <DueToday testerId={testerId} />}
       <section
         className="compass-upcoming"
         aria-labelledby="compass-plans-title"
@@ -239,6 +327,20 @@ export default function CompassHome({
             open Calendar to see your schedule and connection options.
           </p>
         )}
+      </section>
+      {/* Several things at once. The week that worked (owner, Aug 14) was a
+          list of seven, placed by the weaver in one go and six of them done;
+          the request box above answers one activity at a time. Same Planner
+          as the Plan tab, so a draft started in either place is the same
+          draft. Folded to one line (H7): open, it was 520px of form. */}
+      <section className="compass-plan-several" aria-labelledby="compass-plan-title">
+        <h2 id="compass-plan-title">
+          <button type="button" className="compass-plan-toggle" aria-expanded={planOpen} onClick={() => setPlanOpen((v) => !v)}>
+            <span aria-hidden="true">{planOpen ? "▾" : "▸"}</span> Plan a few things
+          </button>
+        </h2>
+        {!planOpen && <p>Write a list and get a suggested time for each thing on it.</p>}
+        {planOpen && <Planner testerId={testerId} lat={lat} lon={lon} embedded />}
       </section>
     </>
   );
