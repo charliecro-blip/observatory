@@ -153,6 +153,18 @@ export interface WeekDay {
   weather?: { label: string; planets: [string, string]; aspect: string; orb: number; hard: boolean }[];
   /** 0..1 structural pressure from the hard non-lunar weather. */
   pressure?: number;
+  /** Present when the Moon changes sign during this local day; `moonSign` is
+   *  the noon sign. Anything that names the sign in words should name both. */
+  moonIngress?: { at: string; from: string; to: string } | null;
+}
+
+/** An aspect's exact moment, from /api/tides/perfections. */
+export interface Perfection {
+  at: string;
+  body1: string;
+  body2: string;
+  aspect: "conjunction" | "sextile" | "square" | "trine" | "opposition";
+  lunar: boolean;
 }
 
 export interface SkyEvent {

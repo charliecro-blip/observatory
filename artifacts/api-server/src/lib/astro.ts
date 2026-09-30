@@ -154,7 +154,7 @@ export function moonPhase(jd: number): { name: string; fraction: number } {
 
 /** Geocentric longitude of a named planet at a given JD. The eight planets via
  *  astronomy-engine; Chiron via the fitted 3D Kepler model above. */
-function geocentricLongitude(name: string, jd: number): number {
+export function geocentricLongitude(name: string, jd: number): number {
   if (HAS_ACCURATE(name)) return accurateLongitude(name, jd);
   if (name === "Chiron") return chironGeoLongitude(jd);
   return NaN; // unknown body — callers pass fixed name lists

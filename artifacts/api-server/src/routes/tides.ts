@@ -27,6 +27,7 @@ import { nodeIngress } from "../lib/nodeEvents.js";
 import { newMoonDates, nextNewMoonDate } from "../lib/lunarCycle.js";
 import { buildAlmanac, almanacHorizon } from "../lib/almanac.js";
 import { scoreElection, getElectionCategory, ELECTION_CATEGORIES } from "../lib/inceptionElection.js";
+import { dayPerfections, refinePerfection } from "../lib/perfections.js";
 
 const router: IRouter = Router();
 
@@ -554,6 +555,12 @@ router.get("/tides/week", (req, res) => {
     weather: Array<{ label: string; planets: [string, string]; aspect: string; orb: number; hard: boolean }>;
     /** 0..1 — how much structural pressure the non-lunar weather carries. */
     pressure: number;
+    /** Set when the Moon changes sign during this local day. `moonSign` is the
+     *  noon sign (it drives the tint); a label that names the sign in words
+     *  must name both, or the day contradicts every "now" surface for half of
+     *  it (2026-09-30: Calendar said Taurus all day, the Moon entered Gemini at
+     *  12:26 PM). */
+    moonIngress: { at: string; from: string; to: string } | null;
   }> = [];
 
   for (let d = 0; d < numDays; d++) {
@@ -564,6 +571,14 @@ router.get("/tides/week", (req, res) => {
     const planetsNoon = getPlanetPositions(noonJd);
     const moonSignNoon = planetsNoon.find((p) => p.planet === "Moon")!.sign;
     const elemNoon  = getDailyElementEmphasis(noonJd);
+    const ingressMs = nextIngressAfterMs(dayMs);
+    const moonIngress = ingressMs < dayMs + 86400000
+      ? {
+          at: new Date(ingressMs).toISOString(),
+          from: getPlanetPositions(julianDay(new Date(ingressMs - 60000))).find((p) => p.planet === "Moon")!.sign,
+          to: getPlanetPositions(julianDay(new Date(ingressMs + 60000))).find((p) => p.planet === "Moon")!.sign,
+        }
+      : null;
 
     // Sample the waking span of the viewer's local day for VOC presence. The
     // day-level badge means "a meaningful stretch of this day is void" — at
@@ -682,6 +697,7 @@ router.get("/tides/week", (req, res) => {
       label:        DAY_LABELS[localDay.getUTCDay()],
       dayRuler:     DAY_RULERS[localDay.getUTCDay()],
       moonSign:     moonSignNoon,
+      moonIngress,
       moonPhase:    phaseName,
       moonFraction: fraction,
       element,
@@ -1016,6 +1032,21 @@ router.get("/tides/crossings", (req, res) => {
 // Scan forward N days and surface notable sky events: moon phases, ingresses,
 // VOC windows, angular crossings, and high-quality day windows.
 
+/**
+ * GET /api/tides/perfections?from=ISO&to=ISO — every major aspect that
+ * perfects in the window, to the minute. For one local day (the Day view and
+ * Agenda); capped at two days so it cannot become a second 90-day scan.
+ */
+router.get("/tides/perfections", (req, res) => {
+  const from = Date.parse(String(req.query.from ?? ""));
+  const to = Date.parse(String(req.query.to ?? ""));
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > 2 * 86400000) {
+    res.status(400).json({ error: "from and to must be ISO instants at most two days apart" });
+    return;
+  }
+  res.json({ perfections: dayPerfections(from, to) });
+});
+
 router.get("/tides/events", (req, res) => {
   const lat    = parseFloat((req.query.lat as string) ?? "40.7");
   const lon    = parseFloat((req.query.lon as string) ?? "-74.0");
@@ -1086,8 +1117,12 @@ router.get("/tides/events", (req, res) => {
     const ASPECT_QUALITY: Record<string, "favorable"|"caution"|"neutral"> = {
       trine:"favorable", sextile:"favorable", conjunction:"neutral", square:"caution", opposition:"caution",
     };
-    // Track per-pair previous orb to find minimum (exact moment)
+    // Per pair: the last orb, and whether it has been shrinking since the
+    // last perfection. Without the second, the sample after a hit re-armed the
+    // pair at a still-small orb and the next one fired again, so every Moon
+    // aspect was listed twice, two hours apart (found 2026-09-30).
     const prevOrb: Record<string, number> = {};
+    const closing: Record<string, boolean> = {};
 
     for (let h = 0; h <= numDays * 24; h++) {
       const scanJd = startJd + h / 24;
@@ -1107,9 +1142,20 @@ router.get("/tides/events", (req, res) => {
         const key = `${other}:${asp.aspect}`;
         const prev = prevOrb[key];
 
-        // Exact moment: orb was decreasing (applying) and now starts increasing
-        if (prev !== undefined && asp.orb > prev && prev < 1.5) {
-          const exactDate = new Date((startJd + (h - 0.5) / 24 - 2440587.5) * 86400000);
+        // Exact moment: the orb was closing and has now turned. The minimum
+        // lies in the two hours before this sample; refinePerfection finds it
+        // to the minute (the midpoint of the last hour ran ~45 minutes late).
+        // A pair first seen in the scan's opening hour counts as possibly
+        // closing (the scan starts at now, so an aspect exact twenty minutes
+        // out has only one sample before it turns); the refinement then has
+        // to reach the angle, which rejects one that perfected before now.
+        if (prev !== undefined && asp.orb > prev && prev < 1.5 && closing[key] !== false) {
+          const hMs = (startJd + h / 24 - 2440587.5) * 86400000;
+          const { ms, orb: exactOrb } = refinePerfection("Moon", other, asp.aspect, hMs - 2 * 3600000, hMs);
+          closing[key] = false;
+          prevOrb[key] = asp.orb;
+          if (exactOrb > 0.05) continue;
+          const exactDate = new Date(ms);
           const dateStr = exactDate.toISOString().split("T")[0];
           const timeStr = exactDate.toISOString().slice(11, 16);
           const sym = ASPECT_ICONS[asp.aspect] ?? asp.aspect;
@@ -1119,14 +1165,15 @@ router.get("/tides/events", (req, res) => {
             at: exactDate.toISOString(),
             type: "moon_aspect" as any,
             title: `Moon ${sym} ${other}`,
-            subtitle: `${asp.nature} — ${asp.orb.toFixed(1)}° orb`,
+            subtitle: `${asp.nature} — exact`,
             icon: sym,
             quality: ASPECT_QUALITY[asp.aspect] ?? "neutral",
           });
-          delete prevOrb[key]; // reset until next aspect window
-        } else {
-          prevOrb[key] = asp.orb;
+          continue;
+        } else if (prev !== undefined) {
+          closing[key] = asp.orb < prev;
         }
+        prevOrb[key] = asp.orb;
       }
     }
   }
@@ -1143,6 +1190,7 @@ router.get("/tides/events", (req, res) => {
       trine:"favorable", sextile:"favorable", conjunction:"neutral", square:"caution", opposition:"caution",
     };
     const prevOrbPP: Record<string, number> = {};
+    const closingPP: Record<string, boolean> = {};
     for (let d = 0; d <= numDays; d++) {
       const scanJd = startJd + d;
       // Orb-only: this loop tracks orbs across days and decides perfection
@@ -1153,23 +1201,32 @@ router.get("/tides/events", (req, res) => {
         if (asp.planet1 === "Moon" || asp.planet2 === "Moon") continue;
         const key = `${asp.planet1}:${asp.planet2}:${asp.aspect}`;
         const prev = prevOrbPP[key];
-        // Perfection: orb was shrinking, now grows, and got tight enough to matter.
-        if (prev !== undefined && asp.orb > prev && prev < 1.2) {
-          const exactDate = new Date((scanJd - 0.5 - 2440587.5) * 86400000);
-          const sym = ASPECT_ICONS[asp.aspect] ?? "·";
-          events.push({
-            date: exactDate.toISOString().split("T")[0],
-            at: exactDate.toISOString(),
-            type: "aspect" as any,
-            title: `${asp.planet1} ${sym} ${asp.planet2}`,
-            subtitle: `${asp.nature} — exact around this day`,
-            icon: sym,
-            quality: ASPECT_QUALITY[asp.aspect] ?? "neutral",
-          });
-          delete prevOrbPP[key];
-        } else {
-          prevOrbPP[key] = asp.orb;
+        // Perfection: orb was shrinking, now grows, and got tight enough to
+        // matter. Refined to the minute across the two days before this
+        // sample; a pair that stations short of exact refines to a real
+        // distance and is not reported as perfecting.
+        if (prev !== undefined && asp.orb > prev && prev < 1.2 && closingPP[key] !== false) {
+          const dMs = (scanJd - 2440587.5) * 86400000;
+          const { ms, orb } = refinePerfection(asp.planet1, asp.planet2, asp.aspect, dMs - 2 * 86400000, dMs);
+          closingPP[key] = false;
+          if (orb <= 0.02) {
+            const exactDate = new Date(ms);
+            const sym = ASPECT_ICONS[asp.aspect] ?? "·";
+            events.push({
+              date: exactDate.toISOString().split("T")[0],
+              time: exactDate.toISOString().slice(11, 16),
+              at: exactDate.toISOString(),
+              type: "aspect" as any,
+              title: `${asp.planet1} ${sym} ${asp.planet2}`,
+              subtitle: `${asp.nature} — exact`,
+              icon: sym,
+              quality: ASPECT_QUALITY[asp.aspect] ?? "neutral",
+            });
+          }
+        } else if (prev !== undefined) {
+          closingPP[key] = asp.orb < prev;
         }
+        prevOrbPP[key] = asp.orb;
       }
     }
   }
