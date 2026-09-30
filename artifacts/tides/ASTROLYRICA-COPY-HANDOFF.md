@@ -895,3 +895,92 @@ Chart qualification: “Your birth chart was not used for this comparison.” Th
 A clear request runs immediately after one action. The interpreted activity appears as a plain confirmation rather than a catalogue control. An ambiguous request shows only its likely choices as buttons.
 
 Unknown activity: “Compass does not recognize this activity yet. Try describing it another way.”
+
+
+### Timing redesign continuation · 2026-09-04
+
+- Positioning and page description: Find astrological openings for the things you want to do, compare times, and keep your choice.
+- Search introduction: Find a time for the things you want to do, with astrology you can inspect and a choice you can keep.
+- Navigation: Find a time · Saved times · Workspace.
+- Saved title: Your choices, kept here.
+- Saved context: Times you chose in Compass and blocks from your workspace calendar.
+- Empty saved state: No upcoming times saved. Choose an opening from a search and it will appear here.
+- Optional workspace: Room for the rest of your life. Your tasks, habits, projects, and records still live here. Use them when you want more context around a timing decision.
+- About: A time for what matters to you. Bring something you want to do and the time you have available. Compass looks for astrological openings, explains the conditions, and lets you choose what fits your life.
+- Source action: Use in a search. Select one task or habit to use its wording in a timing search. Review it before searching.
+- Account: Light appearance · Dark appearance · About Compass · Account and settings.
+- Unmatched: Compass does not have a timing match for this activity yet. You can change your request above.
+- Multi-activity clarification: Which activity would you like to time first?
+- Presentation clarification: Are you writing it, preparing the material, or delivering it?
+- Range clarification: Please set the exact dates and times for that restriction.
+- Creative correspondence: Make art / creative practice. Venus gives the form, the Moon the image, and Mercury the hand that carries it through. This is a new catalogue correspondence for owner review, not a historical-source claim.
+
+Assumptions, local dates, duration, and unknown location are visible in the request receipt. Full final copy is in FindTime.tsx, TimingLibrary.tsx, TimingSources.tsx, timingInterpretation.ts, and timingRequest.ts.
+
+- Choosing an undurationed opening: Find a session here. How much time would you like? One hour is filled in as a starting point; review the duration before searching.
+
+### Search clarification and progress
+
+- Working on your request…
+- Choose one duration for this session.
+- Please set the start time for that delay in the search fields.
+
+### Restored time instruments (September 8)
+- Now
+- Calendar
+- Almanac
+- The current sky could not load.
+- Try again
+
+Existing Home, Calendar, and Almanac copy remains in its original components.
+
+### Connected homepage and calendar (September 8)
+- Home
+- Your day
+- Explore the almanac
+- Reading the current sky…
+- The current reading could not load.
+- Read this moment and see what fits →
+- What are you making time for?
+- On your calendar
+- Open calendar →
+- Loading your plans…
+- Your plans could not load.
+- You haven’t chosen a time in Compass yet. Find an opening above, or open Calendar to see your schedule and connection options.
+- Saved choices
+- Your chosen time is on your calendar.
+- Find a time on this day
+- Selected in Calendar: {date}.
+- Clear date
+- Using the day selected in Calendar; review the range before searching.
+- Opening
+- Inspect opening: {start and end}
+- {phase}, {percentage} percent through the lunar month
+- New moon
+- Full moon
+- View calendar
+
+## Shared style correction · 2026-09-10
+
+Home now uses `plainTideReading` in `src/lib/elements.ts` for the minimal reading. All branches were reviewed with no-ai-slop: no tide/fire metaphor, no imperative to begin or abstain, and the qualification about new beginnings remains when the Moon is between its last major aspect and its next sign. Instrument copy remains on the detailed surfaces.
+
+New visible labels: “Current reading”, “Almanac”, “Add event”, “Open calendar”. Compact lunar context: “{percent}% illuminated · Waxing” or “{percent}% illuminated · Waning”. The number describes illumination, not timing quality. The Home timeline and “Read this moment and see what fits” were removed.
+
+Local review specimen: “Compass style reference”, “Review shared controls, reading text, and lunar context before changing a page.” Existing action labels are reused; “Save choice”, “Loading…”, “Next day”, “Times shown in America/Chicago.” are specimen examples, not new app promises.
+
+Follow-through: Almanac activity controls, calendar connection actions, and event-dialog actions now share the same action styles. New accessible input names are “Activity” and “Why it matters”; existing visible activity-picker wording is unchanged.
+
+Event dialog follow-through: visible labels “Event title”, “Event type”, and “Notes (optional)” replace reliance on placeholder-only identification. Save failure copy: “The event could not be saved. Check your connection and try again.” Reviewed with no-ai-slop; the message states the failure and recovery action without an aphorism or metaphor.
+
+Mobile and keyboard follow-through: request placeholder now reuses “Write tomorrow” so it fits the single-row input at phone widths. The duplicate Almanac link beneath the reading was removed; primary navigation retains Almanac. Invalid event interval message: “Choose an end time after the start time.” The field error describes the correction directly.
+
+Search/save follow-through: the saved library heading is now “Saved times”. Past empty state: “Your saved times will move here after they end.” Save confirmation states “Your chosen time is saved in your Compass calendar.” and shows the full interval. Calendar connection states: “Checking calendar connection…” and “Retry calendar connection check”. Network failure: “Compass could not connect. Check your connection and try again.” Unreadable response: “Compass could not load a response. Please try again.” All reviewed for direct, literal wording; no promise of external calendar synchronization.
+
+## September 16, 2026: search coverage clarification
+
+FindTime range note, after timezone and seven-day limit: “Searches currently check 7 AM–11 PM.” Shown for ordinary and duration searches, not supplied-interval comparison. The previous duration-only note concealed ordinary search’s identical daytime restriction. This states the existing behavior; it does not change the search horizon or engine rules.
+
+Timing-request clarification copy, reviewed with no-ai-slop:
+- Conflicting or excluded parts of a day: “Choose the time range you want to include in the search fields.”
+- Now combined with another period: “Choose whether to search now or during the other period you named.”
+- Unsupported night, solar-event, or relative-day expressions: “Please set the dates and times for that period in the search fields.”

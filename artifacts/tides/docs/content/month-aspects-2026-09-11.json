@@ -1,0 +1,1538 @@
+[
+  {
+    "timeMs": 1789096655000,
+    "planet": "Pluto",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-11T03:17:35.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789097211000,
+    "planet": "Sun",
+    "aspect": "conjunction",
+    "at": "2026-09-11T03:26:51.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789105919000,
+    "planet": "Mars",
+    "aspect": "sextile",
+    "at": "2026-09-11T05:51:59.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789176970000,
+    "planet": "Jupiter",
+    "aspect": "semi-square",
+    "at": "2026-09-12T01:36:10.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789177817000,
+    "planet": "Venus",
+    "aspect": "semi-sextile",
+    "at": "2026-09-12T01:50:17.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789186018000,
+    "planet": "Mars",
+    "aspect": "quintile",
+    "at": "2026-09-12T04:06:58.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789186858000,
+    "planet": "Mercury",
+    "aspect": "conjunction",
+    "at": "2026-09-12T04:20:58.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789192081000,
+    "planet": "Pluto",
+    "aspect": "trine",
+    "at": "2026-09-12T05:48:01.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789192430000,
+    "planet": "Neptune",
+    "aspect": "opposition",
+    "at": "2026-09-12T05:53:50.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789207382000,
+    "planet": "Uranus",
+    "aspect": "trine",
+    "at": "2026-09-12T10:03:02.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789254466000,
+    "planet": "Saturn",
+    "aspect": "opposition",
+    "at": "2026-09-12T23:07:46.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789276061000,
+    "planet": "Jupiter",
+    "aspect": "sextile",
+    "at": "2026-09-13T05:07:41.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789305773000,
+    "planet": "Uranus",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-13T13:22:53.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789306398000,
+    "planet": "Sun",
+    "aspect": "semi-sextile",
+    "at": "2026-09-13T13:33:18.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789309583000,
+    "planet": "Mars",
+    "aspect": "square",
+    "at": "2026-09-13T14:26:23.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789357382000,
+    "planet": "Jupiter",
+    "aspect": "quintile",
+    "at": "2026-09-14T03:43:02.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789366139000,
+    "planet": "Uranus",
+    "aspect": "biquintile",
+    "at": "2026-09-14T06:08:59.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789385535000,
+    "planet": "Venus",
+    "aspect": "conjunction",
+    "at": "2026-09-14T11:32:15.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789390768000,
+    "planet": "Neptune",
+    "aspect": "quincunx",
+    "at": "2026-09-14T12:59:28.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789390598000,
+    "planet": "Pluto",
+    "aspect": "square",
+    "at": "2026-09-14T12:56:38.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789406957000,
+    "planet": "Uranus",
+    "aspect": "quincunx",
+    "at": "2026-09-14T17:29:17.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789414846000,
+    "planet": "Mercury",
+    "aspect": "semi-sextile",
+    "at": "2026-09-14T19:40:46.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789416098000,
+    "planet": "Sun",
+    "aspect": "semi-square",
+    "at": "2026-09-14T20:01:38.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789431784000,
+    "planet": "Neptune",
+    "aspect": "biquintile",
+    "at": "2026-09-15T00:23:04.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789455657000,
+    "planet": "Saturn",
+    "aspect": "quincunx",
+    "at": "2026-09-15T07:00:57.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789482944000,
+    "planet": "Jupiter",
+    "aspect": "square",
+    "at": "2026-09-15T14:35:44.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789494143000,
+    "planet": "Neptune",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-15T17:42:23.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789497224000,
+    "planet": "Saturn",
+    "aspect": "biquintile",
+    "at": "2026-09-15T18:33:44.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789515105000,
+    "planet": "Pluto",
+    "aspect": "quintile",
+    "at": "2026-09-15T23:31:45.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789525835000,
+    "planet": "Mars",
+    "aspect": "trine",
+    "at": "2026-09-16T02:30:35.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789529386000,
+    "planet": "Sun",
+    "aspect": "sextile",
+    "at": "2026-09-16T03:29:46.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789534784000,
+    "planet": "Mercury",
+    "aspect": "semi-square",
+    "at": "2026-09-16T04:59:44.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789560331000,
+    "planet": "Saturn",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-16T12:05:31.000Z",
+    "moonSign": "Scorpio",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789600094000,
+    "planet": "Neptune",
+    "aspect": "trine",
+    "at": "2026-09-16T23:08:14.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789600157000,
+    "planet": "Pluto",
+    "aspect": "sextile",
+    "at": "2026-09-16T23:09:17.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789604990000,
+    "planet": "Venus",
+    "aspect": "semi-sextile",
+    "at": "2026-09-17T00:29:50.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789617476000,
+    "planet": "Uranus",
+    "aspect": "opposition",
+    "at": "2026-09-17T03:57:56.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789622296000,
+    "planet": "Sun",
+    "aspect": "quintile",
+    "at": "2026-09-17T05:18:16.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789638408000,
+    "planet": "Mars",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-17T09:46:48.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789658056000,
+    "planet": "Mercury",
+    "aspect": "sextile",
+    "at": "2026-09-17T15:14:16.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789667199000,
+    "planet": "Saturn",
+    "aspect": "trine",
+    "at": "2026-09-17T17:46:39.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789700447000,
+    "planet": "Jupiter",
+    "aspect": "trine",
+    "at": "2026-09-18T03:00:47.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789706941000,
+    "planet": "Mars",
+    "aspect": "biquintile",
+    "at": "2026-09-18T04:49:01.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789708191000,
+    "planet": "Pluto",
+    "aspect": "semi-square",
+    "at": "2026-09-18T05:09:51.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789717961000,
+    "planet": "Venus",
+    "aspect": "semi-square",
+    "at": "2026-09-18T07:52:41.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789752882000,
+    "planet": "Mars",
+    "aspect": "quincunx",
+    "at": "2026-09-18T17:34:42.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789758155000,
+    "planet": "Mercury",
+    "aspect": "quintile",
+    "at": "2026-09-18T19:02:35.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789764220000,
+    "planet": "Sun",
+    "aspect": "square",
+    "at": "2026-09-18T20:43:40.000Z",
+    "moonSign": "Sagittarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789811372000,
+    "planet": "Jupiter",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-19T09:49:32.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789816882000,
+    "planet": "Neptune",
+    "aspect": "square",
+    "at": "2026-09-19T11:21:22.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789817221000,
+    "planet": "Pluto",
+    "aspect": "semi-sextile",
+    "at": "2026-09-19T11:27:01.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789831622000,
+    "planet": "Venus",
+    "aspect": "sextile",
+    "at": "2026-09-19T15:27:02.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789834934000,
+    "planet": "Uranus",
+    "aspect": "quincunx",
+    "at": "2026-09-19T16:22:14.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789877953000,
+    "planet": "Jupiter",
+    "aspect": "biquintile",
+    "at": "2026-09-20T04:19:13.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789878552000,
+    "planet": "Uranus",
+    "aspect": "biquintile",
+    "at": "2026-09-20T04:29:12.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789883936000,
+    "planet": "Saturn",
+    "aspect": "square",
+    "at": "2026-09-20T05:58:56.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789908484000,
+    "planet": "Mercury",
+    "aspect": "square",
+    "at": "2026-09-20T12:48:04.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789922116000,
+    "planet": "Venus",
+    "aspect": "quintile",
+    "at": "2026-09-20T16:35:16.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789922183000,
+    "planet": "Jupiter",
+    "aspect": "quincunx",
+    "at": "2026-09-20T16:36:23.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1789943707000,
+    "planet": "Uranus",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-20T22:35:07.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789947243000,
+    "planet": "Neptune",
+    "aspect": "quintile",
+    "at": "2026-09-20T23:34:03.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1789982186000,
+    "planet": "Mars",
+    "aspect": "opposition",
+    "at": "2026-09-21T09:16:26.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790001074000,
+    "planet": "Sun",
+    "aspect": "trine",
+    "at": "2026-09-21T14:31:14.000Z",
+    "moonSign": "Capricorn",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790012920000,
+    "planet": "Saturn",
+    "aspect": "quintile",
+    "at": "2026-09-21T17:48:40.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790033070000,
+    "planet": "Neptune",
+    "aspect": "sextile",
+    "at": "2026-09-21T23:24:30.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790033691000,
+    "planet": "Pluto",
+    "aspect": "conjunction",
+    "at": "2026-09-21T23:34:51.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790051013000,
+    "planet": "Uranus",
+    "aspect": "trine",
+    "at": "2026-09-22T04:23:33.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790055579000,
+    "planet": "Venus",
+    "aspect": "square",
+    "at": "2026-09-22T05:39:39.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790097379000,
+    "planet": "Saturn",
+    "aspect": "sextile",
+    "at": "2026-09-22T17:16:19.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790116438000,
+    "planet": "Sun",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-22T22:33:58.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790138337000,
+    "planet": "Neptune",
+    "aspect": "semi-square",
+    "at": "2026-09-23T04:38:57.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790138836000,
+    "planet": "Jupiter",
+    "aspect": "opposition",
+    "at": "2026-09-23T04:47:16.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790151487000,
+    "planet": "Mercury",
+    "aspect": "trine",
+    "at": "2026-09-23T08:18:07.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790184051000,
+    "planet": "Sun",
+    "aspect": "biquintile",
+    "at": "2026-09-23T17:20:51.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790200626000,
+    "planet": "Saturn",
+    "aspect": "semi-square",
+    "at": "2026-09-23T21:57:06.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790203392000,
+    "planet": "Mars",
+    "aspect": "quincunx",
+    "at": "2026-09-23T22:43:12.000Z",
+    "moonSign": "Aquarius",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790228389000,
+    "planet": "Sun",
+    "aspect": "quincunx",
+    "at": "2026-09-24T05:39:49.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790240858000,
+    "planet": "Neptune",
+    "aspect": "semi-sextile",
+    "at": "2026-09-24T09:07:38.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790241729000,
+    "planet": "Pluto",
+    "aspect": "semi-sextile",
+    "at": "2026-09-24T09:22:09.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790246088000,
+    "planet": "Mars",
+    "aspect": "biquintile",
+    "at": "2026-09-24T10:34:48.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790258151000,
+    "planet": "Uranus",
+    "aspect": "square",
+    "at": "2026-09-24T13:55:51.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790266915000,
+    "planet": "Mercury",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-24T16:21:55.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790268304000,
+    "planet": "Venus",
+    "aspect": "trine",
+    "at": "2026-09-24T16:45:04.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790301005000,
+    "planet": "Saturn",
+    "aspect": "semi-sextile",
+    "at": "2026-09-25T01:50:05.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790309104000,
+    "planet": "Mars",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-25T04:05:04.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790334040000,
+    "planet": "Mercury",
+    "aspect": "biquintile",
+    "at": "2026-09-25T11:00:40.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790341441000,
+    "planet": "Pluto",
+    "aspect": "semi-square",
+    "at": "2026-09-25T13:04:01.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790344280000,
+    "planet": "Jupiter",
+    "aspect": "quincunx",
+    "at": "2026-09-25T13:51:20.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790369510000,
+    "planet": "Venus",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-25T20:51:50.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790376881000,
+    "planet": "Uranus",
+    "aspect": "quintile",
+    "at": "2026-09-25T22:54:41.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790377943000,
+    "planet": "Mercury",
+    "aspect": "quincunx",
+    "at": "2026-09-25T23:12:23.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790383919000,
+    "planet": "Jupiter",
+    "aspect": "biquintile",
+    "at": "2026-09-26T00:51:59.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790411504000,
+    "planet": "Mars",
+    "aspect": "trine",
+    "at": "2026-09-26T08:31:44.000Z",
+    "moonSign": "Pisces",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790428694000,
+    "planet": "Venus",
+    "aspect": "biquintile",
+    "at": "2026-09-26T13:18:14.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790437291000,
+    "planet": "Neptune",
+    "aspect": "conjunction",
+    "at": "2026-09-26T15:41:31.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790438381000,
+    "planet": "Pluto",
+    "aspect": "sextile",
+    "at": "2026-09-26T15:59:41.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790441334000,
+    "planet": "Sun",
+    "aspect": "opposition",
+    "at": "2026-09-26T16:48:54.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790442556000,
+    "planet": "Jupiter",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-26T17:09:16.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790453869000,
+    "planet": "Uranus",
+    "aspect": "sextile",
+    "at": "2026-09-26T20:17:49.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790467572000,
+    "planet": "Venus",
+    "aspect": "quincunx",
+    "at": "2026-09-27T00:06:12.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790493567000,
+    "planet": "Saturn",
+    "aspect": "conjunction",
+    "at": "2026-09-27T07:19:27.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790514200000,
+    "planet": "Pluto",
+    "aspect": "quintile",
+    "at": "2026-09-27T13:03:20.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790538363000,
+    "planet": "Jupiter",
+    "aspect": "trine",
+    "at": "2026-09-27T19:46:03.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790548066000,
+    "planet": "Uranus",
+    "aspect": "semi-square",
+    "at": "2026-09-27T22:27:46.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790589014000,
+    "planet": "Mercury",
+    "aspect": "opposition",
+    "at": "2026-09-28T09:50:14.000Z",
+    "moonSign": "Aries",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790608261000,
+    "planet": "Mars",
+    "aspect": "square",
+    "at": "2026-09-28T15:11:01.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790624383000,
+    "planet": "Neptune",
+    "aspect": "semi-sextile",
+    "at": "2026-09-28T19:39:43.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790625688000,
+    "planet": "Pluto",
+    "aspect": "square",
+    "at": "2026-09-28T20:01:28.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790640522000,
+    "planet": "Uranus",
+    "aspect": "semi-sextile",
+    "at": "2026-09-29T00:08:42.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790642648000,
+    "planet": "Sun",
+    "aspect": "quincunx",
+    "at": "2026-09-29T00:44:08.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790656491000,
+    "planet": "Venus",
+    "aspect": "opposition",
+    "at": "2026-09-29T04:34:51.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790678046000,
+    "planet": "Saturn",
+    "aspect": "semi-sextile",
+    "at": "2026-09-29T10:34:06.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790682035000,
+    "planet": "Sun",
+    "aspect": "biquintile",
+    "at": "2026-09-29T11:40:35.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790715776000,
+    "planet": "Neptune",
+    "aspect": "semi-square",
+    "at": "2026-09-29T21:02:56.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790722973000,
+    "planet": "Mars",
+    "aspect": "quintile",
+    "at": "2026-09-29T23:02:53.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790724958000,
+    "planet": "Jupiter",
+    "aspect": "square",
+    "at": "2026-09-29T23:35:58.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790740809000,
+    "planet": "Sun",
+    "aspect": "sesquiquadrate",
+    "at": "2026-09-30T04:00:09.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790768665000,
+    "planet": "Saturn",
+    "aspect": "semi-square",
+    "at": "2026-09-30T11:44:25.000Z",
+    "moonSign": "Taurus",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790791264000,
+    "planet": "Mercury",
+    "aspect": "quincunx",
+    "at": "2026-09-30T18:01:04.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790798802000,
+    "planet": "Mars",
+    "aspect": "sextile",
+    "at": "2026-09-30T20:06:42.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790806509000,
+    "planet": "Neptune",
+    "aspect": "sextile",
+    "at": "2026-09-30T22:15:09.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790808051000,
+    "planet": "Pluto",
+    "aspect": "trine",
+    "at": "2026-09-30T22:40:51.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790822578000,
+    "planet": "Uranus",
+    "aspect": "conjunction",
+    "at": "2026-10-01T02:42:58.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790831277000,
+    "planet": "Mercury",
+    "aspect": "biquintile",
+    "at": "2026-10-01T05:07:57.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790835364000,
+    "planet": "Jupiter",
+    "aspect": "quintile",
+    "at": "2026-10-01T06:16:04.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790838336000,
+    "planet": "Sun",
+    "aspect": "trine",
+    "at": "2026-10-01T07:05:36.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790840044000,
+    "planet": "Venus",
+    "aspect": "quincunx",
+    "at": "2026-10-01T07:34:04.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790858932000,
+    "planet": "Saturn",
+    "aspect": "sextile",
+    "at": "2026-10-01T12:48:52.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790876516000,
+    "planet": "Venus",
+    "aspect": "biquintile",
+    "at": "2026-10-01T17:41:56.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790878963000,
+    "planet": "Neptune",
+    "aspect": "quintile",
+    "at": "2026-10-01T18:22:43.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790891242000,
+    "planet": "Mercury",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-01T21:47:22.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790893411000,
+    "planet": "Mars",
+    "aspect": "semi-square",
+    "at": "2026-10-01T22:23:31.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790898764000,
+    "planet": "Pluto",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-01T23:52:44.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790908901000,
+    "planet": "Jupiter",
+    "aspect": "sextile",
+    "at": "2026-10-02T02:41:41.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790931208000,
+    "planet": "Venus",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-02T08:53:28.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790931196000,
+    "planet": "Saturn",
+    "aspect": "quintile",
+    "at": "2026-10-02T08:53:16.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790953297000,
+    "planet": "Pluto",
+    "aspect": "biquintile",
+    "at": "2026-10-02T15:01:37.000Z",
+    "moonSign": "Gemini",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790987922000,
+    "planet": "Neptune",
+    "aspect": "square",
+    "at": "2026-10-03T00:38:42.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790988276000,
+    "planet": "Mars",
+    "aspect": "semi-sextile",
+    "at": "2026-10-03T00:44:36.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1790989741000,
+    "planet": "Pluto",
+    "aspect": "quincunx",
+    "at": "2026-10-03T01:09:01.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1790991332000,
+    "planet": "Mercury",
+    "aspect": "trine",
+    "at": "2026-10-03T01:35:32.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791001116000,
+    "planet": "Jupiter",
+    "aspect": "semi-square",
+    "at": "2026-10-03T04:18:36.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791004217000,
+    "planet": "Uranus",
+    "aspect": "semi-sextile",
+    "at": "2026-10-03T05:10:17.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791022495000,
+    "planet": "Venus",
+    "aspect": "trine",
+    "at": "2026-10-03T10:14:55.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791033897000,
+    "planet": "Sun",
+    "aspect": "square",
+    "at": "2026-10-03T13:24:57.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791040087000,
+    "planet": "Saturn",
+    "aspect": "square",
+    "at": "2026-10-03T15:08:07.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791093932000,
+    "planet": "Jupiter",
+    "aspect": "semi-sextile",
+    "at": "2026-10-04T06:05:32.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791095779000,
+    "planet": "Uranus",
+    "aspect": "semi-square",
+    "at": "2026-10-04T06:36:19.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791152649000,
+    "planet": "Sun",
+    "aspect": "quintile",
+    "at": "2026-10-04T22:24:09.000Z",
+    "moonSign": "Cancer",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791171444000,
+    "planet": "Neptune",
+    "aspect": "trine",
+    "at": "2026-10-05T03:37:24.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791173579000,
+    "planet": "Pluto",
+    "aspect": "opposition",
+    "at": "2026-10-05T04:12:59.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791180081000,
+    "planet": "Mars",
+    "aspect": "conjunction",
+    "at": "2026-10-05T06:01:21.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791188120000,
+    "planet": "Uranus",
+    "aspect": "sextile",
+    "at": "2026-10-05T08:15:20.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791193393000,
+    "planet": "Mercury",
+    "aspect": "square",
+    "at": "2026-10-05T09:43:13.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791206355000,
+    "planet": "Venus",
+    "aspect": "square",
+    "at": "2026-10-05T13:19:15.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791223842000,
+    "planet": "Saturn",
+    "aspect": "trine",
+    "at": "2026-10-05T18:10:42.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791232673000,
+    "planet": "Sun",
+    "aspect": "sextile",
+    "at": "2026-10-05T20:37:53.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791262648000,
+    "planet": "Uranus",
+    "aspect": "quintile",
+    "at": "2026-10-06T04:57:28.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791264482000,
+    "planet": "Neptune",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-06T05:28:02.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791282119000,
+    "planet": "Jupiter",
+    "aspect": "conjunction",
+    "at": "2026-10-06T10:21:59.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791316426000,
+    "planet": "Mercury",
+    "aspect": "quintile",
+    "at": "2026-10-06T19:53:46.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791317097000,
+    "planet": "Saturn",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-06T20:04:57.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791317869000,
+    "planet": "Venus",
+    "aspect": "quintile",
+    "at": "2026-10-06T20:17:49.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791320791000,
+    "planet": "Neptune",
+    "aspect": "biquintile",
+    "at": "2026-10-06T21:06:31.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791333834000,
+    "planet": "Sun",
+    "aspect": "semi-square",
+    "at": "2026-10-07T00:43:54.000Z",
+    "moonSign": "Leo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791358554000,
+    "planet": "Neptune",
+    "aspect": "quincunx",
+    "at": "2026-10-07T07:35:54.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791361046000,
+    "planet": "Pluto",
+    "aspect": "quincunx",
+    "at": "2026-10-07T08:17:26.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791373572000,
+    "planet": "Saturn",
+    "aspect": "biquintile",
+    "at": "2026-10-07T11:46:12.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791375968000,
+    "planet": "Mars",
+    "aspect": "semi-sextile",
+    "at": "2026-10-07T12:26:08.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791375696000,
+    "planet": "Uranus",
+    "aspect": "square",
+    "at": "2026-10-07T12:21:36.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791392842000,
+    "planet": "Venus",
+    "aspect": "sextile",
+    "at": "2026-10-07T17:07:22.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791399385000,
+    "planet": "Mercury",
+    "aspect": "sextile",
+    "at": "2026-10-07T18:56:25.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791399079000,
+    "planet": "Pluto",
+    "aspect": "biquintile",
+    "at": "2026-10-07T18:51:19.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791411464000,
+    "planet": "Saturn",
+    "aspect": "quincunx",
+    "at": "2026-10-07T22:17:44.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791436457000,
+    "planet": "Sun",
+    "aspect": "semi-sextile",
+    "at": "2026-10-08T05:14:17.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791456524000,
+    "planet": "Pluto",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-08T10:48:44.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791474744000,
+    "planet": "Jupiter",
+    "aspect": "semi-sextile",
+    "at": "2026-10-08T15:52:24.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791475908000,
+    "planet": "Mars",
+    "aspect": "semi-square",
+    "at": "2026-10-08T16:11:48.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791487420000,
+    "planet": "Venus",
+    "aspect": "semi-square",
+    "at": "2026-10-08T19:23:40.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791504353000,
+    "planet": "Mercury",
+    "aspect": "semi-square",
+    "at": "2026-10-09T00:05:53.000Z",
+    "moonSign": "Virgo",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791550553000,
+    "planet": "Neptune",
+    "aspect": "opposition",
+    "at": "2026-10-09T12:55:53.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791553459000,
+    "planet": "Pluto",
+    "aspect": "trine",
+    "at": "2026-10-09T13:44:19.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791568291000,
+    "planet": "Uranus",
+    "aspect": "trine",
+    "at": "2026-10-09T17:51:31.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791573254000,
+    "planet": "Jupiter",
+    "aspect": "semi-square",
+    "at": "2026-10-09T19:14:14.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791577547000,
+    "planet": "Mars",
+    "aspect": "sextile",
+    "at": "2026-10-09T20:25:47.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791583165000,
+    "planet": "Venus",
+    "aspect": "semi-sextile",
+    "at": "2026-10-09T21:59:25.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791604404000,
+    "planet": "Saturn",
+    "aspect": "opposition",
+    "at": "2026-10-10T03:53:24.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791611036000,
+    "planet": "Mercury",
+    "aspect": "semi-sextile",
+    "at": "2026-10-10T05:43:56.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791647396000,
+    "planet": "Sun",
+    "aspect": "conjunction",
+    "at": "2026-10-10T15:49:56.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791660324000,
+    "planet": "Mars",
+    "aspect": "quintile",
+    "at": "2026-10-10T19:25:24.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  },
+  {
+    "timeMs": 1791667112000,
+    "planet": "Uranus",
+    "aspect": "sesquiquadrate",
+    "at": "2026-10-10T21:18:32.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": true
+  },
+  {
+    "timeMs": 1791673631000,
+    "planet": "Jupiter",
+    "aspect": "sextile",
+    "at": "2026-10-10T23:07:11.000Z",
+    "moonSign": "Libra",
+    "targetRetrograde": false
+  }
+]

@@ -1,0 +1,3288 @@
+[
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1789309583000,
+      "planet": "Mars",
+      "aspect": "square",
+      "at": "2026-09-13T14:26:23.000Z",
+      "moonSign": "Libra",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-13T11:56:23.000Z",
+      "end": "2026-09-13T16:56:23.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars square, applying toward exactitude at 2:26 PM, inside the window \u00b7 raw fuel",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 13",
+        "dow": "Sun",
+        "startAt": "2026-09-13T11:56:23.000Z",
+        "endAt": "2026-09-13T16:56:23.000Z",
+        "startClock": "11:56 AM",
+        "endClock": "4:56 PM",
+        "tier": "good",
+        "score": 1.016,
+        "why": "Moon\u2013Mars square, applying toward exactitude at 2:26 PM, inside the window \u00b7 raw fuel \u00b7 Sun\u2013Mars sextile standing in the sky \u00b7 waxing, as this wants \u00b7 Sun's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars square, applying toward exactitude at 2:26 PM, inside the window \u00b7 raw fuel"
+          },
+          {
+            "family": "sky",
+            "text": "Sun\u2013Mars sextile standing in the sky"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          },
+          {
+            "family": "day",
+            "text": "Sun's day"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": "malefic-final-aspect",
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "27c39dcbb426eff04a633b99b60fbbddaa64eca3596cdb903d4aa8dff9098850"
+    },
+    "star": true
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1790001074000,
+      "planet": "Sun",
+      "aspect": "trine",
+      "at": "2026-09-21T14:31:14.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-21T12:01:14.000Z",
+      "end": "2026-09-21T17:01:14.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Sun trine, applying toward exactitude at 2:31 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 21",
+        "dow": "Mon",
+        "startAt": "2026-09-21T12:01:14.000Z",
+        "endAt": "2026-09-21T17:01:14.000Z",
+        "startClock": "12:01 PM",
+        "endClock": "5:01 PM",
+        "tier": "great",
+        "score": 0.898,
+        "why": "Moon\u2013Sun trine, applying toward exactitude at 2:31 PM, inside the window \u00b7 Sun\u2013Mars sextile standing in the sky \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Sun trine, applying toward exactitude at 2:31 PM, inside the window"
+          },
+          {
+            "family": "sky",
+            "text": "Sun\u2013Mars sextile standing in the sky"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "807f173bb693002e6777724cee329ea62bb2c27521d21a22f27a62431d933bfa"
+    },
+    "star": true
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1790411504000,
+      "planet": "Mars",
+      "aspect": "trine",
+      "at": "2026-09-26T08:31:44.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-26T07:00:00.000Z",
+      "end": "2026-09-26T11:01:44.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 26",
+        "dow": "Sat",
+        "startAt": "2026-09-26T07:00:00.000Z",
+        "endAt": "2026-09-26T11:01:44.000Z",
+        "startClock": "7 AM",
+        "endClock": "11:01 AM",
+        "tier": "good",
+        "score": 0.935,
+        "why": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "86a3e50cdc865d8ac53f7f6598f78b9458f5c3642fda3b6e9416680537f261b8"
+    },
+    "star": false
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1790798802000,
+      "planet": "Mars",
+      "aspect": "sextile",
+      "at": "2026-09-30T20:06:42.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-30T17:36:42.000Z",
+      "end": "2026-09-30T22:36:42.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 30",
+        "dow": "Wed",
+        "startAt": "2026-09-30T17:36:42.000Z",
+        "endAt": "2026-09-30T22:36:42.000Z",
+        "startClock": "5:36 PM",
+        "endClock": "10:36 PM",
+        "tier": "good",
+        "score": 0.585,
+        "why": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "5c16e34cf48f89f6ca5c69ba22f99003e403dbac405427513ce6a624ce87563d"
+    },
+    "star": false
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1790838336000,
+      "planet": "Sun",
+      "aspect": "trine",
+      "at": "2026-10-01T07:05:36.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-01T07:00:00.000Z",
+      "end": "2026-10-01T09:35:36.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Sun trine, applying toward exactitude at 7:05 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 1",
+        "dow": "Thu",
+        "startAt": "2026-10-01T07:00:00.000Z",
+        "endAt": "2026-10-01T09:35:36.000Z",
+        "startClock": "7 AM",
+        "endClock": "9:35 AM",
+        "tier": "good",
+        "score": 0.612,
+        "why": "Moon\u2013Sun trine, applying toward exactitude at 7:05 AM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Sun trine, applying toward exactitude at 7:05 AM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "2a31eb2df50a8bbce949f7a06f7bf8f93655666da96a749b481a9c84c9adab01"
+    },
+    "star": false
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1791232673000,
+      "planet": "Sun",
+      "aspect": "sextile",
+      "at": "2026-10-05T20:37:53.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-05T18:07:53.000Z",
+      "end": "2026-10-05T23:00:00.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Sun sextile, applying toward exactitude at 8:37 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 5",
+        "dow": "Mon",
+        "startAt": "2026-10-05T18:07:53.000Z",
+        "endAt": "2026-10-05T23:00:00.000Z",
+        "startClock": "6:07 PM",
+        "endClock": "11 PM",
+        "tier": "good",
+        "score": 0.468,
+        "why": "Moon\u2013Sun sextile, applying toward exactitude at 8:37 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Sun sextile, applying toward exactitude at 8:37 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "73bedb845d97a39e70b54c860d2cf96a397c73adc777ebbdd81233c445676fab"
+    },
+    "star": false
+  },
+  {
+    "category": "Move your body",
+    "activity": "train-hard",
+    "event": {
+      "timeMs": 1791577547000,
+      "planet": "Mars",
+      "aspect": "sextile",
+      "at": "2026-10-09T20:25:47.000Z",
+      "moonSign": "Libra",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-09T17:55:47.000Z",
+      "end": "2026-10-09T22:55:47.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 9",
+        "dow": "Fri",
+        "startAt": "2026-10-09T17:55:47.000Z",
+        "endAt": "2026-10-09T22:55:47.000Z",
+        "startClock": "5:55 PM",
+        "endClock": "10:55 PM",
+        "tier": "good",
+        "score": 0.585,
+        "why": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "d3551693c5051c8819cd99a827e4b4d42a44681d71414c69188b11ff65bd576b"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1789385535000,
+      "planet": "Venus",
+      "aspect": "conjunction",
+      "at": "2026-09-14T11:32:15.000Z",
+      "moonSign": "Scorpio",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-14T09:02:15.000Z",
+      "end": "2026-09-14T14:02:15.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 14",
+        "dow": "Mon",
+        "startAt": "2026-09-14T09:02:15.000Z",
+        "endAt": "2026-09-14T14:02:15.000Z",
+        "startClock": "9:02 AM",
+        "endClock": "2:02 PM",
+        "tier": "good",
+        "score": 1.1,
+        "why": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "74399fa77d39dc03fe6dbd8cf35a9bde70be62d20d977e97cccb04dabddaaee5"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1789831622000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-09-19T15:27:02.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-19T12:57:02.000Z",
+      "end": "2026-09-19T17:57:02.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 19",
+        "dow": "Sat",
+        "startAt": "2026-09-19T12:57:02.000Z",
+        "endAt": "2026-09-19T17:57:02.000Z",
+        "startClock": "12:57 PM",
+        "endClock": "5:57 PM",
+        "tier": "good",
+        "score": 0.715,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "388cb20148f9b155ef51b7c9ec7a921d3d5078538f3029c0931e923de6d45b74"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1790268304000,
+      "planet": "Venus",
+      "aspect": "trine",
+      "at": "2026-09-24T16:45:04.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-24T14:15:04.000Z",
+      "end": "2026-09-24T19:15:04.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 24",
+        "dow": "Thu",
+        "startAt": "2026-09-24T14:15:04.000Z",
+        "endAt": "2026-09-24T19:15:04.000Z",
+        "startClock": "2:15 PM",
+        "endClock": "7:15 PM",
+        "tier": "good",
+        "score": 0.935,
+        "why": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "d3c8b447b72aea4061cf4654ac3148d187c68e78c2ee4821ec3fe5e5abc9de5d"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1790411504000,
+      "planet": "Mars",
+      "aspect": "trine",
+      "at": "2026-09-26T08:31:44.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-26T07:00:00.000Z",
+      "end": "2026-09-26T11:01:44.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 26",
+        "dow": "Sat",
+        "startAt": "2026-09-26T07:00:00.000Z",
+        "endAt": "2026-09-26T11:01:44.000Z",
+        "startClock": "7 AM",
+        "endClock": "11:01 AM",
+        "tier": "good",
+        "score": 0.748,
+        "why": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars trine, applying toward exactitude at 8:31 AM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "22610b03047a1c1e5dc5416ccd9d8492ce34a5f6f7f445305e0ea44c5f7fe759"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1790798802000,
+      "planet": "Mars",
+      "aspect": "sextile",
+      "at": "2026-09-30T20:06:42.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-30T17:36:42.000Z",
+      "end": "2026-09-30T22:36:42.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 30",
+        "dow": "Wed",
+        "startAt": "2026-09-30T17:36:42.000Z",
+        "endAt": "2026-09-30T22:36:42.000Z",
+        "startClock": "5:36 PM",
+        "endClock": "10:36 PM",
+        "tier": "good",
+        "score": 0.468,
+        "why": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars sextile, applying toward exactitude at 8:06 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "e3d7cb4743e02896ed46813d63686734114f2d2bd4b253b4a5e4ab63a9818ba4"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1791392842000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-10-07T17:07:22.000Z",
+      "moonSign": "Virgo",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-07T14:37:22.000Z",
+      "end": "2026-10-07T19:37:22.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 7",
+        "dow": "Wed",
+        "startAt": "2026-10-07T14:37:22.000Z",
+        "endAt": "2026-10-07T19:37:22.000Z",
+        "startClock": "2:37 PM",
+        "endClock": "7:37 PM",
+        "tier": "good",
+        "score": 0.585,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "d472e3e01b8a3c9dbe858b581dcb4fd1a628e02e2f66c6dcc864658b7897b9c9"
+    },
+    "star": false
+  },
+  {
+    "category": "Dates & making out",
+    "activity": "intimacy",
+    "event": {
+      "timeMs": 1791577547000,
+      "planet": "Mars",
+      "aspect": "sextile",
+      "at": "2026-10-09T20:25:47.000Z",
+      "moonSign": "Libra",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-09T17:55:47.000Z",
+      "end": "2026-10-09T22:55:47.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 9",
+        "dow": "Fri",
+        "startAt": "2026-10-09T17:55:47.000Z",
+        "endAt": "2026-10-09T22:55:47.000Z",
+        "startClock": "5:55 PM",
+        "endClock": "10:55 PM",
+        "tier": "good",
+        "score": 0.515,
+        "why": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window \u00b7 Venus's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mars sextile, applying toward exactitude at 8:25 PM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Venus's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "dd48721def6b9af90f591abc3e0fc781e98e77f969e247a976af9579a316e675"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "network",
+    "event": {
+      "timeMs": 1789658056000,
+      "planet": "Mercury",
+      "aspect": "sextile",
+      "at": "2026-09-17T15:14:16.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-17T12:44:16.000Z",
+      "end": "2026-09-17T17:44:16.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 17",
+        "dow": "Thu",
+        "startAt": "2026-09-17T12:44:16.000Z",
+        "endAt": "2026-09-17T17:44:16.000Z",
+        "startClock": "12:44 PM",
+        "endClock": "5:44 PM",
+        "tier": "good",
+        "score": 0.708,
+        "why": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window \u00b7 waxing, as this wants \u00b7 Jupiter's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          },
+          {
+            "family": "day",
+            "text": "Jupiter's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "665dfef9e7b753a4bc1819e79cd7b3c3e478c971f6b2c7156be74d5776f63331"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "host",
+    "event": {
+      "timeMs": 1789831622000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-09-19T15:27:02.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-19T12:57:02.000Z",
+      "end": "2026-09-19T17:57:02.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 19",
+        "dow": "Sat",
+        "startAt": "2026-09-19T12:57:02.000Z",
+        "endAt": "2026-09-19T17:57:02.000Z",
+        "startClock": "12:57 PM",
+        "endClock": "5:57 PM",
+        "tier": "good",
+        "score": 0.644,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "9624f5a86d2f72ffb8e49a03ef85f9cd7ea3b45004685265ffd768d59b7bea30"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "network",
+    "event": {
+      "timeMs": 1789922116000,
+      "planet": "Venus",
+      "aspect": "quintile",
+      "at": "2026-09-20T16:35:16.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-20T14:05:16.000Z",
+      "end": "2026-09-20T19:05:16.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus quintile, applying toward exactitude at 4:35 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 20",
+        "dow": "Sun",
+        "startAt": "2026-09-20T14:05:16.000Z",
+        "endAt": "2026-09-20T19:05:16.000Z",
+        "startClock": "2:05 PM",
+        "endClock": "7:05 PM",
+        "tier": "great",
+        "score": 0.528,
+        "why": "Moon\u2013Venus quintile, applying toward exactitude at 4:35 PM, inside the window \u00b7 Mercury\u2013Jupiter sextile standing in the sky \u00b7 waxing, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus quintile, applying toward exactitude at 4:35 PM, inside the window"
+          },
+          {
+            "family": "sky",
+            "text": "Mercury\u2013Jupiter sextile standing in the sky"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "f6d63ce5979541bb62a948d31d7e5ed0177311dee5b66b51c69dd8e1fa687fff"
+    },
+    "star": true
+  },
+  {
+    "category": "Get out & about",
+    "activity": "host",
+    "event": {
+      "timeMs": 1790268304000,
+      "planet": "Venus",
+      "aspect": "trine",
+      "at": "2026-09-24T16:45:04.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-24T14:15:04.000Z",
+      "end": "2026-09-24T19:15:04.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 24",
+        "dow": "Thu",
+        "startAt": "2026-09-24T14:15:04.000Z",
+        "endAt": "2026-09-24T19:15:04.000Z",
+        "startClock": "2:15 PM",
+        "endClock": "7:15 PM",
+        "tier": "good",
+        "score": 0.926,
+        "why": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window \u00b7 waxing, as this wants \u00b7 Jupiter's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waxing, as this wants"
+          },
+          {
+            "family": "day",
+            "text": "Jupiter's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "ae76af6cc4e043e7a33737fb000ca2a9dd6f3f2a31e51869a6d817319bd0ddd5"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "host",
+    "event": {
+      "timeMs": 1790538363000,
+      "planet": "Jupiter",
+      "aspect": "trine",
+      "at": "2026-09-27T19:46:03.000Z",
+      "moonSign": "Aries",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-27T17:16:03.000Z",
+      "end": "2026-09-27T22:16:03.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Jupiter trine, applying toward exactitude at 7:46 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 27",
+        "dow": "Sun",
+        "startAt": "2026-09-27T17:16:03.000Z",
+        "endAt": "2026-09-27T22:16:03.000Z",
+        "startClock": "5:16 PM",
+        "endClock": "10:16 PM",
+        "tier": "good",
+        "score": 0.842,
+        "why": "Moon\u2013Jupiter trine, applying toward exactitude at 7:46 PM, inside the window \u00b7 Sun's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Jupiter trine, applying toward exactitude at 7:46 PM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Sun's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "97f569bbed9f90095647063f357938e77498e12f28bef180754c5d346730eb2e"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "host",
+    "event": {
+      "timeMs": 1791282119000,
+      "planet": "Jupiter",
+      "aspect": "conjunction",
+      "at": "2026-10-06T10:21:59.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-06T07:51:59.000Z",
+      "end": "2026-10-06T12:51:59.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Jupiter conjunction, applying toward exactitude at 10:21 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 6",
+        "dow": "Tue",
+        "startAt": "2026-10-06T07:51:59.000Z",
+        "endAt": "2026-10-06T12:51:59.000Z",
+        "startClock": "7:51 AM",
+        "endClock": "12:51 PM",
+        "tier": "good",
+        "score": 0.9,
+        "why": "Moon\u2013Jupiter conjunction, applying toward exactitude at 10:21 AM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Jupiter conjunction, applying toward exactitude at 10:21 AM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "8469f15e6df02fc6dbd6001ad83d143a0108170d81c4d6493e4ae564ff8b6453"
+    },
+    "star": false
+  },
+  {
+    "category": "Get out & about",
+    "activity": "host",
+    "event": {
+      "timeMs": 1791673631000,
+      "planet": "Jupiter",
+      "aspect": "sextile",
+      "at": "2026-10-10T23:07:11.000Z",
+      "moonSign": "Libra",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-10T20:37:11.000Z",
+      "end": "2026-10-10T23:00:00.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Jupiter sextile, reaches exactitude at 11:07 PM, after the window closes but while the aspect is still gathering",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 10",
+        "dow": "Sat",
+        "startAt": "2026-10-10T20:37:11.000Z",
+        "endAt": "2026-10-10T23:00:00.000Z",
+        "startClock": "8:37 PM",
+        "endClock": "11 PM",
+        "tier": "good",
+        "score": 0.585,
+        "why": "Moon\u2013Jupiter sextile, reaches exactitude at 11:07 PM, after the window closes but while the aspect is still gathering",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Jupiter sextile, reaches exactitude at 11:07 PM, after the window closes but while the aspect is still gathering"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "191000a68c8025f03504c340a500336bf057008da9145c96f6ae12b987a1e601"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1789600094000,
+      "planet": "Neptune",
+      "aspect": "trine",
+      "at": "2026-09-16T23:08:14.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-16T20:38:14.000Z",
+      "end": "2026-09-16T23:00:00.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Neptune trine, reaches exactitude at 11:08 PM, after the window closes but while the aspect is still gathering",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 16",
+        "dow": "Wed",
+        "startAt": "2026-09-16T20:38:14.000Z",
+        "endAt": "2026-09-16T23:00:00.000Z",
+        "startClock": "8:38 PM",
+        "endClock": "11 PM",
+        "tier": "good",
+        "score": 0.765,
+        "why": "Moon\u2013Neptune trine, reaches exactitude at 11:08 PM, after the window closes but while the aspect is still gathering",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Neptune trine, reaches exactitude at 11:08 PM, after the window closes but while the aspect is still gathering"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "d56340bcf83029387e2e6ec742a491714da24e4fbbe2962692fabf65bf4c9b4b"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1789667199000,
+      "planet": "Saturn",
+      "aspect": "trine",
+      "at": "2026-09-17T17:46:39.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-17T15:16:39.000Z",
+      "end": "2026-09-17T20:16:39.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn trine, applying toward exactitude at 5:46 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 17",
+        "dow": "Thu",
+        "startAt": "2026-09-17T15:16:39.000Z",
+        "endAt": "2026-09-17T20:16:39.000Z",
+        "startClock": "3:16 PM",
+        "endClock": "8:16 PM",
+        "tier": "good",
+        "score": 0.383,
+        "why": "Moon\u2013Saturn trine, applying toward exactitude at 5:46 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn trine, applying toward exactitude at 5:46 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "a140719b8003601b0028c6e244d0bd1a92509b1ad28188b5cf73c818fb9420bd"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1790033070000,
+      "planet": "Neptune",
+      "aspect": "sextile",
+      "at": "2026-09-21T23:24:30.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-21T20:54:30.000Z",
+      "end": "2026-09-21T23:00:00.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Neptune sextile, reaches exactitude at 11:24 PM, after the window closes but while the aspect is still gathering",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 21",
+        "dow": "Mon",
+        "startAt": "2026-09-21T20:54:30.000Z",
+        "endAt": "2026-09-21T23:00:00.000Z",
+        "startClock": "8:54 PM",
+        "endClock": "11 PM",
+        "tier": "good",
+        "score": 0.644,
+        "why": "Moon\u2013Neptune sextile, reaches exactitude at 11:24 PM, after the window closes but while the aspect is still gathering \u00b7 Moon's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Neptune sextile, reaches exactitude at 11:24 PM, after the window closes but while the aspect is still gathering"
+          },
+          {
+            "family": "day",
+            "text": "Moon's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "421e12aedc7921a7ca3f803ffa79768058cbc97e6663b883db313376881332f9"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1790097379000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-09-22T17:16:19.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-22T14:46:19.000Z",
+      "end": "2026-09-22T19:46:19.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 22",
+        "dow": "Tue",
+        "startAt": "2026-09-22T14:46:19.000Z",
+        "endAt": "2026-09-22T19:46:19.000Z",
+        "startClock": "2:46 PM",
+        "endClock": "7:46 PM",
+        "tier": "good",
+        "score": 0.293,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "5dabb97a40b922e936d90e2151965832c3a813adda60b48682f2c51c0a055b4a"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1790806509000,
+      "planet": "Neptune",
+      "aspect": "sextile",
+      "at": "2026-09-30T22:15:09.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-30T19:45:09.000Z",
+      "end": "2026-09-30T23:00:00.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Neptune sextile, applying toward exactitude at 10:15 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 30",
+        "dow": "Wed",
+        "startAt": "2026-09-30T19:45:09.000Z",
+        "endAt": "2026-09-30T23:00:00.000Z",
+        "startClock": "7:45 PM",
+        "endClock": "11 PM",
+        "tier": "good",
+        "score": 0.715,
+        "why": "Moon\u2013Neptune sextile, applying toward exactitude at 10:15 PM, inside the window \u00b7 waning, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Neptune sextile, applying toward exactitude at 10:15 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waning, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "ce5203b60f5ac3b83ccd7cd3d263f78ada025185645b23983677b77a7f6535d4"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1790858932000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-10-01T12:48:52.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-01T10:18:52.000Z",
+      "end": "2026-10-01T15:18:52.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 1",
+        "dow": "Thu",
+        "startAt": "2026-10-01T10:18:52.000Z",
+        "endAt": "2026-10-01T15:18:52.000Z",
+        "startClock": "10:18 AM",
+        "endClock": "3:18 PM",
+        "tier": "good",
+        "score": 0.358,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window \u00b7 waning, as this wants",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waning, as this wants"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "5d8a5a1a2213e6f94a3bfbcb309f260df5907f65c59e90f2219ca5057847d61f"
+    },
+    "star": false
+  },
+  {
+    "category": "Slow down & rest",
+    "activity": "deep-rest",
+    "event": {
+      "timeMs": 1791223842000,
+      "planet": "Saturn",
+      "aspect": "trine",
+      "at": "2026-10-05T18:10:42.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-05T15:40:42.000Z",
+      "end": "2026-10-05T20:40:42.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 5",
+        "dow": "Mon",
+        "startAt": "2026-10-05T15:40:42.000Z",
+        "endAt": "2026-10-05T20:40:42.000Z",
+        "startClock": "3:40 PM",
+        "endClock": "8:40 PM",
+        "tier": "good",
+        "score": 0.514,
+        "why": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window \u00b7 waning, as this wants \u00b7 Moon's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window"
+          },
+          {
+            "family": "moon",
+            "text": "waning, as this wants"
+          },
+          {
+            "family": "day",
+            "text": "Moon's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "55b4ad4c87c5302986d56bcf6ac9c2e9239eb3e035244145819fb25537ac474f"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1789385535000,
+      "planet": "Venus",
+      "aspect": "conjunction",
+      "at": "2026-09-14T11:32:15.000Z",
+      "moonSign": "Scorpio",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-14T09:02:15.000Z",
+      "end": "2026-09-14T14:02:15.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 14",
+        "dow": "Mon",
+        "startAt": "2026-09-14T09:02:15.000Z",
+        "endAt": "2026-09-14T14:02:15.000Z",
+        "startClock": "9:02 AM",
+        "endClock": "2:02 PM",
+        "tier": "good",
+        "score": 1.1,
+        "why": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window \u00b7 Moon's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Moon's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "c1786732575ef016a8ed2dd52fe5bd74fb8e641d166bc341d7e440eb6695fdf6"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1789658056000,
+      "planet": "Mercury",
+      "aspect": "sextile",
+      "at": "2026-09-17T15:14:16.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-17T12:44:16.000Z",
+      "end": "2026-09-17T17:44:16.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 17",
+        "dow": "Thu",
+        "startAt": "2026-09-17T12:44:16.000Z",
+        "endAt": "2026-09-17T17:44:16.000Z",
+        "startClock": "12:44 PM",
+        "endClock": "5:44 PM",
+        "tier": "good",
+        "score": 0.325,
+        "why": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "846c992eb9aeb92dce4d7d8c42448c9a4fcc2a802cd2bac6371d96bf9a7267de"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1789831622000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-09-19T15:27:02.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-19T12:57:02.000Z",
+      "end": "2026-09-19T17:57:02.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 19",
+        "dow": "Sat",
+        "startAt": "2026-09-19T12:57:02.000Z",
+        "endAt": "2026-09-19T17:57:02.000Z",
+        "startClock": "12:57 PM",
+        "endClock": "5:57 PM",
+        "tier": "good",
+        "score": 0.65,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "b8d4374bb48483d4e8c6c9a6a8282e18815de933b3a3c82973ab7faae2612cf7"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1790151487000,
+      "planet": "Mercury",
+      "aspect": "trine",
+      "at": "2026-09-23T08:18:07.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-23T07:00:00.000Z",
+      "end": "2026-09-23T10:48:07.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 23",
+        "dow": "Wed",
+        "startAt": "2026-09-23T07:00:00.000Z",
+        "endAt": "2026-09-23T10:48:07.000Z",
+        "startClock": "7 AM",
+        "endClock": "10:48 AM",
+        "tier": "good",
+        "score": 0.468,
+        "why": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window \u00b7 Mercury's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Mercury's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "c8e151a9ce5b52b5b155ba19e5ffabdf988f9796cead668eef9145e1c6270b6a"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1790268304000,
+      "planet": "Venus",
+      "aspect": "trine",
+      "at": "2026-09-24T16:45:04.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-24T14:15:04.000Z",
+      "end": "2026-09-24T19:15:04.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 24",
+        "dow": "Thu",
+        "startAt": "2026-09-24T14:15:04.000Z",
+        "endAt": "2026-09-24T19:15:04.000Z",
+        "startClock": "2:15 PM",
+        "endClock": "7:15 PM",
+        "tier": "good",
+        "score": 0.85,
+        "why": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "7dd83d3583acff0af27b0cddc2b54dd6e290c78a52774e7960d7ffa13d69238b"
+    },
+    "star": false
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1791316426000,
+      "planet": "Mercury",
+      "aspect": "quintile",
+      "at": "2026-10-06T19:53:46.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-06T17:23:46.000Z",
+      "end": "2026-10-06T22:23:46.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury quintile, applying toward exactitude at 7:53 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 6",
+        "dow": "Tue",
+        "startAt": "2026-10-06T17:23:46.000Z",
+        "endAt": "2026-10-06T22:23:46.000Z",
+        "startClock": "5:23 PM",
+        "endClock": "10:23 PM",
+        "tier": "great",
+        "score": 0.3,
+        "why": "Moon\u2013Mercury quintile, applying toward exactitude at 7:53 PM, inside the window \u00b7 Mercury\u2013Venus conjunction standing in the sky",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury quintile, applying toward exactitude at 7:53 PM, inside the window"
+          },
+          {
+            "family": "sky",
+            "text": "Mercury\u2013Venus conjunction standing in the sky"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "7da767112071ed8d11881a1a5153daafe31c980c5627e727129ea5d3a9a61603"
+    },
+    "star": true
+  },
+  {
+    "category": "Make something",
+    "activity": "creative-practice",
+    "event": {
+      "timeMs": 1791392842000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-10-07T17:07:22.000Z",
+      "moonSign": "Virgo",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-07T14:37:22.000Z",
+      "end": "2026-10-07T19:37:22.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 7",
+        "dow": "Wed",
+        "startAt": "2026-10-07T14:37:22.000Z",
+        "endAt": "2026-10-07T19:37:22.000Z",
+        "startClock": "2:37 PM",
+        "endClock": "7:37 PM",
+        "tier": "great",
+        "score": 0.858,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window \u00b7 Mercury\u2013Venus conjunction standing in the sky \u00b7 Mercury's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 5:07 PM, inside the window"
+          },
+          {
+            "family": "sky",
+            "text": "Mercury\u2013Venus conjunction standing in the sky"
+          },
+          {
+            "family": "day",
+            "text": "Mercury's day"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "7c82e8dbf4d5c91be9780326eaf3a7b6baca05b3c900b184322ab7a04a11f05a"
+    },
+    "star": true
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1789658056000,
+      "planet": "Mercury",
+      "aspect": "sextile",
+      "at": "2026-09-17T15:14:16.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-17T12:44:16.000Z",
+      "end": "2026-09-17T17:44:16.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 17",
+        "dow": "Thu",
+        "startAt": "2026-09-17T12:44:16.000Z",
+        "endAt": "2026-09-17T17:44:16.000Z",
+        "startClock": "12:44 PM",
+        "endClock": "5:44 PM",
+        "tier": "good",
+        "score": 0.65,
+        "why": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "33c36bd5f18c30283b889821bbd005efb5d9b147655912b9c1a4817ca4f12f15"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1789758155000,
+      "planet": "Mercury",
+      "aspect": "quintile",
+      "at": "2026-09-18T19:02:35.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-18T16:32:35.000Z",
+      "end": "2026-09-18T21:32:35.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury quintile, applying toward exactitude at 7:02 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 18",
+        "dow": "Fri",
+        "startAt": "2026-09-18T16:32:35.000Z",
+        "endAt": "2026-09-18T21:32:35.000Z",
+        "startClock": "4:32 PM",
+        "endClock": "9:32 PM",
+        "tier": "good",
+        "score": 0.5,
+        "why": "Moon\u2013Mercury quintile, applying toward exactitude at 7:02 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury quintile, applying toward exactitude at 7:02 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "9cd7f09d21c2c526452f2e54128bdeeb1ca660d2c633e03cc467b532ab2dc63e"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1790097379000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-09-22T17:16:19.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-22T14:46:19.000Z",
+      "end": "2026-09-22T19:46:19.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 22",
+        "dow": "Tue",
+        "startAt": "2026-09-22T14:46:19.000Z",
+        "endAt": "2026-09-22T19:46:19.000Z",
+        "startClock": "2:46 PM",
+        "endClock": "7:46 PM",
+        "tier": "good",
+        "score": 0.52,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "15d1b459e86e8e9494144569d89376cc8714a9be489844d457d53129f610df5f"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1790151487000,
+      "planet": "Mercury",
+      "aspect": "trine",
+      "at": "2026-09-23T08:18:07.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-23T07:00:00.000Z",
+      "end": "2026-09-23T10:48:07.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 23",
+        "dow": "Wed",
+        "startAt": "2026-09-23T07:00:00.000Z",
+        "endAt": "2026-09-23T10:48:07.000Z",
+        "startClock": "7 AM",
+        "endClock": "10:48 AM",
+        "tier": "good",
+        "score": 0.935,
+        "why": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window \u00b7 Mercury's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury trine, applying toward exactitude at 8:18 AM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Mercury's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "cb4f7ae9f3075baf8ed49e50b741ee8da6082e922b28a4af41d17a17fe8e6bd8"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1790858932000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-10-01T12:48:52.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-01T10:18:52.000Z",
+      "end": "2026-10-01T15:18:52.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 1",
+        "dow": "Thu",
+        "startAt": "2026-10-01T10:18:52.000Z",
+        "endAt": "2026-10-01T15:18:52.000Z",
+        "startClock": "10:18 AM",
+        "endClock": "3:18 PM",
+        "tier": "good",
+        "score": 0.52,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "bbb51737dd584667b74907711fdb7e238bfb0cec9f7089e226e63a1657a124b1"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1791223842000,
+      "planet": "Saturn",
+      "aspect": "trine",
+      "at": "2026-10-05T18:10:42.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-05T15:40:42.000Z",
+      "end": "2026-10-05T20:40:42.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 5",
+        "dow": "Mon",
+        "startAt": "2026-10-05T15:40:42.000Z",
+        "endAt": "2026-10-05T20:40:42.000Z",
+        "startClock": "3:40 PM",
+        "endClock": "8:40 PM",
+        "tier": "good",
+        "score": 0.68,
+        "why": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "e4360d4e705d3d0af850b710694cfe67cfef35945578636f6ea5b2c9c957f44f"
+    },
+    "star": false
+  },
+  {
+    "category": "Get your head into it",
+    "activity": "deep-study",
+    "event": {
+      "timeMs": 1791399385000,
+      "planet": "Mercury",
+      "aspect": "sextile",
+      "at": "2026-10-07T18:56:25.000Z",
+      "moonSign": "Virgo",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-07T16:26:25.000Z",
+      "end": "2026-10-07T21:26:25.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury sextile, applying toward exactitude at 6:56 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 7",
+        "dow": "Wed",
+        "startAt": "2026-10-07T16:26:25.000Z",
+        "endAt": "2026-10-07T21:26:25.000Z",
+        "startClock": "4:26 PM",
+        "endClock": "9:26 PM",
+        "tier": "good",
+        "score": 0.715,
+        "why": "Moon\u2013Mercury sextile, applying toward exactitude at 6:56 PM, inside the window \u00b7 Mercury's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury sextile, applying toward exactitude at 6:56 PM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Mercury's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "7c5c4f1912e29f99a7dc21c49c67a8d31b8e456f9f3a0bd3f047733884fc6501"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1789385535000,
+      "planet": "Venus",
+      "aspect": "conjunction",
+      "at": "2026-09-14T11:32:15.000Z",
+      "moonSign": "Scorpio",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-14T09:02:15.000Z",
+      "end": "2026-09-14T14:02:15.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 14",
+        "dow": "Mon",
+        "startAt": "2026-09-14T09:02:15.000Z",
+        "endAt": "2026-09-14T14:02:15.000Z",
+        "startClock": "9:02 AM",
+        "endClock": "2:02 PM",
+        "tier": "good",
+        "score": 0.7,
+        "why": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus conjunction, applying toward exactitude at 11:32 AM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "010e94d2d46f309a305e44b028a8755195a00250bb1b28090d4f2cc0b5f785d6"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1789658056000,
+      "planet": "Mercury",
+      "aspect": "sextile",
+      "at": "2026-09-17T15:14:16.000Z",
+      "moonSign": "Sagittarius",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-17T12:44:16.000Z",
+      "end": "2026-09-17T17:44:16.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 17",
+        "dow": "Thu",
+        "startAt": "2026-09-17T12:44:16.000Z",
+        "endAt": "2026-09-17T17:44:16.000Z",
+        "startClock": "12:44 PM",
+        "endClock": "5:44 PM",
+        "tier": "good",
+        "score": 0.65,
+        "why": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Mercury sextile, applying toward exactitude at 3:14 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "33c36bd5f18c30283b889821bbd005efb5d9b147655912b9c1a4817ca4f12f15"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1789831622000,
+      "planet": "Venus",
+      "aspect": "sextile",
+      "at": "2026-09-19T15:27:02.000Z",
+      "moonSign": "Capricorn",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-19T12:57:02.000Z",
+      "end": "2026-09-19T17:57:02.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 19",
+        "dow": "Sat",
+        "startAt": "2026-09-19T12:57:02.000Z",
+        "endAt": "2026-09-19T17:57:02.000Z",
+        "startClock": "12:57 PM",
+        "endClock": "5:57 PM",
+        "tier": "good",
+        "score": 0.5,
+        "why": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window \u00b7 Saturn's day",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus sextile, applying toward exactitude at 3:27 PM, inside the window"
+          },
+          {
+            "family": "day",
+            "text": "Saturn's day"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "f690fd062dd759ff4507d4c42999fec01fc37544914ad6cb19e39dc6ba73e538"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1790097379000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-09-22T17:16:19.000Z",
+      "moonSign": "Aquarius",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-22T14:46:19.000Z",
+      "end": "2026-09-22T19:46:19.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 22",
+        "dow": "Tue",
+        "startAt": "2026-09-22T14:46:19.000Z",
+        "endAt": "2026-09-22T19:46:19.000Z",
+        "startClock": "2:46 PM",
+        "endClock": "7:46 PM",
+        "tier": "good",
+        "score": 0.325,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 5:16 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "9265e5c867f803f1f14fe351a39ce39830755de9908b629aaae3c2eb3fe2c291"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1790268304000,
+      "planet": "Venus",
+      "aspect": "trine",
+      "at": "2026-09-24T16:45:04.000Z",
+      "moonSign": "Pisces",
+      "targetRetrograde": false
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-09-24T14:15:04.000Z",
+      "end": "2026-09-24T19:15:04.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Sep 24",
+        "dow": "Thu",
+        "startAt": "2026-09-24T14:15:04.000Z",
+        "endAt": "2026-09-24T19:15:04.000Z",
+        "startClock": "2:15 PM",
+        "endClock": "7:15 PM",
+        "tier": "good",
+        "score": 0.595,
+        "why": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Venus trine, applying toward exactitude at 4:45 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "e6d858305720ddf4ac50f03e42e2c6ab985fd52ab1451f184a6b8d9e514f136a"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1790858932000,
+      "planet": "Saturn",
+      "aspect": "sextile",
+      "at": "2026-10-01T12:48:52.000Z",
+      "moonSign": "Gemini",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-01T10:18:52.000Z",
+      "end": "2026-10-01T15:18:52.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 1",
+        "dow": "Thu",
+        "startAt": "2026-10-01T10:18:52.000Z",
+        "endAt": "2026-10-01T15:18:52.000Z",
+        "startClock": "10:18 AM",
+        "endClock": "3:18 PM",
+        "tier": "good",
+        "score": 0.325,
+        "why": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn sextile, applying toward exactitude at 12:48 PM, inside the window"
+          }
+        ],
+        "sources": [
+          "moon"
+        ],
+        "families": [
+          "lunar-contact"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "supported",
+        "establishingFamilies": [
+          "lunar-contact"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "d12f6f4c11c23f5c66071416541ef9868aa85400eb76d9cd496aa1672c45de8d"
+    },
+    "star": false
+  },
+  {
+    "category": "Have the conversation",
+    "activity": "hard-conversation",
+    "event": {
+      "timeMs": 1791223842000,
+      "planet": "Saturn",
+      "aspect": "trine",
+      "at": "2026-10-05T18:10:42.000Z",
+      "moonSign": "Leo",
+      "targetRetrograde": true
+    },
+    "candidate": {
+      "kind": "ordinary",
+      "start": "2026-10-05T15:40:42.000Z",
+      "end": "2026-10-05T20:40:42.000Z",
+      "broad": false,
+      "suitability": "clear",
+      "explanation": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window",
+      "reasons": [],
+      "evidence": {
+        "date": "Oct 5",
+        "dow": "Mon",
+        "startAt": "2026-10-05T15:40:42.000Z",
+        "endAt": "2026-10-05T20:40:42.000Z",
+        "startClock": "3:40 PM",
+        "endClock": "8:40 PM",
+        "tier": "great",
+        "score": 0.51,
+        "why": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window \u00b7 Mercury\u2013Venus conjunction standing in the sky",
+        "evidence": [
+          {
+            "family": "moon",
+            "text": "Moon\u2013Saturn trine, applying toward exactitude at 6:10 PM, inside the window"
+          },
+          {
+            "family": "sky",
+            "text": "Mercury\u2013Venus conjunction standing in the sky"
+          }
+        ],
+        "sources": [
+          "moon",
+          "sky"
+        ],
+        "families": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "personal": false,
+        "personalDecidedTier": false,
+        "cappedBy": null,
+        "supportLevel": "convergent",
+        "establishingFamilies": [
+          "lunar-contact",
+          "standing-sky"
+        ],
+        "reinforcingFamilies": [],
+        "stackedHourMoon": false,
+        "suitability": "clear",
+        "suitabilityReasons": [],
+        "noObjections": true
+      },
+      "availability": {
+        "status": "unchecked",
+        "source": null,
+        "fetchedAt": null
+      },
+      "shortfall": false,
+      "id": "0c8577dbba3e34db1e6c6fa2bb6345b44c061acd8bbc71e7494960c054f9be6f"
+    },
+    "star": true
+  }
+]

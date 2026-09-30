@@ -1,0 +1,58 @@
+[
+  {
+    "planet": "Uranus",
+    "kind": "retrograde",
+    "from": false,
+    "to": true,
+    "at": "2026-09-10T06:41:00.058Z"
+  },
+  {
+    "planet": "Venus",
+    "kind": "sign",
+    "from": "Libra",
+    "to": "Scorpio",
+    "at": "2026-09-10T08:12:44.648Z"
+  },
+  {
+    "planet": "Mercury",
+    "kind": "sign",
+    "from": "Virgo",
+    "to": "Libra",
+    "at": "2026-09-10T16:21:14.414Z"
+  },
+  {
+    "planet": "Chiron",
+    "kind": "sign",
+    "from": "Taurus",
+    "to": "Aries",
+    "at": "2026-09-18T19:45:53.613Z"
+  },
+  {
+    "planet": "Sun",
+    "kind": "sign",
+    "from": "Virgo",
+    "to": "Libra",
+    "at": "2026-09-23T00:05:41.015Z"
+  },
+  {
+    "planet": "Mars",
+    "kind": "sign",
+    "from": "Cancer",
+    "to": "Leo",
+    "at": "2026-09-28T02:49:01.699Z"
+  },
+  {
+    "planet": "Mercury",
+    "kind": "sign",
+    "from": "Libra",
+    "to": "Scorpio",
+    "at": "2026-09-30T11:44:43.300Z"
+  },
+  {
+    "planet": "Venus",
+    "kind": "retrograde",
+    "from": false,
+    "to": true,
+    "at": "2026-10-02T19:09:17.226Z"
+  }
+]
