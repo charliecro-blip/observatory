@@ -240,7 +240,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
 
     assigned[target].push(item);
     // Charge load only for items the day weaver can actually place. An item
-    // with no duration and no recognisable kind of work will be REFUSED at the
+    // with no duration and no recognizable kind of work will be REFUSED at the
     // day level (dayWeaver's durationOf returns null) — but this line used to
     // bill 45 invented minutes for it anyway, and since `target` is chosen by
     // least load, phantom minutes from items that will never land were
@@ -304,7 +304,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   // say once that they exist rather than repeating it seven times.
   const noBasis = items.filter(i => !resolveActivity(i) && !i.estMinutes).length;
   if (noBasis) {
-    warnings.push(`${noBasis} ${noBasis === 1 ? "item has" : "items have"} no duration and no recognisable kind of work — add a rough estimate to schedule them.`);
+    warnings.push(`${noBasis} ${noBasis === 1 ? "item has" : "items have"} no duration and no recognizable kind of work — add a rough estimate to schedule them.`);
   }
 
   return { days: out, unplaced, warnings };

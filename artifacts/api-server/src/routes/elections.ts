@@ -28,6 +28,7 @@ import { vocSpansBetween } from "../lib/dayarc.js";
 import { julianDay, eclipseWindow } from "../lib/astro.js";
 import { requireFeature } from "../middlewares/entitlement.js";
 import { dayMet as habitDayMet } from "../lib/habitCadence.js";
+import { minutesInLine } from "../lib/lineDuration.js";
 
 const router: IRouter = Router();
 
@@ -387,7 +388,7 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
       if (!needsWeaving(t)) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
-        estMinutes: t.estMinutes, dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
+        estMinutes: t.estMinutes ?? minutesInLine(t.title), dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
         activityKey: t.activityKey, energy: t.energy,
         usualStart: usualStarts.get(t.title.trim().toLowerCase()) ?? null,
       });
@@ -444,7 +445,7 @@ router.get("/elections/shape-week", requireFeature("shape.week"), async (req, re
       if (!needsWeaving(t)) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
-        estMinutes: t.estMinutes, dueDate: t.dueDate,
+        estMinutes: t.estMinutes ?? minutesInLine(t.title), dueDate: t.dueDate,
         startedAt: t.startedAt ? String(t.startedAt) : null,
         activityKey: t.activityKey,
         starId: t.goalId != null ? `goal-${t.goalId}` : null,
@@ -506,7 +507,7 @@ router.get("/elections/needs-resolution", async (req, res) => {
     const rows = (await db.select().from(tasks).where(eq(tasks.testerId, testerId)))
       .filter(t => t.done !== "true")
       // A confirmed key is the person's own answer and outranks the matcher.
-      .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes, activityKey: t.activityKey }));
+      .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes ?? minutesInLine(t.title), activityKey: t.activityKey }));
     res.json(needsResolution(rows));
   } catch {
     res.status(503).json({ error: "could not read your inventory" });
@@ -723,16 +724,19 @@ router.get("/plan/inventory", async (req, res) => {
     const kindOptions = act ? [] : rankActivities(t.title, 3)
       .filter(r => r.score > 0)
       .map(r => ({ key: r.activity.key, label: r.activity.label }));
+    // A duration written in the title counts (density pass AB4): "make dr's
+    // appt (20 min)" was asked "how long?".
+    const est = t.estMinutes ?? minutesInLine(t.title);
     const base = {
       id: t.id, title: t.title, dueDate: t.dueDate ?? null,
-      estMinutes: t.estMinutes ?? null, goalId: t.goalId ?? null,
+      estMinutes: est ?? null, goalId: t.goalId ?? null,
       activityKey: act?.key ?? null, activityLabel: act?.label ?? null,
       inferredKind: !!guess,
       kindOptions,
     };
     if (t.planningWindowId != null) return { ...base, state: "scheduled" as const };
     if (!act) return { ...base, state: "needs-kind" as const };
-    if (!t.estMinutes) return { ...base, state: "needs-duration" as const };
+    if (!est) return { ...base, state: "needs-duration" as const };
 
     if (!scanned.has(act.key) && scanned.size >= MAX_SCANS) {
       return { ...base, state: "placeable" as const, window: null, unscanned: true };

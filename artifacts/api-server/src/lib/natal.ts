@@ -346,36 +346,41 @@ function inferDomains(
 ): string[] {
   const domains = new Set<string>();
 
+  // Life conditions, not symptoms (owner 2026-09-30, density audit W16). The
+  // tables came from the retired health tracker and printed "fatigue, joint/
+  // structural stress" and "nervous system" as what a transit is "often felt
+  // around", which predicts the body. CLAUDE.md: describe conditions, never
+  // promise outcomes.
   const byTransit: Record<string, string[]> = {
-    Moon:    ["sleep", "emotional sensitivity", "digestion", "fluid retention"],
-    Mercury: ["nervous system", "cognitive clarity", "anxiety"],
-    Venus:   ["appetite", "pleasure patterns", "social energy"],
-    Sun:     ["energy levels", "vitality"],
-    Mars:    ["inflammation", "motivation", "physical drive", "pain/tension"],
-    Jupiter: ["appetite", "digestion", "excess"],
-    Saturn:  ["fatigue", "joint/structural stress", "endurance"],
-    Uranus:  ["nervous system", "disrupted rhythms"],
-    Neptune: ["sleep", "sensitivity", "diffuse symptoms", "hydration", "emotional overwhelm"],
-    Pluto:   ["deep fatigue", "elimination", "intensity"],
+    Moon:    ["moods", "sleep", "home life"],
+    Mercury: ["attention", "conversations", "plans and paperwork"],
+    Venus:   ["pleasure", "relationships", "money"],
+    Sun:     ["energy", "confidence"],
+    Mars:    ["drive", "friction", "physical effort"],
+    Jupiter: ["appetite for more", "opportunities", "overreach"],
+    Saturn:  ["limits", "commitments", "endurance"],
+    Uranus:  ["routines", "restlessness", "sudden changes"],
+    Neptune: ["rest", "sensitivity", "blurred edges"],
+    Pluto:   ["intensity", "control", "letting go"],
   };
 
   const byNatal: Record<string, string[]> = {
-    Moon:      ["emotional body", "sleep", "digestion", "hormonal rhythm"],
-    Sun:       ["vitality", "life force"],
-    Mars:      ["inflammation", "muscle tension", "energy drive"],
-    Mercury:   ["nervous system", "anxiety", "cognitive patterns"],
-    Venus:     ["appetite", "comfort patterns"],
-    Jupiter:   ["liver", "digestion", "excess"],
-    Saturn:    ["structure", "fatigue", "joints"],
-    Ascendant: ["physical constitution", "body resilience", "energy presentation"],
+    Moon:      ["moods", "home life"],
+    Sun:       ["sense of direction"],
+    Mars:      ["anger", "competition"],
+    Mercury:   ["how you think and talk"],
+    Venus:     ["relationships", "comfort"],
+    Jupiter:   ["optimism", "excess"],
+    Saturn:    ["structure", "responsibility"],
+    Ascendant: ["how you show up"],
   };
 
   const byHouse: Record<number, string[]> = {
-    1: ["energy levels", "physical constitution"],
-    2: ["diet", "appetite"],
-    6: ["health routines", "digestion", "daily stress"],
-    8: ["fatigue", "chronic patterns", "emotional intensity"],
-    10: ["work stress", "career pressure", "motivation"],
+    1: ["how you show up"],
+    2: ["money", "what you value"],
+    6: ["routines", "daily workload"],
+    8: ["shared resources", "intensity"],
+    10: ["work", "reputation"],
   };
 
   for (const d of byTransit[transitPlanet] ?? []) domains.add(d);
