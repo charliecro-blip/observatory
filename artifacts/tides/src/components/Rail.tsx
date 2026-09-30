@@ -473,8 +473,8 @@ export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset:
 // desk stripped to what a scheduler needs. When a running session is what
 // quieted the sky, the note says so, so the state reads as a mode with an
 // end rather than a breakage.
-function QuietRail({ lat, lon, sessionQuiet, onNavigate }: {
-  lat: number; lon: number; sessionQuiet: boolean; onNavigate?: (v: string) => void;
+function QuietRail({ lat, lon, sessionQuiet, onNavigate, hideWordmark = false }: {
+  lat: number; lon: number; sessionQuiet: boolean; onNavigate?: (v: string) => void; hideWordmark?: boolean;
 }) {
   const fmtT = useTimeFormat();
   const [tick, setTick] = useState(() => new Date());
@@ -488,7 +488,7 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate }: {
       width: RAIL_W, minWidth: RAIL_W, background: "var(--color-rail)",
       display: "flex", flexDirection: "column", flex: 1, minHeight: 0, fontSize: 12,
     }}>
-      <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
+      {!hideWordmark && <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)" }}>
         <button onClick={() => onNavigate?.("today")} title="Back to Today" style={{
           fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em",
           display: "flex", alignItems: "center", gap: 7, background: "none", border: "none",
@@ -497,7 +497,7 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate }: {
           <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
           Compass
         </button>
-      </div>
+      </div>}
       <div style={{ padding: "16px 14px" }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 30, lineHeight: 1.1, color: "var(--color-foreground)" }}>
           {fmtT(tick)}
@@ -523,7 +523,9 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate }: {
   );
 }
 
-export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void }) {
+/** `hideWordmark`: set when the host already shows the Compass name (the
+ *  Find-a-time shell's header), so the panel does not repeat it. */
+export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate, hideWordmark = false }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void; hideWordmark?: boolean }) {
   const { prefs } = usePreferences();
   // The astro-quiet lens folds the whole instrument panel away — see the
   // QuietRail branch below the hooks (it must sit after them: hook order).
@@ -683,7 +685,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
   // The quiet lens needs no sky read at all — it renders before the skeleton
   // so a slow reading can't make the quiet rail flicker through loading bones.
   if (astroLevel === "minimal") {
-    return <QuietRail lat={lat} lon={lon} sessionQuiet={sessionQuiet} onNavigate={onNavigate} />;
+    return <QuietRail lat={lat} lon={lon} sessionQuiet={sessionQuiet} onNavigate={onNavigate} hideWordmark={hideWordmark} />;
   }
   // Also treat a malformed response (e.g. a transient 429 error object) as
   // "not ready yet" — show the skeleton rather than crashing on now.planetaryHour.
@@ -721,14 +723,14 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
       {/* Header — date lives in the page topbar (with time), not duplicated here */}
       <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {/* The wordmark is a way home (owner 2026-07-28): click → Today. */}
-        <button onClick={() => onNavigate?.("today")} title="Back to Today" style={{
+        {hideWordmark ? <span /> : <button onClick={() => onNavigate?.("today")} title="Back to Today" style={{
           fontSize: 20, fontWeight: 400, fontFamily: "var(--font-display)", letterSpacing: "0.01em",
           display: "flex", alignItems: "center", gap: 7, background: "none", border: "none",
           cursor: "pointer", padding: 0, color: "var(--color-foreground)",
         }}>
           <span style={{ color: "var(--color-primary)", display: "flex" }}><CompassMark size={19} title="Compass" /></span>
           Compass
-        </button>
+        </button>}
         {/* The compact/expand control is for the instrument panel. At essential
             there are three sections and nothing to compact — the one control
             that means anything there is the density switch at the foot. */}

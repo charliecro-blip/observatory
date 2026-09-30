@@ -18,6 +18,7 @@ import { useTidesNow } from "@/hooks/useTides";
 import { SessionTimer } from "@/components/SessionTimer";
 import { asksForNowOverview } from "@/lib/timingDestination";
 import { useTheme } from "@/contexts/theme-context";
+import Rail from "@/components/Rail";
 
 type Query = {
   activity: string;
@@ -102,6 +103,24 @@ export default function FindTime({
   const testerId = profile!.testerId;
   const qc = useQueryClient();
   const { theme, toggleTheme } = useTheme();
+  // THE SKY PANEL, on request. The workspace's left rail (the hour, the Moon,
+  // aspects, waves) was the thing the owner checked most in passing, and the
+  // new shell dropped it; they asked for it back as a toggle, not a fixture
+  // (2026-09-30). Off by default, remembered per device.
+  // Restored only where it sits beside the page. On a phone it is a drawer
+  // over the page, and reopening the app into a covered screen is not a
+  // preference anyone set.
+  const [railOpen, setRailOpen] = useState(() => {
+    try {
+      return localStorage.getItem("compass-rail-open") === "true"
+        && window.matchMedia("(min-width: 901px)").matches;
+    } catch { return false; }
+  });
+  const toggleRail = () => setRailOpen((open) => {
+    try { localStorage.setItem("compass-rail-open", String(!open)); } catch { /* private mode */ }
+    return !open;
+  });
+  const { data: railNow } = useTidesNow(testerId, lat, lon);
   const [destination, setDestination] = useState<
     "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about"
   >("search");
@@ -652,6 +671,14 @@ export default function FindTime({
             Workspace
           </Action>
         </nav>
+        <Action
+          className="timing-rail-toggle"
+          aria-pressed={railOpen}
+          aria-controls="timing-rail"
+          onClick={toggleRail}
+        >
+          Sky panel
+        </Action>
         <details className="timing-account" onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -674,6 +701,24 @@ export default function FindTime({
           </div>
         </details>
       </header>
+      <div className={railOpen ? "timing-body timing-body-rail" : "timing-body"}>
+      {railOpen && (
+        <aside id="timing-rail" className="timing-rail" aria-label="Sky panel">
+          <Action className="timing-rail-close" onClick={toggleRail}>Close</Action>
+          <Rail
+            now={railNow}
+            testerId={testerId}
+            lat={lat}
+            lon={lon}
+            hideWordmark
+            onNavigate={(v) => {
+              if (v === "work" || v === "settings") onWorkspace(v);
+              else setDestination("now");
+            }}
+          />
+        </aside>
+      )}
+      <div className="timing-body-content">
       {destination === "search" ? (
         <main
           className={
@@ -1274,6 +1319,8 @@ export default function FindTime({
           <Action onClick={() => setDestination("search")}>Find a time</Action>
         </main>
       )}
+      </div>
+      </div>
     </div>
   );
 }
