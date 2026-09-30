@@ -1,6 +1,7 @@
 # Density audit: Almanac and Workspace · September 30, 2026
 
-Status: proposals for owner markup. Nothing here is built. Same method as the
+Status: owner approved all proposals on 2026-09-30, with A4 remove the link
+and A9 six weeks. Built the same day; outcome at the end. Same method as the
 Home and Calendar audit earlier today: a scratch account shaped like the
 owner's (Chicago, four practices, four tasks, three chosen times, two Guiding
 Stars, a natal chart) on the local build at `c494816`, measured at 1024px and
@@ -75,3 +76,30 @@ panel, a first-run tour, and a thin "Find a time" bar as the only way back.
 Not a bug: Almanac and the Sky panel said 79% lit while Home said 80%. The
 illumination was 0.794 at the time; Home's reading was fetched twenty minutes
 earlier.
+
+## Outcome · September 30
+
+- Almanac: desktop 2,540px → 1,789px; phone 3,188px → 1,877px, the sky list
+  now starting at 830px instead of 1,739px.
+- Workspace opens inside the main shell (W5) with Tasks · Habits · Stars ·
+  Plan · Bearings, and + task, Session and Ask beside them; the landing page,
+  the second Home, the second Calendar and the old top bar are gone for the
+  cohort. The old shell is unchanged for everyone else, which is why AB5 was
+  left alone. The Guide and feedback moved to the account menu; Settings
+  opens under the main header.
+- Stars: 64 controls → 9 for two Stars; Edit brings the rest back. Habits:
+  80 → 44.
+- W11 landed as a fold in place rather than a move: the element cards read
+  tallies that exist only on Stars, so they sit behind a collapsed "The four
+  elements" line there.
+- W13: Home says "You're holding N things" with "Spread them across the week",
+  which opens Plan with the week weave already run.
+- W16: `inferDomains` now names life conditions (limits, routines,
+  attention…) instead of symptoms, on all three surfaces that print it. The
+  transit interpretations in natal.ts still carry the health tracker's voice
+  ("stress-related symptoms", "inflammation-adjacent patterns"); flagged, not
+  changed.
+- AB2–AB4 fixed. AB4 extended to the week weave and the day shape, which also
+  ignored a duration in the title.
+- Seen, not fixed: the week weave counts "4 items have no duration" when fewer
+  do, and placed a block earlier today at a time already past.
