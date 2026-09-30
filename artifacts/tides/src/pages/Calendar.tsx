@@ -1255,6 +1255,26 @@ interface AgendaMoment {
   what?: string;
 }
 
+// ── Unavailable notice ────────────────────────────────────────────────────────
+// A source that failed to load must not read as a day with nothing in it. The
+// agenda and the day list used to take plain arrays with no error state, so a
+// dropped request rendered "Nothing is due today" and "A quiet day" — a claim
+// about your life made from an absence of data. Names what is missing instead.
+function listNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+function UnavailableNotice({ missing, onRetry }: { missing: string[]; onRetry: () => void }) {
+  if (missing.length === 0) return null;
+  return (
+    <div role="alert" style={{ fontSize: 12.5, color: "var(--text-1)", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card-2)", marginBottom: 16, lineHeight: 1.5 }}>
+      Couldn’t load {listNames(missing)}, so this day may be missing things.{" "}
+      <button onClick={onRetry} style={{ fontSize: 12, padding: "2px 9px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-1)", cursor: "pointer" }}>Try again</button>
+    </div>
+  );
+}
+
 // ── DayListPanel ──────────────────────────────────────────────────────────────
 // The Day view's own list — what the hour-grid never showed, because a grid
 // draws what's already scheduled, not what's still just written down (owner
@@ -1262,8 +1282,9 @@ interface AgendaMoment {
 // on one page"). Sits beside TimeGrid the way DayDetailPanel sits beside the
 // month grid, but answers "what am I doing" rather than "what is the sky
 // doing" — that's AgendaView's question, this is the Day tab's.
-function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, onToggleHabit, onAddEvent }: {
+function DayListPanel({ dateStr, today, tasks, habits, isMobile, tasksFailed = false, habitsFailed = false, onRetry, onToggleTask, onToggleHabit, onAddEvent }: {
   dateStr: string; today: string; tasks: DayListTask[]; habits: any[]; isMobile: boolean;
+  tasksFailed?: boolean; habitsFailed?: boolean; onRetry?: () => void;
   onToggleTask: (id: number, done: boolean) => void;
   onToggleHabit: (id: number, done: boolean) => void;
   onAddEvent: () => void;
@@ -1292,6 +1313,9 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, o
         <button onClick={onAddEvent} style={{ width: "100%", padding: "6px 0", borderRadius: 7, border: "none", background: "#1a2a3a", color: "#ffffff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>+ Add event</button>
       </div>
       <div style={{ flex: 1, padding: "9px 12px", overflowY: "auto" }}>
+        <UnavailableNotice
+          missing={[...(tasksFailed ? ["your tasks"] : []), ...(habitsFailed ? ["your habits"] : [])]}
+          onRetry={() => onRetry?.()} />
         {dueHere.length > 0 ? (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2 }}>
@@ -1299,7 +1323,7 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, o
             </div>
             {dueHere.map(t => <TaskRow key={t.id} t={t} sub="no time yet" />)}
           </div>
-        ) : isToday ? (
+        ) : isToday && !tasksFailed ? (
           <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>Nothing is due today.</div>
         ) : null}
 
@@ -1321,7 +1345,7 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, o
         <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 2, marginTop: 4 }}>
           Habits {habits.length > 0 && `· ${habits.length}`}
         </div>
-        {habits.length === 0 ? (
+        {habitsFailed ? null : habits.length === 0 ? (
           <div style={{ fontSize: 12, color: "var(--text-3)" }}>No habits set up yet.</div>
         ) : habits.map((h: any) => (
           <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderTop: "1px solid var(--color-border)" }}>
@@ -1348,7 +1372,7 @@ function DayListPanel({ dateStr, today, tasks, habits, isMobile, onToggleTask, o
   );
 }
 
-function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, onAddEvent, onDeleteWindow, onScheduleBlock }: {
+function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalEvents, tasks = [], lat, lon, showHours, showCrossings, hours, missing = [], tasksFailed = false, onRetry, onAddEvent, onDeleteWindow, onScheduleBlock }: {
   dateStr: string; today: string; dayData?: WeekDay; events: SkyEvent[]; vocRanges: { startMin: number; endMin: number }[]; windows: PlanningWindow[];
   gcalEvents: GCalEvent[];
   /** Undone tasks. Those due today lead the day; the rest are not this day's business. */
@@ -1357,6 +1381,11 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
   /** Canonical hours for this date, from the server. `null` means genuinely
    *  unavailable (polar day or night), which is different from "none yet". */
   hours?: PlanetHour[] | null;
+  /** Sources that failed to load, named for the reader ("your tasks"). Any
+   *  entry means an empty list below is unknown, not empty. */
+  missing?: string[];
+  tasksFailed?: boolean;
+  onRetry?: () => void;
   onAddEvent: (hour?: number) => void; onDeleteWindow: (id: number) => void;
   /** Open the block editor already filled in for a crossing. */
   onScheduleBlock?: (b: CrossingBlock) => void;
@@ -1474,6 +1503,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
 
             Only what is DUE here and not already scheduled. An empty list is
             a real answer and says so rather than reaching for filler. */}
+        <UnavailableNotice missing={missing} onRetry={() => onRetry?.()} />
         {dueHere.length > 0 ? (
           <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 6 }}>
@@ -1487,7 +1517,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
               </div>
             ))}
           </div>
-        ) : isToday ? (
+        ) : isToday && !tasksFailed ? (
           <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 18 }}>
             Nothing is due today.
           </div>
@@ -1531,7 +1561,7 @@ function AgendaView({ dateStr, today, dayData, events, vocRanges, windows, gcalE
           </div>
         )}
 
-        {moments.length === 0 ? (
+        {moments.length === 0 && missing.length > 0 ? null : moments.length === 0 ? (
           <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "24px 4px", textAlign: "center" }}>
             A quiet day — no standout sky moments. Turn on planetary hours for the full clock, or add a block.
           </div>
@@ -1672,8 +1702,8 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // the part of the month a person is usually looking at. Measured ~4s cold
   // against ~3s for the old 30-day window — a fair price for cells that are
   // no longer blank, and a third of what the first attempt cost.
-  const { data: weekData }   = useTidesWeek(42, lat, lon, 14);
-  const { data: eventsData } = useSkyEvents(90, lat, lon);
+  const { data: weekData, isError: weekFailed, refetch: retryWeek } = useTidesWeek(42, lat, lon, 14);
+  const { data: eventsData, isError: eventsFailed, refetch: retryEvents } = useSkyEvents(90, lat, lon);
 
   // Caution days — ⚠ marks from the user's self-reported sensitivity (Currents
   // questionnaire). Only fetched when they've actually marked planets.
@@ -1688,12 +1718,12 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   const { data: gcalStatus } = useGCalStatus(testerId);
   const gcalStart = useMemo(() => new Date(today).toISOString(), [today]);
   const gcalEnd   = useMemo(() => new Date(Date.now() + 90*86400000).toISOString(), []);
-  const { data: gcalData }   = useGCalEvents(testerId, gcalStart, gcalEnd, !!gcalStatus?.connected);
+  const { data: gcalData, isError: gcalFailed, refetch: retryGcal } = useGCalEvents(testerId, gcalStart, gcalEnd, !!gcalStatus?.connected);
 
   // THE DAY'S OWN LIST. Agenda had every sky moment and every block, and not
   // one thing the person had written down — so it answered "what is the sky
   // doing" when the question a day view is asked is "what am I doing".
-  const { data: dayTasks=[] } = useQuery<any[]>({
+  const { data: dayTasks=[], isError: tasksFailed, refetch: retryTasks } = useQuery<any[]>({
     queryKey:["calendar-tasks",testerId],
     queryFn: async()=>{
       const r = await fetch("/api/tasks",{headers:testerId?{"x-tester-id":testerId}:{}});
@@ -1702,7 +1732,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
     enabled:!!testerId,
   });
 
-  const { data: allWindows=[] } = useQuery<PlanningWindow[]>({
+  const { data: allWindows=[], isError: windowsFailed, refetch: retryWindows } = useQuery<PlanningWindow[]>({
     queryKey:["windows-all",testerId],
     queryFn: async()=>{
       const r = await fetch("/api/planning/windows?all=1",{headers:testerId?{"x-tester-id":testerId}:{}});
@@ -1738,7 +1768,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
   // whole streak/doneness read to whatever date it's given (habits.ts), so
   // looking at a past or future day shows habits as they stood/will stand
   // that day, not today's state relabeled.
-  const { data: dayHabits=[] } = useQuery<any[]>({
+  const { data: dayHabits=[], isError: habitsFailed, refetch: retryHabits } = useQuery<any[]>({
     queryKey:["calendar-habits",testerId,selectedDate,lat,lon],
     queryFn: async()=>{
       const r = await fetch(`/api/habits?today=${selectedDate}&lat=${lat}&lon=${lon}`,{headers:testerId?{"x-tester-id":testerId}:{}});
@@ -2042,6 +2072,21 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             gcalEvents={gcalMap.get(selectedDate) ?? []}
             lat={lat} lon={lon}
             showHours={!pageQuiet && agSky} showCrossings={!pageQuiet && agSky}
+            missing={[
+              ...(tasksFailed ? ["your tasks"] : []),
+              ...(windowsFailed ? ["your blocks"] : []),
+              ...(gcalFailed ? ["Google Calendar"] : []),
+              ...(!pageQuiet && eventsFailed ? ["sky events"] : []),
+              ...(!pageQuiet && weekFailed ? ["the day’s reading"] : []),
+            ]}
+            tasksFailed={tasksFailed}
+            onRetry={()=>{
+              if (tasksFailed) retryTasks();
+              if (windowsFailed) retryWindows();
+              if (gcalFailed) retryGcal();
+              if (eventsFailed) retryEvents();
+              if (weekFailed) retryWeek();
+            }}
             onAddEvent={(hour)=>setAddModal({date:selectedDate,hour})}
             onScheduleBlock={(preset)=>setAddModal({date:selectedDate,preset})}
             onDeleteWindow={id=>delWindow.mutate(id)}
@@ -2082,6 +2127,8 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
               <DayListPanel
                 dateStr={selectedDate} today={today}
                 tasks={dayTasks.filter((t:any)=>t.done!=="true")} habits={dayHabits} isMobile={isMobile}
+                tasksFailed={tasksFailed} habitsFailed={habitsFailed}
+                onRetry={()=>{ if (tasksFailed) retryTasks(); if (habitsFailed) retryHabits(); }}
                 onToggleTask={(id,done)=>toggleTaskDone.mutate({id,done})}
                 onToggleHabit={(id,done)=>toggleHabitDay.mutate({id,done})}
                 onAddEvent={()=>setAddModal({date:selectedDate})}

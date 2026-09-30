@@ -91,8 +91,7 @@ export function useTidesNow(testerId: string | null, lat = 40.7, lon = -74.0) {
   return useQuery<TidesNow>({
     queryKey: ["tides-now", testerId, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/now?${loc(lat, lon)}&${tzParam()}`, { headers: authHeaders(testerId) });
-      return r.json();
+      return fetchJson<TidesNow>(`/api/tides/now?${loc(lat, lon)}&${tzParam()}`, { headers: authHeaders(testerId) });
     },
     refetchInterval: 60_000,
   });
@@ -116,8 +115,7 @@ export function useTidesWeek(days = 7, lat = 40.7, lon = -74.0, back = 0, enable
     queryKey: ["tides-week", days, lat, lon, back],
     enabled,
     queryFn: async () => {
-      const r = await fetch(`/api/tides/week?days=${days}&back=${back}&${loc(lat, lon)}&${tzParam()}`);
-      const data: TidesWeek = await r.json();
+      const data = await fetchJson<TidesWeek>(`/api/tides/week?days=${days}&back=${back}&${loc(lat, lon)}&${tzParam()}`);
       for (const day of data.days ?? []) {
         if (day.crossings) {
           day.crossings = day.crossings.map(c => ({ ...c, time: localizeClock(c.at, c.time) }));
@@ -145,8 +143,7 @@ export function useSkyEvents(days = 30, lat = 40.7, lon = -74.0) {
   return useQuery<{ events: SkyEvent[] }>({
     queryKey: ["sky-events", days, lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/events?days=${days}&${loc(lat, lon)}`);
-      const data: { events: SkyEvent[] } = await r.json();
+      const data = await fetchJson<{ events: SkyEvent[] }>(`/api/tides/events?days=${days}&${loc(lat, lon)}`);
       return { events: (data.events ?? []).map(localizeSkyEvent) };
     },
     refetchInterval: 3_600_000,
@@ -167,11 +164,10 @@ export function useTodayWindows(testerId: string | null, date: string) {
       // `date` stays for readability in logs; from/to are what actually bound
       // the query, in the viewer's local day rather than UTC's.
       const { from, to } = localDayRange(date);
-      const r = await fetch(
+      return fetchJson<PlanningWindow[]>(
         `/api/planning/windows?date=${date}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
         { headers: authHeaders(testerId) },
       );
-      return r.json();
     },
     enabled: !!testerId,
     refetchInterval: 120_000,
@@ -210,8 +206,7 @@ export function useGCalStatus(testerId: string | null) {
   return useQuery<GCalStatus>({
     queryKey: ["gcal-status", testerId],
     queryFn: async () => {
-      const r = await fetch("/api/integrations/google-cal/status", { headers: authHeaders(testerId) });
-      return r.json();
+      return fetchJson<GCalStatus>("/api/integrations/google-cal/status", { headers: authHeaders(testerId) });
     },
     enabled: !!testerId,
     staleTime: 30_000,
@@ -222,11 +217,14 @@ export function useGCalEvents(testerId: string | null, start: string, end: strin
   return useQuery<{ events: GCalEvent[] }>({
     queryKey: ["gcal-events", testerId, start, end],
     queryFn: async () => {
-      const r = await fetch(
+      const data = await fetchJson<{ events: GCalEvent[]; error?: string }>(
         `/api/integrations/google-cal/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
         { headers: authHeaders(testerId) }
       );
-      return r.json();
+      // The route answers 200 with `error` set when Google itself failed or the
+      // token would not refresh. That is a failed read, not a free calendar.
+      if (data.error) throw new Error(`Google Calendar: ${data.error}`);
+      return data;
     },
     enabled: !!testerId && enabled,
     staleTime: 300_000,
@@ -238,8 +236,7 @@ export function useTidesWindows(lat = 40.7, lon = -74.0) {
   return useQuery<{ windows: Array<{ startTime: string; endTime: string; element: string; voidOfCourse: boolean; planetaryHour: string; quality: string }> }>({
     queryKey: ["tides-windows", lat, lon],
     queryFn: async () => {
-      const r = await fetch(`/api/tides/windows?hours=18&${loc(lat, lon)}`);
-      return r.json();
+      return fetchJson(`/api/tides/windows?hours=18&${loc(lat, lon)}`);
     },
     refetchInterval: 1_800_000,
   });

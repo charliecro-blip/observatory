@@ -31,6 +31,7 @@ export default function CompassHome({
     isLoading,
     isError,
     refetch,
+    dataUpdatedAt,
   } = useTidesNow(testerId, lat, lon);
   const plans = useQuery<Plan[]>({
     queryKey: ["timing-saved", testerId],
@@ -43,8 +44,9 @@ export default function CompassHome({
     },
     enabled: !!testerId,
   });
-  const upcoming = (plans.data ?? [])
-    .filter((p) => !p.adHoc && Date.parse(p.endTime) > Date.now())
+  const chosen = (plans.data ?? []).filter((p) => !p.adHoc);
+  const upcoming = chosen
+    .filter((p) => Date.parse(p.endTime) > Date.now())
     .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
     .slice(0, 3);
   return (
@@ -64,9 +66,13 @@ export default function CompassHome({
 
         </div>
         {isLoading && <p role="status">Reading the current sky…</p>}
+        {/* A failed refetch keeps the last good reading on screen. Say how old
+            it is, so a reading from hours ago is not taken for the present. */}
         {isError && (
           <p role="alert">
-            The current reading could not load.{" "}
+            {now && dataUpdatedAt
+              ? `Showing the reading from ${new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} because the latest one didn’t load.`
+              : "The current reading could not load."}{" "}
             <Action onClick={() => refetch()}>Try again</Action>
           </p>
         )}
@@ -92,7 +98,9 @@ export default function CompassHome({
         aria-labelledby="compass-plans-title"
       >
         <div className="compass-section-heading">
-          <h2 id="compass-plans-title">On your calendar</h2>
+          {/* Planning windows only; Google events live in Calendar. The old
+              heading promised the whole calendar and showed a slice of it. */}
+          <h2 id="compass-plans-title">Times you’ve chosen</h2>
           <Action variant="text" onClick={onCalendar}>Open calendar</Action>
         </div>
         {plans.isLoading ? (
@@ -119,6 +127,8 @@ export default function CompassHome({
               </li>
             ))}
           </ol>
+        ) : chosen.length > 0 ? (
+          <p>No times chosen for the days ahead.</p>
         ) : (
           <p>
             You haven’t chosen a time in Compass yet. Find an opening above, or
