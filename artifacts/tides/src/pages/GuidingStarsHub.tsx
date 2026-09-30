@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { starIdsOf } from "@/lib/starLinks";
-import WhereYouAre from "@/components/WhereYouAre";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday, addDaysLocal } from "@/lib/dates";
 import { invalidateWindows } from "@/lib/invalidateWindows";
@@ -485,6 +484,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
   // Which star's element is currently open for editing. A diagnosed element
   // can be wrong (an AI read from the title/description at creation time),
   // and there was no way back in short of deleting and recreating the star.
+  const [editingStar, setEditingStar] = useState<number | null>(null);
   const [editingElement, setEditingElement] = useState<number | null>(null);
   const createLinked = useMutation({
     mutationFn: async ({ goalId, kind, title, element }: { goalId: number; kind: "task" | "habit"; title: string; element?: string }) => {
@@ -561,10 +561,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
             the picture Stars exists to show, and Home was drawing it too —
             the same facts at two sizes on two pages. Home keeps three of them
             and a way through to here. */}
-        <WhereYouAre
-          testerId={testerId} lat={lat} lon={lon}
-          onNavigate={(v) => onNavigate(v as "tasks" | "habits")}
-        />
+        {/* "Where you are" left Stars in the density pass (W10): the same
+            habits and Stars again, a summary of the page it sat on. */}
 
         {activeCautionMatches.length > 0 && (
           <div style={{ background: "#a0404008", border: "1px solid #a0404030", borderLeft: "3px solid #a04040", borderRadius: 10, padding: "10px 14px" }}>
@@ -998,7 +996,10 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                     {/* Does this one end? Null is a star; a date makes it a
                         project, and the dashboard reads it to decide which of
                         the two ways to draw its progress. */}
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 11, color: "var(--text-3)" }}>
+                    {(g as any).endsOn && editingStar !== g.id && (
+                      <div style={{ marginTop: 5, fontSize: 11, color: "var(--color-meridian)" }}>finishes {fmtDay((g as any).endsOn)}</div>
+                    )}
+                    {editingStar === g.id && <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 11, color: "var(--text-3)" }}>
                       {(g as any).endsOn ? (
                         <>
                           <span style={{ color: "var(--color-meridian)", border: "1px solid var(--color-border)", borderRadius: 6, padding: "2px 7px" }}>
@@ -1018,8 +1019,8 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                             style={{ fontSize: 11, padding: "1px 4px", borderRadius: 5, border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--text-2)", cursor: "pointer" }} />
                         </label>
                       )}
-                    </div>
-                    {(!g.element || editingElement === g.id) && (
+                    </div>}
+                    {(editingStar === g.id || editingElement === g.id) && (
                       <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
                         {Object.entries(ELEMENT_INFO).map(([key, ei]) => (
                           <button key={key} onClick={() => { setElement.mutate({ id: g.id, element: key }); setEditingElement(null); }} style={{
@@ -1038,7 +1039,17 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       </div>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  {/* ONE CONTROL UNTIL ASKED (density pass W9). Every card,
+                      even an empty one, carried about a dozen controls; they
+                      live behind Edit now, and the card shows the Star and
+                      what serves it. */}
+                  {editingStar !== g.id ? (
+                    <button onClick={() => setEditingStar(g.id)} aria-label={`Edit ${g.title}`} style={{
+                      fontSize: 11, padding: "3px 11px", borderRadius: 12, border: "1px solid #e0dad0",
+                      background: "none", color: "var(--color-muted)", cursor: "pointer", flexShrink: 0,
+                    }}>Edit</button>
+                  ) : (
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                     <button onClick={() => logSession.mutate(g.id)} title="Log a session for this star" style={{
                       fontSize: 11, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "var(--color-card-2)", color: "var(--color-muted)", cursor: "pointer",
@@ -1051,7 +1062,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                       fontSize: 11, padding: "3px 9px", borderRadius: 12, border: "1px solid #e0dad0",
                       background: "none", color: "var(--color-muted)", cursor: "pointer",
                     }}>retire</button>
+                    <button onClick={() => setEditingStar(null)} style={{
+                      fontSize: 11, padding: "3px 11px", borderRadius: 12, border: "1px solid var(--color-border)",
+                      background: "var(--color-card)", color: "var(--text-1)", cursor: "pointer", fontWeight: 600,
+                    }}>Done</button>
                   </div>
+                  )}
                 </div>
 
                 {scheduled > 0 && (
@@ -1066,13 +1082,16 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                 </div>
               </div>
 
-              {/* Breakdown — explicit and visible, not a footnote */}
+              {/* Breakdown — explicit and visible, not a footnote. An empty one
+                  shows only while editing: the card already says "Nothing
+                  serves this yet." */}
+              {(editingStar === g.id || gTasks.length > 0 || gHabits.length > 0 || stepsForStar(g.id).length > 0 || breakdownFor === g.id) && (
               <div style={{ padding: "10px 14px", background: "var(--color-card-2)", borderTop: "1px solid var(--color-border)" }}>
                 <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--text-3)", marginBottom: 7 }}>
                   Broken down into
                 </div>
-                {gTasks.length === 0 && gHabits.length === 0 && (
-                  <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 6 }}>Nothing yet — add a task or habit below.</div>
+                {gTasks.length === 0 && gHabits.length === 0 && stepsForStar(g.id).length === 0 && (
+                  <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 6 }}>Nothing yet. Add a task, a habit or a step below.</div>
                 )}
                 {gTasks.length > 0 && (
                   <div style={{ marginBottom: gHabits.length > 0 ? 6 : 0 }}>
@@ -1247,7 +1266,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                   </div>
                 )}
 
-                <div style={{ marginTop: 8 }}>
+                {(editingStar === g.id || adding) && <div style={{ marginTop: 8 }}>
                   {adding ? (
                     <div style={{ display: "flex", gap: 5 }}>
                       <input autoFocus value={quickTitle} onChange={e => setQuickTitle(e.target.value)}
@@ -1292,8 +1311,9 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
                         style={{ fontSize: 11, color: "#7a6cae", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>dismiss</button>
                     </div>
                   )}
-                </div>
+                </div>}
               </div>
+              )}
             </div>
           );
         })}
@@ -1357,11 +1377,12 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
           </div>
         )}
 
-        {/* Element cards */}
-        <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10 }}>
+        {/* Element cards, folded to one line (density pass W11): a static
+            reference at the foot of every visit. */}
+        <details>
+          <summary style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-3)", marginBottom: 10, cursor: "pointer" }}>
             The four elements
-          </div>
+          </summary>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {ELEMENTS.map((el) => {
               const m: ElementMythos = ELEMENT_MYTHOS[el];
@@ -1390,7 +1411,7 @@ export default function GuidingStarsHub({ testerId, lat = 40.7, lon = -74.0, onN
               );
             })}
           </div>
-        </div>
+        </details>
 
         {/* Paused stars */}
         {pausedGoals.length > 0 && (

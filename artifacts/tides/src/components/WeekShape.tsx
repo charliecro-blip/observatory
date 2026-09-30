@@ -83,7 +83,7 @@ export function WeekWeave({ week }: { week: WovenWeek }) {
         }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "8px 14px 6px" }}>
             <span style={{ fontSize: 12.5, fontWeight: 600 }}>{dayName(d.key)}</span>
-            <span style={{ fontSize: 10, color: "var(--text-3)" }}>{d.key.slice(5)}</span>
+            <span style={{ fontSize: 10, color: "var(--text-3)" }}>{new Date(d.key + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
             {d.recovering && (
               <span style={{ fontSize: 10.5, color: "#6f6a90" }} title="the day before carried a major piece of work">
                 lighter on purpose

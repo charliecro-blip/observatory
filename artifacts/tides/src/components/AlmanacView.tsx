@@ -161,14 +161,17 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
   // way, assembled somewhere that had to remember to do it. They are folded in
   // at the source now, so this is the sky's calendar rather than two thirds of
   // it plus an assembly step.
+  // Six weeks by default, the rest on request (owner 2026-09-30, A9): three
+  // months ran to about forty-five rows.
+  const [horizonDays, setHorizonDays] = useState(42);
   const skyQ = useQuery<{ entries: SkyEntry[]; horizon: Horizon }>({
     // Location only rides along when it is REAL (never the app's timezone-
     // guess default) — crossings are cut from the local horizon, and a
     // guessed meridian would draw ones that are simply wrong.
-    queryKey: ["almanac-sky", 90, testerId, locationKnown ? lat.toFixed(2) : null, locationKnown ? lon.toFixed(2) : null, showCrossings],
+    queryKey: ["almanac-sky", horizonDays, testerId, locationKnown ? lat.toFixed(2) : null, locationKnown ? lon.toFixed(2) : null, showCrossings],
     queryFn: async () => {
       const loc = locationKnown ? `&lat=${lat}&lon=${lon}&crossings=${showCrossings}` : "";
-      const r = await fetch(`/api/tides/almanac?days=90&tz=${new Date().getTimezoneOffset()}${loc}`,
+      const r = await fetch(`/api/tides/almanac?days=${horizonDays}&tz=${new Date().getTimezoneOffset()}${loc}`,
         { headers: testerId ? { "x-tester-id": testerId } : {} });
       if (!r.ok) throw new Error("almanac unavailable");
       return r.json();
@@ -199,15 +202,9 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
           growing a second copy of it. */}
       <ActivityWeek testerId={testerId} lat={lat} lon={lon} locationKnown={locationKnown} />
 
-      <button onClick={() => onOpenElections?.()} style={{
-        alignSelf: "flex-start", display: "flex", alignItems: "baseline", gap: 7,
-        background: "none", border: "none", padding: "10px 2px 18px", cursor: onOpenElections ? "pointer" : "default",
-        fontSize: 12.5, color: "var(--color-primary)", fontWeight: 500,
-      }}>Electing a beginning <span aria-hidden="true">→</span>
-        <span style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 400 }}>
-          launching, signing, publishing — the stricter rules, in Pick a Day
-        </span>
-      </button>
+      {/* The "Electing a beginning → Pick a Day" link left in the density
+          pass (A4, owner 2026-09-30); Pick a Day stays in Workspace › Plan. */}
+      <div style={{ height: 18 }} />
 
       {/* ── the sky itself ───────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
@@ -223,8 +220,9 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
         </label>
       </div>
       <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 12, maxWidth: 560 }}>
-        Fixed before you get here, and true for everyone. No verdict attached — what to do about these is your call.
-        {" "}Tap one to see where it lands for you{skyQ.data?.entries.some(e => e.house != null) ? "" : ", once your chart's on file"}.
+        {/* The disclaimer that stood here ("No verdict attached…") left in the
+            density pass (A5); the hint that rows open stays. */}
+        Tap one to see where it lands for you{skyQ.data?.entries.some(e => e.house != null) ? "" : ", once your chart's on file"}.
       </div>
 
       {/* ══ THE CYCLE THE REST OF THE LIST SITS INSIDE ═══════════════════
@@ -253,7 +251,9 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
           Read against the mean node, so a cusp is named once: the true node
           wobbles back over a sign boundary for weeks, and reporting each pass
           would cry rare four times in a season. */}
-      {nodeIngress && (
+      {/* Shown from its approach until a week after (A7); at 43 days old it
+          was news long past, at the top of the page. */}
+      {nodeIngress && nodeIngress.daysAway >= -7 && (
         <div style={{
           marginBottom: 20, padding: "11px 14px", borderRadius: 10,
           border: "1px solid var(--color-border)", background: "var(--color-card)",
@@ -275,7 +275,7 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
 
       {skyQ.isError && (
         <div style={{ fontSize: 11.5, color: "var(--color-muted)" }}>
-          Couldn't reach the almanac just now, which is a connection problem rather than a quiet three months.
+          Couldn't reach the almanac just now, which is a connection problem rather than a quiet sky.
         </div>
       )}
 
@@ -284,6 +284,9 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
         if (!entries.length && !skyQ.isPending) return null;
 
         let month = "";
+        // A note said once per kind (A8): the same phase sentence stood under
+        // every quarter and every new moon for three months.
+        const seenNotes = new Set<string>();
         return entries.map((e, i) => {
           const m = monthOf(e.at.slice(0, 10));
           const newMonth = m !== month;
@@ -293,7 +296,9 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
           const key = `${e.at}-${i}`;
           const isNewMoon = e.kind === "lunation" && e.title.includes("New Moon") && !e.eclipse;
           const isOpen = expanded === key;
-          const hasMore = e.house != null || isNewMoon;
+          const repeatNote = !!e.note && !(e.kind === "aspect" && e.startDate) && seenNotes.has(e.note);
+          if (e.note) seenNotes.add(e.note);
+          const hasMore = e.house != null || isNewMoon || repeatNote;
           return (
             <div key={key}>
               {newMonth && (
@@ -319,12 +324,15 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
                       event is an instant and says what it means instead. */}
                   {isAspect && e.startDate && e.endDate
                     ? (e.active ? `in force now, through ${dayLabel(e.endDate)}` : `${dayLabel(e.startDate)} to ${dayLabel(e.endDate)}`)
-                    : e.note}
+                    : repeatNote ? "" : e.note}
                 </span>
                 {hasMore && <span aria-hidden="true" style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>}
               </div>
               {isOpen && (
                 <div style={{ padding: "2px 0 10px 120px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {repeatNote && (
+                    <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>{e.note}</div>
+                  )}
                   {e.house != null && (
                     <div style={{ fontSize: 11.5, color: "var(--color-foreground)" }}>
                       Falls in your {e.house}{ordinal(e.house)} house — {e.houseTheme}.
@@ -347,6 +355,12 @@ export default function AlmanacView({ testerId, lat = 40.7, lon = -74.0, locatio
           the aspect scan reaches twenty-one. Without this line the list simply
           thins out and reads as a quiet autumn, which is the false-emptiness
           this app has spent real time removing everywhere else. */}
+      {horizonDays < 90 && !skyQ.isPending && (
+        <button onClick={() => setHorizonDays(90)} style={{
+          marginTop: 12, fontSize: 12, background: "none", border: "1px solid var(--color-border)", borderRadius: 8,
+          padding: "6px 12px", cursor: "pointer", color: "var(--color-primary)",
+        }}>Show later</button>
+      )}
       {skyQ.data?.horizon && (
         <div style={{ marginTop: 12, paddingTop: 8, borderTop: "1px solid var(--color-border)", fontSize: 10.5, color: "var(--text-3)" }}>
           Fixed dates run to the end of this list. Aspects are only scanned to{" "}

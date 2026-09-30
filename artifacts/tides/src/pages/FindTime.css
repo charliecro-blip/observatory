@@ -880,3 +880,18 @@
   }
   .timing-header-start { gap: 8px; }
 }
+
+/* Workspace inside the shell (density pass 2026-09-30, W5). */
+.timing-workspace { max-width: 1180px; margin: 0 auto; padding: 16px 24px 72px; }
+.timing-workspace-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 4px 0 12px; border-bottom: 1px solid var(--color-border); margin-bottom: 8px; }
+.timing-workspace-actions { display: flex; align-items: center; gap: 8px; }
+.timing-workspace-page > div { min-height: 0; }
+@media (max-width: 600px) { .timing-workspace { padding: 12px 14px 64px; } }
+/* The workspace pages carry their own side padding from the old shell; here
+   the shell owns the margins, so the page's inner padding is dropped. */
+.timing-workspace-page > div > div:last-child { padding: 12px 0 !important; }
+@media (max-width: 600px) {
+  .timing-workspace-bar .compass-segments { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .timing-workspace-bar .compass-segments .compass-action { flex-shrink: 0; }
+  .timing-workspace-actions .compass-action { min-height: 40px; padding: 6px 12px; }
+}

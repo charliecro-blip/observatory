@@ -174,7 +174,10 @@ export default function CompassHome({
   onCalendar,
   onNow,
   examples,
+  onSpread,
 }: {
+  /** Workspace › Plan's week weave, for the tasks already held (W13). */
+  onSpread?: () => void;
   children: ReactNode;
   /** First-visit example requests; hidden once someone has searched or chosen a time (H6). */
   examples?: ReactNode;
@@ -202,6 +205,13 @@ export default function CompassHome({
     enabled: !!testerId,
   });
   const chosen = (plans.data ?? []).filter((p) => !p.adHoc);
+  // Same key as Due today and the Planner, so this is a cache read.
+  const held = useQuery<Task[]>({
+    queryKey: ["tasks", "all"],
+    queryFn: () => fetchJson<Task[]>("/api/tasks", { headers: { "x-tester-id": testerId! } }),
+    enabled: !!testerId,
+  });
+  const holding = (held.data ?? []).filter((t) => t.done !== "true").length;
   const fmtTime = useTimeFormat();
   const today = localToday();
   const { data: perfections } = usePerfections(today);
@@ -321,6 +331,15 @@ export default function CompassHome({
             <span aria-hidden="true">{planOpen ? "▾" : "▸"}</span> Plan a few things
           </button>
         </h2>
+        {/* The tasks already held can be spread across the week from here
+            (W13): that is how the week of Aug 14 was placed, and until now
+            Home only took a new list. */}
+        {holding > 0 && onSpread && (
+          <p className="compass-spread">
+            You’re holding {holding} {holding === 1 ? "thing" : "things"}.{" "}
+            <Action onClick={onSpread}>Spread them across the week</Action>
+          </p>
+        )}
         {!planOpen && <p>Write a list and get a suggested time for each thing on it.</p>}
         {planOpen && <Planner testerId={testerId} lat={lat} lon={lon} embedded />}
       </section>

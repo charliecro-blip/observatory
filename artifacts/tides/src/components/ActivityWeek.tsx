@@ -130,6 +130,7 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
     ro.observe(el);
     roRef.current = ro;
   }, []);
+  const [showPicker, setShowPicker] = useState(false);
   const [showAll, setShowAll] = useState(false);
   // A custom activity's own creation panel (owner 2026-09-03: "an option for
   // people to add their own... and have that be something we sortage into
@@ -261,6 +262,10 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
             your chart
           </span>
         )}
+        {/* The chips fold behind this (density pass A2): ten activities, "all
+            52" and "+ add yours" stood above the week on every visit, 935px
+            of it on a phone. */}
+        <Action size="compact" variant="text" onClick={() => setShowPicker(v => !v)} aria-expanded={showPicker}>{showPicker ? "done" : "change"}</Action>
         {all.find(a => a.key === activity)?.custom && (
           <Action size="compact" onClick={() => deleteCustom.mutate(activity)} disabled={deleteCustom.isPending}>{deleteCustom.isPending ? "removing…" : "remove this activity"}</Action>
         )}
@@ -270,9 +275,9 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
           activities carry a small dot — the same rule set as the built-in
           fifty, still worth telling apart at a glance since nobody else's
           list has this one on it. */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: showAdd ? 8 : 11, alignItems: "center" }}>
+      {showPicker && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: showAdd ? 8 : 11, alignItems: "center" }}>
         {shown.map(a => (
-          <Action size="compact" aria-pressed={a.key === activity} key={a.key} onClick={() => { setSelected(null); setScheduled(false); setActivity(a.key); }} title={a.custom ? "Your own activity" : undefined}>
+          <Action size="compact" aria-pressed={a.key === activity} key={a.key} onClick={() => { setSelected(null); setScheduled(false); setActivity(a.key); setShowPicker(false); }} title={a.custom ? "Your own activity" : undefined}>
             {a.custom && <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--color-meridian)", flexShrink: 0 }} />}
             {a.label}
           </Action>
@@ -281,9 +286,9 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
         {testerId && (
           <Action size="compact" onClick={() => { setShowAdd(v => !v); setAddError(null); }} aria-expanded={showAdd}>{showAdd ? "cancel" : "+ add yours"}</Action>
         )}
-      </div>
+      </div>}
 
-      {showAdd && (
+      {showPicker && showAdd && (
         <div style={{ marginBottom: 11, padding: "9px 11px", borderRadius: 9, background: "var(--color-card-2)", border: "1px solid var(--color-border)" }}>
           <input aria-label="Activity" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="What do you want windows for? e.g. Practice guitar"
             style={{ width: "100%", fontSize: 16, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-background)", color: "var(--color-foreground)", marginBottom: 6, boxSizing: "border-box" }} />
@@ -428,21 +433,11 @@ export default function ActivityWeek({ testerId, lat, lon, locationKnown = true 
             </div>
           ) : (
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 9, lineHeight: 1.5 }}>
+              {/* Cut to the count in the density pass (A3); the explainer
+                  about violet edges and withheld hours read as a manual. */}
               {total === 0
                 ? `Nothing this week stands out for ${label.toLowerCase()}.`
-                : `${total} window${total === 1 ? "" : "s"} this week. Pick one to see what's behind it, and schedule it if it fits.`}
-              {data?.chartAvailable === false && (
-                <span> Add your birth chart to have these read against your own houses.</span>
-              )}
-              {/* Said once, and only when there is a violet edge on screen to
-                  explain. The outline-and-core pairing is left to speak for
-                  itself; an edge colour cannot. */}
-              {(data?.windows ?? []).some(w => w.personal) && (
-                <span> A violet edge marks the ones read against your own chart.</span>
-              )}
-              {(data?.withheld?.hourOnly ?? 0) > 0 && (
-                <span> {data!.withheld!.hourOnly} matching planetary hours aren't listed on their own.</span>
-              )}
+                : `${total} window${total === 1 ? "" : "s"} this week.`}
             </div>
           )}
         </>

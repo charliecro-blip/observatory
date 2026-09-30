@@ -223,7 +223,9 @@ function AngleCrossingsPanel({ days, lat, lon }: { days: number; lat: number; lo
   );
 }
 
-export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate, planets, openAlmanac = false }: {
+export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedConsumed, onAskAboutElection, onNavigate, planets, openAlmanac = false, spreadOnOpen = false }: {
+  /** Arrived from Home's "Spread them": open straight into the week weave. */
+  spreadOnOpen?: boolean;
   testerId: string | null; lat: number; lon: number; plannerSeed?: string | null; onPlannerSeedConsumed?: () => void;
   /** Arrived from a list of sky events — open the almanac rather than the drawer. */
   openAlmanac?: boolean;
@@ -247,7 +249,7 @@ export default function Launch({ testerId, lat, lon, plannerSeed, onPlannerSeedC
   // "weave the week's tasks into good windows" — this is that, computed.
   // Opt-in: a proposed week appearing unasked is the app telling someone how to
   // spend seven days.
-  const [weekOpen, setWeekOpen] = useState(false);
+  const [weekOpen, setWeekOpen] = useState(spreadOnOpen);
   // The paste box is a secondary door now, not the room's front one.
   const [pasteOpen, setPasteOpen] = useState(false);
   const { locationKnown } = useTester();

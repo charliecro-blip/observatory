@@ -813,7 +813,10 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                 {/* The stars this habit serves — linkable AFTER creation
                     (owner: "go back and weave them in"), and to more than one
                     (a walk can serve "get fit" and "clear head" both). */}
-                {goalsList.length > 0 && (() => {
+                {/* Row actions fold behind Edit (density pass W12): four habits
+                    carried eighty controls. A star this habit already serves
+                    stays visible, as information. */}
+                {goalsList.length > 0 && (editingId === h.id || linking === h.id || habitStarIds(h).length > 0) && (() => {
                   const linked = habitStarIds(h);
                   const goalsById = Object.fromEntries(goalsList.map(g => [g.id, g]));
                   const first = linked[0] != null ? goalsById[linked[0]] : undefined;
@@ -859,15 +862,15 @@ export default function Habits({ testerId, now, lat = 40.7, lon = -74.0, onNavig
                     {asArr(h.favoredPlanets).map(p => <Glyph key={p} name={p} size={12} bg="var(--color-card)" />)}
                   </span>
                 )}
-                <div style={{fontSize: 10.5,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>
+                {h.timing !== "neutral" && <div style={{fontSize: 10.5,padding:"2px 6px",borderRadius:4,background:tb,color:tc,fontWeight:600,flexShrink:0}}>{h.timing}</div>}
                 {/* Schedule this habit — habits want recurring good-time blocks;
                     this finds the next one. Owner: 'habits need help figuring
                     out when to schedule.' */}
-                <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
-                  style={{fontSize: 10.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>
+                {editingId === h.id && <button onClick={()=>setSuggestFor({ title: h.name, goalId: h.goalId })} title="Find a good time for this habit"
+                  style={{fontSize: 10.5,padding:"2px 7px",borderRadius:5,border:"1px solid #c8b06a55",background:"#c8b06a12",color:"#8a6a20",fontWeight:600,cursor:"pointer",flexShrink:0}}>◷ schedule</button>}
                 <button onClick={()=>startEditing(h)} aria-label={`Edit ${h.name}`} title="Edit — including how often"
                   style={{fontSize:10,color: editingId===h.id ? "var(--color-brass)" : "var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 4px",fontWeight:editingId===h.id?600:400}}>Edit</button>
-                <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>
+                {editingId === h.id && <button onClick={()=>removeHabit.mutate(h.id)} aria-label="Delete habit" style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px"}}>✕</button>}
               </div>
 
               {/* The record, drawn in the habit's OWN cadence — see

@@ -19,6 +19,13 @@ import { SessionTimer } from "@/components/SessionTimer";
 import { asksForNowOverview } from "@/lib/timingDestination";
 import { useTheme } from "@/contexts/theme-context";
 import Rail from "@/components/Rail";
+import { WorkPage, QuickCapture, type WorkTab } from "./Workspace";
+import Launch from "./Launch";
+import Settings from "./Settings";
+import MomentAdvisor from "@/components/MomentAdvisor";
+import FeedbackDoor from "@/components/FeedbackDoor";
+import { Guide } from "@/components/Guide";
+import type { AskElectionContext } from "@/App";
 
 type Query = {
   activity: string;
@@ -122,8 +129,40 @@ export default function FindTime({
   });
   const { data: railNow } = useTidesNow(testerId, lat, lon);
   const [destination, setDestination] = useState<
-    "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about"
+    "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about" | "settings"
   >("search");
+  // WORKSPACE UNDER THIS HEADER (density pass 2026-09-30, W5). It used to swap
+  // the whole app for the old one: its own navigation, its own top bar, a
+  // second Home and a second Calendar, and a thin bar as the only way back.
+  // Its pages now open here, on Tasks, beside the timing destinations.
+  type WorkSection = "tasks" | "habits" | "stars" | "plan" | "bearings";
+  const [workSection, setWorkSection] = useState<WorkSection>("tasks");
+  const [starSeed, setStarSeed] = useState<string | null>(null);
+  const [focusStar, setFocusStar] = useState<number | null>(null);
+  const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
+  const [spreadOnOpen, setSpreadOnOpen] = useState(false);
+  const [capture, setCapture] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [advisor, setAdvisor] = useState<{ seed: string | null; ctx: AskElectionContext | null } | null>(null);
+  const [sessionOn, setSessionOn] = useState<{ title: string } | null>(null);
+  /** Every door that used to leave for the old shell lands here instead. */
+  function openWorkspace(view?: string, starId?: number) {
+    if (view === "settings") { setDestination("settings"); return; }
+    if (view === "calendar" || view === "almanac") { setDestination(view); return; }
+    const section: WorkSection =
+      view === "launch" || view === "planets" ? "plan"
+      : view === "habits" ? "habits"
+      : view === "bearings" ? "bearings"
+      : view === "work" || view === "overview" ? "stars"
+      : "tasks";
+    if (starId != null) setFocusStar(starId);
+    setWorkSection(starId != null ? "stars" : section);
+    setDestination("workspace");
+  }
+  const WORK_TO_PAGE: Record<Exclude<WorkSection, "plan">, WorkTab> = {
+    tasks: "tasks", habits: "habits", stars: "overview", bearings: "bearings",
+  };
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [text, setText] = useState("");
   const [calendarScope, setCalendarScope] = useState<string | null>(null);
@@ -705,12 +744,36 @@ export default function FindTime({
             <Action onClick={() => setDestination("about")}>
               About Compass
             </Action>
-            <Action onClick={() => onWorkspace("settings")}>
+            {/* From the old top bar (W8): the Guide and the feedback door keep
+                a place on every screen, in the menu that is on every screen. */}
+            <Action onClick={() => setShowGuide(true)}>How Compass works</Action>
+            <Action onClick={() => setFeedbackOpen(true)}>Send feedback</Action>
+            <Action onClick={() => setDestination("settings")}>
               Account and settings
             </Action>
           </div>
         </details>
       </header>
+      {capture && (
+        <QuickCapture testerId={testerId} onClose={() => setCapture(false)}
+          onDumpToPlanner={(list) => { setCapture(false); setPlannerSeed(list); setWorkSection("plan"); setDestination("workspace"); }} />
+      )}
+      {showGuide && <Guide onClose={() => setShowGuide(false)} />}
+      {feedbackOpen && <FeedbackDoor testerId={testerId} view={destination} onClose={() => setFeedbackOpen(false)} />}
+      {advisor && (
+        <MomentAdvisor
+          testerId={testerId} lat={lat} lon={lon}
+          onClose={() => setAdvisor(null)}
+          seedMessage={advisor.seed}
+          electionContext={advisor.ctx}
+          strongestFit={advisor.ctx?.subject ? {
+            title: advisor.ctx.subject.title, why: advisor.ctx.subject.why ?? "",
+            when: advisor.ctx.subject.when ?? "", kind: advisor.ctx.subject.kind ?? "loop",
+          } : null}
+          now={railNow}
+          onAddTask={() => { setAdvisor(null); setCapture(true); }}
+        />
+      )}
       <div className={railOpen ? "timing-body timing-body-rail" : "timing-body"}>
       {railOpen && (
         <aside id="timing-rail" className="timing-rail" aria-label="Sky panel">
@@ -722,7 +785,7 @@ export default function FindTime({
             lon={lon}
             hideWordmark
             onNavigate={(v) => {
-              if (v === "work" || v === "settings") onWorkspace(v);
+              if (v === "work" || v === "settings") openWorkspace(v);
               else setDestination("now");
             }}
           />
@@ -766,6 +829,7 @@ export default function FindTime({
           )}
           {!draft && (
             <CompassHome
+              onSpread={() => { setSpreadOnOpen(true); setWorkSection("plan"); setDestination("workspace"); }}
               onCalendar={() => setDestination("calendar")}
               onNow={() => setDestination("now")}
               examples={
@@ -845,7 +909,7 @@ export default function FindTime({
                   el?.scrollIntoView({ block: "center" });
                 }}
                 onFindTime={searchCalendarDay}
-                onNavigate={() => onWorkspace("launch")}
+                onNavigate={() => openWorkspace("launch")}
               />
             </div>
           )}
@@ -1225,11 +1289,7 @@ export default function FindTime({
             onNavigate={(view, starId) => {
               if (view === "calendar" || view === "almanac")
                 setDestination(view);
-              else
-                onWorkspace(
-                  view === "launch" || view === "planets" ? "launch" : "work",
-                  starId,
-                );
+              else openWorkspace(view, starId);
             }}
           />
         </>
@@ -1240,52 +1300,52 @@ export default function FindTime({
           onSearch={startFreshSearch}
         />
       ) : destination === "workspace" ? (
-        <main className="timing-main timing-secondary">
-          <p className="timing-kicker">Optional workspace</p>
-          <h1>Room for the rest of your life.</h1>
-          <p>
-            Your tasks, habits, projects, and records still live here. Use them
-            when you want more context around a timing decision.
-          </p>
-          <div className="timing-feature-grid">
-            <article>
-              <h2>Calendar and plans</h2>
-              <p>
-                See chosen times alongside the work you have already scheduled.
-              </p>
-            </article>
-            <article>
-              <h2>Tasks and habits</h2>
-              <p>
-                Keep track of practical work and recurring practices at your own
-                pace.
-              </p>
-            </article>
-            <article>
-              <h2>Stars and projects</h2>
-              <p>
-                Connect everyday steps to the longer commitments they serve.
-              </p>
-            </article>
-            <article>
-              <h2>Sky and reflection</h2>
-              <p>
-                Explore the daily reading, your birth chart, and your own record
-                of how things felt.
-              </p>
-            </article>
+        <main className="timing-workspace">
+          <div className="timing-workspace-bar">
+            <div className="compass-segments" role="tablist" aria-label="Workspace">
+              {([["tasks","Tasks"],["habits","Habits"],["stars","Stars"],["plan","Plan"],["bearings","Bearings"]] as const).map(([id, label]) => (
+                <Action key={id} role="tab" aria-selected={workSection === id} aria-pressed={workSection === id} onClick={() => { setSpreadOnOpen(false); setWorkSection(id); }}>{label}</Action>
+              ))}
+            </div>
+            <div className="timing-workspace-actions">
+              <Action onClick={() => setCapture(true)}>+ task</Action>
+              {railNow?.planetaryHour && (
+                <SessionTimer planetaryHour={railNow.planetaryHour} openOn={sessionOn} onOpened={() => setSessionOn(null)} />
+              )}
+              <Action onClick={() => setAdvisor({ seed: null, ctx: null })}><span aria-hidden="true">✦</span> Ask</Action>
+            </div>
           </div>
-          <Action onClick={() => onWorkspace()}>Open workspace</Action>
-          <TimingSources
-            testerId={testerId}
-            onSelect={(value) => {
-              setText(value);
-              setDraft(null);
-              setResponse(null);
-              setChosen(null);
-              setDestination("search");
-            }}
-          />
+          <div className="timing-workspace-page">
+            {workSection === "plan" ? (
+              <Launch
+                key={spreadOnOpen ? "spread" : "plan"}
+                spreadOnOpen={spreadOnOpen}
+                testerId={testerId} lat={lat} lon={lon}
+                plannerSeed={plannerSeed} onPlannerSeedConsumed={() => setPlannerSeed(null)}
+                onAskAboutElection={(ctx, seed) => setAdvisor({ seed, ctx })}
+                onNavigate={(v) => openWorkspace(v)}
+                planets={{
+                  onReflect: (seed: string) => setAdvisor({ seed, ctx: null }),
+                  initialPlanet: null,
+                  onStartStar: (element: string) => { setStarSeed(element); setWorkSection("stars"); },
+                }}
+              />
+            ) : (
+              <WorkPage
+                testerId={testerId} now={railNow} lat={lat} lon={lon}
+                tab={WORK_TO_PAGE[workSection]}
+                onTabChange={(t) => setWorkSection(t === "overview" ? "stars" : t)}
+                seedElement={starSeed} onSeedConsumed={() => setStarSeed(null)}
+                focusStarId={focusStar} onFocusConsumed={() => setFocusStar(null)}
+                onOpenSettings={() => setDestination("settings")}
+                onLeaveWork={(v) => openWorkspace(v)}
+              />
+            )}
+          </div>
+        </main>
+      ) : destination === "settings" ? (
+        <main className="timing-restored">
+          <Settings testerId={testerId} />
         </main>
       ) : (
         <main className="timing-main timing-secondary">

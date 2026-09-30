@@ -160,9 +160,12 @@ describe("the window and its core are drawn differently", () => {
     expect(SRC).toContain("#6f6a90");
   });
 
-  it("explains the violet only when a violet edge is on screen", () => {
-    // An outline containing a fill speaks for itself; an edge colour cannot.
-    expect(SRC).toContain("(data?.windows ?? []).some(w => w.personal)");
-    expect(SRC).toContain("A violet edge marks the ones read against your own chart.");
+  it("marks a chart-read week in the header, not in an explainer under it", () => {
+    // The sentence under the week ("A violet edge marks the ones read against
+    // your own chart.") left in the density pass (2026-09-30, A3) with the
+    // rest of that paragraph; the header's "your chart" badge, titled with
+    // what it means, already says the same thing once.
+    expect(SRC).toContain('title="Read against your own chart, not just the universal sky"');
+    expect(SRC).not.toContain("A violet edge marks the ones read against your own chart.");
   });
 });

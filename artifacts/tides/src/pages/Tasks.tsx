@@ -14,6 +14,12 @@ import { touchLine, type TouchTrail } from "@/lib/touches";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
 
+/** "Sep 28" for a YYYY-MM-DD, read as a local date (density pass AB3: rows
+ *  printed "2026-09-28"). */
+function shortDue(d: string): string {
+  return new Date(d.slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 
 const WINDOW_TYPES = [
   "deep_work","creative","planning","admin","social","relationship","recovery","study","launch","retreat"
@@ -525,7 +531,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12.5,color:"var(--color-foreground)"}}>{t.title}</div>
                         <div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>
-                          {t.estimatedMinutes}m · {t.energy} energy{t.dueDate ? ` · due ${t.dueDate}` : ""}
+                          {t.estimatedMinutes}m · {t.energy} energy{t.dueDate ? ` · due ${shortDue(t.dueDate)}` : ""}
                         </div>
                       </div>
                     </label>
@@ -636,7 +642,7 @@ function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule
   // second because "this is older than it looks" is the other thing worth
   // knowing before you skip it again.
   const bits: string[] = [];
-  if (task.dueDate) bits.push(task.dueDate === today ? "Today" : task.dueDate);
+  if (task.dueDate) bits.push(task.dueDate === today ? "Today" : shortDue(task.dueDate));
   const carried = carriedLabel(task, today);
   if (carried && !isDone) bits.push(`carried from ${carried.replace(/^from /, "")}`);
   if (task.planningWindowId && !isDone) bits.push("has a block");

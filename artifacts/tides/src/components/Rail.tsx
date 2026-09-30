@@ -277,7 +277,17 @@ function railVerbs(planet: string | undefined, chronotype: { wakeTime?: string |
   return opts.length ? opts : (PLANET_ACTIVITIES[planet] ?? []);
 }
 
+/** The server's "14:38" in the viewer's own clock format, so the hour reads
+ *  like every other time in the app (density pass AB2). */
+function hourClock(fmt: (d: Date) => string, hhmm: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+  if (!m) return hhmm;
+  const d = new Date(); d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
+  return fmt(d);
+}
+
 export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
+  const fmtHour = useTimeFormat();
   const { profile: miProfile } = useTester();
   const [open, setOpen] = useState<string | null>(null);
   const [moonTake, setMoonTake] = useState(0);
@@ -342,7 +352,7 @@ export function MobileInstruments({ now }: { now: TidesNow | undefined }) {
         <CycleLine prefix="good for" options={railVerbs(dayRuler, miProfile?.chronotype, isVOC, moonSign)} show={3} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
     if (open === "hour") {
-      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
+      return <><b>{planetaryHour.planet} hour</b> <span style={{ color: "var(--text-3)" }}>{hourClock(fmtHour, planetaryHour.began)}–{hourClock(fmtHour, planetaryHour.ends)}</span>
         <PlanetReading planet={planetaryHour.planet} planets={now.planets} />
         <CycleLine prefix="this hour" options={railVerbs(planetaryHour.planet, miProfile?.chronotype, isVOC, moonSign)} seed={new Date().getHours()} style={{ marginTop: 3, fontSize: 10 }} /></>;
     }
@@ -527,6 +537,7 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate, hideWordmark = false }:
  *  Find-a-time shell's header), so the panel does not repeat it. */
 export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigate, hideWordmark = false }: { now: TidesNow | undefined; testerId: string | null; lat?: number; lon?: number; onNavigate?: (v: string) => void; hideWordmark?: boolean }) {
   const { prefs } = usePreferences();
+  const fmtT = useTimeFormat();
   // The astro-quiet lens folds the whole instrument panel away — see the
   // QuietRail branch below the hooks (it must sit after them: hook order).
   const { level: astroLevel, sessionQuiet } = useAstroDetail();
@@ -1134,7 +1145,7 @@ export default function Rail({ now, testerId, lat = 40.7, lon = -74.0, onNavigat
         <GlyphRow label="Hour" onClick={() => toggleOpen("hour")}>
           <span style={{ fontSize: 12, color: pColor }}><PG p={planetaryHour.planet} /></span>
           <span style={{ fontSize: 10, color: "var(--text-3)" }}>{planetaryHour.planet}</span>
-          <span style={{ fontSize: 10.5, color: "var(--text-3)", marginLeft: "auto" }}>{planetaryHour.began}–{planetaryHour.ends}</span>
+          <span style={{ fontSize: 10.5, color: "var(--text-3)", marginLeft: "auto" }}>{hourClock(fmtT, planetaryHour.began)}–{hourClock(fmtT, planetaryHour.ends)}</span>
         </GlyphRow>
       )}
       {railSections.includes("hour") && locationKnown && isOpen("hour") && (

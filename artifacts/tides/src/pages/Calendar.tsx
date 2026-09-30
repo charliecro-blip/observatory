@@ -1943,8 +1943,9 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
 
   return (
     <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden" }}>
-      {/* Topbar */}
-      <div className="compass-calendar-toolbar">
+      {/* Topbar. Not drawn for the shell's Almanac, where every control in it
+          is hidden and it rendered as an empty 30px strip (density pass A1). */}
+      {!(shellNavigation && calView === "almanac") && <div className="compass-calendar-toolbar">
         {calView!=="almanac" && (<>
         <Action onClick={prevPeriod} title="Previous — press ←" aria-label={`Previous ${calView}`}>‹</Action>
         <div>{periodLabel()}</div>
@@ -2011,7 +2012,7 @@ export default function Calendar({ testerId, now, lat, lon, locationKnown = true
             </div>
           </details>
         )}
-      </div>
+      </div>}
 
 
       {/* THE DAY CHART AND THE CYCLE BAR LEFT (owner, 2026-08-20). Two
