@@ -71,6 +71,8 @@ export interface WovenWeek {
 
 export interface WeaveWeekOpts {
   items: WeekItem[];
+  /** Passed to each day; see WeaveOpts.now. */
+  now?: Date;
   /** First day. Seven days from here. */
   startDate: Date;
   lat: number;
@@ -139,7 +141,7 @@ export function weekDates(
 export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   const {
     items, startDate, lat, lon, wakeHour = 7, sleepHour = 23,
-    commitmentsByDay = {}, locationKnown = true, days = 7, tzOffsetMin = 0, timeZone,
+    commitmentsByDay = {}, locationKnown = true, days = 7, tzOffsetMin = 0, timeZone, now,
   } = opts;
 
   // Each date is NOON IN THE USER'S ZONE, derived from their midnight rather
@@ -267,6 +269,7 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
       commitments: commitmentsByDay[key] ?? [],
       locationKnown,
       maxLoadFraction: recovering ? RECOVERY_LOAD : NORMAL_LOAD,
+      now,
     });
 
     // Anything the day could not take is reported at week level too, so a
@@ -302,7 +305,10 @@ export function weaveWeek(opts: WeaveWeekOpts): WovenWeek {
   }
   // Unresolvable activities are the day weaver's business, but the week should
   // say once that they exist rather than repeating it seven times.
-  const noBasis = items.filter(i => !resolveActivity(i) && !i.estMinutes).length;
+  // Tasks only: a Guiding Star is a direction, and "add a rough estimate" is
+  // not something it can take. Counting Stars here said "4 items" beside a
+  // list showing two (2026-09-30).
+  const noBasis = items.filter(i => i.kind !== "star-step" && !resolveActivity(i) && !i.estMinutes).length;
   if (noBasis) {
     warnings.push(`${noBasis} ${noBasis === 1 ? "item has" : "items have"} no duration and no recognizable kind of work — add a rough estimate to schedule them.`);
   }

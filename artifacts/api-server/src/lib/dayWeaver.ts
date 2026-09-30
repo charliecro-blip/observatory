@@ -144,6 +144,13 @@ export interface WeaveOpts {
    * to continuity; what it yielded is reported on the placement.
    */
   protectRoutine?: boolean;
+  /**
+   * The present moment. When given, free time on the day is cut to start after
+   * it, so today's plan never lands in hours already gone (the week weave put a
+   * block at 1:45 PM at 3:40 PM, 2026-09-30). Optional so the fixed-date tests
+   * keep their whole days; the live routes pass it.
+   */
+  now?: Date;
 }
 
 const MIN_USEFUL_GAP = 20;
@@ -190,7 +197,7 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   const {
     items, date, lat, lon, wakeHour = 7, sleepHour = 23,
     commitments = [], locationKnown = true, maxLoadFraction = 0.6,
-    tzOffsetMin = 0, timeZone, consultSky = true, protectRoutine = false,
+    tzOffsetMin = 0, timeZone, consultSky = true, protectRoutine = false, now,
   } = opts;
 
   // In the USER'S zone, not the server's. Built from local getters, this was
@@ -217,6 +224,17 @@ export function weaveDay(opts: WeaveOpts): WovenDay {
   if (last && last.minutes > WIND_DOWN_MIN) {
     last.endAt = new Date(last.endAt.getTime() - WIND_DOWN_MIN * 60000);
     last.minutes -= WIND_DOWN_MIN;
+  }
+  // Nothing before the present: the stretches are cut to start at the next
+  // five minutes after `now`, and any that ended already drop out.
+  if (now) {
+    const from = Math.ceil(now.getTime() / 300000) * 300000;
+    free = free
+      .filter(f => f.endAt.getTime() > from)
+      .map(f => f.startAt.getTime() >= from ? f : {
+        startAt: new Date(from), endAt: f.endAt, minutes: Math.floor((f.endAt.getTime() - from) / 60000),
+      })
+      .filter(f => f.minutes > 0);
   }
 
   const wakingMinutes = free.reduce((n, f) => n + f.minutes, 0);

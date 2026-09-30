@@ -139,3 +139,24 @@ describe("the plain weave", () => {
     expect(due!.startAt.getTime()).toBeLessThan(hi!.startAt.getTime());
   });
 });
+
+describe("day weaver, given the present", () => {
+  // 2026-09-30: the week weave put a block at 1:45 PM when it was 3:40 PM.
+  it("places nothing in hours already gone", () => {
+    const now = at(15, 40);
+    const w = weaveDay({ items, date, ...AUSTIN, now });
+    expect(w.placed.length).toBeGreaterThan(0);
+    for (const p of w.placed) expect(p.startAt.getTime()).toBeGreaterThanOrEqual(now.getTime());
+  });
+
+  it("places nothing on a day that is over", () => {
+    const w = weaveDay({ items, date, ...AUSTIN, now: new Date(2026, 7, 6, 9, 0) });
+    expect(w.placed.length).toBe(0);
+  });
+
+  it("leaves a day whole when no present is given", () => {
+    // Same plan as a present at the day's own midnight, before anyone is up.
+    const key = (w: ReturnType<typeof weaveDay>) => w.placed.map(p => `${p.item.id}@${p.startAt.getTime()}`).join("|");
+    expect(key(weaveDay({ items, date, ...AUSTIN }))).toBe(key(weaveDay({ items, date, ...AUSTIN, now: at(0) })));
+  });
+});

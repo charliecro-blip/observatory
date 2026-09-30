@@ -142,3 +142,22 @@ describe("overdue work", () => {
     expect(w.unplaced).toEqual([]);
   });
 });
+
+describe("the week's no-basis warning", () => {
+  // 2026-09-30: two Guiding Stars were counted with two tasks, and the panel
+  // said "4 items have no duration" beside a list showing two. A Star cannot
+  // take "a rough estimate".
+  it("counts tasks, not Stars", () => {
+    const w = weaveWeek({
+      items: [
+        { id: "t1", title: "film Animal series", kind: "task" },
+        { id: "t2", title: "record stats transcript", kind: "task" },
+        { id: "s1", title: "Aligned Spine", kind: "star-step" },
+        { id: "s2", title: "Take Board Exams Quickly", kind: "star-step" },
+      ] as WeekItem[],
+      startDate, ...AUSTIN,
+    });
+    const line = w.warnings.find(x => /no duration/.test(x)) ?? "";
+    expect(line).toMatch(/^2 items have no duration/);
+  });
+});

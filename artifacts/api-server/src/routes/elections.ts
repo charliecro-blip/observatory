@@ -407,7 +407,7 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
     ? b.busy.map(x => ({ startAt: new Date(x.startMs), endAt: new Date(x.endMs) }))
     : [];
 
-  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments, consultSky, protectRoutine }));
+  res.json(weaveDay({ items, date, lat, lon, wakeHour, sleepHour, locationKnown, tzOffsetMin, timeZone, commitments, consultSky, protectRoutine, now: new Date() }));
 });
 
 /**
@@ -477,7 +477,7 @@ router.get("/elections/shape-week", requireFeature("shape.week"), async (req, re
   );
   const commitmentsByDay = bucketByDay(cal.commitments, dates, keys, tzOffsetMin, timeZone);
 
-  const woven = weaveWeek({ items, startDate, lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin, timeZone, commitmentsByDay });
+  const woven = weaveWeek({ items, startDate, lat, lon, wakeHour, sleepHour, locationKnown, days, tzOffsetMin, timeZone, commitmentsByDay, now: new Date() });
 
   res.json({
     ...woven,
