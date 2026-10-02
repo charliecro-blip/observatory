@@ -1,6 +1,8 @@
 # Density audit: What to do now · October 2, 2026
 
-Status: proposals for owner markup. Nothing here is built. Same method as the
+Status: owner approved all proposals on 2026-10-02 (N5: the reading is Read
+the day first's answer; N7: Shape today stays beside the answer). Built the
+same day; outcome at the end. Same method as the
 September 30 audits: a scratch account shaped like the owner's (Chicago, four
 practices, four tasks, two chosen times, two Guiding Stars, a natal chart) on
 the local build at `1595b73`, measured at 1024px and 375×812.
@@ -53,3 +55,17 @@ the reading, Moments ahead, and the tide one tap away.
 
 Not a bug: B7 from the first audit. With the session stored before the first
 call, a fresh account's first requests all returned 201 this time.
+
+## Outcome · October 2
+
+- Read the day first: desktop 2,155px → 1,633px; phone 3,471px → 2,115px, the
+  reading starting at 417px. The other styles run 1,710–1,789px on desktop.
+- Every style opens with its answer, the style's name and "change", Shape today
+  (One clear move keeps its own "Find it an hour"), then the reading open,
+  Moments ahead, the tide folded and the day's conditions.
+- Built behind `answerPage` on Home and `compact` on RhythmLead; the old
+  shell's Home, which everyone outside the cohort sees, is unchanged.
+- Moments ahead reads the Moon's contacts from the same day search as Home's
+  Moon line and the Day view, so all three agree to the minute.
+- NB1–NB3 fixed. NB1's strip still shows on the old shell's Home, which is
+  why it was fixed in the component: "4p" and "10a".

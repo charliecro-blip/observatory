@@ -40,6 +40,9 @@
 import { suggestApproach } from "@/lib/approach";
 import { PLANET_COLORS } from "@/lib/planetColors";
 import { useFold, FoldToggle } from "@/components/ModuleFold";
+import { usePerfections } from "@/components/ExactAspects";
+import { useTimeFormat } from "@/contexts/preferences-context";
+import { localToday } from "@/lib/dates";
 
 /**
  * WHAT THE OTHER PLANET IS ABOUT — its own territory, and nothing about
@@ -92,6 +95,11 @@ export default function MomentsAhead({
   onOpen?: () => void;
 }) {
   const { isFolded } = useFold();
+  const fmtTime = useTimeFormat();
+  // The Moon's contacts from the same search as Home's Moon line and the Day
+  // view, so the three agree to the minute (2026-10-02). The rail's
+  // hoursToExact stands in only until it loads.
+  const { data: perfections } = usePerfections(localToday());
   const folded = framed && isFolded("momentsAhead");
   const upcoming = (now?.upcomingHours ?? []).slice(0, 8);
   const at = (t: string) => {
@@ -125,23 +133,28 @@ export default function MomentsAhead({
     })
     .filter(Boolean) as any[];
 
-  const lunar = ((now?.moonAspects ?? []) as any[])
-    .filter(a => a.applying && !a.stationsBeforeExact)
-    .filter(a => typeof a.hoursToExact === "number" && a.hoursToExact > 0 && a.hoursToExact <= 12)
-    .map(a => {
-      const when = new Date(Date.now() + a.hoursToExact * 3600000);
-      const other = a.planet1 === "Moon" ? a.planet2 : a.planet1;
-      return {
-        time: `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`,
-        lunar: { other, aspect: a.aspect, nature: a.nature },
-      };
-    })
-    .sort((a, b) => String(a.time).localeCompare(String(b.time)))
+  const nowMs = Date.now();
+  const lunar = (perfections
+    ? perfections
+        .filter(p => p.lunar && Date.parse(p.at) > nowMs && Date.parse(p.at) - nowMs <= 12 * 3600000)
+        .map(p => ({ when: new Date(p.at), lunar: { other: p.body2, aspect: p.aspect } }))
+    : ((now?.moonAspects ?? []) as any[])
+        .filter(a => a.applying && !a.stationsBeforeExact)
+        .filter(a => typeof a.hoursToExact === "number" && a.hoursToExact > 0 && a.hoursToExact <= 12)
+        .map(a => ({
+          when: new Date(nowMs + a.hoursToExact * 3600000),
+          lunar: { other: a.planet1 === "Moon" ? a.planet2 : a.planet1, aspect: a.aspect },
+        })))
+    .sort((a, b) => a.when.getTime() - b.when.getTime())
     .slice(0, 2);   // two at most; this is a rail, not an ephemeris
 
-  const rows = [...lunar, ...generic]
-    .sort((a: any, b: any) => String(a.time).localeCompare(String(b.time)))
-    .slice(0, maxRows + lunar.length);
+  // THE MOON FIRST, THEN THE HOURS (owner 2026-08-22: hours and days are
+  // secondary to lunar aspects; density audit N9). The rows used to interleave
+  // by clock, so four planetary hours could stand above the one aspect.
+  const hours = generic
+    .map((h: any) => ({ ...h, when: at(h.time) }))
+    .sort((a: any, b: any) => a.when.getTime() - b.when.getTime());
+  const rows = [...lunar, ...hours].slice(0, maxRows + lunar.length);
 
   if (!rows.length) return null;
 
@@ -167,7 +180,7 @@ export default function MomentsAhead({
       </div>
       {!folded && rows.map((m: any, i: number) => (
         <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 7, padding: "2px 0", fontSize: 11.5, lineHeight: 1.5 }}>
-          <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{m.time}</span>
+          <span style={{ color: "var(--text-3)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtTime(m.when)}</span>
           <span style={{ color: "var(--color-foreground)" }}>
             {m.lunar
               ? <><span role="img" aria-label="Moon" style={{ color: PLANET_COLORS.Moon }}>☽</span> {m.lunar.aspect} {m.lunar.other}</>

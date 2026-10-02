@@ -309,8 +309,16 @@ function SectionTitle({ children, note, action, fold, summary }: {
 }
 
 export default function Home({
-  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun, onOpenStar, onStartSession,
+  testerId, lat, lon, onNavigate, onAskAboutElection, onQuickCapture, firstRun, onOpenStar, onStartSession, answerPage = false,
 }: {
+  /**
+   * The Find-a-time shell's "What to do now" page (density audit 2026-10-02):
+   * the style's answer with Shape today, then the reading, Moments ahead, the
+   * tide folded and the day's conditions. The lists Home and Workspace already
+   * hold (your work, your day, this week, where you are) and the tide
+   * paragraph stay out. The old shell's Home leaves this off and is unchanged.
+   */
+  answerPage?: boolean;
   testerId: string | null;
   lat: number;
   lon: number;
@@ -634,6 +642,100 @@ export default function Home({
     );
   };
 
+  // What "Shape today" opens: the questions it needs answered, then the
+  // shaped day. Shared by Your work and the What-to-do-now page, which shows
+  // it beside the answer (density audit 2026-10-02, N7).
+  const shapeDetail = (
+    <>
+          {/* Resolution chips live here now, with the work they act on. */}
+          {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                how much room should these get?
+              </div>
+              {resolution.needsDuration.map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.chips.map((m) => (
+                    <button key={m} disabled={setDuration.isPending}
+                      onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
+            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
+                what kind of work are these?
+              </div>
+              {resolution.needsActivity.slice(0, 4).map((n) => (
+                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
+                  {n.options.map((o) => (
+                    <button key={o.key} disabled={setActivity.isPending}
+                      onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
+                      style={{
+                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
+                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
+                        color: "var(--color-foreground)",
+                      }}>{o.label}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* The shaped day, when asked for. */}
+          {shapeOpen && shaped && (
+            <div style={{ borderTop: "1px solid var(--color-border)" }}>
+              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
+                {shaping ? "shaping…" : "today, shaped"}
+              </div>
+              {shaped.placed.map((p) => (
+                <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(p.startAt)}–{clockOf(p.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
+                    {p.item.title}
+                    {/* Same wording as WeekShape's — one fact, one phrasing.
+                        Both narrated the bookkeeping until 2026-08-24; only one got
+                        changed, and the deploy probe caught the other because
+                        it checked that the OLD string was gone rather than
+                        only that the new one had arrived. */}
+                    {p.assumedDuration && (
+                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}> · guessing {p.minutes}m — set a length in Plan</span>
+                    )}
+                    {/* Under Route the weave keeps the usual slot and says what
+                        it kept it over. Output, never a silent trade. */}
+                    {(p as any).basis === "usual" && (
+                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
+                        {" "}· your usual time{(p as any).keptOver ? `, kept over the ${clockOf((p as any).keptOver.startAt)} the sky preferred` : ""}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+              {shaped.openTime.map((o, i) => (
+                <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
+                    {clockOf(o.startAt)}–{clockOf(o.endAt)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing needed placing here</span>
+                </div>
+              ))}
+              <div style={{ height: 6 }} />
+            </div>
+          )}
+    </>
+  );
+
   return (
     // `flex: 1` + `overflowY: auto` make Home its own scroll region, the same
     // shape Today uses. Without it Home was merely stretched to the content
@@ -735,8 +837,67 @@ export default function Home({
         onStart={onStartSession}
         tideLevel={now?.tide?.level ?? null}
         stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused").map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
+        compact={answerPage}
       />
       </div>
+
+      {answerPage && (<>
+        {/* Shape today, beside the answer (N7). One clear move carries its
+            own "Find it an hour", which opens the same thing. */}
+        {(rhythm !== "campaign" || shapeOpen) && (
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            {rhythm !== "campaign" && (
+              <div style={{ padding: "10px 16px" }}>
+                <button onClick={() => setShapeOpen(v => !v)} style={{
+                  fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)",
+                }}>{shapeOpen ? "Hide the shape" : <>Shape today <span aria-hidden="true">→</span></>}</button>
+              </div>
+            )}
+            {shapeDetail}
+          </div>
+        )}
+
+        {/* The day's reading, open (N5): for "Read the day first" it IS the
+            answer, and for the others it is the why under it. */}
+        {!skyQuiet && now?.reading && (
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            <SectionTitle>The reading</SectionTitle>
+            <div style={{ padding: "0 16px 14px" }}>
+              <DayReading
+                now={now}
+                level={astroLevel}
+                testerId={testerId}
+                accent={ELEMENT_COLORS[CHARACTER_ELEMENT[(now?.tide?.character ?? "deep") as TideCharacter] ?? "water"]}
+              />
+            </div>
+          </div>
+        )}
+
+        {!skyQuiet && (
+          <MomentsAhead
+            now={now}
+            tasks={open.map(t => ({ id: t.id, title: t.title, planet: t.planet }))}
+            stars={(northStars ?? []).filter((g: any) => g.status !== "done" && g.status !== "paused")
+              .map((g: any) => ({ id: g.id, title: g.title, planet: g.planet }))}
+            chronotype={profile?.chronotype}
+            label="Moments ahead"
+            framed
+          />
+        )}
+
+        {/* The tide, one line until asked (N6). */}
+        {!skyQuiet && now?.dayArc && (
+          <div style={{ ...PANEL, overflow: "hidden" }}>
+            <SectionTitle fold="tide" summary="the hours, and where the water runs high">The tide</SectionTitle>
+            <Fold id="tide">
+              <LunarCycle now={now} />
+              <UnifiedTideChart arc={now.dayArc} now={now} lat={lat} lon={lon} />
+            </Fold>
+          </div>
+        )}
+
+        <DayConditions now={now} cycle={cycle} habits={habitsForRisk} skyQuiet={skyQuiet} showVoid={showVoid} />
+      </>)}
 
       {/* A GEAR CHANGE, offered — the sky lighting one working style for a
           stretch. Sky vocabulary, so the quiet lens hides it. */}
@@ -776,7 +937,7 @@ export default function Home({
           relational picture — every habit, every star, the lens switch — is
           what Stars is for, and having both meant Home carried the same
           picture twice at two sizes. */}
-      <WhereYouAre compact testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} onOpenStar={onOpenStar} />
+      {!answerPage && <WhereYouAre compact testerId={testerId} lat={lat} lon={lon} onNavigate={onNavigate} onOpenStar={onOpenStar} />}
 
 
       {/* ══ THE DAY, IN ONE LINE ═══════════════════════════════════════════
@@ -790,7 +951,7 @@ export default function Home({
           and keeps the guidance with the sky words taken out, which is the
           half of the hero that was always for everyone — the strip stands
           down only when there is no reading to report. */}
-      <TideStrip now={now} minimal={skyQuiet} />
+      {!answerPage && <TideStrip now={now} minimal={skyQuiet} />}
 
       {/* ══ ZONE 4 · READ THE DAY ═════════════════════════════════════════
           One door where there were three sections. The tide chart, the lunar
@@ -803,7 +964,7 @@ export default function Home({
           them to reach their own work. The strip above still says what kind
           of day it is in one line, which is the part that earns its place
           unasked. */}
-      <div style={{ ...PANEL, overflow: "hidden" }}>
+      {!answerPage && <div style={{ ...PANEL, overflow: "hidden" }}>
         <SectionTitle fold="readday" summary="the hours, the reading, and today's conditions">Read the day</SectionTitle>
         <Fold id="readday">
         {/* THE TIDE, ON REQUEST. It went to Calendar when Today retired and
@@ -857,7 +1018,7 @@ export default function Home({
             suppress a rare one is exactly backwards. */}
         <DayConditions now={now} cycle={cycle} habits={habitsForRisk} skyQuiet={skyQuiet} showVoid={showVoid} />
         </Fold>
-      </div>
+      </div>}
 
       {/* ── TURNING POINT · the check-in prompt during a cycle window, or the
           kept one-pager after. Renders nothing on ordinary days.
@@ -935,7 +1096,7 @@ export default function Home({
           exactly the screens the two retention-risk personas live on
           (HOME study 2026-08-15, D3). The horizon row below always knew this
           trick; the work grid just never learned it. */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
+      {!answerPage && <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.55fr) minmax(0,1fr)", gap: 14, alignItems: "start" }}>
 
         {/* YOUR WORK — capture, inventory and the action that acts on them,
             together. The standalone "Shape today" card is gone: an action
@@ -1013,92 +1174,7 @@ export default function Home({
             )}
           </div>
 
-          {/* Resolution chips live here now, with the work they act on. */}
-          {shapeOpen && resolution && resolution.needsDuration.length > 0 && (
-            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
-                how much room should these get?
-              </div>
-              {resolution.needsDuration.map((n) => (
-                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
-                  {n.chips.map((m) => (
-                    <button key={m} disabled={setDuration.isPending}
-                      onClick={() => setDuration.mutate({ id: n.id, minutes: m })}
-                      style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                        color: "var(--color-foreground)",
-                      }}>{m < 60 ? `${m}m` : `${m / 60}h`}</button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-          {shapeOpen && resolution && resolution.needsActivity.length > 0 && (
-            <div style={{ padding: "4px 16px 8px", borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", marginBottom: 4 }}>
-                what kind of work are these?
-              </div>
-              {resolution.needsActivity.slice(0, 4).map((n) => (
-                <div key={n.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 120 }}>{n.title}</span>
-                  {n.options.map((o) => (
-                    <button key={o.key} disabled={setActivity.isPending}
-                      onClick={() => setActivity.mutate({ id: n.id, activityKey: o.key })}
-                      style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 999, cursor: "pointer",
-                        border: "1px solid var(--color-border)", background: "var(--color-card-2)",
-                        color: "var(--color-foreground)",
-                      }}>{o.label}</button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* The shaped day, when asked for. */}
-          {shapeOpen && shaped && (
-            <div style={{ borderTop: "1px solid var(--color-border)" }}>
-              <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--text-3)", padding: "8px 16px 3px" }}>
-                {shaping ? "shaping…" : "today, shaped"}
-              </div>
-              {shaped.placed.map((p) => (
-                <div key={p.item.id} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
-                  <span style={{ fontSize: 11, color: "var(--color-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
-                    {clockOf(p.startAt)}–{clockOf(p.endAt)}
-                  </span>
-                  <span style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
-                    {p.item.title}
-                    {/* Same wording as WeekShape's — one fact, one phrasing.
-                        Both narrated the bookkeeping until 2026-08-24; only one got
-                        changed, and the deploy probe caught the other because
-                        it checked that the OLD string was gone rather than
-                        only that the new one had arrived. */}
-                    {p.assumedDuration && (
-                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}> · guessing {p.minutes}m — set a length in Plan</span>
-                    )}
-                    {/* Under Route the weave keeps the usual slot and says what
-                        it kept it over. Output, never a silent trade. */}
-                    {(p as any).basis === "usual" && (
-                      <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>
-                        {" "}· your usual time{(p as any).keptOver ? `, kept over the ${clockOf((p as any).keptOver.startAt)} the sky preferred` : ""}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
-              {shaped.openTime.map((o, i) => (
-                <div key={`o-${i}`} style={{ display: "flex", gap: 10, padding: "3px 16px" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, minWidth: 88 }}>
-                    {clockOf(o.startAt)}–{clockOf(o.endAt)}
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>open · nothing needed placing here</span>
-                </div>
-              ))}
-              <div style={{ height: 6 }} />
-            </div>
-          )}
+          {shapeDetail}
 
           {tasksFailed ? (
             <div style={{ padding: "10px 16px 14px", fontSize: 11.5, color: "#a03030", borderTop: "1px solid var(--color-border)" }}>
@@ -1208,7 +1284,7 @@ export default function Home({
               was the log card. Density remains a preference, set from Today,
               and Home still honors it — it just stopped selling it. */}
         </div>
-      </div>
+      </div>}
 
 
       {/* ══ LEVEL 1 · THE ANSWER ═══════════════════════════════════════════
@@ -1246,7 +1322,7 @@ export default function Home({
           Calendar owns the future properly now — it has the Almanac view,
           which separates the sky's fixed dates from what a run of days is
           good FOR. A link is the honest size for this on Home. */}
-      <button onClick={() => onNavigate("calendar")} style={{
+      {!answerPage && <button onClick={() => onNavigate("calendar")} style={{
         alignSelf: "flex-start", display: "flex", alignItems: "baseline", gap: 7,
         fontSize: 12.5, padding: "9px 2px", border: "none", background: "none",
         color: "var(--color-primary)", cursor: "pointer", fontWeight: 500,
@@ -1254,7 +1330,7 @@ export default function Home({
         <span style={{ fontSize: 11.5, color: "var(--text-3)", fontWeight: 400 }}>
           the dates coming, and the shape of the days they land in
         </span>
-      </button>
+      </button>}
     </div>
   );
 }

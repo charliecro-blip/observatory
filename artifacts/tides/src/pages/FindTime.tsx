@@ -1448,6 +1448,7 @@ function RestoredTimeView({
             onNavigate={onNavigate}
             onStartSession={(title) => setSession({ title })}
             onOpenStar={(starId) => onNavigate("work", starId)}
+            answerPage
           />
         </>
       ) : (

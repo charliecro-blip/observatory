@@ -40,6 +40,21 @@ const BAND_ORDER: DurationBand[] = ["now", "today", "stretch", "background"];
 /** Remember the last lead we showed, so "what changed" is real rather than decorative. */
 function lastSeenKey(testerId: string | null) { return `obs_read_lastseen_${testerId ?? "anon"}`; }
 
+/**
+ * The engine's counterpoint for a row already labelled "watch": the opening
+ * "— though" and the word "watch" go, so it is not said twice. The engine
+ * writes it two ways, "… ; watch X" and "… (watch X)"; the second used to
+ * come out as "(; the short fuse, the rush)" (2026-10-02, NB3).
+ */
+export function watchLine(counterpoint: string): string {
+  return counterpoint
+    .replace(/^\s*—\s*though\s*/i, "")
+    .replace(/\(\s*watch\s+/i, "(")
+    .replace(/;?\s*watch\s+/i, "; ")
+    .replace(/^;\s*/, "")
+    .trim();
+}
+
 export interface ReadingSubject {
   planet: string; share: number; count: number; ofTop: number;
   supports: string[]; presses: string[]; against: string[];
@@ -155,9 +170,7 @@ export default function ReadZone({ reading, testerId, accent }: {
   const counterpointIsSubject = !!subject && !!reading?.counterpointSource?.includes(subject.planet);
   // The engine's counterpoint opens "— though …" and often "… watch X", which
   // under a row labelled "watch" said the word twice.
-  const watch = !counterpointIsSubject
-    ? reading?.counterpoint?.replace(/^\s*—\s*though\s*/i, "").replace(/;?\s*watch\s+/i, "; ").replace(/^;\s*/, "").trim()
-    : null;
+  const watch = !counterpointIsSubject && reading?.counterpoint ? watchLine(reading.counterpoint) : null;
 
   const SubjectRow = ({ label, items }: { label: string; items: string[] }) =>
     items.length === 0 ? null : (

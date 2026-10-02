@@ -134,7 +134,8 @@ export function CommittedWeekStrip({ windows, onOpen }: {
               }}>
                 {first && (
                   <span style={{ fontSize: 10.5, fontWeight: 600, color: PLACED }}>
-                    {clock(first.startTime).replace(/:00/, "").replace(/\s?(AM|PM)/, "")}
+                    {/* "4p", not "4" (NB1, 2026-10-02): the hour alone read as a count. */}
+                    {clock(first.startTime).replace(/:00/, "").replace(/\s?AM/, "a").replace(/\s?PM/, "p")}
                     {list.length > 1 && ` +${list.length - 1}`}
                   </span>
                 )}

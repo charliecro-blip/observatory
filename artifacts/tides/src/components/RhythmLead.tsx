@@ -17,7 +17,7 @@
  * can feel the difference without a trip to Settings. It can go once a
  * shape is chosen, or stay as the free manual choice (§6).
  */
-import React from "react";
+import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsonArray } from "@/lib/jsonArray";
 import { localToday } from "@/lib/dates";
@@ -57,8 +57,12 @@ export default function RhythmLead({
   onStart,
   rhythm, onPickRhythm, testerId, lat, lon,
   overdue, dueToday, undated, later, committedCount,
-  onShape, shapeOpen, onFocus, gear, onEndGear, element, tideLevel, stars,
+  onShape, shapeOpen, onFocus, gear, onEndGear, element, tideLevel, stars, compact = false,
 }: {
+  /** The What-to-do-now page (density audit 2026-10-02): the four style
+   *  buttons fold to the current style and "change" (N1), and the chart's
+   *  payoff line stays out (N2). */
+  compact?: boolean;
   /** The tide's level now — low and ebb make a rest the move. */
   tideLevel?: string | null;
   /** Live stars, with the planet each speaks. A Moon, Venus or Saturn star is a keeping. */
@@ -87,6 +91,7 @@ export default function RhythmLead({
   onStart?: (title: string) => void;
 }) {
   const qc = useQueryClient();
+  const [switching, setSwitching] = useState(false);
   const today = localToday();
   // Same key as "Where you are", so this is a cache read, not a second fetch.
   const { data: habits } = useQuery<Habit[]>({
@@ -114,15 +119,23 @@ export default function RhythmLead({
       {onEndGear && <> <button onClick={onEndGear} style={{ background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", color: "var(--color-primary)", textDecoration: "underline", textUnderlineOffset: 2 }}>End it now</button></>}
     </div>
   );
-  const payoff = element && PAYOFF[element] ? (
+  const payoff = !compact && element && PAYOFF[element] ? (
     <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: -2, marginBottom: 8 }}>{PAYOFF[element]}</div>
   ) : null;
 
-  const switcher = (
+  const current = RHYTHMS.find(r => r.key === rhythm)?.label ?? rhythm;
+  const switcher = compact && !switching ? (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap", fontSize: 10.5, color: "var(--text-3)" }}>
+      <span>{current}</span>
+      <button onClick={() => setSwitching(true)} style={{
+        fontSize: 10.5, background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)",
+      }}>change</button>
+    </div>
+  ) : (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
       <span style={{ fontSize: 10, color: "var(--text-3)" }}>how you want to be met:</span>
       {RHYTHMS.map(r => (
-        <button key={r.key} title={r.blurb} onClick={() => onPickRhythm(r.key)} style={{
+        <button key={r.key} title={r.blurb} onClick={() => { onPickRhythm(r.key); setSwitching(false); }} style={{
           fontSize: 10.5, padding: "3px 9px", borderRadius: 11, cursor: "pointer",
           border: `1px solid ${rhythm === r.key ? "var(--color-primary)" : "var(--color-border)"}`,
           background: rhythm === r.key ? "var(--color-primary)" : "var(--color-background)",
