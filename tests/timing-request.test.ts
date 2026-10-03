@@ -82,11 +82,9 @@ describe("one timing request contract", () => {
       ).durationMinutes,
     ).toBe(90));
   it.each([
-    "paint after 3pm tomorrow",
     "workout Saturday or Sunday",
     "paint next month",
     "deep work this weekend after lunch",
-    "painting September 20",
   ])("requires correction for an unsupported constraint: %s", (text) =>
     expect(
       interpretTimingRequest(text, "America/Chicago", now).draft
@@ -105,9 +103,10 @@ describe("one timing request contract", () => {
     "paint tomorrow at midnight",
     "workout at sunrise tomorrow",
     "paint in two days",
-    "paint this week",
     "paint now or tomorrow",
-    "paint tomorrow night",
+    "paint tomorrow at 3pm",
+    "paint after 9 tomorrow",
+    "stretch every morning",
   ])("does not silently discard a time constraint: %s", (text) => {
     const result = interpretTimingRequest(text, "America/Chicago", now);
     expect(result.draft.needsRangeReview).toBe(true);
@@ -123,6 +122,33 @@ describe("one timing request contract", () => {
     expect(interpretTimingRequest(text, "America/Chicago", now).unresolved).toEqual([]);
   });
 });
+// 2026-10-03: phrases that used to ask now resolve to the window they name.
+// "Does not silently discard" still holds: each is answered, not dropped.
+// Worded apart from tests/eval/timing-heldout.ts, which is never tuned against.
+describe("ordinary time phrases resolve (Friday 2026-09-04, 10:00 Chicago)", () => {
+  const tz = "America/Chicago";
+  it.each([
+    ["paint this week", "2026-09-04T10:00", "2026-09-07T00:00", undefined],
+    ["paint next week", "2026-09-07T00:00", "2026-09-14T00:00", undefined],
+    ["paint tomorrow night", "2026-09-05T18:00", "2026-09-05T23:00", undefined],
+    ["paint after 3pm tomorrow", "2026-09-05T15:00", "2026-09-06T00:00", undefined],
+    ["painting September 20", "2026-09-20T00:00", "2026-09-21T00:00", undefined],
+    ["painting Aug 3", "2027-08-03T00:00", "2027-08-04T00:00", undefined],
+    ["sketch at lunch", "2026-09-04T12:00", "2026-09-04T13:30", undefined],
+    ["stretch before bed", "2026-09-04T18:00", "2026-09-04T23:00", undefined],
+    ["paint in the evening", "2026-09-04T18:00", "2026-09-04T23:00", undefined],
+    ["paint saturday 10-11:30am", "2026-09-05T10:00", "2026-09-05T11:30", "90"],
+    ["deep work tomorrow 1pm to 4pm", "2026-09-05T13:00", "2026-09-05T16:00", "180"],
+    ["call the dentist before 4", "2026-09-04T10:00", "2026-09-04T16:00", undefined],
+  ] as const)("%s", (text, start, end, duration) => {
+    const r = interpretTimingRequest(text, tz, now);
+    expect(r.unresolved).toEqual([]);
+    expect(r.draft.start).toBe(start);
+    expect(r.draft.end).toBe(end);
+    if (duration) expect(r.draft.duration).toBe(duration);
+  });
+});
+
 describe("language counterexamples", () => {
   it.each([
     "I don't want a workout",
