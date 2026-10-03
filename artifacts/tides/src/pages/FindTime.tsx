@@ -182,6 +182,16 @@ export default function FindTime({
     ReturnType<typeof interpretTimingRequest>["draft"] | null
   >(null);
   const hasDraft = draft !== null;
+  // A VISIT IS A FACT WORTH KEEPING. The old shell logged "view" on every
+  // navigation; this one logged only searches, so after 2026-09-30 nothing
+  // could say whether the owner opened the app at all, which is the measure
+  // the reset plan runs on. Same event, marked with this shell.
+  useEffect(() => {
+    const view = destination === "search" ? (hasDraft ? "search-results" : "home")
+      : destination === "workspace" ? `workspace:${workSection}` : destination;
+    logEvent("view", { view, shell: "timing" });
+  }, [destination, workSection, hasDraft]);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [destination, hasDraft]);
