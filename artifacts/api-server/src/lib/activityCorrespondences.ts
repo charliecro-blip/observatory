@@ -434,7 +434,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "gentle-movement",
     label: "Yoga / stretch / walk",
     category: "body",
-    keywords: ["yoga", "stretch", "walk", "mobility", "tai chi", "pilates"],
+    keywords: ["qigong", "yoga", "stretch", "walk", "mobility", "tai chi", "pilates"],
     element: "water",
     planets: { Venus: 1.0, Moon: 0.8 },
     hourRulers: ["Venus", "Moon"],
@@ -548,7 +548,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "deep-study",
     label: "Deep study",
     category: "mind",
-    keywords: [
+    keywords: ["read", "transcript", 
       "study",
       "learn",
       "course",
@@ -763,7 +763,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "creative-practice",
     label: "Make art / creative practice",
     category: "craft",
-    keywords: [
+    keywords: ["film", "video", "record a", 
       "painting",
       "paint a picture",
       "drawing",
@@ -886,7 +886,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     // Real shorthand a person actually types, not a list built from the
     // dictionary: appt/apt, book, confirm, renew, RSVP, the DMV-adjacent
     // world, bills and prescriptions.
-    keywords: [
+    keywords: ["bank", 
       "errands",
       "errand",
       "admin",
@@ -989,7 +989,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "apply-job",
     label: "Apply / submit",
     category: "craft",
-    keywords: [
+    keywords: ["interview", 
       "apply",
       "application",
       "submit",
@@ -1389,7 +1389,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "deep-clean",
     label: "Deep clean",
     category: "home",
-    keywords: [
+    keywords: ["clean", "tidy", 
       "deep clean",
       "scrub",
       "purge",
@@ -1490,7 +1490,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "meditate",
     label: "Meditate / pray",
     category: "spirit",
-    keywords: [
+    keywords: ["mantra", "mantras", 
       "meditate",
       "pray",
       "breathwork",
@@ -1546,7 +1546,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "divination",
     label: "Reflection / divination",
     category: "spirit",
-    keywords: [
+    keywords: ["tarot", 
       "tarot",
       "reading",
       "divination",
@@ -1813,7 +1813,15 @@ function hasWord(haystack: string, word: string): boolean {
   // hole: /\bplan(s|es)?\b/ still fails against "plants", since "t" follows
   // "plan" and is neither a plural suffix nor a boundary.
   const esc = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\b${esc}(s|es)?\\b`).test(haystack);
+  // Ordinary verb forms count too (2026-10-03): "writing", "studying" and
+  // "cleaning" missed "write", "study" and "clean", so a request worded the
+  // way people talk came back unsupported. Each form is still a whole word:
+  // "plan" reaches "planning" but not "plants", "rest" not "restaurant".
+  const forms = [`${esc}(?:s|es|ing|ed)?`];
+  if (/[a-z]e$/.test(word)) forms.push(`${esc.slice(0, -1)}(?:ing|ed)`);
+  if (/[^aeiou]y$/.test(word)) forms.push(`${esc.slice(0, -1)}(?:ies|ied)`);
+  if (/(?:^|[^aeiou])[aeiou][bdgmnprt]$/.test(word)) forms.push(`${esc}${word.slice(-1)}(?:ing|ed)`);
+  return new RegExp(`\\b(?:${forms.join("|")})\\b`).test(haystack);
 }
 
 export function rankActivities(

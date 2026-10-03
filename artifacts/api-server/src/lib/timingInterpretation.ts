@@ -139,7 +139,14 @@ export function interpretTimingActivity(text: string): ActivityInterpretation {
         (value): value is { key: string; label: string } => value !== null,
       ),
     };
-  const matches = rankActivities(text, 3)
+  const ranked = rankActivities(text, 3);
+  // A single short word that names one activity and nothing else ("nap",
+  // "qigong", "film") scores under the confidence bar on length alone. When it
+  // is the ONLY activity the words touch at all, there is no rival reading to
+  // guard against, so it resolves (2026-10-03). Two weak matches still ask.
+  if (ranked.length === 1 && ranked[0].score >= 1.3)
+    return { state: "resolved", options: [{ key: ranked[0].activity.key, label: ranked[0].activity.label }] };
+  const matches = ranked
     .filter((x) => x.score >= 2)
     .map((x) => ({
       key: x.activity.key,

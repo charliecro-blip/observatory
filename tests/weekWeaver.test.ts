@@ -150,8 +150,8 @@ describe("the week's no-basis warning", () => {
   it("counts tasks, not Stars", () => {
     const w = weaveWeek({
       items: [
-        { id: "t1", title: "film Animal series", kind: "task" },
-        { id: "t2", title: "record stats transcript", kind: "task" },
+        { id: "t1", title: "the Jonathan thing", kind: "task" },
+        { id: "t2", title: "blue folder", kind: "task" },
         { id: "s1", title: "Aligned Spine", kind: "star-step" },
         { id: "s2", title: "Take Board Exams Quickly", kind: "star-step" },
       ] as WeekItem[],
