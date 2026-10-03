@@ -8,7 +8,8 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:timing": "artifacts/api-server/node_modules/.bin/esbuild tests/eval/timing-heldout.ts --bundle --platform=node --format=esm --outfile=/tmp/compass-timing-heldout.mjs --log-level=warning && node /tmp/compass-timing-heldout.mjs"
   },
   "private": true,
   "devDependencies": {
