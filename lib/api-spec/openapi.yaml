@@ -524,21 +524,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/NatalChartData"
 
-  /natal-chart/health-insights:
-    get:
-      operationId: getNatalHealthInsights
-      tags: [natal]
-      summary: Get health insights from natal chart (1st, 6th, 10th house analysis)
-      responses:
-        "200":
-          description: Natal health insights
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NatalHealthInsights"
-        "404":
-          description: No natal chart saved yet
-
   /natal-chart/transits:
     get:
       operationId: getNatalTransits
@@ -1280,46 +1265,6 @@ components:
           items:
             type: string
       required: [number, sign, cuspDegree, planets]
-
-    NatalHealthInsights:
-      type: object
-      properties:
-        ascendant:
-          $ref: "#/components/schemas/HouseInsight"
-        sixthHouse:
-          $ref: "#/components/schemas/HouseInsight"
-        tenthHouse:
-          $ref: "#/components/schemas/HouseInsight"
-        summary:
-          type: string
-      required: [ascendant, sixthHouse, tenthHouse, summary]
-
-    HouseInsight:
-      type: object
-      properties:
-        houseNumber:
-          type: integer
-        sign:
-          type: string
-        ruler:
-          type: string
-        rulerSign:
-          type: string
-        rulerHouse:
-          type: integer
-        planetsInHouse:
-          type: array
-          items:
-            type: string
-        themes:
-          type: array
-          items:
-            type: string
-        currentActivations:
-          type: array
-          items:
-            type: string
-      required: [houseNumber, sign, ruler, rulerSign, rulerHouse, planetsInHouse, themes, currentActivations]
 
     TransitAspect:
       type: object

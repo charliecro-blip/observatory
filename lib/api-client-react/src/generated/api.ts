@@ -42,7 +42,6 @@ import type {
   ListLogsParams,
   NatalBlueprintResponse,
   NatalChartData,
-  NatalHealthInsights,
   Pattern,
   SendOpenaiMessageBody,
   SendOpenaiVoiceMessageBody,
@@ -2360,82 +2359,6 @@ export const useUpsertNatalChart = <
 > => {
   return useMutation(getUpsertNatalChartMutationOptions(options));
 };
-
-/**
- * @summary Get health insights from natal chart (1st, 6th, 10th house analysis)
- */
-export const getGetNatalHealthInsightsUrl = () => {
-  return `/api/natal-chart/health-insights`;
-};
-
-export const getNatalHealthInsights = async (
-  options?: RequestInit,
-): Promise<NatalHealthInsights> => {
-  return customFetch<NatalHealthInsights>(getGetNatalHealthInsightsUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetNatalHealthInsightsQueryKey = () => {
-  return [`/api/natal-chart/health-insights`] as const;
-};
-
-export const getGetNatalHealthInsightsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getNatalHealthInsights>>,
-  TError = ErrorType<void>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getNatalHealthInsights>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetNatalHealthInsightsQueryKey();
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getNatalHealthInsights>>
-  > = ({ signal }) => getNatalHealthInsights({ signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getNatalHealthInsights>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetNatalHealthInsightsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getNatalHealthInsights>>
->;
-export type GetNatalHealthInsightsQueryError = ErrorType<void>;
-
-/**
- * @summary Get health insights from natal chart (1st, 6th, 10th house analysis)
- */
-
-export function useGetNatalHealthInsights<
-  TData = Awaited<ReturnType<typeof getNatalHealthInsights>>,
-  TError = ErrorType<void>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getNatalHealthInsights>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetNatalHealthInsightsQueryOptions(options);
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
 
 /**
  * @summary Get current planetary transits aspecting natal positions

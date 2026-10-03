@@ -665,43 +665,6 @@ export const UpsertNatalChartResponse = zod.object({
 });
 
 /**
- * @summary Get health insights from natal chart (1st, 6th, 10th house analysis)
- */
-export const GetNatalHealthInsightsResponse = zod.object({
-  ascendant: zod.object({
-    houseNumber: zod.number(),
-    sign: zod.string(),
-    ruler: zod.string(),
-    rulerSign: zod.string(),
-    rulerHouse: zod.number(),
-    planetsInHouse: zod.array(zod.string()),
-    themes: zod.array(zod.string()),
-    currentActivations: zod.array(zod.string()),
-  }),
-  sixthHouse: zod.object({
-    houseNumber: zod.number(),
-    sign: zod.string(),
-    ruler: zod.string(),
-    rulerSign: zod.string(),
-    rulerHouse: zod.number(),
-    planetsInHouse: zod.array(zod.string()),
-    themes: zod.array(zod.string()),
-    currentActivations: zod.array(zod.string()),
-  }),
-  tenthHouse: zod.object({
-    houseNumber: zod.number(),
-    sign: zod.string(),
-    ruler: zod.string(),
-    rulerSign: zod.string(),
-    rulerHouse: zod.number(),
-    planetsInHouse: zod.array(zod.string()),
-    themes: zod.array(zod.string()),
-    currentActivations: zod.array(zod.string()),
-  }),
-  summary: zod.string(),
-});
-
-/**
  * @summary Get current planetary transits aspecting natal positions
  */
 export const GetNatalTransitsResponseItem = zod.object({

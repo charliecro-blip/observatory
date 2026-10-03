@@ -337,24 +337,6 @@ export interface NatalChartData {
   createdAt: string;
 }
 
-export interface HouseInsight {
-  houseNumber: number;
-  sign: string;
-  ruler: string;
-  rulerSign: string;
-  rulerHouse: number;
-  planetsInHouse: string[];
-  themes: string[];
-  currentActivations: string[];
-}
-
-export interface NatalHealthInsights {
-  ascendant: HouseInsight;
-  sixthHouse: HouseInsight;
-  tenthHouse: HouseInsight;
-  summary: string;
-}
-
 export type TransitAspectSeverity =
   (typeof TransitAspectSeverity)[keyof typeof TransitAspectSeverity];
 

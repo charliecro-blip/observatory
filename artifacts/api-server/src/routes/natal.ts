@@ -3,7 +3,7 @@ import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertNatalChartBody } from "@workspace/api-zod";
 import { julianDay, getNatalDegreeAngles } from "../lib/astro.js";
-import { computeNatalChart, computeTransitAspects, computeNatalHealthInsights, computeTransitForecast } from "../lib/natal.js";
+import { computeNatalChart, computeTransitAspects, computeTransitForecast } from "../lib/natal.js";
 import { requireTesterId } from "../middlewares/testerId.js";
 
 const router: IRouter = Router();
@@ -86,25 +86,6 @@ router.post("/natal-chart", requireTesterId, async (req, res) => {
   }
 
   res.json(buildResponse(stored));
-});
-
-// GET /api/natal-chart/health-insights
-router.get("/natal-chart/health-insights", requireTesterId, async (req, res) => {
-  const testerId = res.locals.testerId as string;
-  const stored = await getStoredChart(testerId);
-  if (!stored) {
-    res.status(404).json({ error: "No natal chart saved yet" });
-    return;
-  }
-  const computed = computeNatalChart(
-    stored.birthDate,
-    stored.birthTime,
-    stored.birthLat,
-    stored.birthLon,
-    stored.utcOffset,
-  );
-  const insights = computeNatalHealthInsights(computed);
-  res.json(insights);
 });
 
 // GET /api/natal-chart/transits
