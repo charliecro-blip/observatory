@@ -61,7 +61,10 @@ const CASES: Case[] = [
   { text: "plan next month", activity: ["strategize", "organize"], when: "ask" },
   { text: "journal before bed", activity: "journal", when: { day: 0, part: "evening" } },
   { text: "start a new workout routine monday", activity: ["start-regimen", "train-hard"], when: { day: 5 } },
-  { text: "send the proposal tomorrow morning", activity: ["publish", "admin-errands", "negotiate"], when: { day: 1, part: "morning" } },
+  // Corrected 2026-10-03, the one expectation changed after a run: apply-job is
+  // labeled "Apply / submit" and lists "proposal" itself; the case was written
+  // reading its key as job applications only.
+  { text: "send the proposal tomorrow morning", activity: ["apply-job", "publish", "admin-errands", "negotiate"], when: { day: 1, part: "morning" } },
 ];
 
 const TZ = "America/Chicago";

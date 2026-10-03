@@ -55,4 +55,11 @@ describe("activity matching", () => {
       expect(r?.score ?? 0, `${text} matched ${r?.activity.label}`).toBeLessThan(CONFIDENT);
     }
   });
+
+  // "brainstorm names for the launch" picked Launch a venture: a word inside a
+  // "for the …" phrase names what the work is for, not the work.
+  it("reads a for-the phrase as the subject, not the activity", () => {
+    expect(top("brainstorm names for the launch tomorrow")?.activity.key).toBe("strategize");
+    expect(top("launch the newsletter")?.activity.key).toBe("launch-venture");
+  });
 });

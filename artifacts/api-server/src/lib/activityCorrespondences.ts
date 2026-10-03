@@ -655,6 +655,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     category: "mind",
     keywords: [
       "plan",
+      "brainstorm",
       "strategy",
       "roadmap",
       "quarter",
@@ -1835,11 +1836,16 @@ export function rankActivities(
       limit,
     );
   const t = ` ${text.toLowerCase()} `;
+  // "brainstorm names for the launch" is brainstorming; the launch is what it
+  // is for. A word that appears only inside a "for the …" / "about my …"
+  // phrase names the subject, not the act, so it counts half (2026-10-03).
+  const head = t.replace(/\s(?:for|about|on|re)\s(?:the|my|our|a|an|this|that|his|her|their)\s.*$/, " ");
+  const weigh = (w: string) => (hasWord(head, w) ? 1 : hasWord(t, w) ? 0.5 : 0);
   const scored: { activity: ActivityCorrespondence; score: number }[] = [];
   for (const a of ACTIVITIES) {
     let score = 0;
     for (const k of a.keywords) {
-      if (hasWord(t, k.toLowerCase())) score += Math.min(3, 1 + k.length / 8);
+      score += weigh(k.toLowerCase()) * Math.min(3, 1 + k.length / 8);
     }
     // Naming the activity should be enough to match it.
     //
@@ -1864,7 +1870,7 @@ export function rankActivities(
       .map((part) => part.split(/[^a-z]+/).filter((w) => w.length >= 4))
       .filter((ws) => ws.length > 0);
     const allWords = new Set(names.flat());
-    for (const w of allWords) if (hasWord(t, w)) score += 0.5;
+    for (const w of allWords) score += 0.5 * weigh(w);
     if (names.some((ws) => ws.every((w) => hasWord(t, w)))) score += 1.5;
     if (score > 0) scored.push({ activity: a, score });
   }
