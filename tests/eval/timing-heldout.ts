@@ -19,7 +19,8 @@ type When =
   | "default"                                                      // the 7-day default is the right reading
   | "ask";                                                         // genuinely needs a question
 
-interface Case { text: string; activity: string | string[] | "any"; when: When; minutes?: number }
+// activity "ask": nothing in the palette fits, so asking is the right answer.
+interface Case { text: string; activity: string | string[] | "any" | "ask"; when: When; minutes?: number; batch?: number }
 
 const CASES: Case[] = [
   { text: "study for herbs tomorrow afternoon", activity: ["deep-study", "learn-skill"], when: { day: 1, part: "afternoon" } },
@@ -67,6 +68,46 @@ const CASES: Case[] = [
   { text: "send the proposal tomorrow morning", activity: ["apply-job", "publish", "admin-errands", "negotiate"], when: { day: 1, part: "morning" } },
 ];
 
+// BATCH 2, written 2026-10-03 after batch 1 reached 98% from being tuned
+// against. Ordinary people's requests, NOT modeled on the owner's tasks, and
+// written before running them. Batch 1 is now a regression check; batch 2 is
+// the honest number until it, too, has been tuned against.
+const BATCH2: Case[] = [
+  { text: "fix the leaky faucet saturday", activity: "repair", when: { day: 3 } },
+  { text: "repot the plants sunday afternoon", activity: "garden", when: { day: 4, part: "afternoon" } },
+  { text: "declutter the garage this weekend", activity: ["organize", "deep-clean"], when: { days: [3, 4] } },
+  { text: "write my wedding speech tomorrow", activity: ["first-draft", "teach-present"], when: { day: 1 } },
+  { text: "revise chapter three friday morning", activity: "edit-revise", when: { day: 2, part: "morning" } },
+  { text: "lift weights tonight", activity: "train-hard", when: { day: 0, part: "evening" } },
+  { text: "long bike ride saturday", activity: "endurance", when: { day: 3 } },
+  { text: "stretch for 20 minutes before bed", activity: "gentle-movement", when: { day: 0, part: "evening" }, minutes: 20 },
+  { text: "dinner party friday night", activity: ["host", "cook"], when: { day: 2, part: "evening" } },
+  { text: "call grandma sunday", activity: "call-family", when: { day: 4 } },
+  { text: "meal prep sunday", activity: "cook", when: { day: 4 } },
+  { text: "pay off the credit card", activity: ["settle-debts", "budget"], when: "default" },
+  { text: "buy a new car", activity: "big-purchase", when: "default" },
+  { text: "sign the contract with the publisher monday", activity: "sign-contract", when: { day: 5 } },
+  { text: "pray", activity: "meditate", when: "default" },
+  { text: "talk to my boss about the promotion thursday", activity: ["negotiate", "hard-conversation"], when: { day: 1 } },
+  { text: "research grad programs tomorrow afternoon", activity: ["investigate", "deep-study"], when: { day: 1, part: "afternoon" } },
+  { text: "give my talk friday", activity: "teach-present", when: { day: 2 } },
+  { text: "go to the dmv", activity: "admin-errands", when: "default" },
+  { text: "get a haircut before friday", activity: "haircut", when: { days: [0, 1] } },
+  { text: "a quiet day alone saturday", activity: ["retreat", "deep-rest"], when: { day: 3 } },
+  { text: "move into the new place oct 20", activity: "move-home", when: { day: 13 } },
+  { text: "partnership meeting with Sam tuesday", activity: "begin-partnership", when: { day: 6 } },
+  { text: "buy milk", activity: "ask", when: "default" },
+  { text: "reply to Dana", activity: "ask", when: "default" },
+  { text: "finish the report by friday", activity: "finish-polish", when: { days: [0, 2] } },
+  { text: "journal tomorrow morning", activity: "journal", when: { day: 1, part: "morning" } },
+  { text: "2 hour study session thursday evening", activity: "deep-study", when: { day: 1, part: "evening" }, minutes: 120 },
+  { text: "ask Jamie out this week", activity: "ask-someone-out", when: { days: [0, 4] } },
+  { text: "clean out the fridge tonight", activity: ["deep-clean", "organize"], when: { day: 0, part: "evening" } },
+  { text: "balance the checkbook sunday", activity: "budget", when: { day: 4 } },
+  { text: "sketch for an hour after lunch", activity: "creative-practice", when: { day: 0, part: "afternoon" }, minutes: 60 },
+];
+for (const c of BATCH2) CASES.push({ ...c, batch: 2 });
+
 const TZ = "America/Chicago";
 const NOW = new Date("2026-10-07T14:00:00Z");   // 9:00 AM CDT, a Wednesday
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ });
@@ -76,13 +117,14 @@ const lastDay = (iso: string) => dayKey(new Date(Date.parse(iso) - 60000).toISOS
 const hourOf = (iso: string) => Number(new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", hour12: false }));
 
 type Verdict = "right" | "asked" | "wrong";
-const rows: { text: string; act: Verdict; when: Verdict; dur: Verdict | "-"; note: string }[] = [];
+const rows: { batch: number; text: string; act: Verdict; when: Verdict; dur: Verdict | "-"; note: string }[] = [];
 
 for (const c of CASES) {
   const r: any = interpretTimingRequest(c.text, TZ, NOW);
   const got = r.state === "resolved" ? r.options?.[0]?.key : null;
-  const want = c.activity === "any" ? null : Array.isArray(c.activity) ? c.activity : [c.activity];
-  const act: Verdict = r.state === "resolved"
+  const want = c.activity === "any" || c.activity === "ask" ? null : Array.isArray(c.activity) ? c.activity : [c.activity];
+  const act: Verdict = c.activity === "ask" ? (r.state === "resolved" ? "wrong" : "right")
+    : r.state === "resolved"
     ? (!want || want.includes(got) ? "right" : "wrong")
     : "asked";
 
@@ -103,17 +145,20 @@ for (const c of CASES) {
     if (when === "wrong") whenNote = `searched ${dayKey(r.horizon.start)} ${hourOf(r.horizon.start)}h → ${lastDay(r.horizon.end)} ${hourOf(r.horizon.end)}h`;
   }
   const dur: Verdict | "-" = c.minutes == null ? "-" : r.durationMinutes === c.minutes ? "right" : "wrong";
-  rows.push({ text: c.text, act, when, dur, note: [got && act === "wrong" ? `activity ${got}` : r.state !== "resolved" ? `activity ${r.state}` : "", whenNote, dur === "wrong" ? `duration ${r.durationMinutes ?? "none"}` : ""].filter(Boolean).join(" · ") });
+  rows.push({ batch: c.batch ?? 1, text: c.text, act, when, dur, note: [got && act === "wrong" ? `activity ${got}` : r.state !== "resolved" ? `activity ${r.state}` : "", whenNote, dur === "wrong" ? `duration ${r.durationMinutes ?? "none"}` : ""].filter(Boolean).join(" · ") });
 }
 
-const pct = (n: number) => `${Math.round((n / rows.length) * 100)}%`;
-const count = (k: "act" | "when", v: Verdict) => rows.filter(r => r[k] === v).length;
-const both = rows.filter(r => r.act === "right" && r.when === "right" && r.dur !== "wrong").length;
-console.log(`\nTiming interpreter, held-out set (${rows.length} requests)\n`);
-console.log(`Fully right, no question asked: ${both} (${pct(both)})`);
-console.log(`Activity  right ${count("act", "right")} · asked ${count("act", "asked")} · WRONG ${count("act", "wrong")}`);
-console.log(`When      right ${count("when", "right")} · asked ${count("when", "asked")} · WRONG ${count("when", "wrong")}\n`);
-for (const r of rows) {
-  const flag = r.act === "wrong" || r.when === "wrong" || r.dur === "wrong" ? "✗" : r.act === "asked" || r.when === "asked" ? "?" : "✓";
-  console.log(`${flag} ${r.text.padEnd(44)} ${r.note}`);
+for (const batch of [1, 2]) {
+  const b = rows.filter(r => r.batch === batch);
+  const pct = (n: number) => `${Math.round((n / b.length) * 100)}%`;
+  const count = (k: "act" | "when", v: Verdict) => b.filter(r => r[k] === v).length;
+  const both = b.filter(r => r.act === "right" && r.when === "right" && r.dur !== "wrong").length;
+  console.log(`\nTiming interpreter, batch ${batch} (${b.length} requests)${batch === 1 ? ", tuned against: a regression check" : ""}\n`);
+  console.log(`Fully right, no question asked: ${both} (${pct(both)})`);
+  console.log(`Activity  right ${count("act", "right")} · asked ${count("act", "asked")} · WRONG ${count("act", "wrong")}`);
+  console.log(`When      right ${count("when", "right")} · asked ${count("when", "asked")} · WRONG ${count("when", "wrong")}\n`);
+  for (const r of b) {
+    const flag = r.act === "wrong" || r.when === "wrong" || r.dur === "wrong" ? "✗" : r.act === "asked" || r.when === "asked" ? "?" : "✓";
+    console.log(`${flag} ${r.text.padEnd(44)} ${r.note}`);
+  }
 }
