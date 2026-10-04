@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/fetchJson";
 import { localToday } from "@/lib/dates";
+import { DaylightLine } from "@/components/DaylightLine";
 import Planner from "@/components/Planner";
 import { useTester } from "@/contexts/tester-context";
 import { useTidesNow } from "@/hooks/useTides";
@@ -269,6 +270,7 @@ export default function CompassHome({
             <Action variant="text" onClick={onNow}>What to do now</Action>
           </p>
         )}
+        <DaylightLine dateStr={localToday()} className="compass-sun-line" />
       </section>
       {testerId && <TodaysPractices testerId={testerId} lat={lat} lon={lon} />}
       <section

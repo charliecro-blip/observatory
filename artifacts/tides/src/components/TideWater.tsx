@@ -5,7 +5,7 @@ import { ELEMENT_COLORS, CHARACTER_ELEMENT, type TideCharacter } from "@/lib/ele
 import { smoothPathD } from "@/lib/smoothPath";
 import { useTester } from "@/contexts/tester-context";
 import { isWithinFreeWindow, isAwakeDuring, sleepIntervals } from "@/lib/chronotype";
-import { railSunTimes } from "@/components/Rail";
+import { useDaylight } from "@/components/DaylightLine";
 import { useTidesWeek } from "@/hooks/useTides";
 import type { WeekDay } from "@/lib/types";
 import { prefersReducedMotion } from "@/lib/reducedMotion";
@@ -266,6 +266,9 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   const dayElement: string | undefined = now?.reading?.element ?? now?.tide?.element;
   const windowsLens = lens !== "overall" ? lens : (dayElement ?? "");
 
+  // Sun times come from the server, the same computation Home and the Day view
+  // print (the browser approximation ran up to 3.3 minutes off).
+  const { data: daylight } = useDaylight(new Date(arc.dayStart).toLocaleDateString("en-CA"), lat, lon);
   const { data: bestTimes } = useQuery<any>({
     queryKey: ["best-times", windowsLens, lat, lon],
     queryFn: async () => {
@@ -363,7 +366,8 @@ export function UnifiedTideChart({ arc, now, lat, lon }: { arc: any; now: any; l
   }
 
   // ── Sky: time-of-day gradient anchored to real sunrise/sunset.
-  const sun = railSunTimes(lat, lon);
+  const sun = daylight && !daylight.polar && daylight.sunrise && daylight.sunset
+    ? { sunrise: new Date(daylight.sunrise), sunset: new Date(daylight.sunset) } : null;
   const srH = sun ? (sun.sunrise.getTime() - dayStartMs) / 3600000 : 6;
   const ssH = sun ? (sun.sunset.getTime() - dayStartMs) / 3600000 : 18;
   const sky = dark

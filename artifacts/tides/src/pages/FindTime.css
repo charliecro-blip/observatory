@@ -856,6 +856,7 @@
 
 /* Home after the density pass (2026-09-30). */
 .compass-moon-line { font: 400 17px/1.55 var(--font-serif); color: var(--text-1); margin: 0 0 4px; }
+.compass-sun-line { font: 400 14px/1.5 var(--font-sans); color: var(--text-3); margin: 0 0 4px; }
 .compass-moon-line .compass-action { font: 500 14px/1 var(--font-sans); padding: 0; min-height: 0; vertical-align: baseline; }
 .compass-due { padding: 22px 0 6px; border-top: 1px solid var(--color-border); }
 .compass-due h2 { margin-bottom: 10px; }

@@ -23,6 +23,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 import { useDialog } from "@/hooks/useDialog";
 import AlmanacView from "@/components/AlmanacView";
 import { moonLine } from "@/lib/moonLine";
+import { DaylightLine } from "@/components/DaylightLine";
 import { usePerfections, ExactList, aspectColor, perfectionGlyphs, perfectionWords } from "@/components/ExactAspects";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -732,7 +733,10 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
               {/* Day view: planetary hours legend ABOVE scroll area */}
               {isDay && !skyQuiet && (
                 <div style={{ flexShrink:0,height:LEGEND_H,borderBottom:"1px solid var(--color-border)",background:"var(--color-card-2)",padding:"6px 8px",overflowY:"auto" }}>
-                  <div style={{ fontSize: 10.5,color:"var(--text-3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
+                  <div style={{ display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"baseline",gap:"0 12px",marginBottom:4 }}>
+                    <div style={{ fontSize: 10.5,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.4px" }}>Planetary hours</div>
+                    <DaylightLine dateStr={dates[0] ?? today} style={{ margin:0,fontSize:10.5,color:"var(--text-3)" }} />
+                  </div>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
                     {allHours.map((ph,i)=>{
                       const col = PLANET_COLORS[ph.ruler]??"#888888";
@@ -1528,6 +1532,7 @@ function AgendaView({ dateStr, today, dayData, nowIllumination, events, vocRange
               })(),
               scope: isToday ? "today" : "day", fmtTime,
             }) : "The day"}
+            <DaylightLine dateStr={dateStr} style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--text-3)", fontFamily: "var(--font-sans)" }} />
           </div>
           <button onClick={() => onAddEvent()} style={{ fontSize: 10, padding: "4px 11px", borderRadius: 7, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--text-2)", cursor: "pointer", flexShrink: 0 }}>+ block</button>
         </div>

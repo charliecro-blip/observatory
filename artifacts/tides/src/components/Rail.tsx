@@ -14,7 +14,7 @@ import { useNorthStars } from "@/hooks/useTides";
 import { ELEMENT_MYTHOS } from "@/lib/mythos";
 import TransitTake from "@/components/TransitTake";
 import { CompassMark } from "@/components/CompassMark";
-import Glyph from "@/components/Glyph";
+import { useDaylight } from "@/components/DaylightLine";import Glyph from "@/components/Glyph";
 import { planetColor, PLANET_COLORS } from "@/lib/planetColors";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 
@@ -445,39 +445,12 @@ const PLANET_MEANING: Record<string, string> = Object.fromEntries(
   Object.values(LEXICON_PLANETS).map(p => [p.key, p.meaning]),
 );
 
-// Approximate sunrise/sunset for the Rail (mirrors Today.tsx logic)
-export function railSunTimes(lat: number, lon: number): { sunrise: Date; sunset: Date; solarNoon: Date } | null {
-  const today = localToday();
-  // lstNoon below is expressed in UTC hours, so the base these offsets are added
-  // to must also be UTC midnight — otherwise sun times are shifted by the local
-  // timezone offset (e.g. solar noon rendering as ~5pm instead of ~1pm).
-  const midnight = new Date(today + "T00:00:00Z");
-  const base = new Date(today + "T12:00:00Z");
-  const jd = base.getTime() / 86400000 + 2440587.5;
-  const n = jd - 2451545.0;
-  const L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
-  const g = (((357.528 + 0.9856003 * n) % 360 + 360) % 360) * Math.PI / 180;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
-  const sinDec = Math.sin(23.439 * Math.PI / 180) * Math.sin(lambda);
-  const cosDec = Math.cos(Math.asin(sinDec));
-  const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(lat * Math.PI / 180) * sinDec) /
-               (Math.cos(lat * Math.PI / 180) * cosDec);
-  if (Math.abs(cosH) > 1) return null;
-  const H = Math.acos(cosH) * 180 / Math.PI;
-  const B = (360 / 365) * (n - 81) * Math.PI / 180;
-  const EqT = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
-  const lstNoon = 12 - lon / 15 - EqT / 60;
-  return {
-    sunrise: new Date(midnight.getTime() + (lstNoon - H / 15) * 3600000),
-    sunset:  new Date(midnight.getTime() + (lstNoon + H / 15) * 3600000),
-    solarNoon: new Date(midnight.getTime() + lstNoon * 3600000),
-  };
-}
-
 // `SunArc` lived here — a daylight arc drawn from railSunTimes, and never
 // rendered by anything. Removed 2026-08-15. `railSunTimes` itself stays: it
 // is exported and TideWater draws the day's light band with it, which is the
 // reason deleting the component wholesale would have been wrong.
+// (2026-10-04: railSunTimes itself is gone too. It ran up to 3.3 minutes off;
+// every surface now reads /api/tides/daylight through useDaylight.)
 
 // The rail at the astro-quiet lens: clock, date, and the day's light — the
 // desk stripped to what a scheduler needs. When a running session is what
@@ -492,7 +465,7 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate, hideWordmark = false }:
     const t = setInterval(() => setTick(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
-  const sun = railSunTimes(lat, lon);
+  const { data: sun } = useDaylight(localToday(), lat, lon);
   return (
     <aside style={{
       width: RAIL_W, minWidth: RAIL_W, background: "var(--color-rail)",
@@ -515,9 +488,9 @@ function QuietRail({ lat, lon, sessionQuiet, onNavigate, hideWordmark = false }:
         <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 4 }}>
           {tick.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </div>
-        {sun && (
+        {sun && !sun.polar && sun.sunrise && sun.sunset && (
           <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 8 }}>
-            Light {fmtT(sun.sunrise)}–{fmtT(sun.sunset)}
+            Light {fmtT(new Date(sun.sunrise))}–{fmtT(new Date(sun.sunset))}
           </div>
         )}
         {sessionQuiet && (

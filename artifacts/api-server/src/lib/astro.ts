@@ -609,7 +609,7 @@ export function getSunriseSunset(
   jd: number,
   latDeg: number,
   lonDeg: number,
-): { sunrise: Date; sunset: Date; polar: "day" | "night" | null } {
+): { sunrise: Date; sunset: Date; solarNoon: Date; polar: "day" | "night" | null } {
   const T     = (jd - 2451545.0) / 36525;
   const L0    = normalize360(280.46646 + 36000.76983 * T);
   const M     = normalize360(357.52911 + 35999.05029 * T) * DEG2RAD;
@@ -663,8 +663,33 @@ export function getSunriseSunset(
   return {
     sunrise: new Date(baseDateMs + riseMinutes * 60000),
     sunset:  new Date(baseDateMs + setMinutes  * 60000),
+    solarNoon: new Date(baseDateMs + noonMinutes * 60000),
     polar,
   };
+}
+
+/**
+ * The Sun's day for a CIVIL date in the viewer's zone.
+ *
+ * getSunriseSunset anchors to the UTC calendar date of the JD it is handed, so
+ * asking it at "now" gives tomorrow's times to anyone west of Greenwich once
+ * their evening has crossed UTC midnight (Austin after 7 PM). Handing it the
+ * instant of local solar noon puts the UTC date and the civil date on the same
+ * day for every longitude. Withheld, not invented, under polar day or night: `sunrise`, `solarNoon` and
+ * `sunset` are null there (solar noon would still exist, but a day with no
+ * rise and set is reported as such rather than half-filled).
+ */
+export function daylightOnLocalDay(
+  localDate: string,
+  latDeg: number,
+  lonDeg: number,
+): { sunrise: Date | null; solarNoon: Date | null; sunset: Date | null; polar: "day" | "night" | null } {
+  const [y, m, d] = localDate.split("-").map(Number);
+  // Approximate local solar noon on that civil date, as a UTC instant.
+  const approx = Date.UTC(y, m - 1, d, 12) - (lonDeg / 15) * 3600000;
+  const sun = getSunriseSunset(julianDay(new Date(approx)), latDeg, lonDeg);
+  if (sun.polar) return { sunrise: null, solarNoon: null, sunset: null, polar: sun.polar };
+  return { sunrise: sun.sunrise, solarNoon: sun.solarNoon, sunset: sun.sunset, polar: null };
 }
 
 // ── Planetary Hours (Chaldean) ────────────────────────────────────────────────

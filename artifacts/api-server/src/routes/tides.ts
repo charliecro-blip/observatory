@@ -9,7 +9,7 @@ import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
   getMajorAspects, getAspectOrbs, getLocalAngles, getAngularPlanets,
-  getLastMoonAspect, getNextAngularCrossings, isSignificantCrossing, getSunriseSunset,
+  getLastMoonAspect, getNextAngularCrossings, isSignificantCrossing, getSunriseSunset, daylightOnLocalDay,
   SIGNS, sunLongitude, moonLongitude, isRetrograde, eclipseWindow,
 } from "../lib/astro.js";
 import { db } from "@workspace/db";
@@ -69,6 +69,26 @@ const ELEMENT_QUALITIES: Record<string, { quality: string; invitation: string }>
 };
 
 // ── /api/tides/now ─────────────────────────────────────────────────────────
+
+// The Sun's day for a civil date: sunrise, solar noon, sunset. The ONE source
+// for every surface that prints them (Home, the Day view), replacing a browser
+// approximation that ran up to 3.3 minutes off (measured 2026-10-04).
+router.get("/tides/daylight", (req, res) => {
+  const date = String(req.query.date ?? "");
+  const lat = parseFloat(String(req.query.lat ?? ""));
+  const lon = parseFloat(String(req.query.lon ?? ""));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    res.status(400).json({ error: "invalid_request" });
+    return;
+  }
+  const d = daylightOnLocalDay(date, lat, lon);
+  res.json({
+    date, polar: d.polar,
+    sunrise: d.sunrise?.toISOString() ?? null,
+    solarNoon: d.solarNoon?.toISOString() ?? null,
+    sunset: d.sunset?.toISOString() ?? null,
+  });
+});
 
 router.get("/tides/now", async (req, res) => {
   const lat = parseFloat((req.query.lat as string) ?? "40.7");
