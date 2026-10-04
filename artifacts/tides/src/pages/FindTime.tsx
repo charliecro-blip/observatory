@@ -130,7 +130,7 @@ export default function FindTime({
   const { data: railNow } = useTidesNow(testerId, lat, lon);
   const [destination, setDestination] = useState<
     "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about" | "settings"
-  >("search");
+  >(() => new URLSearchParams(location.search).has("settings") ? "settings" : "search");
   // WORKSPACE UNDER THIS HEADER (density pass 2026-09-30, W5). It used to swap
   // the whole app for the old one: its own navigation, its own top bar, a
   // second Home and a second Calendar, and a thin bar as the only way back.
@@ -314,6 +314,24 @@ export default function FindTime({
               : "Compass does not have a timing match for this activity yet. You can change your request above."),
       );
       queryId.current = crypto.randomUUID();
+      // What was typed and what Compass made of it (owner 2026-10-04: the
+      // held-out batches are spent, so real requests are the next measure).
+      // The queryId pairs it with timing_search_result, which records the
+      // activity actually searched, so a correction shows as a mismatch.
+      // The text is the person's own words: the timing cohort is the owner
+      // alone, and widening it means saying so in Settings' list of what is
+      // stored before it ships.
+      logEvent("timing_request", {
+        queryId: queryId.current,
+        text: value.slice(0, 500),
+        state: result.state,
+        activity: nextActivity || null,
+        options: (result.options ?? []).map((o: { key: string }) => o.key),
+        unresolved: result.unresolved ?? [],
+        start: nextDraft?.start ?? null,
+        end: nextDraft?.end ?? null,
+        duration: nextDraft?.duration ?? null,
+      });
       if (result.state === "unsupported")
         logEvent("unsupported_activity_requested", {
           queryId: queryId.current,
