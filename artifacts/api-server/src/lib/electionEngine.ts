@@ -166,8 +166,16 @@ export interface ElectionResult {
    * matching hours this week aren't shown on their own" instead of the
    * person wondering where the Mercury hours went.
    */
-  withheld: { hourOnly: number };
+  withheld: {
+    hourOnly: number;
+    /** Day-long windows dropped because the Moon is void for nearly all of
+     *  them, for activities that avoid the void. */
+    voidMoon: number;
+  };
 }
+
+/** The shortest stretch of a day, clear of a void Moon, still worth listing. */
+const MIN_CLEAR_OF_VOID_MS = 2 * 3600000;
 
 export function clockOf(ms: number, tzOffsetMin: number): string {
   const s = new Date(ms - tzOffsetMin * 60000);
@@ -712,6 +720,7 @@ export function computeElections(opts: {
   const windows: ElectionWindow[] = [];
   // Candidates the hour made and nothing else backed — counted, not shown.
   let hourOnlyWithheld = 0;
+  let voidWithheld = 0;
   const finalAspectMemo = new Map<string, ReturnType<typeof moonFinalAspectInSign>>();
 
   for (let d = 0; d < days; d++) {
@@ -801,6 +810,17 @@ export function computeElections(opts: {
     const dayRuler = WEEKDAY_RULERS[["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(dow)];
     const vocSpans = (arc.vocWindows ?? []).map(v => [Date.parse(v.start), Date.parse(v.end)] as [number, number]);
     const inVoc = (a: number, b: number) => vocSpans.some(([s, e]) => a < e && b > s);
+    const longestClearOfVoc = (a: number, b: number): [number, number] | null => {
+      let best: [number, number] | null = null;
+      let cursor = a;
+      for (const [s, e] of [...vocSpans].sort((x, y) => x[0] - y[0])) {
+        if (e <= cursor || s >= b) continue;
+        if (s > cursor && (!best || s - cursor > best[1] - best[0])) best = [cursor, s];
+        cursor = Math.max(cursor, e);
+      }
+      if (cursor < b && (!best || b - cursor > best[1] - best[0])) best = [cursor, b];
+      return best;
+    };
 
     // ── Day-level GREAT signals ─────────────────────────────────────────────
     const daySources: string[] = [];
@@ -1013,9 +1033,23 @@ export function computeElections(opts: {
         merged.some(m => m.startMs <= c.startMs + 60000 && m.endMs >= c.endMs - 60000)));
 
     // ── Score, tier, emit ────────────────────────────────────────────────────
-    for (const c of cands) {
-      if (superseded.has(c)) continue;
-      if (act.voc === "avoid" && !c.allDay && inVoc(c.startMs, c.endMs) && !c.sources.includes("voc")) continue;
+    for (const c0 of cands) {
+      if (superseded.has(c0)) continue;
+      // VOID OF COURSE, for activities that avoid it (2026-10-04). All-day
+      // windows used to be exempt, so a haircut day read "good, 7 AM–11 PM"
+      // while the Moon was void from 5:21 AM to 9:52 PM. A day-long window
+      // now keeps only its longest stretch clear of the void, and is no
+      // longer all-day once clipped; a stretch too short to plan around is
+      // dropped and counted, never silently lost.
+      let c = c0;
+      if (act.voc === "avoid" && !c0.sources.includes("voc") && inVoc(c0.startMs, c0.endMs)) {
+        if (!c0.allDay) continue;
+        const clear = longestClearOfVoc(c0.startMs, c0.endMs);
+        if (!clear || clear[1] - clear[0] < MIN_CLEAR_OF_VOID_MS) { voidWithheld++; continue; }
+        // Inward to whole minutes: the void's edges carry milliseconds, and a
+        // window starting at the truncated second still overlapped it.
+        c = { ...c0, startMs: Math.ceil(clear[0] / 60000) * 60000, endMs: Math.floor(clear[1] / 60000) * 60000, allDay: false };
+      }
       const score = c.score * dayBoost;
       // GREAT requires TWO independent signals (owner 2026-07-20: one wasn't
       // scarce enough — Venus hours recur daily and a governing house holds
@@ -1255,6 +1289,6 @@ export function computeElections(opts: {
     chartAvailable: !!natal,
     personalized: out.some(w => w.personal),
     cautions, windows: out,
-    withheld: { hourOnly: hourOnlyWithheld },
+    withheld: { hourOnly: hourOnlyWithheld, voidMoon: voidWithheld },
   };
 }
