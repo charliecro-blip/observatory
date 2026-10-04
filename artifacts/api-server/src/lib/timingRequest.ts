@@ -32,6 +32,23 @@ const NUMBERS: Record<string, number> = {
   ninety: 90,
 };
 
+const SPAN_COUNT: Record<string, number> = {
+  "a couple of": 2, "couple of": 2, "a few": 3, few: 3, one: 1, two: 2, three: 3, four: 4,
+  five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12,
+};
+
+/**
+ * "(in) the next three days", "over the next couple of weeks": a span that
+ * starts now. Not "in two weeks", which is a point in time and still asks.
+ */
+function horizonSpan(text: string): { match: RegExpExecArray; days: number } | null {
+  const m = /\b(?:(?:in|within|over|during|for) )?(?:the )?(?:next|coming|following) (a couple of|couple of|a few|few|\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve) (days?|weeks?)\b/.exec(text);
+  if (!m) return null;
+  const n = SPAN_COUNT[m[1]] ?? Number(m[1]);
+  if (!Number.isInteger(n) || n < 1) return null;
+  return { match: m, days: n * (m[2].startsWith("week") ? 7 : 1) };
+}
+
 /** One request interpretation. All calendar arithmetic uses the supplied zone. */
 export function interpretTimingRequest(
   text: string,
@@ -80,6 +97,8 @@ export function interpretTimingRequest(
   let first = 0,
     last = 6,
     explicitDate = false;
+  const span = horizonSpan(normalized);
+  let report: { days: number } | null = null;
   const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
   const monthDay = consume(
     /\b(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/.exec(normalized),
@@ -98,6 +117,20 @@ export function interpretTimingRequest(
       if (keyFor(year) < today) year += 1;
       first = last = daysUntil(keyFor(year));
       explicitDate = true;
+    }
+  } else if (span) {
+    // "the next three days" is a range; "the next couple of weeks" is longer
+    // than one search covers, so it names a report instead of guessing a week.
+    consume(span.match);
+    explicitDate = true;
+    first = 0;
+    if (span.days <= 7) {
+      last = span.days - 1;
+      assumptions.push(`The next ${span.days} days, starting today.`);
+    } else {
+      last = 6;
+      report = { days: Math.min(span.days, 30) };
+      unresolved.push("That covers more than a week, which takes the longer report rather than one search.");
     }
   } else if (consume(/\bthis weekend\b/.exec(normalized))) {
     first = dow === 0 ? 0 : (6 - dow + 7) % 7;
@@ -362,6 +395,7 @@ export function interpretTimingRequest(
   };
   return {
     ...activity,
+    ...(report ? { report } : {}),
     version: "1",
     timeZone,
     horizon: { start: start.toISOString(), end: end.toISOString() },

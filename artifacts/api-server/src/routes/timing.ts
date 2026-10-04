@@ -14,6 +14,7 @@ import { interpretTimingActivity } from "../lib/timingInterpretation.js";
 import { interpretTimingRequest } from "../lib/timingRequest.js";
 import { activityByKey } from "../lib/activityCorrespondences.js";
 import { timingEnabledFor } from "../lib/timingAccess.js";
+import { buildElectionReport } from "../lib/electionReport.js";
 
 const router: IRouter = Router();
 router.get("/timing/config", requireTesterId, (_req, res) => {
@@ -94,6 +95,23 @@ export function timingInput(body: unknown):
     checkCalendar: b.checkCalendar === true,
   };
 }
+async function natalFor(testerId: string): Promise<TimingSearchRequest["natal"] | null> {
+  const stored = (
+    await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1)
+  )[0];
+  if (!stored?.birthDate || stored.birthTime == null) return null;
+  return {
+    chart: computeNatalChart(
+      stored.birthDate,
+      stored.birthTime,
+      Number(stored.birthLat),
+      Number(stored.birthLon),
+      Number(stored.utcOffset),
+      "whole-sign",
+    ),
+    timeKnown: stored.timeKnown !== false,
+  };
+}
 async function computeFor(
   testerId: string,
   input: NonNullable<ReturnType<typeof timingInput>>,
@@ -108,25 +126,8 @@ async function computeFor(
   const extraActivities = await customActivitiesFor(testerId);
   const q: TimingSearchRequest = { ...input, extraActivities };
   if (input.useNatal) {
-    const stored = (
-      await db
-        .select()
-        .from(natalCharts)
-        .where(eq(natalCharts.testerId, testerId))
-        .limit(1)
-    )[0];
-    if (stored?.birthDate && stored.birthTime != null)
-      q.natal = {
-        chart: computeNatalChart(
-          stored.birthDate,
-          stored.birthTime,
-          Number(stored.birthLat),
-          Number(stored.birthLon),
-          Number(stored.utcOffset),
-          "whole-sign",
-        ),
-        timeKnown: stored.timeKnown !== false,
-      };
+    const natal = await natalFor(testerId);
+    if (natal) q.natal = natal;
   }
   // Validate bounded work before attempting calendar I/O. No astronomical scan.
   const validation = searchTiming(q, {
@@ -162,6 +163,58 @@ router.post("/timing/search", async (req, res) => {
   try {
     const response = await computeFor(res.locals.testerId, input);
     res.status("error" in response ? 402 : 200).json(response);
+  } catch {
+    res.status(503).json({ error: "context_unavailable" });
+  }
+});
+
+// The election report: a longer span than one search covers, with the chart and
+// the calendar, composed from the same engine (lib/electionReport.ts).
+router.post("/timing/report", async (req, res) => {
+  const b = req.body ?? {};
+  const days = Number(b.days);
+  if (
+    typeof b.activity !== "string" || b.activity.length > 100 ||
+    typeof b.timeZone !== "string" ||
+    !Number.isInteger(days) || days < 1 || days > 30 ||
+    !b.location || typeof b.location.lat !== "number" || typeof b.location.lon !== "number"
+  ) {
+    res.status(400).json({ error: "invalid_request" });
+    return;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: b.timeZone });
+  } catch {
+    res.status(400).json({ error: "invalid_timezone" });
+    return;
+  }
+  const testerId = res.locals.testerId as string;
+  try {
+    const plan = await planForTester(testerId);
+    if (!can(plan, "horizon.week") || (b.checkCalendar === true && !can(plan, "placement.calendar"))) {
+      res.status(402).json({ error: "upgrade_required" });
+      return;
+    }
+    const start = new Date();
+    const extraActivities = await customActivitiesFor(testerId);
+    const natal = b.useNatal === true ? await natalFor(testerId) : null;
+    let calendar: TimingSearchRequest["calendar"];
+    if (b.checkCalendar === true) {
+      let result;
+      try {
+        result = await fetchGcalBusy(testerId, start.toISOString(), new Date(+start + (days + 1) * 86400000).toISOString());
+      } catch {
+        result = { ok: false, connected: false, busy: [] };
+      }
+      // An unlinked Google account is not a successful availability check.
+      if (!result.connected) result = { ...result, ok: false };
+      calendar = { result, source: "Google Calendar", fetchedAt: new Date().toISOString() };
+    }
+    res.json(buildElectionReport({
+      activity: b.activity, start, days, timeZone: b.timeZone,
+      location: { lat: b.location.lat, lon: b.location.lon },
+      natal: natal ?? undefined, calendar, extraActivities,
+    }));
   } catch {
     res.status(503).json({ error: "context_unavailable" });
   }

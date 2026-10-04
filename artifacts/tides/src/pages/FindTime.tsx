@@ -23,6 +23,7 @@ import { WorkPage, QuickCapture, type WorkTab } from "./Workspace";
 import Launch from "./Launch";
 import Settings from "./Settings";
 import MomentAdvisor from "@/components/MomentAdvisor";
+import ElectionReportView from "@/components/ElectionReportView";
 import FeedbackDoor from "@/components/FeedbackDoor";
 import { Guide } from "@/components/Guide";
 import type { AskElectionContext } from "@/App";
@@ -129,7 +130,7 @@ export default function FindTime({
   });
   const { data: railNow } = useTidesNow(testerId, lat, lon);
   const [destination, setDestination] = useState<
-    "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about" | "settings"
+    "search" | "now" | "calendar" | "almanac" | "saved" | "workspace" | "about" | "settings" | "report"
   >(() => new URLSearchParams(location.search).has("settings") ? "settings" : "search");
   // WORKSPACE UNDER THIS HEADER (density pass 2026-09-30, W5). It used to swap
   // the whole app for the old one: its own navigation, its own top bar, a
@@ -137,6 +138,9 @@ export default function FindTime({
   // Its pages now open here, on Tasks, beside the timing destinations.
   type WorkSection = "tasks" | "habits" | "stars" | "plan" | "bearings";
   const [workSection, setWorkSection] = useState<WorkSection>("tasks");
+  // A request longer than one search covers ("the next couple of weeks") opens
+  // the election report instead of a search.
+  const [reportRequest, setReportRequest] = useState<{ activity: string; days: number } | null>(null);
   const [starSeed, setStarSeed] = useState<string | null>(null);
   const [focusStar, setFocusStar] = useState<number | null>(null);
   const [plannerSeed, setPlannerSeed] = useState<string | null>(null);
@@ -337,7 +341,10 @@ export default function FindTime({
           queryId: queryId.current,
           category: result.state,
         });
-      if (result.state === "resolved" && !nextDraft.needsRangeReview)
+      if (result.state === "resolved" && result.report) {
+        setReportRequest({ activity: nextActivity, days: result.report.days });
+        setDestination("report");
+      } else if (result.state === "resolved" && !nextDraft.needsRangeReview)
         await search(false, nextDraft, nextActivity, false);
     } catch (e) {
       setError((e as Error).message);
@@ -1371,6 +1378,13 @@ export default function FindTime({
             )}
           </div>
         </main>
+      ) : destination === "report" && reportRequest ? (
+        <ElectionReportView
+          activity={reportRequest.activity}
+          days={reportRequest.days}
+          timeZone={timeZone}
+          onBack={() => setDestination("search")}
+        />
       ) : destination === "settings" ? (
         <main className="timing-restored">
           <Settings testerId={testerId} />

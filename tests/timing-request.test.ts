@@ -172,3 +172,33 @@ describe("language counterexamples", () => {
       "gentle-movement",
     ));
 });
+
+describe("spans that start now (Friday 2026-09-04, 10:00 Chicago)", () => {
+  const tz = "America/Chicago";
+  it("a few days is a range", () => {
+    const r = interpretTimingRequest("paint in the next three days", tz, now);
+    expect(r.unresolved).toEqual([]);
+    expect(r.draft.start).toBe("2026-09-04T10:00");
+    expect(r.draft.end).toBe("2026-09-07T00:00");
+    expect(r).not.toHaveProperty("report");
+  });
+
+  it.each([
+    ["elect a haircut in the next couple of weeks", 14],
+    ["haircut over the next 2 weeks", 14],
+    ["haircut within the next 10 days", 10],
+    ["haircut for the next four weeks", 28],
+  ])("%s names a report of %i days instead of guessing a week", (text, days) => {
+    const r = interpretTimingRequest(text, tz, now);
+    expect(r.report).toEqual({ days });
+    expect(r.unresolved).toEqual(["That covers more than a week, which takes the longer report rather than one search."]);
+  });
+
+  it("a point in time is still not a span", () => {
+    for (const text of ["pitch investors in two weeks", "haircut in a couple of weeks"]) {
+      const r = interpretTimingRequest(text, tz, now);
+      expect(r).not.toHaveProperty("report");
+      expect(r.unresolved.length, text).toBeGreaterThan(0);
+    }
+  });
+});
