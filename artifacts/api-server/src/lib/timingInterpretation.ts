@@ -143,8 +143,10 @@ export function interpretTimingActivity(text: string): ActivityInterpretation {
   // A single short word that names one activity and nothing else ("nap",
   // "qigong", "film") scores under the confidence bar on length alone. When it
   // is the ONLY activity the words touch at all, there is no rival reading to
-  // guard against, so it resolves (2026-10-03). Two weak matches still ask.
-  if (ranked.length === 1 && ranked[0].score >= 1.3)
+  // guard against, so it resolves (2026-10-03). A runner-up worth only one
+  // stray label word ("call" in "call the bank" brushing Call family) is not
+  // a rival either. Two real matches still ask.
+  if (ranked[0] && ranked[0].score >= 1.3 && (ranked[1]?.score ?? 0) <= 0.5)
     return { state: "resolved", options: [{ key: ranked[0].activity.key, label: ranked[0].activity.label }] };
   const matches = ranked
     .filter((x) => x.score >= 2)

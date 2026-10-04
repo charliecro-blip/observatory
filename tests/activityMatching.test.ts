@@ -62,4 +62,16 @@ describe("activity matching", () => {
     expect(top("brainstorm names for the launch tomorrow")?.activity.key).toBe("strategize");
     expect(top("launch the newsletter")?.activity.key).toBe("launch-venture");
   });
+
+  // "buy" alone pulled "buy milk" into A considered purchase; "talk" pulled
+  // "talk to my boss" into Teach / present.
+  it("keeps everyday words from carrying a whole activity", () => {
+    expect(top("buy milk")?.activity.key).not.toBe("big-purchase");
+    expect(top("buy a new car")?.activity.key).toBe("big-purchase");
+    expect(top("talk to my boss")?.activity.key).not.toBe("teach-present");
+    expect(top("give my talk friday")?.activity.key).toBe("teach-present");
+    expect(top("ask Jamie out this week")?.activity.key).toBe("ask-someone-out");
+    // "Make art" is two words: "make" alone is not its name.
+    expect(top("make dr's appt")?.activity.key).toBe("admin-errands");
+  });
 });

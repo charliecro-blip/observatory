@@ -408,7 +408,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     category: "body",
     keywords: [
       "run",
-      "cycle",
+      "cycle", "bike", "bike ride",
       "swim laps",
       "long ride",
       "marathon",
@@ -682,7 +682,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "investigate",
     label: "Research & investigate",
     category: "mind",
-    keywords: ["investigate", "dig", "audit", "due diligence", "deep dive"],
+    keywords: ["investigate", "research", "dig", "audit", "due diligence", "deep dive"],
     element: "water",
     planets: { Mercury: 1.0, Pluto: 0.7 },
     hourRulers: ["Mercury", "Saturn"],
@@ -710,7 +710,8 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
       "lecture",
       "workshop",
       "demo",
-      "talk",
+      "give a talk", "my talk", "keynote",
+      "pitch",
     ],
     element: "fire",
     planets: { Mercury: 1.0, Sun: 0.8, Jupiter: 0.7 },
@@ -768,7 +769,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
       "painting",
       "paint a picture",
       "drawing",
-      "draw",
+      "draw", "sketch",
       "illustrate",
       "illustration",
       "sculpt",
@@ -936,7 +937,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     category: "craft",
     keywords: [
       "negotiate",
-      "raise",
+      "raise", "promotion",
       "salary",
       "terms",
       "haggle",
@@ -1290,7 +1291,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     label: "Family time / call home",
     category: "social",
     keywords: [
-      "family",
+      "family", "grandma", "grandpa", "grandparents", "mom", "dad",
       "call mom",
       "call home",
       "parents",
@@ -1417,7 +1418,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     label: "Budget & ledger",
     category: "money",
     keywords: [
-      "budget",
+      "budget", "checkbook",
       "ledger",
       "finances",
       "taxes",
@@ -1445,7 +1446,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     label: "A considered purchase",
     category: "money",
     keywords: [
-      "buy",
+      "buy a", "buy new",
       "purchase",
       "order",
       "upgrade",
@@ -1472,7 +1473,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "settle-debts",
     label: "Settle / restructure debts",
     category: "money",
-    keywords: ["debt", "pay off", "refinance", "settle", "owed"],
+    keywords: ["debt", "credit card", "pay off", "refinance", "settle", "owed"],
     element: "water",
     planets: { Saturn: 1.0, Pluto: 0.6 },
     hourRulers: ["Saturn"],
@@ -1632,7 +1633,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     label: "Solitude / retreat",
     category: "spirit",
     keywords: [
-      "retreat",
+      "retreat", "alone", "quiet day",
       "solitude",
       "alone time",
       "unplug",
@@ -1825,6 +1826,8 @@ function hasWord(haystack: string, word: string): boolean {
   return new RegExp(`\\b(?:${forms.join("|")})\\b`).test(haystack);
 }
 
+const NAME_FILLER = new Set(["the", "and", "for", "your", "with"]);
+
 export function rankActivities(
   text: string,
   limit = 3,
@@ -1839,11 +1842,17 @@ export function rankActivities(
   // "brainstorm names for the launch" is brainstorming; the launch is what it
   // is for. A word that appears only inside a "for the …" / "about my …"
   // phrase names the subject, not the act, so it counts half (2026-10-03).
-  const head = t.replace(/\s(?:for|about|on|re)\s(?:the|my|our|a|an|this|that|his|her|their)\s.*$/, " ");
+  // When nothing before the phrase names an activity ("go for a run"), the
+  // phrase IS the activity and counts in full.
+  let head = t.replace(/\s(?:for|about|on|re)\s(?:the|my|our|a|an|this|that|his|her|their)\s.*$/, " ");
+  if (head !== t && !ACTIVITIES.some((a) => a.keywords.some((k) => hasWord(head, k.toLowerCase()))))
+    head = t;
   const weigh = (w: string) => (hasWord(head, w) ? 1 : hasWord(t, w) ? 0.5 : 0);
+  // "ask Jamie out" puts a name inside the phrase, which no keyword can hold.
+  const askOut = /\bask\s+(?:[a-z'’]+\s+){1,2}out\b/.test(t);
   const scored: { activity: ActivityCorrespondence; score: number }[] = [];
   for (const a of ACTIVITIES) {
-    let score = 0;
+    let score = a.key === "ask-someone-out" && askOut ? 2.5 : 0;
     for (const k of a.keywords) {
       score += weigh(k.toLowerCase()) * Math.min(3, 1 + k.length / 8);
     }
@@ -1867,9 +1876,12 @@ export function rankActivities(
     const names = a.label
       .toLowerCase()
       .split("/")
-      .map((part) => part.split(/[^a-z]+/).filter((w) => w.length >= 4))
+      .map((part) => part.split(/[^a-z]+/).filter((w) => w.length >= 3 && !NAME_FILLER.has(w)))
       .filter((ws) => ws.length > 0);
-    const allWords = new Set(names.flat());
+    // Short words still make up a name ("Make art" is two words, so "make"
+    // alone is not the name, which once made "make dr's appt" ambiguous with
+    // art), but only words of four letters or more earn the per-word bonus.
+    const allWords = new Set(names.flat().filter((w) => w.length >= 4));
     for (const w of allWords) score += 0.5 * weigh(w);
     if (names.some((ws) => ws.every((w) => hasWord(t, w)))) score += 1.5;
     if (score > 0) scored.push({ activity: a, score });

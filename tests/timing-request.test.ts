@@ -140,6 +140,10 @@ describe("ordinary time phrases resolve (Friday 2026-09-04, 10:00 Chicago)", () 
     ["paint saturday 10-11:30am", "2026-09-05T10:00", "2026-09-05T11:30", "90"],
     ["deep work tomorrow 1pm to 4pm", "2026-09-05T13:00", "2026-09-05T16:00", "180"],
     ["call the dentist before 4", "2026-09-04T10:00", "2026-09-04T16:00", undefined],
+    ["paint before monday", "2026-09-04T10:00", "2026-09-07T00:00", undefined],
+    ["paint by monday", "2026-09-04T10:00", "2026-09-08T00:00", undefined],
+    ["paint before friday", "2026-09-04T10:00", "2026-09-11T00:00", undefined],
+    ["paint after lunch", "2026-09-04T12:00", "2026-09-04T18:00", undefined],
   ] as const)("%s", (text, start, end, duration) => {
     const r = interpretTimingRequest(text, tz, now);
     expect(r.unresolved).toEqual([]);

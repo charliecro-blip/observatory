@@ -71,7 +71,9 @@ const CASES: Case[] = [
 // BATCH 2, written 2026-10-03 after batch 1 reached 98% from being tuned
 // against. Ordinary people's requests, NOT modeled on the owner's tasks, and
 // written before running them. Batch 1 is now a regression check; batch 2 is
-// the honest number until it, too, has been tuned against.
+// the honest number until it, too, has been tuned against. It was, the same
+// day (63% -> 100%), so neither batch measures anything now. The next honest
+// number comes from a batch 3 written before running it, or from real requests.
 const BATCH2: Case[] = [
   { text: "fix the leaky faucet saturday", activity: "repair", when: { day: 3 } },
   { text: "repot the plants sunday afternoon", activity: "garden", when: { day: 4, part: "afternoon" } },

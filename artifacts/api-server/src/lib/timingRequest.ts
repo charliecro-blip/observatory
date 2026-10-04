@@ -131,10 +131,21 @@ export function interpretTimingRequest(
     first = last = 0;
     explicitDate = true;
   } else {
-    const weekday = consume(new RegExp(
+    // A weekday as a deadline: "before friday" is today through Thursday,
+    // "by friday" today through Friday.
+    const deadline = consume(new RegExp(
+      `\\b(before|by|until|till)\\s+(${WEEKDAYS.join("|")}|mon|tue|wed|thu|fri)\\b`,
+    ).exec(normalized));
+    const weekday = deadline ? null : consume(new RegExp(
       `\\b(?:(next|this) )?(${WEEKDAYS.join("|")}|mon|tue|wed|thu|fri)\\b`,
     ).exec(normalized));
-    if (weekday) {
+    if (deadline) {
+      const target = WEEKDAYS.findIndex((d) => d.startsWith(deadline[2]));
+      const away = (target - dow + 7) % 7 || 7;
+      first = 0;
+      last = deadline[1] === "before" ? away - 1 : away;
+      explicitDate = true;
+    } else if (weekday) {
       const target = WEEKDAYS.findIndex((d) => d.startsWith(weekday[2]));
       first =
         weekday[1] === "next"
@@ -185,9 +196,10 @@ export function interpretTimingRequest(
   const PART_HOURS: Record<string, [number, number]> = {
     morning: [7, 12], afternoon: [12, 18], evening: [18, 23], lunch: [12, 13.5],
   };
-  const partWords = [...normalized.matchAll(/\b(morning|afternoon|evening|tonight|night|lunch(?:time)?|before bed|bedtime)\b/g)];
+  const partWords = [...normalized.matchAll(/\b(after lunch|morning|afternoon|evening|tonight|night|lunch(?:time)?|before bed|bedtime)\b/g)];
   const dayParts = partWords.map((m) =>
-    /^(?:tonight|night|before bed|bedtime)$/.test(m[1]) ? "evening" : m[1].startsWith("lunch") ? "lunch" : m[1],
+    m[1] === "after lunch" ? "afternoon"
+    : /^(?:tonight|night|before bed|bedtime)$/.test(m[1]) ? "evening" : m[1].startsWith("lunch") ? "lunch" : m[1],
   );
   for (const m of partWords) rest = rest.replace(m[0], " ");
   rest = rest.replace(/\bthis\b/g, " ");
