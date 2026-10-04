@@ -17,7 +17,7 @@ import { Router, type IRouter } from "express";
 import { db, natalCharts, planningWindows, goals, emailSubscriptions, tasks, habits, habitLogs, usageEvents } from "@workspace/db";
 import { and, eq, gte, lte, lt, inArray } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
-import { sendEmail, emailConfigured } from "../lib/email.js";
+import { sendEmail, emailConfigured, unsubscribeUrl, verifyUnsubscribeToken } from "../lib/email.js";
 import { bustEmailSubscriptionCache } from "../lib/notifier.js";
 import {
   julianDay, moonPhase, voidOfCourse, getDailyElementEmphasis, getPlanetPositions,
@@ -674,7 +674,10 @@ export function renderHtml(title: string, subject: string, blocks: Block[], trac
         Conditions, not fate — the sky describes the weather; you steer.<br/>
         ${track
           ? `<a href="${base}/api/reports/c?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}&to=${encodeURIComponent(base + "/")}" style="color:#8a7a58;">Open today in Compass</a>
-             · <a href="${base}/api/reports/c?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}&to=${encodeURIComponent(base + "/?settings=email")}" style="color:#a89a88;">fewer emails</a>`
+             · <a href="${base}/api/reports/c?t=${encodeURIComponent(track.testerId)}&s=${encodeURIComponent(track.span)}&to=${encodeURIComponent(base + "/?settings=email")}" style="color:#a89a88;">change what's sent</a>${(() => {
+               const u = unsubscribeUrl(base, track.testerId);
+               return u ? ` · <a href="${u}" style="color:#a89a88;">unsubscribe</a>` : "";
+             })()}`
           : "Open Compass · adjust what lands in this report in Settings."}
       </div>
     </div>
@@ -784,6 +787,43 @@ router.get("/reports/c", async (req, res) => {
   const base = (process.env["PUBLIC_BASE_URL"] ?? "https://compass.day").replace(/\/$/, "");
   const safe = to.startsWith(base) ? to : base + "/";
   res.redirect(302, safe);
+});
+
+// ── Unsubscribe, from the email itself ───────────────────────────────────────
+// No sign-in: the link's HMAC is the authority (lib/email.ts). GET only shows
+// a button, because mail scanners open every link in a message and must not
+// be able to unsubscribe anyone; POST does it, and is also what a mail
+// client's own one-click Unsubscribe sends (RFC 8058).
+function unsubscribePage(body: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Compass email</title></head>
+  <body style="margin:0;background:#efe9dc;font-family:Georgia,'Times New Roman',serif;color:#1b1a17;">
+  <div style="max-width:440px;margin:60px auto;padding:26px 28px;background:#f7f2e6;border:1px solid #ddd2ba;border-radius:14px;font-size:15px;line-height:1.6;">
+  <div style="font-size:20px;margin-bottom:12px;">Compass</div>${body}</div></body></html>`;
+}
+
+router.get("/reports/unsubscribe", (req, res) => {
+  const t = String(req.query.t ?? ""), k = String(req.query.k ?? "");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  if (!verifyUnsubscribeToken(t, k)) {
+    res.status(400).send(unsubscribePage(`<p>This link doesn't match an account. You can turn the emails off in Compass under Settings, in Email reports.</p>`));
+    return;
+  }
+  const action = `/api/reports/unsubscribe?t=${encodeURIComponent(t)}&k=${encodeURIComponent(k)}`;
+  res.send(unsubscribePage(`<p>Stop all Compass email reports to this address?</p>
+    <form method="post" action="${action}"><button type="submit" style="font:inherit;font-size:14px;padding:8px 18px;border-radius:8px;border:none;background:#1a2a3a;color:#fff;cursor:pointer;">Stop the emails</button></form>`));
+});
+
+router.post("/reports/unsubscribe", async (req, res) => {
+  const t = String(req.query.t ?? ""), k = String(req.query.k ?? "");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  if (!verifyUnsubscribeToken(t, k)) {
+    res.status(400).send(unsubscribePage(`<p>This link doesn't match an account. You can turn the emails off in Compass under Settings, in Email reports.</p>`));
+    return;
+  }
+  await db.update(emailSubscriptions).set({ enabled: "false", updatedAt: new Date() }).where(eq(emailSubscriptions.testerId, t));
+  bustEmailSubscriptionCache();
+  void logEmailEvent(t, "email_unsubscribe", {});
+  res.send(unsubscribePage(`<p>Done. Compass won't send you any more email reports. You can turn them back on in Settings.</p>`));
 });
 
 export default router;

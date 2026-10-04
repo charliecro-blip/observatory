@@ -999,7 +999,8 @@ function Shell() {
 function WorkspaceShell({ initialView = "home", initialStarId = null }: { initialView?: View; initialStarId?: number | null }) {
   const { profile, isReady, showModal, createAndApply, lat, lon, locationKnown, sessionBlocked, openModal } = useTester();
   const testerId = profile?.testerId ?? null;
-  const [view, setView] = useState<View>(initialView);
+  // The email footer's "change what's sent" link is /?settings=email.
+  const [view, setView] = useState<View>(() => new URLSearchParams(location.search).has("settings") ? "settings" : initialView);
   // The Log lives inside Calendar now (owner 2026-07-29): time's home, both
   // directions — the course ahead, the wake behind. This seed deep-links it.
   // Same idea one level down: which sub-tab of Stars to open on arrival.

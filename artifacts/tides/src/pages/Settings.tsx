@@ -257,9 +257,20 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
   const [spans, setSpans] = useState<string[]>(["day"]);
   const [sendHour, setSendHour] = useState(7);
   const [saved, setSaved] = useState(false);
+  // A saved address can be switched off; "saved" alone used to show ON.
+  const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [senderConfigured, setSenderConfigured] = useState<boolean | null>(null);
   const authH: Record<string, string> = testerId ? { "x-tester-id": testerId } : {};
+
+  // Arriving from an email's "change what's sent" link: show this card.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("settings") !== "email") return;
+    // After the page's own scroll-to-top on arrival.
+    const t = setTimeout(() => cardRef.current?.scrollIntoView({ block: "start" }), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!testerId) return;
@@ -272,20 +283,26 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
           setSpans(d.subscription.spans ?? ["day"]);
           setSendHour(d.subscription.sendHour ?? 7);
           setSaved(true);
+          setEnabled(d.subscription.enabled !== "false");
         }
       }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testerId]);
 
-  const save = async () => {
+  const save = async (on = true) => {
     setStatus(null);
     const r = await fetch("/api/reports/email-subscription", {
       method: "POST", headers: { ...authH, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, spans, sendHour, enabled: true, lat, lon, detail: prefsForEmail.display.astroDetail ?? "medium", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      body: JSON.stringify({ email, spans, sendHour, enabled: on, lat, lon, detail: prefsForEmail.display.astroDetail ?? "medium", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
-    if (r.ok) {
+    if (r.ok && !on) {
+      logEvent("email_unsubscribe", {});
+      setEnabled(false);
+      setStatus("Off. No more email reports will be sent.");
+    } else if (r.ok) {
       logEvent("email_subscribe", { spans, sendHour });
       setSaved(true);
+      setEnabled(true);
       // Was unconditional — promised delivery even when senderConfigured was
       // already known false, i.e. sends can't actually happen yet.
       setStatus(senderConfigured === false
@@ -311,10 +328,10 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
   const SPAN_LABELS: Record<string, string> = { day: "The day · every morning", week: "The week · Sundays", newmoon: "New Moon mornings" };
 
   return (
-    <div style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+    <div ref={cardRef} style={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-primary)", marginBottom: 3 }}>
         Email reports
-        {saved && <span style={{ fontSize: 10.5, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
+        {saved && enabled && <span style={{ fontSize: 10.5, fontWeight: 600, color: "#4a7a52", background: "#4a7a5222", padding: "1px 6px", borderRadius: 6, marginLeft: 6 }}>ON</span>}
       </div>
       <div style={{ fontSize: 11, color: "var(--color-muted)", lineHeight: 1.6, marginBottom: 10 }}>
         A short weather bulletin for your life, delivered each morning — the woven day, your windows, your aims.
@@ -337,10 +354,15 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={save} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#ffffff" }}>
-          {saved ? "Update" : "Turn on"}
+        <button onClick={() => save(true)} disabled={!email} style={{ fontSize: 11, fontWeight: 600, padding: "6px 16px", borderRadius: 8, cursor: email ? "pointer" : "default", border: "none", background: email ? "#1a2a3a" : "#c9c4bb", color: "#ffffff" }}>
+          {saved && enabled ? "Update" : "Turn on"}
         </button>
-        {saved && (
+        {saved && enabled && (
+          <button onClick={() => save(false)} style={{ fontSize: 11, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
+            Turn off
+          </button>
+        )}
+        {saved && enabled && (
           <button onClick={sendTest} style={{ fontSize: 11, padding: "6px 13px", borderRadius: 8, cursor: "pointer", border: "1px solid var(--color-border)", background: "var(--color-card-2)", color: "var(--color-primary)" }}>
             Send me a test
           </button>
@@ -352,7 +374,7 @@ function EmailReportsSection({ testerId }: { testerId: string | null }) {
           </button>
         ))}
       </div>
-      {status && <div style={{ fontSize: 10.5, color: status.startsWith("Saved") || status.startsWith("Test") ? "#4a7a52" : "#8a6a30", marginTop: 8, lineHeight: 1.5 }}>{status}</div>}
+      {status && <div style={{ fontSize: 10.5, color: status.startsWith("Saved") || status.startsWith("Test") || status.startsWith("Off") ? "#4a7a52" : "#8a6a30", marginTop: 8, lineHeight: 1.5 }}>{status}</div>}
       {senderConfigured === false && !status && (
         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 8 }}>Server note: RESEND_API_KEY isn't set yet — subscriptions save, sends wait for the key.</div>
       )}

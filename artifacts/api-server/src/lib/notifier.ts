@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { pushSubscriptions, emailSubscriptions } from "@workspace/db/schema";
 import { julianDay, getPlanetaryHour, voidOfCourse, moonPhase, getDailyElementEmphasis } from "../lib/astro.js";
 import { sendPushToTester } from "../routes/push";
-import { sendEmail, emailConfigured } from "./email.js";
+import { sendEmail, emailConfigured, unsubscribeUrl } from "./email.js";
 import { composeDay, composeWeek, composeNewMoon, renderHtml, logEmailEvent } from "../routes/reports.js";
 import { logger } from "./logger";
 
@@ -273,20 +273,21 @@ async function emailTick() {
     const lat = parseFloat(sub.lat ?? "40.7"), lonN = parseFloat(sub.lon ?? "-74.0");
     const spans = (sub.spans as string[] | null) ?? ["day"];
     const localDow = new Date(now.getTime() - tz * 60000).getUTCDay();
+    const unsub = unsubscribeUrl(process.env["PUBLIC_BASE_URL"] ?? "https://compass.day", sub.testerId);
     try {
       if (spans.includes("day") && dedup(`email-day-${sub.testerId}-${t.date}`)) {
         const d = await composeDay(sub.testerId, tz, lat, lonN, (sub.detail as any) ?? "medium");
-        const okD = await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks, { testerId: sub.testerId, span: "day" }));
+        const okD = await sendEmail(sub.email, d.subject, renderHtml(d.title, d.subject, d.blocks, { testerId: sub.testerId, span: "day" }), { unsubscribeUrl: unsub });
         void logEmailEvent(sub.testerId, "email_sent", { span: "day", ok: okD, subject: d.subject });
       }
       if (spans.includes("week") && localDow === 0 && dedup(`email-week-${sub.testerId}-${t.date}`)) {
         const w = await composeWeek(sub.testerId, tz, lat, lonN);
-        const okW = await sendEmail(sub.email, w.subject, renderHtml(w.title, w.subject, w.blocks, { testerId: sub.testerId, span: "week" }));
+        const okW = await sendEmail(sub.email, w.subject, renderHtml(w.title, w.subject, w.blocks, { testerId: sub.testerId, span: "week" }), { unsubscribeUrl: unsub });
         void logEmailEvent(sub.testerId, "email_sent", { span: "week", ok: okW, subject: w.subject });
       }
       if (spans.includes("newmoon") && moonPhase(julianDay(now)).name === "New Moon" && dedup(`email-nm-${sub.testerId}-${t.date}`)) {
         const n = await composeNewMoon(sub.testerId, tz, lat, lonN);
-        const okN = await sendEmail(sub.email, n.subject, renderHtml(n.title, n.subject, n.blocks, { testerId: sub.testerId, span: "newmoon" }));
+        const okN = await sendEmail(sub.email, n.subject, renderHtml(n.title, n.subject, n.blocks, { testerId: sub.testerId, span: "newmoon" }), { unsubscribeUrl: unsub });
         void logEmailEvent(sub.testerId, "email_sent", { span: "newmoon", ok: okN, subject: n.subject });
       }
     } catch (e) {
