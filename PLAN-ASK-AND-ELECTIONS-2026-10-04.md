@@ -1,6 +1,6 @@
 # Plan: elections, the one box, sorting what you hold, and the day's light · October 4, 2026
 
-Status: plan, owner asked for it 2026-10-04 and asked for Parts B and C the same day. Phase 0 is built; nothing else is. Items
+Status: plan, owner asked for it 2026-10-04 and asked for Parts B and C the same day. Built so far (all 2026-10-04): Phase 0, Part C, Phase 2 and the plumbing for T1/T4/T5. Items
 marked **owner call** need a ruling before the phase that uses them.
 
 ## Where this came from
@@ -128,7 +128,9 @@ always say which part of the chart answered.
 R1/R2 (Venus's day and the Moon's hour) and R4, and Oct 11–15 should carry
 O2. That checks the rules the owner approves; it is not a score to tune toward.
 
-### Phase 2 · the election report
+### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
+
+Shipped as specified below, except where the notes at the end of this section say otherwise.
 - New endpoint (`POST /timing/report`): activity, horizon up to 30 days,
   location, natal, calendar. Runs the engine per day, applies calendar busy
   times, and returns:
@@ -150,6 +152,30 @@ O2. That checks the rules the owner approves; it is not a score to tune toward.
   agrees with. This is a check on the rules the owner approves in D1, not a
   target to tune toward; the hand analysis of 2026-10-04 is one reading, not
   ground truth.
+
+**As built, and what differs from the spec above:**
+- `lib/electionReport.ts`, `POST /api/timing/report`, `components/ElectionReportView.tsx`
+  (a destination inside Find a time, reached when the interpreter returns
+  `report`). The interpreter reads "the next three days" as a range and "the
+  next couple of weeks" / "over the next 10 days" as a report of that many
+  days; "in two weeks" is still a point in time and still asks.
+- Picks are one per day, ranked: calendar-confirmed open, then tier, then how
+  specific the window is, then the engine's own score. A window of eight hours
+  or more counts as "the day".
+- Strong times the calendar already holds are listed apart. A calendar that
+  could not be read is not a conflict: its times are listed, ranked below
+  confirmed ones, with the reason in the footer ("not connected" or
+  "couldn't be read"). The first browser run caught the opposite: an unlinked
+  calendar had emptied the list.
+- "Can it wait?" (D4) searches the 14 days after the station, not seven: the
+  week after Venus turns direct is empty for a haircut; the engine's first
+  window is Nov 25. An empty answer is printed as one.
+- Not built: choosing a pick (the `/timing/choose` flow), the Ask hand-off,
+  and the per-pick personal-chart testimony, which is Phase 1.
+- Cost, measured locally: 7 days 3.7 s, 14 days 4.8 s, 30 days 9.1 s. A cold
+  week of engine search is 1.3 s, a warm one 0.3 s. The report computes each
+  day's arc itself as well as inside the engine; sharing that is the obvious
+  saving if 9 s proves too long.
 
 ### Phase 3 · the box routes, and Ask gets tools
 - Routing, deterministic first: the interpreter resolves an activity and a
@@ -198,6 +224,15 @@ What the audit found missing, still missing: someday/maybe, contexts beyond
 energy, a weekly review you can open any time, and anything that reduces a
 task to a next physical action.
 
+### Built 2026-10-04 (plumbing only, no screen yet)
+T1, T4 and T5's storage and API: five nullable columns on `tasks`
+(`nextStep`, `context`, `parkedAs`, `waitingOn`, `checkBackOn`), accepted and
+validated by POST and PATCH `/api/tasks` (absent leaves a value alone, null
+clears it, clearing `parkedAs` clears the waiting details), and
+`GET /api/tasks?parked=exclude|only`. Nothing reads them yet; no existing list
+changes. The screens, the copy and everything from T2 on are the Opus part of
+this plan.
+
 ### The proposal
 
 | # | Piece | What it does |
@@ -215,7 +250,14 @@ BACKLOG §9a; `deleteAccount` already derives its tables from the schema, and
 the new columns need nothing there. Every new string goes through the
 no-ai-slop skill as it's written.
 
-## Part C · The day's light: sunrise, solar noon, sunset
+## Part C · The day's light: sunrise, solar noon, sunset · BUILT 2026-10-04
+
+Home's quiet line under the Moon line, the Day view's legend row, the Agenda
+header and the Sky panel all read `GET /api/tides/daylight`
+(`daylightOnLocalDay`); the browser approximation is deleted (it ran 0.8 to
+3.3 minutes off). Not built: marks on the Day view's hour grid itself. The
+line is hidden at the quiet lens in the Day grid (its legend is), and shows on
+Home and the Agenda at every lens.
 
 - **Where it goes**: a quiet line under the date on Home, above the Moon line:
   "Sunrise 7:24 AM · solar noon 1:14 PM · sunset 7:04 PM". Plain words pass the

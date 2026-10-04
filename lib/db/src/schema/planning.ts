@@ -167,6 +167,23 @@ export const tasks = pgTable("tasks", {
   // because most tasks are never scheduled, and additive per BACKLOG 9a.
   planningWindowId: integer("planning_window_id"),
 
+  // SORTING WHAT YOU HOLD (plan Part B, 2026-10-04; GTD-shaped). All nullable
+  // and additive per BACKLOG 9a: an unset value means "not clarified yet",
+  // never "none".
+  //
+  // The smallest physical action that moves this forward ("open the herbs book
+  // to p. 231"). A task with no next step is unclarified, which is a fact the
+  // list can show rather than a defect.
+  nextStep: text("next_step"),
+  // Where it can happen: home | out | computer | phone | anywhere, or the
+  // person's own short word.
+  context: text("context"),
+  // Out of the way without being done: "someday" (parked, off every list until
+  // a review) or "waiting" (on someone else; who, and when to look again).
+  parkedAs: text("parked_as"),
+  waitingOn: text("waiting_on"),
+  checkBackOn: text("check_back_on"), // ISO date YYYY-MM-DD
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

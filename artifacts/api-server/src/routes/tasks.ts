@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { tasks } from "@workspace/db/schema";
-import { eq, and, desc, lt, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, lt, isNull, isNotNull, sql } from "drizzle-orm";
 import { associateDeterministic } from "../lib/associate.js";
 
 const router = Router();
@@ -13,6 +13,40 @@ function requireTesterId(req: any, res: any): string | null {
 }
 
 // GET /tasks
+// SORTING FIELDS (plan Part B). Each is optional: absent leaves the stored
+// value alone, null or "" clears it, anything else is validated. Clearing
+// `parkedAs` clears its waiting details with it, since "waiting on Sam" means
+// nothing once a task is back in play.
+const PARKED = new Set(["someday", "waiting"]);
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+type SortingSet = { nextStep?: string | null; context?: string | null; parkedAs?: string | null; waitingOn?: string | null; checkBackOn?: string | null };
+function sortingFields(body: Record<string, unknown>): { set: SortingSet } | { error: string } {
+  const set: SortingSet = {};
+  const text = (key: "nextStep" | "context" | "waitingOn", max: number): string | null => {
+    if (!(key in body)) return null;
+    const v = body[key];
+    if (v === null || v === "") { set[key] = null; return null; }
+    if (typeof v !== "string" || v.trim().length > max) return `${key} must be text of at most ${max} characters`;
+    set[key] = v.trim();
+    return null;
+  };
+  const bad = text("nextStep", 300) ?? text("context", 40) ?? text("waitingOn", 120);
+  if (bad) return { error: bad };
+  if ("parkedAs" in body) {
+    const v = body.parkedAs;
+    if (v === null || v === "") { set.parkedAs = null; set.waitingOn = null; set.checkBackOn = null; }
+    else if (typeof v === "string" && PARKED.has(v)) set.parkedAs = v;
+    else return { error: "parkedAs must be someday, waiting, or null" };
+  }
+  if ("checkBackOn" in body && set.checkBackOn === undefined) {
+    const v = body.checkBackOn;
+    if (v === null || v === "") set.checkBackOn = null;
+    else if (typeof v === "string" && ISO_DATE.test(v) && !Number.isNaN(Date.parse(`${v}T12:00:00Z`))) set.checkBackOn = v;
+    else return { error: "checkBackOn must be a date (YYYY-MM-DD) or null" };
+  }
+  return { set };
+}
+
 router.get("/tasks", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
@@ -22,6 +56,10 @@ router.get("/tasks", async (req, res) => {
   const conds = [eq(tasks.testerId, testerId)];
   if (goalId) conds.push(eq(tasks.goalId, goalId));
   if (milestoneId) conds.push(eq(tasks.milestoneId, milestoneId));
+  // Parked tasks (someday, waiting) stay in the answer unless asked apart, so
+  // nothing that reads this list today changes underneath it.
+  if (req.query.parked === "exclude") conds.push(isNull(tasks.parkedAs));
+  if (req.query.parked === "only") conds.push(isNotNull(tasks.parkedAs));
 
   // "TODAY'S TASKS" MEANS DUE TODAY *OR* SCHEDULED TODAY.
   //
@@ -101,6 +139,8 @@ router.post("/tasks", async (req, res) => {
   if (!testerId) return;
   const { title, notes, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, planningWindowId } = req.body;
   if (!title) { res.status(400).json({ error: "title required" }); return; }
+  const sorting = sortingFields(req.body);
+  if ("error" in sorting) { res.status(400).json({ error: sorting.error }); return; }
   // Diagnose the task's ruling planet from its title so specific tasks under a
   // star each time to their own planet ("write the plan" reads Mercury even on
   // a Mars star). An explicit planet from the client wins.
@@ -114,6 +154,7 @@ router.post("/tasks", async (req, res) => {
     estMinutes: estMinutes ?? null, energy: energy ?? null, activityKey: activityKey ?? null,
     goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
     sortOrder: sortOrder ?? 0,
+    ...sorting.set,
   }).returning();
   res.status(201).json(row);
 });
@@ -123,6 +164,8 @@ router.patch("/tasks/:id", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const id = parseInt(req.params.id);
+  const sorting = sortingFields(req.body);
+  if ("error" in sorting) { res.status(400).json({ error: sorting.error }); return; }
   const { title, notes, done, started, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, planningWindowId } = req.body;
   // Stamp the moment it flipped to done, and clear it if it flips back — this
   // is the only record of WHEN work happened. `updatedAt` won't do: it moves
@@ -139,7 +182,7 @@ router.patch("/tasks/:id", async (req, res) => {
     : started === undefined ? undefined
     : (String(started) === "true" ? new Date() : null);
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, planningWindowId, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, planningWindowId, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, ...sorting.set, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
