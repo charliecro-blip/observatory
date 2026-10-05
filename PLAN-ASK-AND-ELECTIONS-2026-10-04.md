@@ -206,6 +206,14 @@ should count as testimony (they add ~3,000 narrowed windows, the way the
 activity's own hours already do); whether the long-standing Moon-in-house rule
 is too common to call personal.
 
+**Moon-in-house, narrowed 2026-10-05.** Measured first (4 charts × 26
+activities × 14 days, 5,862 windows): the Moon rule marked 14% of windows and
+was the sole personal testimony on only 3%; the bigger share came from its
+sibling, a significator in the matter's house (29%, and for slow planets it
+holds for months). The Moon now counts only in the matter's primary house
+(the first listed): 14% → 8% of windows, and the top-tier windows it backed
+382 → 206. The significator rule is unchanged and is the next lever.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.

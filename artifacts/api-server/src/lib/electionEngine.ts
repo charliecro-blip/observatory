@@ -1006,7 +1006,12 @@ export function computeElections(opts: {
         }
       }
       const moonHouse = assignHouse(norm360(moonLongitude(jdNoon)), cusps);
-      if (act.houses.includes(moonHouse)) {
+      // The matter's PRIMARY house only (owner 2026-10-05: "make the
+      // Moon-in-house rule less common"). Any of an activity's houses used to
+      // count, and 34 of 52 activities name two, so the Moon sat in one of them
+      // about a sixth of all days; the doctrine places the Moon in the house of
+      // the matter, which is the first one listed.
+      if (moonHouse === act.houses[0]) {
         daySources.push("natal-house"); dayBoost *= 1.15;
         dayWhy.push({ family: "personal", text: `the Moon crosses your ${moonHouse}${moonHouse === 1 ? "st" : moonHouse === 2 ? "nd" : moonHouse === 3 ? "rd" : "th"} today` });
       }

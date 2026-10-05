@@ -155,4 +155,12 @@ describe("natal resonance in elections", () => {
     expect(r.length).toBeGreaterThan(0);
     expect(r.some(c => c.reasons.some((t: string) => t.includes("one of your caution planets")))).toBe(true);
   });
+
+  // 2026-10-05: the Moon counts in the matter's PRIMARY house only.
+  it("reads the Moon in the matter's own house, not its secondary one", () => {
+    const lines = (d: string) => day(d, { activityKey: "call-family" }).windows.flatMap(w => w.evidence.map(e => e.text));
+    // Call home is a 4th-house matter (then 3rd). Cancer rising: 3rd Virgo, 4th Libra.
+    expect(lines("2026-10-08")).not.toContain("the Moon crosses your 3rd today");
+    expect(lines("2026-10-09")).toContain("the Moon crosses your 4th today");
+  });
 }, 120_000);
