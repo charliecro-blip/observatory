@@ -126,4 +126,33 @@ describe("natal resonance in elections", () => {
     expect((r.candidates[0] as any).evidence.natalEvidence.some((t: string) => t.startsWith("The Moon returns"))).toBe(true);
     expect((r.candidates[1] as any).evidence.natalEvidence.some((t: string) => t.startsWith("The Moon returns"))).toBe(false);
   });
+
+  // 2026-10-05: self-reported caution planets are objections (O5), by the
+  // caution window's own definition: the Moon or Sun within 3° of a hard
+  // aspect to the planet's natal place.
+  it("counts a caution planet lit by the Moon against the windows it touches, once", () => {
+    const withCaution = day("2026-10-11", { cautionPlanets: ["Saturn"] });
+    const late = withCaution.windows.find(w => w.startClock === "8:56 PM")!;
+    const texts = late.suitabilityReasons.flatMap(x => x.kind === "natal-objection" ? [x.text] : []);
+    expect(texts).toContain("The Moon squares your natal Saturn, one of your caution planets, exact at 10:02 PM");
+    // The plain malefic objection gives way to the caution, not both.
+    expect(texts.some(t => t.startsWith("The Moon squares your natal Saturn at"))).toBe(false);
+    // Five hours before exact the Moon is still inside 3°, so the afternoon
+    // window counts it too; on a day the Moon makes no hard aspect to natal
+    // Saturn (Oct 9, Moon in Libra) nothing is objected to.
+    const afternoon = withCaution.windows.find(w => w.startClock === "12:01 PM")!;
+    expect(afternoon.suitabilityReasons.some(x => x.kind === "natal-objection" && x.text.includes("caution"))).toBe(true);
+    expect(objections(day("2026-10-09", { cautionPlanets: ["Saturn"] })).some(t => t.includes("caution"))).toBe(false);
+    // Without caution planets the day reads as before.
+    expect(objections(day("2026-10-11")).some(t => t.includes("caution"))).toBe(false);
+  });
+
+  it("reaches duration searches too", () => {
+    const r = presentTiming(searchTiming({
+      activity: "haircut", start: "2026-10-12T01:00:00Z", end: "2026-10-12T05:00:00Z", timeZone: "America/Chicago", durationMinutes: 60,
+      location: { lat: 30.1912, lon: -97.8028 }, natal: { chart: natal, timeKnown: true, birthDate: "1992-01-03", cautionPlanets: ["Saturn"] },
+    } as any)).candidates as any[];
+    expect(r.length).toBeGreaterThan(0);
+    expect(r.some(c => c.reasons.some((t: string) => t.includes("one of your caution planets")))).toBe(true);
+  });
 }, 120_000);

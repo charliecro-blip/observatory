@@ -30,6 +30,8 @@ export interface TimingSearchRequest {
     timeKnown: boolean;
     /** YYYY-MM-DD, for the year's lord (natal resonance R2). */
     birthDate?: string;
+    /** Self-reported caution planets (natal resonance O5). */
+    cautionPlanets?: string[];
   };
   extraActivities?: ActivityCorrespondence[];
 }
@@ -256,7 +258,7 @@ export function searchTiming(
           lat: q.location?.lat,
           lon: q.location?.lon,
           extraActivities: q.extraActivities,
-          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate } : undefined,
+          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate, cautionPlanets: q.natal.cautionPlanets } : undefined,
           timeZone: q.timeZone,
         });
         if (!result) throw new Error();
@@ -278,7 +280,7 @@ export function searchTiming(
           endAt: span.end,
           wakeHour: 7,
           sleepHour: 23,
-          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate } : undefined,
+          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate, cautionPlanets: q.natal.cautionPlanets } : undefined,
         });
         if (!result) throw new Error();
         days.push({
@@ -304,6 +306,7 @@ export function searchTiming(
           natal: q.natal?.chart,
           timeKnown: q.natal?.timeKnown,
           birthDate: q.natal?.birthDate,
+          cautionPlanets: q.natal?.cautionPlanets,
           extraActivities: q.extraActivities,
         });
         if (!result) throw new Error();

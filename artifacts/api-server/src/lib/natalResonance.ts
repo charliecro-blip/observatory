@@ -42,9 +42,19 @@ const sep = (a: number, b: number) => { const d = norm360(a - b); return d > 180
  */
 export const RESONANCE_RULES: Record<RuleId, boolean> = {
   R1: true, R2: true, R3: true, R4: true, R5: true, R6: true, R7: true, R8: true,
-  O1: true, O2: true, O3: true, O4: true,
+  O1: true, O2: true, O3: true, O4: true, O5: true,
 };
-export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "O1" | "O2" | "O3" | "O4";
+export type RuleId = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "O1" | "O2" | "O3" | "O4" | "O5";
+
+/**
+ * THE CAUTION WINDOW, defined once (owner 2026-10-05: "make my caution planets
+ * count as objections too"). A self-reported caution planet "activates" when a
+ * fast body, the Moon or the Sun, is within 3° of a conjunction, square or
+ * opposition to its natal place. Currents shows these windows and imports
+ * these constants; elections count them as objections (O5).
+ */
+export const CAUTION_TRIGGERS = ["Moon", "Sun"] as const;
+export const CAUTION_ORB = 3;
 
 export interface NatalPoint { planet: string; lon: number }
 
@@ -60,10 +70,12 @@ export interface NatalFrame {
   natalMoon: number | null;
   malefics: NatalPoint[];
   benefics: NatalPoint[];
+  /** The person's self-reported caution planets, at their natal places. */
+  cautions: NatalPoint[];
   natalLonOf: (planet: string) => number | null;
 }
 
-export function natalFrame(natal: ComputedNatalChart, sigPlanets: string[], timeKnown: boolean): NatalFrame {
+export function natalFrame(natal: ComputedNatalChart, sigPlanets: string[], timeKnown: boolean, cautionPlanets: string[] = []): NatalFrame {
   const natalLonOf = (p: string) => natal.planets.find((x) => x.planet === p)?.longitude ?? null;
   const pts = (ps: string[]) => ps.flatMap((p) => { const lon = natalLonOf(p); return lon == null ? [] : [{ planet: p, lon }]; });
   const ascLon = timeKnown ? natal.ascendant.longitude : null;
@@ -76,6 +88,7 @@ export function natalFrame(natal: ComputedNatalChart, sigPlanets: string[], time
     natalMoon: natalLonOf("Moon"),
     malefics: pts(["Mars", "Saturn"]),
     benefics: pts(["Venus", "Jupiter"]),
+    cautions: pts([...new Set(cautionPlanets)]),
     natalLonOf,
   };
 }
@@ -177,16 +190,40 @@ export function dayContacts(f: NatalFrame, transitSigs: string[], lonOf: (p: str
       if (hit) (SLOW.has(p) ? standing : objections).push({ rule: "O2", planet: p, text: `${p} ${hit.verb} your natal ${m.planet}` });
     }
   }
+  // O5: the Sun within the caution orb of a hard aspect to a caution planet.
+  // (The Moon's half is timed, in moonToNatal.) The Sun holds it a few days,
+  // so it is a day-level objection, not a standing one.
+  if (RESONANCE_RULES.O5) {
+    const sun = lonOf("Sun");
+    if (sun != null) for (const c of f.cautions) {
+      const hit = HARD.find((a) => Math.abs(sep(sun, c.lon) - a.deg) <= CAUTION_ORB);
+      if (hit) objections.push({ rule: "O5", planet: "Sun", text: `The Sun ${hit.verb} your natal ${c.planet}, one of your caution planets` });
+    }
+  }
   return { supports, objections, standing };
 }
 
 export interface MoonNatalEvent {
-  rule: "R3" | "R4" | "O3";
+  rule: "R3" | "R4" | "O3" | "O5";
   timeMs: number;
   target: string;
   aspect: string;
   /** "the Moon trines your natal Venus" — completed with the time by the caller. */
   phrase: string;
+  /** The natal longitude and aspect angle (0–180), for an orb check. */
+  targetLon: number;
+  angle: number;
+}
+
+/**
+ * Whether an O5 Moon contact is active during [startMs, endMs] by the caution
+ * window's own definition: within CAUTION_ORB of exact at the interval's
+ * nearest moment to the perfection.
+ */
+export function cautionActiveDuring(ev: MoonNatalEvent, startMs: number, endMs: number): boolean {
+  const at = Math.min(Math.max(ev.timeMs, startMs), endMs);
+  const moon = norm360(moonLongitude(julianDay(new Date(at))));
+  return Math.abs(sep(moon, ev.targetLon) - ev.angle) <= CAUTION_ORB;
 }
 
 const ASPECT_NOUN: Record<number, string> = { 0: "conjunction", 60: "sextile", 90: "square", 120: "trine", 180: "opposition" };
@@ -198,7 +235,7 @@ const ASPECT_NOUN: Record<number, string> = { 0: "conjunction", 60: "sextile", 9
  * on a 20-minute grid and bisected to the second.
  */
 export function moonToNatal(f: NatalFrame, startMs: number, endMs: number): MoonNatalEvent[] {
-  const wants: { rule: "R3" | "R4" | "O3"; target: string; lon: number; label: string; angles: number[] }[] = [];
+  const wants: { rule: "R3" | "R4" | "O3" | "O5"; target: string; lon: number; label: string; angles: number[] }[] = [];
   // R4: the Moon's return, when the Moon rules the Ascendant or the matter.
   // Needs a birth time: the natal Moon moves ~0.5° an hour.
   const moonGoverns = f.chartRuler === "Moon" || f.significators.some((s) => s.planet === "Moon");
@@ -207,8 +244,12 @@ export function moonToNatal(f: NatalFrame, startMs: number, endMs: number): Moon
   if (RESONANCE_RULES.R3) for (const t of supportTargets(f))
     wants.push({ rule: "R3", target: t.key, lon: t.lon, label: t.label, angles: returns && t.key === "Moon" ? [60, 120, 240, 300] : [0, 60, 120, 240, 300] });
   if (returns) wants.push({ rule: "R4", target: "Moon", lon: f.natalMoon!, label: "your natal Moon", angles: [0] });
+  // A malefic that is also a caution planet is objected to once, as a caution.
+  const cautionSet = new Set(RESONANCE_RULES.O5 ? f.cautions.map((c) => c.planet) : []);
   if (RESONANCE_RULES.O3) for (const m of f.malefics)
-    wants.push({ rule: "O3", target: m.planet, lon: m.lon, label: `your natal ${m.planet}`, angles: [0, 90, 180, 270] });
+    if (!cautionSet.has(m.planet)) wants.push({ rule: "O3", target: m.planet, lon: m.lon, label: `your natal ${m.planet}`, angles: [0, 90, 180, 270] });
+  if (RESONANCE_RULES.O5) for (const c of f.cautions)
+    wants.push({ rule: "O5", target: c.planet, lon: c.lon, label: `your natal ${c.planet}`, angles: [0, 90, 180, 270] });
   if (!wants.length) return [];
 
   const STEP = 20 * 60000;
@@ -233,7 +274,7 @@ export function moonToNatal(f: NatalFrame, startMs: number, endMs: number): Moon
         }
         const deg = A > 180 ? 360 - A : A;
         out.push({
-          rule: w.rule, timeMs: Math.round(hi / 1000) * 1000, target: w.target, aspect: ASPECT_NOUN[deg],
+          rule: w.rule, timeMs: Math.round(hi / 1000) * 1000, target: w.target, aspect: ASPECT_NOUN[deg], targetLon: w.lon, angle: deg,
           phrase: w.rule === "R4" ? "the Moon returns to its place in your chart"
             : `the Moon ${ASPECT_NOUN[deg] === "conjunction" ? "conjoins" : ASPECT_NOUN[deg] === "opposition" ? "opposes" : `${ASPECT_NOUN[deg]}s`} ${w.label}`,
         });

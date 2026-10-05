@@ -5,6 +5,7 @@
  * Returns the profected year/month (+ time-lord) and each slow planet's current
  * natal-house tenancy with approximate ingress/egress dates.
  */
+import { CAUTION_TRIGGERS, CAUTION_ORB } from "../lib/natalResonance.js";
 import { Router, type IRouter } from "express";
 import { db, natalCharts } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -78,9 +79,10 @@ router.get("/currents", async (req, res) => {
     // — showed as permanently "active," lighting up five at once and alarming
     // people.) Tight orb only; the frontend matches `cautionPlanet` against the
     // user's own self-reported list.
-    const FAST_TRIGGERS = new Set(["Moon", "Sun"]);
+    // One definition, shared with the election engine's O5 objection.
+    const FAST_TRIGGERS = new Set<string>(CAUTION_TRIGGERS);
     const cautionWindows = transitAspects
-      .filter((t) => FAST_TRIGGERS.has(t.transitPlanet) && HARD_ASPECTS.has(t.aspect) && t.orb <= 3)
+      .filter((t) => FAST_TRIGGERS.has(t.transitPlanet) && HARD_ASPECTS.has(t.aspect) && t.orb <= CAUTION_ORB)
       .sort((a, b) => a.orb - b.orb)
       .slice(0, 8)
       .map((t) => ({

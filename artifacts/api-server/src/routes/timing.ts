@@ -15,6 +15,7 @@ import { interpretTimingRequest } from "../lib/timingRequest.js";
 import { activityByKey } from "../lib/activityCorrespondences.js";
 import { timingEnabledFor } from "../lib/timingAccess.js";
 import { buildElectionReport } from "../lib/electionReport.js";
+import { cautionPlanetsFor } from "../lib/cautionPlanets.js";
 
 const router: IRouter = Router();
 router.get("/timing/config", requireTesterId, (_req, res) => {
@@ -111,6 +112,7 @@ export async function natalFor(testerId: string): Promise<TimingSearchRequest["n
     ),
     timeKnown: stored.timeKnown !== false,
     birthDate: stored.birthDate,
+    cautionPlanets: await cautionPlanetsFor(testerId),
   };
 }
 async function computeFor(

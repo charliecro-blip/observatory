@@ -153,8 +153,14 @@ What differs from the table above, and why:
   the activity already names is annotated ("Venus's hour, and Venus is lord of
   your year") instead of producing a duplicate row.
 - **R4 replaces R3's conjunction** to the natal Moon, so the return is named once.
-- **O5 (self-reported caution planets) not built**: those live in the
-  client's profile, which the engine does not see.
+- **O5 (self-reported caution planets), built 2026-10-05**: by the caution
+  window's own definition, now one set of constants shared with Currents
+  (`CAUTION_TRIGGERS`, `CAUTION_ORB`): the Sun within 3° of a hard aspect to
+  a caution planet's natal place objects to the day; the Moon objects to any
+  window (or duration, or compared interval) during which it is within 3°.
+  A caution planet that is also Mars or Saturn is objected to once, as a
+  caution. Read from the profile row (`lib/cautionPlanets.ts`), so only
+  caution planets synced from Settings count.
 - **Objections** cap a window at good, qualify it (`natal-objection`, with the
   literal fact as its text) and never drop it (D1b default).
 - **The birth date** now reaches the engine from Find a time, the report,

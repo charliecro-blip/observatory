@@ -146,7 +146,7 @@ export interface FindLongSessionsOpts {
    *  DST gap when present. Flows through via the spread below. */
   timeZone?: string;
   /** The person's chart (2026-10-05): handed to the canonical evaluator. */
-  natal?: { chart: import("./natal.js").ComputedNatalChart; timeKnown: boolean; birthDate?: string };
+  natal?: { chart: import("./natal.js").ComputedNatalChart; timeKnown: boolean; birthDate?: string; cautionPlanets?: string[] };
 }
 
 export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult | null {

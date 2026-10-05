@@ -20,6 +20,7 @@ import { weaveDay, type WeaveItem } from "../lib/dayWeaver.js";
 import { weaveWeek, weekDates, type WeekItem } from "../lib/weekWeaver.js";
 import { needsResolution } from "../lib/needsResolution.js";
 import { tasks, goals, habits, habitLogs, planningWindows, testerProfiles } from "@workspace/db";
+import { cautionPlanetsFor } from "../lib/cautionPlanets.js";
 import { fetchGcalBusy } from "./googleCal.js";
 import { readCalendar, bucketByDay, spanOf } from "../lib/calendarCommitments.js";
 import { dayBoundsIn, dayBoundsInZone } from "../lib/localClock.js";
@@ -224,7 +225,7 @@ router.get("/elections/lines-up", async (req, res) => {
   const busyKnown = b.ok && b.connected;
 
   try {
-    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown, busy, busyKnown }));
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, cautionPlanets: natal ? await cautionPlanetsFor(testerId) : [], locationKnown, busy, busyKnown }));
   } catch (err) {
     req.log?.error({ err }, "lines-up: sky read failed");
     res.status(503).json({
@@ -561,7 +562,7 @@ router.get("/elections/times", async (req, res) => {
   // same reason /elections/activities merges them into one picker.
   const extraActivities = testerId ? await customActivitiesFor(testerId) : [];
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown, extraActivities });
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, cautionPlanets: natal && testerId ? await cautionPlanetsFor(testerId) : [], locationKnown, extraActivities });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });
@@ -667,6 +668,7 @@ router.get("/plan/inventory", async (req, res) => {
       birthDate = stored.birthDate;
     }
   } catch { /* chartless is fine */ }
+  const cautions = natal ? await cautionPlanetsFor(testerId) : [];
 
   let rows: Array<typeof tasks.$inferSelect> = [];
   try { rows = await db.select().from(tasks).where(eq(tasks.testerId, testerId)); }
@@ -692,11 +694,11 @@ router.get("/plan/inventory", async (req, res) => {
   // yesterday's week or another person's houses.
   const dayKey = today;
   const scanFor = (key: string) => {
-    const memoKey = `${testerId}|${dayKey}|${key}|${lat.toFixed(2)}|${lon.toFixed(2)}|${tzOffsetMin}|${timeZone ?? ""}|${locationKnown}`;
+    const memoKey = `${testerId}|${dayKey}|${cautions.join(",")}|${key}|${lat.toFixed(2)}|${lon.toFixed(2)}|${tzOffsetMin}|${timeZone ?? ""}|${locationKnown}`;
     const hit = INVENTORY_MEMO.get(memoKey);
     if (hit) return hit;
     const out = computeElections({
-      activityKey: key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown,
+      activityKey: key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, cautionPlanets: cautions, locationKnown,
     });
     if (INVENTORY_MEMO.size >= 200) INVENTORY_MEMO.delete(INVENTORY_MEMO.keys().next().value!);
     INVENTORY_MEMO.set(memoKey, out);

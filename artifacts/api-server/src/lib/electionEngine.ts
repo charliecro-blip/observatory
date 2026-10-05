@@ -31,7 +31,7 @@ import { computeDayArc } from "./dayarc.js";
 import { civilDayOffsetIn, dayBoundsInZone, dayBoundsIn, offsetMinutesFor } from "./localClock.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
-import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article } from "./natalResonance.js";
+import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article, cautionActiveDuring } from "./natalResonance.js";
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -569,7 +569,7 @@ export function evaluateActivityInterval(opts: {
    * too). Same rules as the window engine, applied to one interval; see
    * `natalResonance.ts`. Slow contacts are left to span-level callers.
    */
-  natal?: { chart: ComputedNatalChart; timeKnown: boolean; birthDate?: string };
+  natal?: { chart: ComputedNatalChart; timeKnown: boolean; birthDate?: string; cautionPlanets?: string[] };
   /** For the clock times in natal evidence lines and the civil day. */
   timeZone?: string;
   tzOffsetMin?: number;
@@ -677,7 +677,7 @@ export function evaluateActivityInterval(opts: {
   const natalEvidence: string[] = [];
   let finalSuitability = suitability;
   if (opts.natal) {
-    const frame = natalFrame(opts.natal.chart, sigPlanets, opts.natal.timeKnown);
+    const frame = natalFrame(opts.natal.chart, sigPlanets, opts.natal.timeKnown, opts.natal.cautionPlanets ?? []);
     const mid = new Date((startAt.getTime() + endAt.getTime()) / 2);
     const tzMin = opts.timeZone ? offsetMinutesFor(mid, opts.timeZone) : (opts.tzOffsetMin ?? 0);
     const clock = (ms: number) => clockOf(ms, tzMin);
@@ -694,7 +694,13 @@ export function evaluateActivityInterval(opts: {
     for (const o of dc.objections) objections.push({ kind: "natal-objection", planet: o.planet, text: o.text });
 
     // R3/R4 inside the interval; O3 inside it or within two hours of its end.
-    for (const ev of moonToNatal(frame, startAt.getTime(), endAt.getTime() + 2 * 3600000)) {
+    for (const ev of moonToNatal(frame, startAt.getTime() - 6 * 3600000, endAt.getTime() + 6 * 3600000)) {
+      if (ev.rule === "O5") {
+        if (cautionActiveDuring(ev, startAt.getTime(), endAt.getTime()))
+          objections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)}, one of your caution planets, exact at ${clock(ev.timeMs)}` });
+        continue;
+      }
+      if (ev.timeMs < startAt.getTime() || ev.timeMs > endAt.getTime() + 2 * 3600000) continue;
       if (ev.rule === "O3") { objections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)} at ${clock(ev.timeMs)}` }); continue; }
       if (ev.timeMs > endAt.getTime()) continue;
       if (!families.includes("natal-resonance")) families.push("natal-resonance");
@@ -772,6 +778,8 @@ export function computeElections(opts: {
   timeKnown?: boolean;
   /** Birth date (YYYY-MM-DD), for the year's lord. Without it R2 is withheld. */
   birthDate?: string;
+  /** The person's self-reported caution planets (O5). */
+  cautionPlanets?: string[];
   /**
    * Whether `lat`/`lon` are the user's real location or a timezone guess.
    *
@@ -851,7 +859,7 @@ export function computeElections(opts: {
   // The natal points this election reads (natalResonance.ts). Body/self
   // matters weigh the chart ruler and Ascendant fully; everything else reads
   // them at half weight, since the native is still the one acting.
-  const frame = natal ? natalFrame(natal, sigPlanets, houseTestimonyAllowed) : null;
+  const frame = natal ? natalFrame(natal, sigPlanets, houseTestimonyAllowed, opts.cautionPlanets ?? []) : null;
   const selfMatter = act.category === "body" || act.houses.includes(1);
   // Also narrowed: the top tier is only withheld for INCEPTIONS now, so the
   // caution no longer promises a demotion it will not deliver for a long run.
@@ -1184,13 +1192,15 @@ export function computeElections(opts: {
     // R3/R4 make windows of their own, shaped like the Moon-aspect swells
     // above (exact ± 2.5 h, inside waking hours). O3 never makes a window; it
     // is read against windows at emit time.
-    const natalMoon = frame ? moonToNatal(frame, dayStartMs, dayStartMs + 26 * 3600000) : [];
+    // To 30 h: a caution contact (O5) counts while the Moon is within 3°, about
+    // six hours either side of exact, so a late window needs the next morning's.
+    const natalMoon = frame ? moonToNatal(frame, dayStartMs, dayStartMs + 30 * 3600000) : [];
     // Angles and the rising sign are cut from the local horizon: withheld on a
     // guessed location, as the hours and the significators' crossings are.
     const natalAngles = frame && locationKnown ? natalOnAngles(frame, dayStartMs, lat, lon) : [];
     const risingSpans = frame && locationKnown ? ownSignRising(frame, dayStartMs, lat, lon) : [];
     for (const ev of natalMoon) {
-      if (ev.rule === "O3") continue;
+      if (ev.rule === "O3" || ev.rule === "O5") continue;
       // A window of its own only when the contact is with this activity's own
       // planet, or the matter is the self. The chart ruler and Ascendant made
       // windows for every activity, +42% windows in calibration; for other
@@ -1372,7 +1382,7 @@ export function computeElections(opts: {
         const mine = new Set(c.why.map(e => e.text));
         // R3/R4 perfecting inside this window, when it is not the window's own.
         for (const ev of natalMoon) {
-          if (ev.rule === "O3" || ev.timeMs < c.startMs || ev.timeMs > c.endMs) continue;
+          if (ev.rule === "O3" || ev.rule === "O5" || ev.timeMs < c.startMs || ev.timeMs > c.endMs) continue;
           const text = `${cap(ev.phrase)}, exact at ${clockOf(ev.timeMs, tzOffsetMin)}, inside the window`;
           if ([...mine].some(t => t.startsWith(cap(ev.phrase)))) continue;
           natalWhy.push({ family: "personal", text }); natalSrc.push("natal-moon");
@@ -1401,6 +1411,12 @@ export function computeElections(opts: {
         for (const ev of natalMoon) {
           if (ev.rule !== "O3" || ev.timeMs < c.startMs || ev.timeMs > c.endMs + 2 * 3600000) continue;
           winObjections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)} at ${clockOf(ev.timeMs, tzOffsetMin)}` });
+        }
+        // O5: a caution planet lit by the Moon, by the caution window's own
+        // definition (within 3° at some point in the window).
+        for (const ev of natalMoon) {
+          if (ev.rule !== "O5" || !cautionActiveDuring(ev, c.startMs, c.endMs)) continue;
+          winObjections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)}, one of your caution planets, exact at ${clockOf(ev.timeMs, tzOffsetMin)}` });
         }
         if (c.sources.includes("natal-moon")) natalSrc.push("natal-moon");
       }
