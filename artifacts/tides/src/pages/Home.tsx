@@ -76,6 +76,7 @@ import GearChange from "@/components/GearChange";
 import RhythmRecordNotice from "@/components/RhythmRecord";
 import { useRhythmProposal } from "@/components/RhythmProposal";
 import { effectiveRhythm, TRIM_FOLDS, type Rhythm } from "@/lib/preferences";
+import FitsNow from "@/components/FitsNow";
 import { useHomeData, type Task, type LinesUpResult } from "@/hooks/useHomeData";
 import RitualCard from "@/components/RitualCard";
 import { ritualPhase } from "@/lib/chronotype";
@@ -842,6 +843,17 @@ export default function Home({
       </div>
 
       {answerPage && (<>
+        {/* What fits now (plan Part B, T6): the time, energy and place you
+            have, against what you hold, next step first. */}
+        <FitsNow
+          tasks={open as any}
+          habits={(habitsForRisk ?? []) as any}
+          today={today}
+          hourRuler={skyQuiet ? null : now?.planetaryHour?.planet ?? null}
+          onStart={onStartSession ? (title) => onStartSession(title) : undefined}
+          onOpenTasks={() => onNavigate("tasks")}
+        />
+
         {/* Shape today, beside the answer (N7). One clear move carries its
             own "Find it an hour", which opens the same thing. */}
         {(rhythm !== "campaign" || shapeOpen) && (

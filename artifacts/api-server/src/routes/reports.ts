@@ -15,7 +15,7 @@
  */
 import { Router, type IRouter } from "express";
 import { db, natalCharts, planningWindows, goals, emailSubscriptions, tasks, habits, habitLogs, usageEvents } from "@workspace/db";
-import { and, eq, gte, lte, lt, inArray } from "drizzle-orm";
+import { and, eq, gte, lte, lt, inArray, isNull } from "drizzle-orm";
 import { requireTesterId } from "../middlewares/testerId.js";
 import { sendEmail, emailConfigured, unsubscribeUrl, verifyUnsubscribeToken } from "../lib/email.js";
 import { bustEmailSubscriptionCache } from "../lib/notifier.js";
@@ -68,7 +68,7 @@ interface OwnedRow { text: string; planet: string | null; sort: number; title: s
 
 async function ownedToday(testerId: string, todayStr: string, tomorrowStr: string) {
   const open = await db.select().from(tasks).where(and(
-    eq(tasks.testerId, testerId), eq(tasks.done, "false"),
+    eq(tasks.testerId, testerId), eq(tasks.done, "false"), isNull(tasks.parkedAs),
   ));
   const rows: OwnedRow[] = [];
   for (const t of open) {
@@ -415,7 +415,7 @@ export async function composeWeek(testerId: string, tz: number, _lat: number, _l
   const todayStr = localDate(tz).toISOString().slice(0, 10);
   const weekEndStr = localDate(tz, 7).toISOString().slice(0, 10);
   const dueThisWeek = await db.select().from(tasks).where(and(
-    eq(tasks.testerId, testerId), eq(tasks.done, "false"),
+    eq(tasks.testerId, testerId), eq(tasks.done, "false"), isNull(tasks.parkedAs),
   ));
   const upcoming = dueThisWeek
     .filter((t) => t.dueDate && t.dueDate >= todayStr && t.dueDate < weekEndStr)
@@ -823,7 +823,7 @@ router.post("/reports/unsubscribe", async (req, res) => {
   await db.update(emailSubscriptions).set({ enabled: "false", updatedAt: new Date() }).where(eq(emailSubscriptions.testerId, t));
   bustEmailSubscriptionCache();
   void logEmailEvent(t, "email_unsubscribe", {});
-  res.send(unsubscribePage(`<p>Done. Compass won't send you any more email reports. You can turn them back on in Settings.</p>`));
+  res.send(unsubscribePage(`<p>Compass won't send you any more email reports; you can turn them back on in Settings.</p>`));
 });
 
 export default router;

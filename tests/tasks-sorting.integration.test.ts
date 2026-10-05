@@ -48,12 +48,12 @@ describe.skipIf(!TEST_DB)("task sorting fields (integration)", () => {
     expect(back).toMatchObject({ parkedAs: null, waitingOn: null, checkBackOn: null });
   });
 
-  it("keeps parked tasks in the list unless asked apart", async () => {
+  it("leaves parked tasks out of the list unless asked for", async () => {
     await call("/tasks", "POST", { title: "Open one" });
     await call("/tasks", "POST", { title: "Maybe one day", parkedAs: "someday" });
     const titles = async (q: string) => (await (await call(`/tasks${q}`)).json()).map((t: any) => t.title).sort();
-    expect(await titles("")).toEqual(["Maybe one day", "Open one"]);
-    expect(await titles("?parked=exclude")).toEqual(["Open one"]);
+    expect(await titles("")).toEqual(["Open one"]);
+    expect(await titles("?parked=include")).toEqual(["Maybe one day", "Open one"]);
     expect(await titles("?parked=only")).toEqual(["Maybe one day"]);
   });
 
@@ -61,6 +61,28 @@ describe.skipIf(!TEST_DB)("task sorting fields (integration)", () => {
     for (const bad of [{ parkedAs: "later" }, { checkBackOn: "next tuesday" }, { checkBackOn: "2026-13-45" }, { nextStep: "x".repeat(301) }, { context: 5 }]) {
       const r = await call("/tasks", "POST", { title: "t", ...bad });
       expect(r.status, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
+  it("holds steps one level deep, and keeps them when their task is deleted", async () => {
+    const parent = await (await call("/tasks", "POST", { title: "Clean the garage" })).json();
+    const step = await (await call("/tasks", "POST", { title: "carry one box out", parentId: parent.id })).json();
+    expect(step.parentId).toBe(parent.id);
+    expect((await call("/tasks", "POST", { title: "deeper", parentId: step.id })).status).toBe(400);
+    expect((await call(`/tasks/${parent.id}`, "PATCH", { parentId: parent.id })).status).toBe(400);
+    const other = await (await call("/tasks", "POST", { title: "Other" })).json();
+    expect((await call(`/tasks/${parent.id}`, "PATCH", { parentId: other.id })).status).toBe(400);
+    await call(`/tasks/${parent.id}`, "DELETE");
+    const kept = (await (await call("/tasks?parked=include")).json()).find((t: any) => t.id === step.id);
+    expect(kept).toMatchObject({ title: "carry one box out", parentId: null });
+  });
+
+  it("refuses another person's task as a parent", async () => {
+    const r = await pool.query(`INSERT INTO tasks (tester_id, title, sort_order) VALUES ('obs_someone_else_test', 'theirs', 0) RETURNING id`);
+    try {
+      expect((await call("/tasks", "POST", { title: "mine", parentId: r.rows[0].id })).status).toBe(400);
+    } finally {
+      await pool.query(`DELETE FROM tasks WHERE tester_id = 'obs_someone_else_test'`);
     }
   });
 });

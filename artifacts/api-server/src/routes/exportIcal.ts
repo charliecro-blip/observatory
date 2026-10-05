@@ -6,7 +6,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { tasks, planningWindows } from "@workspace/db/schema";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { testerProfiles } from "@workspace/db";
 import { hashFeedToken } from "../lib/feedToken.js";
 
@@ -60,7 +60,7 @@ router.get("/export/ical", async (req, res) => {
   if (!testerId) { res.status(400).json({ error: "Missing testerId" }); return; }
 
   const [taskRows, windowRows] = await Promise.all([
-    db.select().from(tasks).where(and(eq(tasks.testerId, testerId), isNotNull(tasks.dueDate))),
+    db.select().from(tasks).where(and(eq(tasks.testerId, testerId), isNotNull(tasks.dueDate), isNull(tasks.parkedAs))),
     db.select().from(planningWindows).where(eq(planningWindows.testerId, testerId)),
   ]);
 

@@ -150,7 +150,7 @@ export async function computeMomentum(testerId: string, tzOffsetMin: number, lat
     const stepsAll = allMilestones.filter(m => projIds.includes(m.projectId));
     const stepsDone = stepsAll.filter(m => m.status === "completed").length;
     const gTasks = allTasks.filter(t =>
-      (t.goalId === g.id || (t.projectId != null && projIds.includes(t.projectId))) && t.done !== "true");
+      (t.goalId === g.id || (t.projectId != null && projIds.includes(t.projectId))) && t.done !== "true" && !t.parkedAs);
     // Next move: the first open task (milestone-ordered work first), else the
     // first un-finished step, else "break it down".
     const nextTask = gTasks.sort((a, b) => (a.milestoneId ?? 1e9) - (b.milestoneId ?? 1e9) || a.id - b.id)[0];

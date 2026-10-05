@@ -984,3 +984,32 @@ Timing-request clarification copy, reviewed with no-ai-slop:
 - Conflicting or excluded parts of a day: “Choose the time range you want to include in the search fields.”
 - Now combined with another period: “Choose whether to search now or during the other period you named.”
 - Unsupported night, solar-event, or relative-day expressions: “Please set the dates and times for that period in the search fields.”
+
+## ADDENDUM — 2026-10-04 (elections read the chart; sorting what you hold; the day's light)
+
+Plan: `PLAN-ASK-AND-ELECTIONS-2026-10-04.md`. All lines below were written against the no-ai-slop skill; the two-short-sentence cadence was hunted out of a first draft on the same night.
+
+### B1. Natal resonance evidence lines — `api-server/src/lib/natalResonance.ts`, `electionEngine.ts`
+
+Fact first, the natal point named. `{body}` is "the Moon"/"the Sun" or the planet's name; templates are filled verbatim.
+- Day of the chart ruler / year lord: "{Body}'s day, and {body} rules your Ascendant" · "…is lord of your year (an 11th-house profection)" · both: "…rules your Ascendant and your year"
+- Hour: "{Body}'s hour, and {body} {same reason}" · day and hour together: "{Body}'s day and hour, and {body} {reason}"
+- Moon to a natal point: "The Moon {conjoins|sextiles|trines} your natal {planet}[, which rules your Ascendant], exact at {time}, inside the window"
+- Lunar return: "The Moon returns to its place in your chart, exact at {time}, inside the window"
+- Transit to a natal point: "{Planet} {conjoins|sextiles|trines} your natal {point}"
+- Natal degree on an angle (hour-sized windows only): "Your natal {planet} {rises|culminates} at {time}, inside this window"
+- Rising sign: "{Sign} is rising, as it was when you were born"
+- Objections (shown under "Against it" in the report, as qualifications in Find a time): "{Planet} {squares|opposes|conjoins} your natal {point}" · "The Moon {squares|opposes|conjoins} your natal {Mars|Saturn} at {time}" · "Your natal {Mars|Saturn} {rises|culminates} at {time}, inside this window". Find a time appends ", which counts against this time for you."
+- Slow contacts, said once per span: "{Planet} {verb} your natal {point}, a slow contact that holds through this stretch."
+
+### B2. Election report — `tides/src/components/ElectionReportView.tsx`
+Headings: "Conditions", "Best times", "Strong times your calendar already holds", "If it can wait", "Days to leave alone". Lines: "Open on your calendar." · "Taken on your calendar." · "most of the day" · "Also that day: …" · "Against it: …" · "{Planet} turns direct on {date}." · "The engine found no time in the {n} days after that." Day reasons: "The Moon is void of course {all day | until {t} | from {t} on | from {t} to {t}}." · "Your calendar leaves {n} minutes open between {t} and {t}." · "The engine found no window this day." Footer gaps: chart absent / birth time unknown / calendar not connected / couldn't be read / days that couldn't be searched / windows left out.
+
+### B3. Sorting what you hold — `TaskClarify.tsx`, `FitsNow.tsx`, `TaskReview.tsx`, `pages/Tasks.tsx`
+- Row meta: "Next: {step}" · "{n} of {m} steps" · "waiting on {who}" · "someday". The no-date bucket is renamed "No date" (it had been "Someday", which is the GTD word for parked).
+- Clarify panel labels: "Next step", "Steps", "Where", "Park it". Places: "at home", "out", "at the computer", "on the phone", "anywhere". Buttons: "Did it", "Change", "Suggest one", "Break it into steps", "Someday", "Waiting on someone", "Park", "Back in play", "That finishes it", "No next step yet". Placeholders: "the first thing you'd physically do", "add a step", "who". Notes: "Logged as worked on; what's the next step?" · "A suggestion, yours to change or save." · "Suggestions aren't available right now." · "Parked for someday." · "Waiting on {who}, look again {date}."
+- What fits now: "Time / Energy / Where", "15 min · 30 min · an hour or more", "low · some · plenty". Empty: "Nothing you hold fits {slot} and {energy} energy." Keepings: "Or a keeping: {habit} ({smallest version})." Gap: "One task has no next step or length yet, so it isn't counted."
+- Review: "Not clarified yet", "Waiting on someone", "Someday", "The week", each with a one-line note and an empty state.
+
+### B4. The day's light — `DaylightLine.tsx`
+"Sunrise {t}, solar noon {t}, sunset {t}." Polar: "The Sun stays up all day here." / "The Sun stays below the horizon all day here."

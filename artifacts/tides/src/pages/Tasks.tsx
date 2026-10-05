@@ -13,6 +13,8 @@ import { PLANET_GLYPH } from "@/lib/glyphs";
 import { touchLine, type TouchTrail } from "@/lib/touches";
 import { ELEMENT_COLORS, elementColor } from "@/lib/elements";
 import { PLANET_COLORS } from "@/lib/planetColors";
+import TaskClarify, { placeLabel, type TaskPatch } from "@/components/TaskClarify";
+import TaskReview from "@/components/TaskReview";
 
 /** "Sep 28" for a YYYY-MM-DD, read as a local date (density pass AB3: rows
  *  printed "2026-09-28"). */
@@ -44,6 +46,12 @@ interface Task {
   goalId?:number; projectId?:number;
   // Set when auto-rollover has carried this forward — the date it started on.
   originalDueDate?:string|null;
+  // Sorting (plan Part B): the next physical step, where it can happen, and
+  // whether it is parked (someday, or waiting on someone).
+  nextStep?:string|null; context?:string|null;
+  parkedAs?:string|null; waitingOn?:string|null; checkBackOn?:string|null;
+  // A step inside another task (T3).
+  parentId?:number|null;
 }
 
 // "carried from Tue" — the point of keeping the original date. Says the task
@@ -76,6 +84,8 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
   const qc = useQueryClient();
   const today = localToday();
   const [showAdd, setShowAdd] = useState(false);
+  // The review you can open any time (plan Part B, T7).
+  const [reviewing, setReviewing] = useState(false);
   /**
    * DUMP MULTIPLE AT ONCE (owner, 2026-08-31: "on the tasks page, i should
    * be able to dump multiple tasks at once").
@@ -169,11 +179,13 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
 
   // Always fetch ALL tasks — this is one page grouped by timeframe, so nothing
   // ever lives on a hidden "All" tab. A task with no due date (e.g. one spun
-  // off a Guiding Star) lands in "Someday", always visible, never lost.
+  // off a Guiding Star) lands in "No date", always visible, never lost; a
+  // parked one waits in "Parked".
   const { data: tasks = [], isError: tasksError, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["tasks", testerId],
     queryFn: async () => {
-      const r = await fetch("/api/tasks", { headers: authH(testerId) });
+      // The one list that shows parked tasks, in their own section.
+      const r = await fetch("/api/tasks?parked=include", { headers: authH(testerId) });
       return jsonArray(r);
     },
     enabled: !!testerId,
@@ -326,8 +338,47 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     onSuccess: () => qc.invalidateQueries({queryKey:["tasks"]}),
   });
 
+  const patchTask = useMutation({
+    mutationFn: async ({ id, fields }: { id: number; fields: TaskPatch }) => {
+      const r = await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: authH(testerId), body: JSON.stringify(fields) });
+      if (!r.ok) throw new Error(`update failed (${r.status})`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+  // A finished step is partial progress on the task: the same touch record
+  // (wins.taskId) the session timer writes, so the task's trail shows it.
+  const stepDone = useMutation({
+    mutationFn: async ({ id, step }: { id: number; step: string }) => {
+      const r = await fetch("/api/planning/wins", {
+        method: "POST", headers: authH(testerId),
+        body: JSON.stringify({ text: step, taskId: id, date: today, tz: new Date().getTimezoneOffset() }),
+      });
+      if (!r.ok) throw new Error(`log failed (${r.status})`);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["touches"] }); qc.invalidateQueries({ queryKey: ["momentum"] }); },
+  });
+
+  // Steps (child tasks) live under their task, in order of creation, and
+  // leave the top-level lists while their parent is there to hold them.
+  const stepsOf = new Map<number, Task[]>();
+  for (const t of [...tasks].sort((a, b) => a.id - b.id)) if (t.parentId) stepsOf.set(t.parentId, [...(stepsOf.get(t.parentId) ?? []), t]);
+  const heldByParent = (t: Task) => !!t.parentId && tasks.some(p => p.id === t.parentId && p.done !== "true");
+  const addSteps = useMutation({
+    mutationFn: async ({ parentId, titles }: { parentId: number; titles: string[] }) => {
+      for (const title of titles) {
+        const r = await fetch("/api/tasks", { method: "POST", headers: authH(testerId), body: JSON.stringify({ title, parentId }) });
+        if (!r.ok) throw new Error(`add step failed (${r.status})`);
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
   const bestNow = now?.planetaryHour?.planet ? HOUR_WINDOW[now.planetaryHour.planet] : null;
-  const active = tasks.filter(t => t.done !== "true");
+  const open = tasks.filter(t => t.done !== "true" && !heldByParent(t));
+  // Parked tasks (someday, waiting on someone) leave every timed list and
+  // wait in their own section until they are put back in play.
+  const parked = open.filter(t => t.parkedAs);
+  const active = open.filter(t => !t.parkedAs);
   const done = tasks.filter(t => t.done === "true");
 
   // Timeframe buckets — one page, every active task lands in exactly one, and
@@ -338,7 +389,9 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
     { key: "today",    label: "Today",       accent: "#3a6020", tasks: active.filter(t => t.dueDate === today) },
     { key: "week",     label: "This week",   tasks: active.filter(t => t.dueDate && t.dueDate > today && t.dueDate <= weekEnd) },
     { key: "later",    label: "Scheduled later", tasks: active.filter(t => t.dueDate && t.dueDate > weekEnd) },
-    { key: "someday",  label: "Someday",     tasks: active.filter(t => !t.dueDate) },
+    // Was "Someday", which is the GTD word for a PARKED task. These are open
+    // tasks that simply carry no date.
+    { key: "nodate",   label: "No date",     tasks: active.filter(t => !t.dueDate) },
   ];
 
   return (
@@ -356,6 +409,11 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
             return null;
           })()}
         </div>
+        <div style={{display:"flex",gap:6}}>
+        <button onClick={() => setReviewing(v => !v)} aria-pressed={reviewing}
+          style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:reviewing?"#1a2a3a":"var(--color-card)",color:reviewing?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
+          Review
+        </button>
         <button onClick={() => {
           if (!showAdd) setNewDueDate(today);
           // Closing the form loses the mode too, so reopening it always
@@ -365,6 +423,7 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
         }} style={{fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid var(--color-border)",background:showAdd?"#1a2a3a":"var(--color-card)",color:showAdd?"#ffffff":"var(--text-2)",cursor:"pointer"}}>
           + New task
         </button>
+        </div>
       </div>
 
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
@@ -552,6 +611,27 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
           </div>
         )}
 
+        {reviewing && (
+          <TaskReview tasks={tasks} today={today} weekEnd={weekEnd} onClose={() => setReviewing(false)}
+            renderRow={(t) => (
+              <Row task={t}
+                goal={t.goalId ? goalsById[t.goalId] : undefined}
+                project={t.projectId ? projectsById[t.projectId] : undefined}
+                today={today}
+                touch={touchData?.touches?.[String(t.id)]}
+                onToggle={() => completeTask(t.id, t.title, t.done==="true")}
+                onDelete={() => remove.mutate(t.id)}
+                testerId={testerId}
+                onPatch={(fields) => patchTask.mutate({ id: t.id, fields })}
+                onStepDone={(step) => stepDone.mutate({ id: t.id, step })}
+                steps={stepsOf.get(t.id)}
+                onAddSteps={(titles) => addSteps.mutate({ parentId: t.id, titles })}
+                onToggleStep={(id, done) => toggle.mutate({ id, done })}
+              />
+            )}
+          />
+        )}
+
         {/* Timeframe buckets — one page, nothing hidden */}
         {buckets.filter(b => b.tasks.length > 0).map(b => (
           <Sect key={b.key} label={`${b.label} · ${b.tasks.length}`} accent={b.accent}>
@@ -565,10 +645,43 @@ export default function Tasks({ testerId, now, lat = 40.7, lon = -74.0 }: { test
                 onDelete={() => remove.mutate(t.id)}
                 onSchedule={() => setSuggestFor({ title: t.title, taskId: t.id, goalId: t.goalId, projectId: t.projectId })}
                 highlight={b.key === "today" && (!t.bestWindowType || t.bestWindowType === bestNow)}
+                testerId={testerId}
+                onPatch={(fields) => patchTask.mutate({ id: t.id, fields })}
+                onStepDone={(step) => stepDone.mutate({ id: t.id, step })}
+                steps={stepsOf.get(t.id)}
+                onAddSteps={(titles) => addSteps.mutate({ parentId: t.id, titles })}
+                onToggleStep={(id, done) => toggle.mutate({ id, done })}
               />
             ))}
           </Sect>
         ))}
+
+        {(patchTask.isError || stepDone.isError || addSteps.isError) && (
+          <div role="alert" style={{fontSize:11,color:"#a03030"}}>That change didn’t save. Try again.</div>
+        )}
+
+        {parked.length > 0 && (
+          <Disclosure label={`Parked · ${parked.length}`}>
+            <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:6}}>
+              {[...parked.filter(t => t.parkedAs === "waiting"), ...parked.filter(t => t.parkedAs !== "waiting")].map(t => (
+                <Row key={t.id} task={t}
+                  goal={t.goalId ? goalsById[t.goalId] : undefined}
+                  project={t.projectId ? projectsById[t.projectId] : undefined}
+                  today={today}
+                  touch={touchData?.touches?.[String(t.id)]}
+                  onToggle={() => completeTask(t.id, t.title, t.done==="true")}
+                  onDelete={() => remove.mutate(t.id)}
+                  testerId={testerId}
+                  onPatch={(fields) => patchTask.mutate({ id: t.id, fields })}
+                  onStepDone={(step) => stepDone.mutate({ id: t.id, step })}
+                steps={stepsOf.get(t.id)}
+                onAddSteps={(titles) => addSteps.mutate({ parentId: t.id, titles })}
+                onToggleStep={(id, done) => toggle.mutate({ id, done })}
+                />
+              ))}
+            </div>
+          </Disclosure>
+        )}
 
         {active.length === 0 && !showAdd && (
           <div style={{textAlign:"center",padding:"48px 0",color:"var(--text-3)",fontSize:13}}>
@@ -627,10 +740,12 @@ function Sect({ label, children, accent, color, muted }: any) {
  * furniture on every line is most of what makes a list look like a database,
  * and it is reachable from the keyboard because focus reveals it too.
  */
-function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule, highlight, dim }: {
+function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule, highlight, dim, testerId, onPatch, onStepDone, steps, onAddSteps, onToggleStep }: {
   task: Task; goal?: GoalLite; project?: ProjectLite; today: string; touch?: TouchTrail;
   onToggle: () => void; onDelete: () => void; onSchedule?: () => void;
   highlight?: boolean; dim?: boolean;
+  testerId?: string | null; onPatch?: (fields: TaskPatch) => void; onStepDone?: (step: string) => void;
+  steps?: Task[]; onAddSteps?: (titles: string[]) => void; onToggleStep?: (id: number, done: boolean) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [hot, setHot] = React.useState(false);
@@ -642,6 +757,14 @@ function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule
   // second because "this is older than it looks" is the other thing worth
   // knowing before you skip it again.
   const bits: string[] = [];
+  // The next step leads when there is one: it is what you would actually do.
+  // A task with steps takes its first open step as its next one.
+  const firstOpenStep = (steps ?? []).find(st => st.done !== "true");
+  const nextLine = firstOpenStep?.title ?? task.nextStep;
+  if (nextLine && !isDone && !task.parkedAs) bits.push(`Next: ${nextLine}`);
+  if (steps?.length && !isDone) bits.push(`${steps.filter(st => st.done === "true").length} of ${steps.length} steps`);
+  if (task.parkedAs === "waiting" && !isDone) bits.push(`waiting on ${task.waitingOn || "someone"}`);
+  if (task.parkedAs === "someday" && !isDone) bits.push("someday");
   if (task.dueDate) bits.push(task.dueDate === today ? "Today" : shortDue(task.dueDate));
   const carried = carriedLabel(task, today);
   if (carried && !isDone) bits.push(`carried from ${carried.replace(/^from /, "")}`);
@@ -694,11 +817,16 @@ function Row({ task, goal, project, today, touch, onToggle, onDelete, onSchedule
           {project && <span>part of {project.title}</span>}
           {task.bestWindowType && <span>suits {WINDOW_LABELS[task.bestWindowType]}</span>}
           {touch && <span>{touchLine(touch)}</span>}
+          {task.context && <span>{placeLabel(task.context)}</span>}
           {/* No "nothing recorded" fallback: "no length set" above is always
               printed when there is no estimate, so the empty case already says
               something true. Both at once read as the row contradicting
               itself, which is what it did on the first run of this. */}
         </div>
+      )}
+      {open && !isDone && onPatch && onStepDone && (
+        <TaskClarify task={task} testerId={testerId ?? null} onPatch={onPatch} onStepDone={onStepDone} onFinish={onToggle}
+          steps={steps} onAddSteps={task.parentId ? undefined : onAddSteps} onToggleStep={onToggleStep} />
       )}
     </div>
   );

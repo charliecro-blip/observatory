@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { tasks } from "@workspace/db/schema";
 import { eq, and, desc, lt, isNull, isNotNull, sql } from "drizzle-orm";
 import { associateDeterministic } from "../lib/associate.js";
+import { openai, isOpenAiConfigured } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -47,6 +48,26 @@ function sortingFields(body: Record<string, unknown>): { set: SortingSet } | { e
   return { set };
 }
 
+/**
+ * A parent link (plan Part B, T3), checked: the parent must be the same
+ * person's, must not be the task itself, and must not itself be a step, since
+ * steps are one level deep. `undefined` leaves the link alone, null clears it.
+ */
+async function parentField(testerId: string, body: Record<string, unknown>, selfId: number | null): Promise<{ parentId?: number | null } | { error: string }> {
+  if (!("parentId" in body)) return {};
+  const v = body.parentId;
+  if (v === null) return { parentId: null };
+  if (typeof v !== "number" || !Number.isInteger(v) || v <= 0 || v === selfId) return { error: "parentId must be another task's id, or null" };
+  const [parent] = await db.select({ id: tasks.id, parentId: tasks.parentId }).from(tasks).where(and(eq(tasks.id, v), eq(tasks.testerId, testerId))).limit(1);
+  if (!parent) return { error: "no such parent task" };
+  if (parent.parentId != null) return { error: "a step can't hold steps of its own" };
+  if (selfId != null) {
+    const [kid] = await db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.parentId, selfId), eq(tasks.testerId, testerId))).limit(1);
+    if (kid) return { error: "a task with steps can't become a step" };
+  }
+  return { parentId: v };
+}
+
 router.get("/tasks", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
@@ -56,10 +77,11 @@ router.get("/tasks", async (req, res) => {
   const conds = [eq(tasks.testerId, testerId)];
   if (goalId) conds.push(eq(tasks.goalId, goalId));
   if (milestoneId) conds.push(eq(tasks.milestoneId, milestoneId));
-  // Parked tasks (someday, waiting) stay in the answer unless asked apart, so
-  // nothing that reads this list today changes underneath it.
-  if (req.query.parked === "exclude") conds.push(isNull(tasks.parkedAs));
+  // Parked tasks (someday, waiting on someone) are out of every list until
+  // put back in play, so they are left out unless asked for: `?parked=include`
+  // (the Tasks page, which shows them in their own section) or `only`.
   if (req.query.parked === "only") conds.push(isNotNull(tasks.parkedAs));
+  else if (req.query.parked !== "include") conds.push(isNull(tasks.parkedAs));
 
   // "TODAY'S TASKS" MEANS DUE TODAY *OR* SCHEDULED TODAY.
   //
@@ -141,6 +163,8 @@ router.post("/tasks", async (req, res) => {
   if (!title) { res.status(400).json({ error: "title required" }); return; }
   const sorting = sortingFields(req.body);
   if ("error" in sorting) { res.status(400).json({ error: sorting.error }); return; }
+  const parent = await parentField(testerId, req.body ?? {}, null);
+  if ("error" in parent) { res.status(400).json({ error: parent.error }); return; }
   // Diagnose the task's ruling planet from its title so specific tasks under a
   // star each time to their own planet ("write the plan" reads Mercury even on
   // a Mars star). An explicit planet from the client wins.
@@ -155,6 +179,7 @@ router.post("/tasks", async (req, res) => {
     goalId: goalId ?? null, projectId: projectId ?? null, milestoneId: milestoneId ?? null,
     sortOrder: sortOrder ?? 0,
     ...sorting.set,
+    ...parent,
   }).returning();
   res.status(201).json(row);
 });
@@ -166,6 +191,8 @@ router.patch("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const sorting = sortingFields(req.body);
   if ("error" in sorting) { res.status(400).json({ error: sorting.error }); return; }
+  const parent = await parentField(testerId, req.body ?? {}, id);
+  if ("error" in parent) { res.status(400).json({ error: parent.error }); return; }
   const { title, notes, done, started, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, planningWindowId } = req.body;
   // Stamp the moment it flipped to done, and clear it if it flips back — this
   // is the only record of WHEN work happened. `updatedAt` won't do: it moves
@@ -182,11 +209,50 @@ router.patch("/tasks/:id", async (req, res) => {
     : started === undefined ? undefined
     : (String(started) === "true" ? new Date() : null);
   const [row] = await db.update(tasks)
-    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, planningWindowId, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, ...sorting.set, updatedAt: new Date() })
+    .set({ title, notes, done: done !== undefined ? String(done) : undefined, completedAt, startedAt, planningWindowId, dueDate, bestWindowType, estMinutes, energy, goalId, projectId, milestoneId, sortOrder, planet, activityKey, ...sorting.set, ...parent, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
+});
+
+// POST /tasks/:id/next-step-suggestion — one suggested next physical action
+// (plan Part B, T2). A suggestion, never a write: the client shows it in the
+// field and nothing is saved until the person saves it. Without a model
+// configured this says so (503) rather than inventing a step from the title.
+router.post("/tasks/:id/next-step-suggestion", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const id = parseInt(req.params.id);
+  const [task] = await db.select().from(tasks).where(and(eq(tasks.id, id), eq(tasks.testerId, testerId))).limit(1);
+  if (!task) { res.status(404).json({ error: "Not found" }); return; }
+  if (!isOpenAiConfigured) { res.status(503).json({ error: "suggestions_unavailable" }); return; }
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 60,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You turn a task into the single smallest physical action that starts it: something a person could do in the next five minutes without deciding anything first. " +
+            'Reply ONLY with JSON: {"step": "..."}. The step starts with a verb, is under twelve words, lowercase, with no ending punctuation. ' +
+            "Name the object when you can infer it. Never restate the task, never give advice, never add a reason. " +
+            'Examples: "study herbs" → "open the herbs book to where you stopped"; "call the bank" → "find the number for the bank"; ' +
+            '"plan the launch" → "open a blank page titled launch"; "clean the garage" → "carry one box to the curb".',
+        },
+        { role: "user", content: JSON.stringify({ task: task.title, notes: task.notes ?? undefined }) },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const step = String((JSON.parse(raw) as { step?: unknown }).step ?? "").trim().replace(/[.!]+$/, "");
+    if (!step || step.length > 120) { res.status(502).json({ error: "no_suggestion" }); return; }
+    res.json({ suggestion: step });
+  } catch {
+    res.status(502).json({ error: "no_suggestion" });
+  }
 });
 
 // DELETE /tasks/:id
@@ -194,8 +260,52 @@ router.delete("/tasks/:id", async (req, res) => {
   const testerId = requireTesterId(req, res);
   if (!testerId) return;
   const id = parseInt(req.params.id);
+  // A deleted task's steps are kept as tasks of their own rather than
+  // deleted with it: removing a heading should not silently remove work.
+  await db.update(tasks).set({ parentId: null }).where(and(eq(tasks.parentId, id), eq(tasks.testerId, testerId)));
   await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.testerId, testerId)));
   res.json({ ok: true });
+});
+
+// POST /tasks/:id/steps-suggestion — a task broken into a few physical steps
+// (plan Part B, T3). A suggestion, never a write; the client previews the
+// steps and creates the ones kept as child tasks. Without a model this says
+// so (503). Unlike the Guiding Star breakdown it has no generic fallback: a
+// list of steps that isn't about this task would be invented work.
+router.post("/tasks/:id/steps-suggestion", async (req, res) => {
+  const testerId = requireTesterId(req, res);
+  if (!testerId) return;
+  const id = parseInt(req.params.id);
+  const [task] = await db.select().from(tasks).where(and(eq(tasks.id, id), eq(tasks.testerId, testerId))).limit(1);
+  if (!task) { res.status(404).json({ error: "Not found" }); return; }
+  if (!isOpenAiConfigured) { res.status(503).json({ error: "suggestions_unavailable" }); return; }
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 300,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You break one task into the physical steps that would get it done, in order: two to six of them, each something a person could start without deciding anything first. " +
+            'Reply ONLY with JSON: {"steps": ["...", "..."]}. Each step starts with a verb, is under ten words, lowercase, with no ending punctuation. ' +
+            "Name the objects when you can infer them. No advice, no reasons, no step that only restates the task. If the task is already a single step, return just that one step.",
+        },
+        { role: "user", content: JSON.stringify({ task: task.title, notes: task.notes ?? undefined, nextStep: task.nextStep ?? undefined }) },
+      ],
+    });
+    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as { steps?: unknown };
+    const steps = (Array.isArray(parsed.steps) ? parsed.steps : [])
+      .map((x) => String(x ?? "").trim().replace(/[.!]+$/, ""))
+      .filter((x) => x && x.length <= 120)
+      .slice(0, 6);
+    if (!steps.length) { res.status(502).json({ error: "no_suggestion" }); return; }
+    res.json({ steps });
+  } catch {
+    res.status(502).json({ error: "no_suggestion" });
+  }
 });
 
 export default router;

@@ -183,6 +183,9 @@ export const tasks = pgTable("tasks", {
   parkedAs: text("parked_as"),
   waitingOn: text("waiting_on"),
   checkBackOn: text("check_back_on"), // ISO date YYYY-MM-DD
+  // Steps inside a task (plan Part B, T3): a child task points at its parent.
+  // One level only, enforced by the route: a step does not have steps.
+  parentId: integer("parent_id"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

@@ -100,12 +100,12 @@ router.get("/elections/lines-up", async (req, res) => {
   })();
 
   let natal = null;
-  let timeKnown = true;
+  let timeKnown = true; let birthDate: string | undefined;
   try {
     const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
     if (stored?.birthDate && stored.birthTime != null) {
       natal = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
-      timeKnown = stored.timeKnown !== false;
+      timeKnown = stored.timeKnown !== false; birthDate = stored.birthDate;
     }
   } catch { /* chartless is fine — GOOD tier only */ }
 
@@ -113,7 +113,9 @@ router.get("/elections/lines-up", async (req, res) => {
   try {
     const openTasks = await db.select().from(tasks).where(eq(tasks.testerId, testerId));
     for (const t of openTasks) {
-      if (t.done === "true") continue;
+      // Parked (someday, waiting on someone) is out of every list until it is
+      // put back in play (plan Part B, T5).
+      if (t.done === "true" || t.parkedAs || t.parentId) continue;
       held.push({
         id: `task-${t.id}`, title: t.title, kind: "task", activityKey: t.activityKey,
         // The reserved block, if there is one.
@@ -222,7 +224,7 @@ router.get("/elections/lines-up", async (req, res) => {
   const busyKnown = b.ok && b.connected;
 
   try {
-    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, busy, busyKnown }));
+    res.json(linesUp({ held, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown, busy, busyKnown }));
   } catch (err) {
     req.log?.error({ err }, "lines-up: sky read failed");
     res.status(503).json({
@@ -385,7 +387,7 @@ router.get("/elections/shape-day", requireFeature("shape.day"), async (req, res)
   const items: WeaveItem[] = [];
   try {
     for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
-      if (!needsWeaving(t)) continue;
+      if (!needsWeaving(t) || t.parkedAs || t.parentId) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes ?? minutesInLine(t.title), dueDate: t.dueDate, startedAt: t.startedAt ? String(t.startedAt) : null,
@@ -442,7 +444,7 @@ router.get("/elections/shape-week", requireFeature("shape.week"), async (req, re
   const items: WeekItem[] = [];
   try {
     for (const t of await db.select().from(tasks).where(eq(tasks.testerId, testerId))) {
-      if (!needsWeaving(t)) continue;
+      if (!needsWeaving(t) || t.parkedAs || t.parentId) continue;
       items.push({
         id: `task-${t.id}`, title: t.title, kind: "task",
         estMinutes: t.estMinutes ?? minutesInLine(t.title), dueDate: t.dueDate,
@@ -505,7 +507,7 @@ router.get("/elections/needs-resolution", async (req, res) => {
   if (!testerId) { res.status(401).json({ error: "tester required" }); return; }
   try {
     const rows = (await db.select().from(tasks).where(eq(tasks.testerId, testerId)))
-      .filter(t => t.done !== "true")
+      .filter(t => t.done !== "true" && !t.parkedAs && !t.parentId)
       // A confirmed key is the person's own answer and outranks the matcher.
       .map(t => ({ id: `task-${t.id}`, title: t.title, estMinutes: t.estMinutes ?? minutesInLine(t.title), activityKey: t.activityKey }));
     res.json(needsResolution(rows));
@@ -537,11 +539,13 @@ router.get("/elections/times", async (req, res) => {
 
   let natal = null;
   let timeKnown = true;
+  let birthDate: string | undefined;
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (testerId) {
     try {
       const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
       if (stored?.birthDate && stored.birthTime != null) {
+        birthDate = stored.birthDate;
         natal = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
         // `birthTime != null` is NOT the same question as "is the time known".
         // Settings stores `birthTime || "12:00"` alongside timeKnown:false, so
@@ -557,7 +561,7 @@ router.get("/elections/times", async (req, res) => {
   // same reason /elections/activities merges them into one picker.
   const extraActivities = testerId ? await customActivitiesFor(testerId) : [];
 
-  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown, extraActivities });
+  const result = computeElections({ activityKey, span, lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown, extraActivities });
   if (!result) { res.status(404).json({ error: "unknown activity" }); return; }
   res.json(result);
 });
@@ -586,7 +590,7 @@ router.get("/elections/rare-today", async (req, res) => {
     try {
       const rows = await db.select().from(tasks).where(eq(tasks.testerId, testerId));
       for (const t of rows) {
-        if (t.done === "true") continue;
+        if (t.done === "true" || t.parkedAs || t.parentId) continue;
         const key = t.activityKey ?? matchActivity(t.title ?? "")?.activity.key;
         if (key) heldActivityKeys.push(key);
       }
@@ -654,12 +658,13 @@ router.get("/plan/inventory", async (req, res) => {
   const tzOffsetMin = parseInt((req.query.tz as string) ?? "0", 10) || 0;
   const timeZone = typeof req.query.timeZone === "string" && req.query.timeZone ? req.query.timeZone : undefined;
 
-  let natal = null; let timeKnown = true;
+  let natal = null; let timeKnown = true; let birthDate: string | undefined;
   try {
     const stored = (await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1))[0] ?? null;
     if (stored?.birthDate && stored.birthTime != null) {
       natal = computeNatalChart(stored.birthDate, stored.birthTime, Number(stored.birthLat), Number(stored.birthLon), Number(stored.utcOffset), "whole-sign");
       timeKnown = stored.timeKnown !== false;
+      birthDate = stored.birthDate;
     }
   } catch { /* chartless is fine */ }
 
@@ -691,7 +696,7 @@ router.get("/plan/inventory", async (req, res) => {
     const hit = INVENTORY_MEMO.get(memoKey);
     if (hit) return hit;
     const out = computeElections({
-      activityKey: key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
+      activityKey: key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate, locationKnown,
     });
     if (INVENTORY_MEMO.size >= 200) INVENTORY_MEMO.delete(INVENTORY_MEMO.keys().next().value!);
     INVENTORY_MEMO.set(memoKey, out);
