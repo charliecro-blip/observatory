@@ -3,6 +3,8 @@ import { computeNatalChart } from "../artifacts/api-server/src/lib/natal";
 import { computeElections, supportLevelFrom, ENGINE_CALIBRATION } from "../artifacts/api-server/src/lib/electionEngine";
 import { natalFrame, moonToNatal } from "../artifacts/api-server/src/lib/natalResonance";
 import { moonLongitude, julianDay } from "../artifacts/api-server/src/lib/astro";
+import { searchTiming } from "../artifacts/api-server/src/lib/timingSearch";
+import { presentTiming } from "../artifacts/api-server/src/lib/timingPresentation";
 
 // Plan Part A, Phase 1 (2026-10-04). Anchored to the owner's own chart and the
 // haircut fortnight that exposed the gap: Cancer rising (the Moon rules the
@@ -91,5 +93,37 @@ describe("natal resonance in elections", () => {
       const off = Math.min(Math.abs(d - target[ev.aspect]), Math.abs(d - (360 - target[ev.aspect])));
       expect(off, `${ev.phrase} ${new Date(ev.timeMs).toISOString()}`).toBeLessThan(0.02); // ~2 minutes of Moon motion
     }
+  });
+
+  // 2026-10-05: duration searches and comparisons read the chart too.
+  const sessions = (over: object, start = "2026-10-16T05:00:00Z", end = "2026-10-17T05:00:00Z") => presentTiming(searchTiming({
+    activity: "haircut", start, end, timeZone: "America/Chicago", durationMinutes: 60, location: { lat: 30.1912, lon: -97.8028 }, ...over,
+  } as any)).candidates as any[];
+
+  it("a duration search leads with the hour around the lunar return, and says why", () => {
+    const withChart = sessions({ natal: { chart: natal, timeKnown: true, birthDate: "1992-01-03" } });
+    const top = withChart.find(c => c.evidence.tradeoff === "uninterrupted");
+    expect(top.evidence.assessment.natalEvidence.some((t: string) => t.startsWith("The Moon returns to its place in your chart"))).toBe(true);
+    const plain = sessions({});
+    expect(plain.every(c => c.evidence.assessment.natalEvidence.length === 0)).toBe(true);
+  });
+
+  it("a duration search names a personal objection in words", () => {
+    const r = sessions({ natal: { chart: natal, timeKnown: true, birthDate: "1992-01-03" } }, "2026-10-11T05:00:00Z", "2026-10-12T05:00:00Z");
+    expect(r.length).toBeGreaterThan(0);
+    for (const c of r) expect(c.reasons).toContain("Venus squares your natal Saturn");
+  });
+
+  it("a comparison reads the chart as well", () => {
+    const r = presentTiming(searchTiming({
+      activity: "haircut", start: "2026-10-16T05:00:00Z", end: "2026-10-17T05:00:00Z", timeZone: "America/Chicago",
+      location: { lat: 30.1912, lon: -97.8028 }, natal: { chart: natal, timeKnown: true, birthDate: "1992-01-03" },
+      durationMinutes: 60,
+      // 12:00–1:00 PM Chicago holds the 12:26 PM return; 8–9 AM does not.
+      candidateIntervals: [{ start: "2026-10-16T17:00:00Z", end: "2026-10-16T18:00:00Z" }, { start: "2026-10-16T13:00:00Z", end: "2026-10-16T14:00:00Z" }],
+    } as any));
+    expect(r.result.context.natal).toBe("applied");
+    expect((r.candidates[0] as any).evidence.natalEvidence.some((t: string) => t.startsWith("The Moon returns"))).toBe(true);
+    expect((r.candidates[1] as any).evidence.natalEvidence.some((t: string) => t.startsWith("The Moon returns"))).toBe(false);
   });
 }, 120_000);

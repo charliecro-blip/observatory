@@ -159,6 +159,14 @@ What differs from the table above, and why:
   literal fact as its text) and never drop it (D1b default).
 - **The birth date** now reaches the engine from Find a time, the report,
   elections, the inventory weave and what-lines-up, for the year's lord.
+- **Duration searches and comparisons read the chart too** (2026-10-05):
+  `evaluateActivityInterval` takes the chart and applies the same rules to one
+  interval (slow contacts left to span-level callers), returning
+  `natalEvidence` lines and `natal-objection` reasons; the session finder
+  ranks personal support (a timed contact 2, a personal hour 1) above generic
+  hour coverage, below the verdict and continuity. On the owner's chart a
+  60-minute haircut search on Fri Oct 16 moves from 7:30 AM to 11:30 AM, the
+  hour around the lunar return.
 - Tests: `tests/natal-resonance.test.ts` (the acceptance case, the birth-time
   and no-chart withholding, the count-once rule, Moon contact timing).
   Calibration: `tools/natal-resonance-calibration.test.ts`; numbers below.

@@ -609,6 +609,12 @@ export default function FindTime({
                 establish a favorable opening or rank it against the other
                 times.
               </p>
+              {(c.evidence.natalEvidence ?? []).length > 0 && (
+                <>
+                  <p>From your chart:</p>
+                  <ul>{c.evidence.natalEvidence.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </>
+              )}
               {c.evidence.transitions.filter((t) => t.role !== "irrelevant")
                 .length > 0 && (
                 <ul>
@@ -644,6 +650,12 @@ export default function FindTime({
                     ? "The Moon’s sign does not match this activity’s usual preference."
                     : "The Moon’s sign adds no preference for this activity."}
               </p>
+              {(c.evidence.assessment?.natalEvidence ?? []).length > 0 && (
+                <>
+                  <p>From your chart:</p>
+                  <ul>{c.evidence.assessment.natalEvidence.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </>
+              )}
               {c.evidence.anchor && (
                 <p>
                   {c.evidence.anchor.label} at{" "}

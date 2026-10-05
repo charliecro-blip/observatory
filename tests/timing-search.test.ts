@@ -83,9 +83,10 @@ it("keeps custom rules explicit and refuses custom session substitution", () => 
   expect(run({ ...q, activity: custom.key, extraActivities: [custom] }).status).toBe("complete");
   expect(searchTiming({ ...q, activity: custom.key, extraActivities: [custom], durationMinutes: 180 })).toEqual({ status: "unsupported", code: "custom_session_unsupported" });
 });
-it("reports a supplied natal chart as omitted for sessions", () => {
+// Sessions read the chart since 2026-10-05; they used to report it omitted.
+it("reports a supplied natal chart as applied, for sessions as for windows", () => {
   const natal = { chart: computeNatalChart("1990-01-01", "12:00", 30, -97, -6, "whole-sign"), timeKnown: false };
-  expect(run({ ...q, natal, durationMinutes: 180 }).context.natal).toBe("omitted_session_unsupported");
+  expect(run({ ...q, natal, durationMinutes: 180 }).context.natal).toBe("applied");
   const ordinary = run({ ...q, natal });
   expect(ordinary.context.natal).toBe("applied");
   expect(ordinary.context.birthTimeKnown).toBe(false);

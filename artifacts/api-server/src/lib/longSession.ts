@@ -145,10 +145,15 @@ export interface FindLongSessionsOpts {
   /** The viewer's IANA zone; see dayTimeline — corrects the snapshot-offset
    *  DST gap when present. Flows through via the spread below. */
   timeZone?: string;
+  /** The person's chart (2026-10-05): handed to the canonical evaluator. */
+  natal?: { chart: import("./natal.js").ComputedNatalChart; timeKnown: boolean; birthDate?: string };
 }
 
 export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult | null {
-  const { activityKey, minutes, date, lat, lon, commitments = [], locationKnown = true, tzOffsetMin = 0, timeZone } = opts;
+  const { activityKey, minutes, date, lat, lon, commitments = [], locationKnown = true, tzOffsetMin = 0, timeZone, natal } = opts;
+  // A natal objection reads as its own literal fact, not as a kind name.
+  const reasonText = (r: { kind: string; planet?: string; text?: string }) =>
+    r.kind === "natal-objection" && r.text ? r.text : `${r.kind.replace(/-/g, " ")}${r.planet ? ` (${r.planet})` : ""}`;
   const activity = activityByKey(activityKey);
   if (!activity) return null;
 
@@ -208,10 +213,10 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       const assessment = evaluateActivityInterval({
         activityKey, startAt, endAt,
         ...(locationKnown ? { lat, lon } : {}),
+        natal, timeZone, tzOffsetMin,
       })!;
       const backgroundFit = assessment.backgroundFit;
-      const reasons: string[] = assessment.suitabilityReasons.map(r =>
-        `${r.kind.replace(/-/g, " ")}${(r as { planet?: string }).planet ? ` (${(r as { planet?: string }).planet})` : ""}`);
+      const reasons: string[] = assessment.suitabilityReasons.map(r => reasonText(r as never));
 
       const voidInside = inside.some(e => e.kind === "void-begins" || e.kind === "void-ends");
       const opensVoid = inside.some(e => e.kind === "void-begins");
@@ -282,6 +287,7 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
       ? evaluateActivityInterval({
           activityKey, startAt: longest.startAt, endAt: longest.endAt,
           ...(locationKnown ? { lat, lon } : {}),
+          natal, timeZone, tzOffsetMin,
         })
       : null;
     return {
@@ -294,7 +300,7 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
           uninterrupted: true,
           backgroundFit: shortAssessment.backgroundFit,
           suitability: shortAssessment.suitability,
-          suitabilityReasons: shortAssessment.suitabilityReasons.map(r => r.kind.replace(/-/g, " ")),
+          suitabilityReasons: shortAssessment.suitabilityReasons.map(r => reasonText(r as never)),
           preferredHourCoverage: { minutes: 0, rulers: [] },
           transitions: longest.inside,
           arc: hoursReal ? arcOf(longest.startAt, longest.endAt, lat, lon, preferred) : [],
@@ -308,9 +314,15 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
 
   // Lexicographic. Each comparison only runs when everything above it ties, so
   // no amount of hour coverage can outrank a deferral.
+  // What the person's chart adds: a timed or relational contact (2) outweighs
+  // a personal hour (1). Ranked above generic hour coverage, below the
+  // verdict and continuity, which no amount of testimony can outrank.
+  const personalWeight = (c: SessionCandidate) =>
+    (c.assessment.families.includes("natal-resonance") ? 2 : 0) + (c.assessment.families.includes("natal-timing") ? 1 : 0);
   const byQuality = [...candidates].sort((a, b) =>
     SUIT_RANK[a.suitability] - SUIT_RANK[b.suitability] ||
     Number(b.uninterrupted) - Number(a.uninterrupted) ||
+    personalWeight(b) - personalWeight(a) ||
     b.preferredHourCoverage.minutes - a.preferredHourCoverage.minutes ||
     FIT_RANK[a.backgroundFit] - FIT_RANK[b.backgroundFit] ||
     a.startAt.getTime() - b.startAt.getTime());

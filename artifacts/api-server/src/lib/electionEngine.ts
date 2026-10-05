@@ -28,7 +28,7 @@ import {
   getSunriseSunset, scanMoonPerfections, getNextAngularCrossings,
 } from "./astro.js";
 import { computeDayArc } from "./dayarc.js";
-import { civilDayOffsetIn } from "./localClock.js";
+import { civilDayOffsetIn, dayBoundsInZone, dayBoundsIn, offsetMinutesFor } from "./localClock.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
 import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article } from "./natalResonance.js";
@@ -535,6 +535,12 @@ export interface ActivityAssessment {
   supportLevel: SupportLevel;
   /** Interval-specific sky events, already judged for this activity. */
   transitions: { kind: string; at: Date; role: "qualification" | "internal-chapter" | "irrelevant" }[];
+  /**
+   * What the person's chart adds in favour of this interval, as literal lines
+   * ("The Moon trines your natal Venus, exact at 4:12 PM"). Empty without a
+   * chart. Objections arrive as `natal-objection` suitability reasons.
+   */
+  natalEvidence: string[];
 }
 
 const ELEMENT_OF_SIGN_IDX = ["fire", "earth", "air", "water"] as const;
@@ -558,6 +564,15 @@ export function evaluateActivityInterval(opts: {
   /** A tester's own custom activities (customActivities.ts), searched
    *  alongside the built-in table — see computeElections below for why. */
   extraActivities?: ActivityCorrespondence[];
+  /**
+   * The person's chart (2026-10-05: duration searches and comparisons read it
+   * too). Same rules as the window engine, applied to one interval; see
+   * `natalResonance.ts`. Slow contacts are left to span-level callers.
+   */
+  natal?: { chart: ComputedNatalChart; timeKnown: boolean; birthDate?: string };
+  /** For the clock times in natal evidence lines and the civil day. */
+  timeZone?: string;
+  tzOffsetMin?: number;
 }): ActivityAssessment | null {
   const act = [...ACTIVITIES, ...(opts.extraActivities ?? [])].find(a => a.key === opts.activityKey);
   if (!act) return null;
@@ -658,12 +673,85 @@ export function evaluateActivityInterval(opts: {
     if (onAngle) families.push("angle-crossing");
   }
 
+  // ── The person's chart, for this interval ──────────────────────────────
+  const natalEvidence: string[] = [];
+  let finalSuitability = suitability;
+  if (opts.natal) {
+    const frame = natalFrame(opts.natal.chart, sigPlanets, opts.natal.timeKnown);
+    const mid = new Date((startAt.getTime() + endAt.getTime()) / 2);
+    const tzMin = opts.timeZone ? offsetMinutesFor(mid, opts.timeZone) : (opts.tzOffsetMin ?? 0);
+    const clock = (ms: number) => clockOf(ms, tzMin);
+    const [dayStart] = opts.timeZone ? dayBoundsInZone(mid, opts.timeZone) : dayBoundsIn(mid, tzMin);
+    const located = opts.lat != null && opts.lon != null;
+    const positions = getPlanetPositions(midJd);
+    const lonOf = (p: string): number | null => p === "Sun" ? norm360(sunLongitude(midJd)) : p === "Moon" ? norm360(moonLongitude(midJd))
+      : (() => { const row = positions.find(x => x.planet === p); return row ? SIGNS.indexOf(row.sign) * 30 + row.degree : null; })();
+    const objections: SuitabilityReason[] = [];
+
+    // R5/R6 and O1/O2: slow-moving contacts that hold across the interval.
+    const dc = dayContacts(frame, sigPlanets, lonOf);
+    if (dc.supports.length) { families.push("natal-resonance"); natalEvidence.push(...dc.supports.map(x => x.text)); }
+    for (const o of dc.objections) objections.push({ kind: "natal-objection", planet: o.planet, text: o.text });
+
+    // R3/R4 inside the interval; O3 inside it or within two hours of its end.
+    for (const ev of moonToNatal(frame, startAt.getTime(), endAt.getTime() + 2 * 3600000)) {
+      if (ev.rule === "O3") { objections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)} at ${clock(ev.timeMs)}` }); continue; }
+      if (ev.timeMs > endAt.getTime()) continue;
+      if (!families.includes("natal-resonance")) families.push("natal-resonance");
+      natalEvidence.push(`${cap(ev.phrase)}, exact at ${clock(ev.timeMs)}`);
+    }
+
+    // R1/R2: the chart ruler's or the year lord's day (evidence) and hour (a
+    // reinforcing testimony when it covers enough of the interval).
+    const yearLord = RESONANCE_RULES.R2 ? yearLordOn(frame, opts.natal.birthDate, mid) : null;
+    const lords = new Map<string, string>();
+    if (RESONANCE_RULES.R1 && frame.chartRuler) lords.set(frame.chartRuler, "rules your Ascendant");
+    if (yearLord) lords.set(yearLord.lord, lords.has(yearLord.lord)
+      ? "rules your Ascendant and your year"
+      : `is lord of your year (${article(yearLord.house)} ${ordinal(yearLord.house)}-house profection)`);
+    if (lords.size) {
+      const dow = new Date(dayStart.getTime() + 12 * 3600000 - tzMin * 60000).getUTCDay();
+      const dayRuler: string = WEEKDAY_RULERS[dow];
+      const dayWhy = lords.get(dayRuler);
+      if (dayWhy) natalEvidence.push(`${cap(body(dayRuler))}'s day, and ${body(dayRuler)} ${dayWhy}`);
+      if (located) {
+        const needed = Math.min(45 * 60000, (endAt.getTime() - startAt.getTime()) / 2);
+        for (const h of dayHours(dayStart.getTime(), opts.lat!, opts.lon!)) {
+          const why = lords.get(h.ruler);
+          if (!why) continue;
+          const overlap = Math.min(h.endMs, endAt.getTime()) - Math.max(h.startMs, startAt.getTime());
+          if (overlap < needed) continue;
+          if (!families.includes("natal-timing")) families.push("natal-timing");
+          natalEvidence.push(`${cap(body(h.ruler))}'s hour, and ${body(h.ruler)} ${why}`);
+          break;
+        }
+      }
+    }
+
+    // R7/O4 only for an hour-sized interval, as in the window engine.
+    if (located && endAt.getTime() - startAt.getTime() <= 90 * 60000) {
+      for (const x of natalOnAngles(frame, dayStart.getTime(), opts.lat!, opts.lon!)) {
+        if (x.timeMs < startAt.getTime() || x.timeMs > endAt.getTime()) continue;
+        const text = `${cap(x.text)} at ${clock(x.timeMs)}, inside this time`;
+        if (x.rule === "R7") natalEvidence.push(text);
+        else objections.push({ kind: "natal-objection", planet: x.planet, text });
+      }
+    }
+
+    reasons.push(...objections);
+    finalSuitability =
+      reasons.some(r => DEFER_REASONS.has(r.kind)) ? "defer"
+      : reasons.some(r => QUALIFY_REASONS.has(r.kind)) ? "qualified"
+      : "clear";
+  }
+
   return {
     activityKey: act.key, startAt, endAt,
-    suitability, suitabilityReasons: reasons, backgroundFit,
+    suitability: finalSuitability, suitabilityReasons: reasons, backgroundFit,
     families,
     supportLevel: supportLevelFrom(families),
     transitions: [],
+    natalEvidence,
   };
 }
 

@@ -256,6 +256,8 @@ export function searchTiming(
           lat: q.location?.lat,
           lon: q.location?.lon,
           extraActivities: q.extraActivities,
+          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate } : undefined,
+          timeZone: q.timeZone,
         });
         if (!result) throw new Error();
         const [day, next] = dayBoundsInZone(span.start, q.timeZone);
@@ -276,6 +278,7 @@ export function searchTiming(
           endAt: span.end,
           wakeHour: 7,
           sleepHour: 23,
+          natal: q.natal ? { chart: q.natal.chart, timeKnown: q.natal.timeKnown, birthDate: q.natal.birthDate } : undefined,
         });
         if (!result) throw new Error();
         days.push({
@@ -360,13 +363,9 @@ export function searchTiming(
     },
     context: {
       location: q.location ? "applied" : "unknown",
-      natal: !q.natal
-        ? "absent"
-        : comparison
-          ? "omitted_comparison_unsupported"
-          : session
-            ? "omitted_session_unsupported"
-            : "applied",
+      // Every mode reads the chart now (2026-10-05); the two "omitted"
+      // values stay in the type for responses already stored.
+      natal: !q.natal ? "absent" : "applied",
       birthTimeKnown: q.natal?.timeKnown ?? null,
       calendar: availability(+start, +end),
     },
