@@ -113,8 +113,10 @@ describe("personal provenance follows the same rule", () => {
   it("says personal decided the tier only when removing it would un-converge", () => {
     for (const w of run("investigate", { natal }).windows) {
       if (!w.personalDecidedTier) continue;
-      const nonPersonal = w.families.filter(f => f !== "natal-house" && f !== "natal-contact");
-      const e = nonPersonal.filter(f => ["lunar-contact", "standing-sky", "natal-contact"].includes(f)).length;
+      // Every personal family, including the natal-resonance pair (2026-10-04).
+      const PERSONAL = ["natal-house", "natal-contact", "natal-resonance", "natal-timing"];
+      const nonPersonal = w.families.filter(f => !PERSONAL.includes(f));
+      const e = nonPersonal.filter(f => ["lunar-contact", "standing-sky"].includes(f)).length;
       const r = nonPersonal.length - e;
       expect(e >= 2 || (e >= 1 && r >= 2),
         `${w.date} claimed personal decided it, but ${JSON.stringify(nonPersonal)} converges anyway`).toBe(false);

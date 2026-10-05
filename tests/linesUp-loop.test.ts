@@ -32,8 +32,12 @@ describe("the loop", () => {
   });
 
   it("says keep going when something is underway, and offers nothing else", () => {
-    const startedMinutesAgo = new Date(Date.now() - 20 * 60000).toISOString();
-    const r = linesUp({ ...base, held: [
+    // Anchored at a local midday: "20 minutes ago" on the wall clock crossed
+    // local midnight for the first 20 minutes of every day, and a task begun
+    // yesterday is rightly not "underway" (failed at 00:05 CDT, 2026-10-05).
+    const now = new Date("2026-10-05T17:00:00Z");
+    const startedMinutesAgo = new Date(+now - 20 * 60000).toISOString();
+    const r = linesUp({ ...base, now, held: [
       task(1, "Mix track 3", { startedAt: startedMinutesAgo }),
       task(2, "Reply to the landlord"),
     ] });

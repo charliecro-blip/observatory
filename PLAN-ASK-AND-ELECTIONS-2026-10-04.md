@@ -57,7 +57,7 @@ Ask explains and answers follow-ups; it never ranks on its own.
 - Uses the current void-of-course definition (the day arc's `vocWindows`);
   the definition question (**D2**) is still open and doesn't block this.
 
-### Phase 1 · the chart counts (the core)
+### Phase 1 · the chart counts (the core) · BUILT 2026-10-04 night, as defaults pending D1
 
 An election for a person is two charts at once: the moment, and the moment
 read against the nativity. The engine reads the first well and the second
@@ -128,6 +128,70 @@ always say which part of the chart answered.
 R1/R2 (Venus's day and the Moon's hour) and R4, and Oct 11–15 should carry
 O2. That checks the rules the owner approves; it is not a score to tune toward.
 
+**As built** (`lib/natalResonance.ts`; wired in `electionEngine.ts`). All
+twelve rules ship ON as the defaults below, each switchable in one place
+(`RESONANCE_RULES`), so D1 is a ruling on settings rather than a rebuild.
+What differs from the table above, and why:
+- **Families.** Two, not one: `natal-resonance` (R3, R4, R5, R6: timed or
+  relational contacts) ESTABLISHES; `natal-timing` (R1, R2, R7, R8: a day,
+  an hour, a degree on an angle, the rising sign) only REINFORCES. With
+  `personalCountsOnce`, all personal families together count as one toward
+  convergence, which also applies to the older natal-house and natal-contact.
+- **Slow contacts are stated once, not stamped per window.** Any contact by
+  Jupiter, Saturn or an outer planet (R5, R6, O1, O2) goes to the result's
+  `cautions` as "{contact}, a slow contact that holds through this stretch."
+  The first acceptance run showed why: Saturn square the owner's natal
+  Ascendant sat on every window of the fortnight and capped every top-tier one,
+  telling no window from another.
+- **R7 and O4 only on hour-sized windows (≤ 90 minutes).** Each natal degree
+  rises and culminates once a day, so a five-hour window nearly always holds
+  one; the first run listed nine angle events on an all-day window.
+- **R8 narrowed** to the natal Ascendant's own sign rising (sextile/trine
+  rising holds ~40% of every day).
+- **R1/R2 hours never make a window by themselves.** They narrow a lunar or
+  natal-lunar window they overlap (as the hour x Moon stack does), and an hour
+  the activity already names is annotated ("Venus's hour, and Venus is lord of
+  your year") instead of producing a duplicate row.
+- **R4 replaces R3's conjunction** to the natal Moon, so the return is named once.
+- **O5 (self-reported caution planets) not built**: those live in the
+  client's profile, which the engine does not see.
+- **Objections** cap a window at good, qualify it (`natal-objection`, with the
+  literal fact as its text) and never drop it (D1b default).
+- **The birth date** now reaches the engine from Find a time, the report,
+  elections, the inventory weave and what-lines-up, for the year's lord.
+- Tests: `tests/natal-resonance.test.ts` (the acceptance case, the birth-time
+  and no-chart withholding, the count-once rule, Moon contact timing).
+  Calibration: `tools/natal-resonance-calibration.test.ts`; numbers below.
+
+**Calibration, 2026-10-04 night** (8 charts × 26 activities × 4 ordinary weeks
+of 2026, Austin; every window of every day counted):
+
+Fire rates per chart-day: R1 0.14 · R2 0.14 · R3 0.51 · R4 0.01 · R5 0.05 ·
+R6 0 (plus 0.13 standing) · R7 5.28 · R8 1.0 · O1 0.14 (plus 0.10 standing) ·
+O2 0.08 · O3 0.29 · O4 1.76.
+
+| Run | Windows | Top tier | Share | Personal | With an objection |
+|---|---|---|---|---|---|
+| Before Phase 1 | 18,889 | 8,022 | 42.5% | 9,512 (50%) | 0 |
+| Chart counted once, rules off | 18,889 | 7,419 | 39.3% | 9,512 | 0 |
+| First build, all on | 26,807 | 7,814 | 29.1% | 23,061 (86%) | 9,299 (35%) |
+| Shipped, all on | 25,221 | 8,102 | 32.1% | 19,135 (76%) | 6,389 (25%) |
+| Shipped, supports only | 25,221 | 11,145 | 44.2% | 19,135 | 0 |
+
+What the first build's numbers changed: the personal day (R1/R2 day), natal
+degrees on an angle (R7) and the natal rising sign (R8) became evidence only,
+since they fire daily or weekly and lifted the top tier; Moon contacts with the
+chart ruler or Ascendant make windows only for self matters; O4 counts a natal
+malefic rising, not culminating; O1's orb went from 1.5° to 1°; O3 reaches two
+hours past a window, not three. Half the "personal" share predates tonight
+(the Moon-in-the-matter's-house rule already marked 50% of windows).
+
+**Left for D1, with the numbers in hand:** whether objections on a quarter of
+windows is the right severity (they cap, never drop); whether personal hours
+should count as testimony (they add ~3,000 narrowed windows, the way the
+activity's own hours already do); whether the long-standing Moon-in-house rule
+is too common to call personal.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.
@@ -177,7 +241,7 @@ Shipped as specified below, except where the notes at the end of this section sa
   day's arc itself as well as inside the engine; sharing that is the obvious
   saving if 9 s proves too long.
 
-### Phase 3 · the box routes, and Ask gets tools
+### Phase 3 · the box routes, and Ask gets tools · BUILT 2026-10-04 night
 - Routing, deterministic first: the interpreter resolves an activity and a
   horizon ≤ 7 days → Find a time; it resolves an activity and the text asks for
   an election ("elect", "best time", "breakdown", "options") or a longer horizon
@@ -197,6 +261,17 @@ Shipped as specified below, except where the notes at the end of this section sa
   Venus hour", "never before 9".
 - Saving a pick to Google Calendar from the report (the export already exists
   in Find a time).
+
+**Phase 3 as built.** One rule decides, shared by the box and Ask
+(`lib/askRouting.ts`): a question goes to Ask unless the interpreter found an
+activity AND the words ask about time (a "when", a named day or span, a span
+long enough for a report). Ask did not get free tool-calling; instead, when a
+question asks WHEN and names an activity, the server runs the interpreter and
+`electionReportFor` (the same function behind the report page) and hands the
+report to the model as given facts it may quote but not alter, with room for a
+fuller answer (900 tokens). The advisor shows "Open the full report" when an
+answer came from one. Behind the timing cohort. Not built: Ask choosing to
+consult the chart or calendar on its own, and D3 (the model) is unchanged.
 
 ## Part B · Sorting what you hold (tasks, GTD-shaped)
 
@@ -223,6 +298,26 @@ the app should help break a task down to its simplest next physical step
 What the audit found missing, still missing: someday/maybe, contexts beyond
 energy, a weekly review you can open any time, and anything that reduces a
 task to a next physical action.
+
+### Built 2026-10-04 night: T1–T7, with the T-D defaults
+- **T1/T4/T5** in the clarify panel under each task row (`TaskClarify.tsx`):
+  next step with "Did it" (logs the step as a touch and asks for the next),
+  where, park as someday or waiting (who, look-again date). Parked tasks leave
+  every list: `GET /api/tasks` excludes them unless `?parked=include`, and the
+  server's own readers (weaves, what-lines-up, reports, Ask, the calendar feed,
+  a Star's next move) filter them too.
+- **T2** "Suggest one": `POST /tasks/:id/next-step-suggestion`, one model call,
+  shown in the field, saved only on Save; says so when no model is configured.
+- **T3** steps inside a task: `tasks.parentId`, one level, ownership-checked;
+  "Break it into steps" (`POST /tasks/:id/steps-suggestion`, previewed, no
+  generic fallback) or one at a time; a task's next step is its first open
+  step; deleting a task keeps its steps. Steps stay out of the weaves (the
+  task is the unit there) and are offered one by one in What fits now.
+- **T6** What fits now, on What to do now (`FitsNow.tsx`): time, energy,
+  place; next steps first; an unset energy is not guessed; unclarified tasks
+  are counted, not shown; a keeping is offered beside the doings.
+- **T7** the review (`TaskReview.tsx`), from a "Review" button on Tasks.
+- The "Someday" bucket for undated tasks is renamed "No date".
 
 ### Built 2026-10-04 (plumbing only, no screen yet)
 T1, T4 and T5's storage and API: five nullable columns on `tasks`

@@ -28,6 +28,8 @@ export interface TimingSearchRequest {
   natal?: {
     chart: NonNullable<Parameters<typeof computeElections>[0]["natal"]>;
     timeKnown: boolean;
+    /** YYYY-MM-DD, for the year's lord (natal resonance R2). */
+    birthDate?: string;
   };
   extraActivities?: ActivityCorrespondence[];
 }
@@ -298,6 +300,7 @@ export function searchTiming(
           span: "day",
           natal: q.natal?.chart,
           timeKnown: q.natal?.timeKnown,
+          birthDate: q.natal?.birthDate,
           extraActivities: q.extraActivities,
         });
         if (!result) throw new Error();

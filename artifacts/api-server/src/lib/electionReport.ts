@@ -99,6 +99,9 @@ export interface ElectionReport {
   horizon: { start: string; end: string; days: number; timeZone: string };
   /** What the governing planets are doing across the span. */
   motion: Motion[];
+  /** Slow contacts between the sky and the person's chart that hold through
+   *  the span ("Saturn squares your natal Ascendant…"), said once. */
+  standing: string[];
   /** Best first: open calendar, then tier, then specificity. One per day. */
   picks: ReportPick[];
   /** Strong windows the calendar has already taken. */
@@ -129,6 +132,7 @@ const REASON_TEXT = (r: SuitabilityReason): string =>
     : r.kind === "primary-significator-stationing-retrograde" ? `${r.planet} is stationing retrograde`
     : r.kind === "primary-significator-stationing-direct" ? `${r.planet} is stationing direct`
     : r.kind === "significator-station" ? `${r.planet} is stationing`
+    : r.kind === "natal-objection" ? `${r.text.charAt(0).toUpperCase()}${r.text.slice(1)}`
     : `${r.planet} is retrograde`;
 
 const dayLabel = (key: string, tz: string) =>
@@ -201,11 +205,12 @@ interface Chunked {
   failed: number;
   withheld: { hourOnly: number; voidMoon: number };
   dayHasWindow: Set<string>;
+  standing: Set<string>;
 }
 
 function scan(input: ReportInput, start: Date, days: number, calendar: ReportInput["calendar"]): Chunked {
   const tz = input.timeZone;
-  const out: Chunked = { picks: [], scanned: 0, failed: 0, withheld: { hourOnly: 0, voidMoon: 0 }, dayHasWindow: new Set() };
+  const out: Chunked = { picks: [], scanned: 0, failed: 0, withheld: { hourOnly: 0, voidMoon: 0 }, dayHasWindow: new Set(), standing: new Set() };
   const day0 = dayBoundsInZone(start, tz)[0];
   for (let i = 0; i < days; i += CHUNK_DAYS) {
     const n = Math.min(CHUNK_DAYS, days - i);
@@ -222,6 +227,7 @@ function scan(input: ReportInput, start: Date, days: number, calendar: ReportInp
     for (const d of result.days) if (d.kind === "ordinary") {
       out.withheld.hourOnly += d.result.withheld.hourOnly;
       out.withheld.voidMoon += d.result.withheld.voidMoon ?? 0;
+      for (const c of d.result.cautions) if (c.endsWith("holds through this stretch.")) out.standing.add(c);
     }
     for (const c of presented.candidates) {
       const p = toPick(c, tz);
@@ -239,7 +245,7 @@ export function buildElectionReport(input: ReportInput): ElectionReport {
   const horizonEnd = dayBoundsInZone(civilDayOffsetIn(dayStart, days, tz), tz)[0];
   const horizon = { start: input.start.toISOString(), end: horizonEnd.toISOString(), days, timeZone: tz };
   const empty = (status: ElectionReport["status"]): ElectionReport => ({
-    status, activity: act ? { key: act.key, label: act.label } : null, horizon, motion: [], picks: [], busyButStrong: [], avoid: [], afterClears: null,
+    status, activity: act ? { key: act.key, label: act.label } : null, horizon, motion: [], standing: [], picks: [], busyButStrong: [], avoid: [], afterClears: null,
     coverage: { scannedDays: 0, failedChunks: 0, chart: "absent", calendar: "unchecked", withheld: { hourOnly: 0, voidMoon: 0 } },
   });
   if (!act) return empty("unsupported");
@@ -309,7 +315,7 @@ export function buildElectionReport(input: ReportInput): ElectionReport {
   return {
     status: failed ? (main.scanned ? "partial" : "error") : "complete",
     activity: { key: act.key, label: act.label },
-    horizon, motion, picks, busyButStrong, avoid, afterClears,
+    horizon, motion, standing: [...main.standing], picks, busyButStrong, avoid, afterClears,
     coverage: {
       scannedDays: main.scanned, failedChunks: failed,
       chart: !input.natal ? "absent" : input.natal.timeKnown ? "applied" : "birth-time-unknown",

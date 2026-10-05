@@ -260,6 +260,8 @@ export interface LinesUpOpts {
   timeZone?: string;
   natal: ComputedNatalChart | null;
   timeKnown: boolean;
+  /** YYYY-MM-DD, for the year's lord in the election engine. */
+  birthDate?: string;
   locationKnown: boolean;
   /** Google Calendar busy blocks for the day, when connected (HOME study D6).
    *  Consulted by the LOOP only: the results list stays the sky's own answer,
@@ -436,7 +438,7 @@ export function linesUp(opts: LinesUpOpts): LinesUp {
   const electFor = (key: string) => {
     if (!byActivity.has(key)) {
       byActivity.set(key, computeElections({
-        activityKey: key, span: "day", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
+        activityKey: key, span: "day", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate: opts.birthDate, locationKnown,
         startAt: now,
       }));
     }
@@ -766,7 +768,7 @@ function nextOpeningFor(
   const distinct = [...new Map(priced.map(t => [t.key, t])).values()];
   for (const t of distinct.slice(0, 4)) {   // bounded: this runs on every Home load
     const out = computeElections({
-      activityKey: t.key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, locationKnown,
+      activityKey: t.key, span: "week", lat, lon, tzOffsetMin, timeZone, natal, timeKnown, birthDate: opts.birthDate, locationKnown,
     });
     const hit = (out?.windows ?? []).find((w: any) => w.supportLevel === "convergent" && w.suitability !== "defer");
     if (!hit) continue;

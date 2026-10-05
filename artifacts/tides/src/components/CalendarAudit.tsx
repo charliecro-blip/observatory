@@ -154,7 +154,7 @@ export default function CalendarAudit({ testerId, events, onClose }: {
               {a.reasons.length > 0 && (
                 <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 11.5, color: "var(--color-muted)", lineHeight: 1.6 }}>
                   {a.reasons.map((x, i) => (
-                    <li key={i}>{(REASON_TEXT[x.kind] ?? (() => x.kind))(x.planet)}</li>
+                    <li key={i}>{"text" in x && typeof (x as { text?: unknown }).text === "string" ? (x as { text: string }).text : (REASON_TEXT[x.kind] ?? (() => x.kind))(x.planet)}</li>
                   ))}
                 </ul>
               )}

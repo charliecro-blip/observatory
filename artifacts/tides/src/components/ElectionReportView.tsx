@@ -14,6 +14,7 @@ interface Report {
   activity: { key: string; label: string } | null;
   horizon: { days: number };
   motion: { planet: string; sentence: string | null }[];
+  standing: string[];
   picks: Pick[];
   busyButStrong: Pick[];
   avoid: { date: string; reasons: string[] }[];
@@ -40,8 +41,12 @@ function PickRow({ p, calendarChecked }: { p: Pick; calendarChecked: boolean }) 
       </p>
       <ul className="report-evidence">
         {p.evidence.map((e, i) => <li key={i}>{e}</li>)}
-        {p.personal && <li>It also touches your own chart.</li>}
       </ul>
+      {/* The motion of the governing planet is said once, under Conditions;
+          what is left here is particular to this time. */}
+      {p.objections.filter((o) => !/ is (retrograde|stationing)/.test(o)).length > 0 && (
+        <p className="report-against">Against it: {p.objections.filter((o) => !/ is (retrograde|stationing)/.test(o)).join("; ")}.</p>
+      )}
       {p.alsoThatDay.length > 0 && (
         <p className="report-also">Also that day: {p.alsoThatDay.map((a) => `${a.startClock} to ${a.endClock}`).join(", ")}.</p>
       )}
@@ -94,10 +99,11 @@ export default function ElectionReportView({ activity, days, timeZone, onBack }:
       {data?.status === "unsupported" && <p>Compass doesn’t have a timing match for that activity yet.</p>}
       {data && data.status !== "unsupported" && (
         <>
-          {data.motion.length > 0 && (
+          {(data.motion.length > 0 || data.standing?.length > 0) && (
             <section>
               <h2>Conditions</h2>
               {data.motion.map((m) => <p key={m.planet}>{m.sentence}</p>)}
+              {data.standing?.map((t) => <p key={t}>{t}</p>)}
             </section>
           )}
           <section>

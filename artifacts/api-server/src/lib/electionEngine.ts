@@ -31,6 +31,30 @@ import { computeDayArc } from "./dayarc.js";
 import { civilDayOffsetIn } from "./localClock.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
+import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article } from "./natalResonance.js";
+
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/**
+ * "Venus's day, and Venus is lord of your year" beside "Venus's hour, and
+ * Venus is lord of your year" said the same reason twice. When a window holds
+ * both for one planet they become "Venus's day and hour, and …", in the
+ * hour's place.
+ */
+function joinDayAndHour(ev: Evidence[]): Evidence[] {
+  const hourRe = /^(.+)'s hour, and (.+)$/;
+  const out = [...ev];
+  for (let i = 0; i < out.length; i++) {
+    const h = hourRe.exec(out[i].text);
+    if (!h) continue;
+    const j = out.findIndex(e => e.text === `${h[1]}'s day, and ${h[2]}`);
+    if (j < 0) continue;
+    out[i] = { ...out[i], text: `${h[1]}'s day and hour, and ${h[2]}` };
+    out.splice(j, 1);
+    if (j < i) i--;
+  }
+  return out;
+}
 
 const SOFT_W: Record<string, number> = { conjunction: 1.0, trine: 0.85, sextile: 0.65, quintile: 0.5, "semi-sextile": 0.35 };
 const HARD_W: Record<string, number> = { square: 0.7, "semi-square": 0.4, sesquiquadrate: 0.4 };
@@ -42,7 +66,8 @@ const sep180 = (a: number, b: number) => { const d = Math.abs(norm360(a - b)); r
 export type CapReason =
   | "mercury-retrograde" | "eclipse-window"
   | "retrograde-significator" | "malefic-final-aspect"
-  | "significator-stationing";
+  | "significator-stationing"
+  | "natal-objection";
 
 /** How many independent source families agree. A claim about the SKY. */
 export type SupportLevel = "supported" | "convergent";
@@ -62,13 +87,17 @@ export type SuitabilityReason =
   | { kind: "primary-significator-stationing-direct"; planet: string }
   | { kind: "primary-significator-retrograde"; planet: string }
   | { kind: "significator-station"; planet: string }
-  | { kind: "mercury-retrograde"; planet: string };
+  | { kind: "mercury-retrograde"; planet: string }
+  /** A contact between the sky and the person's own chart that counts against
+   *  the window (natalResonance.ts, O1–O4). `text` is the literal fact. */
+  | { kind: "natal-objection"; planet: string; text: string };
 
 /** Severity of each reason, so `suitability` stays a pure function of them. */
 const DEFER_REASONS = new Set<SuitabilityReason["kind"]>([
   "primary-significator-stationing-retrograde",
 ]);
 const QUALIFY_REASONS = new Set<SuitabilityReason["kind"]>([
+  "natal-objection",
   "primary-significator-stationing-direct",
   "primary-significator-retrograde",
   "mercury-retrograde",
@@ -223,7 +252,11 @@ export type SourceFamily =
   | "natal-house"      // transiting body in a governing natal house
   | "natal-contact"    // transit to its own natal place
   | "planetary-motion"  // speed/direction matching the activity's tempo
-  | "angle-crossing";   // a significator on the local horizon or meridian
+  | "angle-crossing"    // a significator on the local horizon or meridian
+  // Natal resonance (natalResonance.ts). Timed and relational contacts with
+  // the person's chart establish; recurring personal timing only reinforces.
+  | "natal-resonance"   // the Moon or a significator contacting a natal point
+  | "natal-timing";     // the chart ruler's or year lord's day/hour, a natal degree on an angle, the natal rising sign
 
 const FAMILY_OF: Record<string, SourceFamily> = {
   hour: "planetary-time",
@@ -235,10 +268,27 @@ const FAMILY_OF: Record<string, SourceFamily> = {
   "natal-contact": "natal-contact",
   motion: "planetary-motion",
   crossing: "angle-crossing",
+  "natal-moon": "natal-resonance",
+  "natal-transit": "natal-resonance",
+  "natal-day": "natal-timing",
+  "natal-hour": "natal-timing",
+  "natal-angle": "natal-timing",
+  "natal-rising": "natal-timing",
 };
 const familiesOf = (srcs: string[]): SourceFamily[] =>
   [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
-const PERSONAL_FAMILIES = new Set<SourceFamily>(["natal-house", "natal-contact"]);
+const PERSONAL_FAMILIES = new Set<SourceFamily>(["natal-house", "natal-contact", "natal-resonance", "natal-timing"]);
+
+/**
+ * Calibration switches, in one place so the harness can measure both sides.
+ *
+ * `personalCountsOnce` (plan Phase 1, 2026-10-04): however many personal rules
+ * fire, the chart counts toward convergence as ONE family (establishing if any
+ * personal testimony is, else reinforcing), so a chart-heavy day cannot reach
+ * GREAT on the chart alone. This also applies to the two personal families
+ * that predate it (natal-house, natal-contact), which used to count apart.
+ */
+export const ENGINE_CALIBRATION = { personalCountsOnce: true };
 
 /**
  * ESTABLISHING vs REINFORCING — what each family is allowed to CLAIM.
@@ -288,6 +338,7 @@ const ESTABLISHING_FAMILIES = new Set<SourceFamily>([
   "lunar-contact",    // the Moon applying to a significator — an event, with a time
   "standing-sky",     // a tight aspect between this activity's own significators
   "natal-contact",    // a close transit to the relevant natal planet
+  "natal-resonance",  // the Moon applying to a natal point, a significator on one
 ]);
 const roleOf = (f: SourceFamily): "establishing" | "reinforcing" =>
   ESTABLISHING_FAMILIES.has(f) ? "establishing" : "reinforcing";
@@ -374,8 +425,12 @@ function crossingsForDay(dayStartMs: number, lat: number, lon: number) {
 }
 
 export function supportLevelFrom(families: SourceFamily[]): SupportLevel {
-  const establishing = families.filter(f => roleOf(f) === "establishing");
-  const reinforcing = families.filter(f => roleOf(f) === "reinforcing");
+  const personal = families.filter(f => PERSONAL_FAMILIES.has(f));
+  const counted: SourceFamily[] = ENGINE_CALIBRATION.personalCountsOnce && personal.length > 1
+    ? [...families.filter(f => !PERSONAL_FAMILIES.has(f)), personal.some(f => roleOf(f) === "establishing") ? "natal-resonance" : "natal-timing"]
+    : families;
+  const establishing = counted.filter(f => roleOf(f) === "establishing");
+  const reinforcing = counted.filter(f => roleOf(f) === "reinforcing");
   return establishing.length >= 2 || (establishing.length >= 1 && reinforcing.length >= 2)
     ? "convergent" : "supported";
 }
@@ -627,6 +682,8 @@ export function computeElections(opts: {
    * the flag exists so that stops being an assumption.
    */
   timeKnown?: boolean;
+  /** Birth date (YYYY-MM-DD), for the year's lord. Without it R2 is withheld. */
+  birthDate?: string;
   /**
    * Whether `lat`/`lon` are the user's real location or a timezone guess.
    *
@@ -703,6 +760,11 @@ export function computeElections(opts: {
   // The old cutoff was never defended — it was just a number.
   const sigPlanets = primarySignificatorsOf(act.key, act.planets);
   const rxSigs = sigPlanets.filter(p => p !== "Sun" && p !== "Moon" && isRetrograde(p, startJd));
+  // The natal points this election reads (natalResonance.ts). Body/self
+  // matters weigh the chart ruler and Ascendant fully; everything else reads
+  // them at half weight, since the native is still the one acting.
+  const frame = natal ? natalFrame(natal, sigPlanets, houseTestimonyAllowed) : null;
+  const selfMatter = act.category === "body" || act.houses.includes(1);
   // Also narrowed: the top tier is only withheld for INCEPTIONS now, so the
   // caution no longer promises a demotion it will not deliver for a long run.
   if (rxSigs.length) {
@@ -922,6 +984,43 @@ export function computeElections(opts: {
     const dayMatch = (act.planets[dayRuler] ?? 0) > 0;
     if (dayMatch) { dayBoost *= 1.1; dayWhy.push({ family: "day", text: `${dayRuler}'s day` }); }
 
+    // ── Natal resonance, day level (natalResonance.ts) ─────────────────────
+    // R1/R2: the day of the chart ruler or of the year's lord. One line, which
+    // replaces the plain "X's day" above when both fire, so a reader sees one
+    // fact with its reason rather than the same weekday twice.
+    const dayObjections: SuitabilityReason[] = [];
+    const yearLord = frame && RESONANCE_RULES.R2 ? yearLordOn(frame, opts.birthDate, noonInstant) : null;
+    const personalLords = new Map<string, string>();   // planet → why it is personal
+    if (frame) {
+      if (RESONANCE_RULES.R1 && frame.chartRuler) personalLords.set(frame.chartRuler, "rules your Ascendant");
+      if (yearLord) personalLords.set(yearLord.lord, personalLords.has(yearLord.lord)
+        ? "rules your Ascendant and your year"
+        : `is lord of your year (${article(yearLord.house)} ${ordinal(yearLord.house)}-house profection)`);
+      const why = personalLords.get(dayRuler);
+      if (why) {
+        // Evidence only, like the activity's own weekday above: a day comes
+        // round once a week, and counted as testimony it lifted ~1,350 extra
+        // windows to the top tier in the calibration sample (2026-10-04).
+        dayBoost *= 1.05;
+        const line = { family: "personal", text: `${cap(body(dayRuler))}'s day, and ${body(dayRuler)} ${why}` };
+        const plain = dayWhy.findIndex(e => e.family === "day");
+        if (plain >= 0) dayWhy[plain] = line; else dayWhy.push(line);
+      }
+      // R5/R6 supports and O1/O2 objections: slow contacts that hold all day.
+      const dc = dayContacts(frame, sigPlanets, lonOf);
+      if (dc.supports.length) {
+        daySources.push("natal-transit"); dayBoost *= selfMatter ? 1.15 : 1.08;
+        for (const x of dc.supports) dayWhy.push({ family: "personal", text: x.text });
+      }
+      for (const o of dc.objections) dayObjections.push({ kind: "natal-objection", planet: o.planet, text: o.text });
+      // Slow contacts describe the stretch, not the window: said once, on the
+      // result, the way a retrograde significator is.
+      for (const x of dc.standing) {
+        const line = `${cap(x.text)}, a slow contact that holds through this stretch.`;
+        if (!cautions.includes(line)) cautions.push(line);
+      }
+    }
+
     // ── Candidates ──────────────────────────────────────────────────────────
     interface Cand { startMs: number; endMs: number; score: number; why: Evidence[]; sources: string[]; allDay?: boolean }
     const cands: Cand[] = [];
@@ -993,6 +1092,36 @@ export function computeElections(opts: {
       });
     }
 
+    // ── Natal resonance, timed: the Moon to the person's own points ────────
+    // R3/R4 make windows of their own, shaped like the Moon-aspect swells
+    // above (exact ± 2.5 h, inside waking hours). O3 never makes a window; it
+    // is read against windows at emit time.
+    const natalMoon = frame ? moonToNatal(frame, dayStartMs, dayStartMs + 26 * 3600000) : [];
+    // Angles and the rising sign are cut from the local horizon: withheld on a
+    // guessed location, as the hours and the significators' crossings are.
+    const natalAngles = frame && locationKnown ? natalOnAngles(frame, dayStartMs, lat, lon) : [];
+    const risingSpans = frame && locationKnown ? ownSignRising(frame, dayStartMs, lat, lon) : [];
+    for (const ev of natalMoon) {
+      if (ev.rule === "O3") continue;
+      // A window of its own only when the contact is with this activity's own
+      // planet, or the matter is the self. The chart ruler and Ascendant made
+      // windows for every activity, +42% windows in calibration; for other
+      // matters those contacts ride on windows that exist (below).
+      const selfPoint0 = ev.rule === "R4" || ev.target === "ASC" || ev.target === frame!.chartRuler;
+      if (selfPoint0 && !selfMatter && !sigPlanets.includes(ev.target)) continue;
+      const startMs = Math.max(ev.timeMs - 2.5 * 3600000, dayStartMs + 7 * 3600000);
+      const endMs = Math.min(ev.timeMs + 2.5 * 3600000, dayStartMs + 23 * 3600000);
+      if (endMs - startMs < 1.5 * 3600000) continue;
+      const when = clockOf(ev.timeMs, tzOffsetMin);
+      const selfPoint = ev.rule === "R4" || ev.target === "ASC" || ev.target === frame!.chartRuler;
+      const weight = ev.rule === "R4" ? 0.5 : selfPoint && !selfMatter ? 0.25 : 0.45;
+      cands.push({
+        startMs, endMs, score: weight,
+        why: [{ family: "personal", text: `${cap(ev.phrase)}, ${ev.timeMs > endMs ? `exact at ${when}, after the window closes` : ev.timeMs < startMs ? `exact at ${when}` : `exact at ${when}, inside the window`}` }],
+        sources: ["natal-moon"],
+      });
+    }
+
     // Sign-day affinity
     const gloss = act.signs[moonSign];
     if (gloss) cands.push({
@@ -1025,12 +1154,43 @@ export function computeElections(opts: {
       }
     }
 
+    // R1/R2 hours: the chart ruler's or the year lord's planetary hour. Never a
+    // window by itself (that would be every such hour of every day); it narrows
+    // a lunar or natal-lunar window it overlaps, the way the hour x Moon stack
+    // does, and says why the hour is personal.
+    if (frame && personalLords.size && locationKnown && !polar) {
+      const lunar = cands.filter(c => (c.sources.includes("moon") || c.sources.includes("natal-moon")) && !c.sources.includes("hour"));
+      for (const h of dayHours(dayStartMs, lat, lon)) {
+        const why = personalLords.get(h.ruler);
+        // An hour the activity already names is annotated below, not doubled.
+        if (!why || act.hourRulers.includes(h.ruler)) continue;
+        for (const m of lunar) {
+          const s = Math.max(h.startMs, m.startMs), e = Math.min(h.endMs, m.endMs);
+          if (e - s < 45 * 60000) continue;
+          cands.push({ startMs: s, endMs: e, score: m.score + 0.2, why: [...m.why, { family: "personal", text: `${cap(body(h.ruler))}'s hour, and ${body(h.ruler)} ${why}` }], sources: [...m.sources, "natal-hour"] });
+        }
+      }
+    }
+
     // A merged moon×hour row supersedes the bare hour inside it — one moment,
     // one row.
     const merged = cands.filter(c => c.sources.includes("moon") && c.sources.includes("hour"));
     const superseded = new Set(
       cands.filter(c => c.sources.length === 1 && c.sources[0] === "hour" &&
         merged.some(m => m.startMs <= c.startMs + 60000 && m.endMs >= c.endMs - 60000)));
+
+    // An hour the activity already names that is ALSO personal (the chart
+    // ruler's or the year lord's) keeps its one row and says why it is
+    // personal, instead of appearing twice.
+    if (personalLords.size) for (const c of cands) {
+      if (!c.sources.includes("hour")) continue;
+      const i = c.why.findIndex(e => e.family === "hour");
+      const ruler = i >= 0 ? c.why[i].text.replace(/ hour$/, "") : null;
+      const why = ruler ? personalLords.get(ruler) : undefined;
+      if (!why) continue;
+      c.why = c.why.map((e, j) => j === i ? { family: "personal", text: `${cap(body(ruler!))}'s hour, and ${body(ruler!)} ${why}` } : e);
+      c.sources = [...c.sources, "natal-hour"];
+    }
 
     // ── Score, tier, emit ────────────────────────────────────────────────────
     for (const c0 of cands) {
@@ -1116,7 +1276,47 @@ export function computeElections(opts: {
         family: "angle-crossing",
         text: `${x.planet} crosses the ${x.angle} at ${clockOf(Date.parse(x.crossingTime), tzOffsetMin)}, inside this window`,
       }));
-      const winSources = [...c.sources, ...daySources, ...(onAngle.length ? ["crossing"] : [])];
+      // ── Natal resonance, window level ─────────────────────────────────────
+      const natalWhy: Evidence[] = [];
+      const natalSrc: string[] = [];
+      const winObjections: SuitabilityReason[] = [];
+      if (frame) {
+        const mine = new Set(c.why.map(e => e.text));
+        // R3/R4 perfecting inside this window, when it is not the window's own.
+        for (const ev of natalMoon) {
+          if (ev.rule === "O3" || ev.timeMs < c.startMs || ev.timeMs > c.endMs) continue;
+          const text = `${cap(ev.phrase)}, exact at ${clockOf(ev.timeMs, tzOffsetMin)}, inside the window`;
+          if ([...mine].some(t => t.startsWith(cap(ev.phrase)))) continue;
+          natalWhy.push({ family: "personal", text }); natalSrc.push("natal-moon");
+        }
+        // R7: a natal benefic or the chart ruler on a local angle inside it.
+        // O4: a natal malefic on one.
+        // Each natal degree rises and culminates once a day, so in a window of
+        // several hours one almost always does: the claim only means something
+        // when the window is about the size of the moment.
+        if (locationKnown && c.endMs - c.startMs <= 90 * 60000) for (const x of natalAngles) {
+          if (x.timeMs < c.startMs || x.timeMs > c.endMs) continue;
+          const text = `${cap(x.text)} at ${clockOf(x.timeMs, tzOffsetMin)}, inside this window`;
+          // Evidence, not testimony: 5.3 of these per chart-day in calibration.
+          if (x.rule === "R7") natalWhy.push({ family: "personal", text });
+          else winObjections.push({ kind: "natal-objection", planet: x.planet, text });
+        }
+        // R8: the natal Ascendant's sign rising across most of the window.
+        const mid = (c.startMs + c.endMs) / 2;
+        if (!c.allDay && risingSpans.some(([a, b]) => a <= mid && mid <= b)) {
+          // Evidence only: the natal sign rises every day.
+          natalWhy.push({ family: "personal", text: `${frame.ascSign} is rising, as it was when you were born` });
+        }
+        // O3: the Moon applying by hard aspect to a natal malefic, perfecting
+        // inside the window or within two hours of its end (the Moon closes
+        // about a degree in that time).
+        for (const ev of natalMoon) {
+          if (ev.rule !== "O3" || ev.timeMs < c.startMs || ev.timeMs > c.endMs + 2 * 3600000) continue;
+          winObjections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)} at ${clockOf(ev.timeMs, tzOffsetMin)}` });
+        }
+        if (c.sources.includes("natal-moon")) natalSrc.push("natal-moon");
+      }
+      const winSources = [...c.sources, ...daySources, ...(onAngle.length ? ["crossing"] : []), ...natalSrc];
       /**
        * This is where a crossing raises the tier, and the only place it can.
        *
@@ -1188,6 +1388,7 @@ export function computeElections(opts: {
       if (dayMercRx && act.mercuryRx === "hard") {
         qualify({ kind: "mercury-retrograde", planet: "Mercury" });
       }
+      for (const o of [...dayObjections, ...winObjections]) qualify(o);
 
       // Eclipse and the malefic final aspect stay TIER caps rather than
       // becoming suitability: they are objections to the moment itself, not to
@@ -1213,6 +1414,9 @@ export function computeElections(opts: {
           tier = "good"; cappedBy = "malefic-final-aspect"; // the ending sours
         }
       }
+      // A personal objection holds a window at good (plan D1b default: cap and
+      // caution, never drop). The window stays listed with the reason named.
+      if (tier === "great" && suitabilityReasons.some(r => r.kind === "natal-objection")) { tier = "good"; cappedBy = "natal-objection"; }
       // `defer` withholds the top tier too — it is a refusal, not a caveat.
       if (tier === "great" && suitability === "defer") { tier = "good"; cappedBy ??= "significator-stationing"; }
 
@@ -1231,7 +1435,9 @@ export function computeElections(opts: {
       const nonPersonal = allFamilies.filter(f => !PERSONAL_FAMILIES.has(f));
       const npEst = nonPersonal.filter(f => roleOf(f) === "establishing").length;
       const npReinf = nonPersonal.filter(f => roleOf(f) === "reinforcing").length;
-      const personalDecidedTier = supportLevel === "convergent" &&
+      // Only a window that IS great can have had its tier decided; one held at
+      // good by a cap (an eclipse, a personal objection) decided nothing.
+      const personalDecidedTier = tier === "great" && supportLevel === "convergent" &&
         !(npEst >= 2 || (npEst >= 1 && npReinf >= 2));
       windows.push({
         date: dateLabel, dow,
@@ -1244,8 +1450,8 @@ export function computeElections(opts: {
         // showing "the Moon is applying to Mercury… / Saturn's hour contains
         // the window… / your 10th house is reinforced…" is three facts a reader
         // can weigh, where the joined string is one blur they can only accept.
-        why: [...c.why, ...dayWhy, ...angleWhy].map(e => e.text).join(" · "),
-        evidence: [...c.why, ...dayWhy, ...angleWhy],
+        why: joinDayAndHour([...c.why, ...dayWhy, ...angleWhy, ...natalWhy]).map(e => e.text).join(" · "),
+        evidence: joinDayAndHour([...c.why, ...dayWhy, ...angleWhy, ...natalWhy]),
         sources: [...new Set(winSources)],
         families,
         personal: personalFamilies.length > 0,
