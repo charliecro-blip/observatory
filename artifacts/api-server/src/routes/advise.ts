@@ -16,7 +16,7 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db } from "@workspace/db";
 import { tasks, habits, goals, daemonMemory, natalCharts } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import {
   julianDay, moonPhase, getPlanetPositions,
   voidOfCourse, getPlanetaryHour, getDailyElementEmphasis,
@@ -25,6 +25,31 @@ import {
 import { dayReading } from "../lib/synthesis.js";
 import { computeNatalChart } from "../lib/natal.js";
 import { clockIn, stampIn } from "../lib/localClock.js";
+import { interpretTimingRequest } from "../lib/timingRequest.js";
+import { timingEnabledFor } from "../lib/timingAccess.js";
+import { electionReportFor } from "./timing.js";
+import type { ElectionReport } from "../lib/electionReport.js";
+import { ASKS_WHEN } from "../lib/askRouting.js";
+
+/** The report, as lines the model can quote but not alter. */
+function reportLines(r: ElectionReport): string {
+  const cal = r.coverage.calendar === "checked" ? "checked" : r.coverage.calendar === "not-connected" ? "not connected" : r.coverage.calendar === "unavailable" ? "could not be read" : "not checked";
+  const pick = (p: ElectionReport["picks"][number], i?: number) =>
+    `${i != null ? `${i + 1}. ` : "• "}${new Date(`${p.date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })}, ${p.broad ? "most of the day" : `${p.startClock}–${p.endClock}`}` +
+    `${p.availability === "clear" ? " (open on their calendar)" : p.availability === "conflict" ? " (their calendar has something then)" : ""}` +
+    ` [${p.tier}]. For: ${p.evidence.join("; ") || "none listed"}.` +
+    `${p.objections.length ? ` Against: ${p.objections.join("; ")}.` : ""}`;
+  return [
+    `THE ELECTION REPORT COMPASS COMPUTED FOR THIS QUESTION: ${r.activity?.label ?? "?"}, the next ${r.horizon.days} days. Chart used: ${r.coverage.chart === "applied" ? "yes" : r.coverage.chart === "absent" ? "no chart saved" : "yes, without the birth-time rules"}. Calendar: ${cal}.`,
+    "These times and reasons are GIVEN FACTS from the engine. Name only times from this report; never invent, shift or widen one. If none suits what they tell you, say so and offer the closest honest trade-off.",
+    ...(r.motion.length || r.standing.length ? ["Conditions:", ...r.motion.map(m => `• ${m.sentence}`), ...r.standing.map(t => `• ${t}`)] : []),
+    r.picks.length ? "Best times, ranked:" : "Best times: the engine found none in this span.",
+    ...r.picks.map((p, i) => pick(p, i)),
+    ...(r.busyButStrong.length ? ["Strong times their calendar already holds:", ...r.busyButStrong.map(p => pick(p))] : []),
+    ...(r.avoid.length ? ["Days to leave alone:", ...r.avoid.map(a => `• ${a.date}: ${a.reasons.join(" ")}`)] : []),
+    ...(r.afterClears ? [`If it can wait: ${r.afterClears.planet} turns direct on ${r.afterClears.from}.`, ...(r.afterClears.picks.length ? r.afterClears.picks.slice(0, 3).map(p => pick(p)) : ["• The engine found no time in the two weeks after that."])] : []),
+  ].join("\n");
+}
 
 const router: IRouter = Router();
 
@@ -50,7 +75,9 @@ router.post("/advise", async (req, res) => {
   const testerId = req.headers["x-tester-id"] as string | undefined;
   if (!testerId) { res.status(400).json({ error: "Missing x-tester-id" }); return; }
 
-  const { message, history = [], lat = 40.7, lon = -74.0, tzOffsetMin = 0, gcalEvents = [], weekSummary = "", electionContext, strongestFit } = req.body as {
+  const { message, history = [], lat = 40.7, lon = -74.0, tzOffsetMin = 0, gcalEvents = [], weekSummary = "", electionContext, strongestFit, timeZone } = req.body as {
+    /** The viewer's IANA zone; needed to read "this weekend" and to compute a report. */
+    timeZone?: string;
     message: string;
     history?: { role: "user" | "assistant"; content: string }[];
     lat?: number;
@@ -127,7 +154,7 @@ router.post("/advise", async (req, res) => {
     const [taskRows, habitRows, goalRows, memoryRows] = await Promise.all([
       db.select({ title: tasks.title, bestWindowType: tasks.bestWindowType })
         .from(tasks)
-        .where(and(eq(tasks.testerId, testerId), eq(tasks.done, "false")))
+        .where(and(eq(tasks.testerId, testerId), eq(tasks.done, "false"), isNull(tasks.parkedAs)))
         .limit(10),
       db.select({ name: habits.name, minimumViable: habits.minimumViable })
         .from(habits)
@@ -149,6 +176,32 @@ router.post("/advise", async (req, res) => {
     memoryLines = memoryRows.map((m: { content: string; createdAt: Date }) => `- ${m.content}`);
   } catch {
     // Continue without user context if DB query fails
+  }
+
+  // ── A timing question gets the engine's report (plan Part A, Phase 3) ────
+  // Ask is not a second engine. When the question asks WHEN and names an
+  // activity the interpreter recognizes, the same report the report page
+  // shows is computed and handed over as given facts; the model explains and
+  // compares, and may name only the times it lists. Behind the timing cohort,
+  // like the report itself.
+  let reportSection = "";
+  let attachedReport: { activity: string; days: number } | null = null;
+  const zoneOk = typeof timeZone === "string" && (() => { try { new Intl.DateTimeFormat("en-US", { timeZone }); return true; } catch { return false; } })();
+  if (!electionContext?.activity && zoneOk && ASKS_WHEN.test(message) && timingEnabledFor(testerId)) {
+    try {
+      const interp = interpretTimingRequest(message, timeZone!, now);
+      if (interp.state === "resolved" && interp.options[0]) {
+        const span = Math.round((Date.parse(interp.horizon.end) - Date.parse(interp.horizon.start)) / 86400000);
+        const days = (interp as { report?: { days: number } }).report?.days ?? Math.min(30, Math.max(7, span || 14));
+        const report = await electionReportFor(testerId, {
+          activity: interp.options[0].key, days, timeZone: timeZone!, location: { lat, lon }, useNatal: true, checkCalendar: true,
+        });
+        if (!("error" in report) && report.status !== "unsupported") {
+          reportSection = `\n${reportLines(report)}\n\nFor this answer a fuller breakdown is welcome: walk through the best options and their trade-offs, say which you would pick and why, and mention the days to leave alone only if they matter to the choice.\n`;
+          attachedReport = { activity: interp.options[0].key, days };
+        }
+      }
+    } catch { /* the report is enrichment; Ask still answers without it */ }
   }
 
   // ── Build system prompt ───────────────────────────────────────────────────
@@ -246,7 +299,7 @@ ${readingSection ? `\n${readingSection}\n` : ""}${weekSummary ? `\nWEEK AHEAD QU
 
 ${userSection ? `USER'S CONTEXT:\n${userSection}` : "No tasks, habits, or goals on record yet — work from the astrological moment alone."}
 ${calSection ? `\n${calSection}` : ""}
-${fitSection}${electionSection}${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
+${fitSection}${electionSection}${reportSection}${memoryLines.length ? `\nDAEMON MEMORY (things the user has asked you to remember across sessions):\n${memoryLines.join("\n")}` : ""}
 
 Respond directly, warmly, and practically. Don't summarize the astrology back to them — use it to inform what you say.`;
 
@@ -254,6 +307,8 @@ Respond directly, warmly, and practically. Don't summarize the astrology back to
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
+  // Tells the client a report backs this answer, so it can offer the page.
+  if (attachedReport) res.write(`data: ${JSON.stringify({ report: attachedReport })}\n\n`);
 
   const msgs: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
@@ -266,7 +321,7 @@ Respond directly, warmly, and practically. Don't summarize the astrology back to
       model: "gpt-4o",
       messages: msgs,
       stream: true,
-      max_tokens: 400,
+      max_tokens: attachedReport ? 900 : 400,
     });
 
     for await (const chunk of stream) {

@@ -95,7 +95,7 @@ export function timingInput(body: unknown):
     checkCalendar: b.checkCalendar === true,
   };
 }
-async function natalFor(testerId: string): Promise<TimingSearchRequest["natal"] | null> {
+export async function natalFor(testerId: string): Promise<TimingSearchRequest["natal"] | null> {
   const stored = (
     await db.select().from(natalCharts).where(eq(natalCharts.testerId, testerId)).limit(1)
   )[0];
@@ -110,6 +110,7 @@ async function natalFor(testerId: string): Promise<TimingSearchRequest["natal"] 
       "whole-sign",
     ),
     timeKnown: stored.timeKnown !== false,
+    birthDate: stored.birthDate,
   };
 }
 async function computeFor(
@@ -170,6 +171,42 @@ router.post("/timing/search", async (req, res) => {
 
 // The election report: a longer span than one search covers, with the chart and
 // the calendar, composed from the same engine (lib/electionReport.ts).
+/**
+ * One election report for one tester: the plan checks, their chart, and their
+ * calendar when asked for and allowed. Shared by POST /timing/report and by
+ * Ask, so the advisor answers a timing question from the same computation the
+ * report page shows (one fact, one source).
+ */
+export async function electionReportFor(testerId: string, q: {
+  activity: string; days: number; timeZone: string; location: { lat: number; lon: number };
+  useNatal: boolean; checkCalendar: boolean;
+}): Promise<{ error: "upgrade_required" } | ReturnType<typeof buildElectionReport>> {
+  const plan = await planForTester(testerId);
+  if (!can(plan, "horizon.week")) return { error: "upgrade_required" };
+  const checkCalendar = q.checkCalendar && can(plan, "placement.calendar");
+  const start = new Date();
+  const extraActivities = await customActivitiesFor(testerId);
+  const natal = q.useNatal ? await natalFor(testerId) : null;
+  let calendar: TimingSearchRequest["calendar"];
+  if (checkCalendar) {
+    let result;
+    try {
+      result = await fetchGcalBusy(testerId, start.toISOString(), new Date(+start + (q.days + 1) * 86400000).toISOString());
+    } catch {
+      result = { ok: false, connected: false, busy: [] };
+    }
+    // An unlinked Google account is not a successful availability check.
+    if (!result.connected) result = { ...result, ok: false };
+    calendar = { result, source: "Google Calendar", fetchedAt: new Date().toISOString() };
+  }
+  return buildElectionReport({
+    activity: q.activity, start, days: q.days, timeZone: q.timeZone,
+    location: q.location, natal: natal ?? undefined, calendar, extraActivities,
+  });
+}
+
+// The election report: a longer span than one search covers, with the chart and
+// the calendar, composed from the same engine (lib/electionReport.ts).
 router.post("/timing/report", async (req, res) => {
   const b = req.body ?? {};
   const days = Number(b.days);
@@ -188,33 +225,13 @@ router.post("/timing/report", async (req, res) => {
     res.status(400).json({ error: "invalid_timezone" });
     return;
   }
-  const testerId = res.locals.testerId as string;
   try {
-    const plan = await planForTester(testerId);
-    if (!can(plan, "horizon.week") || (b.checkCalendar === true && !can(plan, "placement.calendar"))) {
-      res.status(402).json({ error: "upgrade_required" });
-      return;
-    }
-    const start = new Date();
-    const extraActivities = await customActivitiesFor(testerId);
-    const natal = b.useNatal === true ? await natalFor(testerId) : null;
-    let calendar: TimingSearchRequest["calendar"];
-    if (b.checkCalendar === true) {
-      let result;
-      try {
-        result = await fetchGcalBusy(testerId, start.toISOString(), new Date(+start + (days + 1) * 86400000).toISOString());
-      } catch {
-        result = { ok: false, connected: false, busy: [] };
-      }
-      // An unlinked Google account is not a successful availability check.
-      if (!result.connected) result = { ...result, ok: false };
-      calendar = { result, source: "Google Calendar", fetchedAt: new Date().toISOString() };
-    }
-    res.json(buildElectionReport({
-      activity: b.activity, start, days, timeZone: b.timeZone,
+    const out = await electionReportFor(res.locals.testerId as string, {
+      activity: b.activity, days, timeZone: b.timeZone,
       location: { lat: b.location.lat, lon: b.location.lon },
-      natal: natal ?? undefined, calendar, extraActivities,
-    }));
+      useNatal: b.useNatal === true, checkCalendar: b.checkCalendar === true,
+    });
+    res.status("error" in out ? 402 : 200).json(out);
   } catch {
     res.status(503).json({ error: "context_unavailable" });
   }

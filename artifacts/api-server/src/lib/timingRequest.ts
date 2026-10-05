@@ -1,3 +1,4 @@
+import { DEFAULT_HORIZON_NOTE } from "./askRouting.js";
 import { interpretTimingActivity } from "./timingInterpretation.js";
 import {
   dayKeyInZone,
@@ -272,7 +273,7 @@ export function interpretTimingRequest(
     end = new Date(+now + 4 * 3600000);
     assumptions.push("Looking through the next four hours.");
   } else if (!explicitDate)
-    assumptions.push("Looking from now through the next seven calendar days.");
+    assumptions.push(DEFAULT_HORIZON_NOTE);
 
   if (dayPart && first === last && !immediate && !conflictingDayParts && !excludedDayPart) {
     const [a, b] = PART_HOURS[dayPart];
@@ -312,7 +313,7 @@ export function interpretTimingRequest(
     start = dayBoundsInZone(civilDayOffsetIn(now, first, timeZone), timeZone)[0];
     end = dayBoundsInZone(civilDayOffsetIn(now, last, timeZone), timeZone)[1];
     explicitDate = true;
-    const dflt = assumptions.indexOf("Looking from now through the next seven calendar days.");
+    const dflt = assumptions.indexOf(DEFAULT_HORIZON_NOTE);
     if (dflt >= 0) assumptions.splice(dflt, 1);
   }
   const singleDay = first === last && !immediate;

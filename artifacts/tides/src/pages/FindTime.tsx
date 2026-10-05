@@ -24,6 +24,7 @@ import Launch from "./Launch";
 import Settings from "./Settings";
 import MomentAdvisor from "@/components/MomentAdvisor";
 import ElectionReportView from "@/components/ElectionReportView";
+import { routeToAsk } from "../../../api-server/src/lib/askRouting";
 import FeedbackDoor from "@/components/FeedbackDoor";
 import { Guide } from "@/components/Guide";
 import type { AskElectionContext } from "@/App";
@@ -96,6 +97,8 @@ function qualifications(c: Candidate): string[] {
         return "Mercury is retrograde; allow for revisions and follow-up.";
       case "significator-station":
         return `${r.planet} is changing direction during this period.`;
+      case "natal-objection":
+        return `${r.text.charAt(0).toUpperCase()}${r.text.slice(1)}, which counts against this time for you.`;
     }
   });
 }
@@ -279,6 +282,7 @@ export default function FindTime({
       setDestination("now");
       return;
     }
+
     setBusy(true);
     setError("");
     setResponse(null);
@@ -286,6 +290,14 @@ export default function FindTime({
     setExported(false);
     try {
       const result = await post("interpret", { text: value, timeZone });
+      // THE ONE BOX (plan Part A, Phase 3). A question that isn't a timing
+      // request goes to Ask, which answers from the same engine; one that
+      // names an activity and a time still searches, or opens the report.
+      if (routeToAsk(value, result)) {
+        logEvent("timing_request", { queryId: crypto.randomUUID(), text: value.slice(0, 500), state: result.state, route: "ask" });
+        setAdvisor({ seed: value.trim(), ctx: null });
+        return;
+      }
       const nextDraft = calendarScope
         ? {
             ...result.draft,
@@ -807,6 +819,7 @@ export default function FindTime({
           } : null}
           now={railNow}
           onAddTask={() => { setAdvisor(null); setCapture(true); }}
+          onOpenReport={(r) => { setAdvisor(null); setReportRequest(r); setDestination("report"); }}
         />
       )}
       <div className={railOpen ? "timing-body timing-body-rail" : "timing-body"}>

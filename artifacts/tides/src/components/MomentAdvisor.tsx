@@ -24,7 +24,9 @@ import { scrollBehavior } from "@/lib/reducedMotion";
 
 interface AdvisorMessage { role: "user" | "assistant"; content: string; }
 
-export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents = [], weekSummary = "", onAddTask, seedMessage, electionContext, strongestFit, now, northStars }: {
+export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents = [], weekSummary = "", onAddTask, seedMessage, electionContext, strongestFit, now, northStars, onOpenReport }: {
+  /** When an answer was backed by an election report, opens that report. */
+  onOpenReport?: (r: { activity: string; days: number }) => void;
   testerId: string | null;
   lat: number;
   lon: number;
@@ -52,6 +54,9 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
   const [streamBuffer, setStreamBuffer] = useState("");
   const [showPins, setShowPins] = useState(false);
   const [memSaved, setMemSaved] = useState<number | null>(null);
+  // Set when the server computed an election report for the last question,
+  // so the answer can point at the page it came from.
+  const [reportLink, setReportLink] = useState<{ activity: string; days: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -72,6 +77,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
     const userMsg: AdvisorMessage = { role: "user", content: message.trim() };
     setHistory(h => [...h, userMsg]);
     setInput("");
+    setReportLink(null);
     setStreaming(true);
     setStreamBuffer("");
 
@@ -85,7 +91,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
         // Without this the advisor reasons in the server's zone (UTC in
         // production) — for anyone west of Greenwich in the evening that is
         // tomorrow, so it advised confidently about the wrong day.
-        body: JSON.stringify({ message: message.trim(), history, lat, lon, tzOffsetMin: new Date().getTimezoneOffset(), gcalEvents, weekSummary,
+        body: JSON.stringify({ message: message.trim(), history, lat, lon, tzOffsetMin: new Date().getTimezoneOffset(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, gcalEvents, weekSummary,
           ...(electionContext ? { electionContext } : {}),
           ...(strongestFit ? { strongestFit } : {}) }),
       });
@@ -116,6 +122,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             // still closes cleanly, so we must surface it — otherwise Ask
             // silently shows nothing (empty spinner, no answer, no error).
             if (parsed.error) throw new Error(String(parsed.error));
+            if (parsed.report) setReportLink(parsed.report);
             if (parsed.delta) {
               accumulated += parsed.delta;
               setStreamBuffer(accumulated);
@@ -278,7 +285,7 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
             }}>
               <div style={{
                 maxWidth: "82%", padding: "10px 14px", borderRadius: 12,
-                fontSize: 13, lineHeight: 1.5,
+                fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap",
                 background: m.role === "user" ? "#1a2a3a" : "var(--color-card)",
                 color: m.role === "user" ? "var(--color-background)" : "var(--color-foreground)",
                 border: m.role === "assistant" ? "1px solid var(--color-border)" : "none",
@@ -313,6 +320,11 @@ export default function MomentAdvisor({ testerId, lat, lon, onClose, gcalEvents 
               )}
             </div>
           ))}
+          {reportLink && onOpenReport && !streaming && (
+            <button onClick={() => onOpenReport(reportLink)} style={{ alignSelf: "flex-start", fontSize: 12, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-card)", color: "var(--color-primary)", cursor: "pointer" }}>
+              Open the full report
+            </button>
+          )}
           <div ref={bottomRef} />
         </div>
 
