@@ -230,6 +230,12 @@ sample: windows 6,046 → 5,344; top tier 30.2% → 28.6%; personal 67% → 57%.
 The personal-timing family is now emitted by nothing (day, hour, angles,
 rising sign are all evidence); it remains only as the count-once stand-in.
 
+**Objections cap, don't qualify, 2026-10-06 (D1b ruled).** A natal objection
+is listed among a window's reasons and holds it below the top tier, but no
+longer marks it `qualified`; Find a time now shows reasons whenever there are
+any, not only on qualified times. Duration searches and comparisons have no
+tier, so there an objection ranks a block below an otherwise equal one.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.

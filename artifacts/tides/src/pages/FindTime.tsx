@@ -563,7 +563,9 @@ export default function FindTime({
           </p>
         )}
         <p>{c.explanation}</p>
-        {c.suitability !== "clear" && (
+        {/* Reasons show whenever there are any: a personal objection caps a
+            time without qualifying it (2026-10-06), and must not go unsaid. */}
+        {(c.suitability !== "clear" || qualifications(c).length > 0) && (
           <div className="timing-qualification">
             <strong>
               {c.suitability === "defer"

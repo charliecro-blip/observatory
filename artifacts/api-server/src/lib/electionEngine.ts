@@ -97,13 +97,17 @@ const DEFER_REASONS = new Set<SuitabilityReason["kind"]>([
   "primary-significator-stationing-retrograde",
 ]);
 const QUALIFY_REASONS = new Set<SuitabilityReason["kind"]>([
-  "natal-objection",
   "primary-significator-stationing-direct",
   "primary-significator-retrograde",
   "mercury-retrograde",
 ]);
 // `significator-station` on a non-inception is deliberately in NEITHER set:
 // it is worth SAYING and must not hold anything back.
+//
+// `natal-objection` is in neither set either (owner 2026-10-06: "cap but not
+// qualify"). It is listed among the reasons and holds a window below the top
+// tier (`cappedBy: "natal-objection"`), but it does not change suitability:
+// the person's chart argues against the best stamp, not against the time.
 
 export interface ElectionWindow {
   date: string; dow: string;
@@ -1531,8 +1535,8 @@ export function computeElections(opts: {
           tier = "good"; cappedBy = "malefic-final-aspect"; // the ending sours
         }
       }
-      // A personal objection holds a window at good (plan D1b default: cap and
-      // caution, never drop). The window stays listed with the reason named.
+      // A personal objection holds a window at good, and only that (owner
+      // 2026-10-06: cap, don't qualify). The reason stays listed by name.
       if (tier === "great" && suitabilityReasons.some(r => r.kind === "natal-objection")) { tier = "good"; cappedBy = "natal-objection"; }
       // `defer` withholds the top tier too — it is a refusal, not a caveat.
       if (tier === "great" && suitability === "defer") { tier = "good"; cappedBy ??= "significator-stationing"; }

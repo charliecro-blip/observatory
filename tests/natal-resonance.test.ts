@@ -173,4 +173,21 @@ describe("natal resonance in elections", () => {
       expect(w.families.includes("natal-house") && !w.evidence.some(e => /crosses your|is moving through/.test(e.text)), w.startClock).toBe(false);
     }
   });
+
+  // 2026-10-06: an objection caps a window but does not qualify it.
+  it("caps a window it objects to without changing its suitability", () => {
+    let onlyPersonal = 0;
+    for (const activityKey of ["deep-work", "garden", "meditate", "journal", "cook"])
+      for (const d of ["2026-10-11", "2026-10-14", "2026-10-16"])
+        for (const w of day(d, { activityKey, cautionPlanets: ["Saturn"] }).windows) {
+          const kinds = w.suitabilityReasons.map(x => x.kind);
+          if (!kinds.includes("natal-objection")) continue;
+          expect(w.tier, `${activityKey} ${d} ${w.startClock}`).toBe("good");
+          if (kinds.every(k => k === "natal-objection")) {
+            onlyPersonal++;
+            expect(w.suitability, `${activityKey} ${d} ${w.startClock}`).toBe("clear");
+          }
+        }
+    expect(onlyPersonal).toBeGreaterThan(0);
+  });
 }, 120_000);

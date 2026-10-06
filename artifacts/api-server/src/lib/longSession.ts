@@ -318,7 +318,10 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
   // generic hour coverage, below the verdict and continuity, which no amount
   // of testimony can outrank. (A personal hour is evidence only since
   // 2026-10-06 and does not rank.)
-  const personalWeight = (c: SessionCandidate) => (c.assessment.families.includes("natal-resonance") ? 1 : 0);
+  const personalWeight = (c: SessionCandidate) => (c.assessment.families.includes("natal-resonance") ? 1 : 0)
+    // A personal objection no longer changes suitability (2026-10-06); with no
+    // tier to cap here, it ranks a block below an otherwise equal one.
+    - (c.assessment.suitabilityReasons.some(r => r.kind === "natal-objection") ? 1 : 0);
   const byQuality = [...candidates].sort((a, b) =>
     SUIT_RANK[a.suitability] - SUIT_RANK[b.suitability] ||
     Number(b.uninterrupted) - Number(a.uninterrupted) ||
