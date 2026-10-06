@@ -1018,3 +1018,6 @@ Headings: "Conditions", "Best times", "Strong times your calendar already holds"
 - Caution objection: "The Moon {squares|opposes|conjoins} your natal {planet}, one of your caution planets, exact at {time}" · "The Sun {verb} your natal {planet}, one of your caution planets"
 - Slow planet in the matter's house, said once per span: "{Planet} is moving through your {nth} house, this matter's own, a slow passage that holds through this stretch."
 - Duration and comparison results: "From your chart:" above the chart's lines; objections appear in the reasons list ("What to consider"), which now shows whenever a time has any reason.
+
+### B6. Saving a pick from the report, 2026-10-06 — `ElectionReportView.tsx`
+Button: "Save this time" (not shown on a whole-day pick or one the calendar holds). After: "Saved to your Compass calendar." with "Download calendar event". Errors: "Compass checked this time again before saving and it no longer fits, so nothing was saved. Reload the report to see the times that do." · "Compass couldn’t save this time; try again in a moment."

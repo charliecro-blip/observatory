@@ -280,6 +280,17 @@ Shipped as specified below, except where the notes at the end of this section sa
   window is Nov 25. An empty answer is printed as one.
 - Not built: choosing a pick (the `/timing/choose` flow), the Ask hand-off,
   and the per-pick personal-chart testimony, which is Phase 1.
+- **Choosing a pick, built 2026-10-06.** Each pick carries `choice`: the exact
+  seven-day search that produced it (the chunk's start and end, the chart flag,
+  and whether to check the calendar). "Save this time" sends that to
+  `/timing/choose`, which runs it again and saves only if the engine still
+  gives the same candidate id and the calendar, where it was confirmed open,
+  still is. `choice` is null on a whole-day pick (eight hours or more, which
+  choose refuses as broad), a deferral, and a time the calendar holds. A pick
+  listed from an unread calendar is saved unchecked. Picks after a station
+  ("if it can wait") are choosable, unchecked. The test re-runs every offered
+  pick's query and finds the same id; the route itself is unverified here
+  (no test DB in the cloud session).
 - Cost, measured locally: 7 days 3.7 s, 14 days 4.8 s, 30 days 9.1 s. A cold
   week of engine search is 1.3 s, a warm one 0.3 s. The report computes each
   day's arc itself as well as inside the engine; sharing that is the obvious
