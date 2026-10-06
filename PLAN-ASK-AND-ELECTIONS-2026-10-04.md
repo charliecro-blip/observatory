@@ -222,6 +222,14 @@ stretch.") and no longer count per day. Same sample: windows carrying the
 significator rule 29% → 17% (what remains is the Sun, Mercury, Venus and Mars,
 which pass in days or weeks); personal 70% → 64%; top tier 1,836 → 1,737.
 
+**Personal hours, evidence only, 2026-10-06.** The chart ruler's and year
+lord's hours are now named on a window that holds one and never count toward
+the tier or create windows (they had been narrowing lunar windows into new
+rows); duration searches no longer rank by them. With birth dates in the same
+sample: windows 6,046 → 5,344; top tier 30.2% → 28.6%; personal 67% → 57%.
+The personal-timing family is now emitted by nothing (day, hour, angles,
+rising sign are all evidence); it remains only as the count-once stand-in.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.

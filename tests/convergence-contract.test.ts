@@ -46,7 +46,14 @@ describe("an establishing family must sit at the centre", () => {
   it("satisfies the contract exactly, window by window", () => {
     for (const key of ["edit-revise", "publish", "endurance"]) {
       for (const w of run(key, { natal }).windows) {
-        const e = w.establishingFamilies.length, r = w.reinforcingFamilies.length;
+        // The chart counts once (2026-10-04): every personal family together is
+        // one family, establishing if any of them is.
+        const PERSONAL = ["natal-house", "natal-contact", "natal-resonance", "natal-timing"];
+        const est = w.establishingFamilies.filter(f => !PERSONAL.includes(f)).length;
+        const rein = w.reinforcingFamilies.filter(f => !PERSONAL.includes(f)).length;
+        const personalEst = w.establishingFamilies.some(f => PERSONAL.includes(f));
+        const personalAny = w.families.some(f => PERSONAL.includes(f));
+        const e = est + (personalEst ? 1 : 0), r = rein + (personalAny && !personalEst ? 1 : 0);
         const shouldConverge = e >= 2 || (e >= 1 && r >= 2);
         expect(w.supportLevel, `${key} ${w.date} e=${e} r=${r}`)
           .toBe(shouldConverge ? "convergent" : "supported");

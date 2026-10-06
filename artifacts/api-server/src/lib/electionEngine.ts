@@ -256,7 +256,9 @@ export type SourceFamily =
   // Natal resonance (natalResonance.ts). Timed and relational contacts with
   // the person's chart establish; recurring personal timing only reinforces.
   | "natal-resonance"   // the Moon or a significator contacting a natal point
-  | "natal-timing";     // the chart ruler's or year lord's day/hour, a natal degree on an angle, the natal rising sign
+  | "natal-timing";     // reinforcing personal testimony. Nothing emits it since 2026-10-06: the
+                        // personal day, hour, natal angles and rising sign are all evidence only.
+                        // Kept as the count-once rule's stand-in for reinforcing personal families.
 
 const FAMILY_OF: Record<string, SourceFamily> = {
   hour: "planetary-time",
@@ -270,10 +272,6 @@ const FAMILY_OF: Record<string, SourceFamily> = {
   crossing: "angle-crossing",
   "natal-moon": "natal-resonance",
   "natal-transit": "natal-resonance",
-  "natal-day": "natal-timing",
-  "natal-hour": "natal-timing",
-  "natal-angle": "natal-timing",
-  "natal-rising": "natal-timing",
 };
 const familiesOf = (srcs: string[]): SourceFamily[] =>
   [...new Set(srcs.map(x => FAMILY_OF[x]).filter(Boolean) as SourceFamily[])];
@@ -727,7 +725,7 @@ export function evaluateActivityInterval(opts: {
           if (!why) continue;
           const overlap = Math.min(h.endMs, endAt.getTime()) - Math.max(h.startMs, startAt.getTime());
           if (overlap < needed) continue;
-          if (!families.includes("natal-timing")) families.push("natal-timing");
+          // Evidence only (owner 2026-10-06), as in the window engine.
           natalEvidence.push(`${cap(body(h.ruler))}'s hour, and ${body(h.ruler)} ${why}`);
           break;
         }
@@ -1266,23 +1264,16 @@ export function computeElections(opts: {
       }
     }
 
-    // R1/R2 hours: the chart ruler's or the year lord's planetary hour. Never a
-    // window by itself (that would be every such hour of every day); it narrows
-    // a lunar or natal-lunar window it overlaps, the way the hour x Moon stack
-    // does, and says why the hour is personal.
-    if (frame && personalLords.size && locationKnown && !polar) {
-      const lunar = cands.filter(c => (c.sources.includes("moon") || c.sources.includes("natal-moon")) && !c.sources.includes("hour"));
-      for (const h of dayHours(dayStartMs, lat, lon)) {
-        const why = personalLords.get(h.ruler);
-        // An hour the activity already names is annotated below, not doubled.
-        if (!why || act.hourRulers.includes(h.ruler)) continue;
-        for (const m of lunar) {
-          const s = Math.max(h.startMs, m.startMs), e = Math.min(h.endMs, m.endMs);
-          if (e - s < 45 * 60000) continue;
-          cands.push({ startMs: s, endMs: e, score: m.score + 0.2, why: [...m.why, { family: "personal", text: `${cap(body(h.ruler))}'s hour, and ${body(h.ruler)} ${why}` }], sources: [...m.sources, "natal-hour"] });
-        }
-      }
-    }
+    // R1/R2 hours: the chart ruler's or the year lord's planetary hour.
+    // EVIDENCE ONLY (owner 2026-10-06): named on a window that holds one, never
+    // counted toward the tier and never a window of its own. It used to narrow
+    // overlapping lunar windows into new rows (~3,000 extra in calibration).
+    const personalHours = frame && personalLords.size && locationKnown && !polar
+      ? dayHours(dayStartMs, lat, lon).flatMap(h => {
+          const why = personalLords.get(h.ruler);
+          return why ? [{ ...h, line: `${cap(body(h.ruler))}'s hour, and ${body(h.ruler)} ${why}` }] : [];
+        })
+      : [];
 
     // A merged moon×hour row supersedes the bare hour inside it — one moment,
     // one row.
@@ -1301,7 +1292,6 @@ export function computeElections(opts: {
       const why = ruler ? personalLords.get(ruler) : undefined;
       if (!why) continue;
       c.why = c.why.map((e, j) => j === i ? { family: "personal", text: `${cap(body(ruler!))}'s hour, and ${body(ruler!)} ${why}` } : e);
-      c.sources = [...c.sources, "natal-hour"];
     }
 
     // ── Score, tier, emit ────────────────────────────────────────────────────
@@ -1433,6 +1423,15 @@ export function computeElections(opts: {
           winObjections.push({ kind: "natal-objection", planet: "Moon", text: `${cap(ev.phrase)}, one of your caution planets, exact at ${clockOf(ev.timeMs, tzOffsetMin)}` });
         }
         if (c.sources.includes("natal-moon")) natalSrc.push("natal-moon");
+        // R1/R2 hour, as evidence: the window holds most of the hour, or the
+        // hour holds most of the window.
+        const held = new Set([...c.why, ...natalWhy].map(e => e.text));
+        for (const h of personalHours) {
+          const overlap = Math.min(h.endMs, c.endMs) - Math.max(h.startMs, c.startMs);
+          if (overlap < Math.min(45 * 60000, (c.endMs - c.startMs) / 2) || held.has(h.line)) continue;
+          natalWhy.push({ family: "personal", text: h.line });
+          held.add(h.line);
+        }
       }
       const winSources = [...c.sources, ...daySources, ...(onAngle.length ? ["crossing"] : []), ...natalSrc];
       /**

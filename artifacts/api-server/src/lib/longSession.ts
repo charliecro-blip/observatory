@@ -314,11 +314,11 @@ export function findLongSessions(opts: FindLongSessionsOpts): LongSessionResult 
 
   // Lexicographic. Each comparison only runs when everything above it ties, so
   // no amount of hour coverage can outrank a deferral.
-  // What the person's chart adds: a timed or relational contact (2) outweighs
-  // a personal hour (1). Ranked above generic hour coverage, below the
-  // verdict and continuity, which no amount of testimony can outrank.
-  const personalWeight = (c: SessionCandidate) =>
-    (c.assessment.families.includes("natal-resonance") ? 2 : 0) + (c.assessment.families.includes("natal-timing") ? 1 : 0);
+  // What the person's chart adds: a timed or relational contact. Ranked above
+  // generic hour coverage, below the verdict and continuity, which no amount
+  // of testimony can outrank. (A personal hour is evidence only since
+  // 2026-10-06 and does not rank.)
+  const personalWeight = (c: SessionCandidate) => (c.assessment.families.includes("natal-resonance") ? 1 : 0);
   const byQuality = [...candidates].sort((a, b) =>
     SUIT_RANK[a.suitability] - SUIT_RANK[b.suitability] ||
     Number(b.uninterrupted) - Number(a.uninterrupted) ||
