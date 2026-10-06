@@ -112,7 +112,7 @@ export const article = (n: number) => (n === 8 || n === 11 || n === 18 ? "an" : 
  * the owner's chart, 2026-10-04: Saturn square the natal Ascendant held all
  * fortnight and capped every top-tier haircut window.
  */
-const SLOW = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
+export const SLOW = new Set(["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]);
 
 export const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
 

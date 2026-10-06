@@ -163,4 +163,14 @@ describe("natal resonance in elections", () => {
     expect(lines("2026-10-08")).not.toContain("the Moon crosses your 3rd today");
     expect(lines("2026-10-09")).toContain("the Moon crosses your 4th today");
   });
+
+  // 2026-10-05: a slow planet in the matter's house is a standing condition.
+  it("states a slow planet in the matter's house once, and lets no window lean on it", () => {
+    const r = day("2026-10-09", { activityKey: "big-purchase" });
+    expect(r.cautions).toContain("Jupiter is moving through your 2nd house, this matter's own, a slow passage that holds through this stretch.");
+    for (const w of r.windows) {
+      expect(w.evidence.some(e => e.text.startsWith("Jupiter is moving through")), w.startClock).toBe(false);
+      expect(w.families.includes("natal-house") && !w.evidence.some(e => /crosses your|is moving through/.test(e.text)), w.startClock).toBe(false);
+    }
+  });
 }, 120_000);

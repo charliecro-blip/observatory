@@ -31,7 +31,7 @@ import { computeDayArc } from "./dayarc.js";
 import { civilDayOffsetIn, dayBoundsInZone, dayBoundsIn, offsetMinutesFor } from "./localClock.js";
 import { computeCusps, assignHouse } from "./houses.js";
 import type { ComputedNatalChart } from "./natal.js";
-import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article, cautionActiveDuring } from "./natalResonance.js";
+import { RESONANCE_RULES, natalFrame, yearLordOn, dayContacts, moonToNatal, natalOnAngles, ownSignRising, ordinal, body, article, cautionActiveDuring, SLOW } from "./natalResonance.js";
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -1000,6 +1000,15 @@ export function computeElections(opts: {
         if (tl == null) continue;
         const house = assignHouse(tl, cusps);
         if (act.houses.includes(house)) {
+          // A slow planet holds a house for a year or more, so it cannot tell
+          // one window from another: said once for the span, like the other
+          // slow contacts (owner 2026-10-05). It marked 29% of all windows
+          // personal when it counted per day.
+          if (SLOW.has(p)) {
+            const line = `${p} is moving through your ${ordinal(house)} house, this matter's own, a slow passage that holds through this stretch.`;
+            if (!cautions.includes(line)) cautions.push(line);
+            continue;
+          }
           daySources.push("natal-house"); dayBoost *= 1.2;
           dayWhy.push({ family: "personal", text: `${p} is moving through your ${house}${house === 1 ? "st" : house === 2 ? "nd" : house === 3 ? "rd" : "th"} — this matter's own house` });
           break;

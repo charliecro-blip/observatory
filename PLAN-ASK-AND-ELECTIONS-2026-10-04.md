@@ -212,7 +212,15 @@ was the sole personal testimony on only 3%; the bigger share came from its
 sibling, a significator in the matter's house (29%, and for slow planets it
 holds for months). The Moon now counts only in the matter's primary house
 (the first listed): 14% → 8% of windows, and the top-tier windows it backed
-382 → 206. The significator rule is unchanged and is the next lever.
+382 → 206.
+
+**Slow significators in the matter's house, a standing condition, 2026-10-05.**
+Jupiter, Saturn and the outer planets hold a house for a year or more, so in
+the matter's house they are now said once per span ("Jupiter is moving through
+your 2nd house, this matter's own, a slow passage that holds through this
+stretch.") and no longer count per day. Same sample: windows carrying the
+significator rule 29% → 17% (what remains is the Sun, Mercury, Venus and Mars,
+which pass in days or weeks); personal 70% → 64%; top tier 1,836 → 1,737.
 
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
