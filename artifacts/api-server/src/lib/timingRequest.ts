@@ -346,9 +346,11 @@ export function interpretTimingRequest(
 
   if (/\b(?:every (?:day|morning|afternoon|evening|night|week|weekday)|daily|each day|weekly)\b/.test(normalized))
     unresolved.push("That repeats, so choose the first session in the search fields.");
+  // "By" naming a manner ("by myself", "by hand", "by email") limits nothing.
+  const MANNER = /\bby\s+(?:myself|yourself|himself|herself|ourselves|themselves|oneself|hand|email|e-mail|mail|phone|text|car|bike|bus|train|plane|foot)\b/g;
   if (
     /\b(?:after|before|between|until|by|except|weekdays|weeknights|after work|month)\b/.test(
-      rest,
+      rest.replace(MANNER, " "),
     )
   )
     unresolved.push(

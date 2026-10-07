@@ -107,6 +107,7 @@ describe("one timing request contract", () => {
     "paint tomorrow at 3pm",
     "paint after 9 tomorrow",
     "stretch every morning",
+    "send the invoice by email before the meeting",
   ])("does not silently discard a time constraint: %s", (text) => {
     const result = interpretTimingRequest(text, "America/Chicago", now);
     expect(result.draft.needsRangeReview).toBe(true);
@@ -118,6 +119,10 @@ describe("one timing request contract", () => {
     "paint for two hours tomorrow",
     "workout this weekend",
     "paint right now",
+    // "By" a manner is not a deadline (2026-10-07).
+    "knit by hand tomorrow",
+    "a long walk by myself saturday",
+    "send the invoice by email tomorrow morning",
   ])("keeps supported requests automatic: %s", (text) => {
     expect(interpretTimingRequest(text, "America/Chicago", now).unresolved).toEqual([]);
   });
