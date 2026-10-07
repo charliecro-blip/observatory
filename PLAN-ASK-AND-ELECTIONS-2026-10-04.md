@@ -295,6 +295,17 @@ Shipped as specified below, except where the notes at the end of this section sa
   week of engine search is 1.3 s, a warm one 0.3 s. The report computes each
   day's arc itself as well as inside the engine; sharing that is the obvious
   saving if 9 s proves too long.
+- **Faster, 2026-10-07.** Profiled rather than guessed: the report's own day
+  arc was under a tenth of the cost. Two changes in shared code, each
+  measured byte-identical on 7-, 14- and 30-day reports: `getPlanetPositions`
+  works out a planet's motion only when something reads it (the aspect scans
+  never do, and it was two of every three ephemeris calls), and the day arc's
+  void scan reads one body instead of building all nine to read one. On the
+  cloud machine, which is slower than the owner's: 7 days 5.8 → 2.8 s,
+  14 days 7.7 → 3.7 s, 30 days 12.6 → 5.8 s, cold. Not done: sharing the day
+  arc with the engine (now about 0.4 s of a 30-day report), and a larger
+  position cache (only a repeat of the same report gains, which the page
+  already caches for ten minutes).
 
 ### Phase 3 · the box routes, and Ask gets tools · BUILT 2026-10-04 night
 - Routing, deterministic first: the interpreter resolves an activity and a
