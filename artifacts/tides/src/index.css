@@ -264,3 +264,7 @@ body { background: var(--color-background); color: var(--color-foreground); font
 }
 
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* Sunrise, solar noon, sunset on the Day view's hour grid (DaylightMarks). */
+.daylight-mark { position: absolute; right: 0; height: 0; border-top: 1px dotted #c08a2a; z-index: 3; pointer-events: none; }
+.daylight-mark span { position: absolute; top: 1px; left: 4px; font: 500 10.5px/1.2 var(--font-sans); color: #9a6a1a; background: var(--color-card); padding: 0 3px; border-radius: 2px; white-space: nowrap; }
