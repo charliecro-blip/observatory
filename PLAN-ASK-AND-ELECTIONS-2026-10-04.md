@@ -236,6 +236,34 @@ longer marks it `qualified`; Find a time now shows reasons whenever there are
 any, not only on qualified times. Duration searches and comparisons have no
 tier, so there an objection ranks a block below an otherwise equal one.
 
+**What still makes a window personal, measured 2026-10-07** (`tools/natal-personal-drivers.ts`,
+the calibration sample, every rule as in production; 22,220 windows, 58% personal).
+The handoff guessed a fast significator in the matter's house was the main driver
+left. It is third. Counting the windows where one testimony is the ONLY personal
+one (what tightening that rule would remove), as a share of all windows:
+
+| Sole personal testimony | Windows | Share |
+|---|---|---|
+| A significator on its own natal place (0°/60°/120°, 2° orb) | 2,496 | 11.2% |
+| A transit to a natal point (significator or benefic) | 2,330 | 10.5% |
+| A fast significator in the matter's house | 1,633 | 7.3% |
+| The Moon to a natal point, timed | 1,519 | 6.8% |
+| The Moon in the matter's primary house | 603 | 2.7% |
+| The lunar return | 72 | 0.3% |
+
+Two findings for the owner, nothing changed yet:
+- **Saturn, Neptune and Jupiter on their own natal places** are sole on 3.2%,
+  0.9% and 0.1% of windows (Saturn is present on 6.7%). A slow planet holds a
+  2° aspect to its own place for weeks, so it cannot tell one window from
+  another: the same reasoning as the 2026-10-05 ruling that a slow planet in
+  the matter's house is a standing condition, said once. Applying it here
+  would take about 4% off the personal share.
+- **Venus** is in 13.2% of all windows through transits to natal points (sole
+  on 6.7%), far above any other planet. The sample includes the week of Oct 12,
+  2026, with Venus just past its station, when it holds every contact for days;
+  some of this is the sample, not the rule. A planet near a station is slow for
+  that stretch, which the same standing-condition reasoning could cover.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.
