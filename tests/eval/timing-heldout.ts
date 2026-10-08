@@ -116,6 +116,9 @@ for (const c of BATCH2) CASES.push({ ...c, batch: 2 });
 // been tuned against, it too is only a regression check.
 // First run, 2026-10-07, untuned: 29/50 fully right (58%). Activity 30 right,
 // 16 asked, 4 wrong; when 48 right, 2 asked, 0 wrong.
+// Tuned against 2026-10-08 (owner's call, vocabulary only): 45/50 (90%), so
+// like batches 1 and 2 it is now a regression check. The next honest number
+// comes from real requests or a batch 4 written before running it.
 const BATCH3: Case[] = [
   { text: "mow the lawn saturday morning", activity: "garden", when: { day: 3, part: "morning" } },
   { text: "call my dad on sunday", activity: "call-family", when: { day: 4 } },
@@ -215,7 +218,7 @@ for (const batch of [1, 2, 3]) {
   const pct = (n: number) => `${Math.round((n / b.length) * 100)}%`;
   const count = (k: "act" | "when", v: Verdict) => b.filter(r => r[k] === v).length;
   const both = b.filter(r => r.act === "right" && r.when === "right" && r.dur !== "wrong").length;
-  console.log(`\nTiming interpreter, batch ${batch} (${b.length} requests)${batch < 3 ? ", tuned against: a regression check" : ""}\n`);
+  console.log(`\nTiming interpreter, batch ${batch} (${b.length} requests), tuned against: a regression check\n`);
   console.log(`Fully right, no question asked: ${both} (${pct(both)})`);
   console.log(`Activity  right ${count("act", "right")} · asked ${count("act", "asked")} · WRONG ${count("act", "wrong")}`);
   console.log(`When      right ${count("when", "right")} · asked ${count("when", "asked")} · WRONG ${count("when", "wrong")}\n`);

@@ -1025,3 +1025,4 @@ Button: "Save this time" (not shown on a whole-day pick or one the calendar hold
 ### B7. Added 2026-10-07 — `DaylightLine.tsx` (DaylightMarks), `FitsNow.tsx`
 - Day view hour grid, a mark at each: "Sunrise {t}" · "Solar noon {t}" · "Sunset {t}".
 - What fits now, past three keepings: "Or a keeping: {a}, {b}, {c}, and {n} more." where "{n} more" opens the rest.
+- Said once per span, 2026-10-08 — `electionEngine.ts`: "{Planet} {conjoins|sextiles|trines} your natal {Planet}, a slow contact that holds through this stretch." (Jupiter and beyond, on their own natal place.)

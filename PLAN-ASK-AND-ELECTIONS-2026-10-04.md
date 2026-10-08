@@ -264,6 +264,13 @@ Two findings for the owner, nothing changed yet:
   some of this is the sample, not the rule. A planet near a station is slow for
   that stretch, which the same standing-condition reasoning could cover.
 
+**Built 2026-10-08, owner approved in session:** a slow planet (Jupiter and
+beyond) on its own natal place is now a standing condition, said once for the
+span ("Saturn trines your natal Saturn, a slow contact that holds through this
+stretch."), like a slow planet in the matter's house. Same sample: personal
+58.0% → 54.2% of windows; windows overall 22,220 → 21,759, since some had
+cleared the bar only with that boost. Venus near a station is not changed.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.
