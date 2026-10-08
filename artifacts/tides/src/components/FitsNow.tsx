@@ -10,9 +10,9 @@ import { PLACES } from "@/components/TaskClarify";
  * that fits, and one with neither is counted rather than guessed at, so the
  * list can say how many are waiting to be clarified.
  *
- * Keepings sit beside doings (memory: holistic-not-productivity): a practice
- * not yet kept today is offered too, in its smallest version when energy is
- * low.
+ * Keepings sit beside doings (memory: holistic-not-productivity): every
+ * practice not yet kept today is offered too, in its smallest version when
+ * energy is low; three show, and the rest open from a count.
  */
 export interface FitTask {
   id: number;
@@ -90,7 +90,12 @@ export default function FitsNow({ tasks, habits = [], today, hourRuler, onStart,
   const [energy, setEnergy] = useState<Energy>("medium");
   const [place, setPlace] = useState("anywhere");
   const { fit, unclarified } = fitsNow(tasks, { slot, energy, place, today, hourRuler });
-  const keepings = habits.filter((h) => !h.doneToday && (h.status ?? "active") === "active").slice(0, 2);
+  const [allKeepings, setAllKeepings] = useState(false);
+  // Every practice not yet kept today is offered; past three, the rest wait
+  // behind a count rather than being dropped.
+  const unkept = habits.filter((h) => !h.doneToday && (h.status ?? "active") === "active");
+  const keepings = allKeepings ? unkept : unkept.slice(0, 3);
+  const moreKeepings = unkept.length - keepings.length;
   const shown = fit.slice(0, 5);
 
   return (
@@ -136,7 +141,10 @@ export default function FitsNow({ tasks, habits = [], today, hourRuler, onStart,
 
       {keepings.length > 0 && (
         <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--text-2)" }}>
-          Or a keeping: {keepings.map((h) => energy === "low" && h.minimumViable ? `${h.name} (${h.minimumViable})` : h.name).join(", ")}.
+          Or a keeping: {keepings.map((h) => energy === "low" && h.minimumViable ? `${h.name} (${h.minimumViable})` : h.name).join(", ")}
+          {moreKeepings > 0
+            ? <>, and <button onClick={() => setAllKeepings(true)} style={{ fontSize: 12.5, padding: 0, border: "none", background: "none", color: "var(--color-primary)", cursor: "pointer", textDecoration: "underline" }}>{moreKeepings} more</button>.</>
+            : "."}
         </p>
       )}
       {unclarified > 0 && (

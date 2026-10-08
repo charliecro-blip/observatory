@@ -469,7 +469,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "haircut",
     label: "Haircut / grooming",
     category: "body",
-    keywords: [
+    keywords: ["nails", "manicure", "pedicure", "facial", "massage", "waxing", 
       "haircut",
       "hair cut",
       "hair",
@@ -498,7 +498,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "start-regimen",
     label: "Start a diet / regimen",
     category: "body",
-    keywords: [
+    keywords: ["keto", "paleo", "new diet", 
       "diet",
       "cleanse",
       "quit",
@@ -548,7 +548,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "deep-study",
     label: "Deep study",
     category: "mind",
-    keywords: ["read", "transcript", 
+    keywords: ["cram", "exam", "test prep", "read", "transcript", 
       "study",
       "learn",
       "course",
@@ -577,7 +577,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "first-draft",
     label: "Write a first draft",
     category: "mind",
-    keywords: [
+    keywords: ["outline", 
       "draft",
       "write",
       "freewrite",
@@ -653,7 +653,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "strategize",
     label: "Plan & strategize",
     category: "mind",
-    keywords: [
+    keywords: ["goals", "map out", "quarterly", 
       "plan",
       "brainstorm",
       "strategy",
@@ -703,7 +703,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "teach-present",
     label: "Teach / present",
     category: "mind",
-    keywords: [
+    keywords: ["teach my", "class i teach", 
       "teach",
       "present",
       "presentation",
@@ -834,7 +834,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "organize",
     label: "Organize / declutter",
     category: "craft",
-    keywords: [
+    keywords: ["closet", "fold laundry", "sort through", 
       "organize",
       "declutter",
       "clean up",
@@ -888,7 +888,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     // Real shorthand a person actually types, not a list built from the
     // dictionary: appt/apt, book, confirm, renew, RSVP, the DMV-adjacent
     // world, bills and prescriptions.
-    keywords: ["bank", 
+    keywords: ["groceries", "grocery", "passport", "savings account", "bank account", "dry cleaning", "bank", 
       "errands",
       "errand",
       "admin",
@@ -935,7 +935,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "negotiate",
     label: "Negotiate / ask for more",
     category: "craft",
-    keywords: [
+    keywords: ["lower the rent", "rent reduction", "discount", 
       "negotiate",
       "raise", "promotion",
       "salary",
@@ -1200,7 +1200,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "define-relationship",
     label: "Have the where-is-this-going talk",
     category: "love",
-    keywords: [
+    keywords: ["move in together", "moving in together", 
       "dtr",
       "define the relationship",
       "exclusive",
@@ -1262,7 +1262,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "network",
     label: "Meet new people / network",
     category: "social",
-    keywords: [
+    keywords: ["coworker", "colleague", "new coworker", 
       "network",
       "meetup",
       "mixer",
@@ -1370,7 +1370,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "garden",
     label: "Garden / plant",
     category: "home",
-    keywords: ["garden", "plant", "seeds", "repot", "prune", "weed"],
+    keywords: ["mow", "lawn", "yard work", "vegetable bed", "tomatoes", "water the plants", "garden", "plant", "seeds", "repot", "prune", "weed"],
     element: "earth",
     planets: { Moon: 1.0, Venus: 0.7, Saturn: 0.5 },
     hourRulers: ["Moon", "Venus"],
@@ -1391,7 +1391,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "deep-clean",
     label: "Deep clean",
     category: "home",
-    keywords: ["clean", "tidy", 
+    keywords: ["vacuum", "mop", "laundry", "dust the", "clean", "tidy", 
       "deep clean",
       "scrub",
       "purge",
@@ -1548,7 +1548,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "divination",
     label: "Reflection / divination",
     category: "spirit",
-    keywords: ["tarot", 
+    keywords: ["pull cards", "card pull", "oracle cards", "tarot", 
       "tarot",
       "reading",
       "divination",
@@ -1604,7 +1604,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "release",
     label: "Grieve & release",
     category: "spirit",
-    keywords: [
+    keywords: ["ashes", "memorial", "funeral", 
       "release",
       "let go",
       "grieve",
@@ -1632,7 +1632,7 @@ export const ACTIVITIES: ActivityCorrespondence[] = [
     key: "retreat",
     label: "Solitude / retreat",
     category: "spirit",
-    keywords: [
+    keywords: ["cabin", "by myself", "solo trip", 
       "retreat", "alone", "quiet day",
       "solitude",
       "alone time",

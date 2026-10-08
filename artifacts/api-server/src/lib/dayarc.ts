@@ -10,7 +10,7 @@
  * afternoon trines" instead of collapsing the day into one reading.
  */
 
-import { julianDay, moonLongitude, getPlanetPositions, sunLongitude, getPlanetaryHour, getNextAngularCrossings, voidOfCourse } from "./astro.js";
+import { julianDay, moonLongitude, getPlanetPositions, geocentricLongitude, sunLongitude, getPlanetaryHour, getNextAngularCrossings, voidOfCourse } from "./astro.js";
 import { SIGN_TO_ELEMENT } from "./tide.js";
 import { dayBoundsInZone } from "./localClock.js";
 
@@ -80,10 +80,19 @@ function sunAltitude(jd: number, lat: number, lon: number) { return altitudeOf(s
 function signOf(lon: number) { return SIGNS[Math.floor(norm360(lon) / 30) % 12]; }
 function charOf(sign: string) { const el = SIGN_TO_ELEMENT[sign] ?? "water"; return ELEMENT_CHAR[el] ?? "deep"; }
 
+// One body, not the whole sky: the void scan asks for each of nine bodies every
+// ten minutes, and building every planet's position to read one was most of the
+// day arc's cost. Same arithmetic as reading it back out of getPlanetPositions
+// (sign index × 30 + degree in sign), so the value is identical to the bit.
+const POSITIONED = new Set(["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"]);
 function bodyLon(name: string, jd: number): number {
   if (name === "Sun") return norm360(sunLongitude(jd));
-  const p = getPlanetPositions(jd).find(x => x.planet === name);
-  return p ? SIGNS.indexOf(p.sign) * 30 + p.degree : 0;
+  if (!POSITIONED.has(name)) return name === "Moon" ? signed(moonLongitude(jd)) : 0;
+  return signed(geocentricLongitude(name, jd));
+}
+function signed(lon: number): number {
+  const n = norm360(lon);
+  return (Math.floor(n / 30) % 12) * 30 + (n % 30);
 }
 
 // The Moon's next sign ingress after `fromMs` — coarse 3h steps (the Moon

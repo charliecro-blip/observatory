@@ -236,6 +236,41 @@ longer marks it `qualified`; Find a time now shows reasons whenever there are
 any, not only on qualified times. Duration searches and comparisons have no
 tier, so there an objection ranks a block below an otherwise equal one.
 
+**What still makes a window personal, measured 2026-10-07** (`tools/natal-personal-drivers.ts`,
+the calibration sample, every rule as in production; 22,220 windows, 58% personal).
+The handoff guessed a fast significator in the matter's house was the main driver
+left. It is third. Counting the windows where one testimony is the ONLY personal
+one (what tightening that rule would remove), as a share of all windows:
+
+| Sole personal testimony | Windows | Share |
+|---|---|---|
+| A significator on its own natal place (0°/60°/120°, 2° orb) | 2,496 | 11.2% |
+| A transit to a natal point (significator or benefic) | 2,330 | 10.5% |
+| A fast significator in the matter's house | 1,633 | 7.3% |
+| The Moon to a natal point, timed | 1,519 | 6.8% |
+| The Moon in the matter's primary house | 603 | 2.7% |
+| The lunar return | 72 | 0.3% |
+
+Two findings for the owner, nothing changed yet:
+- **Saturn, Neptune and Jupiter on their own natal places** are sole on 3.2%,
+  0.9% and 0.1% of windows (Saturn is present on 6.7%). A slow planet holds a
+  2° aspect to its own place for weeks, so it cannot tell one window from
+  another: the same reasoning as the 2026-10-05 ruling that a slow planet in
+  the matter's house is a standing condition, said once. Applying it here
+  would take about 4% off the personal share.
+- **Venus** is in 13.2% of all windows through transits to natal points (sole
+  on 6.7%), far above any other planet. The sample includes the week of Oct 12,
+  2026, with Venus just past its station, when it holds every contact for days;
+  some of this is the sample, not the rule. A planet near a station is slow for
+  that stretch, which the same standing-condition reasoning could cover.
+
+**Built 2026-10-08, owner approved in session:** a slow planet (Jupiter and
+beyond) on its own natal place is now a standing condition, said once for the
+span ("Saturn trines your natal Saturn, a slow contact that holds through this
+stretch."), like a slow planet in the matter's house. Same sample: personal
+58.0% → 54.2% of windows; windows overall 22,220 → 21,759, since some had
+cleared the bar only with that boost. Venus near a station is not changed.
+
 ### Phase 2 · the election report · BUILT 2026-10-04 (server, page, interpreter)
 
 Shipped as specified below, except where the notes at the end of this section say otherwise.
@@ -280,10 +315,32 @@ Shipped as specified below, except where the notes at the end of this section sa
   window is Nov 25. An empty answer is printed as one.
 - Not built: choosing a pick (the `/timing/choose` flow), the Ask hand-off,
   and the per-pick personal-chart testimony, which is Phase 1.
+- **Choosing a pick, built 2026-10-06.** Each pick carries `choice`: the exact
+  seven-day search that produced it (the chunk's start and end, the chart flag,
+  and whether to check the calendar). "Save this time" sends that to
+  `/timing/choose`, which runs it again and saves only if the engine still
+  gives the same candidate id and the calendar, where it was confirmed open,
+  still is. `choice` is null on a whole-day pick (eight hours or more, which
+  choose refuses as broad), a deferral, and a time the calendar holds. A pick
+  listed from an unread calendar is saved unchecked. Picks after a station
+  ("if it can wait") are choosable, unchecked. The test re-runs every offered
+  pick's query and finds the same id; the route itself is unverified here
+  (no test DB in the cloud session).
 - Cost, measured locally: 7 days 3.7 s, 14 days 4.8 s, 30 days 9.1 s. A cold
   week of engine search is 1.3 s, a warm one 0.3 s. The report computes each
   day's arc itself as well as inside the engine; sharing that is the obvious
   saving if 9 s proves too long.
+- **Faster, 2026-10-07.** Profiled rather than guessed: the report's own day
+  arc was under a tenth of the cost. Two changes in shared code, each
+  measured byte-identical on 7-, 14- and 30-day reports: `getPlanetPositions`
+  works out a planet's motion only when something reads it (the aspect scans
+  never do, and it was two of every three ephemeris calls), and the day arc's
+  void scan reads one body instead of building all nine to read one. On the
+  cloud machine, which is slower than the owner's: 7 days 5.8 → 2.8 s,
+  14 days 7.7 → 3.7 s, 30 days 12.6 → 5.8 s, cold. Not done: sharing the day
+  arc with the engine (now about 0.4 s of a 30-day report), and a larger
+  position cache (only a repeat of the same report gains, which the page
+  already caches for ten minutes).
 
 ### Phase 3 · the box routes, and Ask gets tools · BUILT 2026-10-04 night
 - Routing, deterministic first: the interpreter resolves an activity and a
