@@ -90,7 +90,7 @@ button { font: inherit; color: inherit }
 .lean b { font-weight: 600 }
 .lean small, .card small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 4px }
 .card { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px }
-.card .when { font-size: 12.5px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.card .when, .find .when { font-size: 12.5px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
 .dots { color: var(--accent); letter-spacing: 1px; font-size: 11px }
 .dots + span { color: var(--muted); font-weight: 400 }
 .card h3 { font-size: 21px; line-height: 1.25 }
@@ -116,6 +116,14 @@ button { font: inherit; color: inherit }
 .votes .wt { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; text-align: right }
 .votes .wt.neg { color: var(--muted) }
 .votes em { font-style: normal; color: var(--muted); display: block; font-size: 12px }
+.find { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 8px; display: flex; flex-direction: column; gap: 10px }
+.find h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 22px }
+.find select { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: inherit; max-width: 100% }
+.find select:focus-visible { outline: 2px solid currentColor; outline-offset: 2px }
+.find-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px }
+.find-list li { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 4px }
+.find-list .small-v { margin: 0; font-size: 14px }
+.find-line { margin: 0; font-family: var(--serif); font-size: 18px; line-height: 1.25 }
 .empty { font-family: var(--serif); font-size: 17px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin: 0 }
 .hours { list-style: none; margin: 0; padding: 0 }
 .hr { display: grid; grid-template-columns: 68px 22px 1fr auto; gap: 8px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line) }
@@ -1290,7 +1298,65 @@ var Engine = (function () {
       lean: lean, receipts: receipts };
   }
 
-  return { evidence: evidence, judge: judge, decide: decide, zodiacalAngles: zodiacalAngles, expression: expression, ANGLE_NAME: ANGLE_NAME, statesAt: statesAt };
+
+  // ---- Find a time ----------------------------------------------------------------------
+  // Rank the coming waking hours for one activity from Compass's activity table. Each hour
+  // scores on: its planetary hour, the Moon's sign and phase, the Moon's applying contacts to
+  // the activity's planets (soft activities dislike hard contacts; effortful ones can use them),
+  // those planets on an angle, and the void, heavy and hazy states. Adjacent good hours merge.
+  var FIND = {
+    'train-hard': 'a workout', 'endurance': 'a long run or ride', 'gentle-movement': 'a walk, yoga or a stretch', 'deep-rest': 'rest or a nap',
+    'deep-work': 'deep work', 'first-draft': 'writing a first draft', 'edit-revise': 'editing', 'creative-practice': 'making art',
+    'admin-errands': 'admin and errands', 'organize': 'tidying and sorting', 'hard-conversation': 'a hard conversation', 'repair-bond': 'making up with someone',
+    'first-date': 'a date', 'romantic-time': 'time with your partner', 'host': 'having people over', 'call-family': 'calling home',
+    'cook': 'cooking', 'meditate': 'meditation', 'journal': 'journaling', 'negotiate': 'asking for more',
+    'publish': 'publishing or posting', 'launch-venture': 'launching something', 'sign-contract': 'signing something', 'big-purchase': 'a considered purchase'
+  };
+  function findTimes(moments, key, opts) {
+    opts = opts || {};
+    var C = ACT[key]; if (!C) return { key: key, windows: [], none: 'Unknown activity.' };
+    var W = C.planets || {}, begins = ['publish', 'launch-venture', 'sign-contract', 'big-purchase', 'first-date', 'negotiate'].indexOf(key) >= 0;
+    var scored = moments.map(function (m) {
+      var ev = m.ev, sc = 0, why = [], warn = [], out = false;
+      if (ev.isVoid && (C.voc === 'avoid' || begins)) { out = true; warn.push('the Moon is void, so nothing begun now takes hold'); }
+      if (C.hourRulers.indexOf(m.h.planet) >= 0) { sc += 2; why.push('a ' + m.h.planet + ' hour'); }
+      if (C.signs && C.signs[ev.moonSign]) { sc += 1.5; why.push('the Moon in ' + ev.moonSign); }
+      var pk = ev.phaseKind === 'full' ? 'waning' : ev.phaseKind;
+      if (C.phase && C.phase === pk) { sc += 0.5; why.push('a ' + pk + ' Moon'); }
+      ev.list.forEach(function (e) {
+        if (e.family === 'lunar-contact' && e.tier !== 'background') {
+          var p = e.planets[1], w = W[p]; if (!w) return;
+          if (!e.hard) { sc += 1.5 * w; why.push(e.title.replace(/ in [A-Z][a-z]+$/, '')); }
+          else if (C.aspects === 'effort') { sc += 0.75 * w; why.push(e.title.replace(/ in [A-Z][a-z]+$/, '') + ', which effort can use'); }
+          else { sc -= 1.5 * w; warn.push(e.title.replace(/ in [A-Z][a-z]+$/, '')); }
+        }
+        if (e.family === 'angularity' && W[e.planets[0]]) { sc += 1.5 * W[e.planets[0]]; why.push(e.title); }
+      });
+      var S = ev.states || {};
+      if (ev.isVoid && C.voc === 'favor') { sc += 1; why.push('a void Moon, which suits it'); }
+      if (S.quiet) { if (W.Saturn) { sc += 0.5; why.push('a heavy, steady stretch'); } else if (C.aspects === 'effort' || begins) { sc -= 1; warn.push('a heavy stretch'); } }
+      if (S.fog) { if (W.Neptune) { sc += 0.5; why.push('a hazy stretch'); } else { sc -= 1; warn.push('a hazy stretch'); } }
+      if (S.graced && !ev.isVoid) { sc += 1; why.push('a generous window'); }
+      var o = m.out, line = o ? (o.kind === 'state' ? o.state.headline : o.modeLine) : null;
+      return { m: m, score: out ? -99 : sc, why: why, warn: warn, line: line };
+    });
+    var good = scored.filter(function (x) { return x.score >= (opts.min == null ? 2.5 : opts.min); });
+    var wins = [];
+    good.forEach(function (x) {
+      var last = wins[wins.length - 1];
+      if (last && +last.end === +x.m.h.start) { last.end = x.m.h.end; last.hours.push(x); if (x.score > last.best.score) last.best = x; }
+      else wins.push({ start: x.m.h.start, end: x.m.h.end, hours: [x], best: x });
+    });
+    wins.sort(function (a, b) { return b.best.score - a.best.score || a.start - b.start; });
+    var top = wins.slice(0, opts.limit || 3).sort(function (a, b) { return a.start - b.start; }).map(function (w) {
+      var why = []; w.hours.forEach(function (x) { x.why.forEach(function (r) { if (why.indexOf(r) < 0) why.push(r); }); });
+      var warn = []; w.hours.forEach(function (x) { x.warn.forEach(function (r) { if (warn.indexOf(r) < 0) warn.push(r); }); });
+      return { start: w.start, end: w.end, score: Math.round(w.best.score * 10) / 10, strength: w.best.score >= 5 ? 'strong' : w.best.score >= 3.5 ? 'good' : 'fair', why: why.slice(0, 5), warn: warn.slice(0, 2), line: w.best.line };
+    });
+    return { key: key, name: FIND[key] || C.label.toLowerCase(), windows: top, none: top.length ? null : 'Nothing stands out for ' + (FIND[key] || C.label.toLowerCase()) + ' in the next day or so; any hour you have free will do.' };
+  }
+
+  return { findTimes: findTimes, FIND: FIND, evidence: evidence, judge: judge, decide: decide, zodiacalAngles: zodiacalAngles, expression: expression, ANGLE_NAME: ANGLE_NAME, statesAt: statesAt };
 })();
 
 
@@ -1555,6 +1621,20 @@ var Engine = (function () {
     if (S.length) S.forEach(function (it) { h += '<div class="card">' + cardHTML(it, D) + '</div>'; });
     else h += '<p class="empty">' + (state.focus === 'edges' ? 'Nothing is pressing on you between now and the end of tomorrow.' : 'Nothing stands out for this between now and the end of tomorrow, which is a fine answer. Carry on.') + '</p>';
 
+    // Find a time: pick an activity, see the best windows between now and the end of tomorrow.
+    var GROUPS = [['Move', ['train-hard', 'endurance', 'gentle-movement']], ['Work', ['deep-work', 'first-draft', 'edit-revise', 'creative-practice', 'admin-errands']],
+      ['People', ['hard-conversation', 'repair-bond', 'first-date', 'romantic-time', 'host', 'call-family', 'negotiate']],
+      ['Home and rest', ['cook', 'organize', 'deep-rest', 'meditate', 'journal']], ['Beginnings', ['publish', 'launch-venture', 'sign-contract', 'big-purchase']]];
+    var fk = load('compass-find', 'train-hard'); if (!Engine.FIND[fk]) fk = 'train-hard';
+    var FR = Engine.findTimes(D.moments.filter(function (m) { return +m.h.end > +D.now; }), fk);
+    h += '<section class="find" aria-labelledby="find-h"><h3 id="find-h">Find a time for</h3><select id="find-act" aria-labelledby="find-h">' +
+      GROUPS.map(function (g) { return '<optgroup label="' + g[0] + '">' + g[1].map(function (k) { return '<option value="' + k + '"' + (k === fk ? ' selected' : '') + '>' + esc(cap(Engine.FIND[k])) + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select>' +
+      (FR.windows.length ? '<ol class="find-list">' + FR.windows.map(function (w) {
+        var when = (+w.start <= +D.now ? 'Now' : dayWord(w.start, D) + D.clock(w.start)) + ' to ' + D.clock(w.end);
+        return '<li><div class="when"><span class="kind k-' + (w.strength === 'strong' ? 'do' : 'mode') + '">' + w.strength + '</span><span>' + when + '</span></div>' +
+          (w.line ? '<p class="find-line">' + esc(w.line) + '</p>' : '') + '<p class="small-v">Why: ' + esc(w.why.join(', ')) + '.</p>' + (w.warn.length ? '<p class="small-v">Watch for: ' + esc(w.warn.join(', ')) + '.</p>' : '') + '</li>';
+      }).join('') + '</ol>' : '<p class="empty">' + esc(FR.none) + '</p>') + '</section>';
+
     // Hour by hour, behind a tap
     var todays = D.moments;
     h += '<details class="check" id="hours-d"' + (load('compass-hours-open', false) ? ' open' : '') + '><summary>Hour by hour</summary><ul class="hours">' + todays.map(function (m) {
@@ -1580,6 +1660,7 @@ var Engine = (function () {
   sel.innerHTML = CITIES.map(function (c, i) { return '<option value="' + i + '">' + c[0] + '</option>'; }).join('');
   sel.value = state.city;
   sel.addEventListener('change', function () { state.city = +sel.value; open = null; store('compass-today-4', state); render(); });
+  document.getElementById('app').addEventListener('change', function (e) { if (e.target.id === 'find-act') { store('compass-find', e.target.value); render(); var f = document.getElementById('find-act'); if (f) f.focus(); } });
   document.getElementById('views').addEventListener('click', function (e) {
     var b = e.target.closest('.view'); if (!b) return;
     state.focus = b.getAttribute('data-view'); open = null; store('compass-today-4', state); render();
