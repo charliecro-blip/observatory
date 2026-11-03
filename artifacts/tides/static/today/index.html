@@ -198,19 +198,19 @@ tr[aria-current] td { background: color-mix(in srgb, var(--accent) 10%, transpar
   <section class="app" id="app" aria-label="The app"></section>
 
   <details class="rules app" id="rules">
-    <summary>How the picks are made</summary>
+    <summary>How the reading is made</summary>
     <ol>
-      <li>Each waking planetary hour from now through tomorrow night is one moment, read at its midpoint, so a pick only changes when the hour turns.</li>
-      <li>The Moon and real aspects lead, as Compass ruled on August 22: her sign and phase, her applying contacts, and planet-to-planet aspects within 2° are primary evidence. The Sun, Moon, Venus, Mars, Jupiter or Saturn on the Ascendant or Midheaven counts too. The planetary hour and the day ruler are secondary and never count as agreement.</li>
-      <li>A void Moon is a state, from her last aspect to a classical planet until she changes sign. Beginnings are held back, and the card gives Compass’s reading for a void in that sign, including Lilly’s four easy voids.</li>
-      <li>A hard Moon contact to Saturn makes a quieter stretch for three hours either side of exact, and to Neptune a softer-focus one. Both take energy out rather than adding it.</li>
+      <li>Starswell reads each waking planetary hour from now through tomorrow night at its midpoint, so a card changes only when the hour turns.</li>
+      <li>The Moon and real aspects lead, as Charlie ruled on August 22. Her sign and phase, her applying contacts, and planet-to-planet aspects within 2° are primary evidence, and so are the Sun, Moon, Venus, Mars, Jupiter or Saturn on the Ascendant or Midheaven. The planetary hour and the day ruler add color and never count toward agreement.</li>
+      <li>A void Moon runs from her last aspect to a classical planet until she changes sign. Beginnings are held back, and the card describes the void in that sign, with Lilly’s four easy voids marked.</li>
+      <li>A hard Moon contact to Saturn makes a heavier stretch for three hours either side of exact, and one to Neptune makes a hazy stretch.</li>
       <li>When the Moon’s next aspect is an easy one to Venus or Jupiter, the window is marked graced.</li>
-      <li>A suggestion needs two different primary families agreeing. It is a Mode unless one activity earns its own extra hit, and then it becomes a Do.</li>
-      <li>Slot one is now. Slot two is the next opening of a different kind, after any state ends. Slot three is a real Guard. Nothing pads the empty slots.</li>
+      <li>A card needs two different kinds of primary evidence to agree. It describes how the hour feels and lists a few things that suit it, and an activity goes first when it has an extra reason of its own.</li>
+      <li>The first card is now, the second is the next different weather after any state ends, and the third is an edge when one is running. Empty slots stay empty.</li>
     </ol>
   </details>
 
-  <p class="foot">Prototype built to the Daily Orientation Rulebook draft of October 31. Activity hours, signs and planet-in-sign readings come from Compass’s own tables; sky positions are computed in this page with Astronomy Engine 2.1.19. What you check off stays on this device.</p>
+  <p class="foot">Starswell, by Charlie Cross. Activity hours, signs and planet-in-sign readings come from the tables in Charlie’s earlier Compass app, and this page computes the sky with Astronomy Engine 2.1.19. Your marks stay on this device, and on compass.day they also save to your Compass account.</p>
 </div>
 
 <script>/*
@@ -1032,6 +1032,23 @@ RB.weather.byElement = {
   }
 };
 
+// What helps on an edge, in Starswell's voice (the inherited Compass lines stay in doctrine.json).
+RB.weather.helps = {
+  Sun: 'putting the wish to be seen into making one thing worth seeing',
+  Moon: 'feeling it on purpose for ten minutes, so it doesn’t leak into everything',
+  Mercury: 'writing the loop down, which usually stops it circling',
+  Venus: 'having the pleasant thing first and saying the true thing after',
+  Mars: 'spending the edge on something physical with an end, before it finds a person',
+  Jupiter: 'saying yes to the size, then checking the one detail you’d rather skip',
+  Saturn: 'doing the smallest real piece, since the weight lifts once you’re moving',
+  Uranus: 'changing one real thing on purpose, so the restlessness has somewhere to land',
+  Neptune: 'making something or resting, and saving decisions for later',
+  Pluto: 'naming what you’re trying to control, and loosening one hand'
+};
+RB.weather.voids.Taurus.w = 'Slow and settled, the restful kind of nothing.';
+RB.weather.attends.Jupiter = 'Taking on more looks easier than it will turn out to be.';
+RB.weather.quiet.w = 'Everything feels a half-step heavier for a few hours.';
+
 var DOC = {"voids": {"Aries": {"feel": "The appetite to start is sharp, and nothing started will take hold.", "instead": "Spend it physically: train, walk fast, clear something out of the way.", "benign": false}, "Taurus": {"feel": "Nothing is moving, and in Taurus that is rest rather than drift.", "instead": "Eat properly, sit somewhere comfortable, do the slow familiar thing.", "provenance": "Lilly holds the void Moon less malevolent here, where she is exalted.", "benign": true}, "Gemini": {"feel": "Conversations circle without landing, however many of them you have.", "instead": "Answer the easy messages, take notes, clear the inbox; save the conversation that has to reach a decision.", "benign": false}, "Cancer": {"feel": "Empty, but she is in her own house, so the quiet is comfortable.", "instead": "Cook, tend, be with the people you don't have to perform for.", "provenance": "Lilly holds the void Moon less malevolent here, her own sign.", "benign": true}, "Leo": {"feel": "The wish to be seen meets a room that isn't watching, and gestures go unanswered.", "instead": "Make the thing; the announcement will carry further on another day.", "benign": false}, "Virgo": {"feel": "Virgo's precision is running high, and it settles most naturally on work that already exists.", "instead": "A strong stretch for editing, admin, and the careful second pass — the kind of work that gets better the more attention it gets.", "benign": false}, "Libra": {"feel": "Nothing settles the scale, and agreements made now tend not to hold.", "instead": "Be sociable and don't sign; repair something rather than negotiate something.", "benign": false}, "Scorpio": {"feel": "Feeling turns inward and finds nothing to resolve itself against.", "instead": "Research rather than confrontation; whatever surfaces, look at it and leave acting on it for later.", "provenance": "The Moon is in fall in Scorpio, her least resourced placement in the tradition.", "benign": false}, "Sagittarius": {"feel": "The aimlessness here is the pleasant kind.", "instead": "Wander: read something wide, go somewhere, plan loosely without booking it.", "provenance": "Lilly holds the void Moon less malevolent here, in Jupiter's sign.", "benign": true}, "Capricorn": {"feel": "Effort finds no purchase, so work costs more than it returns.", "instead": "Do the maintenance already on the list; it needs no traction to be worth doing.", "provenance": "The Moon is in detriment in Capricorn, and void on top of it.", "benign": false}, "Aquarius": {"feel": "Detachment goes further out than usual, and ideas find nobody to bring them to.", "instead": "Solitary, abstract work: think, sketch, read, and rejoin people when she does.", "benign": false}, "Pisces": {"feel": "Dissolving is what this sign does anyway, so the emptiness suits it better than any other.", "instead": "Rest, music, making things that need no outcome; sleep counts.", "provenance": "Lilly holds the void Moon less malevolent here, Jupiter's other sign.", "benign": true}}, "scope": "Good for finishing, refining, and work already underway; thin for beginnings meant to last.", "exempt": ["Taurus", "Cancer", "Sagittarius", "Pisces"], "roads": {"Sun": {"gift": "warmth, and the nerve to be seen", "shadow": "needing to be the centre of it", "work": "put the wanting-to-be-seen into making one thing worth seeing"}, "Moon": {"gift": "care, and reading the room", "shadow": "the mood running the day sideways", "work": "feel it on purpose for ten minutes, so it doesn't leak into everything"}, "Mercury": {"gift": "quickness, and real curiosity", "shadow": "the thought that keeps circling", "work": "write the loop down — it stops circling once it's on paper"}, "Venus": {"gift": "ease, and warmth toward people", "shadow": "smoothing it over instead of saying the hard thing", "work": "have the pleasant thing, then say the true thing — in that order"}, "Mars": {"gift": "nerve, and the will to finish", "shadow": "the short fuse, the rush", "work": "spend the edge on something physical with an end, before it finds a person"}, "Jupiter": {"gift": "generosity, and the wider view", "shadow": "saying yes too big, skipping the detail", "work": "say yes to the size, then check the one detail you'd rather skip"}, "Saturn": {"gift": "patience, and the long haul", "shadow": "the gloom, the stiffening, the fear", "work": "do the smallest real piece — it lifts by moving, not by solving"}, "Uranus": {"gift": "fresh air, honest change", "shadow": "restlessness, the break for its own sake", "work": "change one real thing on purpose, so the restlessness has somewhere to land"}, "Neptune": {"gift": "imagination, and a softer heart", "shadow": "fog, drift, the story you tell yourself", "work": "make something, or rest — both use the fog; deciding in it doesn't"}, "Pluto": {"gift": "depth, and the nerve to begin again", "shadow": "the grip, the fixation", "work": "name what you're actually trying to control, then loosen one hand"}}, "moonRules": {"moon_void_of_course": {"display": "Void-of-course Moon", "supportiveFor": ["rest", "cleanup", "review", "maintenance", "finishing", "routine admin", "spiritual practice", "letting something dissolve"], "cautionFor": ["major launch", "important beginning", "high-stakes commitment", "irreversible decision", "first message where momentum matters", "contract signing", "ask/request/pitch", "travel departure"], "userFacing": "This is not the cleanest window for beginning something that needs momentum. It may be better for tending what is already in motion, resting, reviewing, or clearing loose ends."}, "moon_applying_venus": {"display": "Moon applying to Venus", "supportiveFor": ["relationship", "design", "client care", "social outreach", "date", "art", "soft marketing", "repair", "request requiring warmth"], "userFacing": "This window has more relational and aesthetic support. Good for softening, connecting, beautifying, or making an invitation."}, "moon_applying_jupiter": {"display": "Moon applying to Jupiter", "supportiveFor": ["teaching", "publishing", "launching", "applications", "client sessions", "outreach", "big-picture planning", "spiritual study", "asking for support"], "userFacing": "This window has a more expansive quality. Good for teaching, publishing, outreach, or taking a generous next step, as long as you do not overextend."}, "moon_applying_mars": {"display": "Moon applying to Mars", "supportiveFor": ["exercise", "decisive action", "boundary", "physical work", "hard edits", "errands", "cutting through avoidance"], "cautionFor": ["delicate relationship", "soft invitation", "reactive message", "high-stakes diplomacy", "asks requiring receptivity"], "userFacing": "This window has more heat and urgency. Use it for movement, action, or cutting through avoidance; be careful with reactive communication."}, "moon_applying_saturn": {"display": "Moon applying to Saturn", "supportiveFor": ["admin", "accounting", "study", "commitment", "boundary", "maintenance", "finishing", "structure"], "cautionFor": ["easeful romance", "play", "high-inspiration creativity", "tender asks without support", "requests needing generosity"], "userFacing": "This window may feel heavier or more constrained. It can support discipline, structure, and finishing, but may not be the easiest time for softness or ease."}}, "hourPrompts": {"moon": "What needs care, nourishment, or a gentler rhythm?", "mercury": "What needs to be named, written, sorted, or communicated?", "venus": "What would become easier if you softened, beautified, or connected?", "mars": "What needs courage, movement, or a clean cut?", "jupiter": "What wants to grow, be shared, or be understood in a larger frame?", "saturn": "What needs structure, patience, or maintenance?", "sun": "What needs to be seen, clarified, or led?"}, "policies": {"userCapacityOverridesAstrology": true, "practicalConstraintsOverrideIdealTiming": true, "emptyTimeIsNotAutomaticallyAvailable": true, "neverFillEveryOpenSlot": true, "alwaysIncludeGentlerVersion": true, "suggestionCount": {"min": 2, "max": 4}, "doNotElectEverything": true, "formalElectionOnlyForLevels": [3, 4], "avoidLanguage": ["bad time", "do not do this", "this will fail", "the astrology says no", "you are behind", "maximize productivity", "optimize your day", "wasted the window"], "preferredLanguage": ["this may be better for", "this window supports", "this is workable, but", "not the cleanest window for", "a lighter version may fit better", "consider protecting this space", "this may want less force", "a supportive window is enough", "best available, not perfect"]}};
 // Daily orientation engine, built to the Daily Orientation Rulebook (draft, Oct 31 2026),
 // with Compass's inherited doctrine: the Moon and real aspects lead, hours and days are
@@ -1240,10 +1257,10 @@ var Engine = (function () {
       if (M.ev.isVoid && C.voc === 'avoid') return;
       var hits = [];
       if (C.hourRulers.indexOf(M.h.planet) >= 0) hits.push('it’s one of its own hours (' + M.h.planet + ')');
-      if (C.signs[M.ev.moonSign]) hits.push('Compass lists the Moon in ' + M.ev.moonSign + ' for it: “' + C.signs[M.ev.moonSign] + '”');
+      if (C.signs[M.ev.moonSign]) hits.push('the activity table lists the Moon in ' + M.ev.moonSign + ' for it: “' + C.signs[M.ev.moonSign] + '”');
       var pk = M.ev.phaseKind === 'full' ? 'waning' : M.ev.phaseKind;
       if (C.phase && C.phase === pk) hits.push('it prefers a ' + pk + ' Moon');
-      if (M.ev.isVoid && C.voc === 'favor') hits.push('Compass marks it as suited to a void Moon');
+      if (M.ev.isVoid && C.voc === 'favor') hits.push('the activity table marks it as suited to a void Moon');
       if (hits.length && !(opts.skip && opts.skip['act-' + k])) dos.push({ key: k, label: C.label, hits: hits, small: A.small, gloss: C.gloss });
     });
     dos.sort(function (a, b) { return (b.hits.length - a.hits.length) || (opts.rot(a.key) - opts.rot(b.key)); });
@@ -1397,7 +1414,7 @@ var Engine = (function () {
     var m = it.m;
     if (it.kind === 'state') return (m.live ? 'Now' : dayWord(m.h.start, D) + D.clock(m.h.start)) + ' until ' + dayWord(it.o.state.end, D).toLowerCase() + D.clock(it.o.state.end);
     if (it.kind === 'guard') return (m.live ? 'Now' : dayWord(m.h.start, D) + D.clock(m.h.start)) + ' until ' + dayWord(it.until, D).toLowerCase() + D.clock(it.until);
-    return m.live ? 'Now until ' + D.clock(m.h.end) : dayWord(m.h.start, D) + D.clock(m.h.start) + '–' + D.clock(m.h.end);
+    return m.live ? 'Now until ' + D.clock(m.h.end) : dayWord(m.h.start, D) + D.clock(m.h.start) + ' to ' + D.clock(m.h.end);
   }
   function dots(n) { var k = Math.min(n, 4); return '<span class="dots" aria-hidden="true">' + '●'.repeat(k) + '○'.repeat(4 - k) + '</span>'; }
   function headline(it) {
@@ -1446,7 +1463,7 @@ var Engine = (function () {
     if (it.kind === 'state') h += '<p class="approach suits"><span class="k">Suits</span>' + esc(o.state.sub.replace(/^Suits /, '')) + '</p>' + (o.state.note ? '<p class="small-v">' + esc(o.state.note) + '</p>' : '');
     if (o && o.motifs.length) h += '<p class="chip-row"><span class="chip">' + RB.clusters[o.cluster].label + '</span>' + o.motifs.map(function (m) { return '<span class="chip soft">' + RB.motifs[m].label + '</span>'; }).join('') + '</p>';
     if (o && o.lean) h += '<p class="approach"><span class="k">' + (o.lean.caution ? 'Watch for' : 'Lean into') + '</span>' + o.lean.planet + ' in ' + o.lean.sign + ': ' + esc(o.lean.text) + '.</p>';
-    if (it.kind === 'guard') { var r = RULES.pis[it.planet] && RULES.pis[it.planet][Sky.signOf(it.m.ev.pos[it.planet])]; h += '<p class="approach"><span class="k">What helps</span>' + esc(cap(DOC.roads[it.planet].work)) + '.</p><p class="small-v">' + cap(RB.guards[it.planet].topic) + (r ? '; ' + it.planet + ' in ' + Sky.signOf(it.m.ev.pos[it.planet]) + ' ' + esc(r.misses) : '') + '.</p>'; }
+    if (it.kind === 'guard') { var r = RULES.pis[it.planet] && RULES.pis[it.planet][Sky.signOf(it.m.ev.pos[it.planet])]; h += '<p class="approach"><span class="k">What helps</span>' + esc(cap(RB.weather.helps[it.planet] || DOC.roads[it.planet].work)) + '.</p><p class="small-v">' + cap(RB.guards[it.planet].topic) + (r ? '; ' + it.planet + ' in ' + Sky.signOf(it.m.ev.pos[it.planet]) + ' ' + esc(r.misses) : '') + '.</p>'; }
     var status = log[key];
     h += '<div class="row-actions"><button class="more" type="button" data-open="' + esc(key) + '" aria-expanded="' + isOpen + '">' + (isOpen ? 'Less' : 'More like this, and why') + '</button>' +
       '<button class="fb' + (status === 'did' || status === 'noticed' ? ' on' : '') + '" type="button" data-log="' + esc(key) + '" data-v="' + (it.kind === 'guard' || it.kind === 'attend' ? 'noticed' : 'did') + '">' + (it.kind === 'guard' || it.kind === 'attend' ? 'Noticed it' : 'Did it') + '</button>' +
@@ -1454,7 +1471,7 @@ var Engine = (function () {
     if (isOpen) {
       h += '<div class="expand">';
       if (o && it.kind === 'state') {
-        h += '<div><h4>Why the day turns here</h4><p class="why">' + (o.state.key === 'void' ? 'Starswell treats a void Moon as weather rather than a warning: it suits finishing, refining and work already underway, and is thin for beginnings meant to last. ' + (o.state.feel ? 'The tradition’s read on this sign: ' + o.state.feel + ' ' : '') + (o.state.benign ? 'In ' + it.m.ev.moonSign + ' the tradition counts the void as easy, so this stretch is worth using.' : '') : o.state.key === 'quiet' ? 'A hard Moon contact to Saturn takes energy out of the day rather than adding it, so Starswell shows a heavier, steadier stretch for about three hours either side of exact.' : 'A hard Moon contact to Neptune softens edges for about three hours either side of exact.') + '</p></div>';
+        h += '<div><h4>Why the day turns here</h4><p class="why">' + (o.state.key === 'void' ? 'Starswell reads a void Moon as weather to work with. It suits finishing, refining and work already underway, and is thin for beginnings meant to last. ' + (o.state.feel ? 'The tradition’s read on this sign: ' + o.state.feel + ' ' : '') + (o.state.benign ? 'In ' + it.m.ev.moonSign + ' the tradition counts the void as easy, so this stretch is worth using.' : '') : o.state.key === 'quiet' ? 'A hard Moon contact to Saturn drains energy from the day, so Starswell shows a heavier, steadier stretch for about three hours either side of exact.' : 'A hard Moon contact to Neptune softens edges for about three hours either side of exact.') + '</p></div>';
         h += '<div><h4>Receipts</h4>' + receiptsHTML(o.receipts, D) + '</div>';
       } else if (o) {
         var takes = [];
@@ -1489,7 +1506,7 @@ var Engine = (function () {
     });
     var labs = '', lastDay = '';
     [0, 0.25, 0.5, 0.75].forEach(function (f) { var t = new Date(t0 + f * span); labs += '<span class="lab" style="left:' + (f * 100 + (f === 0 ? 3 : 0)) + '%">' + (f === 0 ? 'now' : D.clock(t)) + '</span>'; });
-    return '<div class="arc"><div class="ribbon" aria-hidden="true">' + r + labs + '</div><p class="ribbon-cap"><span class="key seg"></span>coherent window <span class="key seg strong"></span>strong <span class="key gtick"></span>Guard <span class="key sleep"></span>asleep <span class="key vspan"></span>void Moon <span class="key qspan"></span>Saturn or Neptune quiet</p></div>';
+    return '<div class="arc"><div class="ribbon" aria-hidden="true">' + r + labs + '</div><p class="ribbon-cap"><span class="key seg"></span>card <span class="key seg strong"></span>strong <span class="key gtick"></span>edge <span class="key sleep"></span>asleep <span class="key vspan"></span>void Moon <span class="key qspan"></span>Saturn or Neptune quiet</p></div>';
   }
 
   // ---- Render -----------------------------------------------------------------------------
@@ -1541,7 +1558,7 @@ var Engine = (function () {
     // Hour by hour, behind a tap
     var todays = D.moments;
     h += '<details class="check" id="hours-d"' + (load('compass-hours-open', false) ? ' open' : '') + '><summary>Hour by hour</summary><ul class="hours">' + todays.map(function (m) {
-      var o = m.out, label = o ? (o.kind === 'state' ? o.state.label : o.kind === 'do' ? o.act.label : (o.level === 'motif' ? RB.motifs[o.motif].label : RB.clusters[o.cluster].label) + ' (mode)') : (m.guard ? 'Guard: ' + RB.guards[m.guard.guard.planet].topic : 'Quiet');
+      var o = m.out, label = o ? (o.kind === 'state' ? o.state.headline : o.modeLine) : (m.guard ? RB.weather.guards[m.guard.guard.planet] : 'Nothing much moving');
       return '<li class="hr' + (o && o.state ? ' st-' + o.state.key : '') + (o && o.coherence >= 3 ? ' best' : '') + (o ? '' : ' q') + '"><span class="tm">' + (m.live ? 'Now' : dayWord(m.h.start, D).replace('Tomorrow ', 'Tmrw ') + D.clock(m.h.start)) + '</span>' + g(m.h.planet) + '<span class="nm">' + esc(label) + '</span>' + (o && o.coherence ? dots(o.coherence) : '<span></span>') + '</li>';
     }).join('') + '</ul></details>';
 
