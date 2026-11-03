@@ -929,6 +929,109 @@ RB.weather = {
   fog: { w: 'Hazy and dreamlike, hard to pin down and easy to drift in.', s: 'music, sketching, a nap; decisions keep better for later' }
 };
 
+// Weather lines colored by the Moon's element (Nov 2 2026). Picked alongside the plain motif lines above,
+// so the same motif reads differently in a fire, earth, air or water Moon.
+RB.weather.signElement = { Aries: 'fire', Leo: 'fire', Sagittarius: 'fire', Taurus: 'earth', Virgo: 'earth', Capricorn: 'earth',
+  Gemini: 'air', Libra: 'air', Aquarius: 'air', Cancer: 'water', Scorpio: 'water', Pisces: 'water' };
+RB.weather.byElement = {
+  activate: {
+    fire: ['The hour runs hot and impatient, ready before you are.', 'A bright, restless push, like the first warm day of spring.'],
+    earth: ['Energy shows up in the hands and feet more than the head.', 'A steady heat, the kind that wants a job it can finish.'],
+    air: ['Ideas move faster than usual and pull the body along with them.', 'Quick and a little scattered, with energy for three things at once.'],
+    water: ['Feeling stirs first, and then it gets you moving.', 'A tidal kind of energy that builds slowly and then carries you.']
+  },
+  sustain: {
+    fire: ['Warmth that lasts, more like coals than a flame.', 'Enthusiasm settles into something you can keep going on.'],
+    earth: ['Slow and sure-footed, good at the long middle of things.', 'The hour has staying power and no interest in shortcuts.'],
+    air: ['Attention holds longer than usual, even on the dull parts.', 'A patient, even hour for conversations that take a while.'],
+    water: ['A quiet endurance that comes from caring about the thing.', 'Feelings stay steady enough to carry you through.']
+  },
+  commit: {
+    fire: ['Decisions come quickly and feel right in the body.', 'There is nerve in the air for saying yes out loud.'],
+    earth: ['A sleeves-rolled-up readiness to choose and get on with it.', 'The hour likes plans you can write down and keep.'],
+    air: ['Clarity arrives the moment you start talking it through.', 'Options narrow on their own as soon as you name them.'],
+    water: ['The heart has already decided, and the rest of you is catching up.', 'Loyalties feel clear, and promises come easily.']
+  },
+  order: {
+    fire: ['Brisk and decisive about what stays and what goes.', 'Tidying feels almost like a sport.'],
+    earth: ['Drawers, ledgers and lists look strangely appealing.', 'Everything wants a place, and finding it feels good.'],
+    air: ['The mind files and labels things without being asked.', 'A good hour for sorting loose thoughts into sentences.'],
+    water: ['Putting the house in order feels like looking after someone.', 'A little tidying settles a restless heart.']
+  },
+  nourish: {
+    fire: ['Appetite runs big and generous, for food and company both.', 'A feast-day feeling, warm and a little extravagant.'],
+    earth: ['Bread, soup and slow-cooking weather.', 'The body asks for something solid and grounding.'],
+    air: ['Food tastes better with good talk around the table.', 'Appetite comes with curiosity, for the new recipe or the other café.'],
+    water: ['Comfort food, and the people who make it.', 'Hunger is half for food and half for being looked after.']
+  },
+  tend: {
+    fire: ['Care comes out as cheerleading.', 'A warm, protective streak shows up.'],
+    earth: ['Plants, pets and small repairs call for attention.', 'Practical kindness feels like the natural thing to do.'],
+    air: ['Checking in costs a single message and lands well.', 'Care travels easily through words right now.'],
+    water: ['A strong pull to look after the people and things that are yours.', 'Tenderness sits close to the surface.']
+  },
+  soften: {
+    fire: ['The heat drops to a pleasant glow.', 'Even the competitive parts of you want to coast for a while.'],
+    earth: ['Heavy limbs, a slow pulse, and nowhere you have to be.', 'The body wants a warm bath more than a plan.'],
+    air: ['Conversation turns gentle and unhurried.', 'A light, drifting hour that forgives a lot.'],
+    water: ['Edges melt and moods go soft.', 'An easy hour to be kind, to yourself included.']
+  },
+  withdraw: {
+    fire: ['Even bright people want the curtains drawn for a bit.', 'The spark turns inward and wants privacy to recharge.'],
+    earth: ['A homebody hour, best spent within reach of a blanket.', 'Quiet routines feel better than company.'],
+    air: ['Too many voices start to sound like static.', 'The mind wants a closed door and an open notebook.'],
+    water: ['The shell feels like exactly the right place to be.', 'Feelings want room to settle before they are shared.']
+  },
+  connect: {
+    fire: ['Warm, open and quick to laugh with people.', 'Company recharges you this hour.'],
+    earth: ['Loyal, easy company, the kind that needs no entertaining.', 'Time with people is best spent doing something side by side.'],
+    air: ['Talk flows, and everyone seems to have something to say.', 'Curious about other people, and good at asking them things.'],
+    water: ['Closeness comes easily, and so does honesty.', 'A pull toward the people who feel like home.']
+  },
+  express: {
+    fire: ['Bold and a little theatrical, happy to be seen.', 'Something wants to be said with feeling.'],
+    earth: ['Plain words land well right now.', 'The finished thing can speak for itself.'],
+    air: ['Words arrive easily and in the right order.', 'A chatty, articulate hour.'],
+    water: ['Feelings find words if you give them a minute.', 'What you say now comes out warm and unguarded.']
+  },
+  play: {
+    fire: ['Mischief and dares, the playground kind.', 'Fun is the main event right now.'],
+    earth: ['Pleasure is simple and physical: good food, sunlight, a walk with no point.', 'An easygoing hour that enjoys itself.'],
+    air: ['Jokes, games and wordplay come easily.', 'Light and witty, and a bit silly.'],
+    water: ['Playful in a tender way, all inside jokes and old stories.', 'Imagination wanders off and comes back with something sweet.']
+  },
+  make: {
+    fire: ['Inspiration strikes fast and wants to be acted on.', 'Bold strokes and big gestures appeal.'],
+    earth: ['Craft weather: clay, wood, dough and thread.', 'The hands know what to do before the mind does.'],
+    air: ['Ideas want sketching while they are still loose.', 'A tinkering, putting-things-together hour.'],
+    water: ['Making something is a way of feeling it.', 'Imagination runs deep and wants a vessel.']
+  },
+  explore: {
+    fire: ['Wanderlust, and a taste for the unplanned.', 'Bold curiosity, the kind that buys the ticket.'],
+    earth: ['Curiosity wants something you can touch, like a new street or a new market.', 'Practical adventure, close to home.'],
+    air: ['The mind roams across books, maps and tangents.', 'Every question opens onto another one.'],
+    water: ['Curiosity turns toward memory, dreams and other people’s stories.', 'Drawn toward water, distance and the unknown.']
+  },
+  investigate: {
+    fire: ['A question has you by the collar.', 'Impatient to get to the bottom of something.'],
+    earth: ['Methodical attention, good for the details everyone else skips.', 'Facts feel more satisfying than theories.'],
+    air: ['Sharp and analytical, and full of follow-up questions.', 'The mind enjoys a puzzle right now.'],
+    water: ['Intuition picks up on what isn’t being said.', 'Attention goes deep and stays there.']
+  },
+  revise: {
+    fire: ['Old projects suddenly look worth fighting for again.', 'Restless about whatever is unfinished.'],
+    earth: ['A good hour to fix, mend and patch.', 'Second drafts and second coats of paint.'],
+    air: ['Old conversations replay with new understanding.', 'Words look different on a second read.'],
+    water: ['Old feelings come back to be looked at kindly.', 'Memory sits near the surface and is easier to mend.']
+  },
+  release: {
+    fire: ['A burn-the-old-drafts kind of hour.', 'Letting go feels bold.'],
+    earth: ['Clearing out the closet feels like relief.', 'Fewer things in the way, and more room in the day.'],
+    air: ['Old thoughts drift off easily if you let them.', 'A good hour to unsubscribe from what you no longer read.'],
+    water: ['A good cry, a long bath, a long exhale.', 'Feelings loosen and wash through.']
+  }
+};
+
 var DOC = {"voids": {"Aries": {"feel": "The appetite to start is sharp, and nothing started will take hold.", "instead": "Spend it physically: train, walk fast, clear something out of the way.", "benign": false}, "Taurus": {"feel": "Nothing is moving, and in Taurus that is rest rather than drift.", "instead": "Eat properly, sit somewhere comfortable, do the slow familiar thing.", "provenance": "Lilly holds the void Moon less malevolent here, where she is exalted.", "benign": true}, "Gemini": {"feel": "Conversations circle without landing, however many of them you have.", "instead": "Answer the easy messages, take notes, clear the inbox; save the conversation that has to reach a decision.", "benign": false}, "Cancer": {"feel": "Empty, but she is in her own house, so the quiet is comfortable.", "instead": "Cook, tend, be with the people you don't have to perform for.", "provenance": "Lilly holds the void Moon less malevolent here, her own sign.", "benign": true}, "Leo": {"feel": "The wish to be seen meets a room that isn't watching, and gestures go unanswered.", "instead": "Make the thing; the announcement will carry further on another day.", "benign": false}, "Virgo": {"feel": "Virgo's precision is running high, and it settles most naturally on work that already exists.", "instead": "A strong stretch for editing, admin, and the careful second pass — the kind of work that gets better the more attention it gets.", "benign": false}, "Libra": {"feel": "Nothing settles the scale, and agreements made now tend not to hold.", "instead": "Be sociable and don't sign; repair something rather than negotiate something.", "benign": false}, "Scorpio": {"feel": "Feeling turns inward and finds nothing to resolve itself against.", "instead": "Research rather than confrontation; whatever surfaces, look at it and leave acting on it for later.", "provenance": "The Moon is in fall in Scorpio, her least resourced placement in the tradition.", "benign": false}, "Sagittarius": {"feel": "The aimlessness here is the pleasant kind.", "instead": "Wander: read something wide, go somewhere, plan loosely without booking it.", "provenance": "Lilly holds the void Moon less malevolent here, in Jupiter's sign.", "benign": true}, "Capricorn": {"feel": "Effort finds no purchase, so work costs more than it returns.", "instead": "Do the maintenance already on the list; it needs no traction to be worth doing.", "provenance": "The Moon is in detriment in Capricorn, and void on top of it.", "benign": false}, "Aquarius": {"feel": "Detachment goes further out than usual, and ideas find nobody to bring them to.", "instead": "Solitary, abstract work: think, sketch, read, and rejoin people when she does.", "benign": false}, "Pisces": {"feel": "Dissolving is what this sign does anyway, so the emptiness suits it better than any other.", "instead": "Rest, music, making things that need no outcome; sleep counts.", "provenance": "Lilly holds the void Moon less malevolent here, Jupiter's other sign.", "benign": true}}, "scope": "Good for finishing, refining, and work already underway; thin for beginnings meant to last.", "exempt": ["Taurus", "Cancer", "Sagittarius", "Pisces"], "roads": {"Sun": {"gift": "warmth, and the nerve to be seen", "shadow": "needing to be the centre of it", "work": "put the wanting-to-be-seen into making one thing worth seeing"}, "Moon": {"gift": "care, and reading the room", "shadow": "the mood running the day sideways", "work": "feel it on purpose for ten minutes, so it doesn't leak into everything"}, "Mercury": {"gift": "quickness, and real curiosity", "shadow": "the thought that keeps circling", "work": "write the loop down — it stops circling once it's on paper"}, "Venus": {"gift": "ease, and warmth toward people", "shadow": "smoothing it over instead of saying the hard thing", "work": "have the pleasant thing, then say the true thing — in that order"}, "Mars": {"gift": "nerve, and the will to finish", "shadow": "the short fuse, the rush", "work": "spend the edge on something physical with an end, before it finds a person"}, "Jupiter": {"gift": "generosity, and the wider view", "shadow": "saying yes too big, skipping the detail", "work": "say yes to the size, then check the one detail you'd rather skip"}, "Saturn": {"gift": "patience, and the long haul", "shadow": "the gloom, the stiffening, the fear", "work": "do the smallest real piece — it lifts by moving, not by solving"}, "Uranus": {"gift": "fresh air, honest change", "shadow": "restlessness, the break for its own sake", "work": "change one real thing on purpose, so the restlessness has somewhere to land"}, "Neptune": {"gift": "imagination, and a softer heart", "shadow": "fog, drift, the story you tell yourself", "work": "make something, or rest — both use the fog; deciding in it doesn't"}, "Pluto": {"gift": "depth, and the nerve to begin again", "shadow": "the grip, the fixation", "work": "name what you're actually trying to control, then loosen one hand"}}, "moonRules": {"moon_void_of_course": {"display": "Void-of-course Moon", "supportiveFor": ["rest", "cleanup", "review", "maintenance", "finishing", "routine admin", "spiritual practice", "letting something dissolve"], "cautionFor": ["major launch", "important beginning", "high-stakes commitment", "irreversible decision", "first message where momentum matters", "contract signing", "ask/request/pitch", "travel departure"], "userFacing": "This is not the cleanest window for beginning something that needs momentum. It may be better for tending what is already in motion, resting, reviewing, or clearing loose ends."}, "moon_applying_venus": {"display": "Moon applying to Venus", "supportiveFor": ["relationship", "design", "client care", "social outreach", "date", "art", "soft marketing", "repair", "request requiring warmth"], "userFacing": "This window has more relational and aesthetic support. Good for softening, connecting, beautifying, or making an invitation."}, "moon_applying_jupiter": {"display": "Moon applying to Jupiter", "supportiveFor": ["teaching", "publishing", "launching", "applications", "client sessions", "outreach", "big-picture planning", "spiritual study", "asking for support"], "userFacing": "This window has a more expansive quality. Good for teaching, publishing, outreach, or taking a generous next step, as long as you do not overextend."}, "moon_applying_mars": {"display": "Moon applying to Mars", "supportiveFor": ["exercise", "decisive action", "boundary", "physical work", "hard edits", "errands", "cutting through avoidance"], "cautionFor": ["delicate relationship", "soft invitation", "reactive message", "high-stakes diplomacy", "asks requiring receptivity"], "userFacing": "This window has more heat and urgency. Use it for movement, action, or cutting through avoidance; be careful with reactive communication."}, "moon_applying_saturn": {"display": "Moon applying to Saturn", "supportiveFor": ["admin", "accounting", "study", "commitment", "boundary", "maintenance", "finishing", "structure"], "cautionFor": ["easeful romance", "play", "high-inspiration creativity", "tender asks without support", "requests needing generosity"], "userFacing": "This window may feel heavier or more constrained. It can support discipline, structure, and finishing, but may not be the easiest time for softness or ease."}}, "hourPrompts": {"moon": "What needs care, nourishment, or a gentler rhythm?", "mercury": "What needs to be named, written, sorted, or communicated?", "venus": "What would become easier if you softened, beautified, or connected?", "mars": "What needs courage, movement, or a clean cut?", "jupiter": "What wants to grow, be shared, or be understood in a larger frame?", "saturn": "What needs structure, patience, or maintenance?", "sun": "What needs to be seen, clarified, or led?"}, "policies": {"userCapacityOverridesAstrology": true, "practicalConstraintsOverrideIdealTiming": true, "emptyTimeIsNotAutomaticallyAvailable": true, "neverFillEveryOpenSlot": true, "alwaysIncludeGentlerVersion": true, "suggestionCount": {"min": 2, "max": 4}, "doNotElectEverything": true, "formalElectionOnlyForLevels": [3, 4], "avoidLanguage": ["bad time", "do not do this", "this will fail", "the astrology says no", "you are behind", "maximize productivity", "optimize your day", "wasted the window"], "preferredLanguage": ["this may be better for", "this window supports", "this is workable, but", "not the cleanest window for", "a lighter version may fit better", "consider protecting this space", "this may want less force", "a supportive window is enough", "best available, not perfect"]}};
 // Daily orientation engine, built to the Daily Orientation Rulebook (draft, Oct 31 2026),
 // with Compass's inherited doctrine: the Moon and real aspects lead, hours and days are
@@ -1152,7 +1255,8 @@ var Engine = (function () {
     var pressed = lp && M.ev.list.some(function (e) { return e.hard && e.tier === 'primary' && e.planets.indexOf(lp) >= 0; });
     var lean = null;
     if (lp) { var r = RULES.pis[lp][Sky.signOf(M.ev.pos[lp])]; lean = { planet: lp, sign: Sky.signOf(M.ev.pos[lp]), caution: pressed, text: pressed ? r.misses : r.does, other: pressed ? r.does : r.misses }; }
-    var lines = level === 'motif' ? RB.weather.motifs[motif] : RB.weather.clusters[cluster];
+    var el = RB.weather.signElement[M.ev.moonSign], byEl = level === 'motif' && RB.weather.byElement[motif] ? RB.weather.byElement[motif][el] || [] : [];
+    var lines = byEl.concat(level === 'motif' ? RB.weather.motifs[motif] : RB.weather.clusters[cluster]);
     var pool = dos.slice();
     if (pool.length < 3) Object.keys(RB.acts).forEach(function (k) {
       var A = RB.acts[k], C = ACT[k];
@@ -1165,7 +1269,7 @@ var Engine = (function () {
     motifs.forEach(function (m) { J.sup[m].events.forEach(function (x) { if (receipts.indexOf(x.e) < 0) receipts.push(x.e); }); });
     receipts.sort(function (a, b) { return (a.tier === 'secondary') - (b.tier === 'secondary'); });
     return { kind: earned ? 'do' : 'mode', level: level, motif: motif, motifs: motifs, cluster: cluster, coherence: coherence,
-      modeLine: lines[opts.rot('line-' + (motif || cluster)) % lines.length], lines: lines, suits: suits, act: earned ? dos[0] : null, altActs: alts,
+      modeLine: (function () { var r = opts.rot('line-' + (motif || cluster)); return byEl.length && r % 3 !== 0 ? byEl[Math.floor(r / 3) % byEl.length] : lines[r % lines.length]; })(), lines: lines, suits: suits, act: earned ? dos[0] : null, altActs: alts,
       lean: lean, receipts: receipts };
   }
 
@@ -1195,6 +1299,23 @@ var Engine = (function () {
   if (!RB.focuses[state.focus]) state.focus = 'day';
   if (!CITIES[state.city]) state.city = 0;
   var log = load('compass-log-4', {});       // key -> 'did' | 'noticed' | 'skip'
+  // On compass.day, marks also save to the person's Compass account (their tester id) and load on any device.
+  var tester = (function () { try { return localStorage.getItem('obs_tester_id'); } catch (e) { return null; } })();
+  function syncSend(k, v) {
+    if (!tester) return;
+    try { fetch('/api/starswell/log', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-tester-id': tester }, body: JSON.stringify({ key: k, value: v || null }) }).catch(function () {}); } catch (e) {}
+  }
+  function syncLoad() {
+    if (!tester) return;
+    try {
+      fetch('/api/starswell/log?days=60', { headers: { 'x-tester-id': tester } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (!j || !j.marks) return;
+        var changed = false;
+        Object.keys(j.marks).forEach(function (k) { if (log[k] !== j.marks[k]) { log[k] = j.marks[k]; changed = true; } });
+        if (changed) { store('compass-log-4', log); render(); }
+      }).catch(function () {});
+    } catch (e) {}
+  }
   var open = null;
 
   function fmt(d, tz, o) { return d.toLocaleString('en-US', Object.assign({ timeZone: tz }, o)); }
@@ -1451,11 +1572,12 @@ var Engine = (function () {
     var b = e.target.closest('[data-open]');
     if (b) { var k = b.getAttribute('data-open'); open = open === k ? null : k; render(); var a = document.querySelector('[data-open="' + k.replace(/"/g, '\\"') + '"]'); if (a) a.focus(); return; }
     var f = e.target.closest('[data-log]');
-    if (f) { var k2 = f.getAttribute('data-log'), v = f.getAttribute('data-v'); if (log[k2] === v) delete log[k2]; else log[k2] = v; store('compass-log-4', log); render(); }
+    if (f) { var k2 = f.getAttribute('data-log'), v = f.getAttribute('data-v'); if (log[k2] === v) delete log[k2]; else log[k2] = v; store('compass-log-4', log); syncSend(k2, log[k2]); render(); }
   });
   document.getElementById('app').addEventListener('toggle', function (e) { if (e.target.id === 'hours-d') store('compass-hours-open', e.target.open); }, true);
   if (typeof Astronomy === 'undefined') { document.getElementById('app').innerHTML = '<p class="empty">The sky library didn’t load. Check your connection and reload.</p>'; return; }
   render();
+  syncLoad();
   setInterval(function () { if (!document.activeElement || document.activeElement === document.body) render(); }, 60000);
 })();
 
