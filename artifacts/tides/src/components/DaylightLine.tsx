@@ -47,3 +47,34 @@ export function DaylightLine({ dateStr, className, style }: { dateStr: string; c
     </p>
   );
 }
+
+/**
+ * Sunrise, solar noon and sunset as marks on an hour grid (the Day view), from
+ * the same server source as the line above. Positioned by the browser's clock,
+ * as everything else on that grid is. Same gating: nothing for a guessed place.
+ */
+export function DaylightMarks({ dateStr, hourStart, hours, rowH, left }: {
+  dateStr: string; hourStart: number; hours: number; rowH: number; left: number;
+}) {
+  const { lat, lon, locationKnown } = useTester();
+  const fmtTime = useTimeFormat();
+  const { data } = useDaylight(dateStr, lat, lon, locationKnown);
+  if (!locationKnown || !data || data.polar) return null;
+  const marks: [string, string][] = [];
+  for (const [label, at] of [["Sunrise", data.sunrise], ["Solar noon", data.solarNoon], ["Sunset", data.sunset]] as const)
+    if (at) marks.push([label, at]);
+  return (
+    <>
+      {marks.map(([label, at]) => {
+        const d = new Date(at);
+        const top = (d.getHours() + d.getMinutes() / 60 - hourStart) * rowH;
+        if (top < 0 || top > hours * rowH) return null;
+        return (
+          <div key={label} className="daylight-mark" style={{ top, left }}>
+            <span>{label} {fmtTime(d)}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+}

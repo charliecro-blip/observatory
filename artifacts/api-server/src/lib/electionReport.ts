@@ -75,6 +75,23 @@ export interface ReportPick {
   availability: "clear" | "conflict" | "unchecked" | "unavailable";
   /** Other windows the engine gave the same day, best first. */
   alsoThatDay: { start: string; end: string; startClock: string; endClock: string; tier: "good" | "great" }[];
+  /**
+   * The search that produced this window, for POST /timing/choose, which runs
+   * it again and saves the window only if the engine still gives it. Null when
+   * choose would refuse it: a whole day, a deferral, or a calendar conflict.
+   */
+  choice: ChoiceQuery | null;
+}
+
+/** The public fields /timing/choose accepts (routes/timing.ts timingInput). */
+export interface ChoiceQuery {
+  activity: string;
+  start: string;
+  end: string;
+  timeZone: string;
+  location: { lat: number; lon: number };
+  useNatal: boolean;
+  checkCalendar: boolean;
 }
 
 export interface AvoidDay {
@@ -167,17 +184,22 @@ function motionOf(planet: string, from: Date, tz: string): Motion {
 const AVAIL_ORDER = { clear: 0, unchecked: 1, unavailable: 2, conflict: 3 } as const;
 const SUIT_ORDER = { clear: 0, qualified: 1, defer: 2 } as const;
 
-function toPick(c: TimingCandidate & { id: string }, tz: string): ReportPick | null {
+function toPick(c: TimingCandidate & { id: string }, tz: string, query: Omit<ChoiceQuery, "checkCalendar">): ReportPick | null {
   if (c.kind !== "ordinary") return null;
   const w = c.evidence;
+  const broad = c.broad || Date.parse(c.end) - Date.parse(c.start) >= BROAD_MS;
+  const choosable = !broad && !c.shortfall && c.suitability !== "defer" && c.availability.status !== "conflict";
   return {
     id: c.id, date: dayKeyInZone(new Date(c.start), tz), start: c.start, end: c.end,
     startClock: clockIn(c.start, tz), endClock: clockIn(c.end, tz),
     // A window the void clipped to most of the day is still a day, not a time.
-    broad: c.broad || Date.parse(c.end) - Date.parse(c.start) >= BROAD_MS, tier: w.tier, suitability: c.suitability,
+    broad, tier: w.tier, suitability: c.suitability,
     evidence: (w.evidence ?? []).map((e: { text: string }) => e.text),
     objections: c.reasons.map(REASON_TEXT),
     personal: w.personal, score: w.score, availability: c.availability.status, alsoThatDay: [],
+    // Choose checks the calendar again only where this one confirmed it open;
+    // a time listed from an unread calendar is saved as unchecked.
+    choice: choosable ? { ...query, checkCalendar: c.availability.status === "clear" } : null,
   };
 }
 
@@ -216,10 +238,11 @@ function scan(input: ReportInput, start: Date, days: number, calendar: ReportInp
     const n = Math.min(CHUNK_DAYS, days - i);
     const cs = i === 0 ? start : dayBoundsInZone(civilDayOffsetIn(day0, i, tz), tz)[0];
     const ce = dayBoundsInZone(civilDayOffsetIn(day0, i + n, tz), tz)[0];
-    const result = searchTiming({
+    const query = {
       activity: input.activity, start: cs.toISOString(), end: ce.toISOString(), timeZone: tz,
-      location: input.location, natal: input.natal, calendar, extraActivities: input.extraActivities,
-    });
+      location: { lat: input.location.lat, lon: input.location.lon }, useNatal: !!input.natal,
+    };
+    const result = searchTiming({ ...query, natal: input.natal, calendar, extraActivities: input.extraActivities });
     const presented = presentTiming(result);
     if (!("days" in result)) { out.failed += n; continue; }
     out.failed += result.coverage.failed.length;
@@ -230,7 +253,7 @@ function scan(input: ReportInput, start: Date, days: number, calendar: ReportInp
       for (const c of d.result.cautions) if (c.endsWith("holds through this stretch.")) out.standing.add(c);
     }
     for (const c of presented.candidates) {
-      const p = toPick(c, tz);
+      const p = toPick(c, tz, query);
       if (p) { out.picks.push(p); out.dayHasWindow.add(p.date); }
     }
   }
