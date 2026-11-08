@@ -1325,6 +1325,9 @@ var Starswell = (function () {
 
 
 
+// Lock screen tiles: type one of these in Parameter for a tile that shows the best time today.
+const LOCK_ACTS = { workout: 'train-hard', run: 'endurance', walk: 'gentle-movement', yoga: 'gentle-movement', work: 'deep-work', write: 'first-draft', errands: 'admin-errands', talk: 'hard-conversation', date: 'first-date', cook: 'cook', nap: 'deep-rest', meditate: 'meditate', launch: 'launch-venture', sign: 'sign-contract', post: 'publish' };
+let MODE = 'now';
 // Per-widget focus: long-press the widget, Edit Widget, and type a focus in Parameter
 // (day, move, rest, still or edges; "nourish" and "stillness" work too). Blank uses SETTINGS.focus.
 (function () {
@@ -1332,6 +1335,7 @@ var Starswell = (function () {
   const alias = { nourish: 'rest', 'nourish & rest': 'rest', stillness: 'still', 'whole day': 'day', edge: 'edges' };
   const k = alias[p] || p;
   if (k && RB.focuses[k]) SETTINGS.focus = k;
+  if (k === 'next' || LOCK_ACTS[k]) MODE = k;
 })();
 
 const C = { night: new Color('#141A33'), swell: new Color('#26406B'), foam: new Color('#A9C3CF'), brass: new Color('#C9A35B'), star: new Color('#F1E8D6'), dim: new Color('#D9CFBE'), ember: new Color('#E3B9A0') };
@@ -1348,11 +1352,18 @@ function getReading() {
 }
 
 function txt(stack, s, font, color, lines) { const t = stack.addText(s); t.font = font; t.textColor = color; if (lines) t.lineLimit = lines; t.minimumScaleFactor = 0.8; return t; }
+function dayKey(d) { return new Date(d).toLocaleDateString('en-US', { timeZone: SETTINGS.tz }); }
+function stamp(R, d) { return (dayKey(d) === dayKey(Date.now()) ? '' : 'Tmrw ') + R.clock(d); }
 function short(item, R) {
   if (!item) return '';
-  if (item.kind === 'guard') return 'Edges ' + (item.live ? 'now' : R.clock(item.start));
-  return item.live ? 'now' : R.clock(item.start);
+  if (item.kind === 'guard') return 'Edges ' + (item.live ? 'now' : stamp(R, item.start));
+  return item.live ? 'now' : stamp(R, item.start);
 }
+function bestTime(R, key, ws) {
+  ws = ws || R.find(key).windows; const today = ws.filter(w => !/^tomorrow/i.test(w.when));
+  return (today.length ? today : ws).slice().sort((x, y) => y.score - x.score)[0] || null;
+}
+const tight = s => s.replace(/ (am|pm)/g, '$1');
 
 function nextRefresh(R) {
   const now = Date.now(), cands = [now + 30 * 60000];
@@ -1375,8 +1386,29 @@ function buildWidget(R, family) {
     return w;
   }
   if (family === 'accessoryRectangular') {
-    txt(w, 'STARSWELL · ' + R.moon.sign.toUpperCase() + (R.voidNow ? ' · VOID' : R.voidNext ? ' · VOID ' + R.clock(R.voidNext.start) : ''), Font.boldSystemFont(10), Color.white(), 1);
-    txt(w, a ? a.headline : R.quiet, Font.systemFont(13), Color.white(), 2);
+    const W = Color.white(), hd = s => txt(w, s.toUpperCase(), Font.boldSystemFont(10), W, 1);
+    const body = (s, n) => txt(w, s, Font.systemFont(12.5), W, n), foot = s => txt(w, s, Font.systemFont(10.5), W, 1);
+    const span = it => (it.live ? 'Now' : R.clock(it.start)) + (it.end ? '–' + R.clock(it.end) : '');
+    const act = LOCK_ACTS[MODE];
+    if (act) {
+      const f = R.find(act), best = bestTime(R, act, f.windows);
+      hd(MODE + (best ? ' · ' + best.strength : ''));
+      if (!best) { body('No clear window left today.', 2); foot('Try tomorrow morning'); return w; }
+      body(tight(best.when), 1);
+      const why = best.why.slice(0, 2).join(', '); foot(why.charAt(0).toUpperCase() + why.slice(1));
+      const more = f.windows.filter(x => x !== best && x.when !== best.when)[0];
+      if (more) foot('Also ' + tight(more.when).replace(/^Tomorrow/, 'tmrw'));
+      return w;
+    }
+    const it = MODE === 'next' ? (R.items.find(i => !i.live) || a) : a;
+    if (!it) { hd(R.moon.sign + ' Moon'); body(R.quiet, 3); return w; }
+    hd((it.kind === 'guard' ? 'Edges ' : '') + (dayKey(it.start) === dayKey(Date.now()) || it.live ? '' : 'Tmrw ') + span(it) + ' · ' + R.moon.sign + (R.voidNow ? ' · void' : ''));
+    body(it.headline, 2);
+    const nx = R.items.find(i => i !== it && +i.start > +it.start);
+    if (it.suits) foot('Suits ' + it.suits);
+    else if (it.helps) foot('Helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1));
+    if (MODE !== 'next' && nx) foot('Then ' + stamp(R, nx.start) + ' · ' + nx.headline.replace(/\.$/, ''));
+    else if (R.voidNext && !R.voidNow) foot('Void Moon ' + R.clock(R.voidNext.start));
     return w;
   }
 
@@ -1396,7 +1428,7 @@ function buildWidget(R, family) {
     return w;
   }
 
-  txt(w, R.dayLine, Font.systemFont(11), C.dim, 1);
+  txt(w, R.dayLine + (a && a.live && a.end ? ' · now until ' + R.clock(a.end) : ''), Font.systemFont(11), C.dim, 1);
   w.addSpacer(6);
   if (a) {
     txt(w, a.headline, serif(family === 'large' ? 19 : 16.5), C.star, family === 'large' ? 3 : 2);
@@ -1404,8 +1436,21 @@ function buildWidget(R, family) {
     const line2 = a.live ? sub : a.when + (sub ? ' · ' + sub : '');
     if (line2) { w.addSpacer(2); txt(w, line2, Font.systemFont(11), C.dim, family === 'large' ? 2 : 1); }
   } else txt(w, R.quiet, serif(16.5), C.star, 2);
+  if (family === 'large') {
+    w.addSpacer(14);
+    txt(w, 'BEST TIMES TODAY', Font.semiboldSystemFont(9.5), C.foam, 1);
+    w.addSpacer(4);
+    [['Workout', 'train-hard'], ['Focus', 'deep-work'], ['People', 'call-family'], ['Wind down', 'deep-rest']].forEach(([name, key]) => {
+      const bt = bestTime(R, key), row = w.addStack(); row.centerAlignContent();
+      const l = txt(row, name, Font.semiboldSystemFont(11), C.brass, 1); row.addSpacer(8);
+      txt(row, bt ? tight(bt.when) : 'no clear window', Font.systemFont(11.5), C.star, 1);
+      row.addSpacer();
+      if (bt) txt(row, bt.strength, Font.systemFont(10), C.foam, 1);
+      w.addSpacer(3);
+    });
+  }
   w.addSpacer();
-  const rest = family === 'large' ? R.items.slice(1) : [b || edge].filter(Boolean);
+  const rest = family === 'large' ? R.items.slice(1, 3) : [b || edge].filter(Boolean);
   rest.forEach((it, i) => {
     if (it === a) return;
     const row = w.addStack(); row.centerAlignContent();
