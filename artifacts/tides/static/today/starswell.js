@@ -1073,9 +1073,10 @@ var Engine = (function () {
     });
     pool.sort(function (a, b) { return (b.hits.length - a.hits.length) || (opts.rot('s-' + a.key) - opts.rot('s-' + b.key)); });
     var suits = pool.slice(0, 3).map(function (d) { return RB.weather.nouns[d.key] || d.label.toLowerCase(); });
-    var receipts = [];
-    motifs.forEach(function (m) { J.sup[m].events.forEach(function (x) { if (receipts.indexOf(x.e) < 0) receipts.push(x.e); }); });
-    receipts.sort(function (a, b) { return (a.tier === 'secondary') - (b.tier === 'secondary'); });
+    var receipts = [], wt = new Map();
+    motifs.forEach(function (m) { J.sup[m].events.forEach(function (x) { if (receipts.indexOf(x.e) < 0) receipts.push(x.e); wt.set(x.e, (wt.get(x.e) || 0) + x.w); }); });
+    // Strongest contributors to this weather line first, so the first receipt is the one that explains it.
+    receipts.sort(function (a, b) { return ((a.tier === 'secondary') - (b.tier === 'secondary')) || (wt.get(b) - wt.get(a)); });
     return { kind: earned ? 'do' : 'mode', level: level, motif: motif, motifs: motifs, cluster: cluster, coherence: coherence,
       modeLine: (function () { var r = opts.rot('line-' + (motif || cluster)); return byEl.length && r % 3 !== 0 ? byEl[Math.floor(r / 3) % byEl.length] : lines[r % lines.length]; })(), lines: lines, suits: suits, act: earned ? dos[0] : null, altActs: alts,
       lean: lean, receipts: receipts };
@@ -1374,12 +1375,18 @@ function nextRefresh(R) {
 }
 
 const ASP = { opposition: 'opposite', conjunction: 'with', square: 'square', trine: 'trine', sextile: 'sextile' };
-function cause(it) {
-  const r = (it && it.receipts || []).map(x => x.split(':')[0]).filter(h => !/^Moon in |hour$/.test(h))[0];
-  return r ? r.replace(/\b(opposition|conjunction|square|trine|sextile)\b/, m => ASP[m]) : '';
+function causes(it) {
+  return (it && it.receipts || []).map(x => x.split(':')[0]).filter(h => !/^Moon in |hour$/.test(h))
+    .map(h => h.replace(/\b(opposition|conjunction|square|trine|sextile)\b/, m => ASP[m]));
 }
-const hourOf = it => it && it.hourPlanet ? it.hourPlanet + ' hour' : '';
-const whyShort = w => w.why.filter(x => !/Moon in |waxing|waning/.test(x)).slice(0, 2).map(x => x.replace(/^an? /, '')).join(', ');
+const cause = (it, n) => causes(it).slice(0, n || 1).join(' and ');
+// Name the planetary hour only when the hour is part of the evidence for this line.
+// Name the hour in a label only when nothing stronger explains the line.
+const hourOf = it => it && it.hourPlanet && !causes(it).length && (it.receipts || []).some(r => r.indexOf(it.hourPlanet + ' hour') === 0) ? it.hourPlanet + ' hour' : '';
+const PL = /Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto/g;
+// Two reasons only when they share a planet, so the pair reads as one story.
+const whyShort = w => { const r = w.why.filter(x => !/Moon in |waxing|waning|void/.test(x)).map(x => x.replace(/^an? /, '')); if (!r.length) return ''; const p1 = (r[0].match(PL) || []).filter(p => p !== 'Moon'); const two = r.slice(1).find(x => (x.match(PL) || []).some(p => p1.indexOf(p) >= 0)); return two ? r[0] + ', ' + two : r[0]; };
+const suitsOf = it => it.suits ? 'Suits ' + it.suits : it.helps ? 'What helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1) : '';
 const capf = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 function todayBest(R, key) {
   const ws = R.find(key).windows, t = ws.filter(w => !/^tomorrow/i.test(w.when));
@@ -1418,7 +1425,7 @@ function buildWidget(R, family) {
     }
     const it = MODE === 'next' ? next : now;
     if (!it) { hd(R.moon.sign + ' Moon'); body(R.quiet, 3); return w; }
-    hd(MODE === 'next' ? stamp(R, it.start) + ' · ' + hourOf(it) : hourOf(it) + ' · until ' + R.clock(it.end));
+    hd((MODE === 'next' ? [stamp(R, it.start), hourOf(it)] : ['Now until ' + R.clock(it.end), hourOf(it)]).filter(Boolean).join(' · '));
     body(it.headline, 2);
     if (cause(it)) foot(cause(it));
     if (MODE !== 'next' && next) foot('Then ' + stamp(R, next.start) + ' · ' + next.headline.replace(/\.$/, ''));
@@ -1430,7 +1437,7 @@ function buildWidget(R, family) {
   const lab = (st, s, col) => txt(st, s.toUpperCase(), Font.semiboldSystemFont(9.5), col || C.brass, 1);
 
   if (family === 'small') {
-    lab(w, R.voidNow ? 'Void Moon · until ' + R.clock(R.voidNow.end) : now ? hourOf(now) + ' · til ' + R.clock(now.end) : R.moon.sign + ' Moon', C.foam);
+    lab(w, R.voidNow ? 'Void Moon · until ' + R.clock(R.voidNow.end) : now ? ['Til ' + R.clock(now.end), hourOf(now)].filter(Boolean).join(' · ') : R.moon.sign + ' Moon', C.foam);
     w.addSpacer();
     txt(w, R.voidNow ? R.voidNow.w : (now ? now.headline : R.quiet), serif(15), C.star, 5);
     w.addSpacer();
@@ -1449,19 +1456,21 @@ function buildWidget(R, family) {
   w.addSpacer(2);
   if (now) {
     txt(w, now.headline, serif(family === 'large' ? 19 : 16), C.star, 2);
-    const because = cause(now);
-    const sub = [because, now.suits ? 'suits ' + now.suits : now.helps ? 'what helps: ' + now.helps.charAt(0).toLowerCase() + now.helps.slice(1) : ''].filter(Boolean).join(' · ');
-    if (sub) { w.addSpacer(2); txt(w, capf(sub), Font.systemFont(11), C.dim, family === 'large' ? 2 : 1); }
-    if (watch && family === 'large') { w.addSpacer(3); txt(w, (watch.kind === 'guard' ? 'Edges: ' : 'Also: ') + watch.headline.charAt(0).toLowerCase() + watch.headline.slice(1) + (cause(watch) && cause(watch) !== because ? ' (' + cause(watch) + ')' : ''), Font.systemFont(11), C.ember, 2); }
+    const because = cause(now), suits = suitsOf(now);
+    if (family === 'large') {
+      if (because) { w.addSpacer(2); txt(w, 'From ' + because, Font.systemFont(10.5), C.foam, 1); }
+      if (suits) { w.addSpacer(1); txt(w, suits, Font.systemFont(11), C.dim, 2); }
+      if (watch) { w.addSpacer(3); txt(w, (watch.kind === 'guard' ? 'Edges too: ' : 'Also: ') + watch.headline.charAt(0).toLowerCase() + watch.headline.slice(1), Font.systemFont(11), C.ember, 1); }
+    } else if (because || suits) { w.addSpacer(2); txt(w, because ? 'From ' + because : suits, Font.systemFont(11), C.dim, 1); }
   } else txt(w, R.quiet, serif(16), C.star, 2);
 
   w.addSpacer();
   // 3. Next: the following hour, with its own time and cause.
   const row = (it, tag, col) => {
     const r = w.addStack(); r.layoutVertically();
-    lab(r, tag + ' · ' + stamp(R, it.start) + (it.hourPlanet ? ' · ' + hourOf(it) : ''), col);
+    lab(r, [tag + ' ' + stamp(R, it.start), hourOf(it)].filter(Boolean).join(' · '), col);
     txt(r, it.headline, serif(13.5), C.star, 1);
-    if (family === 'large') { const c2 = [cause(it), it.suits ? 'suits ' + it.suits : it.helps ? 'what helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1) : ''].filter(Boolean).join(' · '); if (c2) txt(r, capf(c2), Font.systemFont(10.5), C.dim, 1); }
+    if (family === 'large' && cause(it)) txt(r, 'From ' + cause(it), Font.systemFont(10.5), C.foam, 1);
   };
   if (next) row(next, 'Next', C.brass);
   if (edge && family === 'large') { w.addSpacer(6); row(edge, 'Edges', C.ember); }

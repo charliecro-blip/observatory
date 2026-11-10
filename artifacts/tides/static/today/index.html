@@ -1290,9 +1290,9 @@ var Engine = (function () {
     });
     pool.sort(function (a, b) { return (b.hits.length - a.hits.length) || (opts.rot('s-' + a.key) - opts.rot('s-' + b.key)); });
     var suits = pool.slice(0, 3).map(function (d) { return RB.weather.nouns[d.key] || d.label.toLowerCase(); });
-    var receipts = [];
-    motifs.forEach(function (m) { J.sup[m].events.forEach(function (x) { if (receipts.indexOf(x.e) < 0) receipts.push(x.e); }); });
-    receipts.sort(function (a, b) { return (a.tier === 'secondary') - (b.tier === 'secondary'); });
+    var receipts = [], wt = new Map();
+    motifs.forEach(function (m) { J.sup[m].events.forEach(function (x) { if (receipts.indexOf(x.e) < 0) receipts.push(x.e); wt.set(x.e, (wt.get(x.e) || 0) + x.w); }); });
+    receipts.sort(function (a, b) { return ((a.tier === 'secondary') - (b.tier === 'secondary')) || (wt.get(b) - wt.get(a)); });
     return { kind: earned ? 'do' : 'mode', level: level, motif: motif, motifs: motifs, cluster: cluster, coherence: coherence,
       modeLine: (function () { var r = opts.rot('line-' + (motif || cluster)); return byEl.length && r % 3 !== 0 ? byEl[Math.floor(r / 3) % byEl.length] : lines[r % lines.length]; })(), lines: lines, suits: suits, act: earned ? dos[0] : null, altActs: alts,
       lean: lean, receipts: receipts };
