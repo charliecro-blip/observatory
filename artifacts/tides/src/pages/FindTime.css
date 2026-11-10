@@ -914,3 +914,6 @@
 .report-coverage { border-top: 1px solid var(--color-border); padding-top: 12px; font: 400 13px/1.5 var(--font-sans); color: var(--text-3); }
 .report-coverage p { margin: 2px 0; }
 .report-against { margin: 4px 0 0; font: 400 13px/1.5 var(--font-sans); color: #8a5a20; }
+.report-save { margin-top: 6px; }
+.report-saved { margin: 6px 0 0; font: 400 13px/1.5 var(--font-sans); color: #3a6020; }
+.report-save-error { margin: 4px 0 0; font: 400 13px/1.5 var(--font-sans); color: #8a5a20; }

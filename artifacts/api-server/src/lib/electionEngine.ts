@@ -1037,8 +1037,18 @@ export function computeElections(opts: {
         const s = sep180(tl, nl);
         const near = [0, 60, 120].find(A => Math.abs(s - A) <= 2);
         if (near != null) {
+          const text = `${p} ${near === 0 ? "conjoins" : near === 120 ? "trines" : "sextiles"} your natal ${p}`;
+          // A slow planet holds 2° of its own place for weeks, so it cannot
+          // tell one window from another: said once, like a slow planet in the
+          // matter's house (owner 2026-10-08). Saturn alone was the only
+          // personal testimony on 3.2% of all windows (tools/natal-personal-drivers.ts).
+          if (SLOW.has(p)) {
+            const line = `${text}, a slow contact that holds through this stretch.`;
+            if (!cautions.includes(line)) cautions.push(line);
+            continue;
+          }
           daySources.push("natal-contact"); dayBoost *= 1.15;
-          dayWhy.push({ family: "personal", text: `${p} ${near === 0 ? "conjoins" : near === 120 ? "trines" : "sextiles"} your natal ${p}` });
+          dayWhy.push({ family: "personal", text });
           break;
         }
       }

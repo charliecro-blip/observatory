@@ -110,6 +110,69 @@ const BATCH2: Case[] = [
 ];
 for (const c of BATCH2) CASES.push({ ...c, batch: 2 });
 
+// BATCH 3, written 2026-10-07 before running it, after both earlier batches had
+// been tuned against. Same conventions ("by monday" is today through Monday;
+// "next week" is days 5–11). Its first score is recorded below; once it has
+// been tuned against, it too is only a regression check.
+// First run, 2026-10-07, untuned: 29/50 fully right (58%). Activity 30 right,
+// 16 asked, 4 wrong; when 48 right, 2 asked, 0 wrong.
+// Tuned against 2026-10-08 (owner's call, vocabulary only): 45/50 (90%), so
+// like batches 1 and 2 it is now a regression check. The next honest number
+// comes from real requests or a batch 4 written before running it.
+const BATCH3: Case[] = [
+  { text: "mow the lawn saturday morning", activity: "garden", when: { day: 3, part: "morning" } },
+  { text: "call my dad on sunday", activity: "call-family", when: { day: 4 } },
+  { text: "update my resume tomorrow", activity: ["apply-job", "edit-revise", "first-draft"], when: { day: 1 } },
+  { text: "submit my grant application by monday", activity: "apply-job", when: { days: [0, 5] } },
+  { text: "do my taxes this weekend", activity: ["budget", "admin-errands"], when: { days: [3, 4] } },
+  { text: "swim laps thursday morning", activity: ["train-hard", "endurance"], when: { day: 1, part: "morning" } },
+  { text: "half marathon training run saturday", activity: "endurance", when: { day: 3 } },
+  { text: "a massage friday afternoon", activity: ["deep-rest", "haircut"], when: { day: 2, part: "afternoon" } },
+  { text: "get my nails done tomorrow", activity: "haircut", when: { day: 1 } },
+  { text: "paint the bedroom this weekend", activity: ["beautify", "repair"], when: { days: [3, 4] } },
+  { text: "organize my closet tonight", activity: "organize", when: { day: 0, part: "evening" } },
+  { text: "vacuum and mop", activity: "deep-clean", when: "default" },
+  { text: "bake bread sunday morning", activity: ["cook", "creative-practice"], when: { day: 4, part: "morning" } },
+  { text: "grocery shopping tomorrow evening", activity: ["cook", "admin-errands"], when: { day: 1, part: "evening" } },
+  { text: "host game night saturday evening", activity: "host", when: { day: 3, part: "evening" } },
+  { text: "coffee with a new coworker tuesday", activity: ["network", "meet-someone-new"], when: { day: 6 } },
+  { text: "talk to my partner about moving in together", activity: ["define-relationship", "hard-conversation"], when: "default" },
+  { text: "make up with Alex after our fight", activity: "repair-bond", when: "default" },
+  { text: "anniversary dinner friday", activity: ["deepen-bond", "first-date"], when: { day: 2 } },
+  { text: "set up a dating profile tonight", activity: "dating-profile", when: { day: 0, part: "evening" } },
+  { text: "ask my landlord to lower the rent", activity: "negotiate", when: "default" },
+  { text: "open a savings account monday", activity: ["budget", "admin-errands"], when: { day: 5 } },
+  { text: "buy a laptop this weekend", activity: "big-purchase", when: { days: [3, 4] } },
+  { text: "refinance the student loans", activity: "settle-debts", when: "default" },
+  { text: "sign the offer letter tomorrow morning", activity: ["sign-contract", "apply-job"], when: { day: 1, part: "morning" } },
+  { text: "close on the house oct 23", activity: ["move-home", "sign-contract", "big-purchase"], when: { day: 16 } },
+  { text: "release my album friday", activity: "publish", when: { day: 2 } },
+  { text: "launch the online store next week", activity: ["launch-venture", "publish"], when: { days: [5, 11] } },
+  { text: "hit publish on the blog post tomorrow afternoon", activity: "publish", when: { day: 1, part: "afternoon" } },
+  { text: "45 minutes of spanish practice tonight", activity: "learn-skill", when: { day: 0, part: "evening" }, minutes: 45 },
+  { text: "cram for the exam thursday night", activity: "deep-study", when: { day: 1, part: "evening" } },
+  { text: "outline the novel saturday", activity: ["first-draft", "strategize"], when: { day: 3 } },
+  { text: "proofread the thesis monday morning", activity: ["edit-revise", "finish-polish"], when: { day: 5, part: "morning" } },
+  { text: "map out Q4 goals friday", activity: "strategize", when: { day: 2 } },
+  { text: "dig into the census data tomorrow", activity: ["investigate", "deep-study"], when: { day: 1 } },
+  { text: "three hours of focused coding tuesday", activity: "deep-work", when: { day: 6 }, minutes: 180 },
+  { text: "teach my pottery class saturday afternoon", activity: "teach-present", when: { day: 3, part: "afternoon" } },
+  { text: "new moon intention setting", activity: "set-intention", when: "default" },
+  { text: "pull cards tonight", activity: "divination", when: { day: 0, part: "evening" } },
+  { text: "scatter grandpa's ashes sunday", activity: "release", when: { day: 4 } },
+  { text: "cabin trip by myself this weekend", activity: "retreat", when: { days: [3, 4] } },
+  { text: "water the tomatoes", activity: "garden", when: "default" },
+  { text: "pick up a prescription friday", activity: "admin-errands", when: { day: 2 } },
+  { text: "go to the gym", activity: "train-hard", when: "default" },
+  { text: "sleep in sunday", activity: "deep-rest", when: { day: 4 } },
+  { text: "fold laundry", activity: ["deep-clean", "organize"], when: "default" },
+  { text: "renew my passport", activity: "admin-errands", when: "default" },
+  { text: "start keto monday", activity: "start-regimen", when: { day: 5 } },
+  { text: "fix the wobbly table tonight", activity: "repair", when: { day: 0, part: "evening" } },
+  { text: "write thank-you notes thursday afternoon", activity: ["first-draft", "deepen-bond", "admin-errands"], when: { day: 1, part: "afternoon" } },
+];
+for (const c of BATCH3) CASES.push({ ...c, batch: 3 });
+
 const TZ = "America/Chicago";
 const NOW = new Date("2026-10-07T14:00:00Z");   // 9:00 AM CDT, a Wednesday
 const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ });
@@ -150,12 +213,12 @@ for (const c of CASES) {
   rows.push({ batch: c.batch ?? 1, text: c.text, act, when, dur, note: [got && act === "wrong" ? `activity ${got}` : r.state !== "resolved" ? `activity ${r.state}` : "", whenNote, dur === "wrong" ? `duration ${r.durationMinutes ?? "none"}` : ""].filter(Boolean).join(" · ") });
 }
 
-for (const batch of [1, 2]) {
+for (const batch of [1, 2, 3]) {
   const b = rows.filter(r => r.batch === batch);
   const pct = (n: number) => `${Math.round((n / b.length) * 100)}%`;
   const count = (k: "act" | "when", v: Verdict) => b.filter(r => r[k] === v).length;
   const both = b.filter(r => r.act === "right" && r.when === "right" && r.dur !== "wrong").length;
-  console.log(`\nTiming interpreter, batch ${batch} (${b.length} requests)${batch === 1 ? ", tuned against: a regression check" : ""}\n`);
+  console.log(`\nTiming interpreter, batch ${batch} (${b.length} requests), tuned against: a regression check\n`);
   console.log(`Fully right, no question asked: ${both} (${pct(both)})`);
   console.log(`Activity  right ${count("act", "right")} · asked ${count("act", "asked")} · WRONG ${count("act", "wrong")}`);
   console.log(`When      right ${count("when", "right")} · asked ${count("when", "asked")} · WRONG ${count("when", "wrong")}\n`);

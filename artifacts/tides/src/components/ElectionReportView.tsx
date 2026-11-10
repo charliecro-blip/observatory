@@ -1,6 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Action from "@/components/Action";
 import { useTester } from "@/contexts/tester-context";
+import { timingIcal } from "@/lib/timingQuery";
+import { invalidateWindows } from "@/lib/invalidateWindows";
+import { logEvent } from "@/lib/analytics";
 
 /** The shape /api/timing/report returns (api-server/src/lib/electionReport.ts). */
 interface Pick {
@@ -8,6 +12,8 @@ interface Pick {
   broad: boolean; tier: "good" | "great"; evidence: string[]; objections: string[]; personal: boolean;
   availability: "clear" | "conflict" | "unchecked" | "unavailable";
   alsoThatDay: { startClock: string; endClock: string }[];
+  /** The search /timing/choose re-runs to save this window; null when it can't be chosen. */
+  choice: Record<string, unknown> | null;
 }
 interface Report {
   status: "complete" | "partial" | "error" | "unsupported";
@@ -31,7 +37,17 @@ const dayLabel = (key: string) =>
   new Date(`${key}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-function PickRow({ p, calendarChecked }: { p: Pick; calendarChecked: boolean }) {
+/** Saving a pick: the same /timing/choose Find a time uses, so the server re-checks it first. */
+interface Saving {
+  busyId: string | null;
+  saved: Map<string, number>;
+  error: { id: string; text: string } | null;
+  save: (p: Pick) => void;
+  download: (p: Pick) => void;
+}
+
+function PickRow({ p, calendarChecked, saving }: { p: Pick; calendarChecked: boolean; saving: Saving }) {
+  const savedId = saving.saved.get(p.id);
   return (
     <li className="report-pick">
       <p className="report-when">
@@ -50,6 +66,10 @@ function PickRow({ p, calendarChecked }: { p: Pick; calendarChecked: boolean }) 
       {p.alsoThatDay.length > 0 && (
         <p className="report-also">Also that day: {p.alsoThatDay.map((a) => `${a.startClock} to ${a.endClock}`).join(", ")}.</p>
       )}
+      {p.choice && (savedId == null
+        ? <Action variant="text" className="report-save" disabled={saving.busyId != null} onClick={() => saving.save(p)}>Save this time</Action>
+        : <p className="report-saved" role="status">Saved to your Compass calendar. <Action variant="text" onClick={() => saving.download(p)}>Download calendar event</Action></p>)}
+      {saving.error?.id === p.id && <p className="report-save-error" role="alert">{saving.error.text}</p>}
     </li>
   );
 }
@@ -64,6 +84,11 @@ export default function ElectionReportView({ activity, days, timeZone, onBack }:
 }) {
   const { profile, lat, lon, locationKnown } = useTester();
   const testerId = profile?.testerId ?? null;
+  const qc = useQueryClient();
+  const keys = useRef(new Map<string, string>());
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [saved, setSaved] = useState(new Map<string, number>());
+  const [saveError, setSaveError] = useState<Saving["error"]>(null);
   const { data, isLoading, isError, refetch } = useQuery<Report>({
     queryKey: ["election-report", testerId, activity, days, timeZone, lat, lon],
     enabled: !!testerId && locationKnown,
@@ -85,6 +110,47 @@ export default function ElectionReportView({ activity, days, timeZone, onBack }:
 
   if (!locationKnown)
     return <main className="timing-main report"><p>Set your location in Settings first. The times depend on where you are.</p><Action onClick={onBack}>Back</Action></main>;
+
+  const title = data?.activity?.label ?? "Chosen time";
+  async function save(p: Pick) {
+    // One key per pick, so a retry after a dropped response finds the saved row.
+    const choiceKey = keys.current.get(p.id) ?? crypto.randomUUID();
+    keys.current.set(p.id, choiceKey);
+    setBusyId(p.id);
+    setSaveError(null);
+    try {
+      const r = await fetch("/api/timing/choose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-tester-id": testerId! },
+        body: JSON.stringify({ query: p.choice, choiceKey, candidateId: p.id, title }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok || !body.window) {
+        setSaveError({ id: p.id, text: body.error === "choice_needs_review"
+          ? "Compass checked this time again before saving and it no longer fits, so nothing was saved. Reload the report to see the times that do."
+          : "Compass couldn’t save this time; try again in a moment." });
+        return;
+      }
+      setSaved((m) => new Map(m).set(p.id, body.window.id));
+      invalidateWindows(qc);
+      logEvent("timing_window_chosen", { source: "report", activity, windowId: body.window.id });
+    } catch {
+      setSaveError({ id: p.id, text: "Compass couldn’t save this time; try again in a moment." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+  function download(p: Pick) {
+    const id = saved.get(p.id);
+    if (id == null) return;
+    const url = URL.createObjectURL(new Blob([timingIcal(id, title, p.start, p.end, new Date())], { type: "text/calendar;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "compass-time.ics";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  const saving: Saving = { busyId, saved, error: saveError, save, download };
 
   const c = data?.coverage;
   const calendarChecked = c?.calendar === "checked";
@@ -110,12 +176,12 @@ export default function ElectionReportView({ activity, days, timeZone, onBack }:
             <h2>Best times</h2>
             {data.picks.length === 0
               ? <p>The engine found no open time in these {days} days.</p>
-              : <ol className="report-list">{data.picks.map((p) => <PickRow key={p.id} p={p} calendarChecked={calendarChecked} />)}</ol>}
+              : <ol className="report-list">{data.picks.map((p) => <PickRow key={p.id} p={p} calendarChecked={calendarChecked} saving={saving} />)}</ol>}
           </section>
           {data.busyButStrong.length > 0 && (
             <section>
               <h2>Strong times your calendar already holds</h2>
-              <ol className="report-list">{data.busyButStrong.map((p) => <PickRow key={p.id} p={p} calendarChecked={calendarChecked} />)}</ol>
+              <ol className="report-list">{data.busyButStrong.map((p) => <PickRow key={p.id} p={p} calendarChecked={calendarChecked} saving={saving} />)}</ol>
             </section>
           )}
           {data.afterClears && (
@@ -127,7 +193,7 @@ export default function ElectionReportView({ activity, days, timeZone, onBack }:
                   ? `The engine found no time in the ${data.afterClears.searchedDays} days after that.`
                   : `The best times in the ${data.afterClears.searchedDays} days after that, without a calendar check:`}
               </p>
-              {data.afterClears.picks.length > 0 && <ol className="report-list">{data.afterClears.picks.map((p) => <PickRow key={p.id} p={p} calendarChecked={false} />)}</ol>}
+              {data.afterClears.picks.length > 0 && <ol className="report-list">{data.afterClears.picks.map((p) => <PickRow key={p.id} p={p} calendarChecked={false} saving={saving} />)}</ol>}
             </section>
           )}
           {data.avoid.length > 0 && (

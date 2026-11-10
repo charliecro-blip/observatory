@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { computeNatalChart } from "../artifacts/api-server/src/lib/natal";
 import { buildElectionReport } from "../artifacts/api-server/src/lib/electionReport";
+import { searchTiming } from "../artifacts/api-server/src/lib/timingSearch";
+import { presentTiming } from "../artifacts/api-server/src/lib/timingPresentation";
 
 // Anchored: Sunday 2026-10-04, 10:00 AM in Austin. Venus stationed retrograde
 // Oct 3 and turns direct Nov 13; the Moon is void on the dates asserted below.
@@ -75,6 +77,28 @@ describe("election report", () => {
     expect(notLinked.picks.length).toBeGreaterThan(0);
     expect(notLinked.picks.every((p) => p.availability === "unavailable")).toBe(true);
     expect(off(true).coverage.calendar).toBe("unavailable");
+  });
+
+  it("hands each pick the search /timing/choose re-runs, and that search gives the same window back", () => {
+    const calendar = input("haircut").calendar;
+    const offered = [...r.picks, ...(r.afterClears?.picks ?? [])].filter((p) => p.choice);
+    expect(offered.length).toBeGreaterThan(0);
+    for (const p of offered) {
+      // What computeFor in routes/timing.ts builds from the query alone.
+      const { useNatal, checkCalendar, ...q } = p.choice!;
+      const again = presentTiming(searchTiming({ ...q, natal: useNatal ? { chart, timeKnown: true } : undefined, calendar: checkCalendar ? calendar : undefined } as any));
+      const c = again.candidates.find((x) => x.id === p.id);
+      expect(c, p.date).toBeDefined();
+      // The checks choose makes before saving.
+      expect(c!.broad || c!.shortfall || c!.suitability === "defer").toBe(false);
+      expect(c!.availability.status).toBe(checkCalendar ? "clear" : "unchecked");
+    }
+    // Picks after the station were scanned without a calendar, so choose doesn't check one.
+    for (const p of r.afterClears?.picks ?? []) expect(p.choice?.checkCalendar ?? false).toBe(false);
+  });
+
+  it("offers no choice on a whole day or a time the calendar holds", () => {
+    for (const p of [...r.picks, ...r.busyButStrong]) if (p.broad || p.availability === "conflict") expect(p.choice, p.date).toBeNull();
   });
 
   it("refuses an activity it does not know instead of guessing", () => {

@@ -23,7 +23,7 @@ import { ELEMENT_COLORS } from "@/lib/elements";
 import { useDialog } from "@/hooks/useDialog";
 import AlmanacView from "@/components/AlmanacView";
 import { moonLine } from "@/lib/moonLine";
-import { DaylightLine } from "@/components/DaylightLine";
+import { DaylightLine, DaylightMarks } from "@/components/DaylightLine";
 import { usePerfections, ExactList, aspectColor, perfectionGlyphs, perfectionWords } from "@/components/ExactAspects";
 
 const DEFAULT_LAT = 40.7, DEFAULT_LON = -74.0;
@@ -852,6 +852,8 @@ function TimeGrid({ dates, dataMap, windowsMap, eventsMap, vocSpans, gcalMap, ca
                       </div>
                     );
                   })}
+
+                  {isDay && <DaylightMarks dateStr={dateStr} hourStart={HOUR_START} hours={HOURS} rowH={ROW_H} left={PLANET_BAR_W} />}
 
                   {/* Aspect crossing lines — only with real location */}
                   {!skyQuiet && crossings.map((c:any,ci:number) => {

@@ -184,7 +184,16 @@ export function getPlanetPositions(jd: number) {
 
   for (const name of ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron"] as const) {
     const geo = geocentricLongitude(name, jd);
-    results.push({ planet: name, longitude: geo, retrograde: isRetrograde(name, jd), ...longitudeToSign(geo) });
+    // Motion costs two more ephemeris evaluations per planet, and most callers
+    // (the aspect scans, which take positions every six hours across a
+    // fortnight) never read it. Computed on first read, the same value as
+    // before; enumerable, so spreads and JSON still carry it.
+    let rx: boolean | undefined;
+    results.push({
+      planet: name, longitude: geo, ...longitudeToSign(geo),
+      get retrograde() { return (rx ??= isRetrograde(name, jd)); },
+      set retrograde(v: boolean) { rx = v; },
+    });
   }
 
   return results;
