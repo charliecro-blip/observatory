@@ -1373,13 +1373,31 @@ function nextRefresh(R) {
   return new Date(Math.min.apply(null, cands));
 }
 
+const ASP = { opposition: 'opposite', conjunction: 'with', square: 'square', trine: 'trine', sextile: 'sextile' };
+function cause(it) {
+  const r = (it && it.receipts || []).map(x => x.split(':')[0]).filter(h => !/^Moon in |hour$/.test(h))[0];
+  return r ? r.replace(/\b(opposition|conjunction|square|trine|sextile)\b/, m => ASP[m]) : '';
+}
+const hourOf = it => it && it.hourPlanet ? it.hourPlanet + ' hour' : '';
+const whyShort = w => w.why.filter(x => !/Moon in |waxing|waning/.test(x)).slice(0, 2).map(x => x.replace(/^an? /, '')).join(', ');
+const capf = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function todayBest(R, key) {
+  const ws = R.find(key).windows, t = ws.filter(w => !/^tomorrow/i.test(w.when));
+  return { today: t.slice().sort((x, y) => y.score - x.score)[0] || null, later: ws.find(w => /^tomorrow/i.test(w.when)) || null };
+}
+
 function buildWidget(R, family) {
   const w = new ListWidget();
   w.url = 'scriptable:///run/' + encodeURIComponent(Script.name());
   w.refreshAfterDate = nextRefresh(R);
-  const [a, b, c] = R.items, edge = R.items.find(i => i.kind === 'guard');
+  const now = R.items.find(i => i.live && i.kind !== 'attend' && i.kind !== 'guard') || R.items.find(i => i.live);
+  const watch = R.items.find(i => i.live && i !== now && (i.kind === 'attend' || i.kind === 'guard'));
+  const next = R.items.find(i => !i.live && i.kind !== 'guard' && i.kind !== 'attend');
+  const edge = R.items.find(i => !i.live && i.kind === 'guard');
+  const dayCtx = R.dayLine;                                   // "Mars's day · Moon in Sagittarius": true all day
+  const nowCtx = now ? ['Now', hourOf(now), now.end ? 'until ' + R.clock(now.end) : ''].filter(Boolean).join(' · ') : 'Now';
 
-  if (family === 'accessoryInline') { w.addText((R.voidNow ? '☽ void · ' : '') + (a ? a.headline.replace(/\.$/, '') : 'A quiet stretch')); return w; }
+  if (family === 'accessoryInline') { w.addText((R.voidNow ? '☽ void · ' : '') + (now ? now.headline.replace(/\.$/, '') : 'A quiet stretch')); return w; }
   if (family === 'accessoryCircular') {
     const s = w.addStack(); s.layoutVertically(); s.centerAlignContent();
     txt(s, R.voidNow ? '☽○' : '☽', Font.systemFont(16), Color.white()); txt(s, R.moon.sign.slice(0, 3), Font.boldSystemFont(11), Color.white());
@@ -1388,82 +1406,79 @@ function buildWidget(R, family) {
   if (family === 'accessoryRectangular') {
     const W = Color.white(), hd = s => txt(w, s.toUpperCase(), Font.boldSystemFont(10), W, 1);
     const body = (s, n) => txt(w, s, Font.systemFont(12.5), W, n), foot = s => txt(w, s, Font.systemFont(10.5), W, 1);
-    const span = it => (it.live ? 'Now' : R.clock(it.start)) + (it.end ? '–' + R.clock(it.end) : '');
     const act = LOCK_ACTS[MODE];
     if (act) {
-      const f = R.find(act), best = bestTime(R, act, f.windows);
-      hd(MODE + (best ? ' · ' + best.strength : ''));
-      if (!best) { body('No clear window left today.', 2); foot('Try tomorrow morning'); return w; }
-      body(tight(best.when), 1);
-      const why = best.why.slice(0, 2).join(', '); foot(why.charAt(0).toUpperCase() + why.slice(1));
-      const more = f.windows.filter(x => x !== best && x.when !== best.when)[0];
-      if (more) foot('Also ' + tight(more.when).replace(/^Tomorrow/, 'tmrw'));
+      const b = todayBest(R, act);
+      hd(MODE + ' · rest of today');
+      if (!b.today) { body('No clear window left today.', 1); if (b.later) foot('Tmrw ' + tight(b.later.when.replace(/^Tomorrow /, ''))); return w; }
+      body(tight(b.today.when) + ' · ' + b.today.strength, 1);
+      foot(capf(whyShort(b.today)));
+      if (b.later) foot('Tmrw ' + tight(b.later.when.replace(/^Tomorrow /, '')));
       return w;
     }
-    const it = MODE === 'next' ? (R.items.find(i => !i.live) || a) : a;
+    const it = MODE === 'next' ? next : now;
     if (!it) { hd(R.moon.sign + ' Moon'); body(R.quiet, 3); return w; }
-    hd((it.kind === 'guard' ? 'Edges ' : '') + (dayKey(it.start) === dayKey(Date.now()) || it.live ? '' : 'Tmrw ') + span(it) + ' · ' + R.moon.sign + (R.voidNow ? ' · void' : ''));
+    hd(MODE === 'next' ? stamp(R, it.start) + ' · ' + hourOf(it) : hourOf(it) + ' · until ' + R.clock(it.end));
     body(it.headline, 2);
-    const nx = R.items.find(i => i !== it && +i.start > +it.start);
-    if (it.suits) foot('Suits ' + it.suits);
-    else if (it.helps) foot('Helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1));
-    if (MODE !== 'next' && nx) foot('Then ' + stamp(R, nx.start) + ' · ' + nx.headline.replace(/\.$/, ''));
-    else if (R.voidNext && !R.voidNow) foot('Void Moon ' + R.clock(R.voidNext.start));
+    if (cause(it)) foot(cause(it));
+    if (MODE !== 'next' && next) foot('Then ' + stamp(R, next.start) + ' · ' + next.headline.replace(/\.$/, ''));
     return w;
   }
 
   w.backgroundColor = R.voidNow ? C.swell : C.night;
   w.setPadding(14, 16, 14, 16);
-  const head = w.addStack(); head.centerAlignContent();
-  txt(head, (family === 'small' ? (R.voidNow ? 'VOID MOON' : (a ? a.label : 'STARSWELL')) : SETTINGS.focus === 'day' ? 'WHOLE DAY' : R.focusName.toUpperCase()).toUpperCase(), Font.semiboldSystemFont(10), C.foam, 1);
-  head.addSpacer();
-  txt(head, family === 'small' ? (a ? short(a, R) : '') : SETTINGS.city.toUpperCase(), Font.semiboldSystemFont(10), C.foam, 1);
-  w.addSpacer(4);
+  const lab = (st, s, col) => txt(st, s.toUpperCase(), Font.semiboldSystemFont(9.5), col || C.brass, 1);
 
   if (family === 'small') {
+    lab(w, R.voidNow ? 'Void Moon · until ' + R.clock(R.voidNow.end) : now ? hourOf(now) + ' · til ' + R.clock(now.end) : R.moon.sign + ' Moon', C.foam);
     w.addSpacer();
-    txt(w, R.voidNow ? R.voidNow.w : (a ? a.headline : R.quiet), serif(15), C.star, 5);
+    txt(w, R.voidNow ? R.voidNow.w : (now ? now.headline : R.quiet), serif(15), C.star, 5);
     w.addSpacer();
-    txt(w, R.voidNow ? 'until ' + R.when(R.voidNow.end) : (a && a.suits ? a.suits : R.dayLine), Font.systemFont(10.5), C.dim, 2);
+    txt(w, now && cause(now) ? cause(now) : dayCtx, Font.systemFont(10), C.dim, 2);
     return w;
   }
 
-  txt(w, R.dayLine + (a && a.live && a.end ? ' · now until ' + R.clock(a.end) : ''), Font.systemFont(11), C.dim, 1);
-  w.addSpacer(6);
-  if (a) {
-    txt(w, a.headline, serif(family === 'large' ? 19 : 16.5), C.star, family === 'large' ? 3 : 2);
-    const sub = a.suits ? 'Suits ' + a.suits : a.helps ? 'What helps: ' + a.helps.charAt(0).toLowerCase() + a.helps.slice(1) : '';
-    const line2 = a.live ? sub : a.when + (sub ? ' · ' + sub : '');
-    if (line2) { w.addSpacer(2); txt(w, line2, Font.systemFont(11), C.dim, family === 'large' ? 2 : 1); }
-  } else txt(w, R.quiet, serif(16.5), C.star, 2);
+  // 1. The day: what holds from morning to night.
+  const head = w.addStack(); head.centerAlignContent();
+  lab(head, dayCtx, C.foam); head.addSpacer(); lab(head, SETTINGS.city, C.foam);
+  if (R.voidNow) { w.addSpacer(2); txt(w, 'Void Moon until ' + R.when(R.voidNow.end), Font.systemFont(10.5), C.foam, 1); }
+  w.addSpacer(family === 'large' ? 10 : 6);
+
+  // 2. Now: this planetary hour, and what in the sky is making it feel this way.
+  lab(w, nowCtx);
+  w.addSpacer(2);
+  if (now) {
+    txt(w, now.headline, serif(family === 'large' ? 19 : 16), C.star, 2);
+    const because = cause(now);
+    const sub = [because, now.suits ? 'suits ' + now.suits : now.helps ? 'what helps: ' + now.helps.charAt(0).toLowerCase() + now.helps.slice(1) : ''].filter(Boolean).join(' · ');
+    if (sub) { w.addSpacer(2); txt(w, capf(sub), Font.systemFont(11), C.dim, family === 'large' ? 2 : 1); }
+    if (watch && family === 'large') { w.addSpacer(3); txt(w, (watch.kind === 'guard' ? 'Edges: ' : 'Also: ') + watch.headline.charAt(0).toLowerCase() + watch.headline.slice(1) + (cause(watch) && cause(watch) !== because ? ' (' + cause(watch) + ')' : ''), Font.systemFont(11), C.ember, 2); }
+  } else txt(w, R.quiet, serif(16), C.star, 2);
+
+  w.addSpacer();
+  // 3. Next: the following hour, with its own time and cause.
+  const row = (it, tag, col) => {
+    const r = w.addStack(); r.layoutVertically();
+    lab(r, tag + ' · ' + stamp(R, it.start) + (it.hourPlanet ? ' · ' + hourOf(it) : ''), col);
+    txt(r, it.headline, serif(13.5), C.star, 1);
+    if (family === 'large') { const c2 = [cause(it), it.suits ? 'suits ' + it.suits : it.helps ? 'what helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1) : ''].filter(Boolean).join(' · '); if (c2) txt(r, capf(c2), Font.systemFont(10.5), C.dim, 1); }
+  };
+  if (next) row(next, 'Next', C.brass);
+  if (edge && family === 'large') { w.addSpacer(6); row(edge, 'Edges', C.ember); }
+
+  // 4. Best times: only windows still ahead today, each with the reason.
   if (family === 'large') {
-    w.addSpacer(14);
-    txt(w, 'BEST TIMES TODAY', Font.semiboldSystemFont(9.5), C.foam, 1);
-    w.addSpacer(4);
+    w.addSpacer(10);
+    lab(w, 'Best times, rest of today', C.foam);
+    w.addSpacer(3);
     [['Workout', 'train-hard'], ['Focus', 'deep-work'], ['People', 'call-family'], ['Wind down', 'deep-rest']].forEach(([name, key]) => {
-      const bt = bestTime(R, key), row = w.addStack(); row.centerAlignContent();
-      const l = txt(row, name, Font.semiboldSystemFont(11), C.brass, 1); row.addSpacer(8);
-      txt(row, bt ? tight(bt.when) : 'no clear window', Font.systemFont(11.5), C.star, 1);
-      row.addSpacer();
-      if (bt) txt(row, bt.strength, Font.systemFont(10), C.foam, 1);
-      w.addSpacer(3);
+      const b = todayBest(R, key), r = w.addStack(); r.centerAlignContent();
+      const n = txt(r, name, Font.semiboldSystemFont(11), C.brass, 1); r.addSpacer(8);
+      if (b.today) { txt(r, tight(b.today.when), Font.systemFont(11.5), C.star, 1); r.addSpacer(); txt(r, whyShort(b.today), Font.systemFont(10), C.foam, 1); }
+      else { txt(r, 'none left today', Font.systemFont(11.5), C.dim, 1); r.addSpacer(); if (b.later) txt(r, 'tmrw ' + tight(b.later.when.replace(/^Tomorrow /, '')), Font.systemFont(10), C.foam, 1); }
+      w.addSpacer(2);
     });
   }
-  w.addSpacer();
-  const rest = family === 'large' ? R.items.slice(1, 3) : [b || edge].filter(Boolean);
-  rest.forEach((it, i) => {
-    if (it === a) return;
-    const row = w.addStack(); row.centerAlignContent();
-    const lab = txt(row, it.kind === 'guard' ? 'EDGES' : it.kind === 'attend' ? 'NOTICE' : 'THEN', Font.semiboldSystemFont(9.5), it.kind === 'guard' ? C.ember : C.brass, 1);
-    row.addSpacer(6);
-    txt(row, it.headline, serif(13), C.star, family === 'large' ? 2 : 1);
-    row.addSpacer(6);
-    txt(row, short(it, R).replace('Edges ', ''), Font.systemFont(10.5), C.foam, 1);
-    if (family === 'large') {
-      if (it.suits || it.helps) { const s2 = w.addStack(); s2.addSpacer(42); txt(s2, it.suits ? 'Suits ' + it.suits : 'What helps: ' + it.helps.charAt(0).toLowerCase() + it.helps.slice(1), Font.systemFont(10.5), C.dim, 2); }
-      w.addSpacer(8);
-    }
-  });
   return w;
 }
 
