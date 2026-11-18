@@ -503,7 +503,7 @@ var Sky = (function () {
   }
   function mercuryRx(date) { return norm(eclon('Mercury', new Date(+date + 864e5)) - eclon('Mercury', date) + 180) - 180 < 0; }
 
-  return { lunarTimeline: lunarTimeline, mercuryRx: mercuryRx, positions: positions, signOf: signOf, moonAspects: moonAspects, skyAspects: skyAspects, voidMoon: voidMoon, CLASSICAL: CLASSICAL, scan: scan, zodiacal: zodiacal, eclon: eclon, dms: dms, CHALDEAN: CHALDEAN, offsetMin: offsetMin, localYMD: localYMD, SIGNS: SIGNS };
+  return { chartAngles: chartAngles, lunarTimeline: lunarTimeline, mercuryRx: mercuryRx, positions: positions, signOf: signOf, moonAspects: moonAspects, skyAspects: skyAspects, voidMoon: voidMoon, CLASSICAL: CLASSICAL, scan: scan, zodiacal: zodiacal, eclon: eclon, dms: dms, CHALDEAN: CHALDEAN, offsetMin: offsetMin, localYMD: localYMD, SIGNS: SIGNS };
 })();
 
 // Rulebook data for the Compass daily prototype. Mirrors the Daily Orientation Rulebook doc (draft, Oct 31 2026).
@@ -1357,9 +1357,9 @@ var StarswellPlan = (function () {
       tl = Sky.lunarTimeline(new Date(+now - 2.7 * DAY), new Date(+now + (HORIZON + 0.5) * DAY), 60);  // hour-level planning: a 60-minute step is plenty
       if (cache) { try { cache.write(JSON.stringify({ bucket: bucket, lat: o.lat, lon: o.lon, tl: tl })); } catch (e) {} }
     }
-    var seen = {}, out = [], end = +now + HORIZON * DAY;
+    var seen = {}, out = [], end = +now + HORIZON * DAY, scansKept = [];
     for (var k = 0; k < HORIZON; k += 2) {
-      var at = new Date(+now + k * DAY), sky = Sky.scan(o.lat, o.lon, tz, at);
+      var at = new Date(+now + k * DAY), sky = Sky.scan(o.lat, o.lon, tz, at); scansKept.push(sky);
       var ctx = { clock: String, dayClock: String, zangles: sky.angles.map(function (a) { return { planet: a.planet, kind: a.kind, at: a.start, sky: a.start, approx: true }; }), standing: Sky.skyAspects(at), timeline: tl, mercRx: Sky.mercuryRx(at) };
       sky.hours.forEach(function (h) {
         if (seen[+h.start] || +h.end <= +now || +h.start > end) return;
@@ -1369,37 +1369,76 @@ var StarswellPlan = (function () {
         out.push({ h: h, ev: Engine.evidence(h, mid, ctx), out: null });
       });
     }
-    return out.sort(function (a, b) { return a.h.start - b.h.start; });
+    out.sort(function (a, b) { return a.h.start - b.h.start; });
+    out.tl = tl; out.scans = scansKept;
+    return out;
   }
 
   // How many reminders fit in the next 8 days for "N per day / week / month".
   function quota(g) { var n = Math.max(1, g.times || 1); return g.per === 'day' ? n * HORIZON : g.per === 'month' ? Math.max(1, Math.round(n * HORIZON / 30)) : Math.max(1, Math.round(n * HORIZON / 7)); }
 
+  // One word per planet, for people who want almost no language. The astrology is one tap away.
+  var WORD = { Sun: 'Shine', Moon: 'Feel', Mercury: 'Think', Venus: 'Enjoy', Mars: 'Push', Jupiter: 'Grow', Saturn: 'Focus', Uranus: 'Spark', Neptune: 'Drift', Pluto: 'Deepen' };
+  var ANGLE = { rise: { w: 3, say: 'rising' }, mc: { w: 3, say: 'on the MC' }, set: { w: 2.2, say: 'setting' }, ic: { w: 2, say: 'on the IC' } };
+  var SOFT = { trine: 1, sextile: 1 }, HARD = { square: 1, opposition: 1 };
+  var ACTS = {}; RULES.acts.forEach(function (x) { ACTS[x.key] = x; });
+
+  // Crossings first: a planet the activity needs, crossing an angle, is the sharpest marker of a
+  // short stretch of time. Lunar aspects, the planetary hour and the rising sign then rank them.
+  function crossings(o, act, scans, tl) {
+    var A = ACTS[act], P = A.planets || {}, out = [], seen = {}, wake = o.wake == null ? 6.5 : o.wake, sleep = o.sleep == null ? 22.5 : o.sleep;
+    scans.forEach(function (sky) {
+      sky.angles.forEach(function (an) {
+        if (!P[an.planet] || !ANGLE[an.kind]) return;
+        var t = Sky.zodiacal(an.planet, an.kind, an.start, o.lat, o.lon) || an.start, id = an.planet + an.kind + Math.round(+t / 6e5);
+        if (seen[id] || +t < +o.now + 10 * 60000 || +t > +o.now + HORIZON * DAY) return; seen[id] = 1;
+        var lh = localHour(t, o.tz); if (lh < wake || lh >= sleep - 0.25) return;
+        var why = [an.planet + ' ' + ANGLE[an.kind].say], score = P[an.planet] * ANGLE[an.kind].w, warn = [];
+        // Lunar aspects to the activity's planets within two hours.
+        tl.perfections.forEach(function (p) {
+          if (!P[p.planet] || Math.abs(p.t - t) > 2 * 3600e3) return;
+          var fit = p.aspect === 'conjunction' ? 1 : SOFT[p.aspect] ? (A.aspects === 'effort' ? 0.6 : 1.5) : HARD[p.aspect] ? (A.aspects === 'effort' ? 1.4 : -1) : 0;
+          if (!fit) return; score += fit * P[p.planet];
+          (fit > 0 ? why : warn).push('Moon ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[p.aspect] || p.aspect) + ' ' + p.planet);
+        });
+        var h = sky.hours.filter(function (x) { return t >= x.start && t < x.end; })[0];
+        if (h && (A.hourRulers || []).indexOf(h.planet) >= 0) { score += 1.2; why.push(h.planet + ' hour'); }
+        var asc = Sky.SIGNS[Math.floor(Sky.chartAngles(t, o.lat, o.lon).asc / 30)];
+        if (A.signs && A.signs[asc]) { score += 1.2; why.push(asc + ' rising'); }
+        else if (RB.weather.signElement[asc] === A.element) { score += 0.5; why.push(asc + ' rising'); }
+        var moon = Sky.signOf(Sky.positions(t).Moon);
+        if (A.signs && A.signs[moon]) { score += 0.8; why.push('Moon in ' + moon); }
+        var v = tl.voids.filter(function (x) { return t >= x.start && t < x.end; })[0];
+        if (v) { if (A.voc === 'avoid') { score -= 3; warn.push('void Moon'); } else if (A.voc === 'favor') { score += 0.8; why.push('void Moon'); } }
+        out.push({ start: new Date(+t - 5 * 60000), end: new Date(+t + 10 * 60000), at: t, score: score, word: WORD[an.planet], planet: an.planet, why: why, warn: warn, kind: 'crossing' });
+      });
+    });
+    return out;
+  }
+
   function plan(o) {
     var tz = o.tz, ms = moments(o, o.cache), goals = (o.goals || []).filter(function (g) { return GOALS[g.want]; }).slice(0, 2);
+    var scans = [], tl = ms.tl;
+    for (var k = 0; k < HORIZON; k += 2) scans.push(ms.scans[k / 2]);
     return {
       goals: goals.map(function (g) {
-        var G = GOALS[g.want], all = Engine.findTimes(ms, G.act, { limit: 999, min: 3 }).windows;
-        var perDay = g.per === 'day' ? Math.max(1, g.times || 1) : 1, used = {}, picked = [];
-        all.slice().sort(function (a, b) { return b.score - a.score || a.start - b.start; }).forEach(function (w) {
+        var G = GOALS[g.want], perDay = g.per === 'day' ? Math.max(1, g.times || 1) : 1, used = {}, picked = [];
+        var cands = crossings(o, G.act, scans, tl).filter(function (c) { return c.score >= 3; });
+        // Fall back to the best planetary hours when crossings are too few.
+        var hrs = Engine.findTimes(ms, G.act, { limit: 999, min: 3 }).windows.map(function (w) {
+          var hs = w.hours || [], bi = 0; hs.forEach(function (x, i) { if (x.score > hs[bi].score) bi = i; });
+          var hr = ms.filter(function (m) { return hs[bi] && +m.h.start === +hs[bi].start; })[0];
+          return { start: hs[bi] ? hs[bi].start : w.start, end: hs[bi] ? hs[bi].end : w.end, score: w.score - 1.5, word: hr ? WORD[hr.h.planet] : '', planet: hr && hr.h.planet, why: w.why.map(function (r) { return r.replace(/^an? /, '').replace(/, which.*$/, ''); }), warn: w.warn || [], kind: 'hour' };
+        });
+        cands.concat(hrs).sort(function (a, b) { return b.score - a.score || a.start - b.start; }).forEach(function (w) {
           if (picked.length >= quota(g)) return;
           var d = ymd(w.start, tz); if ((used[d] || 0) >= perDay) return;
           if (picked.some(function (p) { return Math.abs(p.start - w.start) < 3 * 3600e3; })) return;
           used[d] = (used[d] || 0) + 1; picked.push(w);
         });
         picked.sort(function (a, b) { return a.start - b.start; });
-        // A reminder points at the best hour of a window, plus a neighbouring hour if it is nearly as good.
-        picked = picked.map(function (w) {
-          var hs = w.hours || [], bi = 0; hs.forEach(function (h, i) { if (h.score > hs[bi].score) bi = i; });
-          if (!hs.length) return w;
-          var s = hs[bi].start, e = hs[bi].end, nb = [hs[bi - 1], hs[bi + 1]].filter(Boolean).sort(function (a, b) { return b.score - a.score; })[0];
-          if (nb && nb.score >= hs[bi].score - 0.5) { if (nb.start < s) s = nb.start; else e = nb.end; }
-          return Object.assign({}, w, { start: s, end: e });
-        });
-        var RANK = function (r) { return /trine|sextile|conjunction|square|opposition| on the /.test(r) ? 0 : /Moon in /.test(r) ? 1 : 2; };
-        var reason = function (w) { var r = w.why.slice().sort(function (a, b) { return RANK(a) - RANK(b); })[0] || ''; r = r.replace(/^an? /, '').replace(/, which.*$/, ''); return r.charAt(0).toUpperCase() + r.slice(1); };
         return { want: g.want, name: G.name, verb: G.verb, times: g.times, per: g.per,
-          windows: picked.map(function (w) { return { start: w.start, end: w.end, strength: w.strength, reason: reason(w), why: w.why, warn: w.warn }; }) };
+          windows: picked.map(function (w) { return { start: w.start, end: w.end, at: w.at || w.start, kind: w.kind, word: w.word, planet: w.planet, strength: w.score >= 6 ? 'strong' : 'good', reason: w.why[0] || '', why: w.why, warn: w.warn }; }) };
       })
     };
   }
@@ -1669,7 +1708,7 @@ async function scheduleGoalNotifications(plan) {
     const n = new Notification();
     n.identifier = x.id; n.threadIdentifier = 'starswell';
     n.title = x.g.name + ' in ' + SETTINGS.lead + ' minutes';
-    n.body = 'A good window for it, ' + clk(x.w.start) + ' to ' + clk(x.w.end) + '.';
+    n.body = (x.w.word ? x.w.word + '. ' : '') + clk(x.w.start) + ' to ' + clk(x.w.end);
     n.openURL = 'scriptable:///run/' + encodeURIComponent(Script.name());
     n.setTriggerDate(at);
     await n.schedule();
@@ -1699,7 +1738,7 @@ function planWidget(plan, family) {
     const W = Color.white();
     soon.slice(0, 2).forEach((x, i) => {
       txt(w, x.g.name.toUpperCase(), Font.boldSystemFont(10), W, 1);
-      txt(w, span(x.up[0]).replace(/ (am|pm)/g, '$1'), Font.systemFont(12.5), W, 1);
+      txt(w, span(x.up[0]).replace(/ (am|pm)/g, '$1').replace(/ to .*/, '') + (x.up[0].word ? ' · ' + x.up[0].word : ''), Font.systemFont(12.5), W, 1);
       if (soon.length === 1 && x.up[1]) txt(w, 'Then ' + dayWord(x.up[1].start).replace(/^T/, 't') + ' ' + clk(x.up[1].start), Font.systemFont(10.5), W, 1);
     });
     if (!soon.length) txt(w, 'No windows ahead. Open Starswell.', Font.systemFont(12), W, 2);
@@ -1716,6 +1755,7 @@ function planWidget(plan, family) {
     if (x) {
       txt(w, +x.up[0].start <= Date.now() ? 'Now' : dayWord(x.up[0].start), Font.systemFont(12), C.dim, 1);
       txt(w, +x.up[0].start <= Date.now() ? 'until ' + clk(x.up[0].end) : clk(x.up[0].start), serif(24), C.star, 1);
+      if (x.up[0].word) txt(w, x.up[0].word, serif(15), C.brass, 1);
       w.addSpacer(4);
       if (x.up[1]) txt(w, 'Then ' + dayWord(x.up[1].start).replace(/^T/, 't') + ' ' + clk(x.up[1].start), Font.systemFont(10.5), C.foam, 1);
     } else txt(w, 'No windows ahead', serif(15), C.star, 2);
@@ -1731,7 +1771,7 @@ function planWidget(plan, family) {
     x.up.slice(0, nexts.length === 1 ? show + 1 : show).forEach((win, i) => {
       const r = w.addStack(); r.centerAlignContent();
       txt(r, span(win), i === 0 ? serif(nexts.length === 1 ? 20 : 16) : Font.systemFont(12), i === 0 ? C.star : C.dim, 1);
-      if (family === 'large') { r.addSpacer(); txt(r, win.reason, Font.systemFont(10), C.foam, 1); }
+      if (win.word) { r.addSpacer(); txt(r, win.word, i === 0 ? serif(nexts.length === 1 ? 20 : 16) : Font.systemFont(12), i === 0 ? C.brass : C.foam, 1); }
       w.addSpacer(i === 0 ? 3 : 1);
     });
   });
@@ -1743,16 +1783,16 @@ function planHTML(plan) {
   const goalCard = g => {
     const up = upcoming(g);
     return '<section class="card"><div class="k">' + esc(g.name) + ' <span>' + esc(perWord(g)) + '</span></div>' +
-      (up.length ? '<ul class="wins">' + up.map(w => '<li><details><summary><b>' + esc(span(w)) + '</b> <span class="st">' + w.strength + '</span></summary><p class="why">' + esc(w.reason) + '.' + (function () { const more = w.why.filter(r => r.toLowerCase().indexOf(w.reason.toLowerCase()) < 0 && !/ hour$/.test(r)).slice(0, 3); return more.length ? ' Also ' + esc(more.join(', ')) + '.' : ''; })() + (w.warn.length ? ' Watch for ' + esc(w.warn.join(', ')) + '.' : '') + '</p></details></li>').join('') + '</ul>'
+      (up.length ? '<ul class="wins">' + up.map(w => '<li><details><summary><b>' + esc(span(w)) + '</b>' + (w.word ? ' <span class="wd">' + esc(w.word) + '</span>' : '') + '</summary><p class="why">' + esc(w.why.join(' · ')) + (w.warn.length ? '<br><span class="warn">' + esc(w.warn.join(' · ')) + '</span>' : '') + '</p></details></li>').join('') + '</ul>'
         : '<p>No good windows in the next week. Any free hour will do.</p>') + '</section>';
   };
   const run = q => 'scriptable:///run/' + encodeURIComponent(Script.name()) + '?' + q;
   return '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
     'body{margin:0;background:#141A33;color:#F1E8D6;font:16px/1.45 -apple-system,system-ui;padding:20px 16px 40px}h1{font:600 26px Georgia,serif;margin:0 0 4px}.day{color:#D9CFBE;font-size:14px;margin:0 0 18px}' +
     '.card{background:#1C2547;border-radius:16px;padding:14px 16px;margin:0 0 12px}.k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C9A35B;font-weight:600}.k span{color:#A9C3CF;margin-left:6px}' +
-    '.wins{list-style:none;padding:0;margin:8px 0 0}.wins li{border-top:1px solid #2C3558;padding:9px 0}.wins li:first-child{border-top:0}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}b{font-weight:500}.st{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A9C3CF;margin-left:6px}.why{color:#A9C3CF;font-size:13.5px;margin:6px 0 0}' +
+    '.wins{list-style:none;padding:0;margin:8px 0 0}.wins li{border-top:1px solid #2C3558;padding:9px 0}.wins li:first-child{border-top:0}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}b{font-weight:500}.wd{font:italic 17px Georgia,serif;color:#C9A35B;margin-left:8px}.warn{color:#E3B9A0}.st{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A9C3CF;margin-left:6px}.why{color:#A9C3CF;font-size:13.5px;margin:6px 0 0}' +
     'a.btn{display:block;text-align:center;padding:12px;border-radius:12px;background:#1C2547;color:#F1E8D6;text-decoration:none;margin:10px 0 0;font-size:15px}a.btn.p{background:#C9A35B;color:#141A33;font-weight:600}' +
-    '</style><h1>Starswell</h1><p class="day">You\'ll get a notice ' + SETTINGS.lead + ' minutes before each window. Tap a time for the reason.</p>' +
+    '</style><h1>Starswell</h1><p class="day">You\'ll get a notice ' + SETTINGS.lead + ' minutes before each window. Tap a time to see the sky behind it.</p>' +
     plan.goals.map(goalCard).join('') +
     '<a class="btn p" href="' + run('edit=1') + '">Change what you want help with</a>' +
     '<a class="btn" href="' + run('sky=1') + '">What\'s up in the sky</a>';
