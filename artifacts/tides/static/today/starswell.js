@@ -1,11 +1,11 @@
-// Starswell for Scriptable. Pick one or two things you want to make room for; Starswell finds
+// Astrowaves for Scriptable. Pick one or two things you want to make room for; Astrowaves finds
 // the good windows in your sky and nudges you before each one. Computed on the phone.
 // Settings: change these and save. What you want help with is set in the app (tap "Change").
 const SETTINGS = {
   city: 'Austin', lat: 30.2672, lon: -97.7431, tz: 'America/Chicago',
   wake: 6.5, sleep: 22.5,   // waking hours, as decimal hours; windows stay inside these
   lead: 10,                 // minutes of notice before a window
-  goals: [{ want: 'meditate', times: 4, per: 'week' }],  // used until you choose in the app
+  goals: [{ want: 'meditate', times: 4, per: 'week', precision: 'moment' }],  // used until you choose in the app
   focus: 'day', notify: false, web: 'https://compass.day/today'
 };
 var Astronomy = (function () { var module = { exports: {} }, exports = module.exports; var define; /*
@@ -1329,20 +1329,21 @@ var Starswell = (function () {
 // pick the windows to remind them about. No weather lines, no poems: a time, and one reason if asked.
 var StarswellPlan = (function () {
   var DAY = 864e5, HORIZON = 8;
+  // name: shown in lists. short: in notifications. dfor: "a good day for ___".
   var GOALS = {
-    meditate:  { act: 'meditate',        name: 'Meditation',      verb: 'meditate' },
-    move:      { act: 'train-hard',      name: 'Workout',         verb: 'work out' },
-    walk:      { act: 'gentle-movement', name: 'Walk or yoga',    verb: 'walk or stretch' },
-    run:       { act: 'endurance',       name: 'Long run or ride', verb: 'go long' },
-    focus:     { act: 'deep-work',       name: 'Deep work',       verb: 'do deep work' },
-    write:     { act: 'first-draft',     name: 'Writing',         verb: 'write' },
-    create:    { act: 'creative-practice', name: 'Making art',    verb: 'make something' },
-    admin:     { act: 'admin-errands',   name: 'Admin and errands', verb: 'clear admin' },
-    connect:   { act: 'call-family',     name: 'Calling someone', verb: 'call someone' },
-    partner:   { act: 'romantic-time',   name: 'Time with your person', verb: 'spend time together' },
-    rest:      { act: 'deep-rest',       name: 'Rest',            verb: 'rest' },
-    journal:   { act: 'journal',         name: 'Journaling',      verb: 'journal' },
-    cook:      { act: 'cook',            name: 'Cooking',         verb: 'cook' }
+    meditate:  { act: 'meditate',          name: 'Meditation / quiet time', short: 'Meditation', dfor: 'meditation' },
+    move:      { act: 'train-hard',        name: 'Move / exercise',  short: 'Movement',   dfor: 'moving' },
+    walk:      { act: 'gentle-movement',   name: 'Walk or yoga',     short: 'Walk or yoga', dfor: 'a walk or yoga' },
+    run:       { act: 'endurance',         name: 'Long run or ride', short: 'Long session', dfor: 'going long' },
+    focus:     { act: 'deep-work',         name: 'Deep work',        short: 'Deep work',  dfor: 'deep work' },
+    write:     { act: 'first-draft',       name: 'Writing',          short: 'Writing',    dfor: 'writing' },
+    create:    { act: 'creative-practice', name: 'Making art',       short: 'Making art', dfor: 'making art' },
+    admin:     { act: 'admin-errands',     name: 'Admin and errands', short: 'Admin',     dfor: 'admin and errands' },
+    connect:   { act: 'call-family',       name: 'Calling someone',  short: 'Calling someone', dfor: 'calling someone' },
+    partner:   { act: 'romantic-time',     name: 'Romance',          short: 'Romance',    dfor: 'romance' },
+    rest:      { act: 'deep-rest',         name: 'Downtime',         short: 'Downtime',   dfor: 'downtime' },
+    journal:   { act: 'journal',           name: 'Journaling',       short: 'Journaling', dfor: 'journaling' },
+    cook:      { act: 'cook',              name: 'Cooking',          short: 'Cooking',    dfor: 'cooking' }
   };
   function ymd(d, tz) { return d.toLocaleDateString('en-US', { timeZone: tz }); }
   function localHour(d, tz) { var m = ((d.getUTCHours() * 60 + d.getUTCMinutes() + Sky.offsetMin(d, tz)) % 1440 + 1440) % 1440; return m / 60; }
@@ -1378,7 +1379,7 @@ var StarswellPlan = (function () {
   function quota(g) { var n = Math.max(1, g.times || 1); return g.per === 'day' ? n * HORIZON : g.per === 'month' ? Math.max(1, Math.round(n * HORIZON / 30)) : Math.max(1, Math.round(n * HORIZON / 7)); }
 
   // One word per planet, for people who want almost no language. The astrology is one tap away.
-  var WORD = { Sun: 'Shine', Moon: 'Feel', Mercury: 'Think', Venus: 'Enjoy', Mars: 'Push', Jupiter: 'Grow', Saturn: 'Focus', Uranus: 'Spark', Neptune: 'Drift', Pluto: 'Deepen' };
+  var WORD = { Sun: 'Brighten', Moon: 'Feel', Mercury: 'Think', Venus: 'Enjoy', Mars: 'Push', Jupiter: 'Expand', Saturn: 'Focus', Uranus: 'Spark', Neptune: 'Dream', Pluto: 'Deepen' };
   var ANGLE = { rise: { w: 3, say: 'rising' }, mc: { w: 3, say: 'on the MC' }, set: { w: 2.2, say: 'setting' }, ic: { w: 2, say: 'on the IC' } };
   var SOFT = { trine: 1, sextile: 1 }, HARD = { square: 1, opposition: 1 };
   var ACTS = {}; RULES.acts.forEach(function (x) { ACTS[x.key] = x; });
@@ -1428,17 +1429,33 @@ var StarswellPlan = (function () {
         var hrs = Engine.findTimes(ms, G.act, { limit: 999, min: 3 }).windows.map(function (w) {
           var hs = w.hours || [], bi = 0; hs.forEach(function (x, i) { if (x.score > hs[bi].score) bi = i; });
           var hr = ms.filter(function (m) { return hs[bi] && +m.h.start === +hs[bi].start; })[0];
-          return { start: hs[bi] ? hs[bi].start : w.start, end: hs[bi] ? hs[bi].end : w.end, score: w.score - 1.5, word: hr ? WORD[hr.h.planet] : '', planet: hr && hr.h.planet, why: w.why.map(function (r) { return r.replace(/^an? /, '').replace(/, which.*$/, ''); }), warn: w.warn || [], kind: 'hour' };
+          var why = w.why.map(function (r) { return r.replace(/^(an?|the) /, '').replace(/, which.*$/, ''); }).filter(function (r) { return !/window$|^(waxing|waning) Moon$/.test(r); });
+          var pl = ((why[0] || '').match(/^(Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/) || [])[1] || (hr && hr.h.planet);
+          return { start: hs[bi] ? hs[bi].start : w.start, end: hs[bi] ? hs[bi].end : w.end, score: w.score - 1.5, word: pl ? WORD[pl] : '', planet: pl, why: why, warn: w.warn || [], kind: 'hour' };
         });
-        cands.concat(hrs).sort(function (a, b) { return b.score - a.score || a.start - b.start; }).forEach(function (w) {
-          if (picked.length >= quota(g)) return;
-          var d = ymd(w.start, tz); if ((used[d] || 0) >= perDay) return;
-          if (picked.some(function (p) { return Math.abs(p.start - w.start) < 3 * 3600e3; })) return;
-          used[d] = (used[d] || 0) + 1; picked.push(w);
-        });
+        var prec = g.precision || 'moment', pool = prec === 'hours' ? hrs : cands.concat(hrs);
+        var take = function (list) {
+          list.slice().sort(function (a, b) { return b.score - a.score || a.start - b.start; }).forEach(function (w) {
+            if (picked.length >= quota(g)) return;
+            var d = ymd(w.start, tz); if ((used[d] || 0) >= perDay) return;
+            if (picked.some(function (p) { return Math.abs(p.start - w.start) < 3 * 3600e3; })) return;
+            used[d] = (used[d] || 0) + 1; picked.push(w);
+          });
+        };
+        if (prec === 'day') {
+          // A good day: rank days by their best moment plus a little for the runner-up; keep the peak time.
+          var byDay = {};
+          cands.concat(hrs).forEach(function (w) { var d = ymd(w.start, tz); (byDay[d] = byDay[d] || []).push(w); });
+          var days = Object.keys(byDay).map(function (d) {
+            var ws = byDay[d].sort(function (a, b) { return b.score - a.score; }), top = ws[0];
+            return Object.assign({}, top, { kind: 'day', score: top.score + (ws[1] ? 0.3 * ws[1].score : 0), peak: { start: top.start, end: top.end } });
+          });
+          perDay = 1; take(days);
+        } else take(pool);
         picked.sort(function (a, b) { return a.start - b.start; });
-        return { want: g.want, name: G.name, verb: G.verb, times: g.times, per: g.per,
-          windows: picked.map(function (w) { return { start: w.start, end: w.end, at: w.at || w.start, kind: w.kind, word: w.word, planet: w.planet, strength: w.score >= 6 ? 'strong' : 'good', reason: w.why[0] || '', why: w.why, warn: w.warn }; }) };
+        var out = picked.map(function (w) { return { start: w.start, end: w.end, at: w.at || w.start, kind: w.kind, word: w.word, planet: w.planet, score: Math.round(w.score * 10) / 10, strength: w.score >= 6 ? 'strong' : 'good', reason: w.why[0] || '', why: w.why, warn: w.warn, peak: w.peak || null }; });
+        var best = out.slice().sort(function (a, b) { return b.score - a.score; })[0] || null;
+        return { want: g.want, name: G.name, short: G.short, dfor: G.dfor, times: g.times, per: g.per, precision: prec, best: best, windows: out };
       })
     };
   }
@@ -1660,7 +1677,7 @@ function pageHTML(R) {
 }
 
 
-// ---- Starswell: reminders for what you want to make room for -----------------------------
+// ---- Astrowaves: reminders for what you want to make room for -----------------------------
 const P_FILE = 'starswell-goals.json', PLAN_FILE = 'starswell-plan.json', PLAN_TL = 'starswell-plan-timeline.json';
 const fmL = FileManager.local(), docPath = n => fmL.joinPath(fmL.documentsDirectory(), n);
 function readJSON(n) { try { const p = docPath(n); return fmL.fileExists(p) ? JSON.parse(fmL.readString(p)) : null; } catch (e) { return null; } }
@@ -1688,29 +1705,45 @@ function dayWord(d) {
   if (k(d) === k(Date.now() + 864e5)) return 'Tomorrow';
   return new Date(d).toLocaleDateString('en-US', { timeZone: SETTINGS.tz, weekday: 'short' });
 }
-const span = w => (+w.start <= Date.now() ? 'Now' : dayWord(w.start) + ' ' + clk(w.start)) + ' to ' + clk(w.end);
-const perWord = g => g.times + (g.per === 'day' ? ' a day' : g.per === 'month' ? ' a month' : ' a week');
+const span = w => w.kind === 'day' ? dayWord(w.start) + ', especially ' + clk(w.peak ? w.peak.start : w.start)
+  : +w.start <= Date.now() ? 'Now to ' + clk(w.end) : dayWord(w.start) + ' ' + range(w.start, w.end);
+const shortSpan = w => w.kind === 'day' ? dayWord(w.start) + ' · ' + clk(w.peak ? w.peak.start : w.start) : (+w.start <= Date.now() ? 'Now' : dayWord(w.start) + ' ' + clk(w.start));
+const dayName = d => new Date(d).toLocaleDateString('en-US', { timeZone: SETTINGS.tz, weekday: 'long' });
+// "2:40 to 2:55 pm" (one am/pm when both share it)
+const range = (a, b) => { const x = clk(a), y = clk(b); return (x.slice(-2) === y.slice(-2) ? x.slice(0, -3) : x) + ' to ' + y; };
+// "Dream: Neptune rising, 2:40 to 2:55 pm"
+const tagline = w => (w.word ? w.word + ': ' : '') + (w.reason ? w.reason + ', ' : '') + range(w.kind === 'day' && w.peak ? w.peak.start : w.start, w.kind === 'day' && w.peak ? w.peak.end : w.end);
+// "Friday is your best day for moving, 6:28 to 6:43 am"
+const bestLine = g => g.best ? (dayWord(g.best.start) === 'Today' ? 'Today' : dayWord(g.best.start) === 'Tomorrow' ? 'Tomorrow' : dayName(g.best.start)) + ' is your best day for ' + g.dfor + ', ' + range(g.best.kind === 'day' && g.best.peak ? g.best.peak.start : g.best.start, g.best.kind === 'day' && g.best.peak ? g.best.peak.end : g.best.end) : '';
+const perWord = g => g.per === 'day' && g.times >= 3 ? 'several a day' : g.times + (g.per === 'day' ? ' a day' : g.per === 'month' ? ' a month' : ' a week');
 
+// When to nudge: a crossing (a specific time) 10 minutes ahead; a longer window 20 minutes ahead;
+// a good day the evening before and the morning of.
+function nudges(g, w) {
+  const at = (d, h) => { const off = Sky.offsetMin(new Date(d), SETTINGS.tz) * 60000, mid = Math.floor((+d + off) / 864e5) * 864e5; return new Date(mid + h * 3600e3 - off); };
+  if (w.kind === 'day') return [
+    { key: 'eve', when: at(+w.start - 864e5, 20), title: 'Tomorrow is a good day for ' + g.dfor, body: 'Especially around ' + clk(w.peak ? w.peak.start : w.start) + '. ' + tagline(w) },
+    { key: 'am', when: at(w.start, Math.max(7, SETTINGS.wake + 0.5)), title: 'Today is a good day for ' + g.dfor, body: 'Especially around ' + clk(w.peak ? w.peak.start : w.start) + '. ' + tagline(w) }];
+  const lead = w.kind === 'crossing' ? 10 : 20;
+  return [{ key: 'pre', when: new Date(+w.start - lead * 60000), title: g.short + ' in ' + lead + ' minutes', body: tagline(w) }];
+}
 async function scheduleGoalNotifications(plan) {
   const pending = await Notification.allPending();
   const ours = pending.filter(n => n.identifier.indexOf('starswell-') === 0);
   const want = [];
-  plan.goals.forEach(g => upcoming(g).forEach(w => want.push({ id: 'starswell-goal-' + g.want + '-' + (+w.start), g, w })));
-  want.sort((a, b) => a.w.start - b.w.start);
+  plan.goals.forEach(g => upcoming(g).forEach(w => nudges(g, w).forEach(n => { if (+n.when > Date.now()) want.push(Object.assign({ id: 'starswell-goal-' + g.want + '-' + (+w.start) + '-' + n.key }, n)); })));
+  want.sort((a, b) => a.when - b.when);
   const keep = want.slice(0, 40), ids = keep.map(x => x.id);
   const stale = ours.filter(n => ids.indexOf(n.identifier) < 0).map(n => n.identifier);
   if (stale.length) Notification.removePending(stale);
   const have = ours.map(n => n.identifier);
   for (const x of keep) {
     if (have.indexOf(x.id) >= 0) continue;
-    const at = new Date(+x.w.start - SETTINGS.lead * 60000);
-    if (+at <= Date.now()) continue;
     const n = new Notification();
-    n.identifier = x.id; n.threadIdentifier = 'starswell';
-    n.title = x.g.name + ' in ' + SETTINGS.lead + ' minutes';
-    n.body = (x.w.word ? x.w.word + '. ' : '') + clk(x.w.start) + ' to ' + clk(x.w.end);
+    n.identifier = x.id; n.threadIdentifier = 'astrowaves';
+    n.title = x.title; n.body = x.body;
     n.openURL = 'scriptable:///run/' + encodeURIComponent(Script.name());
-    n.setTriggerDate(at);
+    n.setTriggerDate(x.when);
     await n.schedule();
   }
 }
@@ -1724,9 +1757,9 @@ function planWidget(plan, family) {
   const refresh = [Date.now() + 3 * 3600e3]; soon.forEach(x => refresh.push(+x.up[0].end + 60000, +x.up[0].start + 60000));
   w.refreshAfterDate = new Date(Math.min.apply(null, refresh.filter(t => t > Date.now())));
 
-  if (!plan) { const t = w.addText('Open Starswell once to plan your windows.'); t.font = Font.systemFont(12); return w; }
+  if (!plan) { const t = w.addText('Open Astrowaves to find your wave.'); t.font = Font.systemFont(12); return w; }
 
-  if (family === 'accessoryInline') { w.addText(soon.length ? soon[0].g.name + ' ' + (+soon[0].up[0].start <= Date.now() ? 'now' : (dayWord(soon[0].up[0].start).replace('Today', '') + ' ' + clk(soon[0].up[0].start)).trim()).replace(/\s+/g, ' ') : 'No windows planned'); return w; }
+  if (family === 'accessoryInline') { w.addText(soon.length ? soon[0].g.name + ' ' + (+soon[0].up[0].start <= Date.now() ? 'now' : (dayWord(soon[0].up[0].start).replace('Today', '') + ' ' + clk(soon[0].up[0].start)).trim()).replace(/\s+/g, ' ') : 'No standout waves this week'); return w; }
   if (family === 'accessoryCircular') {
     const s = w.addStack(); s.layoutVertically(); s.centerAlignContent();
     const x = soon[0];
@@ -1738,10 +1771,10 @@ function planWidget(plan, family) {
     const W = Color.white();
     soon.slice(0, 2).forEach((x, i) => {
       txt(w, x.g.name.toUpperCase(), Font.boldSystemFont(10), W, 1);
-      txt(w, span(x.up[0]).replace(/ (am|pm)/g, '$1').replace(/ to .*/, '') + (x.up[0].word ? ' · ' + x.up[0].word : ''), Font.systemFont(12.5), W, 1);
+      txt(w, shortSpan(x.up[0]).replace(/ (am|pm)/g, '$1') + (x.up[0].word ? ' · ' + x.up[0].word : ''), Font.systemFont(12.5), W, 1);
       if (soon.length === 1 && x.up[1]) txt(w, 'Then ' + dayWord(x.up[1].start).replace(/^T/, 't') + ' ' + clk(x.up[1].start), Font.systemFont(10.5), W, 1);
     });
-    if (!soon.length) txt(w, 'No windows ahead. Open Starswell.', Font.systemFont(12), W, 2);
+    if (!soon.length) txt(w, 'No standout waves this week.', Font.systemFont(12), W, 2);
     return w;
   }
 
@@ -1750,24 +1783,24 @@ function planWidget(plan, family) {
   const lab = (st, s, col) => txt(st, s.toUpperCase(), Font.semiboldSystemFont(9.5), col || C.foam, 1);
   if (family === 'small') {
     const x = soon[0];
-    lab(w, x ? x.g.name : 'Starswell', C.brass);
+    lab(w, x ? x.g.short : 'Astrowaves', C.brass);
     w.addSpacer();
     if (x) {
-      txt(w, +x.up[0].start <= Date.now() ? 'Now' : dayWord(x.up[0].start), Font.systemFont(12), C.dim, 1);
-      txt(w, +x.up[0].start <= Date.now() ? 'until ' + clk(x.up[0].end) : clk(x.up[0].start), serif(24), C.star, 1);
+      txt(w, x.up[0].kind === 'day' ? dayWord(x.up[0].start) + ', especially' : +x.up[0].start <= Date.now() ? 'Now' : dayWord(x.up[0].start), Font.systemFont(12), C.dim, 1);
+      txt(w, x.up[0].kind === 'day' ? clk(x.up[0].peak ? x.up[0].peak.start : x.up[0].start) : +x.up[0].start <= Date.now() ? 'until ' + clk(x.up[0].end) : clk(x.up[0].start), serif(24), C.star, 1);
       if (x.up[0].word) txt(w, x.up[0].word, serif(15), C.brass, 1);
       w.addSpacer(4);
       if (x.up[1]) txt(w, 'Then ' + dayWord(x.up[1].start).replace(/^T/, 't') + ' ' + clk(x.up[1].start), Font.systemFont(10.5), C.foam, 1);
-    } else txt(w, 'No windows ahead', serif(15), C.star, 2);
+    } else txt(w, 'No standout waves this week', serif(15), C.star, 2);
     return w;
   }
   const show = family === 'large' ? 4 : 2;
   nexts.forEach((x, gi) => {
     if (gi) w.addSpacer(family === 'large' ? 14 : 8);
     const head = w.addStack(); head.centerAlignContent();
-    lab(head, x.g.name, C.brass); head.addSpacer(); lab(head, perWord(x.g));
+    lab(head, x.g.short, C.brass); head.addSpacer(); lab(head, perWord(x.g));
     w.addSpacer(3);
-    if (!x.up.length) { txt(w, 'No good windows left in the next week', Font.systemFont(12), C.dim, 1); return; }
+    if (!x.up.length) { txt(w, 'No standout waves this week', Font.systemFont(12), C.dim, 1); return; }
     x.up.slice(0, nexts.length === 1 ? show + 1 : show).forEach((win, i) => {
       const r = w.addStack(); r.centerAlignContent();
       txt(r, span(win), i === 0 ? serif(nexts.length === 1 ? 20 : 16) : Font.systemFont(12), i === 0 ? C.star : C.dim, 1);
@@ -1783,16 +1816,16 @@ function planHTML(plan) {
   const goalCard = g => {
     const up = upcoming(g);
     return '<section class="card"><div class="k">' + esc(g.name) + ' <span>' + esc(perWord(g)) + '</span></div>' +
-      (up.length ? '<ul class="wins">' + up.map(w => '<li><details><summary><b>' + esc(span(w)) + '</b>' + (w.word ? ' <span class="wd">' + esc(w.word) + '</span>' : '') + '</summary><p class="why">' + esc(w.why.join(' · ')) + (w.warn.length ? '<br><span class="warn">' + esc(w.warn.join(' · ')) + '</span>' : '') + '</p></details></li>').join('') + '</ul>'
-        : '<p>No good windows in the next week. Any free hour will do.</p>') + '</section>';
+      (g.best ? '<p class="best">' + esc(bestLine(g)) + '</p>' : '') + (up.length ? '<ul class="wins">' + up.map(w => '<li><details><summary><b>' + esc(span(w)) + '</b>' + (w.word ? ' <span class="wd">' + esc(w.word) + '</span>' : '') + '</summary><p class="why">' + esc(tagline(w)) + '<br>' + esc(w.why.slice(1).join(' · ')) + (w.warn.length ? '<br><span class="warn">' + esc(w.warn.join(' · ')) + '</span>' : '') + '</p></details></li>').join('') + '</ul>'
+        : '<p>No standout waves this week.</p>') + '</section>';
   };
   const run = q => 'scriptable:///run/' + encodeURIComponent(Script.name()) + '?' + q;
   return '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
     'body{margin:0;background:#141A33;color:#F1E8D6;font:16px/1.45 -apple-system,system-ui;padding:20px 16px 40px}h1{font:600 26px Georgia,serif;margin:0 0 4px}.day{color:#D9CFBE;font-size:14px;margin:0 0 18px}' +
     '.card{background:#1C2547;border-radius:16px;padding:14px 16px;margin:0 0 12px}.k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C9A35B;font-weight:600}.k span{color:#A9C3CF;margin-left:6px}' +
-    '.wins{list-style:none;padding:0;margin:8px 0 0}.wins li{border-top:1px solid #2C3558;padding:9px 0}.wins li:first-child{border-top:0}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}b{font-weight:500}.wd{font:italic 17px Georgia,serif;color:#C9A35B;margin-left:8px}.warn{color:#E3B9A0}.st{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A9C3CF;margin-left:6px}.why{color:#A9C3CF;font-size:13.5px;margin:6px 0 0}' +
+    '.wins{list-style:none;padding:0;margin:8px 0 0}.wins li{border-top:1px solid #2C3558;padding:9px 0}.wins li:first-child{border-top:0}summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}b{font-weight:500}.wd{font:italic 17px Georgia,serif;color:#C9A35B;margin-left:8px}.warn{color:#E3B9A0}.st{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#A9C3CF;margin-left:6px}.why{color:#A9C3CF;font-size:13.5px;margin:6px 0 0}.best{font:17px/1.35 Georgia,serif;margin:8px 0 2px}' +
     'a.btn{display:block;text-align:center;padding:12px;border-radius:12px;background:#1C2547;color:#F1E8D6;text-decoration:none;margin:10px 0 0;font-size:15px}a.btn.p{background:#C9A35B;color:#141A33;font-weight:600}' +
-    '</style><h1>Starswell</h1><p class="day">You\'ll get a notice ' + SETTINGS.lead + ' minutes before each window. Tap a time to see the sky behind it.</p>' +
+    '</style><h1>Astrowaves</h1><p class="day">Check the stars like you check the weather.</p>' +
     plan.goals.map(goalCard).join('') +
     '<a class="btn p" href="' + run('edit=1') + '">Change what you want help with</a>' +
     '<a class="btn" href="' + run('sky=1') + '">What\'s up in the sky</a>';
@@ -1809,10 +1842,14 @@ async function editGoals() {
     if (pick < 0) break;
     const k = keys[pick];
     const b = new Alert(); b.title = 'How often, for ' + GOALS[k].name.toLowerCase() + '?';
-    const opts = [[1, 'day'], [2, 'day'], [2, 'week'], [3, 'week'], [4, 'week'], [5, 'week'], [2, 'month'], [4, 'month']];
-    opts.forEach(o => b.addAction(o[0] + (o[1] === 'day' ? ' a day' : o[1] === 'week' ? ' a week' : ' a month')));
+    const opts = [[3, 'day'], [1, 'day'], [2, 'day'], [2, 'week'], [3, 'week'], [4, 'week'], [5, 'week'], [2, 'month'], [4, 'month']];
+    opts.forEach(o => b.addAction(o[1] === 'day' && o[0] >= 3 ? 'Several times a day' : o[0] + (o[1] === 'day' ? ' a day' : o[1] === 'week' ? ' a week' : ' a month')));
     const o = opts[Math.max(0, await b.presentSheet())];
-    goals.push({ want: k, times: o[0], per: o[1] });
+    const c = new Alert(); c.title = 'How exact should the timing be?';
+    const precs = [['moment', 'A specific time (about 15 minutes)'], ['hours', 'A good hour or so'], ['day', 'A good day']];
+    precs.forEach(p => c.addAction(p[1]));
+    const pr = precs[Math.max(0, await c.presentSheet())][0];
+    goals.push({ want: k, times: o[0], per: o[1], precision: o[1] === 'day' && pr === 'day' ? 'hours' : pr });
     keys.splice(pick, 1);
   }
   if (goals.length) { writeJSON(P_FILE, goals); writeJSON(PLAN_FILE, null); }
