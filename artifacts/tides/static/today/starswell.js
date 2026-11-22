@@ -1714,7 +1714,7 @@ const fmL = FileManager.local(), docPath = n => fmL.joinPath(fmL.documentsDirect
 function readJSON(n) { try { const p = docPath(n); return fmL.fileExists(p) ? JSON.parse(fmL.readString(p)) : null; } catch (e) { return null; } }
 function writeJSON(n, v) { try { fmL.writeString(docPath(n), JSON.stringify(v)); } catch (e) {} }
 const GOALS = StarswellPlan.GOALS, WORD = StarswellPlan.WORD;
-const GLYPH = { Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋', Leo: '♌', Virgo: '♍', Libra: '♎', Scorpio: '♏', Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓' };
+const GLYPH = { Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂', Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇' };
 
 function loadState() {
   let s = readJSON(STATE_FILE);
@@ -1790,9 +1790,9 @@ const span = w => w.kind === 'day' ? dayWord(w.start) + ', especially ' + clk(wS
 const shortSpan = w => w.kind === 'day' ? dayWord(w.start) + ' · ' + clk(wStart(w)) : (+w.start <= Date.now() ? 'Now' : dayWord(w.start) + ' ' + clk(w.start));
 // The keyword: the person's own word if they gave one, else the planet's; the planet's sign beside it.
 const wordOf = (g, w) => g.word || w.word || '';
-const signOf = w => w.sign ? (GLYPH[w.sign] ? GLYPH[w.sign] + '\uFE0E' : '') : '';   // text-style glyph, not emoji
-// "Neptune rising in Pisces", or "Jupiter in Leo · Moon in Aries" when the top reason names another body.
-const reasonText = w => !w.reason ? '' : w.planet && w.sign ? (w.reason.indexOf(w.planet) === 0 ? w.reason + ' in ' + w.sign : w.planet + ' in ' + w.sign + ' · ' + w.reason) : w.reason;
+// The planet's glyph beside the keyword, in text style rather than emoji.
+const signOf = w => w.planet && GLYPH[w.planet] ? GLYPH[w.planet] + '\uFE0E' : '';
+const reasonText = w => w.reason || '';
 const tagline = (g, w) => (wordOf(g, w) ? wordOf(g, w) + ': ' : '') + (reasonText(w) ? reasonText(w) + ', ' : '') + range(wStart(w), wEnd(w));
 const perWord = g => g.per === 'day' && g.times >= 3 ? 'several a day' : g.times + (g.per === 'day' ? ' a day' : g.per === 'month' ? ' a month' : ' a week');
 
@@ -2006,7 +2006,7 @@ function planHTML(plan) {
     best: g.best ? dayLong(g.best.start) + ' is your best day for ' + g.label.toLowerCase() + ', ' + range(wStart(g.best), wEnd(g.best)) : '',
     record: (() => { const since = Date.now() - 28 * 864e5, ds = ST.done.filter(d => d.want === g.want && d.at >= since); return { n: ds.length, on: ds.filter(d => d.onWave).length }; })(),
     waves: upcoming(g).map(w => ({ id: wid(g, w), day: dayLong(w.start), dk: dkey(w.start), time: w.kind === 'day' ? 'Especially ' + clk(wStart(w)) : (+w.start <= Date.now() ? 'Now to ' + clk(w.end) : range(w.start, w.end)),
-      word: wordOf(g, w), glyph: signOf(w), reason: reasonText(w), why: w.why.slice(1).join(' · '), warn: w.warn.join(' · '),
+      word: wordOf(g, w), glyph: signOf(w), reason: reasonText(w), why: w.why.slice(1).concat(w.planet && w.sign ? [w.planet + ' in ' + w.sign] : []).join(' · '), warn: w.warn.join(' · '),
       top: !!w.top, cal: !!ST.scheduled[wid(g, w)], ping: wantsPing(g, w), started: +w.start <= Date.now(), clash: clashOf(w), t: +w.start }))
   }));
   const run = q => 'scriptable:///run/' + encodeURIComponent(Script.name()) + '?' + q;
