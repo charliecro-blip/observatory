@@ -1462,10 +1462,22 @@ var StarswellPlan = (function () {
           return { start: w.start, end: w.end, at: at, kind: w.kind, word: w.word, planet: w.planet, sign: sign, top: topIds.indexOf(+w.start) >= 0, score: Math.round(w.score * 10) / 10, strength: w.score >= 6 ? 'strong' : 'good', reason: (w.planet && w.why.filter(function (r) { return r.indexOf(w.planet) === 0; })[0]) || w.why[0] || '', why: w.why, warn: w.warn, peak: w.peak || null };
         });
         var best = out.slice().sort(function (a, b) { return b.score - a.score; })[0] || null;
-        return { want: g.want, name: G.name, short: G.short, dfor: G.dfor, times: g.times, per: g.per, precision: prec, best: best, windows: out };
+        // A thin week is an invitation to come at it another way: neighboring activities whose planets are strong.
+        var alts = [];
+        if (out.filter(function (w) { return +w.end > +o.now; }).length < quota(g)) {
+          (NEIGHBORS[g.want] || []).forEach(function (k) {
+            var A = GOALS[k], c = crossings(o, A.act, scans, tl).filter(function (x) { return x.score >= 4; }).sort(function (a, b) { return b.score - a.score; })[0];
+            if (c) alts.push({ want: k, name: A.name, short: A.short, dfor: A.dfor, start: c.start, end: c.end, word: c.word, planet: c.planet, reason: c.why[0] || '' });
+          });
+          alts.sort(function (a, b) { return a.start - b.start; });
+        }
+        return { want: g.want, name: G.name, short: G.short, dfor: G.dfor, times: g.times, per: g.per, precision: prec, best: best, windows: out, alts: alts.slice(0, 2) };
       })
     };
   }
+  var NEIGHBORS = { move: ['walk', 'run'], walk: ['move', 'meditate'], run: ['move', 'walk'], meditate: ['rest', 'journal'], rest: ['meditate', 'cook'],
+    journal: ['write', 'meditate'], focus: ['write', 'admin'], write: ['journal', 'focus'], create: ['write', 'journal'], admin: ['focus', 'cook'],
+    connect: ['partner', 'cook'], partner: ['connect', 'cook'], cook: ['partner', 'connect'] };
   // Onboarding in the person's own words: "quiet time to pray" -> meditate. Ranked guesses.
   var MATCH = {
     meditate: 'meditat sit still quiet pray prayer breath breathe calm peace mindful contemplat silence centered center ground',
@@ -1766,7 +1778,7 @@ function loadPlan(allowCompute) {
   return plan;
 }
 function revivePlan(p) {
-  p.goals.forEach(g => { g.windows.forEach(w => { w.start = new Date(w.start); w.end = new Date(w.end); if (w.peak) { w.peak.start = new Date(w.peak.start); w.peak.end = new Date(w.peak.end); } }); if (g.best) { g.best.start = new Date(g.best.start); g.best.end = new Date(g.best.end); } });
+  p.goals.forEach(g => { g.windows.forEach(w => { w.start = new Date(w.start); w.end = new Date(w.end); if (w.peak) { w.peak.start = new Date(w.peak.start); w.peak.end = new Date(w.peak.end); } }); if (g.best) { g.best.start = new Date(g.best.start); g.best.end = new Date(g.best.end); } (g.alts || []).forEach(a => { a.start = new Date(a.start); a.end = new Date(a.end); }); });
   return p;
 }
 // The person's own setup rides on top of the plan: their label, their word, their ping mode.
@@ -1985,7 +1997,7 @@ function planWidget(plan, family) {
     lab(head, x.g.label, col); head.addSpacer();
     lab(head, x.g.per === 'day' && x.g.times >= 3 ? doneIn(x.g).length + ' today' : doneIn(x.g).length + ' of ' + x.g.times + (x.g.per === 'day' ? ' today' : x.g.per === 'month' ? ' this month' : ' this week'));
     w.addSpacer(3);
-    if (!x.up.length) { txt(w, 'No standout waves this week', Font.systemFont(12), K.mute, 1); return; }
+    if (!x.up.length) { const a = (x.g.alts || []).find(a => +a.end > Date.now()); txt(w, a ? 'Try ' + a.dfor + ' instead, ' + dayWord(a.start) + ' ' + clk(a.start) : 'No standout waves this week', Font.systemFont(12), K.mute, 1); return; }
     x.up.slice(0, nexts.length === 1 ? show + 1 : show).forEach((v, i) => {
       const r = w.addStack(); r.centerAlignContent();
       txt(r, span(v) + (ST.scheduled[wid(x.g, v)] ? '  ◷' : ''), i === 0 ? Font.semiboldSystemFont(nexts.length === 1 ? 18 : 15) : Font.systemFont(12), i === 0 ? K.ink : K.mute, 1);
@@ -2003,6 +2015,7 @@ function planHTML(plan) {
   const COL = ['#6FF2E0', '#FFC46B'];
   const data = goals.map((g, gi) => ({
     want: g.want, label: g.label, col: COL[gi], per: perWord(g), done: doneIn(g).length, target: g.times, mode: g.mode,
+    sideways: (g.alts || []).filter(a => +a.end > Date.now()).length ? 'Not many waves for ' + g.label.toLowerCase() + ' this week, so try coming at it sideways: ' + (g.alts || []).filter(a => +a.end > Date.now()).map(a => a.dfor + ' ' + dayLong(a.start).replace('Today', 'today').replace('Tomorrow', 'tomorrow') + ' at ' + clk(a.start) + (a.reason ? ', under ' + a.reason : '')).join(', or ') + '.' : '',
     best: g.best ? dayLong(g.best.start) + ' is your best day for ' + g.label.toLowerCase() + ', ' + range(wStart(g.best), wEnd(g.best)) : '',
     record: (() => { const since = Date.now() - 28 * 864e5, ds = ST.done.filter(d => d.want === g.want && d.at >= since); return { n: ds.length, on: ds.filter(d => d.onWave).length }; })(),
     waves: upcoming(g).map(w => ({ id: wid(g, w), day: dayLong(w.start), dk: dkey(w.start), time: w.kind === 'day' ? 'Especially ' + clk(wStart(w)) : (+w.start <= Date.now() ? 'Now to ' + clk(w.end) : range(w.start, w.end)),
@@ -2048,7 +2061,7 @@ function waves(){
   let h='<h1>This week</h1><p class="sub">Check the stars like you check the weather.</p><div class="pills">';
   D.goals.forEach(g=>{h+='<div class="pill"><div class="k"><span class="dot" style="background:'+g.col+'"></span>'+esc(g.label)+'</div><div class="n">'+g.done+' of '+g.target+'</div></div>'});
   h+='</div>';
-  D.goals.forEach(g=>{ if(g.best) h+='<div class="best"><span class="dot" style="background:'+g.col+'"></span> '+esc(g.best)+'</div>'; });
+  D.goals.forEach(g=>{ if(g.sideways) h+='<div class="best" style="border:1px dashed #3A4568;background:none"><span class="dot" style="background:'+g.col+'"></span> '+esc(g.sideways)+'</div>'; else if(g.best) h+='<div class="best"><span class="dot" style="background:'+g.col+'"></span> '+esc(g.best)+'</div>'; });
   const all=[];D.goals.forEach(g=>g.waves.forEach(w=>all.push({g,w})));all.sort((a,b)=>a.w.t-b.w.t);
   if(!all.length) return h+'<p class="sub">No standout waves this week.</p>';
   let last='';
