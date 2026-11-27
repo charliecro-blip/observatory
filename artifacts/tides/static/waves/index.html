@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<link rel="icon" href="/favicon.svg">
+<link rel="icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Astrowaves">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Astrowaves</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#F3EEE4">
@@ -321,6 +326,7 @@ function today() {
   var h = '<div class="between"><h1>' + wd(new Date()) + '</h1><span class="small muted">' + esc(S.loc.city || '') + (st && st.rise ? ' · ' + g('Sun') + ' ' + tm(st.rise) + ' to ' + tm(st.set) : '') + '</span></div>';
   h += moonLine();
   h += skyArc(todayW);
+  h += rareBanner();
   h += reflectCard();
   h += next ? heroCard(next) : '<div class="card">No standout waves in the next eight days. Open <strong>Now</strong> to see what the sky suits as it goes.</div>';
   if (spanNow) h += '<button class="span" data-act="wave" data-id="' + spanNow.id + '">' + g(spanNow.planet) + '<span style="min-width:0"><span class="eyebrow">' + (+new Date(spanNow.start) <= now ? 'Running now' : 'Starting tomorrow') + '</span><br><strong>' + esc(spanRange(spanNow)) + '</strong> is a good stretch for ' + esc(goalName(spanNow.goal.mine)).toLowerCase() + '<br><span class="small muted">' + esc(word(spanNow.planet, spanNow.goal.mine)) + ' · ' + esc(spanNow.reason) + '</span></span></button>';
@@ -344,6 +350,31 @@ function moonLine() {
     var asp = nx ? ({ conjunction: 'meets', opposition: 'opposes', trine: 'trines', sextile: 'sextiles', square: 'squares' })[nx.aspect] + ' ' + nx.planet + ' at ' + tm(nx.t) : 'makes no more aspects today';
     return '<div class="small">' + g('Moon') + ' Moon in ' + gs(sign) + esc(sign) + ', ' + ph + (v ? ', void until ' + tm(v.end) : '') + '. She ' + asp + '.</div>';
   } catch (e) { return ''; }
+}
+var RARE = null;
+function rareKey() { return 'aw-rare-' + ymd(new Date()) + ':' + S.goals.map(function (x) { return x.want; }).join(',') + ':' + S.loc.lat; }
+function rareBanner() {
+  if (!RARE) { try { RARE = JSON.parse(localStorage.getItem(rareKey()) || 'null'); } catch (e) {} }
+  if (!RARE) { setTimeout(computeRare, 1200); return ''; }
+  var hit = RARE.filter(function (r) { return r.rare; })[0]; if (!hit) return '';
+  return '<div class="span" style="background:var(--warm);color:var(--bg)"><span class="g" style="color:var(--bg)">' + (GL[hit.planet] || '\u2726') + V + '</span><span><span class="eyebrow" style="color:inherit;opacity:.85">Today is one of the good ones</span><br><strong>For ' + esc(nameFor(hit.want)).toLowerCase() + '</strong>, today ranks in the top ' + hit.top + '% of the next four months.<br><span class="small">' + esc(hit.why.slice(0, 2).join(', ')) + '</span></span></div>';
+}
+var RARE_BUSY = false;
+function computeRare() {
+  if (RARE || RARE_BUSY || !S.loc || !S.goals.length) return; RARE_BUSY = true;
+  try {
+    var o = { now: new Date(Date.now() - 864e5), lat: S.loc.lat, lon: S.loc.lon, tz: tz(), wake: S.wake, sleep: S.sleep };
+    RARE = S.goals.map(function (gl) {
+      var days = P.tides(o, gl.want, 122, natal()), today = days[1], sorted = days.map(function (d) { return d.score; }).sort(function (a, b) { return a - b; });
+      var rank = sorted.filter(function (x) { return x <= today.score; }).length / sorted.length, top = Math.max(1, Math.round((1 - rank) * 100 + 0.5));
+      var crest = today.score >= days[0].score && today.score >= days[2].score;
+      var AP = (window.RULES.acts.filter(function (a) { return a.key === P.GOALS[gl.want].act; })[0] || {}).planets || {}, pl = Object.keys(AP).sort(function (a, b) { return AP[b] - AP[a]; })[0];
+      return { want: gl.want, rare: top <= 2 && crest && today.score > 0, top: top, why: today.why, planet: pl };
+    });
+    try { localStorage.setItem(rareKey(), JSON.stringify(RARE)); } catch (e) {}
+  } catch (e) { RARE = []; }
+  RARE_BUSY = false;
+  if (TAB === 'today' && !layer.innerHTML) render();
 }
 function spanRange(s) { var a = new Date(s.start), b = new Date(+new Date(s.end) - 3600e3); return s.days === 1 ? wd(a) : wd(a) + ' to ' + wd(b); }
 function itemRow(it, grouped) {
@@ -377,6 +408,12 @@ function nowView() {
   h += '<div><div class="eyebrow" style="margin:6px 0 2px">This moment suits</div>' + m.ranked.slice(0, 7).map(function (r) {
     var tier = r.score >= 4 ? 'strong' : r.score >= 2 ? 'supportive' : 'open';
     return '<button class="suit' + (mine.indexOf(r.want) >= 0 ? ' mine' : '') + '" data-act="suit" data-v="' + r.want + '"><span class="nm" style="min-width:0"><strong>' + esc(nameFor(r.want)) + '</strong> <span class="muted">' + (r.planet ? g(r.planet) + ' ' + esc(word(r.planet)) : '') + '</span><br><span class="small muted">' + esc(r.why.slice(0, 3).join(' · ') || 'Nothing in particular') + (r.warn.length ? ' · against it: ' + esc(r.warn.join(', ')) : '') + '</span></span><span><span class="bar"><i style="width:' + Math.max(6, Math.min(100, 100 * r.score / max)) + '%"></i></span><span class="tier ' + tier + '" style="display:inline-block;margin-top:6px">' + ({ strong: 'Strong', supportive: 'Supportive', open: 'Open' })[tier] + '</span></span></button>';
+  }).join('') + '</div>';
+  // Keyed to what the app can't know about you, so you choose by checking in with yourself (Compass alternatives.ts).
+  var IFS = [['If you\u2019re running empty', ['rest', 'meditate', 'cook', 'journal']], ['If you want company', ['connect', 'partner', 'cook']], ['If you need to move', ['walk', 'move', 'run']]];
+  h += '<div class="card"><div class="eyebrow" style="margin-bottom:2px">Or, depending on you</div>' + IFS.map(function (f) {
+    var r = m.ranked.filter(function (x) { return f[1].indexOf(x.want) >= 0; })[0]; if (!r) return '';
+    return '<button class="suit" data-act="suit" data-v="' + r.want + '" style="grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><span class="small muted">' + f[0] + '</span><br><strong>' + esc(nameFor(r.want)) + '</strong> <span class="muted">' + (r.planet ? g(r.planet) + ' ' + esc(word(r.planet)) : '') + '</span></span><span class="tier ' + (r.score >= 4 ? 'strong' : r.score >= 2 ? 'supportive' : 'open') + '">' + (r.score >= 4 ? 'Strong' : r.score >= 2 ? 'Supportive' : 'Open') + '</span></button>';
   }).join('') + '</div>';
   if (m.next) h += '<div class="card"><div class="eyebrow">Coming next · ' + tm(m.next.at) + '</div><div style="margin-top:4px">' + g(m.next.planet) + ' <strong>' + esc(word(m.next.planet)) + '</strong> <span class="muted">· ' + esc(m.next.say) + '</span></div><div class="small muted">Suits ' + esc(m.next.suits.join(' and ').toLowerCase()) + '</div></div>';
   return h;
@@ -463,6 +500,8 @@ function you() {
   h += '<div class="card"><strong>Your words for the planets</strong><p class="small muted" style="margin:4px 0 6px">These are the single words Astrowaves shows. Change any of them.</p>' + Object.keys(GL).map(function (pl) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span class="g" style="width:24px;color:var(--accent);font-size:18px;text-align:center">' + GL[pl] + V + '</span><span style="flex:1">' + pl + '</span><input type="text" data-word="' + pl + '" id="w-' + pl + '" value="' + esc(word(pl)) + '" style="width:130px;padding:7px 10px"></div>'; }).join('') + '</div>';
   h += plusCard();
   h += '<div class="card"><strong>Your chart</strong> <span class="plusmark">PLUS</span>' + (plusOn() ? chartBlock() : '<p class="small muted">Add your birth time and Astrowaves also watches for the moments your own planets cross the angles where you are.</p>') + '</div>';
+  h += '<div class="card"><strong>Tell Charlie</strong><p class="small muted" style="margin:4px 0 8px">Something confusing, wrong, broken, or something you liked. It goes straight to him.</p><button class="btn soft" data-act="fb" data-kind="">Write a note</button></div>';
+  if (!HOST && !isArtifact()) h += '<div class="card small"><strong>Widgets and notifications on iPhone</strong><p class="muted" style="margin:4px 0 0">Astrowaves can also run in the free Scriptable app, which adds Home Screen and Lock Screen widgets and real notifications. <a href="beta.html" style="color:var(--accent)">How to set it up</a></p></div>';
   h += '<div class="row small muted" style="justify-content:space-between"><label class="row"><input type="checkbox" id="freeview"' + (S.freeView ? ' checked' : '') + '> Preview the free version</label><button class="chip" data-act="reset">Start over</button></div>';
   return h;
 }
@@ -524,6 +563,7 @@ function waveSheet(w) {
     h += '<div class="field"><label for="dur">How long you want for it</label><select id="dur">' + [15, 20, 30, 45, 60, 90, 120, 180].map(function (n) { return '<option value="' + n + '"' + (n === (mine.dur || gl.dur) ? ' selected' : '') + '>' + (n < 60 ? n + ' minutes' : (n / 60) + (n === 60 ? ' hour' : ' hours')) + '</option>'; }).join('') + '</select></div>';
     h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Put it on my calendar</button><div class="row"><button class="btn soft" style="flex:1" data-act="remind" data-id="' + w.id + '">Remind me ' + leadText(mine.lead || gl.lead) + ' before</button><button class="btn soft" style="flex:1" data-act="share" data-id="' + w.id + '">Share</button></div>';
   } else h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Mark these days on my calendar</button>';
+  h += '<button class="chip" style="align-self:flex-start" data-act="fb" data-kind="wrong" data-id="' + w.id + '">This doesn\u2019t fit</button>';
   sheet(h);
 }
 function leadText(m) { return m >= 60 ? (m / 60) + ' hour' + (m > 60 ? 's' : '') : m + ' minutes'; }
@@ -531,6 +571,22 @@ function angleWord(k) { return { rise: 'Rising', mc: 'Culminating', set: 'Settin
 function planetOf(r) { var m = String(r).match(/\b(Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/g); return m ? m[m.length - 1] : null; }
 function signOf(r) { var m = String(r).match(/\b(Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces)\b/); return m && m[1]; }
 
+var FB_KINDS = [['confusing', 'Confusing'], ['wrong', 'Doesn\u2019t fit'], ['broken', 'Broken'], ['delightful', 'Loved it'], ['idea', 'An idea']];
+function fbSheet(kind, wid) {
+  var w = wid ? findWave(wid) : null;
+  sheet('<h2>Tell Charlie</h2>' + (w ? '<p class="small muted">About the ' + esc(goalName(w.goal.mine)).toLowerCase() + ' wave ' + (w.kind === 'span' ? esc(spanRange(w)) : dayName(w.start) + ' at ' + tm(w.at || w.start)) + ' (' + esc(w.reason) + ').</p>' : '') +
+    '<div class="row" style="flex-wrap:wrap;gap:6px">' + FB_KINDS.map(function (k) { return '<button class="chip' + (k[0] === kind ? ' on' : '') + '" data-act="fb-kind" data-kind="' + k[0] + '" data-id="' + (wid || '') + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+    '<textarea id="fb-note" maxlength="1000" placeholder="' + (kind === 'wrong' ? 'What happened instead, or what felt off?' : 'What would you like him to know?') + '">' + esc(FB_DRAFT) + '</textarea>' +
+    '<button class="btn wide" data-act="fb-send" data-kind="' + (kind || '') + '" data-id="' + (wid || '') + '">Send</button><p class="small muted">Sent with the screen you were on and your screen size. Nothing else about you goes with it.</p>');
+}
+var FB_DRAFT = '';
+function sendFeedback(kind, note, wid) {
+  var body = { kind: kind, note: note, context: { view: TAB, surface: 'astrowaves' + (HOST ? '-phone' : '-web'), viewport: innerWidth + 'x' + innerHeight, build: 'astrowaves-2026-11-27', recommendationId: wid || '' } };
+  var url = /compass\.day$|localhost|127\.0\.0\.1/.test(location.hostname) || HOST ? '/api/feedback' : 'https://compass.day/api/feedback';
+  fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (r) { if (!r.ok) throw 0; FB_DRAFT = ''; closeSheet(); toast('Sent. Thank you.'); })
+    .catch(function () { toast('That didn\u2019t send. Your note is still here; try again in a minute.'); });
+}
 function goalSheet(i) {
   var gl = i == null ? { label: '', want: '', times: 3, per: 'week' } : S.goals[i];
   var opts = Object.keys(P.GOALS).map(function (k) { return '<option value="' + k + '"' + (gl.want === k ? ' selected' : '') + '>' + esc(P.GOALS[k].name) + '</option>'; }).join('');
@@ -640,6 +696,9 @@ document.addEventListener('click', function (ev) {
       var p2 = bd.split('-').map(Number), q = bt.split(':').map(Number), guess = Date.UTC(p2[0], p2[1] - 1, p2[2], q[0], q[1]);
       var utc = guess - Sky.offsetMin(new Date(guess), bz) * 60000; utc = guess - Sky.offsetMin(new Date(utc), bz) * 60000;
       S.birth = { date: bd, time: bt, tz: bz, utc: new Date(utc).toISOString() }; save(); render(); toast('Your chart is in'); break; }
+    case 'fb': FB_DRAFT = ''; fbSheet(el.getAttribute('data-kind'), id); break;
+    case 'fb-kind': FB_DRAFT = (document.getElementById('fb-note') || {}).value || ''; fbSheet(el.getAttribute('data-kind'), id); break;
+    case 'fb-send': { var k = el.getAttribute('data-kind'); if (!k) { toast('Pick what kind of note it is'); return; } FB_DRAFT = document.getElementById('fb-note').value.trim(); sendFeedback(k, FB_DRAFT, id); break; }
     case 'reset': if (el.getAttribute('data-sure')) { S = blank(); save(); OB = { step: 0, text: '', guess: [], pick: null, times: 3, per: 'week' }; render(); } else { el.setAttribute('data-sure', '1'); el.textContent = 'Tap again to erase everything'; } break;
   }
 });

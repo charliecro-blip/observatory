@@ -1,0 +1,15 @@
+{
+  "name": "Astrowaves",
+  "short_name": "Astrowaves",
+  "description": "Good times in your local sky for the things you want more of.",
+  "start_url": "/waves/",
+  "scope": "/waves/",
+  "display": "standalone",
+  "background_color": "#F3EEE4",
+  "theme_color": "#F3EEE4",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

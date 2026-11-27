@@ -252,6 +252,8 @@ var StarswellPlan = (function () {
         if (natal[pl] == null) return; var d = Math.abs((((pos.Moon - natal[pl]) % 360) + 540) % 360 - 180);
         if (d < 7) add('Moon over your natal ' + pl, 0.9 * P[pl]);
       });
+      // "Moon in Cancer" and "Moon in Cancer, its own sign" are one fact: keep the fuller line.
+      why = why.filter(function (x) { return !why.some(function (y) { return y !== x && y.r.length > x.r.length && y.r.indexOf(x.r) === 0; }); });
       why.sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
       var score = why.reduce(function (n, x) { return n + x.v; }, 0);
       out.push({ start: start, end: end, score: Math.round(score * 10) / 10, why: why.filter(function (x) { return x.v > 0; }).map(function (x) { return x.r; }), warn: why.filter(function (x) { return x.v < 0; }).map(function (x) { return x.r; }) });

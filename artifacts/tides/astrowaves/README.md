@@ -103,6 +103,14 @@ Plus ($5.99 a month or $39.99 a year, prices to test) adds:
 
 During the beta, Plus is open to everyone. "Preview the free version" under You shows the limits.
 
+## Beta
+
+- `compass.day/waves/beta.html` is the guide for testers: the two ways in, the two-week ask, and what stays on the device.
+- The web app installs to the Home Screen (`manifest.json`, icons from `web/icon.svg`; regenerate the PNGs with `node web/mkicons.js` from a folder that has Playwright).
+- **Tell Charlie** (under You, and "This doesn't fit" on any wave) posts to Compass's existing `/api/feedback` with kind, note, screen, viewport, build and the wave's id. Read them with `GET /api/feedback` as admin, filtering on `surface` starting `astrowaves`.
+- **Today is one of the good ones** appears when an intention's day ranks in the top 2% of the next four months and today is the crest of its stretch. It's computed once a day on the device and cached (Compass's `RareMomentBanner` rule).
+- **Now** adds three conditional picks keyed to what the app can't know: running empty, wanting company, needing to move (Compass's `alternatives.ts`).
+
 ## Editorial rules
 
 Astrowaves offers invitations, not instructions. It never says a chance was missed, never uses urgency, never treats a weak score as a reason not to do something necessary, and never equates catching a wave with succeeding at the activity. Notifications describe conditions and don't promise outcomes.
