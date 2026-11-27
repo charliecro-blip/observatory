@@ -86,7 +86,9 @@ Rules Astrowaves now shares with the main Compass app, so the two read the same 
 - **Almanac patterns stay quiet until there's enough to count:** ten caught waves, and four of a kind. They report counts, never a verdict (`src/components/FeltPattern.tsx`).
 - **Today opens with the Moon in one sentence:** her sign, phase, void status and the next aspect she perfects (`src/lib/moonLine.ts`).
 
-Still worth taking from Compass: the canonical activity table (`api-server/src/lib/activityCorrespondences.ts`, with house rulers and natal tiers) in place of `rules.json`; the two-year rare-day notice (`RareMomentBanner`, about fourteen days a year); invitations that can be adjusted before you accept them (`GearChange`); conditional alternatives keyed to what the app can't know, like "if you're running empty" (`src/lib/alternatives.ts`); and the theme-aware planet palette (`src/lib/planetColors.ts`).
+- **The activity table is Compass's own.** `rules.json` matches `api-server/src/lib/activityCorrespondences.ts` field for field (52 activities), and `modes.json` carries its activity modes. The retrograde objection counts in force only for an inception (a first date, a launch, a signing), suits a revision, and leaves everyday doing alone. To refresh both after a change in Compass, bundle that file with esbuild and write `ACTIVITIES` and `modeOf` out to these two files.
+
+Still worth taking from Compass: the house layer of the activity table for natal tiers; the two-year rare-day notice (`RareMomentBanner`, about fourteen days a year); invitations that can be adjusted before you accept them (`GearChange`); conditional alternatives keyed to what the app can't know, like "if you're running empty" (`src/lib/alternatives.ts`); and the theme-aware planet palette (`src/lib/planetColors.ts`).
 
 ## Free and Plus
 

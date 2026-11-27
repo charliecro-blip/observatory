@@ -7,6 +7,7 @@ astro=open('node_modules/astronomy-engine/astronomy.browser.min.js').read()
 parts=[
  "var Astronomy = (function () { var module = { exports: {} }, exports = module.exports; var define; "+astro+"\n; return module.exports; })();",
  "var RULES = "+json.dumps({'acts':acts,'pis':pis},ensure_ascii=False,separators=(',',':'))+";",
+ "var MODES = "+json.dumps(json.load(open('modes.json')),separators=(',',':'))+";",
  "var DOC = "+json.dumps(json.load(open('doctrine.json')),ensure_ascii=False,separators=(',',':'))+";",
  strip(open('sky.js').read()), strip(open('rulebook.js').read()), strip(open('engine.js').read()), strip(open('core.js').read()), strip(open('plan.js').read())]
 open('starswell-core.js','w').write('\n'.join(parts)+'\n')

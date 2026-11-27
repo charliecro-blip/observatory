@@ -205,7 +205,12 @@ var StarswellPlan = (function () {
       else if (D.ex === sg) add(pl + ' exalted in ' + sg, 4.5 * w);
       else if (D.det.indexOf(sg) >= 0) add(pl + ' in detriment in ' + sg, -3.5 * w);
       else if (D.fall === sg) add(pl + ' in fall in ' + sg, -3 * w);
-      if (pl !== 'Sun' && pl !== 'Moon' && ((((nxt[pl] - pos[pl]) % 360) + 540) % 360 - 180) < 0) add(pl + ' retrograde', -2.5 * w);
+      // Compass's activity modes (from activityCorrespondences.modeOf): the retrograde objection is about beginnings,
+      // so it counts in force only for an inception, suits a revision, and leaves everyday doing alone.
+      var mode = (typeof MODES !== 'undefined' && MODES[A.key]) || 'execution';
+      if (pl !== 'Sun' && pl !== 'Moon' && ((((nxt[pl] - pos[pl]) % 360) + 540) % 360 - 180) < 0) {
+        if (mode === 'inception') add(pl + ' retrograde', -2.5 * w); else if (mode === 'revision') add(pl + ' retrograde, which suits going back over things', 1.2 * w);
+      }
       if (pl === 'Moon') return;
       Object.keys(pos).forEach(function (o2) {
         if (o2 === pl || o2 === 'Moon') return;
