@@ -33,15 +33,20 @@ await new AsyncFunction(code)()
 
 - **Home screen:** long-press the home screen, tap **+**, find **Scriptable**, pick a size, then tap the widget and choose **Astrowaves** as its script.
 - **Lock screen:** long-press the lock screen, tap **Customize**, then **Lock Screen**. Tap the widget row under the clock, add Scriptable, then tap the new tile and choose **Astrowaves**. If tapping the tile does nothing, try Settings, then Wallpaper, then Customize.
+- **The sky right now:** for a widget that shows what the current moment suits, edit the widget and type `now` under **Parameter**. It works on the home screen and the lock screen.
 
 ## Using it
 
-- **Waves:** every good time this week for what you're tracking, by day. Tap one to put it on your calendar, get a ping, or mark it done. "The sky behind it" shows the astrology.
-- **Record:** tap **I did it** when you do the thing. Astrowaves notes whether it landed on a wave.
-- **Settings:** choose what reaches your lock screen for each thing: the best ones, only what you put on your calendar, or every good wave. There's also a morning summary.
+- **Today:** your next wave, the rest of today, and any run of good days you're in. Tap a wave to see the sky behind it, put it on your calendar, or ask for a reminder.
+- **Now:** what this moment suits, ranked, with what comes next. Slide ahead to see later today or tomorrow morning.
+- **Week:** every wave for the next eight days. Strong waves are the best few for each thing, supportive waves are good too, and days without a wave are open for whatever you like.
+- **Almanac:** after a wave you asked to be reminded of, Today asks how it went. Your answers build a record over time.
+- **You:** change what you're making room for, your waking hours, your place, how reminders work, the look, and your own words for each planet.
 
-Pings come 10 minutes before a specific time, 20 minutes before a longer window, and the evening before plus the morning of a good day.
+By default you get at most one reminder a day that you didn't ask for, on the strongest wave, plus any you ask for. Reminders come early enough for the activity: about ten minutes before quiet time, closer to an hour before the gym.
+
+The same app runs in a browser at **compass.day/waves**. On the web, reminders come through your calendar.
 
 ## For an agent helping someone set this up
 
-The app is one JavaScript file served at `https://compass.day/today/starswell.js`, built from the Starswell engine (astronomy-engine for positions, a rulebook of activities and planets, and a planner). The loader above is all a phone needs. State lives in Scriptable's local Documents folder as `astrowaves.json`. Nothing is sent to a server.
+The app is one JavaScript file served at `https://compass.day/today/starswell.js`. When it can reach `https://compass.day/waves/`, it shows that web interface inside Scriptable and handles calendar events and reminders on the phone. Source and build steps are in `artifacts/tides/astrowaves/README.md` in the repo. The loader above is all a phone needs. State lives in Scriptable's local Documents folder as `astrowaves.json`. Nothing is sent to a server.

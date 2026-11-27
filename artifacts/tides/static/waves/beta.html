@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Astrowaves beta</title>
+<meta name="description" content="Astrowaves finds good times in your local sky for the things you want more of. How to try the beta.">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#F3EEE4">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root { --bg: #F3EEE4; --surface: #FFFFFF; --ink: #10233A; --muted: #5B6B7C; --line: #E2D8C6; --accent: #1E6E8C; --warm: #E26D4F; --code: #0E1B33; --code-ink: #EFE9DC; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0E1B33; --surface: #16264A; --ink: #EFE9DC; --muted: #9AA7C0; --line: #26395F; --accent: #5FE0CC; --warm: #D9B46A; --code: #08111F; --code-ink: #EFE9DC; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 'Inter', system-ui, -apple-system, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: calc(28px + env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) 64px max(18px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 18px; }
+h1, h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 40px; line-height: 1.05; }
+h2 { font-size: 22px; margin-top: 10px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lede { font-family: 'Fraunces', Georgia, serif; font-style: italic; font-size: 22px; color: var(--accent); }
+p { margin: 0; }
+.card { background: var(--surface); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.card h3 { margin: 0; font-size: 17px; }
+.go { display: inline-block; background: var(--accent); color: var(--bg); text-decoration: none; font-weight: 600; padding: 12px 18px; border-radius: 14px; align-self: flex-start; }
+ol, ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.muted { color: var(--muted); }
+.code { position: relative; }
+pre { background: var(--code); color: var(--code-ink); border-radius: 14px; padding: 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 0; }
+.copy { position: absolute; top: 8px; right: 8px; border: 0; border-radius: 10px; padding: 6px 10px; background: var(--warm); color: var(--code); font-weight: 600; font: inherit; font-size: 13px; cursor: pointer; }
+a { color: var(--accent); }
+img.mark { width: 64px; height: 64px; border-radius: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <img class="mark" src="icon-192.png" alt="">
+  <div class="eyebrow">Beta</div>
+  <h1>Astrowaves</h1>
+  <p class="lede">Check the stars like you check the weather.</p>
+  <p>Astrowaves finds good times in your local sky for the things you want more of, and lets you know before they come. Charlie Cross, an astrologer in Austin, built it, and you are one of the first people to try it.</p>
+
+  <h2>Two ways to use it</h2>
+  <div class="card">
+    <h3>In your browser, on any phone or computer</h3>
+    <p>Open the app and answer three short questions. On an iPhone, tap the Share button and choose <strong>Add to Home Screen</strong> so it opens like any other app. In the browser, reminders come through your calendar.</p>
+    <a class="go" href="./">Open Astrowaves</a>
+  </div>
+  <div class="card">
+    <h3>On iPhone, with widgets and notifications</h3>
+    <ol>
+      <li>Install <strong>Scriptable</strong> from the App Store (free).</li>
+      <li>Open it, tap <strong>+</strong>, paste the code below, and name the script <strong>Astrowaves</strong>.</li>
+      <li>Run it, and allow location, calendar and notifications.</li>
+      <li>For a widget, add a Scriptable widget to your Home Screen or Lock Screen and choose Astrowaves. Type <code>now</code> under Parameter for one that shows what the current moment suits.</li>
+    </ol>
+    <div class="code">
+<pre id="loader">// Astrowaves loader: fetches the latest Astrowaves each run and keeps a copy for offline.
+const fm = FileManager.local()
+const path = fm.joinPath(fm.documentsDirectory(), 'astrowaves-cache.js')
+let code = null
+try {
+  const req = new Request('https://compass.day/today/starswell.js')
+  req.timeoutInterval = 10
+  code = await req.loadString()
+  if (!code.includes('Starswell.reading')) code = null
+  else fm.writeString(path, code)
+} catch (e) {}
+if (!code &amp;&amp; fm.fileExists(path)) code = fm.readString(path)
+if (!code) throw new Error('Could not load Astrowaves. Check your connection and run it again.')
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+await new AsyncFunction(code)()</pre>
+      <button class="copy" id="copy" type="button">Copy</button>
+    </div>
+  </div>
+
+  <h2>What to try over two weeks</h2>
+  <ul>
+    <li>Pick two things to make room for: one you look forward to and one you keep putting off.</li>
+    <li>When a reminder comes and you can go, go. Afterward, Today asks how it went, and one tap answers.</li>
+    <li>When you have a free hour, open <strong>Now</strong> and see what the moment suits.</li>
+    <li>Whenever something confuses you, feels wrong or works, use <strong>Tell Charlie</strong> under You. A wave that didn't fit has its own button.</li>
+  </ul>
+  <p>At the end, Charlie will ask you about a time the app changed what you actually did, so keep an eye out for those.</p>
+
+  <h2>Your information</h2>
+  <p>What you tell Astrowaves, your calendar and your record stay on your device. A note you send with Tell Charlie goes to him with the screen you were on and your screen size, and nothing else.</p>
+  <p class="muted">Questions? Ask Charlie directly.</p>
+</main>
+<script>
+document.getElementById('copy').addEventListener('click', function () {
+  var b = this, t = document.getElementById('loader').textContent;
+  var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1800); };
+  var select = function () { var r = document.createRange(); r.selectNodeContents(document.getElementById('loader')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selected'; };
+  try { navigator.clipboard.writeText(t).then(done, select); } catch (e) { select(); }
+});
+</script>
+</body>
+</html>

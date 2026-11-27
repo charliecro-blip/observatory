@@ -268,7 +268,8 @@ H.AddAcceleration(b.a,b.r,this.curr.gravitators[m.Uranus].r,1.292024916781969E-8
 return new kd(this.curr.time,a,b)};$jscomp.global.Object.defineProperties(H.prototype,{OriginBody:{configurable:!0,enumerable:!0,get:function(){return this.originBody}},Time:{configurable:!0,enumerable:!0,get:function(){return this.curr.time}}});e.GravitySimulator=H;var kd=function(a,b,c){this.time=a;this.gravitators=b;this.bodies=c}},{}]},{},[1])(1)});
 
 ; return module.exports; })();
-var RULES = {"acts":[{"key":"train-hard","label":"Hard training","planets":{"Mars":1,"Sun":0.8},"hourRulers":["Mars","Sun"],"aspects":"effort","signs":{"Aries":"fast fire","Leo":"proud fire","Scorpio":"grinding depth","Capricorn":"endurance"},"phase":"waxing","voc":"neutral","gloss":"Mars work — give the force a worthy target.","mvp":"move for ten minutes at any intensity — the streak matters more than the session"},{"key":"endurance","label":"Long run / endurance","planets":{"Mars":1,"Saturn":0.7},"hourRulers":["Mars","Saturn"],"aspects":"effort","signs":{"Sagittarius":"far-ranging","Capricorn":"the long climb","Aquarius":"steady air"},"phase":null,"voc":"neutral","gloss":"Mars pointed down a long road, Saturn keeping the pace.","mvp":"go half the distance, slowly"},{"key":"gentle-movement","label":"Yoga / stretch / walk","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Taurus":"the body settled","Pisces":"fluid","Libra":"balance"},"phase":null,"voc":"favor","gloss":"Venus in the body — ease as a practice, not a reward.","mvp":"stretch once, standing where you are"},{"key":"deep-rest","label":"Deep rest / nap","planets":{"Neptune":1,"Moon":0.8,"Saturn":0.5},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Cancer":"home water","Pisces":"open sea","Taurus":"slow earth"},"phase":"waning","voc":"favor","gloss":"Slack water is real rest — the void is for this.","mvp":"lie down for ten minutes without your phone"},{"key":"haircut","label":"Haircut / grooming","planets":{"Venus":1},"hourRulers":["Venus"],"aspects":"soft","signs":{"Leo":"the mane itself","Libra":"the look","Taurus":"lasting shape"},"phase":"waxing","voc":"avoid","gloss":"Classical: cut waxing for growth and body; a Venus hour flatters.","mvp":null},{"key":"start-regimen","label":"Start a diet / regimen","planets":{"Saturn":1,"Moon":0.6},"hourRulers":["Saturn"],"aspects":"soft","signs":{"Virgo":"the regimen","Capricorn":"the discipline"},"phase":"waning","voc":"neutral","gloss":"Begin removals on the waning moon — subtraction runs with the tide.","mvp":null},{"key":"intimacy","label":"Intimacy & sex","planets":{"Venus":1,"Mars":0.8},"hourRulers":["Venus","Mars"],"aspects":"soft","signs":{"Scorpio":"depth","Taurus":"the senses","Libra":"the pair","Leo":"play"},"phase":"waxing","voc":"neutral","gloss":"Venus and Mars in the same room — evening tides suit them.","mvp":null},{"key":"deep-study","label":"Deep study","planets":{"Mercury":1,"Saturn":0.8},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Gemini":"quick air","Virgo":"orderly earth","Aquarius":"systems","Capricorn":"the long haul"},"phase":null,"voc":"neutral","gloss":"Mercury's matter at Saturn's pace, for learning that has to stick.","mvp":"read one page properly rather than five badly"},{"key":"first-draft","label":"Write a first draft","planets":{"Mercury":1,"Moon":0.6},"hourRulers":["Mercury","Moon"],"aspects":"soft","signs":{"Gemini":"the messenger","Pisces":"the image-well","Sagittarius":"the thesis"},"phase":"waxing","voc":"neutral","gloss":"Drafting classically SUITS the retrograde — only the release doesn't.","mvp":"write three sentences and stop"},{"key":"edit-revise","label":"Edit & revise","planets":{"Mercury":1,"Saturn":0.9},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Virgo":"the craftsman's eye","Capricorn":"prune"},"phase":"waning","voc":"neutral","gloss":"The waning moon cuts; Virgo's water shows every pebble.","mvp":"fix one paragraph"},{"key":"learn-skill","label":"Learn a new skill","planets":{"Mercury":1,"Jupiter":0.7},"hourRulers":["Mercury","Jupiter"],"aspects":"soft","signs":{"Gemini":"beginner's mind","Sagittarius":"the horizon","Aquarius":"the system"},"phase":"waxing","voc":"neutral","gloss":"Mercury gathers, Jupiter gives it somewhere to go.","mvp":"do the smallest drill once"},{"key":"strategize","label":"Plan & strategize","planets":{"Saturn":1,"Jupiter":0.8,"Mercury":0.6},"hourRulers":["Saturn","Jupiter"],"aspects":"soft","signs":{"Capricorn":"the mountain path","Sagittarius":"the far shore","Aquarius":"the pattern"},"phase":"new","voc":"neutral","gloss":"Saturn frames, Jupiter aims — a New-Moon matter by nature.","mvp":"write down the question you are actually trying to answer"},{"key":"investigate","label":"Research & investigate","planets":{"Mercury":1,"Pluto":0.7},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Scorpio":"the descent","Virgo":"the fine comb","Capricorn":"the ledger"},"phase":"waning","voc":"neutral","gloss":"What's hidden yields to Scorpio water and a patient Mercury.","mvp":"note what you already know and what is missing"},{"key":"teach-present","label":"Teach / present","planets":{"Mercury":1,"Sun":0.8,"Jupiter":0.7},"hourRulers":["Sun","Mercury","Jupiter"],"aspects":"soft","signs":{"Leo":"the stage","Sagittarius":"the teacher","Gemini":"the words"},"phase":"waxing","voc":"avoid","gloss":"Sun for presence, Mercury for the words, Jupiter for the room.","mvp":null},{"key":"deep-work","label":"Deep work sprint","planets":{"Saturn":1,"Mercury":0.8},"hourRulers":["Saturn","Mercury"],"aspects":"soft","signs":{"Capricorn":"the long climb","Virgo":"precision","Aquarius":"the system","Scorpio":"sealed focus"},"phase":null,"voc":"neutral","gloss":"Close the door; Saturn holds it shut.","mvp":"twenty minutes on the hardest part, then stop"},{"key":"creative-practice","label":"Make art / creative practice","planets":{"Venus":1,"Moon":0.8,"Mercury":0.5},"hourRulers":["Venus","Moon","Mercury"],"aspects":"soft","signs":{"Pisces":"the image-well","Taurus":"the hand at work","Libra":"the eye","Leo":"expression"},"phase":null,"voc":"favor","gloss":"Venus gives the form, the Moon the image, and Mercury the hand that carries it through.","mvp":null},{"key":"finish-polish","label":"Finish & ship the last 10%","planets":{"Saturn":1,"Venus":0.6},"hourRulers":["Saturn","Venus"],"aspects":"soft","signs":{"Virgo":"the polish","Taurus":"the finish","Capricorn":"done means done"},"phase":"waning","voc":"neutral","gloss":"Endings belong to the waning half — completion runs with the tide.","mvp":"close one loose end"},{"key":"organize","label":"Organize / declutter","planets":{"Mercury":1,"Saturn":0.8},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Virgo":"everything in place","Capricorn":"prune"},"phase":"waning","voc":"favor","gloss":"Clearing suits the void and the waning moon — removal, not launch.","mvp":"clear one surface"},{"key":"repair","label":"Repair & fix","planets":{"Mars":0.8,"Saturn":0.8,"Mercury":0.7},"hourRulers":["Mars","Saturn"],"aspects":"soft","signs":{"Virgo":"the diagnosis","Scorpio":"root cause","Capricorn":"built to last"},"phase":"waning","voc":"neutral","gloss":"Mending what already exists rather than making something new.","mvp":"diagnose it, even if you do not fix it today"},{"key":"admin-errands","label":"Admin & errands","planets":{"Mercury":1},"hourRulers":["Mercury"],"aspects":"soft","signs":{"Gemini":"many small currents","Virgo":"the list"},"phase":null,"voc":"avoid","gloss":"Mercury's hour moves the paperwork; the void loses it.","mvp":"do the single one that is blocking something else"},{"key":"negotiate","label":"Negotiate / ask for more","planets":{"Sun":0.9,"Jupiter":0.9,"Venus":0.7},"hourRulers":["Sun","Jupiter","Venus"],"aspects":"soft","signs":{"Leo":"worth, visibly","Libra":"the deal's balance","Capricorn":"the position"},"phase":"waxing","voc":"avoid","gloss":"Moon applying to Jupiter is the classic signature for asking big.","mvp":null},{"key":"hard-conversation","label":"The hard conversation","planets":{"Mercury":1,"Venus":0.7,"Saturn":0.5},"hourRulers":["Mercury","Venus"],"aspects":"soft","signs":{"Libra":"both sides held","Scorpio":"the honest depth","Gemini":"the words come"},"phase":null,"voc":"avoid","gloss":"Suits clearing old air; avoid the hours when the Moon and Mars clash.","mvp":null},{"key":"apply-job","label":"Apply / submit","planets":{"Mercury":1,"Sun":0.8},"hourRulers":["Mercury","Sun"],"aspects":"soft","signs":{"Capricorn":"the role","Leo":"be seen","Virgo":"the flawless document"},"phase":"waxing","voc":"avoid","gloss":"The document is Mercury's; your visibility is the Sun's.","mvp":null},{"key":"first-date","label":"A date","planets":{"Venus":1,"Moon":0.6},"hourRulers":["Venus"],"aspects":"soft","signs":{"Libra":"partnered air","Leo":"warm stage-light","Taurus":"the senses","Pisces":"the glow"},"phase":"waxing","voc":"avoid","gloss":"Moon applying to Venus, evening tide — the oldest election there is.","mvp":null},{"key":"romantic-time","label":"Time with your partner","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Cancer":"familiar company","Taurus":"shared comfort","Libra":"time together"},"phase":null,"voc":"neutral","gloss":"Venus and the Moon describe time together in an existing relationship.","mvp":null},{"key":"deepen-bond","label":"Deepen a bond","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Cancer":"the shared shell","Scorpio":"depth","Taurus":"steady warmth"},"phase":null,"voc":"neutral","gloss":"The Moon carries the relationship's own weather.","mvp":"ask one real question"},{"key":"repair-bond","label":"Repair / reconcile","planets":{"Venus":1,"Moon":0.7,"Neptune":0.5},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Libra":"the balance restored","Cancer":"the soft approach","Pisces":"grace"},"phase":"waning","voc":"neutral","gloss":"A waning moon favors going back over old ground gently.","mvp":null},{"key":"dating-profile","label":"Start a dating profile","planets":{"Venus":1,"Mercury":0.8,"Sun":0.6},"hourRulers":["Venus","Mercury"],"aspects":"soft","signs":{"Libra":"the meeting-place","Leo":"warm and seen","Gemini":"the words that land","Taurus":"unforced appeal"},"phase":"waxing","voc":"avoid","gloss":"A profile is published, not spoken — Venus for the appeal, Mercury for the words, and not while Mercury is retrograde.","mvp":null},{"key":"ask-someone-out","label":"Ask someone out","planets":{"Venus":1,"Mars":0.7,"Mercury":0.6},"hourRulers":["Venus","Mars"],"aspects":"soft","signs":{"Leo":"the nerve","Libra":"the graceful ask","Aries":"first move","Sagittarius":"the open shot"},"phase":"waxing","voc":"avoid","gloss":"Venus carries the asking; Mars supplies the nerve to send it.","mvp":null},{"key":"meet-someone-new","label":"Meet someone new","planets":{"Venus":1,"Jupiter":0.7,"Moon":0.5},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Libra":"the introduction","Gemini":"easy talk","Leo":"the room warm","Sagittarius":"the wider net"},"phase":"waxing","voc":"avoid","gloss":"Jupiter widens the field Venus works in — fifth-house weather with company.","mvp":null},{"key":"define-relationship","label":"Have the where-is-this-going talk","planets":{"Venus":1,"Mercury":0.8,"Saturn":0.6},"hourRulers":["Venus","Mercury"],"aspects":"soft","signs":{"Libra":"the honest scales","Capricorn":"what will hold","Taurus":"steady ground"},"phase":null,"voc":"avoid","gloss":"Saturn is welcome here — it is the conversation that asks a thing to hold shape.","mvp":null},{"key":"host","label":"Host a gathering","planets":{"Jupiter":1,"Venus":0.9,"Sun":0.7},"hourRulers":["Jupiter","Venus","Sun"],"aspects":"soft","signs":{"Leo":"the generous table","Libra":"the room in harmony","Sagittarius":"the feast"},"phase":"waxing","voc":"neutral","gloss":"Jupiter hosts; Venus arranges the room; the Sun warms it.","mvp":null},{"key":"network","label":"Meet new people / network","planets":{"Mercury":0.9,"Venus":0.8,"Jupiter":0.7},"hourRulers":["Mercury","Venus","Jupiter"],"aspects":"soft","signs":{"Gemini":"the exchange","Aquarius":"the network","Libra":"the introduction"},"phase":"waxing","voc":"avoid","gloss":"Eleventh-house weather: friends you haven't met.","mvp":"reply to the message you have been leaving"},{"key":"call-family","label":"Family time / call home","planets":{"Moon":1,"Venus":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the hearth","Taurus":"the meal","Pisces":"the old tie"},"phase":null,"voc":"neutral","gloss":"The Moon's own matter — home is wherever it's tended.","mvp":"send a message saying you will call"},{"key":"cook","label":"Cook & provision","planets":{"Moon":1,"Venus":0.7},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the kitchen's house","Taurus":"abundance","Virgo":"the prep"},"phase":null,"voc":"favor","gloss":"Nourishment is lunar work — a void afternoon cooks beautifully.","mvp":"make one component you can build on tomorrow"},{"key":"beautify","label":"Beautify the space","planets":{"Venus":1},"hourRulers":["Venus"],"aspects":"soft","signs":{"Taurus":"Venus at home","Libra":"the eye","Leo":"the flourish"},"phase":"waxing","voc":"neutral","gloss":"Venus's hour makes the same room land differently.","mvp":"put one thing back where it belongs"},{"key":"garden","label":"Garden / plant","planets":{"Moon":1,"Venus":0.7,"Saturn":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Taurus":"the fertile field","Cancer":"the watered bed","Capricorn":"the pruning"},"phase":"waxing","voc":"neutral","gloss":"Oldest election of all: sow waxing, weed and prune waning.","mvp":"water what is already planted"},{"key":"deep-clean","label":"Deep clean","planets":{"Saturn":0.9,"Mars":0.7},"hourRulers":["Saturn","Mars"],"aspects":"effort","signs":{"Virgo":"the standard","Scorpio":"the purge","Aries":"the blitz"},"phase":"waning","voc":"favor","gloss":"Removal work — the waning moon and even the void carry it.","mvp":"one room, or one drawer"},{"key":"budget","label":"Budget & ledger","planets":{"Saturn":1,"Mercury":0.8},"hourRulers":["Saturn","Mercury"],"aspects":"soft","signs":{"Capricorn":"the accounting","Virgo":"the reconciliation","Taurus":"what you have"},"phase":"waning","voc":"neutral","gloss":"Going over the numbers rather than committing new money.","mvp":"record what you spent, without deciding anything"},{"key":"big-purchase","label":"A considered purchase","planets":{"Venus":1,"Jupiter":0.6},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Taurus":"value that lasts","Libra":"the right choice","Capricorn":"the durable"},"phase":"waxing","voc":"avoid","gloss":"Venus governs worth; the void famously mis-buys.","mvp":null},{"key":"settle-debts","label":"Settle / restructure debts","planets":{"Saturn":1,"Pluto":0.6},"hourRulers":["Saturn"],"aspects":"soft","signs":{"Scorpio":"shared ledgers","Capricorn":"the obligation kept"},"phase":"waning","voc":"neutral","gloss":"Eighth-house work: what's entangled gets patiently unwound.","mvp":null},{"key":"meditate","label":"Meditate / pray","planets":{"Neptune":1,"Moon":0.7},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Pisces":"the open sea","Cancer":"the inner shore","Aquarius":"the witness"},"phase":null,"voc":"favor","gloss":"The void's slack water is the tradition's gift to this.","mvp":"three breaths, counted"},{"key":"journal","label":"Journal from feeling","planets":{"Moon":1,"Mercury":0.7},"hourRulers":["Moon","Mercury"],"aspects":"soft","signs":{"Cancer":"memory's house","Pisces":"the underside","Scorpio":"the true entry"},"phase":null,"voc":"favor","gloss":"Moon writes, Mercury holds the pen.","mvp":"one line about today"},{"key":"divination","label":"Reflection / divination","planets":{"Neptune":0.9,"Mercury":0.8,"Moon":0.7},"hourRulers":["Moon","Mercury","Saturn"],"aspects":"soft","signs":{"Scorpio":"the veil thin","Pisces":"the image-stream","Aquarius":"the pattern read"},"phase":"new","voc":"favor","gloss":"Dark-moon days read deepest; the balsamic hush is the classic window.","mvp":null},{"key":"set-intention","label":"Set an intention / begin a cycle","planets":{"Sun":1,"Moon":1},"hourRulers":["Sun","Moon"],"aspects":"soft","signs":{"Aries":"the first spark","Cancer":"rooted in feeling","Capricorn":"vow-grade"},"phase":"new","voc":"avoid","gloss":"Seed at the New Moon; the whole app's cycle rhythm begins here.","mvp":null},{"key":"release","label":"Grieve & release","planets":{"Pluto":0.8,"Moon":0.8,"Neptune":0.6},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Scorpio":"the descent","Pisces":"dissolution","Virgo":"the sorting-through"},"phase":"waning","voc":"favor","gloss":"Waning to balsamic — release work rides the emptying tide.","mvp":null},{"key":"retreat","label":"Solitude / retreat","planets":{"Saturn":0.9,"Neptune":0.9},"hourRulers":["Saturn","Moon"],"aspects":"soft","signs":{"Capricorn":"the hermitage","Pisces":"the dissolve","Virgo":"the quiet order"},"phase":"waning","voc":"favor","gloss":"Saturn's monastic gift — containment as kindness.","mvp":"take one hour off the grid instead of the day"},{"key":"publish","label":"Publish / release","planets":{"Mercury":0.9,"Jupiter":0.9,"Sun":0.8},"hourRulers":["Sun","Jupiter","Mercury"],"aspects":"soft","signs":{"Leo":"seen","Sagittarius":"carried far","Gemini":"the word out"},"phase":"waxing","voc":"avoid","gloss":"Timing matters most for the moment the work goes public.","mvp":null},{"key":"launch-venture","label":"Launch a venture / product","planets":{"Sun":1,"Jupiter":0.8,"Saturn":0.6},"hourRulers":["Sun","Jupiter"],"aspects":"soft","signs":{"Leo":"the identity lit","Capricorn":"built to hold","Aries":"first out"},"phase":"waxing","voc":"avoid","gloss":"Wants the part of the chart that governs public standing to be strong and unafflicted.","mvp":null},{"key":"sign-contract","label":"Sign a contract","planets":{"Mercury":1,"Saturn":0.7},"hourRulers":["Mercury","Jupiter"],"aspects":"soft","signs":{"Libra":"the accord","Capricorn":"the binding","Taurus":"what endures"},"phase":"waxing","voc":"avoid","gloss":"Two firm rules here: not while Mercury is retrograde, and never while the Moon is void.","mvp":null},{"key":"move-home","label":"Move / sign for a home","planets":{"Moon":1,"Saturn":0.7,"Venus":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the Moon's own house","Taurus":"settled ground","Capricorn":"the foundation"},"phase":"waxing","voc":"avoid","gloss":"Fourth-house election — the Moon strong and building.","mvp":null},{"key":"begin-partnership","label":"Begin a partnership","planets":{"Venus":1,"Moon":0.8,"Saturn":0.6},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Libra":"the scales' own matter","Taurus":"lasting Venus","Cancer":"the shared shell"},"phase":"waxing","voc":"avoid","gloss":"The tradition's most scrutinized election — Venus clean, Moon applying soft.","mvp":null}],"pis":{"Sun":{"Aries":{"does":"starts at full brightness — first, early, loud","misses":"wants the beginning more than the finish"},"Taurus":{"does":"steady output; the work shows up the same way daily","misses":"digs in long after the plan changed"},"Gemini":{"does":"shines by explaining — connects things, gets quoted","misses":"visible in six places, finished in none"},"Cancer":{"does":"warmth turned inward — home, and the few who count","misses":"praise from strangers stops registering"},"Leo":{"does":"whatever you make, you can stand behind in public","misses":"the audience quietly becomes the point"},"Virgo":{"does":"pride in the craft itself, seen or not","misses":"nothing ships, because nothing is finished"},"Libra":{"does":"shines through others — the partner, the collaboration","misses":"your own aim goes missing while you weigh theirs"},"Scorpio":{"does":"burns narrow and deep; one thing, all the way down","misses":"kept so private that nobody can help"},"Sagittarius":{"does":"purpose looks like distance — the further reach","misses":"the pitch outruns what is actually built"},"Capricorn":{"does":"recognition earned in public and on the record","misses":"waits for permission nobody formally gives"},"Aquarius":{"does":"stands out by standing apart","misses":"contrary on reflex, even when the room is right"},"Pisces":{"does":"purpose felt before it can be argued","misses":"dissolves into whoever else is present"}},"Moon":{"Aries":{"does":"needs met fast — act on the feeling, examine it after","misses":"the mood arrives already dressed as a decision"},"Taurus":{"does":"settled by food, warmth, and the same chair","misses":"comfort hardens into refusal to move"},"Gemini":{"does":"feelings get processed by saying them out loud","misses":"talked about so thoroughly they never land"},"Cancer":{"does":"you know what you need without having to ask","misses":"the past gets re-felt as though it were now"},"Leo":{"does":"needs to be delighted in, not merely tolerated","misses":"sulks when the room fails to notice"},"Virgo":{"does":"care shows up as usefulness — you fix what is wrong","misses":"worry doing an impression of planning"},"Libra":{"does":"steadied by good company and a pleasant room","misses":"own needs postponed until they surface as grievance"},"Scorpio":{"does":"feels it at full volume and shows none of it","misses":"holds the grudge long past its cause"},"Sagittarius":{"does":"cheered by motion — a trip, a plan, any horizon","misses":"restless the moment things turn ordinary"},"Capricorn":{"does":"comfort comes from being on top of it","misses":"feelings deferred until there is time, and there never is"},"Aquarius":{"does":"needs room — company you choose, at a distance you set","misses":"detached from your own state until it gets loud"},"Pisces":{"does":"reads the room before anyone has spoken","misses":"someone else's mood, wearing your name"}},"Mercury":{"Aries":{"does":"fast and blunt; decides mid-sentence","misses":"says it before it is true"},"Taurus":{"does":"slow, thorough, and it stays learned","misses":"will not reopen a settled opinion"},"Gemini":{"does":"quick, curious, good in any conversation","misses":"interested in everything, committed to nothing"},"Cancer":{"does":"thinks in images and memory; explains by story","misses":"the mood decides what counts as true"},"Leo":{"does":"speaks with conviction — people remember the line","misses":"style outruns the argument underneath"},"Virgo":{"does":"precise; sorts the real from the noise","misses":"corrects what did not need correcting"},"Libra":{"does":"states both sides fairly and means it","misses":"never lands on one"},"Scorpio":{"does":"research mind — finds what was meant to stay buried","misses":"reads motive into ordinary things"},"Sagittarius":{"does":"the shape first, before the parts","misses":"confident about details it never checked"},"Capricorn":{"does":"plans that survive contact with the week","misses":"dismisses what cannot be proven yet"},"Aquarius":{"does":"sees the pattern above the individual case","misses":"loyal to the theory over the evidence"},"Pisces":{"does":"the answer arrives sideways, and it is often right","misses":"cannot reconstruct how it got there"}},"Venus":{"Aries":{"does":"direct about wanting; makes the first move","misses":"wants it most in the moment before having it"},"Taurus":{"does":"real pleasure, real comfort, no apology for either","misses":"spends on comfort past what it is worth"},"Gemini":{"does":"charmed by wit; likes people who are interesting","misses":"interest wanders as soon as someone is known"},"Cancer":{"does":"loves by feeding people and remembering things","misses":"care with a small hook in it"},"Leo":{"does":"generous and warm; makes people feel chosen","misses":"needs the gesture returned where others can see"},"Virgo":{"does":"love shown by doing the useful thing","misses":"affection that arrives shaped like a critique"},"Libra":{"does":"fairness, grace, and the room made pleasant","misses":"peace kept at the cost of the true thing"},"Scorpio":{"does":"all or nothing — intensity is the point","misses":"closeness tested rather than trusted"},"Sagittarius":{"does":"warm and easy; likes the adventure of a person","misses":"leaves just as it turns ordinary"},"Capricorn":{"does":"commitment as the proof; shows up for years","misses":"warmth withheld until it has been earned"},"Aquarius":{"does":"loves people as they actually are, oddities included","misses":"distance mistaken for freedom"},"Pisces":{"does":"forgives more than most people can","misses":"loves the version of them you imagined"}},"Mars":{"Aries":{"does":"acts first, and the nerve holds","misses":"fights the nearest thing rather than the right one"},"Taurus":{"does":"slow to start, then impossible to stop","misses":"digs in at the moment moving would win"},"Gemini":{"does":"argues well and quickly","misses":"energy split across too many fronts"},"Cancer":{"does":"defends people rather than attacking them","misses":"anger goes sideways instead of straight"},"Leo":{"does":"bold in the open; performs under pressure","misses":"will not back down while anyone is watching"},"Virgo":{"does":"effort aimed precisely — the exact fix","misses":"picks the fight over the small wrong thing"},"Libra":{"does":"pushes through persuasion instead of force","misses":"conflict avoided until it becomes a rupture"},"Scorpio":{"does":"sustained, strategic, does not let go","misses":"waits to strike rather than saying it now"},"Sagittarius":{"does":"energy with a direction; goes far and fast","misses":"overcommits, then resents the load"},"Capricorn":{"does":"disciplined force, applied for as long as it takes","misses":"drives the body past what it can pay back"},"Aquarius":{"does":"fights for the principle rather than the person","misses":"cold exactly where heat was needed"},"Pisces":{"does":"acts on feeling, and best on someone else's behalf","misses":"effort leaks away with no clear target"}},"Jupiter":{"Aries":{"does":"grows by going first; luck follows the nerve","misses":"bets large on the untested"},"Taurus":{"does":"growth you can bank — slow, material, real","misses":"comfort inflates into too much of it"},"Gemini":{"does":"connects fields nobody had joined","misses":"knows a little about far too much"},"Cancer":{"does":"generous and protective; makes people safe","misses":"takes on more people than you can hold"},"Leo":{"does":"big-hearted in the open; brings others up with you","misses":"generosity that needs to be witnessed"},"Virgo":{"does":"growth through craft, better by increments","misses":"shrinks the ambition to fit the checklist"},"Libra":{"does":"expands through people — the introduction, the alliance","misses":"agrees to more than is possible"},"Scorpio":{"does":"goes where others will not, and grows there","misses":"mistakes intensity for depth"},"Sagittarius":{"does":"the wider view, and the nerve to act on it","misses":"promises the horizon and skips the ground"},"Capricorn":{"does":"growth that has to be built, on the record","misses":"talks yourself out of the larger version"},"Aquarius":{"does":"expands by including who was left out","misses":"loyal to the idea over the person in front of you"},"Pisces":{"does":"generous without accounting; meaning without argument","misses":"says yes well past your own capacity"}},"Saturn":{"Aries":{"does":"discipline in hard bursts","misses":"impatient with the slow part, which is the part"},"Taurus":{"does":"builds what lasts; will do the same thing for years","misses":"will not rebuild what is already standing wrong"},"Gemini":{"does":"checks the claim before repeating it","misses":"doubt where a decision was what was needed"},"Cancer":{"does":"duty to your people, kept quietly","misses":"care given as obligation rather than warmth"},"Leo":{"does":"takes responsibility in public and carries it","misses":"authority held too tightly to share"},"Virgo":{"does":"standards that hold; the work actually finishes","misses":"good enough never is"},"Libra":{"does":"fairness made durable — the agreement that holds","misses":"weighed so long that nothing gets decided"},"Scorpio":{"does":"endures what would break most people","misses":"control mistaken for safety"},"Sagittarius":{"does":"beliefs tested before they are kept","misses":"the frame hardens into dogma"},"Capricorn":{"does":"builds the structure, then maintains it","misses":"the work becomes the whole life"},"Aquarius":{"does":"the rule that serves everyone, not just you","misses":"enforced without the exception it needed"},"Pisces":{"does":"gives form to what was only felt","misses":"boundaries that dissolve the moment they are tested"}}}};
+var RULES = {"acts":[{"key":"train-hard","label":"Hard training","category":"body","element":"fire","planets":{"Mars":1,"Sun":0.8},"hourRulers":["Mars","Sun"],"aspects":"effort","signs":{"Aries":"fast fire","Leo":"proud fire","Scorpio":"grinding depth","Capricorn":"endurance"},"phase":"waxing","voc":"neutral","gloss":"Mars work — give the force a worthy target.","mvp":"move for ten minutes at any intensity — the streak matters more than the session"},{"key":"endurance","label":"Long run / endurance","category":"body","element":"fire","planets":{"Mars":1,"Saturn":0.7},"hourRulers":["Mars","Saturn"],"aspects":"effort","signs":{"Sagittarius":"far-ranging","Capricorn":"the long climb","Aquarius":"steady air"},"phase":null,"voc":"neutral","gloss":"Mars pointed down a long road, Saturn keeping the pace.","mvp":"go half the distance, slowly"},{"key":"gentle-movement","label":"Yoga / stretch / walk","category":"body","element":"water","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Taurus":"the body settled","Pisces":"fluid","Libra":"balance"},"phase":null,"voc":"favor","gloss":"Venus in the body — ease as a practice, not a reward.","mvp":"stretch once, standing where you are"},{"key":"deep-rest","label":"Deep rest / nap","category":"body","element":"water","planets":{"Neptune":1,"Moon":0.8,"Saturn":0.5},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Cancer":"home water","Pisces":"open sea","Taurus":"slow earth"},"phase":"waning","voc":"favor","gloss":"Slack water is real rest — the void is for this.","mvp":"lie down for ten minutes without your phone"},{"key":"haircut","label":"Haircut / grooming","category":"body","element":"earth","planets":{"Venus":1},"hourRulers":["Venus"],"aspects":"soft","signs":{"Leo":"the mane itself","Libra":"the look","Taurus":"lasting shape"},"phase":"waxing","voc":"avoid","gloss":"Classical: cut waxing for growth and body; a Venus hour flatters.","mvp":null},{"key":"start-regimen","label":"Start a diet / regimen","category":"body","element":"earth","planets":{"Saturn":1,"Moon":0.6},"hourRulers":["Saturn"],"aspects":"soft","signs":{"Virgo":"the regimen","Capricorn":"the discipline"},"phase":"waning","voc":"neutral","gloss":"Begin removals on the waning moon — subtraction runs with the tide.","mvp":null},{"key":"intimacy","label":"Intimacy & sex","category":"body","element":"water","planets":{"Venus":1,"Mars":0.8},"hourRulers":["Venus","Mars"],"aspects":"soft","signs":{"Scorpio":"depth","Taurus":"the senses","Libra":"the pair","Leo":"play"},"phase":"waxing","voc":"neutral","gloss":"Venus and Mars in the same room — evening tides suit them.","mvp":null},{"key":"deep-study","label":"Deep study","category":"mind","element":"air","planets":{"Mercury":1,"Saturn":0.8},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Gemini":"quick air","Virgo":"orderly earth","Aquarius":"systems","Capricorn":"the long haul"},"phase":null,"voc":"neutral","gloss":"Mercury's matter at Saturn's pace, for learning that has to stick.","mvp":"read one page properly rather than five badly"},{"key":"first-draft","label":"Write a first draft","category":"mind","element":"air","planets":{"Mercury":1,"Moon":0.6},"hourRulers":["Mercury","Moon"],"aspects":"soft","signs":{"Gemini":"the messenger","Pisces":"the image-well","Sagittarius":"the thesis"},"phase":"waxing","voc":"neutral","gloss":"Drafting classically SUITS the retrograde — only the release doesn't.","mvp":"write three sentences and stop"},{"key":"edit-revise","label":"Edit & revise","category":"mind","element":"earth","planets":{"Mercury":1,"Saturn":0.9},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Virgo":"the craftsman's eye","Capricorn":"prune"},"phase":"waning","voc":"neutral","gloss":"The waning moon cuts; Virgo's water shows every pebble.","mvp":"fix one paragraph"},{"key":"learn-skill","label":"Learn a new skill","category":"mind","element":"air","planets":{"Mercury":1,"Jupiter":0.7},"hourRulers":["Mercury","Jupiter"],"aspects":"soft","signs":{"Gemini":"beginner's mind","Sagittarius":"the horizon","Aquarius":"the system"},"phase":"waxing","voc":"neutral","gloss":"Mercury gathers, Jupiter gives it somewhere to go.","mvp":"do the smallest drill once"},{"key":"strategize","label":"Plan & strategize","category":"mind","element":"earth","planets":{"Saturn":1,"Jupiter":0.8,"Mercury":0.6},"hourRulers":["Saturn","Jupiter"],"aspects":"soft","signs":{"Capricorn":"the mountain path","Sagittarius":"the far shore","Aquarius":"the pattern"},"phase":"new","voc":"neutral","gloss":"Saturn frames, Jupiter aims — a New-Moon matter by nature.","mvp":"write down the question you are actually trying to answer"},{"key":"investigate","label":"Research & investigate","category":"mind","element":"water","planets":{"Mercury":1,"Pluto":0.7},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Scorpio":"the descent","Virgo":"the fine comb","Capricorn":"the ledger"},"phase":"waning","voc":"neutral","gloss":"What's hidden yields to Scorpio water and a patient Mercury.","mvp":"note what you already know and what is missing"},{"key":"teach-present","label":"Teach / present","category":"mind","element":"fire","planets":{"Mercury":1,"Sun":0.8,"Jupiter":0.7},"hourRulers":["Sun","Mercury","Jupiter"],"aspects":"soft","signs":{"Leo":"the stage","Sagittarius":"the teacher","Gemini":"the words"},"phase":"waxing","voc":"avoid","gloss":"Sun for presence, Mercury for the words, Jupiter for the room.","mvp":null},{"key":"deep-work","label":"Deep work sprint","category":"craft","element":"earth","planets":{"Saturn":1,"Mercury":0.8},"hourRulers":["Saturn","Mercury"],"aspects":"soft","signs":{"Capricorn":"the long climb","Virgo":"precision","Aquarius":"the system","Scorpio":"sealed focus"},"phase":null,"voc":"neutral","gloss":"Close the door; Saturn holds it shut.","mvp":"twenty minutes on the hardest part, then stop"},{"key":"creative-practice","label":"Make art / creative practice","category":"craft","element":"water","planets":{"Venus":1,"Moon":0.8,"Mercury":0.5},"hourRulers":["Venus","Moon","Mercury"],"aspects":"soft","signs":{"Pisces":"the image-well","Taurus":"the hand at work","Libra":"the eye","Leo":"expression"},"phase":null,"voc":"favor","gloss":"Venus gives the form, the Moon the image, and Mercury the hand that carries it through.","mvp":null},{"key":"finish-polish","label":"Finish & ship the last 10%","category":"craft","element":"earth","planets":{"Saturn":1,"Venus":0.6},"hourRulers":["Saturn","Venus"],"aspects":"soft","signs":{"Virgo":"the polish","Taurus":"the finish","Capricorn":"done means done"},"phase":"waning","voc":"neutral","gloss":"Endings belong to the waning half — completion runs with the tide.","mvp":"close one loose end"},{"key":"organize","label":"Organize / declutter","category":"craft","element":"earth","planets":{"Mercury":1,"Saturn":0.8},"hourRulers":["Mercury","Saturn"],"aspects":"soft","signs":{"Virgo":"everything in place","Capricorn":"prune"},"phase":"waning","voc":"favor","gloss":"Clearing suits the void and the waning moon — removal, not launch.","mvp":"clear one surface"},{"key":"repair","label":"Repair & fix","category":"craft","element":"earth","planets":{"Mars":0.8,"Saturn":0.8,"Mercury":0.7},"hourRulers":["Mars","Saturn"],"aspects":"soft","signs":{"Virgo":"the diagnosis","Scorpio":"root cause","Capricorn":"built to last"},"phase":"waning","voc":"neutral","gloss":"Mending what already exists rather than making something new.","mvp":"diagnose it, even if you do not fix it today"},{"key":"admin-errands","label":"Admin & errands","category":"craft","element":"air","planets":{"Mercury":1},"hourRulers":["Mercury"],"aspects":"soft","signs":{"Gemini":"many small currents","Virgo":"the list"},"phase":null,"voc":"avoid","gloss":"Mercury's hour moves the paperwork; the void loses it.","mvp":"do the single one that is blocking something else"},{"key":"negotiate","label":"Negotiate / ask for more","category":"craft","element":"fire","planets":{"Sun":0.9,"Jupiter":0.9,"Venus":0.7},"hourRulers":["Sun","Jupiter","Venus"],"aspects":"soft","signs":{"Leo":"worth, visibly","Libra":"the deal's balance","Capricorn":"the position"},"phase":"waxing","voc":"avoid","gloss":"Moon applying to Jupiter is the classic signature for asking big.","mvp":null},{"key":"hard-conversation","label":"The hard conversation","category":"craft","element":"air","planets":{"Mercury":1,"Venus":0.7,"Saturn":0.5},"hourRulers":["Mercury","Venus"],"aspects":"soft","signs":{"Libra":"both sides held","Scorpio":"the honest depth","Gemini":"the words come"},"phase":null,"voc":"avoid","gloss":"Suits clearing old air; avoid the hours when the Moon and Mars clash.","mvp":null},{"key":"apply-job","label":"Apply / submit","category":"craft","element":"air","planets":{"Mercury":1,"Sun":0.8},"hourRulers":["Mercury","Sun"],"aspects":"soft","signs":{"Capricorn":"the role","Leo":"be seen","Virgo":"the flawless document"},"phase":"waxing","voc":"avoid","gloss":"The document is Mercury's; your visibility is the Sun's.","mvp":null},{"key":"first-date","label":"A date","category":"love","element":"air","planets":{"Venus":1,"Moon":0.6},"hourRulers":["Venus"],"aspects":"soft","signs":{"Libra":"partnered air","Leo":"warm stage-light","Taurus":"the senses","Pisces":"the glow"},"phase":"waxing","voc":"avoid","gloss":"Moon applying to Venus, evening tide — the oldest election there is.","mvp":null},{"key":"romantic-time","label":"Time with your partner","category":"love","element":"water","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Cancer":"familiar company","Taurus":"shared comfort","Libra":"time together"},"phase":null,"voc":"neutral","gloss":"Venus and the Moon describe time together in an existing relationship.","mvp":null},{"key":"deepen-bond","label":"Deepen a bond","category":"love","element":"water","planets":{"Venus":1,"Moon":0.8},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Cancer":"the shared shell","Scorpio":"depth","Taurus":"steady warmth"},"phase":null,"voc":"neutral","gloss":"The Moon carries the relationship's own weather.","mvp":"ask one real question"},{"key":"repair-bond","label":"Repair / reconcile","category":"love","element":"water","planets":{"Venus":1,"Moon":0.7,"Neptune":0.5},"hourRulers":["Venus","Moon"],"aspects":"soft","signs":{"Libra":"the balance restored","Cancer":"the soft approach","Pisces":"grace"},"phase":"waning","voc":"neutral","gloss":"A waning moon favors going back over old ground gently.","mvp":null},{"key":"dating-profile","label":"Start a dating profile","category":"love","element":"air","planets":{"Venus":1,"Mercury":0.8,"Sun":0.6},"hourRulers":["Venus","Mercury"],"aspects":"soft","signs":{"Libra":"the meeting-place","Leo":"warm and seen","Gemini":"the words that land","Taurus":"unforced appeal"},"phase":"waxing","voc":"avoid","gloss":"A profile is published, not spoken — Venus for the appeal, Mercury for the words, and not while Mercury is retrograde.","mvp":null},{"key":"ask-someone-out","label":"Ask someone out","category":"love","element":"fire","planets":{"Venus":1,"Mars":0.7,"Mercury":0.6},"hourRulers":["Venus","Mars"],"aspects":"soft","signs":{"Leo":"the nerve","Libra":"the graceful ask","Aries":"first move","Sagittarius":"the open shot"},"phase":"waxing","voc":"avoid","gloss":"Venus carries the asking; Mars supplies the nerve to send it.","mvp":null},{"key":"meet-someone-new","label":"Meet someone new","category":"love","element":"air","planets":{"Venus":1,"Jupiter":0.7,"Moon":0.5},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Libra":"the introduction","Gemini":"easy talk","Leo":"the room warm","Sagittarius":"the wider net"},"phase":"waxing","voc":"avoid","gloss":"Jupiter widens the field Venus works in — fifth-house weather with company.","mvp":null},{"key":"define-relationship","label":"Have the where-is-this-going talk","category":"love","element":"air","planets":{"Venus":1,"Mercury":0.8,"Saturn":0.6},"hourRulers":["Venus","Mercury"],"aspects":"soft","signs":{"Libra":"the honest scales","Capricorn":"what will hold","Taurus":"steady ground"},"phase":null,"voc":"avoid","gloss":"Saturn is welcome here — it is the conversation that asks a thing to hold shape.","mvp":null},{"key":"host","label":"Host a gathering","category":"social","element":"fire","planets":{"Jupiter":1,"Venus":0.9,"Sun":0.7},"hourRulers":["Jupiter","Venus","Sun"],"aspects":"soft","signs":{"Leo":"the generous table","Libra":"the room in harmony","Sagittarius":"the feast"},"phase":"waxing","voc":"neutral","gloss":"Jupiter hosts; Venus arranges the room; the Sun warms it.","mvp":null},{"key":"network","label":"Meet new people / network","category":"social","element":"air","planets":{"Mercury":0.9,"Venus":0.8,"Jupiter":0.7},"hourRulers":["Mercury","Venus","Jupiter"],"aspects":"soft","signs":{"Gemini":"the exchange","Aquarius":"the network","Libra":"the introduction"},"phase":"waxing","voc":"avoid","gloss":"Eleventh-house weather: friends you haven't met.","mvp":"reply to the message you have been leaving"},{"key":"call-family","label":"Family time / call home","category":"social","element":"water","planets":{"Moon":1,"Venus":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the hearth","Taurus":"the meal","Pisces":"the old tie"},"phase":null,"voc":"neutral","gloss":"The Moon's own matter — home is wherever it's tended.","mvp":"send a message saying you will call"},{"key":"cook","label":"Cook & provision","category":"home","element":"water","planets":{"Moon":1,"Venus":0.7},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the kitchen's house","Taurus":"abundance","Virgo":"the prep"},"phase":null,"voc":"favor","gloss":"Nourishment is lunar work — a void afternoon cooks beautifully.","mvp":"make one component you can build on tomorrow"},{"key":"beautify","label":"Beautify the space","category":"home","element":"earth","planets":{"Venus":1},"hourRulers":["Venus"],"aspects":"soft","signs":{"Taurus":"Venus at home","Libra":"the eye","Leo":"the flourish"},"phase":"waxing","voc":"neutral","gloss":"Venus's hour makes the same room land differently.","mvp":"put one thing back where it belongs"},{"key":"garden","label":"Garden / plant","category":"home","element":"earth","planets":{"Moon":1,"Venus":0.7,"Saturn":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Taurus":"the fertile field","Cancer":"the watered bed","Capricorn":"the pruning"},"phase":"waxing","voc":"neutral","gloss":"Oldest election of all: sow waxing, weed and prune waning.","mvp":"water what is already planted"},{"key":"deep-clean","label":"Deep clean","category":"home","element":"earth","planets":{"Saturn":0.9,"Mars":0.7},"hourRulers":["Saturn","Mars"],"aspects":"effort","signs":{"Virgo":"the standard","Scorpio":"the purge","Aries":"the blitz"},"phase":"waning","voc":"favor","gloss":"Removal work — the waning moon and even the void carry it.","mvp":"one room, or one drawer"},{"key":"budget","label":"Budget & ledger","category":"money","element":"earth","planets":{"Saturn":1,"Mercury":0.8},"hourRulers":["Saturn","Mercury"],"aspects":"soft","signs":{"Capricorn":"the accounting","Virgo":"the reconciliation","Taurus":"what you have"},"phase":"waning","voc":"neutral","gloss":"Going over the numbers rather than committing new money.","mvp":"record what you spent, without deciding anything"},{"key":"big-purchase","label":"A considered purchase","category":"money","element":"earth","planets":{"Venus":1,"Jupiter":0.6},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Taurus":"value that lasts","Libra":"the right choice","Capricorn":"the durable"},"phase":"waxing","voc":"avoid","gloss":"Venus governs worth; the void famously mis-buys.","mvp":null},{"key":"settle-debts","label":"Settle / restructure debts","category":"money","element":"water","planets":{"Saturn":1,"Pluto":0.6},"hourRulers":["Saturn"],"aspects":"soft","signs":{"Scorpio":"shared ledgers","Capricorn":"the obligation kept"},"phase":"waning","voc":"neutral","gloss":"Eighth-house work: what's entangled gets patiently unwound.","mvp":null},{"key":"meditate","label":"Meditate / pray","category":"spirit","element":"water","planets":{"Neptune":1,"Moon":0.7},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Pisces":"the open sea","Cancer":"the inner shore","Aquarius":"the witness"},"phase":null,"voc":"favor","gloss":"The void's slack water is the tradition's gift to this.","mvp":"three breaths, counted"},{"key":"journal","label":"Journal from feeling","category":"spirit","element":"water","planets":{"Moon":1,"Mercury":0.7},"hourRulers":["Moon","Mercury"],"aspects":"soft","signs":{"Cancer":"memory's house","Pisces":"the underside","Scorpio":"the true entry"},"phase":null,"voc":"favor","gloss":"Moon writes, Mercury holds the pen.","mvp":"one line about today"},{"key":"divination","label":"Reflection / divination","category":"spirit","element":"water","planets":{"Neptune":0.9,"Mercury":0.8,"Moon":0.7},"hourRulers":["Moon","Mercury","Saturn"],"aspects":"soft","signs":{"Scorpio":"the veil thin","Pisces":"the image-stream","Aquarius":"the pattern read"},"phase":"new","voc":"favor","gloss":"Dark-moon days read deepest; the balsamic hush is the classic window.","mvp":null},{"key":"set-intention","label":"Set an intention / begin a cycle","category":"spirit","element":"fire","planets":{"Sun":1,"Moon":1},"hourRulers":["Sun","Moon"],"aspects":"soft","signs":{"Aries":"the first spark","Cancer":"rooted in feeling","Capricorn":"vow-grade"},"phase":"new","voc":"avoid","gloss":"Seed at the New Moon; the whole app's cycle rhythm begins here.","mvp":null},{"key":"release","label":"Grieve & release","category":"spirit","element":"water","planets":{"Pluto":0.8,"Moon":0.8,"Neptune":0.6},"hourRulers":["Moon","Saturn"],"aspects":"soft","signs":{"Scorpio":"the descent","Pisces":"dissolution","Virgo":"the sorting-through"},"phase":"waning","voc":"favor","gloss":"Waning to balsamic — release work rides the emptying tide.","mvp":null},{"key":"retreat","label":"Solitude / retreat","category":"spirit","element":"water","planets":{"Saturn":0.9,"Neptune":0.9},"hourRulers":["Saturn","Moon"],"aspects":"soft","signs":{"Capricorn":"the hermitage","Pisces":"the dissolve","Virgo":"the quiet order"},"phase":"waning","voc":"favor","gloss":"Saturn's monastic gift — containment as kindness.","mvp":"take one hour off the grid instead of the day"},{"key":"publish","label":"Publish / release","category":"launch","element":"fire","planets":{"Mercury":0.9,"Jupiter":0.9,"Sun":0.8},"hourRulers":["Sun","Jupiter","Mercury"],"aspects":"soft","signs":{"Leo":"seen","Sagittarius":"carried far","Gemini":"the word out"},"phase":"waxing","voc":"avoid","gloss":"Timing matters most for the moment the work goes public.","mvp":null},{"key":"launch-venture","label":"Launch a venture / product","category":"launch","element":"fire","planets":{"Sun":1,"Jupiter":0.8,"Saturn":0.6},"hourRulers":["Sun","Jupiter"],"aspects":"soft","signs":{"Leo":"the identity lit","Capricorn":"built to hold","Aries":"first out"},"phase":"waxing","voc":"avoid","gloss":"Wants the part of the chart that governs public standing to be strong and unafflicted.","mvp":null},{"key":"sign-contract","label":"Sign a contract","category":"launch","element":"air","planets":{"Mercury":1,"Saturn":0.7},"hourRulers":["Mercury","Jupiter"],"aspects":"soft","signs":{"Libra":"the accord","Capricorn":"the binding","Taurus":"what endures"},"phase":"waxing","voc":"avoid","gloss":"Two firm rules here: not while Mercury is retrograde, and never while the Moon is void.","mvp":null},{"key":"move-home","label":"Move / sign for a home","category":"launch","element":"water","planets":{"Moon":1,"Saturn":0.7,"Venus":0.5},"hourRulers":["Moon","Venus"],"aspects":"soft","signs":{"Cancer":"the Moon's own house","Taurus":"settled ground","Capricorn":"the foundation"},"phase":"waxing","voc":"avoid","gloss":"Fourth-house election — the Moon strong and building.","mvp":null},{"key":"begin-partnership","label":"Begin a partnership","category":"launch","element":"air","planets":{"Venus":1,"Moon":0.8,"Saturn":0.6},"hourRulers":["Venus","Jupiter"],"aspects":"soft","signs":{"Libra":"the scales' own matter","Taurus":"lasting Venus","Cancer":"the shared shell"},"phase":"waxing","voc":"avoid","gloss":"The tradition's most scrutinized election — Venus clean, Moon applying soft.","mvp":null}],"pis":{"Sun":{"Aries":{"does":"starts at full brightness — first, early, loud","misses":"wants the beginning more than the finish"},"Taurus":{"does":"steady output; the work shows up the same way daily","misses":"digs in long after the plan changed"},"Gemini":{"does":"shines by explaining — connects things, gets quoted","misses":"visible in six places, finished in none"},"Cancer":{"does":"warmth turned inward — home, and the few who count","misses":"praise from strangers stops registering"},"Leo":{"does":"whatever you make, you can stand behind in public","misses":"the audience quietly becomes the point"},"Virgo":{"does":"pride in the craft itself, seen or not","misses":"nothing ships, because nothing is finished"},"Libra":{"does":"shines through others — the partner, the collaboration","misses":"your own aim goes missing while you weigh theirs"},"Scorpio":{"does":"burns narrow and deep; one thing, all the way down","misses":"kept so private that nobody can help"},"Sagittarius":{"does":"purpose looks like distance — the further reach","misses":"the pitch outruns what is actually built"},"Capricorn":{"does":"recognition earned in public and on the record","misses":"waits for permission nobody formally gives"},"Aquarius":{"does":"stands out by standing apart","misses":"contrary on reflex, even when the room is right"},"Pisces":{"does":"purpose felt before it can be argued","misses":"dissolves into whoever else is present"}},"Moon":{"Aries":{"does":"needs met fast — act on the feeling, examine it after","misses":"the mood arrives already dressed as a decision"},"Taurus":{"does":"settled by food, warmth, and the same chair","misses":"comfort hardens into refusal to move"},"Gemini":{"does":"feelings get processed by saying them out loud","misses":"talked about so thoroughly they never land"},"Cancer":{"does":"you know what you need without having to ask","misses":"the past gets re-felt as though it were now"},"Leo":{"does":"needs to be delighted in, not merely tolerated","misses":"sulks when the room fails to notice"},"Virgo":{"does":"care shows up as usefulness — you fix what is wrong","misses":"worry doing an impression of planning"},"Libra":{"does":"steadied by good company and a pleasant room","misses":"own needs postponed until they surface as grievance"},"Scorpio":{"does":"feels it at full volume and shows none of it","misses":"holds the grudge long past its cause"},"Sagittarius":{"does":"cheered by motion — a trip, a plan, any horizon","misses":"restless the moment things turn ordinary"},"Capricorn":{"does":"comfort comes from being on top of it","misses":"feelings deferred until there is time, and there never is"},"Aquarius":{"does":"needs room — company you choose, at a distance you set","misses":"detached from your own state until it gets loud"},"Pisces":{"does":"reads the room before anyone has spoken","misses":"someone else's mood, wearing your name"}},"Mercury":{"Aries":{"does":"fast and blunt; decides mid-sentence","misses":"says it before it is true"},"Taurus":{"does":"slow, thorough, and it stays learned","misses":"will not reopen a settled opinion"},"Gemini":{"does":"quick, curious, good in any conversation","misses":"interested in everything, committed to nothing"},"Cancer":{"does":"thinks in images and memory; explains by story","misses":"the mood decides what counts as true"},"Leo":{"does":"speaks with conviction — people remember the line","misses":"style outruns the argument underneath"},"Virgo":{"does":"precise; sorts the real from the noise","misses":"corrects what did not need correcting"},"Libra":{"does":"states both sides fairly and means it","misses":"never lands on one"},"Scorpio":{"does":"research mind — finds what was meant to stay buried","misses":"reads motive into ordinary things"},"Sagittarius":{"does":"the shape first, before the parts","misses":"confident about details it never checked"},"Capricorn":{"does":"plans that survive contact with the week","misses":"dismisses what cannot be proven yet"},"Aquarius":{"does":"sees the pattern above the individual case","misses":"loyal to the theory over the evidence"},"Pisces":{"does":"the answer arrives sideways, and it is often right","misses":"cannot reconstruct how it got there"}},"Venus":{"Aries":{"does":"direct about wanting; makes the first move","misses":"wants it most in the moment before having it"},"Taurus":{"does":"real pleasure, real comfort, no apology for either","misses":"spends on comfort past what it is worth"},"Gemini":{"does":"charmed by wit; likes people who are interesting","misses":"interest wanders as soon as someone is known"},"Cancer":{"does":"loves by feeding people and remembering things","misses":"care with a small hook in it"},"Leo":{"does":"generous and warm; makes people feel chosen","misses":"needs the gesture returned where others can see"},"Virgo":{"does":"love shown by doing the useful thing","misses":"affection that arrives shaped like a critique"},"Libra":{"does":"fairness, grace, and the room made pleasant","misses":"peace kept at the cost of the true thing"},"Scorpio":{"does":"all or nothing — intensity is the point","misses":"closeness tested rather than trusted"},"Sagittarius":{"does":"warm and easy; likes the adventure of a person","misses":"leaves just as it turns ordinary"},"Capricorn":{"does":"commitment as the proof; shows up for years","misses":"warmth withheld until it has been earned"},"Aquarius":{"does":"loves people as they actually are, oddities included","misses":"distance mistaken for freedom"},"Pisces":{"does":"forgives more than most people can","misses":"loves the version of them you imagined"}},"Mars":{"Aries":{"does":"acts first, and the nerve holds","misses":"fights the nearest thing rather than the right one"},"Taurus":{"does":"slow to start, then impossible to stop","misses":"digs in at the moment moving would win"},"Gemini":{"does":"argues well and quickly","misses":"energy split across too many fronts"},"Cancer":{"does":"defends people rather than attacking them","misses":"anger goes sideways instead of straight"},"Leo":{"does":"bold in the open; performs under pressure","misses":"will not back down while anyone is watching"},"Virgo":{"does":"effort aimed precisely — the exact fix","misses":"picks the fight over the small wrong thing"},"Libra":{"does":"pushes through persuasion instead of force","misses":"conflict avoided until it becomes a rupture"},"Scorpio":{"does":"sustained, strategic, does not let go","misses":"waits to strike rather than saying it now"},"Sagittarius":{"does":"energy with a direction; goes far and fast","misses":"overcommits, then resents the load"},"Capricorn":{"does":"disciplined force, applied for as long as it takes","misses":"drives the body past what it can pay back"},"Aquarius":{"does":"fights for the principle rather than the person","misses":"cold exactly where heat was needed"},"Pisces":{"does":"acts on feeling, and best on someone else's behalf","misses":"effort leaks away with no clear target"}},"Jupiter":{"Aries":{"does":"grows by going first; luck follows the nerve","misses":"bets large on the untested"},"Taurus":{"does":"growth you can bank — slow, material, real","misses":"comfort inflates into too much of it"},"Gemini":{"does":"connects fields nobody had joined","misses":"knows a little about far too much"},"Cancer":{"does":"generous and protective; makes people safe","misses":"takes on more people than you can hold"},"Leo":{"does":"big-hearted in the open; brings others up with you","misses":"generosity that needs to be witnessed"},"Virgo":{"does":"growth through craft, better by increments","misses":"shrinks the ambition to fit the checklist"},"Libra":{"does":"expands through people — the introduction, the alliance","misses":"agrees to more than is possible"},"Scorpio":{"does":"goes where others will not, and grows there","misses":"mistakes intensity for depth"},"Sagittarius":{"does":"the wider view, and the nerve to act on it","misses":"promises the horizon and skips the ground"},"Capricorn":{"does":"growth that has to be built, on the record","misses":"talks yourself out of the larger version"},"Aquarius":{"does":"expands by including who was left out","misses":"loyal to the idea over the person in front of you"},"Pisces":{"does":"generous without accounting; meaning without argument","misses":"says yes well past your own capacity"}},"Saturn":{"Aries":{"does":"discipline in hard bursts","misses":"impatient with the slow part, which is the part"},"Taurus":{"does":"builds what lasts; will do the same thing for years","misses":"will not rebuild what is already standing wrong"},"Gemini":{"does":"checks the claim before repeating it","misses":"doubt where a decision was what was needed"},"Cancer":{"does":"duty to your people, kept quietly","misses":"care given as obligation rather than warmth"},"Leo":{"does":"takes responsibility in public and carries it","misses":"authority held too tightly to share"},"Virgo":{"does":"standards that hold; the work actually finishes","misses":"good enough never is"},"Libra":{"does":"fairness made durable — the agreement that holds","misses":"weighed so long that nothing gets decided"},"Scorpio":{"does":"endures what would break most people","misses":"control mistaken for safety"},"Sagittarius":{"does":"beliefs tested before they are kept","misses":"the frame hardens into dogma"},"Capricorn":{"does":"builds the structure, then maintains it","misses":"the work becomes the whole life"},"Aquarius":{"does":"the rule that serves everyone, not just you","misses":"enforced without the exception it needed"},"Pisces":{"does":"gives form to what was only felt","misses":"boundaries that dissolve the moment they are tested"}}}};
+var MODES = {"train-hard":"execution","endurance":"execution","gentle-movement":"recovery","deep-rest":"recovery","haircut":"inception","start-regimen":"inception","intimacy":"execution","deep-study":"execution","first-draft":"execution","edit-revise":"revision","learn-skill":"execution","strategize":"execution","investigate":"revision","teach-present":"execution","deep-work":"execution","creative-practice":"execution","finish-polish":"revision","organize":"maintenance","repair":"revision","admin-errands":"maintenance","negotiate":"execution","hard-conversation":"execution","apply-job":"inception","first-date":"inception","romantic-time":"execution","deepen-bond":"execution","repair-bond":"revision","dating-profile":"inception","ask-someone-out":"inception","meet-someone-new":"execution","define-relationship":"execution","host":"execution","network":"execution","call-family":"execution","cook":"execution","beautify":"execution","garden":"execution","deep-clean":"maintenance","budget":"maintenance","big-purchase":"inception","settle-debts":"maintenance","meditate":"recovery","journal":"recovery","divination":"execution","set-intention":"inception","release":"recovery","retreat":"recovery","publish":"inception","launch-venture":"inception","sign-contract":"inception","move-home":"inception","begin-partnership":"inception"};
 var DOC = {"voids":{"Aries":{"feel":"The appetite to start is sharp, and nothing started will take hold.","instead":"Spend it physically: train, walk fast, clear something out of the way.","benign":false},"Taurus":{"feel":"Nothing is moving, and in Taurus that is rest rather than drift.","instead":"Eat properly, sit somewhere comfortable, do the slow familiar thing.","provenance":"Lilly holds the void Moon less malevolent here, where she is exalted.","benign":true},"Gemini":{"feel":"Conversations circle without landing, however many of them you have.","instead":"Answer the easy messages, take notes, clear the inbox; save the conversation that has to reach a decision.","benign":false},"Cancer":{"feel":"Empty, but she is in her own house, so the quiet is comfortable.","instead":"Cook, tend, be with the people you don't have to perform for.","provenance":"Lilly holds the void Moon less malevolent here, her own sign.","benign":true},"Leo":{"feel":"The wish to be seen meets a room that isn't watching, and gestures go unanswered.","instead":"Make the thing; the announcement will carry further on another day.","benign":false},"Virgo":{"feel":"Virgo's precision is running high, and it settles most naturally on work that already exists.","instead":"A strong stretch for editing, admin, and the careful second pass — the kind of work that gets better the more attention it gets.","benign":false},"Libra":{"feel":"Nothing settles the scale, and agreements made now tend not to hold.","instead":"Be sociable and don't sign; repair something rather than negotiate something.","benign":false},"Scorpio":{"feel":"Feeling turns inward and finds nothing to resolve itself against.","instead":"Research rather than confrontation; whatever surfaces, look at it and leave acting on it for later.","provenance":"The Moon is in fall in Scorpio, her least resourced placement in the tradition.","benign":false},"Sagittarius":{"feel":"The aimlessness here is the pleasant kind.","instead":"Wander: read something wide, go somewhere, plan loosely without booking it.","provenance":"Lilly holds the void Moon less malevolent here, in Jupiter's sign.","benign":true},"Capricorn":{"feel":"Effort finds no purchase, so work costs more than it returns.","instead":"Do the maintenance already on the list; it needs no traction to be worth doing.","provenance":"The Moon is in detriment in Capricorn, and void on top of it.","benign":false},"Aquarius":{"feel":"Detachment goes further out than usual, and ideas find nobody to bring them to.","instead":"Solitary, abstract work: think, sketch, read, and rejoin people when she does.","benign":false},"Pisces":{"feel":"Dissolving is what this sign does anyway, so the emptiness suits it better than any other.","instead":"Rest, music, making things that need no outcome; sleep counts.","provenance":"Lilly holds the void Moon less malevolent here, Jupiter's other sign.","benign":true}},"scope":"Good for finishing, refining, and work already underway; thin for beginnings meant to last.","exempt":["Taurus","Cancer","Sagittarius","Pisces"],"roads":{"Sun":{"gift":"warmth, and the nerve to be seen","shadow":"needing to be the centre of it","work":"put the wanting-to-be-seen into making one thing worth seeing"},"Moon":{"gift":"care, and reading the room","shadow":"the mood running the day sideways","work":"feel it on purpose for ten minutes, so it doesn't leak into everything"},"Mercury":{"gift":"quickness, and real curiosity","shadow":"the thought that keeps circling","work":"write the loop down — it stops circling once it's on paper"},"Venus":{"gift":"ease, and warmth toward people","shadow":"smoothing it over instead of saying the hard thing","work":"have the pleasant thing, then say the true thing — in that order"},"Mars":{"gift":"nerve, and the will to finish","shadow":"the short fuse, the rush","work":"spend the edge on something physical with an end, before it finds a person"},"Jupiter":{"gift":"generosity, and the wider view","shadow":"saying yes too big, skipping the detail","work":"say yes to the size, then check the one detail you'd rather skip"},"Saturn":{"gift":"patience, and the long haul","shadow":"the gloom, the stiffening, the fear","work":"do the smallest real piece — it lifts by moving, not by solving"},"Uranus":{"gift":"fresh air, honest change","shadow":"restlessness, the break for its own sake","work":"change one real thing on purpose, so the restlessness has somewhere to land"},"Neptune":{"gift":"imagination, and a softer heart","shadow":"fog, drift, the story you tell yourself","work":"make something, or rest — both use the fog; deciding in it doesn't"},"Pluto":{"gift":"depth, and the nerve to begin again","shadow":"the grip, the fixation","work":"name what you're actually trying to control, then loosen one hand"}},"moonRules":{"moon_void_of_course":{"display":"Void-of-course Moon","supportiveFor":["rest","cleanup","review","maintenance","finishing","routine admin","spiritual practice","letting something dissolve"],"cautionFor":["major launch","important beginning","high-stakes commitment","irreversible decision","first message where momentum matters","contract signing","ask/request/pitch","travel departure"],"userFacing":"This is not the cleanest window for beginning something that needs momentum. It may be better for tending what is already in motion, resting, reviewing, or clearing loose ends."},"moon_applying_venus":{"display":"Moon applying to Venus","supportiveFor":["relationship","design","client care","social outreach","date","art","soft marketing","repair","request requiring warmth"],"userFacing":"This window has more relational and aesthetic support. Good for softening, connecting, beautifying, or making an invitation."},"moon_applying_jupiter":{"display":"Moon applying to Jupiter","supportiveFor":["teaching","publishing","launching","applications","client sessions","outreach","big-picture planning","spiritual study","asking for support"],"userFacing":"This window has a more expansive quality. Good for teaching, publishing, outreach, or taking a generous next step, as long as you do not overextend."},"moon_applying_mars":{"display":"Moon applying to Mars","supportiveFor":["exercise","decisive action","boundary","physical work","hard edits","errands","cutting through avoidance"],"cautionFor":["delicate relationship","soft invitation","reactive message","high-stakes diplomacy","asks requiring receptivity"],"userFacing":"This window has more heat and urgency. Use it for movement, action, or cutting through avoidance; be careful with reactive communication."},"moon_applying_saturn":{"display":"Moon applying to Saturn","supportiveFor":["admin","accounting","study","commitment","boundary","maintenance","finishing","structure"],"cautionFor":["easeful romance","play","high-inspiration creativity","tender asks without support","requests needing generosity"],"userFacing":"This window may feel heavier or more constrained. It can support discipline, structure, and finishing, but may not be the easiest time for softness or ease."}},"hourPrompts":{"moon":"What needs care, nourishment, or a gentler rhythm?","mercury":"What needs to be named, written, sorted, or communicated?","venus":"What would become easier if you softened, beautified, or connected?","mars":"What needs courage, movement, or a clean cut?","jupiter":"What wants to grow, be shared, or be understood in a larger frame?","saturn":"What needs structure, patience, or maintenance?","sun":"What needs to be seen, clarified, or led?"},"policies":{"userCapacityOverridesAstrology":true,"practicalConstraintsOverrideIdealTiming":true,"emptyTimeIsNotAutomaticallyAvailable":true,"neverFillEveryOpenSlot":true,"alwaysIncludeGentlerVersion":true,"suggestionCount":{"min":2,"max":4},"doNotElectEverything":true,"formalElectionOnlyForLevels":[3,4],"avoidLanguage":["bad time","do not do this","this will fail","the astrology says no","you are behind","maximize productivity","optimize your day","wasted the window"],"preferredLanguage":["this may be better for","this window supports","this is workable, but","not the cleanest window for","a lighter version may fit better","consider protecting this space","this may want less force","a supportive window is enough","best available, not perfect"]}};
 // Sky model for the Compass widget prototype. Needs global `Astronomy` (astronomy-engine).
 var Sky = (function () {
@@ -1331,21 +1332,27 @@ var StarswellPlan = (function () {
   var DAY = 864e5, HORIZON = 8;
   // name: shown in lists. short: in notifications. dfor: "a good day for ___".
   var GOALS = {
-    meditate:  { act: 'meditate',          name: 'Meditation / quiet time', short: 'Meditation', dfor: 'meditation' },
-    move:      { act: 'train-hard',        name: 'Move / exercise',  short: 'Movement',   dfor: 'moving' },
-    walk:      { act: 'gentle-movement',   name: 'Walk or yoga',     short: 'Walk or yoga', dfor: 'a walk or yoga' },
-    run:       { act: 'endurance',         name: 'Long run or ride', short: 'Long session', dfor: 'going long' },
-    focus:     { act: 'deep-work',         name: 'Deep work',        short: 'Deep work',  dfor: 'deep work' },
-    write:     { act: 'first-draft',       name: 'Writing',          short: 'Writing',    dfor: 'writing' },
-    create:    { act: 'creative-practice', name: 'Making art',       short: 'Making art', dfor: 'making art' },
-    admin:     { act: 'admin-errands',     name: 'Admin and errands', short: 'Admin',     dfor: 'admin and errands' },
-    connect:   { act: 'call-family',       name: 'Calling someone',  short: 'Calling someone', dfor: 'calling someone' },
-    partner:   { act: 'romantic-time',     name: 'Romance',          short: 'Romance',    dfor: 'romance' },
-    rest:      { act: 'deep-rest',         name: 'Downtime',         short: 'Downtime',   dfor: 'downtime' },
-    journal:   { act: 'journal',           name: 'Journaling',       short: 'Journaling', dfor: 'journaling' },
-    cook:      { act: 'cook',              name: 'Cooking',          short: 'Cooking',    dfor: 'cooking' }
+    meditate:  { act: 'meditate',          name: 'Meditation / quiet time', short: 'Meditation', dfor: 'meditation', lead: 10, dur: 20 },
+    move:      { act: 'train-hard',        name: 'Move / exercise',  short: 'Movement',   dfor: 'moving', lead: 45, dur: 60 },
+    walk:      { act: 'gentle-movement',   name: 'Walk or yoga',     short: 'Walk or yoga', dfor: 'a walk or yoga', lead: 20, dur: 40 },
+    run:       { act: 'endurance',         name: 'Long run or ride', short: 'Long session', dfor: 'going long', lead: 45, dur: 90 },
+    focus:     { act: 'deep-work',         name: 'Deep work',        short: 'Deep work',  dfor: 'deep work', lead: 15, dur: 120 },
+    write:     { act: 'first-draft',       name: 'Writing',          short: 'Writing',    dfor: 'writing', lead: 15, dur: 90 },
+    create:    { act: 'creative-practice', name: 'Making art',       short: 'Making art', dfor: 'making art', lead: 20, dur: 120 },
+    admin:     { act: 'admin-errands',     name: 'Admin and errands', short: 'Admin',     dfor: 'admin and errands', lead: 10, dur: 60 },
+    connect:   { act: 'call-family',       name: 'Calling someone',  short: 'Calling someone', dfor: 'calling someone', lead: 10, dur: 30 },
+    partner:   { act: 'romantic-time',     name: 'Romance',          short: 'Romance',    dfor: 'romance', lead: 60, dur: 120 },
+    rest:      { act: 'deep-rest',         name: 'Downtime',         short: 'Downtime',   dfor: 'downtime', lead: 10, dur: 60 },
+    journal:   { act: 'journal',           name: 'Journaling',       short: 'Journaling', dfor: 'journaling', lead: 10, dur: 20 },
+    cook:      { act: 'cook',              name: 'Cooking',          short: 'Cooking',    dfor: 'cooking', lead: 30, dur: 60 }
   };
   function ymd(d, tz) { return d.toLocaleDateString('en-US', { timeZone: tz }); }
+  // Waking hours may cross midnight (sleep 25.5 = 1:30 am). Compass's waking.ts rule: take a night owl at their word.
+  function awake(lh, wake, sleep) { return sleep > 24 ? (lh >= wake || lh < sleep - 24) : (lh >= wake && lh < sleep); }
+  // Compass's approach.ts rule: the last two hours before sleep are wind-down, whatever the planet says.
+  // Nothing high-arousal or newly begun lands there.
+  var WIND = { move: 1, run: 1, focus: 1, admin: 1 };
+  function windDown(lh, sleep) { var left = (((sleep - lh) % 24) + 24) % 24; return left > 0 && left <= 2; }
   function localHour(d, tz) { var m = ((d.getUTCHours() * 60 + d.getUTCMinutes() + Sky.offsetMin(d, tz)) % 1440 + 1440) % 1440; return m / 60; }
 
   // Waking hours with their evidence, for HORIZON days. Scans overlap; keep each hour once.
@@ -1365,7 +1372,7 @@ var StarswellPlan = (function () {
       sky.hours.forEach(function (h) {
         if (seen[+h.start] || +h.end <= +now || +h.start > end) return;
         var mid = new Date((+h.start + +h.end) / 2), lh = localHour(mid, tz);
-        if (lh < wake || lh >= sleep) return;
+        if (!awake(lh, wake, sleep)) return;
         seen[+h.start] = 1;
         out.push({ h: h, ev: Engine.evidence(h, mid, ctx), out: null });
       });
@@ -1381,6 +1388,20 @@ var StarswellPlan = (function () {
   // One word per planet, for people who want almost no language. The astrology is one tap away.
   var WORD = { Sun: 'Brighten', Moon: 'Feel', Mercury: 'Think', Venus: 'Enjoy', Mars: 'Push', Jupiter: 'Expand', Saturn: 'Focus', Uranus: 'Spark', Neptune: 'Dream', Pluto: 'Deepen' };
   var ANGLE = { rise: { w: 3, say: 'rising' }, mc: { w: 3, say: 'on the MC' }, set: { w: 2.2, say: 'setting' }, ic: { w: 2, say: 'on the IC' } };
+  // The planet gives the quality, the angle gives it a direction. Rising: the body, beginning.
+  // MC: work in the world, being seen. Setting: meeting someone. IC: home, roots, rest.
+  // A draft for Charlie to correct: multipliers on the crossing's weight, per intention.
+  var ANGLE_MEANS = { rise: 'the body, beginning', mc: 'work in the world, being seen', set: 'meeting someone', ic: 'home, roots, rest' };
+  var FIT = {
+    meditate: { rise: 1.0, mc: 0.8, set: 0.9, ic: 1.3 }, move: { rise: 1.25, mc: 1.0, set: 0.8, ic: 0.7 },
+    walk: { rise: 1.15, mc: 0.9, set: 1.0, ic: 0.9 }, run: { rise: 1.2, mc: 1.1, set: 0.8, ic: 0.7 },
+    focus: { rise: 1.0, mc: 1.3, set: 0.8, ic: 0.8 }, write: { rise: 1.15, mc: 1.15, set: 0.8, ic: 1.0 },
+    create: { rise: 1.2, mc: 1.1, set: 0.9, ic: 1.0 }, admin: { rise: 0.9, mc: 1.25, set: 0.9, ic: 0.9 },
+    connect: { rise: 0.9, mc: 1.0, set: 1.3, ic: 1.0 }, partner: { rise: 0.9, mc: 0.7, set: 1.35, ic: 1.1 },
+    rest: { rise: 0.8, mc: 0.7, set: 1.0, ic: 1.35 }, journal: { rise: 1.0, mc: 0.8, set: 0.9, ic: 1.2 },
+    cook: { rise: 0.9, mc: 0.8, set: 1.1, ic: 1.3 }
+  };
+  function wantOf(act) { var k = Object.keys(GOALS).filter(function (x) { return GOALS[x].act === act; })[0]; return k; }
   var SOFT = { trine: 1, sextile: 1 }, HARD = { square: 1, opposition: 1 };
   var ACTS = {}; RULES.acts.forEach(function (x) { ACTS[x.key] = x; });
 
@@ -1393,8 +1414,10 @@ var StarswellPlan = (function () {
         if (!P[an.planet] || !ANGLE[an.kind]) return;
         var t = Sky.zodiacal(an.planet, an.kind, an.start, o.lat, o.lon) || an.start, id = an.planet + an.kind + Math.round(+t / 6e5);
         if (seen[id] || +t < +o.now + 10 * 60000 || +t > +o.now + HORIZON * DAY) return; seen[id] = 1;
-        var lh = localHour(t, o.tz); if (lh < wake || lh >= sleep - 0.25) return;
-        var why = [an.planet + ' ' + ANGLE[an.kind].say], score = P[an.planet] * ANGLE[an.kind].w, warn = [];
+        var lh = localHour(t, o.tz); if (!awake(lh, wake, sleep - 0.25)) return;
+        if (WIND[wantOf(act)] && windDown(lh, sleep)) return;
+        var fit = (FIT[wantOf(act)] || {})[an.kind] || 1;
+        var why = [an.planet + ' ' + ANGLE[an.kind].say], score = P[an.planet] * ANGLE[an.kind].w * fit, warn = [];
         // Lunar aspects to the activity's planets within two hours.
         tl.perfections.forEach(function (p) {
           if (!P[p.planet] || Math.abs(p.t - t) > 2 * 3600e3) return;
@@ -1411,20 +1434,21 @@ var StarswellPlan = (function () {
         if (A.signs && A.signs[moon]) { score += 0.8; why.push('Moon in ' + moon); }
         var v = tl.voids.filter(function (x) { return t >= x.start && t < x.end; })[0];
         if (v) { if (A.voc === 'avoid') { score -= 3; warn.push('void Moon'); } else if (A.voc === 'favor') { score += 0.8; why.push('void Moon'); } }
-        out.push({ start: new Date(+t - 5 * 60000), end: new Date(+t + 10 * 60000), at: t, score: score, word: WORD[an.planet], planet: an.planet, why: why, warn: warn, kind: 'crossing' });
+        out.push({ start: new Date(+t - 5 * 60000), end: new Date(+t + 10 * 60000), at: t, score: score, word: WORD[an.planet], planet: an.planet, angle: an.kind, why: why, warn: warn, kind: 'crossing' });
       });
     });
     return out;
   }
 
   function plan(o) {
-    var tz = o.tz, ms = moments(o, o.cache), goals = (o.goals || []).filter(function (g) { return GOALS[g.want]; }).slice(0, 2);
+    var tz = o.tz, ms = moments(o, o.cache), goals = (o.goals || []).filter(function (g) { return GOALS[g.want]; }).slice(0, o.max || 2);
     var scans = [], tl = ms.tl;
     for (var k = 0; k < HORIZON; k += 2) scans.push(ms.scans[k / 2]);
     return {
       goals: goals.map(function (g) {
         var G = GOALS[g.want], perDay = 3, used = {}, picked = [];
         var cands = crossings(o, G.act, scans, tl).filter(function (c) { return c.score >= 3; });
+        if (o.natal) cands = cands.concat(natalCrossings(o, g.want, o.natal).filter(function (c) { return c.score >= 3; }));
         // Fall back to the best planetary hours when crossings are too few.
         var hrs = Engine.findTimes(ms, G.act, { limit: 999, min: 3 }).windows.map(function (w) {
           var hs = w.hours || [], bi = 0; hs.forEach(function (x, i) { if (x.score > hs[bi].score) bi = i; });
@@ -1434,6 +1458,7 @@ var StarswellPlan = (function () {
           var pl = hourR || ((why[0] || '').match(/^(Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/) || [])[1] || (hr && hr.h.planet);
           return { start: hs[bi] ? hs[bi].start : w.start, end: hs[bi] ? hs[bi].end : w.end, score: w.score - 1.5, word: pl ? WORD[pl] : '', planet: pl, why: why, warn: w.warn || [], kind: 'hour' };
         });
+        if (WIND[g.want]) hrs = hrs.filter(function (w) { return !windDown(localHour(new Date((+w.start + +w.end) / 2), tz), o.sleep == null ? 22.5 : o.sleep); });
         var prec = g.precision || 'moment', pool = prec === 'hours' ? hrs : cands.concat(hrs);
         // Every good wave, not a quota: up to three a day, at least three hours apart. The target count
         // becomes progress in the app; the top ones are flagged so the app can favor them.
@@ -1455,11 +1480,17 @@ var StarswellPlan = (function () {
           });
           perDay = 1; take(days);
         } else take(pool);
-        var topIds = picked.slice().sort(function (a, b) { return b.score - a.score; }).slice(0, quota(g)).map(function (w) { return +w.start; });
+        // The strongest few, at most one a day, so "strong" spreads across the week.
+        var topIds = [], topDays = {};
+        // A planetary hour is present on almost every day (Compass census: 99%), so on its own it can only reinforce.
+        // An hour wave is strong only when a lunar contact backs it.
+        var establishes = function (w) { return w.kind !== 'hour' || w.why.some(function (r) { return /^Moon (trine|sextile|conjunct|square|opposite)/.test(r); }); };
+        picked.slice().sort(function (a, b) { return b.score - a.score; }).forEach(function (w) { var d = ymd(w.start, tz); if (topIds.length < quota(g) && !topDays[d] && establishes(w)) { topDays[d] = 1; topIds.push(+w.start); } });
         picked.sort(function (a, b) { return a.start - b.start; });
         var out = picked.map(function (w) {
           var at = w.at || w.start, sign = w.planet ? Sky.signOf(Sky.positions(new Date(at))[w.planet]) : '';
-          return { start: w.start, end: w.end, at: at, kind: w.kind, word: w.word, planet: w.planet, sign: sign, top: topIds.indexOf(+w.start) >= 0, score: Math.round(w.score * 10) / 10, strength: w.score >= 6 ? 'strong' : 'good', reason: (w.planet && w.why.filter(function (r) { return r.indexOf(w.planet) === 0; })[0]) || w.why[0] || '', why: w.why, warn: w.warn, peak: w.peak || null };
+          var top = topIds.indexOf(+w.start) >= 0;
+          return { start: w.start, end: w.end, at: at, kind: w.kind, word: w.word, planet: w.planet, angle: w.angle || null, natal: !!w.natal, sign: sign, top: top, score: Math.round(w.score * 10) / 10, tier: top ? 'strong' : 'supportive', strength: w.score >= 6 ? 'strong' : 'good', reason: (w.natal && w.why[0]) || (w.planet && w.why.filter(function (r) { return r.indexOf(w.planet) === 0; })[0]) || w.why[0] || '', why: w.why, warn: w.warn, peak: w.peak || null };
         });
         var best = out.slice().sort(function (a, b) { return b.score - a.score; })[0] || null;
         // A thin week is an invitation to come at it another way: neighboring activities whose planets are strong.
@@ -1471,9 +1502,194 @@ var StarswellPlan = (function () {
           });
           alts.sort(function (a, b) { return a.start - b.start; });
         }
-        return { want: g.want, name: G.name, short: G.short, dfor: G.dfor, times: g.times, per: g.per, precision: prec, best: best, windows: out, alts: alts.slice(0, 2) };
+        return { want: g.want, name: G.name, short: G.short, dfor: G.dfor, lead: G.lead, dur: G.dur, times: g.times, per: g.per, precision: prec, best: best, windows: out, alts: alts.slice(0, 2), spans: spans(tides(o, g.want, HORIZON, o.natal), null, null, g.want) };
       })
     };
+  }
+
+  // ---- Longer waves: whole days and runs of days ----------------------------------------------
+  // Cheap day-level conditions that hold for a day or several: the Moon's sign (about 2.5 days),
+  // the day's ruler, aspects between the planets the intention needs (these last days), the Moon's
+  // aspects that day, and how much of the waking day the Moon is void.
+  // Day-level condition of the activity's own planets, ported from Compass's rareWindows.scoreDay: essential
+  // dignity first (the biggest driver of a rare day), then retrograde, then how tightly benefics and malefics
+  // aspect them, then the Moon's phase where the activity has a preference. Compass's weights, times RARE_K
+  // so they sit on this file's day scale.
+  var RARE_K = 0.35, CLASSIC = { Sun: 1, Moon: 1, Mercury: 1, Venus: 1, Mars: 1, Jupiter: 1, Saturn: 1 };
+  var DIGN = {
+    Sun: { dom: ['Leo'], ex: 'Aries', det: ['Aquarius'], fall: 'Libra' }, Moon: { dom: ['Cancer'], ex: 'Taurus', det: ['Capricorn'], fall: 'Scorpio' },
+    Mercury: { dom: ['Gemini', 'Virgo'], ex: 'Virgo', det: ['Sagittarius', 'Pisces'], fall: 'Pisces' }, Venus: { dom: ['Taurus', 'Libra'], ex: 'Pisces', det: ['Scorpio', 'Aries'], fall: 'Virgo' },
+    Mars: { dom: ['Aries', 'Scorpio'], ex: 'Capricorn', det: ['Libra', 'Taurus'], fall: 'Cancer' }, Jupiter: { dom: ['Sagittarius', 'Pisces'], ex: 'Cancer', det: ['Gemini', 'Virgo'], fall: 'Capricorn' },
+    Saturn: { dom: ['Capricorn', 'Aquarius'], ex: 'Libra', det: ['Cancer', 'Leo'], fall: 'Aries' }
+  };
+  var BENEFIC = { Venus: 1, Jupiter: 1 }, MALEFIC = { Mars: 1, Saturn: 1 };
+  var ASPS = [['conjunction', 0], ['sextile', 60], ['square', 90], ['trine', 120], ['opposition', 180]];
+  function rare(A, pos, nxt, add) {
+    var P = A.planets || {};
+    Object.keys(P).forEach(function (pl) {
+      if (!CLASSIC[pl] || pos[pl] == null) return; var w = P[pl] * RARE_K, sg = Sky.signOf(pos[pl]), D = DIGN[pl];
+      if (D.dom.indexOf(sg) >= 0) add(pl + ' in ' + sg + ', its own sign', 5 * w);
+      else if (D.ex === sg) add(pl + ' exalted in ' + sg, 4.5 * w);
+      else if (D.det.indexOf(sg) >= 0) add(pl + ' in detriment in ' + sg, -3.5 * w);
+      else if (D.fall === sg) add(pl + ' in fall in ' + sg, -3 * w);
+      // Compass's activity modes (from activityCorrespondences.modeOf): the retrograde objection is about beginnings,
+      // so it counts in force only for an inception, suits a revision, and leaves everyday doing alone.
+      var mode = (typeof MODES !== 'undefined' && MODES[A.key]) || 'execution';
+      if (pl !== 'Sun' && pl !== 'Moon' && ((((nxt[pl] - pos[pl]) % 360) + 540) % 360 - 180) < 0) {
+        if (mode === 'inception') add(pl + ' retrograde', -2.5 * w); else if (mode === 'revision') add(pl + ' retrograde, which suits going back over things', 1.2 * w);
+      }
+      if (pl === 'Moon') return;
+      Object.keys(pos).forEach(function (o2) {
+        if (o2 === pl || o2 === 'Moon') return;
+        var sep = Math.abs((((pos[pl] - pos[o2]) % 360) + 540) % 360 - 180), hit = null;
+        ASPS.forEach(function (a) { if (Math.abs(sep - a[1]) <= 8) hit = { name: a[0], orb: Math.abs(sep - a[1]) }; });
+        if (!hit) return; var tight = Math.max(0, 1 - hit.orb / 8), soft = hit.name === 'trine' || hit.name === 'sextile', hard = hit.name === 'square' || hit.name === 'opposition';
+        var say = pl + ' ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[hit.name] || hit.name) + ' ' + o2;
+        if (soft && BENEFIC[o2]) { if (tight > 0.4) add(say, 2.6 * w * tight); }
+        else if (hit.name === 'conjunction' && BENEFIC[o2]) { if (tight > 0.4) add(say, 2.2 * w * tight); }
+        else if (soft && !MALEFIC[o2]) { if (tight > 0.6) add(say, 1.1 * w * tight); }
+        else if (hard && MALEFIC[o2]) { if (tight > 0.4) add(say, -2.2 * w * tight); }
+      });
+    });
+    var el = (((pos.Moon - pos.Sun) % 360) + 360) % 360, waxing = el < 180;
+    if (A.phase === 'waxing') { if (waxing) add('waxing Moon', 0.8); else add('waning Moon', -0.5); }
+    else if (A.phase === 'waning' && !waxing) add('waning Moon', 0.8);
+  }
+  var SLOW = { Jupiter: 1, Saturn: 1, Uranus: 1, Neptune: 1, Pluto: 1 };
+  var DAY_RULER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
+  function localMidnightOf(d, tz) { var y = Sky.localYMD(d, tz), u = Date.UTC(y.y, y.m - 1, y.d); return new Date(u - Sky.offsetMin(new Date(u + 12 * 3600e3), tz) * 60000); }
+  function tides(o, want, days, natal) {
+    var G = GOALS[want] || { act: want }, A = ACTS[G.act]; if (!A) return [];
+    var P = A.planets || {}, out = [], m0 = localMidnightOf(o.now, o.tz);
+    var tl = Sky.lunarTimeline(new Date(+m0 - DAY), new Date(+m0 + (days + 1) * DAY), 120);
+    for (var k = 0; k < days; k++) {
+      var mid = new Date(+m0 + k * DAY + 12 * 3600e3), start = localMidnightOf(mid, o.tz), end = localMidnightOf(new Date(+mid + DAY), o.tz);
+      var why = [], add = function (r, v) { why.push({ r: r, v: v }); };
+      var pos = Sky.positions(mid), moon = Sky.signOf(pos.Moon), nxt = Sky.positions(new Date(+mid + DAY));
+      rare(A, pos, nxt, add);
+      if (A.signs && A.signs[moon]) add('Moon in ' + moon, 1.5);
+      else if (A.element && RB.weather.signElement[moon] === A.element) add('Moon in ' + moon, 0.6);
+      var y = Sky.localYMD(mid, o.tz), ruler = DAY_RULER[new Date(Date.UTC(y.y, y.m - 1, y.d)).getUTCDay()];
+      if (P[ruler]) add(ruler + '’s day', 0.8 * P[ruler]); else if ((A.hourRulers || []).indexOf(ruler) >= 0) add(ruler + '’s day', 0.5);
+      tl.perfections.forEach(function (pf) {
+        if (pf.t < start || pf.t >= end || !P[pf.planet]) return;
+        var soft = SOFT[pf.aspect], hard = HARD[pf.aspect], v = pf.aspect === 'conjunction' ? 0.7 : soft ? (A.aspects === 'effort' ? 0.4 : 0.8) : hard ? (A.aspects === 'effort' ? 0.6 : -0.5) : 0;
+        if (v) add('Moon ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[pf.aspect] || pf.aspect) + ' ' + pf.planet, v * P[pf.planet]);
+      });
+      var wake = new Date(+start + (o.wake == null ? 6.5 : o.wake) * 3600e3), sleep = new Date(+start + (o.sleep == null ? 22.5 : o.sleep) * 3600e3), voidMs = 0;
+      tl.voids.forEach(function (v) { voidMs += Math.max(0, Math.min(+v.end, +sleep) - Math.max(+v.start, +wake)); });
+      var frac = voidMs / (+sleep - +wake);
+      if (frac > 0.3) { if (A.voc === 'avoid') add('void Moon much of the day', -1.6 * frac); else if (A.voc === 'favor') add('void Moon much of the day', 0.6 * frac); }
+      if (natal) Object.keys(P).forEach(function (pl) {
+        if (natal[pl] == null) return; var d = Math.abs((((pos.Moon - natal[pl]) % 360) + 540) % 360 - 180);
+        if (d < 7) add('Moon over your natal ' + pl, 0.9 * P[pl]);
+      });
+      // "Moon in Cancer" and "Moon in Cancer, its own sign" are one fact: keep the fuller line.
+      why = why.filter(function (x) { return !why.some(function (y) { return y !== x && y.r.length > x.r.length && y.r.indexOf(x.r) === 0; }); });
+      why.sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
+      var score = why.reduce(function (n, x) { return n + x.v; }, 0);
+      out.push({ start: start, end: end, score: Math.round(score * 10) / 10, why: why.filter(function (x) { return x.v > 0; }).map(function (x) { return x.r; }), warn: why.filter(function (x) { return x.v < 0; }).map(function (x) { return x.r; }) });
+    }
+    return out;
+  }
+  // Runs of good days become one wave: "Thursday to Saturday". A single day stands alone only when it is clearly strong.
+  function planetIn(r) { return (String(r).match(/\b(Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b(?!.*\b(Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b)/) || [])[1]; }
+  function spans(days, lo, hi, want) {
+    // Judged against this intention's own range: the better third of days count, the top tenth stand alone.
+    var sc = days.map(function (d) { return d.score; }).sort(function (a, b) { return a - b; }), sc0 = sc, q = function (f) { return sc.length ? sc[Math.min(sc.length - 1, Math.floor(f * sc.length))] : 0; };
+    lo = lo == null ? Math.max(1.2, q(0.66)) : lo; hi = hi == null ? Math.max(lo + 0.8, q(0.9)) : hi;
+    var out = [], run = [];
+    var flush = function () {
+      if (run.length >= 2 || (run.length === 1 && run[0].score >= hi)) {
+        var tally = {}; run.forEach(function (d) { d.why.forEach(function (r, i) { tally[r] = (tally[r] || 0) + (3 - Math.min(i, 2)); }); });
+        var why = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a]; }), pl = planetIn(why[0]) || 'Moon';
+        // A run carried by the Moon's sign takes the word of the intention's own planet: Moon in Leo for moving is still Push.
+        var AP = want && GOALS[want] && (ACTS[GOALS[want].act] || {}).planets;
+        if (AP && (pl === 'Moon' || !AP[pl])) { var mainP = Object.keys(AP).sort(function (a, b) { return AP[b] - AP[a]; })[0]; if (mainP) pl = mainP; }
+        var sc = run.reduce(function (n, d) { return n + d.score; }, 0) / run.length;
+        var rank = sc0.filter(function (x) { return x <= Math.max.apply(null, run.map(function (d) { return d.score; })); }).length / Math.max(1, sc0.length);
+        out.push({ kind: 'span', top: Math.max(1, Math.round((1 - rank) * 100 + 0.5)), start: run[0].start, end: run[run.length - 1].end, days: run.length, score: Math.round(sc * 10) / 10, planet: pl, word: WORD[pl], reason: why[0] || '', why: why.slice(0, 4), tier: sc >= hi ? 'strong' : 'supportive' });
+      }
+      run = [];
+    };
+    days.forEach(function (d) { if (d.score >= lo) run.push(d); else flush(); });
+    flush();
+    return out;
+  }
+
+  // ---- The sky right now: what is this moment good for? ----------------------------------------
+  // Scores every intention for one moment, names the moment by its strongest planet, and says what comes next.
+  function moment(o) {
+    var t = o.at ? new Date(o.at) : o.now, lat = o.lat, lon = o.lon, tz = o.tz;
+    var sky = Sky.scan(lat, lon, tz, new Date(+t - 80 * 60000));
+    var angs = sky.angles.filter(function (a) { return ANGLE[a.kind]; }).map(function (a) {
+      var at = Sky.zodiacal(a.planet, a.kind, a.start, lat, lon) || a.start; return { planet: a.planet, kind: a.kind, at: at };
+    });
+    var hour = sky.hours.filter(function (h) { return t >= h.start && t < h.end; })[0];
+    var tl = Sky.lunarTimeline(new Date(+t - 3 * 3600e3), new Date(+t + 3 * 3600e3), 30);
+    var pos = Sky.positions(t), moonSign = Sky.signOf(pos.Moon), asc = Sky.SIGNS[Math.floor(Sky.chartAngles(t, lat, lon).asc / 30)];
+    var isVoid = tl.voids.some(function (v) { return t >= v.start && t < v.end; });
+    var near = function (a) { var dt = Math.abs(+a.at - +t) / 60000; return dt <= 15 ? 1 : dt <= 75 ? 1 - (dt - 15) / 60 : 0; };
+    var keys = o.wants || Object.keys(GOALS);
+    var ranked = keys.map(function (k) {
+      var G = GOALS[k], A = ACTS[G.act], P = A.planets || {}, why = [], warn = [], score = 0, lead = null, leadV = 0;
+      angs.forEach(function (a) {
+        var n = near(a); if (!n || !P[a.planet]) return;
+        var v = P[a.planet] * ANGLE[a.kind].w * ((FIT[k] || {})[a.kind] || 1) * n; score += v;
+        why.push(a.planet + ' ' + ANGLE[a.kind].say); if (v > leadV) { leadV = v; lead = a.planet; }
+      });
+      if (hour && (A.hourRulers || []).indexOf(hour.planet) >= 0) { score += 1.2; why.push(hour.planet + ' hour'); if (!lead) lead = hour.planet; }
+      else if (hour && P[hour.planet]) { score += 0.8 * P[hour.planet]; why.push(hour.planet + ' hour'); if (!lead) lead = hour.planet; }
+      tl.perfections.forEach(function (p) {
+        if (!P[p.planet] || Math.abs(p.t - t) > 2 * 3600e3) return;
+        var fit = p.aspect === 'conjunction' ? 1 : SOFT[p.aspect] ? (A.aspects === 'effort' ? 0.6 : 1.5) : HARD[p.aspect] ? (A.aspects === 'effort' ? 1.4 : -1) : 0;
+        if (!fit) return; score += fit * P[p.planet];
+        (fit > 0 ? why : warn).push('Moon ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[p.aspect] || p.aspect) + ' ' + p.planet);
+      });
+      if (A.signs && A.signs[moonSign]) { score += 0.8; why.push('Moon in ' + moonSign); }
+      if (A.signs && A.signs[asc]) { score += 1; why.push(asc + ' rising'); } else if (A.element && RB.weather.signElement[asc] === A.element) { score += 0.4; why.push(asc + ' rising'); }
+      if (isVoid) { if (A.voc === 'avoid') { score -= 2; warn.push('void Moon'); } else if (A.voc === 'favor') { score += 0.8; why.push('void Moon'); } }
+      if (WIND[k] && o.sleep != null && windDown(localHour(t, tz), o.sleep)) { score -= 2.5; warn.push('close to bedtime'); }
+      return { want: k, name: G.name, short: G.short, dfor: G.dfor, score: Math.round(score * 10) / 10, planet: lead, word: lead ? WORD[lead] : '', why: why, warn: warn };
+    }).sort(function (a, b) { return b.score - a.score; });
+    // Name the moment by its strongest planet on an angle; failing that, by the hour's ruler.
+    var W = { Sun: 1, Moon: 1, Mercury: 0.9, Venus: 1, Mars: 1, Jupiter: 1, Saturn: 0.9, Uranus: 0.7, Neptune: 0.7, Pluto: 0.6 };
+    var head = null, hv = 0;
+    angs.forEach(function (a) { var v = near(a) * ANGLE[a.kind].w * W[a.planet]; if (v > hv) { hv = v; head = { planet: a.planet, angle: a.kind, at: a.at, say: a.planet + ' ' + ANGLE[a.kind].say } }; });
+    if (!head && hour) head = { planet: hour.planet, angle: null, at: null, say: hour.planet + ' hour' };
+    var until = head && head.at ? new Date(Math.max(+head.at + 45 * 60000, +t + 10 * 60000)) : hour ? hour.end : null;
+    var next = angs.filter(function (a) { return +a.at > +t + 20 * 60000 && W[a.planet] >= 0.9; }).sort(function (a, b) { return a.at - b.at; })[0] || null;
+    if (next) {
+      var suits = Object.keys(GOALS).map(function (k) { var P = (ACTS[GOALS[k].act] || {}).planets || {}; return { k: k, v: (P[next.planet] || 0) * ((FIT[k] || {})[next.kind] || 1) }; })
+        .filter(function (x) { return x.v > 0; }).sort(function (a, b) { return b.v - a.v; }).slice(0, 2).map(function (x) { return GOALS[x.k].short; });
+      next = { planet: next.planet, angle: next.kind, at: next.at, word: WORD[next.planet], say: next.planet + ' ' + ANGLE[next.kind].say, suits: suits };
+    }
+    return { at: t, head: head, word: head ? WORD[head.planet] : '', until: until, hour: hour ? { planet: hour.planet, end: hour.end } : null,
+      moon: { sign: moonSign, isVoid: isVoid, phase: sky.moon && sky.moon.name }, rising: asc, ranked: ranked, next: next };
+  }
+
+  // ---- Your chart (Plus): when the degrees of your natal planets cross the angles where you are ----
+  function natalPositions(utc) { return Sky.positions(new Date(utc)); }
+  var natalCache = {};
+  function natalCrossings(o, want, natal) {
+    var G = GOALS[want], A = ACTS[G.act], P = A.planets || {}, out = [], wake = o.wake == null ? 6.5 : o.wake, sleep = o.sleep == null ? 22.5 : o.sleep;
+    var key = Math.floor(+o.now / 6e5) + ':' + o.lat + ':' + o.lon, ser = natalCache[key];
+    if (!ser) { ser = []; for (var m = 0; m <= HORIZON * 144; m++) { var t = new Date(+o.now + m * 6e5), c = Sky.chartAngles(t, o.lat, o.lon); ser.push({ t: t, rise: c.asc, mc: c.mc, set: c.dsc, ic: c.ic }); } natalCache = {}; natalCache[key] = ser; }
+    var d = function (x, L) { return (((x - L) % 360) + 540) % 360 - 180; };
+    Object.keys(P).forEach(function (pl) {
+      var L = natal[pl]; if (L == null) return;
+      ['rise', 'mc', 'set', 'ic'].forEach(function (k) {
+        for (var i = 1; i < ser.length; i++) {
+          var a = d(ser[i - 1][k], L), b = d(ser[i][k], L); if (!(a < 0 && b >= 0 && b - a < 30)) continue;
+          var t = new Date(+ser[i - 1].t + 6e5 * (-a / (b - a)));
+          var lh = localHour(t, o.tz); if (+t < +o.now + 10 * 60000 || !awake(lh, wake, sleep - 0.25) || (WIND[want] && windDown(lh, sleep))) continue;
+          var why = ['Your natal ' + pl + ' ' + ANGLE[k].say], score = P[pl] * ANGLE[k].w * ((FIT[want] || {})[k] || 1) * 0.95;
+          var moon = Sky.signOf(Sky.positions(t).Moon); if (A.signs && A.signs[moon]) { score += 0.8; why.push('Moon in ' + moon); }
+          out.push({ start: new Date(+t - 5 * 60000), end: new Date(+t + 10 * 60000), at: t, score: score, word: WORD[pl], planet: pl, angle: k, natal: true, why: why, warn: [], kind: 'crossing' });
+        }
+      });
+    });
+    return out;
   }
   var NEIGHBORS = { move: ['walk', 'run'], walk: ['move', 'meditate'], run: ['move', 'walk'], meditate: ['rest', 'journal'], rest: ['meditate', 'cook'],
     journal: ['write', 'meditate'], focus: ['write', 'admin'], write: ['journal', 'focus'], create: ['write', 'journal'], admin: ['focus', 'cook'],
@@ -1501,7 +1717,7 @@ var StarswellPlan = (function () {
       return { key: k, n: n };
     }).filter(function (x) { return x.n > 0; }).sort(function (a, b) { return b.n - a.n; }).map(function (x) { return x.key; });
   }
-  return { plan: plan, match: match, GOALS: GOALS, WORD: WORD, HORIZON: HORIZON };
+  return { plan: plan, match: match, moment: moment, tides: tides, spans: spans, natalPositions: natalPositions, GOALS: GOALS, WORD: WORD, FIT: FIT, ANGLE_MEANS: ANGLE_MEANS, HORIZON: HORIZON };
 })();
 
 
@@ -1742,6 +1958,8 @@ let ST = loadState();
 const save = () => writeJSON(STATE_FILE, ST);
 function applyLocation() { if (ST.loc) { SETTINGS.lat = ST.loc.lat; SETTINGS.lon = ST.loc.lon; SETTINGS.tz = ST.loc.tz; SETTINGS.city = ST.loc.city || SETTINGS.city; } }
 applyLocation();
+if (ST.wake != null) SETTINGS.wake = ST.wake;
+if (ST.sleep != null) SETTINGS.sleep = ST.sleep;
 
 async function refreshLocation() {
   try {
@@ -1778,7 +1996,7 @@ function loadPlan(allowCompute) {
   return plan;
 }
 function revivePlan(p) {
-  p.goals.forEach(g => { g.windows.forEach(w => { w.start = new Date(w.start); w.end = new Date(w.end); if (w.peak) { w.peak.start = new Date(w.peak.start); w.peak.end = new Date(w.peak.end); } }); if (g.best) { g.best.start = new Date(g.best.start); g.best.end = new Date(g.best.end); } (g.alts || []).forEach(a => { a.start = new Date(a.start); a.end = new Date(a.end); }); });
+  p.goals.forEach(g => { (g.spans || []).forEach(w => { w.start = new Date(w.start); w.end = new Date(w.end); }); g.windows.forEach(w => { w.start = new Date(w.start); w.end = new Date(w.end); if (w.peak) { w.peak.start = new Date(w.peak.start); w.peak.end = new Date(w.peak.end); } }); if (g.best) { g.best.start = new Date(g.best.start); g.best.end = new Date(g.best.end); } (g.alts || []).forEach(a => { a.start = new Date(a.start); a.end = new Date(a.end); }); });
   return p;
 }
 // The person's own setup rides on top of the plan: their label, their word, their ping mode.
@@ -1822,23 +2040,34 @@ const doneIn = g => ST.done.filter(d => d.want === g.want && d.at >= periodStart
 function wantsPing(g, w) {
   const id = wid(g, w);
   if (ST.scheduled[id] || ST.pinged[id]) return true;
-  return g.mode === 'all' || (g.mode === 'best' && w.top);
+  // gentle: the strongest waves only, at most one unasked-for ping a day. saved: only what they asked for.
+  const m = ST.ping || (g.mode === 'all' ? 'all' : g.mode === 'off' ? 'saved' : 'gentle');
+  return m === 'all' || (m === 'gentle' && w.top);
 }
 const atHour = (d, h) => { const off = Sky.offsetMin(new Date(d), SETTINGS.tz) * 60000, mid = Math.floor((+d + off) / 864e5) * 864e5; return new Date(mid + h * 3600e3 - off); };
 function nudges(g, w) {
   if (w.kind === 'day') return [
     { key: 'eve', when: atHour(+w.start - 864e5, 20), title: 'Tomorrow is a good day for ' + g.label.toLowerCase(), body: 'Especially around ' + clk(wStart(w)) + '. ' + tagline(g, w) },
     { key: 'am', when: atHour(w.start, Math.max(7, SETTINGS.wake + 0.5)), title: 'Today is a good day for ' + g.label.toLowerCase(), body: 'Especially around ' + clk(wStart(w)) + '. ' + tagline(g, w) }];
-  const lead = w.kind === 'crossing' ? 10 : 20;
-  return [{ key: 'pre', when: new Date(+w.start - lead * 60000), title: g.label + ' in ' + lead + ' minutes', body: tagline(g, w) }];
+  // Lead time fits the activity: ten minutes to sit, closer to an hour to get to the gym.
+  const lead = g.lead || (w.kind === 'crossing' ? 10 : 20), when = w.kind === 'crossing' && w.at ? +new Date(w.at) - 5 * 60000 : +w.start;
+  return [{ key: 'pre', when: new Date(when - lead * 60000), title: g.label + ' in ' + (lead >= 60 ? (lead / 60) + (lead > 60 ? ' hours' : ' hour') : lead + ' minutes'), body: tagline(g, w) }];
 }
 async function scheduleNotifications(plan) {
   const pending = await Notification.allPending();
   const ours = pending.filter(n => n.identifier.indexOf('starswell-') === 0 || n.identifier.indexOf('aw-') === 0);
   const want = [], goals = plan.goals.map(mine);
+  const asked = (g, w) => !!(ST.scheduled[wid(g, w)] || ST.pinged[wid(g, w)]);
   goals.forEach(g => upcoming(g).filter(w => wantsPing(g, w)).forEach(w => nudges(g, w).forEach(n => {
-    if (+n.when > Date.now()) want.push(Object.assign({ id: 'aw-' + wid(g, w) + '-' + n.key }, n));
+    if (+n.when > Date.now()) want.push(Object.assign({ id: 'aw-' + wid(g, w) + '-' + n.key, asked: asked(g, w), score: w.score || 0 }, n));
   })));
+  if ((ST.ping || 'gentle') === 'gentle') {
+    // Keep only the strongest unasked-for ping each day.
+    const best = {};
+    want.forEach(x => { if (x.asked) return; const d = dkey(x.when); if (!best[d] || x.score > best[d].score) best[d] = x; });
+    for (let i = want.length - 1; i >= 0; i--) if (!want[i].asked && best[dkey(want[i].when)] !== want[i]) want.splice(i, 1);
+  }
+  (ST.extra || []).filter(x => x.when > Date.now() && !want.some(y => y.id === x.id)).forEach(x => want.push({ id: x.id, when: new Date(x.when), title: x.title, body: x.body }));
   if (ST.morning) {
     for (let d = 0; d < 7; d++) {
       const at = atHour(Date.now() + d * 864e5, Math.max(7, SETTINGS.wake + 1));
@@ -1850,6 +2079,13 @@ async function scheduleNotifications(plan) {
       want.push({ id: 'aw-sum-' + dkey(at).replace(/\D/g, ''), when: at, title: 'Today’s waves', body: items.slice(0, 4).map(x => x.g.label + ' ' + clk(x.w.start) + (wordOf(x.g, x.w) ? ' · ' + wordOf(x.g, x.w) : '')).join('\n') });
     }
   }
+  // A rare day gets its own morning note: the top 2% of the next four months, at the crest of its stretch.
+  // Compass's RareMomentBanner rule fires about fourteen days a year, which is what makes it worth a ping.
+  rareDays().forEach(r => {
+    const at = atHour(r.day, Math.max(7, SETTINGS.wake + 0.5)); if (+at <= Date.now()) return;
+    const g = goals.find(x => x.want === r.want); if (!g) return;
+    want.push({ id: 'aw-rare-' + r.want + '-' + dkey(at).replace(/\D/g, ''), when: at, title: (dkey(at) === dkey(Date.now()) ? 'Today' : 'This day') + ' is one of the good ones for ' + g.label.toLowerCase(), body: r.why.slice(0, 2).join(', ') + '. It ranks in the top ' + r.top + '% of the next four months.' });
+  });
   want.sort((a, b) => a.when - b.when);
   const keep = want.slice(0, 50), ids = keep.map(x => x.id);
   const stale = ours.filter(n => ids.indexOf(n.identifier) < 0).map(n => n.identifier);
@@ -1864,6 +2100,26 @@ async function scheduleNotifications(plan) {
     n.setTriggerDate(x.when);
     await n.schedule();
   }
+}
+
+const RARE_FILE = 'astrowaves-rare.json';
+function rareDays() {
+  const key = dkey(Date.now()) + ST.goals.map(g => g.want).join(',') + SETTINGS.lat;
+  const c = readJSON(RARE_FILE); if (c && c.key === key) return c.list.map(x => Object.assign(x, { day: new Date(x.day) }));
+  if (!config.runsInApp) return [];   // a widget run has no time to spare for a four-month scan
+  const o = { now: new Date(Date.now() - 864e5), lat: SETTINGS.lat, lon: SETTINGS.lon, tz: SETTINGS.tz, wake: SETTINGS.wake, sleep: SETTINGS.sleep };
+  const list = [];
+  ST.goals.forEach(g => {
+    try {
+      const days = StarswellPlan.tides(o, g.want, 122), sorted = days.map(d => d.score).sort((a, b) => a - b);
+      [1, 2].forEach(i => {
+        const d = days[i], rank = sorted.filter(x => x <= d.score).length / sorted.length, top = Math.max(1, Math.round((1 - rank) * 100 + 0.5));
+        if (top <= 2 && d.score > 0 && d.score >= days[i - 1].score && d.score >= days[i + 1].score) list.push({ want: g.want, day: new Date(+d.start + 12 * 3600e3), top, why: d.why });
+      });
+    } catch (e) { console.log('rare: ' + e); }
+  });
+  writeJSON(RARE_FILE, { key, list });
+  return list;
 }
 
 // ---- actions from the app screen ----
@@ -1892,6 +2148,64 @@ async function act(plan, url) {
   if (q.a === 'mode') { const s = ST.goals.find(x => x.want === q.want); if (s) { s.mode = q.m; save(); } }
   if (q.a === 'morning') { ST.morning = !ST.morning; save(); }
   try { await scheduleNotifications(plan); } catch (e) { console.log('notifications: ' + e); }
+}
+
+// ---- the shared interface: the same screens as compass.day/waves, with the phone doing calendar and pings ----
+const UI_FILE = 'astrowaves-ui.html', UI_CORE = 'astrowaves-ui-core.js', UI_BASE = 'https://compass.day/waves/';
+async function fetchCached(url, file, test) {
+  const p = docPath(file), have = fmL.fileExists(p), age = have ? Date.now() - fmL.modificationDate(p) : 1e12;
+  if (age > 6 * 3600e3) { try { const r = new Request(url); r.timeoutInterval = 8; const t = await r.loadString(); if (test(t)) { fmL.writeString(p, t); return t; } } catch (e) { console.log('ui fetch: ' + e); } }
+  return have ? fmL.readString(p) : null;
+}
+async function coastUI() {
+  const html = await fetchCached(UI_BASE, UI_FILE, t => t.indexOf('AW_HOST') > 0);
+  const core = await fetchCached(UI_BASE + 'core.js', UI_CORE, t => t.indexOf('StarswellPlan') > 0 && t.indexOf('moment') > 0);
+  if (!html || !core) return null;
+  const host = { state: webState(), busy: ST.busy.map(b => ({ title: b.t, start: b.s, end: b.e })), phone: true };
+  return html.replace('<script src="./core.js"></script>', '<script>window.AW_HOST=' + JSON.stringify(host).replace(/</g, '\\u003c') + ';</script><script>' + core + '</script>');
+}
+// The interface keeps its own shape of state; the phone keeps its file. These two translate.
+function webState() {
+  const w = ST.web || {};
+  return Object.assign({ look: 'sun', glyphs: true, words: {}, plus: true, freeView: false, birth: null }, w, {
+    v: 1, goals: ST.goals.map(g => ({ want: g.want, label: g.label, times: g.times || 3, per: g.per || 'week', precision: g.precision })),
+    loc: ST.loc ? { lat: ST.loc.lat, lon: ST.loc.lon, tz: ST.loc.tz, city: ST.loc.city } : null,
+    wake: SETTINGS.wake, sleep: SETTINGS.sleep, ping: ST.ping || 'gentle',
+    done: ST.done.map(d => ({ want: d.want, label: d.label, at: new Date(d.at).toISOString(), how: d.how || (d.onWave ? 'caught' : 'other'), wave: d.wave || null, planet: d.planet || null, word: d.word || null })),
+    saved: Object.keys(ST.scheduled).concat(Object.keys(ST.pinged)),
+    onboarded: !!(w.onboarded || ST.goals.length)
+  });
+}
+function fromWeb(S) {
+  ST.goals = (S.goals || []).map(g => Object.assign({}, ST.goals.find(x => x.want === g.want) || {}, { want: g.want, label: g.label, times: g.times, per: g.per, precision: g.precision }));
+  if (S.loc && (!ST.loc || S.loc.lat !== ST.loc.lat || S.loc.lon !== ST.loc.lon)) { ST.loc = Object.assign({}, S.loc, { at: Date.now(), manual: true }); applyLocation(); }
+  ST.wake = S.wake; ST.sleep = S.sleep; SETTINGS.wake = S.wake; SETTINGS.sleep = S.sleep;
+  ST.ping = S.ping || 'gentle';
+  ST.done = (S.done || []).map(d => ({ want: d.want, label: d.label, at: +new Date(d.at), how: d.how, onWave: d.how === 'caught', wave: d.wave, planet: d.planet, word: d.word }));
+  ST.web = { look: S.look, glyphs: S.glyphs, words: S.words, plus: S.plus, freeView: S.freeView, birth: S.birth, onboarded: S.onboarded };
+  save();
+}
+async function hostAct(url) {
+  const q = {}; String(url).split('?')[1].split('&').forEach(kv => { const i = kv.indexOf('='); q[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); });
+  const d = q.d ? JSON.parse(q.d) : {};
+  if (q.a === 'save') fromWeb(d);
+  if (q.a === 'cal') {
+    const ev = new CalendarEvent(); ev.title = d.title; ev.startDate = new Date(d.start);
+    ev.endDate = d.allDay ? new Date(d.end) : new Date(+new Date(d.start) + (d.mins || 30) * 60000); ev.isAllDay = !!d.allDay;
+    ev.notes = d.notes || 'Astrowaves';
+    try { ev.calendar = await Calendar.defaultForEvents(); } catch (e) {}
+    await ev.save();
+  }
+  if (q.a === 'ping') {
+    ST.pinged[d.id] = 1;
+    const lead = d.lead || 10, when = +new Date(d.at) - 5 * 60000 - lead * 60000;
+    ST.extra = (ST.extra || []).filter(x => x.when > Date.now() && x.id !== 'aw-' + d.id + '-pre');
+    ST.extra.push({ id: 'aw-' + d.id + '-pre', when, title: d.title + ' in ' + (lead >= 60 ? (lead / 60) + (lead > 60 ? ' hours' : ' hour') : lead + ' minutes'), body: (d.word ? d.word + ': ' : '') + (d.reason || '') });
+    save();
+  }
+  if (q.a === 'export') { await ShareSheet.present([d.text]); return; }
+  const plan = loadPlan(true);
+  if (plan) { try { await scheduleNotifications(plan); } catch (e) { console.log('notifications: ' + e); } }
 }
 
 // ---- onboarding: in their own words ----
@@ -1947,6 +2261,37 @@ async function editGoals() {
 }
 
 // ---- widgets ----
+// Widget colors follow the local sun, like the app: sand and sea by day, deep navy and brass at night.
+function coastColors() {
+  let night = false;
+  try {
+    const obs = new Astronomy.Observer(SETTINGS.lat, SETTINGS.lon, 0), r = Astronomy.SearchRiseSet('Sun', obs, +1, new Date(Date.now() - 12 * 3600e3), 2), st = Astronomy.SearchRiseSet('Sun', obs, -1, r.date, 2);
+    night = !(Date.now() > +r.date && Date.now() < +st.date - 20 * 60000);
+    if ((ST.web || {}).look === 'day') night = false; if ((ST.web || {}).look === 'night') night = true;
+  } catch (e) {}
+  return night ? { bg: new Color('#0E1B33'), ink: new Color('#EFE9DC'), mute: new Color('#9AA7C0'), a: new Color('#5FE0CC'), b: new Color('#D9B46A') }
+    : { bg: new Color('#F3EEE4'), ink: new Color('#10233A'), mute: new Color('#5B6B7C'), a: new Color('#1E6E8C'), b: new Color('#E26D4F') };
+}
+// The sky right now, as a widget: Parameter "now".
+function nowWidget(family) {
+  const w = new ListWidget(); w.url = 'scriptable:///run/' + encodeURIComponent(Script.name());
+  w.refreshAfterDate = new Date(Date.now() + 15 * 60000);
+  const m = StarswellPlan.moment({ now: new Date(), lat: SETTINGS.lat, lon: SETTINGS.lon, tz: SETTINGS.tz });
+  const words = ((ST.web || {}).words) || {}, wd = p => words[p] || WORD[p] || '', hp = m.head && m.head.planet;
+  const head = 'A time to ' + (wd(hp) || 'pause').toLowerCase(), gl = hp && GLYPH[hp] ? GLYPH[hp] + '\uFE0E' : '';
+  const suits = m.ranked.slice(0, 2).map(r => r.short.toLowerCase()).join(' and ');
+  if (family === 'accessoryInline') { w.addText((gl ? gl + ' ' : '') + head); return w; }
+  if (family === 'accessoryCircular') { const s = w.addStack(); s.layoutVertically(); txt(s, gl || '✦', Font.systemFont(20), Color.white(), 1); txt(s, wd(hp).slice(0, 7), Font.systemFont(10), Color.white(), 1); return w; }
+  if (family === 'accessoryRectangular') { const W = Color.white(); txt(w, 'NOW' + (m.until ? ' · UNTIL ' + clk(m.until).toUpperCase() : ''), Font.boldSystemFont(10), W, 1); txt(w, (gl ? gl + ' ' : '') + head, Font.systemFont(13), W, 1); txt(w, 'Suits ' + suits, Font.systemFont(11), W, 1); return w; }
+  const K = coastColors(); w.backgroundColor = K.bg; w.setPadding(14, 16, 14, 16);
+  txt(w, 'THE SKY RIGHT NOW', Font.semiboldSystemFont(9.5), K.mute, 1); w.addSpacer();
+  if (gl) txt(w, gl, Font.systemFont(family === 'small' ? 26 : 30), K.b, 1);
+  txt(w, head, Font.semiboldSystemFont(family === 'small' ? 17 : 20), K.ink, 2);
+  txt(w, (m.head ? m.head.say : '') + (m.until ? ' · until ' + clk(m.until) : ''), Font.systemFont(11.5), K.mute, 1);
+  w.addSpacer(4); txt(w, 'Suits ' + suits, Font.systemFont(12), K.a, 2);
+  if (family !== 'small' && m.next) { w.addSpacer(4); txt(w, 'Next ' + clk(m.next.at) + ' · ' + wd(m.next.planet) + ' ' + (GLYPH[m.next.planet] || '') + '\uFE0E · ' + m.next.say, Font.systemFont(11), K.mute, 1); }
+  return w;
+}
 function planWidget(plan, family) {
   const w = new ListWidget();
   w.url = 'scriptable:///run/' + encodeURIComponent(Script.name());
@@ -1974,7 +2319,7 @@ function planWidget(plan, family) {
     if (!soon.length) txt(w, 'No standout waves this week.', Font.systemFont(12), W, 2);
     return w;
   }
-  const K = { bg: new Color('#0A1022'), ink: new Color('#EEF2FA'), mute: new Color('#9AA6C4'), a: new Color('#6FF2E0'), b: new Color('#FFC46B') };
+  const K = coastColors();
   w.backgroundColor = K.bg; w.setPadding(14, 16, 14, 16);
   const lab = (st, s, col) => txt(st, s.toUpperCase(), Font.semiboldSystemFont(9.5), col || K.mute, 1);
   if (family === 'small') {
@@ -2116,14 +2461,24 @@ if (MODE !== 'now' || (args && String(args.widgetParameter || '').toLowerCase().
 } else {
   if (!inWidget) {
     if (!ST.loc || Date.now() - ST.loc.at > 7 * 864e5) await refreshLocation();
-    if (Q.edit || !ST.goals.length) await editGoals();
     await refreshBusy();
   }
+  const ui = inWidget || Q.preview || Q.classic ? null : await coastUI();
+  if (!inWidget && !ui && (Q.edit || !ST.goals.length)) await editGoals();
   const plan = loadPlan(!config.runsInAccessoryWidget);
   if (plan) { try { await scheduleNotifications(plan); } catch (e) { console.log('notifications: ' + e); } }
-  if (inWidget) Script.setWidget(planWidget(plan, config.widgetFamily || 'medium'));
+  const wparam = args && String(args.widgetParameter || '').toLowerCase().trim();
+  if (inWidget) Script.setWidget(wparam === 'now' ? nowWidget(config.widgetFamily || 'small') : planWidget(plan, config.widgetFamily || 'medium'));
   else if (Q.preview) await planWidget(plan, Q.preview).presentLarge();
-  else {
+  else if (ui) {
+    const wv = new WebView();
+    wv.shouldAllowRequest = req => {
+      const u = req.url || '';
+      if (u.indexOf('aw://') === 0) { hostAct(u).catch(e => console.log('action: ' + e)); return false; }
+      return true;
+    };
+    await wv.loadHTML(ui, UI_BASE); await wv.present(true);
+  } else {
     const wv = new WebView();
     wv.shouldAllowRequest = req => {
       const u = req.url || '';
