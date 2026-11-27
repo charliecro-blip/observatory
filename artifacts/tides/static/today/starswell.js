@@ -2079,6 +2079,13 @@ async function scheduleNotifications(plan) {
       want.push({ id: 'aw-sum-' + dkey(at).replace(/\D/g, ''), when: at, title: 'Today’s waves', body: items.slice(0, 4).map(x => x.g.label + ' ' + clk(x.w.start) + (wordOf(x.g, x.w) ? ' · ' + wordOf(x.g, x.w) : '')).join('\n') });
     }
   }
+  // A rare day gets its own morning note: the top 2% of the next four months, at the crest of its stretch.
+  // Compass's RareMomentBanner rule fires about fourteen days a year, which is what makes it worth a ping.
+  rareDays().forEach(r => {
+    const at = atHour(r.day, Math.max(7, SETTINGS.wake + 0.5)); if (+at <= Date.now()) return;
+    const g = goals.find(x => x.want === r.want); if (!g) return;
+    want.push({ id: 'aw-rare-' + r.want + '-' + dkey(at).replace(/\D/g, ''), when: at, title: (dkey(at) === dkey(Date.now()) ? 'Today' : 'This day') + ' is one of the good ones for ' + g.label.toLowerCase(), body: r.why.slice(0, 2).join(', ') + '. It ranks in the top ' + r.top + '% of the next four months.' });
+  });
   want.sort((a, b) => a.when - b.when);
   const keep = want.slice(0, 50), ids = keep.map(x => x.id);
   const stale = ours.filter(n => ids.indexOf(n.identifier) < 0).map(n => n.identifier);
@@ -2093,6 +2100,26 @@ async function scheduleNotifications(plan) {
     n.setTriggerDate(x.when);
     await n.schedule();
   }
+}
+
+const RARE_FILE = 'astrowaves-rare.json';
+function rareDays() {
+  const key = dkey(Date.now()) + ST.goals.map(g => g.want).join(',') + SETTINGS.lat;
+  const c = readJSON(RARE_FILE); if (c && c.key === key) return c.list.map(x => Object.assign(x, { day: new Date(x.day) }));
+  if (!config.runsInApp) return [];   // a widget run has no time to spare for a four-month scan
+  const o = { now: new Date(Date.now() - 864e5), lat: SETTINGS.lat, lon: SETTINGS.lon, tz: SETTINGS.tz, wake: SETTINGS.wake, sleep: SETTINGS.sleep };
+  const list = [];
+  ST.goals.forEach(g => {
+    try {
+      const days = StarswellPlan.tides(o, g.want, 122), sorted = days.map(d => d.score).sort((a, b) => a - b);
+      [1, 2].forEach(i => {
+        const d = days[i], rank = sorted.filter(x => x <= d.score).length / sorted.length, top = Math.max(1, Math.round((1 - rank) * 100 + 0.5));
+        if (top <= 2 && d.score > 0 && d.score >= days[i - 1].score && d.score >= days[i + 1].score) list.push({ want: g.want, day: new Date(+d.start + 12 * 3600e3), top, why: d.why });
+      });
+    } catch (e) { console.log('rare: ' + e); }
+  });
+  writeJSON(RARE_FILE, { key, list });
+  return list;
 }
 
 // ---- actions from the app screen ----
