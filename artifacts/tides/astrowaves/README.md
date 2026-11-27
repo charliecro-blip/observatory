@@ -75,6 +75,19 @@ Reminders come this long before a wave, and calendar events default to this leng
 | Calling someone, admin, downtime | 10 min | 30 to 60 min |
 | Cooking | 30 min | 60 min |
 
+## Borrowed from Compass
+
+Rules Astrowaves now shares with the main Compass app, so the two read the same sky the same way:
+
+- **A planetary hour can't make a wave strong on its own.** Compass's census found hours on 99% of activity-days, so they can only reinforce. An hour wave is marked strong only when a lunar contact backs it (`CENSUS-FINDINGS-2026-08-04.md`).
+- **The last two hours before sleep are wind-down.** Movement, long sessions, deep work and admin get no waves there, and the sky right now marks them "close to bedtime" (`src/lib/approach.ts`).
+- **Waking hours can cross midnight.** A day that ends at 1:30 am is taken at its word (`api-server/src/lib/waking.ts`).
+- **Day scores use the activity's own planets.** Essential dignity, retrograde, tight aspects from benefics and malefics, and Moon phase, with Compass's weights scaled to this file's day scale (`api-server/src/lib/rareWindows.ts`). The longer view reports a stretch's percentile within its own horizon, so a claim like "top 3% of these 90 days" can be checked.
+- **Almanac patterns stay quiet until there's enough to count:** ten caught waves, and four of a kind. They report counts, never a verdict (`src/components/FeltPattern.tsx`).
+- **Today opens with the Moon in one sentence:** her sign, phase, void status and the next aspect she perfects (`src/lib/moonLine.ts`).
+
+Still worth taking from Compass: the canonical activity table (`api-server/src/lib/activityCorrespondences.ts`, with house rulers and natal tiers) in place of `rules.json`; the two-year rare-day notice (`RareMomentBanner`, about fourteen days a year); invitations that can be adjusted before you accept them (`GearChange`); conditional alternatives keyed to what the app can't know, like "if you're running empty" (`src/lib/alternatives.ts`); and the theme-aware planet palette (`src/lib/planetColors.ts`).
+
 ## Free and Plus
 
 Free covers everything a person needs to use Astrowaves well: Today, the week, the sky right now, the astrology behind every wave, reminders, calendar, widgets, their own words for the planets and their full almanac. Free holds two intentions at a time.

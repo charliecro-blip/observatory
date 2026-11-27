@@ -20,6 +20,12 @@ var StarswellPlan = (function () {
     cook:      { act: 'cook',              name: 'Cooking',          short: 'Cooking',    dfor: 'cooking', lead: 30, dur: 60 }
   };
   function ymd(d, tz) { return d.toLocaleDateString('en-US', { timeZone: tz }); }
+  // Waking hours may cross midnight (sleep 25.5 = 1:30 am). Compass's waking.ts rule: take a night owl at their word.
+  function awake(lh, wake, sleep) { return sleep > 24 ? (lh >= wake || lh < sleep - 24) : (lh >= wake && lh < sleep); }
+  // Compass's approach.ts rule: the last two hours before sleep are wind-down, whatever the planet says.
+  // Nothing high-arousal or newly begun lands there.
+  var WIND = { move: 1, run: 1, focus: 1, admin: 1 };
+  function windDown(lh, sleep) { var left = (((sleep - lh) % 24) + 24) % 24; return left > 0 && left <= 2; }
   function localHour(d, tz) { var m = ((d.getUTCHours() * 60 + d.getUTCMinutes() + Sky.offsetMin(d, tz)) % 1440 + 1440) % 1440; return m / 60; }
 
   // Waking hours with their evidence, for HORIZON days. Scans overlap; keep each hour once.
@@ -39,7 +45,7 @@ var StarswellPlan = (function () {
       sky.hours.forEach(function (h) {
         if (seen[+h.start] || +h.end <= +now || +h.start > end) return;
         var mid = new Date((+h.start + +h.end) / 2), lh = localHour(mid, tz);
-        if (lh < wake || lh >= sleep) return;
+        if (!awake(lh, wake, sleep)) return;
         seen[+h.start] = 1;
         out.push({ h: h, ev: Engine.evidence(h, mid, ctx), out: null });
       });
@@ -81,7 +87,8 @@ var StarswellPlan = (function () {
         if (!P[an.planet] || !ANGLE[an.kind]) return;
         var t = Sky.zodiacal(an.planet, an.kind, an.start, o.lat, o.lon) || an.start, id = an.planet + an.kind + Math.round(+t / 6e5);
         if (seen[id] || +t < +o.now + 10 * 60000 || +t > +o.now + HORIZON * DAY) return; seen[id] = 1;
-        var lh = localHour(t, o.tz); if (lh < wake || lh >= sleep - 0.25) return;
+        var lh = localHour(t, o.tz); if (!awake(lh, wake, sleep - 0.25)) return;
+        if (WIND[wantOf(act)] && windDown(lh, sleep)) return;
         var fit = (FIT[wantOf(act)] || {})[an.kind] || 1;
         var why = [an.planet + ' ' + ANGLE[an.kind].say], score = P[an.planet] * ANGLE[an.kind].w * fit, warn = [];
         // Lunar aspects to the activity's planets within two hours.
@@ -124,6 +131,7 @@ var StarswellPlan = (function () {
           var pl = hourR || ((why[0] || '').match(/^(Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/) || [])[1] || (hr && hr.h.planet);
           return { start: hs[bi] ? hs[bi].start : w.start, end: hs[bi] ? hs[bi].end : w.end, score: w.score - 1.5, word: pl ? WORD[pl] : '', planet: pl, why: why, warn: w.warn || [], kind: 'hour' };
         });
+        if (WIND[g.want]) hrs = hrs.filter(function (w) { return !windDown(localHour(new Date((+w.start + +w.end) / 2), tz), o.sleep == null ? 22.5 : o.sleep); });
         var prec = g.precision || 'moment', pool = prec === 'hours' ? hrs : cands.concat(hrs);
         // Every good wave, not a quota: up to three a day, at least three hours apart. The target count
         // becomes progress in the app; the top ones are flagged so the app can favor them.
@@ -147,7 +155,10 @@ var StarswellPlan = (function () {
         } else take(pool);
         // The strongest few, at most one a day, so "strong" spreads across the week.
         var topIds = [], topDays = {};
-        picked.slice().sort(function (a, b) { return b.score - a.score; }).forEach(function (w) { var d = ymd(w.start, tz); if (topIds.length < quota(g) && !topDays[d]) { topDays[d] = 1; topIds.push(+w.start); } });
+        // A planetary hour is present on almost every day (Compass census: 99%), so on its own it can only reinforce.
+        // An hour wave is strong only when a lunar contact backs it.
+        var establishes = function (w) { return w.kind !== 'hour' || w.why.some(function (r) { return /^Moon (trine|sextile|conjunct|square|opposite)/.test(r); }); };
+        picked.slice().sort(function (a, b) { return b.score - a.score; }).forEach(function (w) { var d = ymd(w.start, tz); if (topIds.length < quota(g) && !topDays[d] && establishes(w)) { topDays[d] = 1; topIds.push(+w.start); } });
         picked.sort(function (a, b) { return a.start - b.start; });
         var out = picked.map(function (w) {
           var at = w.at || w.start, sign = w.planet ? Sky.signOf(Sky.positions(new Date(at))[w.planet]) : '';
@@ -173,6 +184,45 @@ var StarswellPlan = (function () {
   // Cheap day-level conditions that hold for a day or several: the Moon's sign (about 2.5 days),
   // the day's ruler, aspects between the planets the intention needs (these last days), the Moon's
   // aspects that day, and how much of the waking day the Moon is void.
+  // Day-level condition of the activity's own planets, ported from Compass's rareWindows.scoreDay: essential
+  // dignity first (the biggest driver of a rare day), then retrograde, then how tightly benefics and malefics
+  // aspect them, then the Moon's phase where the activity has a preference. Compass's weights, times RARE_K
+  // so they sit on this file's day scale.
+  var RARE_K = 0.35, CLASSIC = { Sun: 1, Moon: 1, Mercury: 1, Venus: 1, Mars: 1, Jupiter: 1, Saturn: 1 };
+  var DIGN = {
+    Sun: { dom: ['Leo'], ex: 'Aries', det: ['Aquarius'], fall: 'Libra' }, Moon: { dom: ['Cancer'], ex: 'Taurus', det: ['Capricorn'], fall: 'Scorpio' },
+    Mercury: { dom: ['Gemini', 'Virgo'], ex: 'Virgo', det: ['Sagittarius', 'Pisces'], fall: 'Pisces' }, Venus: { dom: ['Taurus', 'Libra'], ex: 'Pisces', det: ['Scorpio', 'Aries'], fall: 'Virgo' },
+    Mars: { dom: ['Aries', 'Scorpio'], ex: 'Capricorn', det: ['Libra', 'Taurus'], fall: 'Cancer' }, Jupiter: { dom: ['Sagittarius', 'Pisces'], ex: 'Cancer', det: ['Gemini', 'Virgo'], fall: 'Capricorn' },
+    Saturn: { dom: ['Capricorn', 'Aquarius'], ex: 'Libra', det: ['Cancer', 'Leo'], fall: 'Aries' }
+  };
+  var BENEFIC = { Venus: 1, Jupiter: 1 }, MALEFIC = { Mars: 1, Saturn: 1 };
+  var ASPS = [['conjunction', 0], ['sextile', 60], ['square', 90], ['trine', 120], ['opposition', 180]];
+  function rare(A, pos, nxt, add) {
+    var P = A.planets || {};
+    Object.keys(P).forEach(function (pl) {
+      if (!CLASSIC[pl] || pos[pl] == null) return; var w = P[pl] * RARE_K, sg = Sky.signOf(pos[pl]), D = DIGN[pl];
+      if (D.dom.indexOf(sg) >= 0) add(pl + ' in ' + sg + ', its own sign', 5 * w);
+      else if (D.ex === sg) add(pl + ' exalted in ' + sg, 4.5 * w);
+      else if (D.det.indexOf(sg) >= 0) add(pl + ' in detriment in ' + sg, -3.5 * w);
+      else if (D.fall === sg) add(pl + ' in fall in ' + sg, -3 * w);
+      if (pl !== 'Sun' && pl !== 'Moon' && ((((nxt[pl] - pos[pl]) % 360) + 540) % 360 - 180) < 0) add(pl + ' retrograde', -2.5 * w);
+      if (pl === 'Moon') return;
+      Object.keys(pos).forEach(function (o2) {
+        if (o2 === pl || o2 === 'Moon') return;
+        var sep = Math.abs((((pos[pl] - pos[o2]) % 360) + 540) % 360 - 180), hit = null;
+        ASPS.forEach(function (a) { if (Math.abs(sep - a[1]) <= 8) hit = { name: a[0], orb: Math.abs(sep - a[1]) }; });
+        if (!hit) return; var tight = Math.max(0, 1 - hit.orb / 8), soft = hit.name === 'trine' || hit.name === 'sextile', hard = hit.name === 'square' || hit.name === 'opposition';
+        var say = pl + ' ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[hit.name] || hit.name) + ' ' + o2;
+        if (soft && BENEFIC[o2]) { if (tight > 0.4) add(say, 2.6 * w * tight); }
+        else if (hit.name === 'conjunction' && BENEFIC[o2]) { if (tight > 0.4) add(say, 2.2 * w * tight); }
+        else if (soft && !MALEFIC[o2]) { if (tight > 0.6) add(say, 1.1 * w * tight); }
+        else if (hard && MALEFIC[o2]) { if (tight > 0.4) add(say, -2.2 * w * tight); }
+      });
+    });
+    var el = (((pos.Moon - pos.Sun) % 360) + 360) % 360, waxing = el < 180;
+    if (A.phase === 'waxing') { if (waxing) add('waxing Moon', 0.8); else add('waning Moon', -0.5); }
+    else if (A.phase === 'waning' && !waxing) add('waning Moon', 0.8);
+  }
   var SLOW = { Jupiter: 1, Saturn: 1, Uranus: 1, Neptune: 1, Pluto: 1 };
   var DAY_RULER = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
   function localMidnightOf(d, tz) { var y = Sky.localYMD(d, tz), u = Date.UTC(y.y, y.m - 1, y.d); return new Date(u - Sky.offsetMin(new Date(u + 12 * 3600e3), tz) * 60000); }
@@ -183,19 +233,12 @@ var StarswellPlan = (function () {
     for (var k = 0; k < days; k++) {
       var mid = new Date(+m0 + k * DAY + 12 * 3600e3), start = localMidnightOf(mid, o.tz), end = localMidnightOf(new Date(+mid + DAY), o.tz);
       var why = [], add = function (r, v) { why.push({ r: r, v: v }); };
-      var pos = Sky.positions(mid), moon = Sky.signOf(pos.Moon);
+      var pos = Sky.positions(mid), moon = Sky.signOf(pos.Moon), nxt = Sky.positions(new Date(+mid + DAY));
+      rare(A, pos, nxt, add);
       if (A.signs && A.signs[moon]) add('Moon in ' + moon, 1.5);
       else if (A.element && RB.weather.signElement[moon] === A.element) add('Moon in ' + moon, 0.6);
       var y = Sky.localYMD(mid, o.tz), ruler = DAY_RULER[new Date(Date.UTC(y.y, y.m - 1, y.d)).getUTCDay()];
       if (P[ruler]) add(ruler + '’s day', 0.8 * P[ruler]); else if ((A.hourRulers || []).indexOf(ruler) >= 0) add(ruler + '’s day', 0.5);
-      Sky.skyAspects(mid).forEach(function (x) {
-        var w = (P[x.p1] || 0) + (P[x.p2] || 0); if (!w) return;
-        var soft = x.name === 'trine' || x.name === 'sextile', hard = x.name === 'square' || x.name === 'opposition';
-        var v = x.name === 'conjunction' ? 0.8 : soft ? (A.aspects === 'effort' ? 0.5 : 1) : hard ? (A.aspects === 'effort' ? 0.6 : -0.7) : 0;
-        // Two slow planets in aspect is background for weeks: a tide, not a wave. Count it lightly.
-        var slow = SLOW[x.p1] && SLOW[x.p2];
-        if (v) add(x.p1 + ' ' + ({ conjunction: 'conjunct', opposition: 'opposite' }[x.name] || x.name) + ' ' + x.p2, v * Math.min(1.5, w) * (slow ? 0.25 : 1));
-      });
       tl.perfections.forEach(function (pf) {
         if (pf.t < start || pf.t >= end || !P[pf.planet]) return;
         var soft = SOFT[pf.aspect], hard = HARD[pf.aspect], v = pf.aspect === 'conjunction' ? 0.7 : soft ? (A.aspects === 'effort' ? 0.4 : 0.8) : hard ? (A.aspects === 'effort' ? 0.6 : -0.5) : 0;
@@ -219,7 +262,7 @@ var StarswellPlan = (function () {
   function planetIn(r) { return (String(r).match(/\b(Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b(?!.*\b(Sun|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b)/) || [])[1]; }
   function spans(days, lo, hi, want) {
     // Judged against this intention's own range: the better third of days count, the top tenth stand alone.
-    var sc = days.map(function (d) { return d.score; }).sort(function (a, b) { return a - b; }), q = function (f) { return sc.length ? sc[Math.min(sc.length - 1, Math.floor(f * sc.length))] : 0; };
+    var sc = days.map(function (d) { return d.score; }).sort(function (a, b) { return a - b; }), sc0 = sc, q = function (f) { return sc.length ? sc[Math.min(sc.length - 1, Math.floor(f * sc.length))] : 0; };
     lo = lo == null ? Math.max(1.2, q(0.66)) : lo; hi = hi == null ? Math.max(lo + 0.8, q(0.9)) : hi;
     var out = [], run = [];
     var flush = function () {
@@ -230,7 +273,8 @@ var StarswellPlan = (function () {
         var AP = want && GOALS[want] && (ACTS[GOALS[want].act] || {}).planets;
         if (AP && (pl === 'Moon' || !AP[pl])) { var mainP = Object.keys(AP).sort(function (a, b) { return AP[b] - AP[a]; })[0]; if (mainP) pl = mainP; }
         var sc = run.reduce(function (n, d) { return n + d.score; }, 0) / run.length;
-        out.push({ kind: 'span', start: run[0].start, end: run[run.length - 1].end, days: run.length, score: Math.round(sc * 10) / 10, planet: pl, word: WORD[pl], reason: why[0] || '', why: why.slice(0, 4), tier: sc >= hi ? 'strong' : 'supportive' });
+        var rank = sc0.filter(function (x) { return x <= Math.max.apply(null, run.map(function (d) { return d.score; })); }).length / Math.max(1, sc0.length);
+        out.push({ kind: 'span', top: Math.max(1, Math.round((1 - rank) * 100 + 0.5)), start: run[0].start, end: run[run.length - 1].end, days: run.length, score: Math.round(sc * 10) / 10, planet: pl, word: WORD[pl], reason: why[0] || '', why: why.slice(0, 4), tier: sc >= hi ? 'strong' : 'supportive' });
       }
       run = [];
     };
@@ -271,6 +315,7 @@ var StarswellPlan = (function () {
       if (A.signs && A.signs[moonSign]) { score += 0.8; why.push('Moon in ' + moonSign); }
       if (A.signs && A.signs[asc]) { score += 1; why.push(asc + ' rising'); } else if (A.element && RB.weather.signElement[asc] === A.element) { score += 0.4; why.push(asc + ' rising'); }
       if (isVoid) { if (A.voc === 'avoid') { score -= 2; warn.push('void Moon'); } else if (A.voc === 'favor') { score += 0.8; why.push('void Moon'); } }
+      if (WIND[k] && o.sleep != null && windDown(localHour(t, tz), o.sleep)) { score -= 2.5; warn.push('close to bedtime'); }
       return { want: k, name: G.name, short: G.short, dfor: G.dfor, score: Math.round(score * 10) / 10, planet: lead, word: lead ? WORD[lead] : '', why: why, warn: warn };
     }).sort(function (a, b) { return b.score - a.score; });
     // Name the moment by its strongest planet on an angle; failing that, by the hour's ruler.
@@ -303,7 +348,7 @@ var StarswellPlan = (function () {
         for (var i = 1; i < ser.length; i++) {
           var a = d(ser[i - 1][k], L), b = d(ser[i][k], L); if (!(a < 0 && b >= 0 && b - a < 30)) continue;
           var t = new Date(+ser[i - 1].t + 6e5 * (-a / (b - a)));
-          var lh = localHour(t, o.tz); if (+t < +o.now + 10 * 60000 || lh < wake || lh >= sleep - 0.25) continue;
+          var lh = localHour(t, o.tz); if (+t < +o.now + 10 * 60000 || !awake(lh, wake, sleep - 0.25) || (WIND[want] && windDown(lh, sleep))) continue;
           var why = ['Your natal ' + pl + ' ' + ANGLE[k].say], score = P[pl] * ANGLE[k].w * ((FIT[want] || {})[k] || 1) * 0.95;
           var moon = Sky.signOf(Sky.positions(t).Moon); if (A.signs && A.signs[moon]) { score += 0.8; why.push('Moon in ' + moon); }
           out.push({ start: new Date(+t - 5 * 60000), end: new Date(+t + 10 * 60000), at: t, score: score, word: WORD[pl], planet: pl, angle: k, natal: true, why: why, warn: [], kind: 'crossing' });

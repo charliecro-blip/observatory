@@ -309,6 +309,7 @@ function today() {
   var spanNow = null; p.goals.forEach(function (pg) { pg.spans.forEach(function (s) { if (+new Date(s.start) <= now + 864e5 && +new Date(s.end) > now && !spanNow) spanNow = s; }); });
   var st = sunTimes();
   var h = '<div class="between"><h1>' + wd(new Date()) + '</h1><span class="small muted">' + esc(S.loc.city || '') + (st && st.rise ? ' · ' + g('Sun') + ' ' + tm(st.rise) + ' to ' + tm(st.set) : '') + '</span></div>';
+  h += moonLine();
   h += skyArc(todayW);
   h += reflectCard();
   h += next ? heroCard(next) : '<div class="card">No standout waves in the next eight days. Open <strong>Now</strong> to see what the sky suits as it goes.</div>';
@@ -316,11 +317,23 @@ function today() {
   var m = momentAt(new Date());
   h += '<button class="span" data-tab="now" style="background:var(--surface)"><span class="g" style="color:var(--warm)">' + (GL[m.head && m.head.planet] || '✦') + V + '</span><span><span class="eyebrow">The sky right now</span><br><strong>A time to ' + esc((word(m.head && m.head.planet) || 'pause').toLowerCase()) + '</strong>' + (m.head ? '<span class="muted"> · ' + esc(m.head.say) + '</span>' : '') + '<br><span class="small muted">Suits ' + m.ranked.slice(0, 2).map(function (r) { return esc(r.short.toLowerCase()); }).join(' and ') + '</span></span></button>';
   var items = todayW.map(function (w) { return { t: new Date(w.at || w.start), w: w }; }).concat(BUSY.filter(function (e) { return ymd(e.start) === ymd(new Date()); }).map(function (e) { return { t: e.start, e: e }; })).sort(function (a, b) { return a.t - b.t; });
-  h += '<div><div class="eyebrow" style="margin:6px 0 2px">Later today</div><div class="list">' + (items.length ? items.map(itemRow).join('') : '<div class="item"><span></span><span></span><span class="muted">Nothing more today</span><span></span></div>') + '</div></div>';
+  h += '<div><div class="eyebrow" style="margin:6px 0 2px">Later today</div><div class="list">' + (items.length ? items.map(function (x) { return itemRow(x); }).join('') : '<div class="item"><span></span><span></span><span class="muted">Nothing more today</span><span></span></div>') + '</div></div>';
   var tom = ws.filter(function (w) { return dayName(w.start) === 'Tomorrow'; });
   if (tom.length) h += '<div><div class="eyebrow" style="margin:6px 0 2px">Tomorrow</div><div class="list">' + tom.slice(0, 4).map(function (w) { return itemRow({ t: new Date(w.at || w.start), w: w }); }).join('') + '</div></div>';
   h += progressLine();
   return h;
+}
+// The Moon in one sentence, as Compass opens Home: sign, phase, and the next aspect she perfects today.
+function moonLine() {
+  try {
+    var now = new Date(), end = new Date(+now - localHour(now) * 3600e3 + 24 * 3600e3);
+    var tl = Sky.lunarTimeline(new Date(+now - 3 * 3600e3), end, 30), pos = Sky.positions(now), sign = Sky.signOf(pos.Moon);
+    var el = (((pos.Moon - pos.Sun) % 360) + 360) % 360, ph = el < 12 ? 'new' : el < 85 ? 'waxing crescent' : el < 95 ? 'first quarter' : el < 168 ? 'waxing gibbous' : el < 192 ? 'full' : el < 265 ? 'waning gibbous' : el < 275 ? 'last quarter' : el < 348 ? 'waning crescent' : 'new';
+    var v = tl.voids.filter(function (x) { return now >= x.start && now < x.end; })[0];
+    var nx = tl.perfections.filter(function (p) { return p.t > now; }).sort(function (a, b) { return a.t - b.t; })[0];
+    var asp = nx ? ({ conjunction: 'meets', opposition: 'opposes', trine: 'trines', sextile: 'sextiles', square: 'squares' })[nx.aspect] + ' ' + nx.planet + ' at ' + tm(nx.t) : 'makes no more aspects today';
+    return '<div class="small">' + g('Moon') + ' Moon in ' + gs(sign) + esc(sign) + ', ' + ph + (v ? ', void until ' + tm(v.end) : '') + '. She ' + asp + '.</div>';
+  } catch (e) { return ''; }
 }
 function spanRange(s) { var a = new Date(s.start), b = new Date(+new Date(s.end) - 3600e3); return s.days === 1 ? wd(a) : wd(a) + ' to ' + wd(b); }
 function itemRow(it, grouped) {
@@ -339,7 +352,7 @@ function reflectCard() {
 var MCACHE = {};
 function momentAt(t) {
   var k = Math.floor(+t / 6e5) + ':' + S.loc.lat; if (MCACHE[k]) return MCACHE[k];
-  var m = P.moment({ now: new Date(), at: t, lat: S.loc.lat, lon: S.loc.lon, tz: tz() }); MCACHE = {}; MCACHE[k] = m; return m;
+  var m = P.moment({ now: new Date(), at: t, lat: S.loc.lat, lon: S.loc.lon, tz: tz(), wake: S.wake, sleep: S.sleep }); MCACHE = {}; MCACHE[k] = m; return m;
 }
 function nowView() {
   var t = new Date(Date.now() + NOW_OFF * 60000), m = momentAt(t), mine = S.goals.map(function (x) { return x.want; });
@@ -396,7 +409,7 @@ function longView(gls) {
     var sp = P.spans(days, null, null, pg.want), mx = Math.max.apply(null, days.map(function (d) { return d.score; }).concat([3]));
     h += '<div class="card"><div class="between"><h2>' + esc(goalName(pg.mine)) + '</h2><span class="small muted">' + sp.length + ' good stretches</span></div>' +
       '<div class="cells" style="margin:10px 0" role="img" aria-label="Each square is a day; darker is better">' + days.map(function (d) { var v = Math.max(0, d.score) / mx; return '<i title="' + esc(parts(d.start, { month: 'short', day: 'numeric' }) + ': ' + (d.why.slice(0, 2).join(', ') || 'quiet')) + '" style="background:color-mix(in srgb, var(--accent) ' + Math.round(v * 100) + '%, var(--surface2))"></i>'; }).join('') + '</div>' +
-      '<div class="list">' + sp.slice(0, 8).map(function (s) { return '<button class="item" data-act="spanlong" data-want="' + pg.want + '" data-start="' + (+new Date(s.start)) + '">' + g(s.planet) + '<span class="t" style="font-size:15px">' + parts(s.start, { month: 'short', day: 'numeric' }) + '</span><span style="min-width:0">' + esc(spanRange(s)) + ' <span class="muted">· ' + esc(s.reason) + '</span></span>' + (s.tier === 'strong' ? '<span class="tier strong">Strong</span>' : '<span></span>') + '</button>'; }).join('') + '</div></div>';
+      '<div class="list">' + sp.slice(0, 8).map(function (s) { return '<button class="item" data-act="spanlong" data-want="' + pg.want + '" data-start="' + (+new Date(s.start)) + '">' + g(s.planet) + '<span class="t" style="font-size:15px">' + parts(s.start, { month: 'short', day: 'numeric' }) + '</span><span style="min-width:0">' + esc(spanRange(s)) + ' <span class="muted">· ' + esc(s.reason) + (s.top <= 10 ? ' · top ' + s.top + '% of these ' + LONG + ' days' : '') + '</span></span>' + (s.tier === 'strong' ? '<span class="tier strong">Strong</span>' : '<span></span>') + '</button>'; }).join('') + '</div></div>';
   });
   return h;
 }
@@ -416,12 +429,15 @@ function almanac() {
   return h;
 }
 function patterns(d) {
+  // Compass's felt-pattern rule: say nothing until there are enough to count (10 caught, 4 of a kind),
+  // and report counts a person could recount, never a verdict about the sky.
   var c = d.filter(function (x) { return x.how === 'caught' && x.planet; });
-  if (c.length < 8) return '<p class="small muted">Patterns appear after eight caught waves, and you have ' + c.length + ' so far.</p>';
+  if (c.length < 10) return '<p class="small muted">Patterns appear after ten caught waves, and you have ' + c.length + ' so far.</p>';
   var by = {}; c.forEach(function (x) { by[x.planet] = (by[x.planet] || 0) + 1; });
-  var top = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }).slice(0, 3);
+  var top = Object.keys(by).filter(function (p) { return by[p] >= 4; }).sort(function (a, b) { return by[b] - by[a]; }).slice(0, 3);
+  if (!top.length) return '<p class="small muted">No kind of wave has come up four times yet, so there is no pattern to report.</p>';
   var eve = c.filter(function (x) { return localHour(x.at) >= 17; }).length;
-  return '<p class="small">' + (c.length < 20 ? 'An early read, from ' + c.length + ' waves. ' : '') + 'The waves you catch most are ' + top.map(function (p) { return g(p) + ' ' + esc(word(p)) + ' (' + by[p] + ')'; }).join(', ') + '. ' + (eve > c.length / 2 ? 'Most of them come in the evening.' : 'Most of them come before evening.') + '</p>';
+  return '<p class="small">Of your ' + c.length + ' caught waves, ' + top.map(function (p) { return by[p] + ' were ' + g(p) + ' ' + esc(word(p)); }).join(', ') + '. ' + eve + ' of them came after 5 pm.' + (c.length < 20 ? ' This is an early read.' : '') + '</p>';
 }
 
 // ---------- You ----------
@@ -498,7 +514,6 @@ function waveSheet(w) {
     h += '<div class="field"><label for="dur">How long you want for it</label><select id="dur">' + [15, 20, 30, 45, 60, 90, 120, 180].map(function (n) { return '<option value="' + n + '"' + (n === (mine.dur || gl.dur) ? ' selected' : '') + '>' + (n < 60 ? n + ' minutes' : (n / 60) + (n === 60 ? ' hour' : ' hours')) + '</option>'; }).join('') + '</select></div>';
     h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Put it on my calendar</button><div class="row"><button class="btn soft" style="flex:1" data-act="remind" data-id="' + w.id + '">Remind me ' + leadText(mine.lead || gl.lead) + ' before</button><button class="btn soft" style="flex:1" data-act="share" data-id="' + w.id + '">Share</button></div>';
   } else h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Mark these days on my calendar</button>';
-  h += '<p class="small muted">The planets\u2019 positions are calculated exactly, and what they suit comes from astrological tradition for you to try.</p>';
   sheet(h);
 }
 function leadText(m) { return m >= 60 ? (m / 60) + ' hour' + (m > 60 ? 's' : '') : m + ' minutes'; }
