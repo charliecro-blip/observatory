@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/favicon.svg">
+<title>Astrowaves</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#F3EEE4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column that the sky colors. Today leads with the next wave; Now asks what this moment is for. */
+:root {
+  --bg: #F3EEE4; --surface: #FFFFFF; --surface2: #E9E1D2; --ink: #10233A; --muted: #5B6B7C; --line: #E2D8C6;
+  --accent: #1E6E8C; --accent-ink: #F7F3EA; --warm: #E26D4F; --sea: #80ACA9; --hero: #1E6E8C; --hero-ink: #F7F3EA; --hero-line: transparent;
+  --display: 'Fraunces', Georgia, 'Times New Roman', serif; --text: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+:root[data-phase="dawn"]   { --bg: #F1E2D6; --surface: #FBF3EC; --surface2: #EAD6C8; --ink: #24303F; --muted: #6A707C; --line: #E2CDBF; --accent: #536D80; --accent-ink: #FBF3EC; --warm: #B86F5C; --sea: #91A8AF; --hero: #536D80; --hero-ink: #FBF3EC; }
+:root[data-phase="golden"] { --bg: #EFD9B4; --surface: #F9EDD6; --surface2: #E5C99C; --ink: #2A2735; --muted: #6A5B52; --line: #DCC193; --accent: #515D7D; --accent-ink: #F9EDD6; --warm: #A65A43; --sea: #A57978; --hero: #515D7D; --hero-ink: #F9EDD6; }
+:root[data-phase="night"]  { --bg: #0E1B33; --surface: #16264A; --surface2: #1E3158; --ink: #EFE9DC; --muted: #9AA7C0; --line: #26395F; --accent: #5FE0CC; --accent-ink: #0E1B33; --warm: #D9B46A; --sea: #5FE0CC; --hero: #16264A; --hero-ink: #EFE9DC; --hero-line: #2F4A7A; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--text); transition: background .6s, color .6s; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 460px; margin: 0 auto; min-height: 100%; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 96px; display: flex; flex-direction: column; gap: 14px; position: relative; }
+.stars { position: absolute; left: 0; top: 0; width: 100%; height: 150px; pointer-events: none; display: none; }
+:root[data-phase="night"] .stars { display: block; }
+h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; text-wrap: balance; }
+h1 { font-size: 28px; line-height: 1.1; }
+h2 { font-size: 20px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.between { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.g { font-family: 'Apple Symbols', 'Segoe UI Symbol', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif; font-variant-emoji: text; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; }
+.card { background: var(--surface); border-radius: 18px; padding: 14px 16px; }
+.hero { background: var(--hero); color: var(--hero-ink); border: 1px solid var(--hero-line); border-radius: 24px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+.hero .top { display: flex; justify-content: space-between; font-size: 13px; opacity: .85; gap: 8px; }
+.hero .big { display: flex; align-items: baseline; gap: 12px; }
+.hero .time { font-family: var(--display); font-size: 58px; line-height: 1; letter-spacing: -.02em; }
+.hero .time small { font-size: 20px; letter-spacing: 0; margin-left: 2px; }
+.hero .glyph { font-size: 34px; }
+.hero .word { font-family: var(--display); font-style: italic; font-size: 22px; }
+.hero .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn { border: 0; border-radius: 14px; padding: 11px 15px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 14px; }
+.btn.ghost { background: transparent; color: inherit; border: 1px solid currentColor; opacity: .9; }
+.btn.soft { background: var(--surface2); color: var(--ink); }
+.btn.wide { width: 100%; padding: 14px; font-size: 15px; }
+.hero .btn { background: var(--hero-ink); color: var(--hero); }
+:root[data-phase="night"] .hero .btn { background: var(--accent); color: var(--accent-ink); }
+.hero .btn.ghost { background: transparent; color: var(--hero-ink); }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px; font-size: 13px; background: var(--surface2); border: 0; color: var(--ink); }
+.chip.on { background: var(--accent); color: var(--accent-ink); }
+.tier { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.tier.strong { background: var(--warm); color: var(--bg); }
+.tier.supportive { background: var(--surface2); color: var(--ink); }
+.tier.open { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.list { display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: 26px 64px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; width: 100%; }
+.item .g { color: var(--accent); font-size: 18px; text-align: center; }
+.item.strong .g { color: var(--warm); }
+.item .t { font-family: var(--display); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.item.busy { color: var(--muted); }
+.item.busy .t { font-family: var(--text); font-weight: 400; font-size: 14px; }
+.item.past { opacity: .45; }
+.span { border-radius: 18px; padding: 12px 14px; background: var(--surface2); display: flex; gap: 12px; align-items: center; border: 0; text-align: left; width: 100%; }
+.span .g { font-size: 26px; color: var(--accent); }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bg); border-top: 1px solid var(--line); display: flex; justify-content: center; padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+nav.tabs .in { display: flex; justify-content: space-around; width: 100%; max-width: 460px; }
+nav.tabs button { background: none; border: 0; color: var(--muted); font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; }
+nav.tabs button .g { font-size: 18px; }
+nav.tabs button.on { color: var(--ink); }
+.sheet-back { position: fixed; inset: 0; background: rgba(8, 14, 28, .45); z-index: 30; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--bg); width: 100%; max-width: 480px; max-height: 92%; overflow: auto; border-radius: 24px 24px 0 0; padding: 18px max(18px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line); align-self: center; }
+.receipt { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.receipt .g { font-size: 18px; color: var(--accent); text-align: center; }
+.receipt.against { color: var(--muted); }
+.receipt.against .g { color: var(--muted); }
+.bar { height: 6px; border-radius: 6px; background: var(--surface2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.suit { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 4px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; }
+.suit.mine .nm::before { content: "\25CF"; color: var(--warm); margin-right: 6px; font-size: 10px; vertical-align: 2px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; color: var(--muted); }
+input[type=text], input[type=date], input[type=time], select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; width: 100%; }
+textarea { min-height: 84px; resize: vertical; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface2); border-radius: 12px; padding: 3px; }
+.seg button { background: none; border: 0; border-radius: 10px; padding: 9px 4px; font-size: 13px; }
+.seg button.on { background: var(--surface); font-weight: 600; }
+.day { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.day.inspan { border-left: 3px solid var(--sea); padding-left: 10px; }
+.cells { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 3px; }
+.cells i { aspect-ratio: 1; border-radius: 4px; background: var(--surface2); max-width: 100%; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 40; max-width: 90%; }
+.onb { min-height: 100%; display: flex; flex-direction: column; gap: 18px; padding-top: 30px; }
+.onb .lede { font-family: var(--display); font-size: 34px; line-height: 1.08; }
+.share { border-radius: 24px; padding: 26px 22px; background: var(--hero); color: var(--hero-ink); display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--hero-line); }
+.share .w { font-family: var(--display); font-size: 48px; font-style: italic; line-height: 1; }
+.plusmark { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { body { transition: none; } }
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px)}</style>
+</head>
+<body>
+
+
+<div class="app" id="app" aria-live="polite"></div>
+<nav class="tabs" id="tabs" hidden><div class="in">
+  <button data-tab="today"><span class="g">&#9737;&#xFE0E;</span>Today</button>
+  <button data-tab="now"><span class="g">&#10022;</span>Now</button>
+  <button data-tab="week"><span class="g">&#8776;</span>Week</button>
+  <button data-tab="almanac"><span class="g">&#9789;&#xFE0E;</span>Almanac</button>
+  <button data-tab="you"><span class="g">&#9675;</span>You</button>
+</div></nav>
+<div id="layer"></div>
+
+<script src="./core.js"></script>
+<script>
+(function () {
+'use strict';
+var P = window.StarswellPlan, HOST = window.AW_HOST || null, KEY = 'astrowaves-web';
+var V = '︎', GL = { Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂', Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇' };
+var SG = { Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋', Leo: '♌', Virgo: '♍', Libra: '♎', Scorpio: '♏', Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓' };
+var CITIES = [
+  ['Austin', 30.27, -97.74, 'America/Chicago'], ['San Antonio', 29.42, -98.49, 'America/Chicago'], ['Houston', 29.76, -95.37, 'America/Chicago'], ['Dallas', 32.78, -96.80, 'America/Chicago'],
+  ['New Orleans', 29.95, -90.07, 'America/Chicago'], ['Chicago', 41.88, -87.63, 'America/Chicago'], ['Denver', 39.74, -104.99, 'America/Denver'], ['Santa Fe', 35.69, -105.94, 'America/Denver'],
+  ['Phoenix', 33.45, -112.07, 'America/Phoenix'], ['Los Angeles', 34.05, -118.24, 'America/Los_Angeles'], ['San Francisco', 37.77, -122.42, 'America/Los_Angeles'], ['Portland', 45.52, -122.68, 'America/Los_Angeles'],
+  ['Seattle', 47.61, -122.33, 'America/Los_Angeles'], ['New York', 40.71, -74.01, 'America/New_York'], ['Boston', 42.36, -71.06, 'America/New_York'], ['Atlanta', 33.75, -84.39, 'America/New_York'],
+  ['Miami', 25.76, -80.19, 'America/New_York'], ['Toronto', 43.65, -79.38, 'America/Toronto'], ['Mexico City', 19.43, -99.13, 'America/Mexico_City'], ['London', 51.51, -0.13, 'Europe/London'],
+  ['Berlin', 52.52, 13.40, 'Europe/Berlin'], ['Basel', 47.56, 7.59, 'Europe/Zurich'], ['Zurich', 47.38, 8.54, 'Europe/Zurich'], ['Lisbon', 38.72, -9.14, 'Europe/Lisbon'],
+  ['Sydney', -33.87, 151.21, 'Australia/Sydney'], ['Tokyo', 35.68, 139.69, 'Asia/Tokyo']
+];
+var STARTERS = [['Quiet time to pray', 'meditate'], ['Getting to the gym', 'move'], ['Making art', 'create'], ['Writing', 'write'], ['Calling my people', 'connect'], ['Romance', 'partner'], ['Downtime', 'rest'], ['Deep work', 'focus']];
+
+// ---------- state ----------
+function blank() { return { v: 1, goals: [], loc: null, wake: 7, sleep: 22.5, done: [], saved: [], words: {}, look: 'sun', glyphs: true, ping: 'gentle', plus: true, freeView: false, birth: null, onboarded: false }; }
+var S = (function () {
+  var s = null;
+  if (HOST && HOST.state) s = HOST.state;
+  else { try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} }
+  return Object.assign(blank(), s || {});
+})();
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  if (HOST) host('save', S);
+  PLAN = null;
+}
+var hostQ = [];
+function host(a, d) { hostQ.push({ a: a, d: d }); if (hostQ.length === 1) setTimeout(flushHost, 0); }
+function flushHost() { if (!hostQ.length) return; var m = hostQ.shift(); if (HOST.post) { HOST.post(m.a, m.d); if (hostQ.length) setTimeout(flushHost, 0); return; } location.href = 'aw://x?a=' + m.a + '&d=' + encodeURIComponent(JSON.stringify(m.d)); if (hostQ.length) setTimeout(flushHost, 120); }
+var BUSY = (HOST && HOST.busy || []).map(function (b) { return { title: b.title, start: new Date(b.start), end: new Date(b.end) }; });
+
+// ---------- helpers ----------
+var tz = function () { return (S.loc && S.loc.tz) || Intl.DateTimeFormat().resolvedOptions().timeZone; };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function g(pl) { return S.glyphs && GL[pl] ? '<span class="g">' + GL[pl] + V + '</span>' : ''; }
+function gs(sign) { return S.glyphs && SG[sign] ? '<span class="g">' + SG[sign] + V + '</span> ' : ''; }
+function word(pl, goal) { return (goal && goal.words && goal.words[pl]) || S.words[pl] || P.WORD[pl] || ''; }
+function parts(d, o) { return new Date(d).toLocaleString('en-US', Object.assign({ timeZone: tz() }, o)); }
+function hm(d) { return parts(d, { hour: 'numeric', minute: '2-digit' }).replace(/\s?(AM|PM)$/, ''); }
+function ap(d) { return /AM$/.test(parts(d, { hour: 'numeric' })) ? 'am' : 'pm'; }
+function tm(d) { return hm(d) + ' ' + ap(d); }
+function range(a, b) { return ap(a) === ap(b) ? hm(a) + ' to ' + hm(b) + ' ' + ap(b) : tm(a) + ' to ' + tm(b); }
+function wd(d) { return parts(d, { weekday: 'long' }); }
+function ymd(d) { return parts(d, { year: 'numeric', month: '2-digit', day: '2-digit' }); }
+function dayName(d) { var n = new Date(); if (ymd(d) === ymd(n)) return 'Today'; if (ymd(d) === ymd(+n + 864e5)) return 'Tomorrow'; return wd(d); }
+function localHour(d) { var p = parts(d, { hour: 'numeric', minute: '2-digit', hour12: false }).split(':'); return (+p[0] % 24) + (+p[1]) / 60; }
+function hhmm(h) { var H = Math.floor(h), M = Math.round((h - H) * 60), d = new Date(2000, 0, 1, H, M); return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase(); }
+function inMin(d) { var m = Math.round((+d - Date.now()) / 60000); if (m < 1) return 'now'; if (m < 60) return 'in ' + m + ' min'; var h = Math.floor(m / 60); if (h < 24) return 'in ' + h + ' h' + (m % 60 ? ' ' + (m % 60) : ''); return dayName(d); }
+function plusOn() { return S.plus && !S.freeView; }
+function goalName(gl) { return gl.label || (P.GOALS[gl.want] || {}).name || gl.want; }
+function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
+function isArtifact() { return !HOST && !/compass\.day$|localhost|127\.0\.0\.1/.test(location.hostname); }
+
+// ---------- sky color follows the local sun ----------
+var SUN = null;
+function sunTimes() {
+  if (!S.loc || !window.Astronomy) return null;
+  var key = ymd(new Date()) + S.loc.lat; if (SUN && SUN.key === key) return SUN;
+  try {
+    var obs = new Astronomy.Observer(S.loc.lat, S.loc.lon, 0), from = new Date(Date.now() - 12 * 3600e3);
+    var r = Astronomy.SearchRiseSet('Sun', obs, +1, from, 2), s = Astronomy.SearchRiseSet('Sun', obs, -1, r ? r.date : from, 2);
+    SUN = { key: key, rise: r && r.date, set: s && s.date };
+  } catch (e) { SUN = null; }
+  return SUN;
+}
+function phase() {
+  if (S.look === 'day') return 'day'; if (S.look === 'night') return 'night';
+  var st = sunTimes(), n = Date.now(); if (!st || !st.rise || !st.set) { var h = new Date().getHours(); return h < 6 || h >= 19 ? 'night' : 'day'; }
+  var r = +st.rise, s = +st.set, M = 60000;
+  if (r > s) r -= 864e5; // after sunset today, next rise is tomorrow
+  if (n >= r - 40 * M && n < r + 70 * M) return 'dawn';
+  if (n >= s - 95 * M && n < s + 25 * M) return 'golden';
+  if (n >= r + 70 * M && n < s - 95 * M) return 'day';
+  return 'night';
+}
+function paint() {
+  var ph = phase(); document.documentElement.setAttribute('data-phase', ph);
+  var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+}
+
+// ---------- the plan ----------
+var PLAN = null, PLAN_AT = 0;
+function natal() { return plusOn() && S.birth && S.birth.utc ? P.natalPositions(S.birth.utc) : null; }
+function plan() {
+  if (!S.loc || !S.goals.length) return null;
+  if (PLAN && Date.now() - PLAN_AT < 10 * 60000) return PLAN;
+  var goals = S.goals.map(function (x) { return { want: x.want, times: x.times, per: x.per, precision: x.precision }; });
+  PLAN = P.plan({ now: new Date(), lat: S.loc.lat, lon: S.loc.lon, tz: tz(), wake: S.wake, sleep: S.sleep, goals: goals, max: plusOn() ? 12 : 2, natal: natal() });
+  PLAN.goals.forEach(function (pg, i) { pg.mine = S.goals[i]; pg.windows.forEach(function (w) { w.goal = pg; w.id = pg.want + ':' + (+new Date(w.start)); w.clash = clash(w); }); pg.spans.forEach(function (w) { w.goal = pg; w.id = pg.want + ':span:' + (+new Date(w.start)); }); });
+  PLAN_AT = Date.now();
+  return PLAN;
+}
+function clash(w) { var a = +new Date(w.at || w.start), b = a + ((w.goal && w.goal.dur) || 30) * 60000; return BUSY.filter(function (e) { return +e.start < b && +e.end > a; })[0] || null; }
+function allWaves() { var p = plan(); if (!p) return []; var out = []; p.goals.forEach(function (pg) { out = out.concat(pg.windows); }); return out.sort(function (a, b) { return new Date(a.start) - new Date(b.start); }); }
+function findWave(id) { var p = plan(); if (!p) return null; var hit = null; p.goals.forEach(function (pg) { pg.windows.concat(pg.spans).forEach(function (w) { if (w.id === id) hit = w; }); }); return hit; }
+
+// ---------- views ----------
+var TAB = 'today', NOW_OFF = 0, WEEK_GOAL = 'all', LONG = 0;
+var app = document.getElementById('app'), layer = document.getElementById('layer'), tabs = document.getElementById('tabs');
+function render() {
+  paint();
+  var stars = '<svg class="stars" viewBox="0 0 390 150" preserveAspectRatio="none" aria-hidden="true">' + [[40, 30, 1.2], [96, 64, 1], [160, 22, 1.4], [214, 80, 1], [268, 38, 1.2], [330, 70, 1], [360, 24, 1.3], [128, 108, .9], [300, 118, .9]].map(function (s) { return '<circle cx="' + s[0] + '" cy="' + s[1] + '" r="' + s[2] + '" fill="currentColor" opacity=".6"/>'; }).join('') + '</svg>';
+  if (!S.onboarded) { tabs.hidden = true; app.innerHTML = stars + onboarding(); return; }
+  tabs.hidden = false;
+  [].forEach.call(tabs.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === TAB); });
+  var v = { today: today, now: nowView, week: week, almanac: almanac, you: you }[TAB] || today;
+  app.innerHTML = stars + v();
+}
+
+// Onboarding: what you would like more of, where you are, then your first wave (with "too early?").
+var OB = { step: 0, text: '', guess: [], pick: null, times: 3, per: 'week' };
+function onboarding() {
+  if (OB.step === 0) return '<div class="onb">' +
+    '<div class="eyebrow">Astrowaves</div>' +
+    '<div class="lede">Check the stars like you check the weather.</div>' +
+    '<p class="muted">Tell Astrowaves what you would like more of in your life. It finds the good times in your sky for it and lets you know before they come.</p>' +
+    '<div style="flex:1"></div><button class="btn wide" data-act="ob-next">Begin</button>' +
+    '<p class="small muted">Everything you tell it stays on this device.</p></div>';
+  if (OB.step === 1) {
+    var guess = OB.text ? P.match(OB.text).slice(0, 3) : [];
+    return '<div class="onb"><div class="eyebrow">' + (S.goals.length ? 'One more' : 'Step 1 of 3') + '</div>' +
+      '<h1>' + (S.goals.length ? 'Now one you find harder to get to.' : 'What would you like more of?') + '</h1>' +
+      '<p class="muted small">' + (S.goals.length ? 'Pairing something you look forward to with something you keep putting off works well.' : 'Say it however you would, and Astrowaves will show your words back to you.') + '</p>' +
+      '<textarea id="ob-text" placeholder="quiet time to pray, getting to the gym, painting again">' + esc(OB.text) + '</textarea>' +
+      '<div class="row" style="flex-wrap:wrap;gap:6px">' + STARTERS.filter(function (s) { return !S.goals.some(function (x) { return x.want === s[1]; }); }).map(function (s) { return '<button class="chip" data-act="ob-starter" data-v="' + esc(s[0]) + '">' + esc(s[0]) + '</button>'; }).join('') + '</div>' +
+      (guess.length ? '<div class="card"><div class="eyebrow">Astrowaves will read this as</div><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">' + guess.map(function (k, i) { var G = P.GOALS[k]; return '<button class="chip' + ((OB.pick || guess[0]) === k ? ' on' : '') + '" data-act="ob-pick" data-v="' + k + '">' + esc(G.name) + '</button>'; }).join('') + '</div></div>' : (OB.text ? '<div class="card small">Nothing matched yet. Try a few more words, or pick one of the suggestions.</div>' : '')) +
+      '<div class="field"><label for="ob-times">How often would you like it?</label><div class="row"><select id="ob-times">' + [1, 2, 3, 4, 5, 6, 7].map(function (n) { return '<option' + (n === OB.times ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select><select id="ob-per"><option value="day"' + (OB.per === 'day' ? ' selected' : '') + '>a day</option><option value="week"' + (OB.per === 'week' ? ' selected' : '') + '>a week</option><option value="month"' + (OB.per === 'month' ? ' selected' : '') + '>a month</option></select></div></div>' +
+      '<div style="flex:1"></div><button class="btn wide" data-act="ob-goal"' + (guess.length ? '' : ' disabled style="opacity:.5"') + '>Continue</button>' +
+      (S.goals.length ? '<button class="btn soft wide" data-act="ob-skip">Just the one for now</button>' : '') + '</div>';
+  }
+  if (OB.step === 2) return '<div class="onb"><div class="eyebrow">Step 2 of 3</div><h1>Where are you?</h1>' +
+    '<p class="muted">Your location sets when the planets rise, set and pass overhead.</p>' +
+    (navigator.geolocation && !isArtifact() ? '<button class="btn wide" data-act="ob-geo">Use my location</button>' : '') +
+    '<div class="field"><label for="ob-city">Or pick the nearest city</label><select id="ob-city"><option value="">Choose a city</option>' + CITIES.map(function (c, i) { return '<option value="' + i + '">' + c[0] + '</option>'; }).join('') + '</select></div>' +
+    '<div style="flex:1"></div><button class="btn soft wide" data-act="ob-city">Use this city</button></div>';
+  // Step 3: the first wave, with the day hours right there.
+  var w = allWaves().filter(function (x) { return +new Date(x.end) > Date.now(); })[0];
+  return '<div class="onb"><div class="eyebrow">Step 3 of 3</div><h1>Your first wave.</h1>' +
+    (w ? heroCard(w, true) : '<div class="card">No waves fit your hours in the next eight days. Widen your day below.</div>') +
+    '<div class="card"><div class="between"><strong>Too early or too late?</strong><span class="small muted">Waves stay inside your day</span></div>' + dayHours() + '</div>' +
+    '<div style="flex:1"></div><button class="btn wide" data-act="ob-done">Show me my day</button></div>';
+}
+function dayHours() {
+  var opts = function (from, to, sel) { var o = ''; for (var h = from; h <= to; h += 0.5) o += '<option value="' + h + '"' + (h === sel ? ' selected' : '') + '>' + hhmm(h % 24) + '</option>'; return o; };
+  return '<div class="row" style="margin-top:10px"><div class="field" style="flex:1"><label for="wake">My day starts</label><select id="wake" data-set="wake">' + opts(4, 12, S.wake) + '</select></div>' +
+    '<div class="field" style="flex:1"><label for="sleep">and winds down</label><select id="sleep" data-set="sleep">' + opts(18, 25.5, S.sleep) + '</select></div></div>';
+}
+
+function heroCard(w, first) {
+  var gl = w.goal, mine = gl.mine || {}, pl = w.planet, wordS = word(pl, mine);
+  var span = w.kind === 'span', day = w.kind === 'day';
+  var top = '<div class="top"><span>' + (first ? 'For ' : 'Next wave · ') + esc(goalName(mine)).toLowerCase() + '</span><span>' + (span ? dayName(w.start) : inMin(w.at || w.start)) + '</span></div>';
+  var time = span ? '<span class="time" style="font-size:40px">' + esc(dayName(w.start)) + '</span>' : '<span class="time">' + hm(w.at || w.start) + '<small>' + ap(w.at || w.start) + '</small></span>';
+  var sub = span ? 'A run of ' + w.days + ' days' : day ? dayName(w.start) + ', best around ' + tm(w.at || w.start) : (dayName(w.start) === 'Today' ? '' : dayName(w.start) + ' · ') + range(w.start, w.end);
+  return '<div class="hero">' + top + '<div class="big">' + time + '<span class="glyph">' + (GL[pl] && S.glyphs ? '<span class="g">' + GL[pl] + V + '</span>' : '') + '</span></div>' +
+    '<div class="word">' + esc(wordS) + '</div><div class="small" style="opacity:.9">' + esc(sub) + (w.reason ? ' · ' + esc(w.reason) : '') + '</div>' +
+    (w.clash ? '<div class="small" style="opacity:.85">Overlaps ' + esc(w.clash.title) + '</div>' : '') +
+    '<div class="acts"><button class="btn" data-act="remind" data-id="' + w.id + '">Remind me</button><button class="btn ghost" data-act="wave" data-id="' + w.id + '">Why now?</button></div></div>';
+}
+
+function skyArc(waves) {
+  var W = 360, x = function (d) { var h = localHour(d); return 10 + (W - 20) * Math.max(0, Math.min(1, (h - S.wake) / (S.sleep - S.wake))); };
+  var st = sunTimes(), svg = '<svg viewBox="0 0 ' + W + ' 112" width="100%" role="img" aria-label="Your day from waking to winding down, with today’s waves" style="display:block;max-width:100%">';
+  svg += '<path d="M0 84 L' + W + ' 84" stroke="var(--line)" stroke-width="1" fill="none"/>';
+  if (st && st.rise && st.set) { var a = x(st.rise), b = x(st.set), mid = (a + b) / 2; svg += '<path d="M' + a + ' 84 Q ' + mid + ' -14 ' + b + ' 84" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 5"/>'; }
+  svg += '<path d="M0 92 C 30 88, 50 96, 80 92 S 130 88, 160 92 S 210 96, 240 92 S 290 88, 320 92 S 350 94, 360 92" fill="none" stroke="var(--sea)" stroke-width="1.2" opacity=".55"/>';
+  var nx = x(new Date()), lh = localHour(new Date());
+  if (lh >= S.wake && lh <= S.sleep) {
+    var ny = 84;
+    if (st && st.rise && st.set && Date.now() > +st.rise && Date.now() < +st.set) { var a2 = x(st.rise), b2 = x(st.set), tt = (nx - a2) / (b2 - a2); ny = (1 - tt) * (1 - tt) * 84 + 2 * (1 - tt) * tt * -14 + tt * tt * 84; }
+    svg += '<line x1="' + nx + '" y1="' + (ny + 9) + '" x2="' + nx + '" y2="84" stroke="var(--warm)" stroke-width="1" opacity=".5"/><circle cx="' + nx + '" cy="' + ny + '" r="6.5" fill="var(--warm)"/>';
+  }
+  waves.forEach(function (w) { var xx = x(w.at || w.start), strong = w.tier === 'strong'; svg += '<line x1="' + xx + '" y1="70" x2="' + xx + '" y2="84" stroke="' + (strong ? 'var(--warm)' : 'var(--accent)') + '" stroke-width="1.2"/>' + (S.glyphs && GL[w.planet] ? '<text x="' + xx + '" y="64" text-anchor="middle" font-size="' + (strong ? 17 : 14) + '" fill="' + (strong ? 'var(--warm)' : 'var(--accent)') + '" class="g">' + GL[w.planet] + V + '</text>' : ''); });
+  svg += '<text x="0" y="110" font-size="11" fill="var(--muted)">' + hhmm(S.wake) + '</text><text x="' + W + '" y="110" font-size="11" fill="var(--muted)" text-anchor="end">' + hhmm(S.sleep % 24) + '</text></svg>';
+  return svg;
+}
+
+function progressLine() {
+  var p = plan(); if (!p) return '';
+  return '<div class="small muted">' + p.goals.map(function (pg) { var n = doneIn(pg.mine); return esc(goalName(pg.mine)) + ' <strong class="num" style="color:var(--ink)">' + n + '</strong> of ' + pg.mine.times + ' this ' + pg.mine.per; }).join(' · ') + '</div>';
+}
+function periodStart(per) { var d = new Date(), h = localHour(d); var start = +d - h * 3600e3; if (per === 'week') { var dow = (new Date(parts(d, { year: 'numeric', month: '2-digit', day: '2-digit' })).getDay() + 6) % 7; start -= dow * 864e5; } if (per === 'month') { var dom = +parts(d, { day: 'numeric' }) - 1; start -= dom * 864e5; } return start; }
+function doneIn(gl) { var s = periodStart(gl.per); return S.done.filter(function (x) { return x.want === gl.want && x.how !== 'skip' && +new Date(x.at) >= s; }).length; }
+
+function today() {
+  var p = plan(), now = Date.now();
+  if (!p) return '<div class="card">Loading your sky…</div>';
+  var ws = allWaves(), todayW = ws.filter(function (w) { return ymd(w.start) === ymd(new Date()); });
+  var next = ws.filter(function (w) { return +new Date(w.end) > now; })[0];
+  var spanNow = null; p.goals.forEach(function (pg) { pg.spans.forEach(function (s) { if (+new Date(s.start) <= now + 864e5 && +new Date(s.end) > now && !spanNow) spanNow = s; }); });
+  var st = sunTimes();
+  var h = '<div class="between"><h1>' + wd(new Date()) + '</h1><span class="small muted">' + esc(S.loc.city || '') + (st && st.rise ? ' · ' + g('Sun') + ' ' + tm(st.rise) + ' to ' + tm(st.set) : '') + '</span></div>';
+  h += skyArc(todayW);
+  h += reflectCard();
+  h += next ? heroCard(next) : '<div class="card">No standout waves in the next eight days. Open <strong>Now</strong> to see what the sky suits as it goes.</div>';
+  if (spanNow) h += '<button class="span" data-act="wave" data-id="' + spanNow.id + '">' + g(spanNow.planet) + '<span style="min-width:0"><span class="eyebrow">' + (+new Date(spanNow.start) <= now ? 'Running now' : 'Starting tomorrow') + '</span><br><strong>' + esc(spanRange(spanNow)) + '</strong> is a good stretch for ' + esc(goalName(spanNow.goal.mine)).toLowerCase() + '<br><span class="small muted">' + esc(word(spanNow.planet, spanNow.goal.mine)) + ' · ' + esc(spanNow.reason) + '</span></span></button>';
+  var m = momentAt(new Date());
+  h += '<button class="span" data-tab="now" style="background:var(--surface)"><span class="g" style="color:var(--warm)">' + (GL[m.head && m.head.planet] || '✦') + V + '</span><span><span class="eyebrow">The sky right now</span><br><strong>A time to ' + esc((word(m.head && m.head.planet) || 'pause').toLowerCase()) + '</strong>' + (m.head ? '<span class="muted"> · ' + esc(m.head.say) + '</span>' : '') + '<br><span class="small muted">Suits ' + m.ranked.slice(0, 2).map(function (r) { return esc(r.short.toLowerCase()); }).join(' and ') + '</span></span></button>';
+  var items = todayW.map(function (w) { return { t: new Date(w.at || w.start), w: w }; }).concat(BUSY.filter(function (e) { return ymd(e.start) === ymd(new Date()); }).map(function (e) { return { t: e.start, e: e }; })).sort(function (a, b) { return a.t - b.t; });
+  h += '<div><div class="eyebrow" style="margin:6px 0 2px">Later today</div><div class="list">' + (items.length ? items.map(itemRow).join('') : '<div class="item"><span></span><span></span><span class="muted">Nothing more today</span><span></span></div>') + '</div></div>';
+  var tom = ws.filter(function (w) { return dayName(w.start) === 'Tomorrow'; });
+  if (tom.length) h += '<div><div class="eyebrow" style="margin:6px 0 2px">Tomorrow</div><div class="list">' + tom.slice(0, 4).map(function (w) { return itemRow({ t: new Date(w.at || w.start), w: w }); }).join('') + '</div></div>';
+  h += progressLine();
+  return h;
+}
+function spanRange(s) { var a = new Date(s.start), b = new Date(+new Date(s.end) - 3600e3); return s.days === 1 ? wd(a) : wd(a) + ' to ' + wd(b); }
+function itemRow(it, grouped) {
+  if (it.e) return '<div class="item busy"><span></span><span class="t">' + tm(it.t) + '</span><span>' + esc(it.e.title) + '</span><span></span></div>';
+  var w = it.w, past = +new Date(w.end) < Date.now();
+  return '<button class="item' + (w.tier === 'strong' ? ' strong' : '') + (past ? ' past' : '') + '" data-act="wave" data-id="' + w.id + '">' + (S.glyphs ? '<span class="g">' + (GL[w.planet] || '') + V + '</span>' : '<span></span>') + '<span class="t">' + (w.kind === 'day' ? 'All day' : hm(it.t) + '<span class="small muted" style="font-family:var(--text);font-weight:400"> ' + ap(it.t) + '</span>') + '</span><span style="min-width:0">' + (grouped ? '' : esc(goalName(w.goal.mine)) + ' ') + '<span class="muted">' + (grouped ? '' : '· ') + esc(word(w.planet, w.goal.mine)) + (w.clash ? ' · overlaps ' + esc(w.clash.title) : '') + '</span></span>' + (w.tier === 'strong' ? '<span class="tier strong">Strong</span>' : '<span></span>') + '</button>';
+}
+function reflectCard() {
+  var past = allWaves().filter(function (w) { var e = +new Date(w.end); return e < Date.now() && e > Date.now() - 20 * 3600e3 && w.kind !== 'span'; }).filter(function (w) { return !S.done.some(function (d) { return d.wave === w.id; }) && S.saved.indexOf(w.id) >= 0; });
+  var w = past[past.length - 1]; if (!w) return '';
+  return '<div class="card"><div class="eyebrow">Your ' + esc(goalName(w.goal.mine)).toLowerCase() + ' wave at ' + tm(w.at || w.start) + '</div><h2 style="margin:4px 0 10px">How did it go?</h2>' +
+    '<div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn" data-act="log" data-how="caught" data-id="' + w.id + '">I caught the wave</button><button class="btn soft" data-act="log" data-how="other" data-id="' + w.id + '">I did it another time</button><button class="btn soft" data-act="log" data-how="skip" data-id="' + w.id + '">Not today</button></div></div>';
+}
+
+// ---------- Now: what is this moment good for ----------
+var MCACHE = {};
+function momentAt(t) {
+  var k = Math.floor(+t / 6e5) + ':' + S.loc.lat; if (MCACHE[k]) return MCACHE[k];
+  var m = P.moment({ now: new Date(), at: t, lat: S.loc.lat, lon: S.loc.lon, tz: tz() }); MCACHE = {}; MCACHE[k] = m; return m;
+}
+function nowView() {
+  var t = new Date(Date.now() + NOW_OFF * 60000), m = momentAt(t), mine = S.goals.map(function (x) { return x.want; });
+  var max = Math.max(4, m.ranked[0] ? m.ranked[0].score : 4);
+  var lbl = NOW_OFF === 0 ? 'Right now' : dayName(t) + ' at ' + tm(t);
+  var h = '<div class="between"><h1>' + (NOW_OFF === 0 ? 'The sky right now' : 'The sky ' + (dayName(t) === 'Today' ? 'at ' + tm(t) : dayName(t).toLowerCase() + ' at ' + tm(t))) + '</h1></div>';
+  h += '<div class="row" style="flex-wrap:wrap;gap:6px">' + [[0, 'Now'], [60, 'In an hour'], [180, 'In three hours'], [eveningOff(), 'This evening'], [morningOff(), 'Tomorrow morning']].map(function (c) { return '<button class="chip' + (NOW_OFF === c[0] ? ' on' : '') + '" data-act="now-off" data-v="' + c[0] + '">' + c[1] + '</button>'; }).join('') + '</div>';
+  h += '<input type="range" id="now-range" min="0" max="1440" step="15" value="' + NOW_OFF + '" aria-label="Look ahead up to a day" style="width:100%;accent-color:var(--accent)">';
+  var hp = m.head && m.head.planet;
+  h += '<div class="hero"><div class="top"><span>' + esc(lbl) + '</span><span>' + (m.until ? 'until ' + tm(m.until) : '') + '</span></div><div class="big"><span class="time" style="font-size:44px;font-style:italic">A time to ' + esc((word(hp) || 'pause').toLowerCase()) + '</span></div>' +
+    '<div class="small" style="opacity:.9">' + (hp ? g(hp) + ' ' + esc(m.head.say) + ' · ' : '') + gs(m.moon.sign) + 'Moon in ' + esc(m.moon.sign) + (m.moon.isVoid ? ', void' : '') + ' · ' + gs(m.rising) + esc(m.rising) + ' rising' + (m.hour ? ' · ' + g(m.hour.planet) + ' ' + esc(m.hour.planet) + ' hour' : '') + '</div></div>';
+  h += '<div><div class="eyebrow" style="margin:6px 0 2px">This moment suits</div>' + m.ranked.slice(0, 7).map(function (r) {
+    var tier = r.score >= 4 ? 'strong' : r.score >= 2 ? 'supportive' : 'open';
+    return '<button class="suit' + (mine.indexOf(r.want) >= 0 ? ' mine' : '') + '" data-act="suit" data-v="' + r.want + '"><span class="nm" style="min-width:0"><strong>' + esc(nameFor(r.want)) + '</strong> <span class="muted">' + (r.planet ? g(r.planet) + ' ' + esc(word(r.planet)) : '') + '</span><br><span class="small muted">' + esc(r.why.slice(0, 3).join(' · ') || 'Nothing in particular') + (r.warn.length ? ' · against it: ' + esc(r.warn.join(', ')) : '') + '</span></span><span><span class="bar"><i style="width:' + Math.max(6, Math.min(100, 100 * r.score / max)) + '%"></i></span><span class="tier ' + tier + '" style="display:inline-block;margin-top:6px">' + ({ strong: 'Strong', supportive: 'Supportive', open: 'Open' })[tier] + '</span></span></button>';
+  }).join('') + '</div>';
+  if (m.next) h += '<div class="card"><div class="eyebrow">Coming next · ' + tm(m.next.at) + '</div><div style="margin-top:4px">' + g(m.next.planet) + ' <strong>' + esc(word(m.next.planet)) + '</strong> <span class="muted">· ' + esc(m.next.say) + '</span></div><div class="small muted">Suits ' + esc(m.next.suits.join(' and ').toLowerCase()) + '</div></div>';
+  return h;
+}
+function nameFor(want) { var mine = S.goals.filter(function (x) { return x.want === want; })[0]; return mine ? goalName(mine) : P.GOALS[want].name; }
+function eveningOff() { var h = localHour(new Date()), tgt = Math.max(19, h + 1); return Math.round((tgt - h) * 4) * 15; }
+function morningOff() { var h = localHour(new Date()), tgt = 24 + S.wake + 1; return Math.round((tgt - h) * 4) * 15; }
+
+// ---------- Week ----------
+function week() {
+  var p = plan(); if (!p) return '<div class="card">Loading…</div>';
+  var gls = p.goals.filter(function (pg) { return WEEK_GOAL === 'all' || pg.want === WEEK_GOAL; });
+  var h = '<div class="between"><h1>' + (LONG ? 'The longer view' : 'This week') + '</h1><span class="small muted">' + (LONG ? LONG + ' days' : 'Eight days') + '</span></div>';
+  h += '<div class="row" style="flex-wrap:wrap;gap:6px"><button class="chip' + (WEEK_GOAL === 'all' ? ' on' : '') + '" data-act="wk-goal" data-v="all">Everything</button>' + p.goals.map(function (pg) { return '<button class="chip' + (WEEK_GOAL === pg.want ? ' on' : '') + '" data-act="wk-goal" data-v="' + pg.want + '">' + esc(goalName(pg.mine)) + '</button>'; }).join('') + '</div>';
+  h += '<div class="seg"><button class="' + (LONG ? '' : 'on') + '" data-act="long" data-v="0">Week</button><button class="' + (LONG === 30 ? 'on' : '') + '" data-act="long" data-v="30">30 days <span class="plusmark">PLUS</span></button><button class="' + (LONG === 90 ? 'on' : '') + '" data-act="long" data-v="90">90 days <span class="plusmark">PLUS</span></button></div>';
+  if (LONG) return h + longView(gls);
+  var strongN = 0; gls.forEach(function (pg) { strongN += pg.windows.filter(function (w) { return w.tier === 'strong'; }).length; });
+  h += '<div class="card small">' + (gls.length === 1 ? 'You have <strong>' + strongN + '</strong> especially strong ' + esc(goalName(gls[0].mine)).toLowerCase() + ' waves in the next eight days. Keep your usual rhythm and enjoy the extra lift when it comes.' : 'Strong waves are the best few for each thing, at most one a day, and supportive waves are good too. Days without a wave are open for whatever you like.') + '</div>';
+  if (plusOn()) h += '<button class="btn wide" data-act="planweek">Plan my week</button>';
+  var m0 = new Date(); for (var k = 0; k < P.HORIZON; k++) {
+    var d = new Date(+m0 + k * 864e5), key = ymd(d), rows = '', inSpan = null, label = '';
+    gls.forEach(function (pg) {
+      var ws = pg.windows.filter(function (w) { return ymd(w.start) === key; });
+      var tier = ws.some(function (w) { return w.tier === 'strong'; }) ? 'strong' : ws.length ? 'supportive' : 'open';
+      pg.spans.forEach(function (s) { if (+new Date(s.start) <= +d + 3600e3 && +new Date(s.end) > +d) inSpan = s; });
+      rows += '<div class="between"><span style="min-width:0">' + (gls.length > 1 ? esc(goalName(pg.mine)) : '') + '</span><span class="tier ' + tier + '">' + ({ strong: 'Strong wave', supportive: 'Supportive', open: 'Open for practice' })[tier] + '</span></div>';
+      if (ws.length) rows += '<div class="list">' + ws.map(function (w) { return itemRow({ t: new Date(w.at || w.start), w: w }, true); }).join('') + '</div>';
+    });
+    if (inSpan && ymd(inSpan.start) === key) label = '<div class="small" style="color:var(--accent)">' + g(inSpan.planet) + ' ' + esc(spanRange(inSpan)) + ': a good stretch · ' + esc(inSpan.reason) + '</div>';
+    h += '<div class="day' + (inSpan ? ' inspan' : '') + '"><div class="between"><h3 style="font-size:17px">' + dayName(d) + '</h3><span class="small muted">' + parts(d, { month: 'short', day: 'numeric' }) + '</span></div>' + label + rows + '</div>';
+  }
+  return h;
+}
+function longView(gls) {
+  if (!plusOn()) return plusPitch('The longer view looks up to ninety days ahead for runs of good days, so you can place the bigger things.');
+  var h = '';
+  gls.forEach(function (pg) {
+    var key = 'L' + LONG + pg.want + ymd(new Date()), cache = longView.c = longView.c || {};
+    var days = cache[key] || (cache[key] = P.tides({ now: new Date(), lat: S.loc.lat, lon: S.loc.lon, tz: tz(), wake: S.wake, sleep: S.sleep }, pg.want, LONG, natal()));
+    var sp = P.spans(days, null, null, pg.want), mx = Math.max.apply(null, days.map(function (d) { return d.score; }).concat([3]));
+    h += '<div class="card"><div class="between"><h2>' + esc(goalName(pg.mine)) + '</h2><span class="small muted">' + sp.length + ' good stretches</span></div>' +
+      '<div class="cells" style="margin:10px 0" role="img" aria-label="Each square is a day; darker is better">' + days.map(function (d) { var v = Math.max(0, d.score) / mx; return '<i title="' + esc(parts(d.start, { month: 'short', day: 'numeric' }) + ': ' + (d.why.slice(0, 2).join(', ') || 'quiet')) + '" style="background:color-mix(in srgb, var(--accent) ' + Math.round(v * 100) + '%, var(--surface2))"></i>'; }).join('') + '</div>' +
+      '<div class="list">' + sp.slice(0, 8).map(function (s) { return '<button class="item" data-act="spanlong" data-want="' + pg.want + '" data-start="' + (+new Date(s.start)) + '">' + g(s.planet) + '<span class="t" style="font-size:15px">' + parts(s.start, { month: 'short', day: 'numeric' }) + '</span><span style="min-width:0">' + esc(spanRange(s)) + ' <span class="muted">· ' + esc(s.reason) + '</span></span>' + (s.tier === 'strong' ? '<span class="tier strong">Strong</span>' : '<span></span>') + '</button>'; }).join('') + '</div></div>';
+  });
+  return h;
+}
+
+// ---------- Almanac ----------
+function almanac() {
+  var d = S.done.slice().sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+  var caught = d.filter(function (x) { return x.how === 'caught'; }).length, other = d.filter(function (x) { return x.how === 'other'; }).length;
+  var h = '<h1>Your almanac</h1><p class="muted small">This is a record of the times you made room, and over the months it shows how different kinds of time feel to you.</p>';
+  h += '<div class="row"><div class="card" style="flex:1"><div class="eyebrow">Caught</div><div class="num" style="font-size:30px">' + caught + '</div></div><div class="card" style="flex:1"><div class="eyebrow">Another time</div><div class="num" style="font-size:30px">' + other + '</div></div></div>';
+  h += '<button class="btn soft wide" data-act="logsheet">I just did something</button>';
+  h += '<div class="card"><div class="between"><h2>Patterns</h2><span class="plusmark">PLUS</span></div>' + (plusOn() ? patterns(d) : '<p class="small muted">With Plus, the almanac looks across what you have recorded and tells you which kinds of waves you tend to catch.</p>') + '</div>';
+  h += '<div class="list">' + (d.length ? d.slice(0, 60).map(function (x) {
+    return '<div class="item"><span class="g" style="color:var(--accent)">' + (GL[x.planet] || '·') + V + '</span><span class="small">' + parts(x.at, { month: 'short', day: 'numeric' }) + '</span><span style="min-width:0">' + esc(x.label || nameFor(x.want)) + ' <span class="muted">· ' + ({ caught: 'caught the wave', other: 'another time', skip: 'not today' })[x.how] + (x.word ? ' · ' + esc(x.word) : '') + '</span></span><span></span></div>';
+  }).join('') : '<p class="muted">Nothing recorded yet. After a wave you asked to be reminded of, Today asks how it went.</p>') + '</div>';
+  h += '<button class="btn soft wide" data-act="export">Export my record</button>';
+  return h;
+}
+function patterns(d) {
+  var c = d.filter(function (x) { return x.how === 'caught' && x.planet; });
+  if (c.length < 8) return '<p class="small muted">Patterns appear after eight caught waves, and you have ' + c.length + ' so far.</p>';
+  var by = {}; c.forEach(function (x) { by[x.planet] = (by[x.planet] || 0) + 1; });
+  var top = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }).slice(0, 3);
+  var eve = c.filter(function (x) { return localHour(x.at) >= 17; }).length;
+  return '<p class="small">' + (c.length < 20 ? 'An early read, from ' + c.length + ' waves. ' : '') + 'The waves you catch most are ' + top.map(function (p) { return g(p) + ' ' + esc(word(p)) + ' (' + by[p] + ')'; }).join(', ') + '. ' + (eve > c.length / 2 ? 'Most of them come in the evening.' : 'Most of them come before evening.') + '</p>';
+}
+
+// ---------- You ----------
+function you() {
+  var h = '<h1>You</h1>';
+  h += '<div><div class="between"><div class="eyebrow">What you are making room for</div>' + (plusOn() ? '' : '<span class="small muted">' + S.goals.length + ' of 2 on Free</span>') + '</div><div class="list" style="margin-top:4px">' + S.goals.map(function (gl, i) {
+    return '<button class="item" data-act="editgoal" data-i="' + i + '"><span class="g" style="color:var(--accent)">' + topGlyph(gl.want) + V + '</span><span class="small muted">' + gl.times + '/' + gl.per + '</span><span style="min-width:0"><strong>' + esc(goalName(gl)) + '</strong><br><span class="small muted">read as ' + esc(P.GOALS[gl.want].name) + '</span></span><span class="muted">Edit</span></button>';
+  }).join('') + '</div>' + ((plusOn() || S.goals.length < 2) ? '<button class="btn soft wide" data-act="addgoal" style="margin-top:8px">Add something</button>' : '<p class="small muted">Free keeps two at a time. Plus has room for as many as you like.</p>') + '</div>';
+  h += '<div class="card"><strong>Your day</strong>' + dayHours() + '</div>';
+  h += '<div class="card"><div class="field"><label for="you-city">Place</label><select id="you-city"><option value="">' + esc(S.loc ? S.loc.city || 'Current location' : 'Choose') + '</option>' + CITIES.map(function (c, i) { return '<option value="' + i + '">' + c[0] + '</option>'; }).join('') + '</select></div></div>';
+  h += '<div class="card"><strong>Reminders</strong><div class="seg" style="margin-top:10px">' + [['gentle', 'Gentle'], ['saved', 'My plans only'], ['all', 'Every wave']].map(function (x) { return '<button class="' + (S.ping === x[0] ? 'on' : '') + '" data-act="ping" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div><p class="small muted" style="margin:8px 0 0">' + ({ gentle: 'At most one unasked-for reminder a day, for the strongest wave, plus any you ask for.', saved: 'Only the waves you ask to be reminded of.', all: 'A reminder before every wave. For enthusiasts.' })[S.ping] + (HOST ? '' : ' On the web, reminders come through your calendar.') + '</p></div>';
+  h += '<div class="card"><strong>Look</strong><div class="seg" style="margin-top:10px">' + [['sun', 'With the sun'], ['day', 'Always day'], ['night', 'Always night']].map(function (x) { return '<button class="' + (S.look === x[0] ? 'on' : '') + '" data-act="look" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div><label class="between" style="margin-top:12px"><span>Show planet glyphs</span><input type="checkbox" id="glyphs"' + (S.glyphs ? ' checked' : '') + ' style="width:22px;height:22px;accent-color:var(--accent)"></label></div>';
+  h += '<div class="card"><strong>Your words for the planets</strong><p class="small muted" style="margin:4px 0 6px">These are the single words Astrowaves shows. Change any of them.</p>' + Object.keys(GL).map(function (pl) { return '<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span class="g" style="width:24px;color:var(--accent);font-size:18px;text-align:center">' + GL[pl] + V + '</span><span style="flex:1">' + pl + '</span><input type="text" data-word="' + pl + '" id="w-' + pl + '" value="' + esc(word(pl)) + '" style="width:130px;padding:7px 10px"></div>'; }).join('') + '</div>';
+  h += plusCard();
+  h += '<div class="card"><strong>Your chart</strong> <span class="plusmark">PLUS</span>' + (plusOn() ? chartBlock() : '<p class="small muted">Add your birth time and Astrowaves also watches for the moments your own planets cross the angles where you are.</p>') + '</div>';
+  h += '<div class="row small muted" style="justify-content:space-between"><label class="row"><input type="checkbox" id="freeview"' + (S.freeView ? ' checked' : '') + '> Preview the free version</label><button class="chip" data-act="reset">Start over</button></div>';
+  return h;
+}
+function topGlyph(want) { var A = (window.RULES.acts.filter(function (a) { return a.key === P.GOALS[want].act; })[0] || {}).planets || {}; var k = Object.keys(A).sort(function (a, b) { return A[b] - A[a]; })[0]; return GL[k] || '·'; }
+function plusCard() {
+  return '<div class="card" style="background:var(--surface2)"><div class="between"><h2>Astrowaves Plus</h2><span class="small">' + (S.plus ? 'Open to you during the beta' : '') + '</span></div>' +
+    '<div class="list small" style="margin-top:6px">' + [
+      ['♀', 'Your chart', 'The moments your own planets rise, culminate and set where you are, folded into your waves.'],
+      ['≈', 'Plan my week', 'A proposed week that meets how often you want each thing. Approve it and it goes on your calendar in one step.'],
+      ['☉', 'The longer view', 'Thirty and ninety days ahead, with runs of good days for placing the bigger things.'],
+      ['☽', 'Patterns in your almanac', 'Which kinds of waves you catch, when, and how that changes.'],
+      ['✦', 'Room for more', 'As many things as you like. One-off searches, like a first date or a hard conversation, are coming.'],
+      ['♄', 'Letters from the sky', 'Coming: a short seasonal note from Charlie Cross on the weeks ahead.']
+    ].map(function (x) { return '<div class="item" style="grid-template-columns:26px minmax(0,1fr)"><span class="g" style="color:var(--accent);font-size:17px;text-align:center">' + x[0] + V + '</span><span><strong>' + x[1] + '</strong><br><span class="muted">' + x[2] + '</span></span></div>'; }).join('') + '</div>' +
+    '<div class="row" style="margin-top:8px"><div class="card" style="flex:1;text-align:center"><div class="num" style="font-size:24px">$5.99</div><div class="small muted">a month</div></div><div class="card" style="flex:1;text-align:center"><div class="num" style="font-size:24px">$39.99</div><div class="small muted">a year</div></div></div>' +
+    '<p class="small muted" style="margin:8px 0 0">Free keeps everything else: today and the week, the sky right now, the astrology behind every wave, reminders, calendar, widgets, your words and your full almanac.</p></div>';
+}
+function plusPitch(msg) { return '<div class="card"><span class="plusmark">PLUS</span><p>' + esc(msg) + '</p><button class="btn" data-tab="you">See Plus</button></div>'; }
+function chartBlock() {
+  var b = S.birth || {};
+  var h = '<div class="row" style="margin-top:8px;flex-wrap:wrap"><div class="field" style="flex:1;min-width:130px"><label for="b-date">Birth date</label><input type="date" id="b-date" value="' + esc(b.date || '') + '"></div><div class="field" style="flex:1;min-width:110px"><label for="b-time">Birth time</label><input type="time" id="b-time" value="' + esc(b.time || '') + '"></div></div>' +
+    '<div class="field" style="margin-top:8px"><label for="b-tz">Time zone where you were born</label><select id="b-tz">' + TZS.map(function (z) { return '<option' + ((b.tz || tz()) === z ? ' selected' : '') + '>' + z + '</option>'; }).join('') + '</select></div>' +
+    '<button class="btn soft" data-act="birth" style="margin-top:10px">Save my chart</button>';
+  if (b.utc) {
+    var N = P.natalPositions(b.utc), list = natalToday(N);
+    h += '<div class="list" style="margin-top:10px">' + Object.keys(GL).map(function (pl) { return '<div class="item" style="grid-template-columns:26px 92px minmax(0,1fr)"><span class="g" style="color:var(--accent);text-align:center">' + GL[pl] + V + '</span><span class="small">' + esc(Sky.dms(N[pl])) + '</span><span class="small muted">' + esc(list[pl] || '') + '</span></div>'; }).join('') + '</div>';
+  }
+  return h;
+}
+var TZS = ['America/Chicago', 'America/New_York', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo', 'Europe/London', 'Europe/Lisbon', 'Europe/Paris', 'Europe/Berlin', 'Europe/Zurich', 'Europe/Athens', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'];
+function natalToday(N) {
+  // When each natal degree rises and culminates where you are today, in waking hours.
+  var out = {}, start = new Date(Date.now() - localHour(new Date()) * 3600e3), ser = [];
+  for (var m = 0; m <= 144; m++) { var t = new Date(+start + m * 6e5), c = Sky.chartAngles(t, S.loc.lat, S.loc.lon); ser.push({ t: t, asc: c.asc, mc: c.mc }); }
+  var d = function (x, L) { return (((x - L) % 360) + 540) % 360 - 180; };
+  Object.keys(N).forEach(function (pl) {
+    var bits = [];
+    [['asc', 'rises'], ['mc', 'culminates']].forEach(function (k) {
+      for (var i = 1; i < ser.length; i++) { var a = d(ser[i - 1][k[0]], N[pl]), b = d(ser[i][k[0]], N[pl]); if (a < 0 && b >= 0 && b - a < 30) { var tt = new Date(+ser[i - 1].t + 6e5 * (-a / (b - a))); var lh = localHour(tt); if (lh >= S.wake && lh <= S.sleep) bits.push(k[1] + ' ' + tm(tt)); } }
+    });
+    out[pl] = bits.length ? 'Your ' + pl + ' ' + bits.join(', ') : '';
+  });
+  return out;
+}
+
+// ---------- sheets ----------
+function sheet(html) { layer.innerHTML = '<div class="sheet-back" data-act="close"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>' + html + '</div></div>'; }
+function closeSheet() { layer.innerHTML = ''; }
+function waveSheet(w) {
+  var gl = w.goal, mine = gl.mine, pl = w.planet, span = w.kind === 'span';
+  var h = '<div class="eyebrow">' + esc(goalName(mine)) + ' · ' + (span ? esc(spanRange(w)) : dayName(w.start)) + '</div>';
+  h += '<div class="between"><span class="num" style="font-size:' + (span ? 40 : 72) + 'px;line-height:.95">' + (span ? esc(dayName(w.start)) : hm(w.at || w.start)) + '</span><span style="font-size:56px;color:var(--accent)">' + (S.glyphs && GL[pl] ? '<span class="g">' + GL[pl] + V + '</span>' : '') + '</span></div>';
+  h += '<div style="font-family:var(--display);font-style:italic;font-size:28px;color:var(--warm)">' + esc(word(pl, mine)) + '</div>';
+  h += '<div class="muted">' + (span ? 'This is a run of ' + w.days + ' good days, so any time in them works, and the waves inside them are the sharpest.' : w.kind === 'day' ? 'Good all day, best around ' + tm(w.at || w.start) + '.' : range(w.start, w.end) + (w.at ? ', peak at ' + tm(w.at) : '') + '. Start on the wave and keep going as long as you like.') + '</div>';
+  h += '<div><span class="tier ' + (w.tier || 'supportive') + '">' + (w.tier === 'strong' ? 'Strong wave' : 'Supportive') + '</span>' + (w.natal ? ' <span class="tier supportive">From your chart</span>' : '') + '</div>';
+  h += '<div><div class="eyebrow" style="margin-bottom:2px">The sky behind it</div>' + (w.why || []).map(function (r) { var p2 = planetOf(r); return '<div class="receipt"><span class="g">' + (S.glyphs ? (GL[p2] || SG[signOf(r)] || '·') + V : '') + '</span><span>' + esc(r) + (r === (w.why || [])[0] && w.angle ? '<br><span class="small muted">' + esc(angleWord(w.angle)) + ': ' + esc(P.ANGLE_MEANS[w.angle]) + '</span>' : '') + '</span></div>'; }).join('') +
+    (w.warn || []).map(function (r) { return '<div class="receipt against"><span class="g">' + (S.glyphs ? (GL[planetOf(r)] || '·') + V : '') + '</span><span>Against it: ' + esc(r) + '</span></div>'; }).join('') + '</div>';
+  if (!span) {
+    h += '<div class="field"><label for="dur">How long you want for it</label><select id="dur">' + [15, 20, 30, 45, 60, 90, 120, 180].map(function (n) { return '<option value="' + n + '"' + (n === (mine.dur || gl.dur) ? ' selected' : '') + '>' + (n < 60 ? n + ' minutes' : (n / 60) + (n === 60 ? ' hour' : ' hours')) + '</option>'; }).join('') + '</select></div>';
+    h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Put it on my calendar</button><div class="row"><button class="btn soft" style="flex:1" data-act="remind" data-id="' + w.id + '">Remind me ' + leadText(mine.lead || gl.lead) + ' before</button><button class="btn soft" style="flex:1" data-act="share" data-id="' + w.id + '">Share</button></div>';
+  } else h += '<button class="btn wide" data-act="cal" data-id="' + w.id + '">Mark these days on my calendar</button>';
+  h += '<p class="small muted">The planets\u2019 positions are calculated exactly, and what they suit comes from astrological tradition for you to try.</p>';
+  sheet(h);
+}
+function leadText(m) { return m >= 60 ? (m / 60) + ' hour' + (m > 60 ? 's' : '') : m + ' minutes'; }
+function angleWord(k) { return { rise: 'Rising', mc: 'Culminating', set: 'Setting', ic: 'At the IC' }[k]; }
+function planetOf(r) { var m = String(r).match(/\b(Sun|Moon|Mercury|Venus|Mars|Jupiter|Saturn|Uranus|Neptune|Pluto)\b/g); return m ? m[m.length - 1] : null; }
+function signOf(r) { var m = String(r).match(/\b(Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces)\b/); return m && m[1]; }
+
+function goalSheet(i) {
+  var gl = i == null ? { label: '', want: '', times: 3, per: 'week' } : S.goals[i];
+  var opts = Object.keys(P.GOALS).map(function (k) { return '<option value="' + k + '"' + (gl.want === k ? ' selected' : '') + '>' + esc(P.GOALS[k].name) + '</option>'; }).join('');
+  sheet('<h2>' + (i == null ? 'Add something' : 'Edit') + '</h2>' +
+    '<div class="field"><label for="g-label">In your words</label><input type="text" id="g-label" value="' + esc(gl.label || '') + '" placeholder="quiet time to pray"></div>' +
+    '<div class="field"><label for="g-want">Astrowaves reads it as</label><select id="g-want"><option value="">Match my words</option>' + opts + '</select></div>' +
+    '<div class="field"><label for="g-times">How often</label><div class="row"><select id="g-times">' + [1, 2, 3, 4, 5, 6, 7].map(function (n) { return '<option' + (n === gl.times ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select><select id="g-per">' + ['day', 'week', 'month'].map(function (p) { return '<option value="' + p + '"' + (gl.per === p ? ' selected' : '') + '>a ' + p + '</option>'; }).join('') + '</select></div></div>' +
+    '<button class="btn wide" data-act="goal-save" data-i="' + (i == null ? '' : i) + '">Save</button>' + (i == null ? '' : '<button class="btn soft wide" data-act="goal-del" data-i="' + i + '">Remove</button>'));
+}
+function logSheet() {
+  sheet('<h2>What did you just do?</h2><div class="list">' + S.goals.map(function (gl, i) { return '<button class="item" data-act="lognow" data-i="' + i + '"><span class="g" style="color:var(--accent)">' + topGlyph(gl.want) + V + '</span><span></span><span>' + esc(goalName(gl)) + '</span><span></span></button>'; }).join('') + '</div>');
+}
+function planWeekSheet() {
+  var p = plan(), picks = [];
+  p.goals.forEach(function (pg) {
+    var need = Math.max(0, Math.round(pg.mine.per === 'day' ? pg.mine.times * 7 : pg.mine.per === 'month' ? pg.mine.times / 4 : pg.mine.times) - doneIn(pg.mine)), days = {};
+    pg.windows.filter(function (w) { return +new Date(w.start) > Date.now() && !w.clash && +new Date(w.start) < Date.now() + 7 * 864e5; })
+      .sort(function (a, b) { return (b.tier === 'strong') - (a.tier === 'strong') || b.score - a.score; })
+      .forEach(function (w) { var d = ymd(w.start); if (need > 0 && (!days[d] || pg.mine.per === 'day')) { days[d] = 1; need--; picks.push(w); } });
+  });
+  picks.sort(function (a, b) { return new Date(a.start) - new Date(b.start); });
+  PICKS = picks;
+  sheet('<h2>Your week, proposed</h2><p class="small muted">Picked to meet how often you want each thing, on the strongest waves that miss your calendar. Untick any you do not want.</p><div class="list">' + picks.map(function (w, i) { return '<label class="item" style="grid-template-columns:26px 26px 92px minmax(0,1fr)"><input type="checkbox" checked data-pick="' + i + '" id="pk' + i + '">' + g(w.planet) + '<span class="small">' + parts(w.start, { weekday: 'short' }) + ' ' + tm(w.at || w.start) + '</span><span style="min-width:0">' + esc(goalName(w.goal.mine)) + ' <span class="muted">· ' + esc(word(w.planet, w.goal.mine)) + '</span></span></label>'; }).join('') + '</div>' +
+    (picks.length ? '<button class="btn wide" data-act="planweek-add">Add these to my calendar</button>' : '<p>Nothing left to place this week.</p>'));
+}
+var PICKS = [];
+function shareSheet(w) {
+  sheet('<div class="share"><div class="eyebrow" style="color:inherit;opacity:.8">A wave to catch</div><div style="font-size:44px">' + g(w.planet) + '</div><div class="w">' + esc(word(w.planet, w.goal.mine)) + '.</div><div>' + wd(w.start) + ' · ' + tm(w.at || w.start) + '</div><div class="small" style="opacity:.85">' + esc(w.reason) + '</div><div class="small" style="margin-top:14px;opacity:.7">astrowaves</div></div><p class="small muted">Take a screenshot to share it.</p>');
+}
+
+// ---------- calendar ----------
+function icsStamp(d) { return new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
+function icsEvent(w, mins, lead) {
+  var s = new Date(w.at && w.kind !== 'span' ? +new Date(w.at) - 5 * 60000 : w.start), e = w.kind === 'span' ? new Date(w.end) : new Date(+s + mins * 60000);
+  var title = goalName(w.goal.mine) + ' · ' + word(w.planet, w.goal.mine);
+  return ['BEGIN:VEVENT', 'UID:' + w.id.replace(/[^a-z0-9:]/gi, '') + '@astrowaves', 'DTSTAMP:' + icsStamp(new Date()), 'DTSTART:' + icsStamp(s), 'DTEND:' + icsStamp(e), 'SUMMARY:' + title, 'DESCRIPTION:' + (w.why || []).join('; ') + ' (Astrowaves)',
+    lead ? 'BEGIN:VALARM\r\nTRIGGER:-PT' + lead + 'M\r\nACTION:DISPLAY\r\nDESCRIPTION:' + title + '\r\nEND:VALARM' : '', 'END:VEVENT'].filter(Boolean).join('\r\n');
+}
+function addToCalendar(ws, mins, lead) {
+  if (HOST) { ws.forEach(function (w) { host('cal', { title: goalName(w.goal.mine) + ' · ' + word(w.planet, w.goal.mine), start: w.kind === 'span' ? w.start : new Date(+new Date(w.at || w.start) - 5 * 60000), mins: w.kind === 'span' ? null : mins || w.goal.dur, allDay: w.kind === 'span', end: w.end, notes: (w.why || []).join('; ') + ' (Astrowaves)', lead: lead || 0 }); }); toast(ws.length > 1 ? 'Added ' + ws.length + ' to your calendar' : 'Added to your calendar'); return; }
+  if (isArtifact()) { toast('Calendar files download at compass.day/waves'); return; }
+  var ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Astrowaves//EN\r\n' + ws.map(function (w) { return icsEvent(w, mins || w.goal.dur, lead); }).join('\r\n') + '\r\nEND:VCALENDAR\r\n';
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'astrowaves.ics'; document.body.appendChild(a); a.click(); a.remove();
+  toast('Open the file to add it to your calendar');
+}
+
+// ---------- events ----------
+function logDone(want, how, w) {
+  var gl = S.goals.filter(function (x) { return x.want === want; })[0] || {};
+  S.done.push({ want: want, label: gl.label, at: (w && how === 'caught' ? new Date(w.at || w.start) : new Date()).toISOString(), how: how, wave: w ? w.id : null, planet: w ? w.planet : null, word: w ? word(w.planet, gl) : null });
+  save();
+}
+document.addEventListener('click', function (ev) {
+  var el = ev.target.closest('[data-act],[data-tab]'); if (!el) return;
+  if (el.classList.contains('sheet-back') && ev.target !== el) return;
+  var a = el.getAttribute('data-act'), id = el.getAttribute('data-id'), v = el.getAttribute('data-v');
+  if (el.hasAttribute('data-tab') && !a) { TAB = el.getAttribute('data-tab'); closeSheet(); render(); scrollTo(0, 0); return; }
+  var w = id ? findWave(id) : null;
+  switch (a) {
+    case 'close': closeSheet(); break;
+    case 'ob-next': OB.step = 1; render(); break;
+    case 'ob-starter': OB.text = v; OB.pick = null; render(); break;
+    case 'ob-pick': OB.pick = v; render(); break;
+    case 'ob-goal': {
+      var gu = P.match(OB.text)[0], want = OB.pick || gu; if (!want) return;
+      S.goals.push({ want: want, label: OB.text.trim().replace(/^./, function (c) { return c.toUpperCase(); }), times: +document.getElementById('ob-times').value, per: document.getElementById('ob-per').value });
+      OB.text = ''; OB.pick = null; save();
+      OB.step = S.goals.length >= 2 ? (S.loc ? 3 : 2) : 1; render(); break; }
+    case 'ob-skip': OB.step = S.loc ? 3 : 2; render(); break;
+    case 'ob-geo': navigator.geolocation.getCurrentPosition(function (pos) { S.loc = { lat: +pos.coords.latitude.toFixed(3), lon: +pos.coords.longitude.toFixed(3), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, city: 'Where you are' }; save(); OB.step = 3; render(); }, function () { toast('Location was not shared. Pick a city instead.'); }); break;
+    case 'ob-city': { var ci = document.getElementById('ob-city').value; if (ci === '') { toast('Pick a city first'); return; } var c = CITIES[+ci]; S.loc = { lat: c[1], lon: c[2], tz: c[3], city: c[0] }; save(); OB.step = 3; render(); break; }
+    case 'ob-done': S.onboarded = true; save(); TAB = 'today'; render(); break;
+    case 'wave': if (w) waveSheet(w); break;
+    case 'remind': if (!w) break;
+      if (S.saved.indexOf(w.id) < 0) S.saved.push(w.id); save();
+      if (HOST) { host('ping', { id: w.id, at: w.at || w.start, lead: w.goal.mine.lead || w.goal.lead, title: goalName(w.goal.mine), word: word(w.planet, w.goal.mine), reason: w.reason }); toast('You will get a nudge ' + leadText(w.goal.mine.lead || w.goal.lead) + ' before'); }
+      else addToCalendar([w], (document.getElementById('dur') || {}).value ? +document.getElementById('dur').value : w.goal.dur, w.goal.mine.lead || w.goal.lead);
+      break;
+    case 'cal': if (w) { if (S.saved.indexOf(w.id) < 0) S.saved.push(w.id); save(); addToCalendar([w], +(document.getElementById('dur') || {}).value || w.goal.dur, 0); } break;
+    case 'share': if (w) shareSheet(w); break;
+    case 'log': if (w) { logDone(w.goal.want, el.getAttribute('data-how'), w); toast(el.getAttribute('data-how') === 'skip' ? 'Noted in your almanac' : 'In your almanac'); render(); } break;
+    case 'now-off': NOW_OFF = +v; render(); break;
+    case 'suit': { if (NOW_OFF === 0 && S.goals.some(function (x) { return x.want === v; })) { logDone(v, 'other', null); var mm = momentAt(new Date()), r = mm.ranked.filter(function (x) { return x.want === v; })[0]; var last = S.done[S.done.length - 1]; if (r && r.score >= 2) { last.how = 'caught'; last.planet = r.planet; last.word = word(r.planet); } save(); toast('Recorded in your almanac'); render(); }
+      else { var pg = (plan() || { goals: [] }).goals.filter(function (x) { return x.want === v; })[0]; if (pg) { var nx = pg.windows.filter(function (x2) { return +new Date(x2.end) > Date.now(); })[0]; if (nx) waveSheet(nx); } else toast('Add it under You to get waves for it'); } break; }
+    case 'wk-goal': WEEK_GOAL = v; render(); break;
+    case 'long': LONG = +v; render(); break;
+    case 'spanlong': toast('Open the week view inside that stretch for its sharpest waves'); break;
+    case 'planweek': planWeekSheet(); break;
+    case 'planweek-add': { var ch = [].filter.call(document.querySelectorAll('[data-pick]'), function (x) { return x.checked; }).map(function (x) { return PICKS[+x.getAttribute('data-pick')]; }); ch.forEach(function (x) { if (S.saved.indexOf(x.id) < 0) S.saved.push(x.id); }); save(); addToCalendar(ch, null, null); closeSheet(); break; }
+    case 'logsheet': logSheet(); break;
+    case 'lognow': { var gl = S.goals[+el.getAttribute('data-i')], mm2 = momentAt(new Date()), r2 = mm2.ranked.filter(function (x) { return x.want === gl.want; })[0]; logDone(gl.want, r2 && r2.score >= 2 ? 'caught' : 'other', null); var l2 = S.done[S.done.length - 1]; if (r2 && r2.score >= 2) { l2.planet = r2.planet; l2.word = word(r2.planet, gl); } save(); closeSheet(); toast('In your almanac'); render(); break; }
+    case 'export': { var data = JSON.stringify({ exported: new Date().toISOString(), goals: S.goals, done: S.done }, null, 1); if (HOST) { host('export', { text: data }); break; } try { navigator.clipboard.writeText(data).then(function () { toast('Copied your record'); }, function () { sheet('<h2>Your record</h2><textarea style="min-height:240px">' + esc(data) + '</textarea>'); }); } catch (e) { sheet('<h2>Your record</h2><textarea style="min-height:240px">' + esc(data) + '</textarea>'); } break; }
+    case 'editgoal': goalSheet(+el.getAttribute('data-i')); break;
+    case 'addgoal': goalSheet(null); break;
+    case 'goal-save': {
+      var label = document.getElementById('g-label').value.trim(), want2 = document.getElementById('g-want').value || P.match(label)[0];
+      if (!want2) { toast('Pick what Astrowaves should read it as'); return; }
+      var obj = { want: want2, label: label || P.GOALS[want2].name, times: +document.getElementById('g-times').value, per: document.getElementById('g-per').value };
+      var gi = el.getAttribute('data-i'); if (gi === '') S.goals.push(obj); else S.goals[+gi] = Object.assign(S.goals[+gi], obj);
+      save(); closeSheet(); render(); break; }
+    case 'goal-del': S.goals.splice(+el.getAttribute('data-i'), 1); save(); closeSheet(); render(); break;
+    case 'ping': S.ping = v; save(); render(); break;
+    case 'look': S.look = v; save(); render(); break;
+    case 'birth': {
+      var bd = document.getElementById('b-date').value, bt = document.getElementById('b-time').value || '12:00', bz = document.getElementById('b-tz').value;
+      if (!bd) { toast('Add your birth date'); return; }
+      var p2 = bd.split('-').map(Number), q = bt.split(':').map(Number), guess = Date.UTC(p2[0], p2[1] - 1, p2[2], q[0], q[1]);
+      var utc = guess - Sky.offsetMin(new Date(guess), bz) * 60000; utc = guess - Sky.offsetMin(new Date(utc), bz) * 60000;
+      S.birth = { date: bd, time: bt, tz: bz, utc: new Date(utc).toISOString() }; save(); render(); toast('Your chart is in'); break; }
+    case 'reset': if (el.getAttribute('data-sure')) { S = blank(); save(); OB = { step: 0, text: '', guess: [], pick: null, times: 3, per: 'week' }; render(); } else { el.setAttribute('data-sure', '1'); el.textContent = 'Tap again to erase everything'; } break;
+  }
+});
+document.addEventListener('input', function (ev) {
+  var t = ev.target;
+  if (t.id === 'ob-text') { OB.text = t.value; OB.pick = null; clearTimeout(t._d); t._d = setTimeout(function () { var pos = t.selectionStart; render(); var n = document.getElementById('ob-text'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }, 450); }
+  if (t.id === 'now-range') { NOW_OFF = +t.value; clearTimeout(t._d); t._d = setTimeout(function () { render(); var r = document.getElementById('now-range'); if (r) r.focus(); }, 160); }
+  if (t.hasAttribute('data-word')) { S.words[t.getAttribute('data-word')] = t.value.trim(); clearTimeout(t._d); t._d = setTimeout(save, 400); }
+});
+document.addEventListener('change', function (ev) {
+  var t = ev.target;
+  if (t.getAttribute('data-set')) { S[t.getAttribute('data-set')] = +t.value; save(); render(); }
+  if (t.id === 'glyphs') { S.glyphs = t.checked; save(); render(); }
+  if (t.id === 'freeview') { S.freeView = t.checked; save(); render(); }
+  if (t.id === 'you-city' && t.value !== '') { var c = CITIES[+t.value]; S.loc = { lat: c[1], lon: c[2], tz: c[3], city: c[0] }; SUN = null; save(); render(); }
+  if (t.id === 'ob-times') OB.times = +t.value;
+  if (t.id === 'ob-per') OB.per = t.value;
+});
+if (S.onboarded && S.loc && S.goals.length) OB.step = 3;
+if (!S.onboarded && S.goals.length) OB.step = S.loc ? 3 : 2;
+window.AW = { render: render, state: function () { return S; }, setBusy: function (b) { BUSY = b.map(function (x) { return { title: x.title, start: new Date(x.start), end: new Date(x.end) }; }); PLAN = null; render(); } };
+render();
+setInterval(function () { if (!layer.innerHTML && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'SELECT') render(); }, 60000);
+})();
+</script>
+
+</body>
+</html>
